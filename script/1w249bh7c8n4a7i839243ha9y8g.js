@@ -265,5 +265,5 @@ function updateHeadTitle(ticker) {
   }
 }
 
-updateHeadTitle(ticker);
+window.addEventListener('DOMContentLoaded', updateHeadTitle(ticker));
 fetchDataAndPlot();
