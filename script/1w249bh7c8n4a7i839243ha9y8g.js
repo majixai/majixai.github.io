@@ -260,7 +260,7 @@ function generateSummary(closingPrices, macd, atr, stoch) {
 
 function updateHeadTitle(ticker) {
   if (ticker) {
-    document.title = `Jinx + ${ticker} + Chart with Indicators`;
+    document.title = `Jinx + ${ticker.toUpperCase()} + Chart with Indicators`;
   } else {
     document.title = "Jinx + Chart with Indicators";
   }
