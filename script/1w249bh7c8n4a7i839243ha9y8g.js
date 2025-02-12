@@ -259,9 +259,9 @@ function generateSummary(closingPrices, macd, atr, stoch) {
 
 function updateHeadTitle(ticker) {
   if (ticker) {
-    document.title = `Jinx ${ticker.toUpperCase()} Chart with Indicators`;
+    document.title = `${ticker.toUpperCase()} AI Magic Chart with Indicators`;
   } else {
-    document.title = "Jinx + Chart with Indicators";
+    document.title = "Jinx";
   }
 }
 
