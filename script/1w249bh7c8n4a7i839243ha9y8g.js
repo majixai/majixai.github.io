@@ -7,7 +7,6 @@ async function fetchDataAndPlot() {
     const response = await fetch(apiUrl);
     const data = await response.json();
 
-    // Check if the API returned an error message
     if (data['Error Message'] || data['Note']) {
       throw new Error(data['Error Message'] || data['Note']);
     }
