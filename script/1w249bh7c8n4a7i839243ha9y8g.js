@@ -1,4 +1,4 @@
-const ticker = "tsla";
+const ticker = "meta";
 const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + ticker + '&apikey=XVYHOWRTRNPN3FJA';
 
 async function fetchDataAndPlot() {
