@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const rssFeedUrl = 'script.js';
+    const rssFeedUrl = 'https://www.pornhub.com/video/webmasterss';
 
     fetch(rssFeedUrl)
         .then(response => response.text())
