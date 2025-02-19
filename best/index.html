@@ -197,31 +197,39 @@ function fetchData() {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            return response.text();
+            return response.text(); // Get response as text (XML)
         })
-        .then(text => {
-            const lines = text.trim().split('\n');
+        .then(xmlText => {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+            const items = xmlDoc.querySelectorAll('item');
             const fetchedVideoData = [];
-            lines.forEach(line => {
-                const parts = line.split(/\s+/); // Split by spaces
-                if (parts.length >= 3) { // Ensure we have enough parts
-                    const videoUrl = parts[0];
-                    const thumbnailUrl = parts[1];
-                    let viewkey = '';
-                    try {
-                        const urlParams = new URLSearchParams(new URL(videoUrl).search);
-                        viewkey = urlParams.get('viewkey');
-                    } catch (e) {
-                        viewkey = 'Unknown Key';
-                    }
-                    const title = `Video - ${viewkey || 'No Key'}`; // Create title
 
-                    fetchedVideoData.push({
-                        title: title,
-                        url: videoUrl,
-                        thumbnail: thumbnailUrl
-                    });
+            items.forEach(item => {
+                const title = item.querySelector('title').textContent;
+                const videoUrl = item.querySelector('link').textContent;
+                // Extract thumbnail from description - this might need adjustment based on actual RSS content
+                let description = item.querySelector('description').textContent;
+                let thumbnailUrl = '';
+
+                // Basic attempt to extract thumbnail URL from description, assuming it's in an <img> tag
+                const tempElement = document.createElement('div');
+                tempElement.innerHTML = description;
+                const imgTag = tempElement.querySelector('img');
+                if (imgTag && imgTag.src) {
+                    thumbnailUrl = imgTag.src;
+                } else {
+                    // Fallback if no <img> tag or src attribute found in description
+                    thumbnailUrl = 'placeholder.jpg'; // Or handle differently
+                    console.warn("Thumbnail URL not found in description for:", title);
                 }
+
+
+                fetchedVideoData.push({
+                    title: title,
+                    url: videoUrl,
+                    thumbnail: thumbnailUrl
+                });
             });
             return fetchedVideoData;
         })
