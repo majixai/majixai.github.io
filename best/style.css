@@ -1,0 +1,104 @@
+.video-container {
+    display: flex;
+    flex-direction: row; /* Default for larger screens */
+}
+
+.iframe-column {
+    width: 50%; /* Adjust as needed for larger screens */
+    padding-right: 10px;
+}
+
+.results-column {
+    width: 50%; /* Adjust as needed for larger screens */
+    overflow-y: scroll; /* Make results scrollable */
+    height: 500px; /* Adjust as needed */
+    padding-left: 10px;
+}
+
+.video-item {
+    position: relative;
+    margin-bottom: 10px;
+    cursor: pointer;
+    display: block; /* Make the whole container clickable */
+}
+
+.video-item img {
+    width: 100%;
+    display: block;
+}
+
+.video-title-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+    color: white;
+    padding: 5px;
+    font-size: small;
+    width: 100%;
+    box-sizing: border-box; /* Include padding in width */
+}
+
+.iframe-container {
+    width: 100%;
+    height: 240px; /* Adjust as needed */
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+#search-container {
+    margin-bottom: 10px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.autocomplete-list {
+    position: absolute;
+    border: 1px solid #ddd;
+    border-top: none;
+    z-index: 1;
+    width: 96.3%; /* Match input width roughly, adjust as needed */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.autocomplete-item {
+    padding: 8px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.autocomplete-item:hover {
+    background-color: #f1f1f1;
+}
+
+.iframe-select-button {
+    padding: 8px 16px;
+    margin-right: 5px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+}
+
+.iframe-select-button.selected {
+    background-color: #e0e0e0;
+}
+
+/* Mobile responsiveness adjustments */
+@media (max-width: 768px) {
+    .video-container {
+        flex-direction: column; /* Stack columns on smaller screens */
+    }
+    .iframe-column, .results-column {
+        width: 100%; /* Full width on smaller screens */
+        padding-right: 0;
+        padding-left: 0;
+    }
+    .results-column {
+        height: 300px; /* Adjust scrollable height for mobile */
+    }
+}
