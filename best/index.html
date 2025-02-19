@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<title>Videos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<style>
+.video-container {
+    display: flex;
+}
+
+.iframe-column {
+    width: 50%; /* Adjust as needed */
+    padding-right: 10px;
+}
+
+.results-column {
+    width: 50%; /* Adjust as needed */
+    overflow-y: scroll; /* Make results scrollable */
+    height: 500px; /* Adjust as needed */
+    padding-left: 10px;
+}
+
+.video-item {
+    position: relative;
+    margin-bottom: 10px;
+    cursor: pointer;
+    display: block; /* Make the whole container clickable */
+}
+
+.video-item img {
+    width: 100%;
+    display: block;
+}
+
+.video-title-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black */
+    color: white;
+    padding: 5px;
+    font-size: small;
+    width: 100%;
+    box-sizing: border-box; /* Include padding in width */
+}
+
+.iframe-container {
+    width: 100%;
+    height: 240px; /* Adjust as needed */
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+#search-container {
+    margin-bottom: 10px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+}
+
+.autocomplete-list {
+    position: absolute;
+    border: 1px solid #ddd;
+    border-top: none;
+    z-index: 1;
+    width: 96.3%; /* Match input width roughly, adjust as needed */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.autocomplete-item {
+    padding: 8px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+}
+
+.autocomplete-item:hover {
+    background-color: #f1f1f1;
+}
+
+.iframe-select-button {
+    padding: 8px 16px;
+    margin-right: 5px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+}
+
+.iframe-select-button.selected {
+    background-color: #e0e0e0;
+}
+</style>
+<body>
+
+<div class="w3-container">
+  <h2>Video Display Example</h2>
+
+  <div id="search-container">
+    <input type="text" id="search-input" placeholder="Search video titles..." oninput="autocompleteSearch()">
+    <div id="autocomplete-list" class="autocomplete-list w3-card-4 w3-hide"></div>
+  </div>
+
+  <div class="video-container">
+    <div class="iframe-column">
+      <button class="iframe-select-button selected" onclick="selectIframe('iframe1')" id="select-iframe1">Iframe 1</button>
+      <button class="iframe-select-button" onclick="selectIframe('iframe2')" id="select-iframe2">Iframe 2</button>
+      <div class="iframe-container">
+        <iframe id="iframe1" src="" frameborder="0" allowfullscreen style="width:100%;height:100%;"></iframe>
+      </div>
+      <div class="iframe-container">
+        <iframe id="iframe2" src="" frameborder="0" allowfullscreen style="width:100%;height:100%;"></iframe>
+      </div>
+    </div>
+
+    <div class="results-column w3-card-4">
+      <h3>Video Results</h3>
+      <div id="video-results">
+        <!-- Video items will be added here by JavaScript -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Placeholder video data (replace with your actual data source)
+let videoData = [
+    { title: "Placeholder Video 1", url: "https://www.youtube.com/embed/dQw4w9WgXcQ", thumbnail: "placeholder_thumb1.jpg" },
+    { title: "Placeholder Video 2", url: "https://www.youtube.com/embed/jfKfPfyJRdk", thumbnail: "placeholder_thumb2.jpg" },
+    { title: "Another Video Title 3", url: "https://www.youtube.com/embed/M7lc1UVf-VE", thumbnail: "placeholder_thumb3.jpg" },
+    { title: "Video Example 4", url: "https://www.youtube.com/embed/9bhi06OGvjE", thumbnail: "placeholder_thumb4.jpg" },
+    { title: "Video Title Number 5", url: "https://www.youtube.com/embed/y6120qzO3F8", thumbnail: "placeholder_thumb5.jpg" },
+    { title: "Sixth Video Here", url: "https://www.youtube.com/embed/lY2yjAdbvdQ", thumbnail: "placeholder_thumb6.jpg" },
+    { title: "Seventh Title is Long", url: "https://www.youtube.com/embed/5qap5aO4i9A", thumbnail: "placeholder_thumb7.jpg" },
+    { title: "Eighth Video is Fun", url: "https://www.youtube.com/embed/unfzfe8f9NI", thumbnail: "placeholder_thumb8.jpg" },
+    { title: "Ninth Video is Short", url: "https://www.youtube.com/embed/tPEE9ZwTmy0", thumbnail: "placeholder_thumb9.jpg" },
+    { title: "Tenth and Last Video", url: "https://www.youtube.com/embed/2lAe1cqCOXo", thumbnail: "placeholder_thumb10.jpg" },
+    // ... more placeholder data
+];
+
+let currentVideoData = []; // Data currently displayed
+let selectedIframeId = 'iframe1'; // Default iframe to update
+
+function selectIframe(iframeId) {
+    selectedIframeId = iframeId;
+    document.getElementById('select-iframe1').classList.remove('selected');
+    document.getElementById('select-iframe2').classList.remove('selected');
+    document.getElementById('select-' + iframeId).classList.add('selected');
+}
+
+function displayVideoResults(videos) {
+    const resultsDiv = document.getElementById('video-results');
+    resultsDiv.innerHTML = ''; // Clear previous results
+    videos.forEach(video => {
+        const videoItem = document.createElement('a');
+        videoItem.href = "#"; // Placeholder, actual link is handled by JS
+        videoItem.classList.add('video-item');
+        videoItem.onclick = function(event) {
+            event.preventDefault(); // Prevent default link behavior
+            loadVideoInIframe(video.url);
+        };
+
+        const img = document.createElement('img');
+        img.src = video.thumbnail || 'placeholder.jpg'; // Use placeholder if no thumbnail
+        img.alt = video.title;
+
+        const titleOverlay = document.createElement('div');
+        titleOverlay.classList.add('video-title-overlay');
+        titleOverlay.textContent = video.title;
+
+        videoItem.appendChild(img);
+        videoItem.appendChild(titleOverlay);
+        resultsDiv.appendChild(videoItem);
+    });
+}
+
+function loadVideoInIframe(videoUrl) {
+    const iframe = document.getElementById(selectedIframeId);
+    iframe.src = videoUrl;
+}
+
+function initializePage() {
+    // Load data from localStorage or initial data
+    const storedData = localStorage.getItem('videoData');
+    if (storedData) {
+        currentVideoData = JSON.parse(storedData);
+    } else {
+        currentVideoData = videoData.slice(0, 5); // Initial few videos
+    }
+
+    // In a real scenario, you would fetch new data and append to currentVideoData
+    // For this example, we'll just use the initial/stored data
+
+    displayVideoResults(currentVideoData);
+    if (currentVideoData.length > 0) {
+        loadVideoInIframe(currentVideoData[0].url); // Load first video in iframe
+    }
+}
+
+function saveToLocalStorage() {
+    localStorage.setItem('videoData', JSON.stringify(currentVideoData));
+}
+
+function autocompleteSearch() {
+    const input = document.getElementById('search-input');
+    const filter = input.value.toUpperCase();
+    const autocompleteList = document.getElementById('autocomplete-list');
+    autocompleteList.innerHTML = "";
+    autocompleteList.classList.add('w3-hide');
+
+    if (!filter) {
+        return; // Don't show list if input is empty
+    }
+
+    const filteredVideos = currentVideoData.filter(video => video.title.toUpperCase().includes(filter));
+
+    if (filteredVideos.length > 0) {
+        autocompleteList.classList.remove('w3-hide');
+        filteredVideos.forEach(video => {
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('autocomplete-item');
+            itemDiv.textContent = video.title;
+            itemDiv.onclick = function() {
+                input.value = video.title;
+                autocompleteList.classList.add('w3-hide');
+                displayVideoResults([video]); // Display only the selected video
+                loadVideoInIframe(video.url);
+            };
+            autocompleteList.appendChild(itemDiv);
+        });
+    }
+}
+
+
+// Initialize when the page loads
+window.onload = initializePage;
+window.onbeforeunload = saveToLocalStorage; // Save to local storage when leaving page
+</script>
+
+</body>
+</html>
