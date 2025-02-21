@@ -1,79 +1,251 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ChatHer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Segoe+UI">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@widgetbot/crate@3"></script>
     <style>
+        html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
+
         .ifr {
             height: 528px;
-            width: 850px;
+            width: 100%; /* Make iframes responsive in width */
             border: none;
             padding: 2px;
             margin: 0;
             aspect-ratio: initial;
         }
-        .user-list-col {
-            display: inline-block; /* Make columns inline */
-            width: 30%; /* Adjust width as needed, less than 33.33% to have space between iframes*/
-            vertical-align: top; /* Align columns to the top */
-            padding-right: 10px; /* Add some spacing between columns */
+
+        /* Style for the scrollable user lists */
+        .scrollable-list-container {
+            height: 550px; /* Fixed height for scrollable area */
+            overflow-y: auto; /* Enable vertical scrolling */
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px; /* Space between list and other elements */
         }
-        .iframe-col {
-            display: inline-block; /* Make columns inline */
-            width: 30%; /* Adjust width as needed, less than 33.33% to have space between iframes*/
-            vertical-align: top; /* Align columns to the top */
-            padding-right: 10px; /* Add some spacing between columns */
+
+        .user-list {
+            list-style: none;
+            padding: 0;
         }
-        .row-inline {
-            display: flex; /* Enable flexbox for inline arrangement */
-            justify-content: space-between; /* Distribute space evenly */
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 8px;
+        }
+
+        .user-info:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .user-info img {
+            width: 80px;
+            height: 60px;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        .user-details {
+            flex-grow: 1;
+        }
+
+        .user-details p {
+            margin: 0 0 5px 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .user-details p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .pagination button {
+            margin: 0 5px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .pagination button:hover {
+            background-color: #eee;
+        }
+
+        .pagination button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        /* Filter styles */
+        .filters {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .filters .form-control {
+            margin-bottom: 10px;
+        }
+
+        /* Button Styles */
+        .btn-container button {
+            margin-right: 8px;
+            margin-bottom: 10px;
+        }
+
+        /* Record Container */
+        .recordContainer {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .recordButton button {
+            margin-right: 8px;
+        }
+
+
+        /* W3CSS modifications for better integration */
+        .w3-card-4 {
+            box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
+        }
+
+        .w3-button {
+            border: none;
+            display: inline-block;
+            padding: 8px 16px;
+            vertical-align: middle;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            background-color: inherit;
+            text-align: center;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .w3-button:hover {
+            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+        }
+
+        .w3-theme-d2 {color:#fff !important; background-color:#007bff !important} /* Example primary color */
+        .w3-bar .w3-button {padding:8px 16px;}
+        .w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:8px;padding-top:8px;}
+        .w3-bar-item {padding:8px 16px;float:left;width:auto;border:none;display:block;outline:0}
+        .w3-bar {width:100%;overflow:hidden}
+        .w3-center {text-align:center !important}
+
+        /* General layout adjustments for container and responsiveness */
+        .container {
+            max-width: 1920px; /* Wider container to accommodate inline iframes and lists */
+            margin: 20px auto;
+            padding: 15px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+
+        /* Ensure iframe and lists are inline on larger screens */
+        @media (min-width: 768px) { /* Adjust breakpoint as needed */
+            .iframe-container {
+                display: flex;
+                justify-content: flex-start; /* Align items to the start */
+                flex-wrap: wrap; /* Allows wrapping on smaller screens if needed */
+                margin-bottom: 20px; /* Space between iframes and lists */
+            }
+
+            .iframe-container iframe {
+                margin-right: 10px; /* Space between iframes */
+                margin-bottom: 10px; /* Space if they wrap on smaller screens */
+            }
+
+            .lists-container {
+                display: flex;
+                justify-content: flex-start;
+                flex-wrap: wrap; /* Allows lists to wrap if screen is too narrow */
+            }
+
+            .lists-container > div { /* Target direct children divs of lists-container */
+                width: 30%; /* Adjust width as needed for spacing - approx for 3 inline */
+                margin-right: 20px; /* Space between list columns */
+                margin-bottom: 20px; /* Space if lists wrap */
+            }
+
+            .lists-container > div:last-child {
+                margin-right: 0; /* No margin for the last list item */
+            }
+
+             /* Adjust iframe width for inline display */
+             .iframe-container iframe.ifr {
+                width: calc(50% - 5px); /* Approx 50% width for two inline iframes minus spacing */
+            }
+        }
+
+        /* For smaller screens, stack iframes and lists */
+        @media (max-width: 767px) {
+            .iframe-container, .lists-container {
+                flex-direction: column; /* Stack items vertically on smaller screens */
+            }
+
+            .iframe-container iframe.ifr {
+                width: 100%; /* Full width for stacked iframes */
+                margin-bottom: 15px; /* Space between stacked iframes */
+            }
+
+            .lists-container > div {
+                width: 100%; /* Full width for stacked lists */
+                margin-bottom: 20px; /* Space between stacked lists */
+                margin-right: 0; /* Reset right margin */
+            }
         }
     </style>
 </head>
-<body>
+<body class="w3-light-grey">
     <div class="container">
-        <h1>ChatHer</h1>
-        <button id="toggleButton" class="w3-button w3-bar-item w3-border">Toggle Filters</button>
-        <button id="toggleButton1" class="w3-button w3-bar-item w3-border">Toggle Record</button>
-        <button id="toggleButton2" class="w3-button w3-bar-item w3-border">Toggle BatWoman</button>
+        <h1 class="w3-center">ChatHer</h1>
+        <div class="w3-center btn-container">
+            <button id="toggleButton" class="w3-button w3-theme-d2 w3-card-4">Toggle Filters</button>
+            <button id="toggleButton1" class="w3-button w3-theme-d2 w3-card-4">Toggle Record</button>
+            <button id="toggleButton2" class="w3-button w3-theme-d2 w3-card-4">Toggle BatWoman</button>
+        </div>
 
-        <script>
-            var toggleButton = document.getElementById('toggleButton');
-            var toggleButton1 = document.getElementById('toggleButton1');
-            var toggleButton2 = document.getElementById('toggleButton2');
+        <div class="iframe-container">
+            <iframe class="ifr" id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
+            <iframe class="ifr" id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
+        </div>
 
-            toggleButton.addEventListener('click', function() {
-                var controls = document.getElementById('controlsFilter');
-                if (controls.style.display === 'none') {
-                    controls.style.display = 'block';
-                } else {
-                    controls.style.display = 'none';
-                }
-            });
-
-            toggleButton1.addEventListener('click', function() {
-                var controls = document.getElementById('recordContainer');
-                if (controls.style.display === 'none') {
-                    controls.style.display = 'block';
-                } else {
-                    controls.style.display = 'none';
-                }
-            });
-
-            toggleButton2.addEventListener('click', function() {
-                var controls = document.getElementById('BatWoman');
-                if (controls.style.display === 'none') {
-                    controls.style.display = 'block';
-                } else {
-                    controls.style.display = 'none';
-                }
-            });
-        </script>
-        <div style="display: none;" id="controlsFilter" class="filters">
+        <div style="display: none;" id="controlsFilter" class="filters w3-card-4">
+            <h3 class="w3-center">Filter Options</h3>
             <input type="text" id="filterInput" placeholder="Filter by username" class="form-control">
             <select id="genderFilter" class="form-control">
                 <option value="">All Genders</option>
@@ -102,181 +274,77 @@
                 </div>
             </div>
         </div>
-        <div class="row-inline">
-            <div class="user-list-col">
-                <h2>Online Users</h2>
-                <div id="onlineUsers" class="scrollmenu scrollable-list user-list"></div>
-                <div id="pagination" class="pagination"></div>
-            </div>
-            <div class="user-list-col">
-                <h2>Previous Users</h2>
-                <div id="previousUsers" class="scrollable-list user-list"></div>
-            </div>
-            <div class="iframe-col">
-                <h2>Second Iframe</h2>
-                <iframe class="ifr" id="secondIframe" src="https://nancysstays.github.io/texther" frameborder="0" scrolling="no"></iframe>
+
+        <div class="controls w3-card-4 w3-padding" id="controls">
+            <h3 class="w3-center">Controls</h3>
+            <div class="w3-center">
+                <button id="loadMore" class="w3-button w3-theme-d2 w3-card-4">Load More</button>
+                <button id="loadLess" class="w3-button w3-theme-d2 w3-card-4">Load Less</button>
+                <button id="loadAll" class="w3-button w3-theme-d2 w3-card-4">Load All</button>
+                <button type="submit" id="submit" class="w3-button w3-theme-d2 w3-card-4">Submit</button>
+                <button type="reset" id="reset" class="w3-button w3-theme-d2 w3-card-4">Reset</button>
             </div>
         </div>
-        <div class="row">
+
+        <div style="display: none;" class="recordContainer w3-card-4 w3-padding" id="recordContainer">
+            <h3 class="w3-center">Recording Options</h3>
+            <div style="display: none;" id="BatWoman" class="recordButton w3-center">
+                <button id="startRecording" class="w3-button w3-theme-d2 w3-card-4">Start Recording</button>
+                <button id="stopRecording" class="w3-button w3-theme-d2 w3-card-4">Stop Recording</button>
+                <button id="download" class="w3-button w3-theme-d2 w3-card-4">Download</button>
+            </div>
+        </div>
+
+        <div class="lists-container">
             <div class="col-md-3">
-            <div class="controls" id="controls">
-                <button id="loadMore" class="w3-button w3-bar-item w3-border">Load More</button>
-                <button id="loadLess" class="w3-button w3-bar-item w3-border">Load Less</button>
-                <button id="loadAll" class="w3-button w3-bar-item w3-border">Load All</button>
-                <button type="submit" id="submit" class="w3-button w3-bar-item w3-border">Submit</button>
-                <button type="reset" id="reset" class="w3-button w3-bar-item w3-border">Reset</button>
+                <h2>Online Users</h2>
+                <div id="onlineUsers" class="scrollable-list-container w3-card-4">
+                    <div class="user-list">
+                        <p class="text-muted w3-center">Loading online users...</p>
+                    </div>
+                </div>
+                <div id="pagination" class="pagination">
+                    </div>
             </div>
-            <div style="display: none;" class="recordContainer col-md-6" id="recordContainer">
-                <style>
-                    .recordContainer {
-                        display: flex;
-                        justify-content: space-between;
-                    }
-                    .recordButton {
-                        margin-right: 10px;
-                    }
-                    .recordButton:last-child {
-                        margin-right: 0;
-                    }
-                    .recordButton:active {
-                        background-color: #007bff;
-                        border-color: #007bff;
-                    }
-                    .recordButton:hover {
-                        background-color: #0056b3;
-                        border-color: #0056b3;
-                    }
-                    .recordButton:focus {
-                        outline: none;
-                    }
 
-                 </style>
-                <div style="display: none;" id="BatWoman" class="recordButton">
-                    <button id="startRecording" class="w3-button w3-bar-item w3-border">Start Recording</button>
-                    <button id="stopRecording" class="w3-button w3-bar-item w3-border">Stop Recording</button>
-                    <button id="download" class="w3-button w3-bar-item w3-border">Download</button>
+            <div class="col-md-3">
+                <h2>Previous Users</h2>
+                <div id="previousUsers" class="scrollable-list-container w3-card-4">
+                    <div class="user-list">
+                        <p class="text-muted w3-center">No previous users.</p>
+                    </div>
                 </div>
-                </div>
+            </div>
+
+            <div class="col-md-3">
+                <h2>Second Iframe Content</h2>
+                <iframe class="ifr w3-card-4" id="secondIframe" src="https://nancysstays.github.io/texther" frameborder="0" scrolling="no"></iframe>
+                <div id="secondIframeResults">
+                    </div>
+            </div>
         </div>
-        <iframe class="ifr" id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
-        <iframe class="ifr" id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
     </div>
-</div>
+
     <script>
-        const onlineUsersDiv = document.getElementById("onlineUsers");
-        const previousUsersDiv = document.getElementById("previousUsers");
-        const mainIframe = document.getElementById("mainIframe");
-        let previousUsers = loadPreviousUsers(); // Load from localStorage
+        // Toggle controls on button click
+        document.querySelectorAll('.btn-container button').forEach(button => {
+            button.addEventListener('click', function() {
+                let targetId = '';
+                if (this.id === 'toggleButton') targetId = 'controlsFilter';
+                else if (this.id === 'toggleButton1') targetId = 'recordContainer';
+                else if (this.id === 'toggleButton2') targetId = 'BatWoman';
 
-        displayPreviousUsers(); // Display on load
-        fetchData(); // Initial data fetch
-
-        function fetchData() {
-            const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f';
-
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                if (targetId) {
+                    var controls = document.getElementById(targetId);
+                    if (controls.style.display === 'none') {
+                        controls.style.display = 'block';
+                    } else {
+                        controls.style.display = 'none';
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    displayOnlineUsers(data.results);
-                })
-                .catch(error => {
-                    console.error("Fetching data failed:", error);
-                    onlineUsersDiv.innerHTML = `<p>Error fetching data.</p>`;
-                });
-        }
-
-        function displayOnlineUsers(users) {
-            onlineUsersDiv.innerHTML = "";
-            if (!users || users.length === 0) {
-                onlineUsersDiv.innerHTML = `<p>No online users found.</p>`;
-                return;
-            }
-
-            users.forEach(user => {
-                if (!user.image_url || !user.username || !user.age || !user.location || !user.iframe_embed) {
-                    console.warn("Incomplete user data:", user);
-                    return; // Skip this user if data is missing
                 }
-                const userElement = document.createElement("div");
-                userElement.className = "user-info";
-                userElement.innerHTML = `
-                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                    <div class="user-details">
-                        <p>Username: ${user.username}</p>
-                        <p>Age: ${user.age}</p>
-                        <p>Location: ${user.location}</p>
-                    </div>
-                `;
-
-                userElement.addEventListener("click", function () {
-                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                    mainIframe.src = iframeUrl;
-
-                    addToPreviousUsers(user);
-                    displayPreviousUsers();
-                });
-
-                onlineUsersDiv.appendChild(userElement);
             });
-        }
-
-
-        function addToPreviousUsers(user) {
-            if (!previousUsers.some(u => u.username === user.username)) {
-                previousUsers.push(user);
-                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
-            }
-        }
-
-        function displayPreviousUsers() {
-            previousUsersDiv.innerHTML = "";
-            previousUsers.forEach(user => {
-                if (!user.image_url || !user.username) {
-                    console.warn("Incomplete previous user data:", user);
-                    return; // Skip if data is missing
-                }
-                const userElement = document.createElement("div");
-                userElement.className = "user-info";
-                userElement.innerHTML = `
-                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                    <div class="user-details">
-                        <p>Username: ${user.username}</p>
-                    </div>
-                `;
-
-                userElement.addEventListener("click", function () {
-                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                    mainIframe.src = iframeUrl;
-                });
-
-                previousUsersDiv.appendChild(userElement);
-            });
-        }
-
-        function loadPreviousUsers() {
-            const storedUsers = localStorage.getItem("previousUsers");
-            return storedUsers ? JSON.parse(storedUsers) : [];
-        }
-
-        // API related button functionalities (example - you may need to adjust based on your API class)
-        var chaturbateAPI = { //removed API Class, implemented fetch directly
-            loadMore: function() { console.log('Load More functionality needs to be implemented.'); },
-            loadLess: function() { console.log('Load Less functionality needs to be implemented.'); },
-        };
-        var loadMore = document.getElementById('loadMore');
-        var loadLess = document.getElementById('loadLess');
-
-        loadMore.addEventListener('click', function() {
-            chaturbateAPI.loadMore();
-        });
-        loadLess.addEventListener('click', function() {
-            chaturbateAPI.loadLess();
         });
     </script>
+    <script src="script.js"></script>
 </body>
 </html>
