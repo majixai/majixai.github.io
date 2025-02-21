@@ -1,114 +1,115 @@
-        const onlineUsersDiv = document.getElementById("onlineUsers");
-        const previousUsersDiv = document.getElementById("previousUsers");
-        const mainIframe = document.getElementById("mainIframe");
-        let previousUsers = loadPreviousUsers(); // Load from localStorage
+// script.js
+document.addEventListener('DOMContentLoaded', function() {
+    const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
+    const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+    const mainIframe = document.getElementById("mainIframe");
 
-        displayPreviousUsers(); // Display on load
-        fetchData(); // Initial data fetch
+    let previousUsers = loadPreviousUsers(); // Load from localStorage
+    displayPreviousUsers(); // Display on load
 
-        function fetchData() {
-            const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f';
+    function fetchData() {
+        const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500';
 
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.results && data.results.length > 0) {
+                    onlineUsersDiv.innerHTML = ""; // Clear loading message
                     displayOnlineUsers(data.results);
-                })
-                .catch(error => {
-                    console.error("Fetching data failed:", error);
-                    onlineUsersDiv.innerHTML = `<p>Error fetching data.</p>`;
-                });
+                } else {
+                    onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
+                }
+            })
+            .catch(error => {
+                console.error("Fetch error:", error);
+                onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
+            });
+    }
+
+    function displayOnlineUsers(users) {
+        onlineUsersDiv.innerHTML = "";
+        if (users.length === 0) {
+            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
+            return;
         }
 
-        function displayOnlineUsers(users) {
-            onlineUsersDiv.innerHTML = "";
-            if (!users || users.length === 0) {
-                onlineUsersDiv.innerHTML = `<p>No online users found.</p>`;
-                return;
+        users.forEach(user => {
+            if (!user.image_url || !user.username) {
+                console.warn("Incomplete user data:", user);
+                return; // Skip users with missing data
             }
 
-            users.forEach(user => {
-                if (!user.image_url || !user.username || !user.age || !user.location || !user.iframe_embed) {
-                    console.warn("Incomplete user data:", user);
-                    return; // Skip this user if data is missing
-                }
-                const userElement = document.createElement("div");
-                userElement.className = "user-info";
-                userElement.innerHTML = `
-                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                    <div class="user-details">
-                        <p>Username: ${user.username}</p>
-                        <p>Age: ${user.age}</p>
-                        <p>Location: ${user.location}</p>
-                    </div>
-                `;
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                <div class="user-details">
+                    <p>Username: ${user.username}</p>
+                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Location: ${user.location || 'Unknown'}</p>
+                </div>
+            `;
 
-                userElement.addEventListener("click", function () {
-                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                    mainIframe.src = iframeUrl;
+            userElement.addEventListener("click", function () {
+                const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
+                mainIframe.src = iframeUrl;
 
-                    addToPreviousUsers(user);
-                    displayPreviousUsers();
-                });
-
-                onlineUsersDiv.appendChild(userElement);
+                // Add to previousUsers and update localStorage
+                addToPreviousUsers(user);
+                displayPreviousUsers();
             });
+            onlineUsersDiv.appendChild(userElement);
+        });
+    }
+
+
+    function addToPreviousUsers(user) {
+        if (!previousUsers.some(u => u.username === user.username)) {
+            previousUsers.unshift(user); // Add to the beginning of the array
+            previousUsers = previousUsers.slice(0, 20); // Keep only the latest 20 users
+            localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+        }
+    }
+
+    function displayPreviousUsers() {
+        previousUsersDiv.innerHTML = "";
+        if (previousUsers.length === 0) {
+            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users.</p>';
+            return;
         }
 
-
-        function addToPreviousUsers(user) {
-            if (!previousUsers.some(u => u.username === user.username)) {
-                previousUsers.push(user);
-                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+        previousUsers.forEach(user => {
+            if (!user.image_url || !user.username) {
+                return; // Skip display if data is missing, or handle more gracefully
             }
-        }
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                <div class="user-details">
+                    <p>Username: ${user.username}</p>
+                </div>
+            `;
 
-        function displayPreviousUsers() {
-            previousUsersDiv.innerHTML = "";
-            previousUsers.forEach(user => {
-                if (!user.image_url || !user.username) {
-                    console.warn("Incomplete previous user data:", user);
-                    return; // Skip if data is missing
-                }
-                const userElement = document.createElement("div");
-                userElement.className = "user-info";
-                userElement.innerHTML = `
-                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                    <div class="user-details">
-                        <p>Username: ${user.username}</p>
-                    </div>
-                `;
-
-                userElement.addEventListener("click", function () {
-                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                    mainIframe.src = iframeUrl;
-                });
-
-                previousUsersDiv.appendChild(userElement);
+            userElement.addEventListener("click", function () {
+                const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
+                mainIframe.src = iframeUrl;
             });
-        }
-
-        function loadPreviousUsers() {
-            const storedUsers = localStorage.getItem("previousUsers");
-            return storedUsers ? JSON.parse(storedUsers) : [];
-        }
-
-        // API related button functionalities (example - you may need to adjust based on your API class)
-        var chaturbateAPI = { //removed API Class, implemented fetch directly
-            loadMore: function() { console.log('Load More functionality needs to be implemented.'); },
-            loadLess: function() { console.log('Load Less functionality needs to be implemented.'); },
-        };
-        var loadMore = document.getElementById('loadMore');
-        var loadLess = document.getElementById('loadLess');
-
-        loadMore.addEventListener('click', function() {
-            chaturbateAPI.loadMore();
+            previousUsersDiv.appendChild(userElement);
         });
-        loadLess.addEventListener('click', function() {
-            chaturbateAPI.loadLess();
-        });
+    }
+
+    function loadPreviousUsers() {
+        const storedUsers = localStorage.getItem("previousUsers");
+        return storedUsers ? JSON.parse(storedUsers) : [];
+    }
+
+    // Initial fetch when page loads
+    fetchData();
+    setInterval(fetchData, 60000); // Refresh every 60 seconds
+});
