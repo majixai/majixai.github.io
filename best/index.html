@@ -1,40 +1,282 @@
 <!DOCTYPE html>
 <html>
-<title>Video Display</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-<link rel="stylesheet" href="style.css">
-    <body>
-<div class="w3-container">
-  <h2>Video Display Example</h2>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ChatHer</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .ifr {
+            height: 528px;
+            width: 850px;
+            border: none;
+            padding: 2px;
+            margin: 0;
+            aspect-ratio: initial;
+        }
+        .user-list-col {
+            display: inline-block; /* Make columns inline */
+            width: 30%; /* Adjust width as needed, less than 33.33% to have space between iframes*/
+            vertical-align: top; /* Align columns to the top */
+            padding-right: 10px; /* Add some spacing between columns */
+        }
+        .iframe-col {
+            display: inline-block; /* Make columns inline */
+            width: 30%; /* Adjust width as needed, less than 33.33% to have space between iframes*/
+            vertical-align: top; /* Align columns to the top */
+            padding-right: 10px; /* Add some spacing between columns */
+        }
+        .row-inline {
+            display: flex; /* Enable flexbox for inline arrangement */
+            justify-content: space-between; /* Distribute space evenly */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ChatHer</h1>
+        <button id="toggleButton" class="w3-button w3-bar-item w3-border">Toggle Filters</button>
+        <button id="toggleButton1" class="w3-button w3-bar-item w3-border">Toggle Record</button>
+        <button id="toggleButton2" class="w3-button w3-bar-item w3-border">Toggle BatWoman</button>
 
-  <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search video titles..." oninput="autocompleteSearch()">
-    <div id="autocomplete-list" class="autocomplete-list w3-card-4 w3-hide"></div>
-  </div>
+        <script>
+            var toggleButton = document.getElementById('toggleButton');
+            var toggleButton1 = document.getElementById('toggleButton1');
+            var toggleButton2 = document.getElementById('toggleButton2');
 
-  <div class="video-container">
-    <div class="iframe-column">
-      <button class="iframe-select-button selected" onclick="selectIframe('iframe1')" id="select-iframe1">Iframe 1</button>
-      <button class="iframe-select-button" onclick="selectIframe('iframe2')" id="select-iframe2">Iframe 2</button>
-      <div class="iframe-container">
-        <iframe id="iframe1" src="https://www.pornhub.com/embed/666f63a0228ba" frameborder="0" allowfullscreen style="width:100%;height:100%;"></iframe>
-      </div>
-      <div class="iframe-container">
-        <iframe id="iframe2" src="https://www.pornhub.com/embed/65afc5acaa9f2" frameborder="0" allowfullscreen style="width:100%;height:100%;"></iframe>
-      </div>
+            toggleButton.addEventListener('click', function() {
+                var controls = document.getElementById('controlsFilter');
+                if (controls.style.display === 'none') {
+                    controls.style.display = 'block';
+                } else {
+                    controls.style.display = 'none';
+                }
+            });
+
+            toggleButton1.addEventListener('click', function() {
+                var controls = document.getElementById('recordContainer');
+                if (controls.style.display === 'none') {
+                    controls.style.display = 'block';
+                } else {
+                    controls.style.display = 'none';
+                }
+            });
+
+            toggleButton2.addEventListener('click', function() {
+                var controls = document.getElementById('BatWoman');
+                if (controls.style.display === 'none') {
+                    controls.style.display = 'block';
+                } else {
+                    controls.style.display = 'none';
+                }
+            });
+        </script>
+        <div style="display: none;" id="controlsFilter" class="filters">
+            <input type="text" id="filterInput" placeholder="Filter by username" class="form-control">
+            <select id="genderFilter" class="form-control">
+                <option value="">All Genders</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="couple">Couple</option>
+            </select>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <input type="number" id="ageFilterMin" placeholder="Min Age" class="form-control">
+                </div>
+                <div class="form-group col-md-6">
+                    <input type="number" id="ageFilterMax" placeholder="Max Age" class="form-control">
+                </div>
+            </div>
+            <input type="text" id="tagsFilter" placeholder="Filter by tags" class="form-control">
+            <div class="form-row">
+                <div class="form-group col-md-3">
+                    <input type="number" id="numUsersFilterMin" placeholder="Min Users" class="form-control">
+                </div>
+                <div class="form-group col-md-3">
+                    <input type="number" id="numUsersFilterMax" placeholder="Max Users" class="form-control">
+                </div>
+                <div class="form-group col-md-6">
+                    <input type="text" id="countryFilter" placeholder="Filter by country" class="form-control">
+                </div>
+            </div>
+        </div>
+        <div class="row-inline">
+            <div class="user-list-col">
+                <h2>Online Users</h2>
+                <div id="onlineUsers" class="scrollmenu scrollable-list user-list"></div>
+                <div id="pagination" class="pagination"></div>
+            </div>
+            <div class="user-list-col">
+                <h2>Previous Users</h2>
+                <div id="previousUsers" class="scrollable-list user-list"></div>
+            </div>
+            <div class="iframe-col">
+                <h2>Second Iframe</h2>
+                <iframe class="ifr" id="secondIframe" src="https://nancysstays.github.io/texther" frameborder="0" scrolling="no"></iframe>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-3">
+            <div class="controls" id="controls">
+                <button id="loadMore" class="w3-button w3-bar-item w3-border">Load More</button>
+                <button id="loadLess" class="w3-button w3-bar-item w3-border">Load Less</button>
+                <button id="loadAll" class="w3-button w3-bar-item w3-border">Load All</button>
+                <button type="submit" id="submit" class="w3-button w3-bar-item w3-border">Submit</button>
+                <button type="reset" id="reset" class="w3-button w3-bar-item w3-border">Reset</button>
+            </div>
+            <div style="display: none;" class="recordContainer col-md-6" id="recordContainer">
+                <style>
+                    .recordContainer {
+                        display: flex;
+                        justify-content: space-between;
+                    }
+                    .recordButton {
+                        margin-right: 10px;
+                    }
+                    .recordButton:last-child {
+                        margin-right: 0;
+                    }
+                    .recordButton:active {
+                        background-color: #007bff;
+                        border-color: #007bff;
+                    }
+                    .recordButton:hover {
+                        background-color: #0056b3;
+                        border-color: #0056b3;
+                    }
+                    .recordButton:focus {
+                        outline: none;
+                    }
+
+                 </style>
+                <div style="display: none;" id="BatWoman" class="recordButton">
+                    <button id="startRecording" class="w3-button w3-bar-item w3-border">Start Recording</button>
+                    <button id="stopRecording" class="w3-button w3-bar-item w3-border">Stop Recording</button>
+                    <button id="download" class="w3-button w3-bar-item w3-border">Download</button>
+                </div>
+                </div>
+        </div>
+        <iframe class="ifr" id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
+        <iframe class="ifr" id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
     </div>
-
-    <div class="results-column w3-card-4">
-      <h3>Video Results</h3>
-      <div id="video-results">
-        <!-- Video items will be added here by JavaScript -->
-      </div>
-    </div>
-  </div>
 </div>
-    <script src="index.js"></script>
-    <script src="main.js"></script>
+    <script>
+        const onlineUsersDiv = document.getElementById("onlineUsers");
+        const previousUsersDiv = document.getElementById("previousUsers");
+        const mainIframe = document.getElementById("mainIframe");
+        let previousUsers = loadPreviousUsers(); // Load from localStorage
+
+        displayPreviousUsers(); // Display on load
+        fetchData(); // Initial data fetch
+
+        function fetchData() {
+            const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f';
+
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    displayOnlineUsers(data.results);
+                })
+                .catch(error => {
+                    console.error("Fetching data failed:", error);
+                    onlineUsersDiv.innerHTML = `<p>Error fetching data.</p>`;
+                });
+        }
+
+        function displayOnlineUsers(users) {
+            onlineUsersDiv.innerHTML = "";
+            if (!users || users.length === 0) {
+                onlineUsersDiv.innerHTML = `<p>No online users found.</p>`;
+                return;
+            }
+
+            users.forEach(user => {
+                if (!user.image_url || !user.username || !user.age || !user.location || !user.iframe_embed) {
+                    console.warn("Incomplete user data:", user);
+                    return; // Skip this user if data is missing
+                }
+                const userElement = document.createElement("div");
+                userElement.className = "user-info";
+                userElement.innerHTML = `
+                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                    <div class="user-details">
+                        <p>Username: ${user.username}</p>
+                        <p>Age: ${user.age}</p>
+                        <p>Location: ${user.location}</p>
+                    </div>
+                `;
+
+                userElement.addEventListener("click", function () {
+                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
+                    mainIframe.src = iframeUrl;
+
+                    addToPreviousUsers(user);
+                    displayPreviousUsers();
+                });
+
+                onlineUsersDiv.appendChild(userElement);
+            });
+        }
+
+
+        function addToPreviousUsers(user) {
+            if (!previousUsers.some(u => u.username === user.username)) {
+                previousUsers.push(user);
+                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+            }
+        }
+
+        function displayPreviousUsers() {
+            previousUsersDiv.innerHTML = "";
+            previousUsers.forEach(user => {
+                if (!user.image_url || !user.username) {
+                    console.warn("Incomplete previous user data:", user);
+                    return; // Skip if data is missing
+                }
+                const userElement = document.createElement("div");
+                userElement.className = "user-info";
+                userElement.innerHTML = `
+                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                    <div class="user-details">
+                        <p>Username: ${user.username}</p>
+                    </div>
+                `;
+
+                userElement.addEventListener("click", function () {
+                    const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
+                    mainIframe.src = iframeUrl;
+                });
+
+                previousUsersDiv.appendChild(userElement);
+            });
+        }
+
+        function loadPreviousUsers() {
+            const storedUsers = localStorage.getItem("previousUsers");
+            return storedUsers ? JSON.parse(storedUsers) : [];
+        }
+
+        // API related button functionalities (example - you may need to adjust based on your API class)
+        var chaturbateAPI = { //removed API Class, implemented fetch directly
+            loadMore: function() { console.log('Load More functionality needs to be implemented.'); },
+            loadLess: function() { console.log('Load Less functionality needs to be implemented.'); },
+        };
+        var loadMore = document.getElementById('loadMore');
+        var loadLess = document.getElementById('loadLess');
+
+        loadMore.addEventListener('click', function() {
+            chaturbateAPI.loadMore();
+        });
+        loadLess.addEventListener('click', function() {
+            chaturbateAPI.loadLess();
+        });
+    </script>
 </body>
 </html>
