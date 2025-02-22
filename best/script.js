@@ -98,8 +98,9 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             userElement.addEventListener("click", function () {
-                const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=9oGW&amp;campaign=9cg6A&amp;track=embed&amp;room=' + iframeUrl;
+                const iframeUrl = userElement.querySelector("img").dataset.username;
+                // const choice = document.;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=9oGW&campaign=9cg6A&track=embed&room=' + iframeUrl;
             });
             previousUsersDiv.appendChild(userElement);
         });
@@ -112,5 +113,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial fetch when page loads
     fetchData();
-    setInterval(fetchData, 60000); // Refresh every 60 seconds
+    setInterval(fetchData, 5000); // Refresh every 60 seconds
 });
