@@ -114,4 +114,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initial fetch when page loads
     fetchData();
     setInterval(fetchData, 5000); // Refresh every 60 seconds
+    let counter = 0;
+    const intervalId = setInterval(() => {
+      console.log(counter);
+      counter += 500;
+      if (counter > 15000) {
+        clearInterval(intervalId);
+        console.log('Iteration stopped.');
+      }
+    }, 0); // Call the function every 1000 milliseconds (1 second)
 });
