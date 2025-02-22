@@ -4,8 +4,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
 
-    let previousUsers = loadPreviousUsers(); // Load from localStorage
-    displayPreviousUsers(); // Display on load
+    let previousUsers = loadPreviousUsers();
+    displayPreviousUsers();
 
     function fetchData() {
         const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500'; // &offset=' o ?? 0;
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             userElement.addEventListener("click", function () {
                 const usr = userElement.querySelector("img").dataset.username;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + usr;
+                mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
                 // Add to previousUsers and update localStorage
                 addToPreviousUsers(user);
@@ -70,8 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
-            previousUsers.unshift(user); // Add to the beginning of the array
-            previousUsers = previousUsers.slice(0, 20); // Keep only the latest 20 users
+            previousUsers.unshift(user);
+            previousUsers = previousUsers.slice(0, 20);
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userElement.addEventListener("click", function () {
                 const usr = userElement.querySelector("img").dataset.username;
                 // const choice = document.;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + usr;
+                mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
             });
             previousUsersDiv.appendChild(userElement);
         });
