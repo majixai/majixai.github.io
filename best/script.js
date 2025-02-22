@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let previousUsers = loadPreviousUsers(); // Load from localStorage
     displayPreviousUsers(); // Display on load
 
-    function fetchData(o = 0) {
+    function fetchData() {
         const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500'; // &offset=' o ?? 0;
 
         fetch(apiUrl)
@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             userElement.addEventListener("click", function () {
-                const iframeUrl = userElement.querySelector("img").dataset.username;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + iframeUrl;
+                const usr = userElement.querySelector("img").dataset.username;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + usr;
 
                 // Add to previousUsers and update localStorage
                 addToPreviousUsers(user);
@@ -98,9 +98,9 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             userElement.addEventListener("click", function () {
-                const iframeUrl = userElement.querySelector("img").dataset.username;
+                const usr = userElement.querySelector("img").dataset.username;
                 // const choice = document.;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + iframeUrl;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + usr;
             });
             previousUsersDiv.appendChild(userElement);
         });
