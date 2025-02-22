@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             userElement.addEventListener("click", function () {
                 const iframeUrl = userElement.querySelector("img").dataset.username;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=9oGW&amp;campaign=9cg6A&amp;track=embed&amp;room=' + iframeUrl;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + iframeUrl;
 
                 // Add to previousUsers and update localStorage
                 addToPreviousUsers(user);
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             userElement.addEventListener("click", function () {
                 const iframeUrl = userElement.querySelector("img").dataset.username;
                 // const choice = document.;
-                mainIframe.src = 'https://chaturbate.com/in/?tour=9oGW&campaign=9cg6A&track=embed&room=' + iframeUrl;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=embed&room=' + iframeUrl;
             });
             previousUsersDiv.appendChild(userElement);
         });
