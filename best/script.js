@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let previousUsers = loadPreviousUsers(); // Load from localStorage
     displayPreviousUsers(); // Display on load
 
-    function fetchData() {
-        const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500';
+    function fetchData(o = 0) {
+        const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=' o ?? 0;
 
         fetch(apiUrl)
             .then(response => {
@@ -113,10 +113,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initial fetch when page loads
     fetchData();
-    setInterval(fetchData, 5000); // Refresh every 60 seconds
+    // setInterval(fetchData, 5000); // Refresh every 60 seconds
     let counter = 0;
     const intervalId = setInterval(() => {
-      console.log(counter);
+      fetchData(counter);
       counter += 500;
       if (counter > 15000) {
         clearInterval(intervalId);
