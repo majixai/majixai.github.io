@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed} data-username="${user.username}">
                 <div class="user-details">
                     <p>Username: ${user.username}</p>
-                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
                     <p>Location: ${user.location || 'Unknown'}</p>
                 </div>
             `;
