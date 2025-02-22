@@ -90,15 +90,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const userElement = document.createElement("div");
             userElement.className = "user-info";
             userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
                 <div class="user-details">
+                    <p>Age: ${user.age || 'N/A'}</p>
                     <p>Username: ${user.username}</p>
                 </div>
             `;
 
             userElement.addEventListener("click", function () {
                 const iframeUrl = userElement.querySelector("img").dataset.iframeUrl;
-                mainIframe.src = iframeUrl;
+                mainIframe.src = 'https://chaturbate.com/in/?tour=9oGW&amp;campaign=9cg6A&amp;track=embed&amp;room=' + iframeUrl;
             });
             previousUsersDiv.appendChild(userElement);
         });
