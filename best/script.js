@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             userElement.addEventListener("click", function () {
                 const usr = userElement.querySelector("img").dataset.username;
-                mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                // mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
                 // Add to previousUsers and update localStorage
                 addToPreviousUsers(user);
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            previousUsers = previousUsers.slice(0, 20);
+            // previousUsers = previousUsers.slice(0, 20);
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
