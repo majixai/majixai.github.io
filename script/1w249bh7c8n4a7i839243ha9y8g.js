@@ -1,18 +1,25 @@
 // Const ticker = "meta"; // Removed hardcoded ticker
 
-// Function to extract ticker from the title
-function getTickerFromTitle() {
-  const title = document.title;
-  const words = title.split(" ");
-  if (words.length >= 2) {
-    return words[1]; // Second word is the ticker
+// Function to extract ticker from the directory name
+function getTickerFromDirectoryName() {
+  const pathName = window.location.pathname;
+  const pathParts = pathName.split('/');
+  // পাথ অংশের শেষ উপাদানটি ডিরেক্টরির নাম হতে পারে, অথবা তার আগেরটি যদি শেষ উপাদানটি ফাইলনাম হয়
+  let directoryName = pathParts[pathParts.length - 2] || pathParts[pathParts.length - 1] || '';
+
+  // Remove any potential file extension if it's still there
+  directoryName = directoryName.split('.')[0];
+
+  if (directoryName && directoryName !== '' && directoryName !== '/') {
+    return directoryName;
   } else {
-    console.warn("Title does not contain a ticker symbol in the expected format.");
-    return "jinx"; // Default ticker if not found or title is too short
+    console.warn("Could not extract ticker from directory name. Using default 'jinx'. Path:", pathName);
+    return "jinx"; // Default ticker if not found in directory name
   }
 }
 
-const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + getTickerFromTitle() + '&apikey=XVYHOWRTRNPN3FJA';
+
+const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + getTickerFromDirectoryName() + '&apikey=XVYHOWRTRNPN3FJA';
 
 async function fetchDataAndPlot() {
   try {
@@ -51,7 +58,7 @@ function plotCharts(data) {
   }
 
   // Get ticker here as well to ensure it's dynamically updated if needed within plotCharts (though not strictly necessary in this code)
-  const ticker = getTickerFromTitle();
+  const ticker = getTickerFromDirectoryName();
 
   const dates = Object.keys(data['Time Series (Daily)']).reverse();
   const closingPrices = dates.map(date => parseFloat(data['Time Series (Daily)'][date]['4. close']));
@@ -232,7 +239,7 @@ function calculateStochastics(highPrices, lowPrices, closingPrices) {
 }
 
 function generateSummary(closingPrices, macd, atr, stoch) {
-  const ticker = getTickerFromTitle(); // Get ticker again for summary - ensures consistency
+  const ticker = getTickerFromDirectoryName(); // Get ticker again for summary - ensures consistency
 
   let signal = "Neutral";
   let projectedPrice = closingPrices[closingPrices.length - 1]; // Initialize with current price
@@ -277,14 +284,14 @@ function generateSummary(closingPrices, macd, atr, stoch) {
 
 function updateHeadTitle(currentTicker) { // Renamed parameter to avoid shadowing
   if (currentTicker) {
-    document.title = `${currentTicker.toUpperCase()} AI Magic Chart with Indicators`;
+    document.title = `Jinx ${currentTicker.toUpperCase()} Chart with Indicators`; // Updated title format
   } else {
     document.title = "Jinx";
   }
 }
 
 window.addEventListener('DOMContentLoaded', function() {
-  const ticker = getTickerFromTitle(); // Extract ticker when DOM is ready
+  const ticker = getTickerFromDirectoryName(); // Extract ticker when DOM is ready
   updateHeadTitle(ticker); // Update head title with the extracted ticker
   fetchDataAndPlot(); // Fetch data and plot charts
 });
