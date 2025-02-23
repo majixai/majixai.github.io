@@ -4,7 +4,7 @@
 function getTickerFromDirectoryName() {
   const pathName = window.location.pathname;
   const pathParts = pathName.split('/');
-  // পাথ অংশের শেষ উপাদানটি ডিরেক্টরির নাম হতে পারে, অথবা তার আগেরটি যদি শেষ উপাদানটি ফাইলনাম হয়
+  // The last element of the path part can be the directory name, or the preceding one if the last element is a filename
   let directoryName = pathParts[pathParts.length - 2] || pathParts[pathParts.length - 1] || '';
 
   // Remove any potential file extension if it's still there
