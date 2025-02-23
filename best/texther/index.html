@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Texther</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" integrity="sha384-T3c6yX/s1234DeSQjzHVWrhioLZpleya9Q2nDPtQkQMTB5JxSmPcEZk+eDVhQpuQ2h7%" crossorigin="anonymous">
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6">
+        <label for="textInput">Enter text:</label>
+        <input type="text" id="textInput" class="form-control" placeholder="Start typing to search...">
+        <button id="saveButton" class="btn btn-primary">Save Text</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <h2>Stored Texts:</h2>
+        <ul id="storedTexts" class="list-group"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
