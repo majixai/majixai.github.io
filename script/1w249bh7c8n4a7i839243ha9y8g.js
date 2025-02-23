@@ -1,5 +1,18 @@
-const ticker = "meta";
-const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + ticker + '&apikey=XVYHOWRTRNPN3FJA';
+// Const ticker = "meta"; // Removed hardcoded ticker
+
+// Function to extract ticker from the title
+function getTickerFromTitle() {
+  const title = document.title;
+  const words = title.split(" ");
+  if (words.length >= 2) {
+    return words[1]; // Second word is the ticker
+  } else {
+    console.warn("Title does not contain a ticker symbol in the expected format.");
+    return "jinx"; // Default ticker if not found or title is too short
+  }
+}
+
+const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + getTickerFromTitle() + '&apikey=XVYHOWRTRNPN3FJA';
 
 async function fetchDataAndPlot() {
   try {
@@ -36,6 +49,9 @@ function plotCharts(data) {
     document.getElementById('summary').innerHTML = '<p>Error: Invalid data format. Please try again later.</p>';
     return;
   }
+
+  // Get ticker here as well to ensure it's dynamically updated if needed within plotCharts (though not strictly necessary in this code)
+  const ticker = getTickerFromTitle();
 
   const dates = Object.keys(data['Time Series (Daily)']).reverse();
   const closingPrices = dates.map(date => parseFloat(data['Time Series (Daily)'][date]['4. close']));
@@ -216,7 +232,9 @@ function calculateStochastics(highPrices, lowPrices, closingPrices) {
 }
 
 function generateSummary(closingPrices, macd, atr, stoch) {
-  let signal = "Neutral"; 
+  const ticker = getTickerFromTitle(); // Get ticker again for summary - ensures consistency
+
+  let signal = "Neutral";
   let projectedPrice = closingPrices[closingPrices.length - 1]; // Initialize with current price
   let percentChange = 0;
   let daysToFlip = "N/A";
@@ -257,13 +275,16 @@ function generateSummary(closingPrices, macd, atr, stoch) {
   `;
 }
 
-function updateHeadTitle(ticker) {
-  if (ticker) {
-    document.title = `${ticker.toUpperCase()} AI Magic Chart with Indicators`;
+function updateHeadTitle(currentTicker) { // Renamed parameter to avoid shadowing
+  if (currentTicker) {
+    document.title = `${currentTicker.toUpperCase()} AI Magic Chart with Indicators`;
   } else {
     document.title = "Jinx";
   }
 }
 
-window.addEventListener('DOMContentLoaded', updateHeadTitle(ticker));
-fetchDataAndPlot();
+window.addEventListener('DOMContentLoaded', function() {
+  const ticker = getTickerFromTitle(); // Extract ticker when DOM is ready
+  updateHeadTitle(ticker); // Update head title with the extracted ticker
+  fetchDataAndPlot(); // Fetch data and plot charts
+});
