@@ -19,7 +19,7 @@ textInput.addEventListener('input', () => {
     // Add a "Copy" link for each stored text
     const copyLink = document.createElement('a');
     copyLink.href = '#';
-    copyLink.textContent = 'Copy';
+    copyLink.textContent = 'Copy\t';
     copyLink.addEventListener('click', (event) => {
       event.preventDefault();
       copyToClipboard(text);
