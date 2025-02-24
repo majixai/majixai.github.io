@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0"
+    />
+    <title>Jinx Chart with Indicators</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      #container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0; /* Ensure container starts from the left edge */
+        top: 0;  /* Ensure container starts from the top edge */
+      }
+    </style>
+    <script src="https://unpkg.com/lightweight-charts@5.0.2/dist/lightweight-charts.standalone.production.js"></script>
+  </head>
+
+  <body style="padding: 0; margin: 0">
+    <div
+      id="container"
+      style="position: absolute; width: 100%; height: 100%"
+    ></div>
+    <script type="text/javascript">
+      // Function to extract ticker from the directory name
+      function getTickerFromDirectoryName() {
+        const pathName = window.location.pathname;
+        const pathParts = pathName.split('/');
+        // পাথ অংশের শেষ উপাদানটি ডিরেক্টরির নাম হতে পারে, অথবা তার আগেরটি যদি শেষ উপাদানটি ফাইলনাম হয়
+        let directoryName = pathParts[pathParts.length - 2] || pathParts[pathParts.length - 1] || '';
+
+        // Remove any potential file extension if it's still there
+        directoryName = directoryName.split('.')[0];
+
+        if (directoryName && directoryName !== '' && directoryName !== '/') {
+          return directoryName;
+        } else {
+          console.warn("Could not extract ticker from directory name. Using default 'jinx'. Path:", pathName);
+          return "jinx"; // Default ticker if not found in directory name
+        }
+      }
+
+      function plotCharts(data) {
+        const chart = LightweightCharts.createChart(document.getElementById('container'), {
+          width: document.getElementById('container').offsetWidth,
+          height: document.getElementById('container').offsetHeight,
+        });
+
+        const series = chart.addCandlestickSeries();
+        series.setData(data);
+
+         // Apply the ticker to the chart title dynamically
+        const ticker = getTickerFromDirectoryName(); // Get ticker here
+        updateHeadTitle(ticker); // Update document title
+        chart.applyOptions({
+            localization: {
+                priceFormatter: price => {
+                    return '$' + price.toFixed(2); // Example price formatting with $
+                },
+            },
+            timeScale: {
+                timeVisible: true,
+                secondsVisible: false,
+            },
+            layout: {
+                fontFamily: 'Calibri',
+                fontSize: 12,
+                textColor: '#000000',
+                background: { color: '#f0f0f0' },
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+            },
+            grid: {
+                vertLines: { color: '#f0f0f0' },
+                horzLines: { color: '#f0f0f0' },
+            },
+            rightPriceScale: {
+                borderColor: 'rgba(197, 203, 206, 0.8)' ,
+            },
+            leftPriceScale: {
+                borderColor: 'rgba(197, 203, 206, 0.8)' ,
+            },
+            bottomAxis: {
+                borderColor: 'rgba(197, 203, 206, 0.8)',
+            },
+            topAxis: {
+                borderColor: 'rgba(197, 203, 206, 0.8)',
+            },
+            watermark: {
+                color: 'rgba(0, 0, 0, 0.1)',
+                visible: true,
+                text: ticker.toUpperCase(), // Use ticker for watermark
+                fontSize: 48,
+                horzAlign: 'center',
+                vertAlign: 'center',
+            },
+        });
+      }
+
+
+      function updateHeadTitle(currentTicker) { // Renamed parameter to avoid shadowing
+        if (currentTicker) {
+          document.title = `Jinx ${currentTicker.toUpperCase()} Chart with Indicators`; // Updated title format
+        } else {
+          document.title = "Jinx Chart with Indicators";
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', function() {
+        const ticker = getTickerFromDirectoryName(); // Extract ticker when DOM is ready
+        updateHeadTitle(ticker); // Update head title with the extracted ticker
+        plotCharts(generateCandlestickData()); // Plot charts with static data
+      });
+
+       // Function to generate a sample set of Candlestick datapoints
+      function generateCandlestickData() {
+        return [
+          {
+            time: "2018-10-19",
+            open: 180.34,
+            high: 180.99,
+            low: 178.57,
+            close: 179.85,
+          },
+          // ... (rest of your candlestick data remains the same) ...
+          {
+            time: "2019-05-24",
+            open: 192.54,
+            high: 193.86,
+            low: 190.41,
+            close: 193.59,
+          },
+        ];
+      }
+
+
+    </script>
+  </body>
+</html>
