@@ -29,12 +29,11 @@ textInput.addEventListener('input', () => {
     // Add a "Delete" link for each stored text
     const deleteLink = document.createElement('a');
     deleteLink.href = '#';
-    deleteLink.textContent = 'Delete';
+    deleteLink.textContent = '\tDelete';
     deleteLink.addEventListener('click', () => {
       deleteText(index);
     });
-    listItem.appendChild(document.createElement('hr'));
-    listItem.appendChild(document.createElement('hr'));
+    // listItem.appendChild(document.createElement('hr'));
     listItem.appendChild(deleteLink);
 
     storedTextsList.appendChild(listItem);
