@@ -325,6 +325,11 @@ class ChartPlotter {
                     xanchor: 'left',
                     font: { size: 8 },
                     buttons: [{
+                        step: 'day',
+                        stepmode: 'backward',
+                        count: 1,
+                        label: '1 day'
+                    }, {
                         step: 'month',
                         stepmode: 'backward',
                         count: 1,
@@ -524,7 +529,7 @@ class ChartDashboard {
         this.indicatorCalculator = new IndicatorCalculator();
         this.summaryGenerator = new SummaryGenerator();
         this.chartPlotter = new ChartPlotter();
-        this.currentInterval = '5min';
+        this.currentInterval = '1min';
         this.intervalButtons = document.querySelectorAll('.interval-btn');
     }
 
