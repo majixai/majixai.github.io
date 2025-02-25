@@ -11,6 +11,16 @@
     </head>
     <body>
       <iframe id="menu-iframe" src="../menu.html" scrolling="no"></iframe>
+      <div class="container mt-3">
+        <div class="btn-group mb-3" role="group" aria-label="Interval selection">
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="1min">1min</button>
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="5min">5min</button>
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="15min">15min</button>
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="30min">30min</button>
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="60min">1hour</button>
+          <button type="button" class="btn btn-outline-primary interval-btn" data-interval="1day">1day</button>
+        </div>
+      </div>
       <div class="container mt-5">
         <div id="summary"></div>
         <div id="price-chart"></div>
