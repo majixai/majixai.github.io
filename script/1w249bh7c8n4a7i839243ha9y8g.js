@@ -1,5 +1,4 @@
-// Const ticker = "meta"; // Removed hardcoded ticker
-
+// script/1w249bh7c8n4a7i839243ha9y8g.js
 // Function to extract ticker from the directory name
 function getTickerFromDirectoryName() {
   const pathName = window.location.pathname;
@@ -18,12 +17,17 @@ function getTickerFromDirectoryName() {
   }
 }
 
+let currentInterval = '5min'; // Default interval
 
-const apiUrl = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=' + getTickerFromDirectoryName() + '&apikey=XVYHOWRTRNPN3FJA';
+function getApiUrl(interval) {
+  return `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${getTickerFromDirectoryName()}&interval=${interval}&outputsize=full&apikey=XVYHOWRTRNPN3FJA&extended_hours=true`;
+}
 
-async function fetchDataAndPlot() {
+
+async function fetchDataAndPlot(interval = currentInterval) {
+  const apiUrl = getApiUrl(interval);
   try {
-    console.log('Fetching data from API');
+    console.log('Fetching data from API with interval:', interval);
     const response = await fetch(apiUrl);
     const data = await response.json();
 
@@ -32,7 +36,8 @@ async function fetchDataAndPlot() {
     }
 
     localStorage.setItem('chartData', JSON.stringify(data));
-    plotCharts(data);
+    plotCharts(data, interval); // Pass interval to plotCharts
+    currentInterval = interval; // Update currentInterval after successful fetch
   } catch (error) {
     console.error('Error fetching data from API:', error);
 
@@ -40,7 +45,7 @@ async function fetchDataAndPlot() {
     let cachedData = localStorage.getItem('chartData');
     if (cachedData) {
       alert('Using cached data');
-      plotCharts(JSON.parse(cachedData));
+      plotCharts(JSON.parse(cachedData), currentInterval); // Use currentInterval for cached data
     } else {
       console.error('No cached data available.');
       // Display an error message to the user if needed
@@ -49,9 +54,17 @@ async function fetchDataAndPlot() {
   }
 }
 
-function plotCharts(data) {
+function plotCharts(data, interval) {
+  let timeSeriesKey = `Time Series (${interval})`;
+  if (!data[timeSeriesKey]) {
+    console.error('Invalid data format for interval:', interval, data);
+    document.getElementById('summary').innerHTML = `<p>Error: Invalid data format for interval ${interval}. Please try again later.</p>`;
+    return;
+  }
+
+
   // Check if the data has the expected structure
-  if (!data['Time Series (Daily)']) {
+  if (!data[timeSeriesKey]) {
     console.error('Invalid data format:', data);
     document.getElementById('summary').innerHTML = '<p>Error: Invalid data format. Please try again later.</p>';
     return;
@@ -60,10 +73,10 @@ function plotCharts(data) {
   // Get ticker here as well to ensure it's dynamically updated if needed within plotCharts (though not strictly necessary in this code)
   const ticker = getTickerFromDirectoryName();
 
-  const dates = Object.keys(data['Time Series (Daily)']).reverse();
-  const closingPrices = dates.map(date => parseFloat(data['Time Series (Daily)'][date]['4. close']));
-  const highPrices = dates.map(date => parseFloat(data['Time Series (Daily)'][date]['2. high']));
-  const lowPrices = dates.map(date => parseFloat(data['Time Series (Daily)'][date]['3. low']));
+  const dates = Object.keys(data[timeSeriesKey]).reverse();
+  const closingPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['4. close']));
+  const highPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['2. high']));
+  const lowPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['3. low']));
 
   // Calculate MACD
   const macd = calculateMACD(closingPrices);
@@ -88,7 +101,7 @@ function plotCharts(data) {
   };
 
   const priceLayout = {
-    title: ticker.toUpperCase() + ' Daily Closing Prices',
+    title: `${ticker.toUpperCase()} Intraday Prices (${interval})`,
     xaxis: { title: 'Date' },
     yaxis: { title: 'Price' }
   };
@@ -164,7 +177,7 @@ function plotCharts(data) {
   };
 
   const indicatorLayout = {
-    title: 'Indicators',
+    title: `Indicators (${interval})`,
     xaxis: { title: 'Date' },
     yaxis: { title: 'MACD' },
     yaxis2: {
@@ -244,7 +257,7 @@ function generateSummary(closingPrices, macd, atr, stoch) {
   let signal = "Neutral";
   let projectedPrice = closingPrices[closingPrices.length - 1]; // Initialize with current price
   let percentChange = 0;
-  let daysToFlip = "N/A";
+  let daysToFlip = "N/A"; // Days to flip is less relevant for intraday, maybe change this to "time to signal change" if feasible with intraday data
 
   // --- Combine indicator signals ---
   // This is a simplified example, you'll need to define your own buy/sell logic
@@ -264,10 +277,10 @@ function generateSummary(closingPrices, macd, atr, stoch) {
   // This is a very basic example and needs further refinement
   if (signal === "Buy") {
     projectedPrice += atr[atr.length - 1]; // Add ATR to current price
-    daysToFlip = Math.floor(Math.random() * 10) + 1; // Randomly estimate 1-10 days
+    daysToFlip = Math.floor(Math.random() * 10) + 1; // Randomly estimate 1-10 days - consider making this less random or more relevant for intraday
   } else if (signal === "Sell") {
     projectedPrice -= atr[atr.length - 1]; // Subtract ATR from current price
-    daysToFlip = Math.floor(Math.random() * 10) + 1; // Randomly estimate 1-10 days
+    daysToFlip = Math.floor(Math.random() * 10) + 1; // Randomly estimate 1-10 days - consider making this less random or more relevant for intraday
   }
 
   percentChange = ((projectedPrice - closingPrices[closingPrices.length - 1]) / closingPrices[closingPrices.length - 1]) * 100;
@@ -277,9 +290,9 @@ function generateSummary(closingPrices, macd, atr, stoch) {
       Overall Signal: <span style="color: ${signal === 'Buy' ? 'green' : (signal === 'Sell' ? 'red' : 'blue')}">${signal}</span><br>
       Projected Price: ${projectedPrice.toFixed(2)}<br>
       Percent Change: ${percentChange.toFixed(2)}%<br>
-      Days to Signal Flip: ${daysToFlip}
+      Time to Signal Flip (Days Estimate): ${daysToFlip}
     </div>
-  `;
+  `; // Keep "Days to Signal Flip" for now, can be refined further for intraday if needed
 }
 
 function updateHeadTitle(currentTicker) { // Renamed parameter to avoid shadowing
@@ -294,4 +307,26 @@ window.addEventListener('DOMContentLoaded', function() {
   const ticker = getTickerFromDirectoryName(); // Extract ticker when DOM is ready
   updateHeadTitle(ticker); // Update head title with the extracted ticker
   fetchDataAndPlot(); // Fetch data and plot charts
+
+  // Add event listeners to interval buttons
+  const intervalButtons = document.querySelectorAll('.interval-btn');
+  intervalButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const interval = this.getAttribute('data-interval');
+      if (interval === '1hour') {
+        fetchDataAndPlot('60min'); // API uses '60min' for 1-hour
+      } else {
+        fetchDataAndPlot(interval);
+      }
+      // Remove active class from other buttons and add to the clicked button
+      intervalButtons.forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+
+  // Set default active button - e.g., 5min
+  const defaultIntervalButton = document.querySelector('.interval-btn[data-interval="5min"]');
+  if (defaultIntervalButton) {
+    defaultIntervalButton.classList.add('active');
+  }
 });
