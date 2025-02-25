@@ -260,6 +260,8 @@ class ChartPlotter {
         const closingPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['4. close']));
         const highPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['2. high']));
         const lowPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['3. low']));
+        const openPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['1. open']));
+
 
         const macd = indicatorCalculator.calculateMACD(closingPrices);
         const atr = indicatorCalculator.calculateATR(highPrices, lowPrices, closingPrices);
@@ -279,9 +281,110 @@ class ChartPlotter {
         const summaryHTML = summaryGenerator.generateSummary(closingPrices, macd, atr, stoch, stdev, variance, blackScholesCall, blackScholesPut, ticker);
         document.getElementById('summary').innerHTML = summaryHTML;
 
-        this.plotPriceChart(dates, closingPrices, ticker, interval);
-        this.plotIndicatorChart(dates, macd, atr, stoch, stdev, variance, interval); // Pass new indicators to plot
+        this.plotPriceChart(dates, openPrices, highPrices, lowPrices, closingPrices, ticker, interval, macd); // Pass open, high, low, macd
+        this.plotIndicatorChart(dates, macd, atr, stoch, stdev, variance, interval);
     }
+
+    plotPriceChart(dates, openPrices, highPrices, lowPrices, closingPrices, ticker, interval, macd) { // Added openPrices, highPrices, lowPrices, macd
+        const bullColor = '#007030'; // Dark green
+        const bearColor = '#8C1515'; // Dark red
+
+        const priceTrace = {
+            x: dates,
+            open: openPrices,
+            high: highPrices,
+            low: lowPrices,
+            close: closingPrices,
+            decreasing: { line: { color: bearColor } }, // Bearish candles - Dark Red
+            increasing: { line: { color: bullColor } }, // Bullish candles - Dark Green
+            type: 'candlestick',
+            xaxis: 'x',
+            yaxis: 'y'
+        };
+
+        const priceLayout = {
+            title: `${ticker.toUpperCase()} Intraday Candlestick Chart (${interval})`,
+            dragmode: 'zoom',
+            margin: {
+                r: 10,
+                t: 25,
+                b: 40,
+                l: 60
+            },
+            showlegend: false,
+            xaxis: {
+                autorange: true,
+                rangeslider: { range: [dates[dates.length - 30], dates[dates.length - 1]] }, // Default range last 30 points
+                title: {
+                    text: 'Date'
+                },
+                type: 'date',
+                rangeselector: {
+                    x: 0,
+                    y: 1.2,
+                    xanchor: 'left',
+                    font: { size: 8 },
+                    buttons: [{
+                        step: 'month',
+                        stepmode: 'backward',
+                        count: 1,
+                        label: '1 month'
+                    }, {
+                        step: 'month',
+                        stepmode: 'backward',
+                        count: 6,
+                        label: '6 months'
+                    }, {
+                        step: 'year',
+                        stepmode: 'backward',
+                        count: 1,
+                        label: '1 year'
+                    }, {
+                        step: 'all',
+                        label: 'All'
+                    }]
+                }
+            },
+            yaxis: {
+                autorange: true,
+                type: 'linear'
+            },
+            annotations: this.getAnnotations(dates, macd.histogram) // Add annotations
+        };
+
+        Plotly.newPlot('price-chart', [priceTrace], priceLayout);
+    }
+
+    getAnnotations(dates, macdHistogram) {
+        const annotations = [];
+        const threshold = 0; // You can adjust this threshold
+        const potentialBearColor = '#FEE11A'; // Yellow-ish
+        const potentialBullColor = '#00539B'; // Dark blue
+
+
+        // Find indices where histogram crosses the threshold to indicate potential bull/bear shifts
+        for (let i = 1; i < macdHistogram.length; i++) {
+            if ((macdHistogram[i - 1] <= threshold && macdHistogram[i] > threshold) || (macdHistogram[i - 1] >= threshold && macdHistogram[i] < threshold)) {
+                const annotationText = macdHistogram[i] > threshold ? 'Potential Bull Turn' : 'Potential Bear Turn';
+                const annotationColor = macdHistogram[i] > threshold ? potentialBullColor : potentialBearColor; // Use potential turn colors
+                annotations.push({
+                    x: dates[i], // Date of the signal
+                    y: 0,      // Y position in data coordinates (adjust as needed)
+                    xref: 'x',
+                    yref: 'y domain', // Position relative to y-axis domain (0 is bottom, 1 is top)
+                    text: annotationText,
+                    showarrow: true,
+                    arrowcolor: annotationColor,
+                    arrowhead: 3,
+                    ax: 0,
+                    ay: -40,
+                    font: {color: annotationColor}
+                });
+            }
+        }
+        return annotations;
+    }
+
 
     plotIndicatorChart(dates, macd, atr, stoch, stdev, variance, interval) {
         const macdTrace = {
