@@ -1,3 +1,325 @@
+// script/1w249bh7c8n4a7i839243ha9y8g.js
+
+class TickerExtractor {
+    static getTickerFromDirectoryName() {
+        const pathName = window.location.pathname;
+        const pathParts = pathName.split('/');
+        let directoryName = pathParts[pathParts.length - 2] || pathParts[pathParts.length - 1] || '';
+        directoryName = directoryName.split('.')[0];
+        if (directoryName && directoryName !== '' && directoryName !== '/') {
+            return directoryName;
+        } else {
+            console.warn("Could not extract ticker from directory name. Using default 'jinx'. Path:", pathName);
+            return "jinx";
+        }
+    }
+}
+
+class APIConfig {
+    constructor() {
+        this.apiKey = 'XVYHOWRTRNPN3FJA';
+        this.baseUrl = 'https://www.alphavantage.co/query';
+        this.outputSize = 'full'; // Keep full output size
+        this.extendedHours = true; // Consider removing this, as we might want both
+    }
+
+    getApiKey() {
+        return this.apiKey;
+    }
+
+    getBaseUrl() {
+        return this.baseUrl;
+    }
+
+    getOutputSize() {
+        return this.outputSize;
+    }
+
+    isExtendedHours() {
+        return this.extendedHours;
+    }
+}
+
+class DataFetcher {
+    constructor(apiConfig) {
+        if (!(apiConfig instanceof APIConfig)) {
+            throw new Error('DataFetcher constructor requires an APIConfig instance.');
+        }
+        this.apiConfig = apiConfig;
+    }
+
+    async fetchData(interval, ticker, isDaily = false) {
+        const apiUrl = this.getApiUrl(interval, ticker, isDaily);
+        try {
+            console.log(`Fetching data from API with interval: ${interval}, Daily: ${isDaily}`);
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            if (data['Error Message'] || data['Note']) {
+                throw new Error(data['Error Message'] || data['Note']);
+            }
+            // Better key structure for cached data.
+            localStorage.setItem(`chartData-${ticker}-${interval}-${isDaily}`, JSON.stringify(data));
+            return data;
+        } catch (error) {
+            console.error('Error fetching data from API:', error);
+            // Retrieve cached data using a similar key structure
+            let cachedData = localStorage.getItem(`chartData-${ticker}-${interval}-${isDaily}`);
+            if (cachedData) {
+                alert('Using cached data');
+                return JSON.parse(cachedData);
+            } else {
+                console.error('No cached data available.');
+                throw error; // Re-throw error to be handled by caller
+            }
+        }
+    }
+
+    getApiUrl(interval, ticker, isDaily) {
+        const apiKey = this.apiConfig.getApiKey();
+        const baseUrl = this.apiConfig.getBaseUrl();
+        const outputSize = this.apiConfig.getOutputSize();
+        const extendedHours = this.apiConfig.isExtendedHours();
+        let functionName = isDaily ? 'TIME_SERIES_DAILY_ADJUSTED' : 'TIME_SERIES_INTRADAY';
+
+        let url = `${baseUrl}?function=${functionName}&symbol=${ticker}&apikey=${apiKey}&outputsize=${outputSize}`;
+
+        if (!isDaily) {
+            url += `&interval=${interval}&extended_hours=${extendedHours}`;
+        }
+        return url;
+    }
+}
+class IndicatorCalculator {
+    calculateMACD(closingPrices) {
+        const fastPeriod = 12;
+        const slowPeriod = 26;
+        const signalPeriod = 9;
+
+        const fastEMA = this.calculateEMA(closingPrices, fastPeriod);
+        const slowEMA = this.calculateEMA(closingPrices, slowPeriod);
+        const macdLine = fastEMA.map((value, index) => value - slowEMA[index]);
+        const signalLine = this.calculateEMA(macdLine, signalPeriod);
+        const histogram = macdLine.map((value, index) => value - signalLine[index]);
+
+        return { macd: macdLine, signal: signalLine, histogram };
+    }
+
+    calculateEMA(data, period) {
+        const k = 2 / (period + 1);
+        let ema = [data[0]];
+        for (let i = 1; i < data.length; i++) {
+            ema.push(data[i] * k + ema[i - 1] * (1 - k));
+        }
+        return ema;
+    }
+
+    calculateATR(highPrices, lowPrices, closingPrices) {
+        let trueRange = [];
+        for (let i = 1; i < closingPrices.length; i++) {
+            trueRange.push(Math.max(
+                highPrices[i] - lowPrices[i],
+                Math.abs(highPrices[i] - closingPrices[i - 1]),
+                Math.abs(lowPrices[i] - closingPrices[i - 1])
+            ));
+        }
+        const atrPeriod = 14;
+        return this.calculateEMA(trueRange, atrPeriod);
+    }
+
+    calculateStochastics(highPrices, lowPrices, closingPrices) {
+        const kPeriod = 14;
+        const dPeriod = 3;
+
+        let kValues = [];
+        for (let i = kPeriod - 1; i < closingPrices.length; i++) {
+            const highestHigh = Math.max(...highPrices.slice(i - kPeriod + 1, i + 1));
+            const lowestLow = Math.min(...lowPrices.slice(i - kPeriod + 1, i + 1));
+            kValues.push(100 * (closingPrices[i] - lowestLow) / (highestHigh - lowestLow));
+        }
+        const dValues = this.calculateEMA(kValues, dPeriod);
+        return { k: kValues, d: dValues };
+    }
+
+    calculateStdev(data) {
+        if (!data || data.length === 0) return NaN;
+        const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+        const squaredDifferences = data.map(val => Math.pow(val - mean, 2));
+        const variance = squaredDifferences.reduce((sum, val) => sum + val, 0) / data.length;
+        return Math.sqrt(variance);
+    }
+
+    calculateVariance(data) {
+        if (!data || data.length === 0) return NaN;
+        const mean = data.reduce((sum, val) => sum + val, 0) / data.length;
+        const squaredDifferences = data.map(val => Math.pow(val - mean, 2));
+        return squaredDifferences.reduce((sum, val) => sum + val, 0) / data.length;
+    }
+
+    calculateCovariance(dataX, dataY) {
+        if (!dataX || !dataY || dataX.length !== dataY.length || dataX.length === 0) return NaN;
+        const meanX = dataX.reduce((sum, val) => sum + val, 0) / dataX.length;
+        const meanY = dataY.reduce((sum, val) => sum + val, 0) / dataY.length;
+        let covariance = 0;
+        for (let i = 0; i < dataX.length; i++) {
+            covariance += (dataX[i] - meanX) * (dataY[i] - meanY);
+        }
+        return covariance / dataX.length;
+    }
+    // Updated Black-Scholes to return prices
+    calculateBlackScholes(S, K, T, r, sigma, optionType = 'call') {
+        if (isNaN(S) || isNaN(K) || isNaN(T) || isNaN(r) || isNaN(sigma)) return { price: NaN, probability: NaN };
+        if (S <= 0 || K <= 0 || T <= 0 || sigma <= 0) return { price: 0, probability: 0 };
+
+        const d1 = (Math.log(S / K) + (r + 0.5 * Math.pow(sigma, 2)) * T) / (sigma * Math.sqrt(T));
+        const d2 = d1 - sigma * Math.sqrt(T);
+
+        function cumulativeNormalDistribution(x) {
+            const phi = 0.5 * (1.0 + erf(x / Math.sqrt(2.0)));
+            return phi;
+        }
+
+        function erf(x) {
+            // Approximation of error function - Abramowitz and Stegun method
+            const a1 = 0.254829592;
+            const a2 = -0.284496736;
+            const a3 = 1.421413741;
+            const a4 = -1.453152027;
+            const a5 = 1.061405429;
+            const p = 0.3275911;
+            const sign = x < 0 ? -1 : 1;
+            x = Math.abs(x);
+            const t = 1.0 / (1.0 + p * x);
+            const erfValue = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            return sign * erfValue;
+        }
+
+
+        const N_d1 = cumulativeNormalDistribution(d1);
+        const N_minus_d1 = cumulativeNormalDistribution(-d1);
+        const N_d2 = cumulativeNormalDistribution(d2);
+        const N_minus_d2 = cumulativeNormalDistribution(-d2);
+        let price, probability;
+
+        if (optionType.toLowerCase() === 'call') {
+            price = (S * N_d1 - K * Math.exp(-r * T) * N_d2);
+            probability = N_d1; //Probability
+        } else if (optionType.toLowerCase() === 'put') {
+            price = (K * Math.exp(-r * T) * N_minus_d2 - S * N_minus_d1);
+            probability = N_minus_d1;//Probability
+
+        } else {
+            return { price: NaN, probability: NaN }; // Invalid option type
+        }
+        return {price, probability}
+    }
+    //Damped, Cosh Function.
+    cosh(x, amplitude = 1, damping = 0, phi = 0, theta = 0) {
+      const damp = Math.exp(-damping * x);
+      return amplitude * damp * (0.5 * (Math.exp(x + phi) + Math.exp(-x + theta)));
+    }
+}
+
+class SummaryGenerator {
+   generateSummary(closingPrices, macd, atr, stoch, stdev, variance, blackScholesCall, blackScholesPut, ticker, strategy) {
+        let signal = "Neutral";
+        let projectedPrice = closingPrices[closingPrices.length - 1];
+        let percentChange = 0;
+        let daysToFlip = "N/A";
+
+        let buySignals = 0;
+        let sellSignals = 0;
+
+        if (macd.histogram[macd.histogram.length - 1] > 0) buySignals++;
+        else if (macd.histogram[macd.histogram.length - 1] < 0) sellSignals++;
+
+        if (stoch.k[stoch.k.length - 1] > stoch.d[stoch.d.length - 1] && stoch.k[stoch.k.length - 1] < 80) buySignals++;
+        else if (stoch.k[stoch.k.length - 1] < stoch.d[stoch.d.length - 1] && stoch.k[stoch.k.length - 1] > 20) sellSignals++;
+        //Strategy check.
+        if (strategy === 'bull') {
+            if (buySignals >= 1) signal = "Buy"; //Bull
+            else signal = "Neutral";
+        } else if (strategy === 'bear') {
+            if (sellSignals >= 1) signal = "Sell"; //Bear
+            else signal = "Neutral"
+        }
+        else { //Combined
+            if (buySignals >= 2) signal = "Buy";
+            else if (sellSignals >= 2) signal = "Sell";
+        }
+
+
+        if (signal === "Buy") {
+            projectedPrice += atr[atr.length - 1];
+            daysToFlip = Math.floor(Math.random() * 10) + 1;
+        } else if (signal === "Sell") {
+            projectedPrice -= atr[atr.length - 1];
+            daysToFlip = Math.floor(Math.random() * 10) + 1;
+        }
+
+        percentChange = ((projectedPrice - closingPrices[closingPrices.length - 1]) / closingPrices[closingPrices.length - 1]) * 100;
+
+        // Display BSM Call/Put prices (not costs) and probabilities
+        return `
+            <div class="indicator-summary">
+              Overall Signal: <span style="color: ${signal === 'Buy' ? 'green' : (signal === 'Sell' ? 'red' : 'blue')}">${signal}</span><br>
+              Projected Price: ${projectedPrice.toFixed(2)}<br>
+              Percent Change: ${percentChange.toFixed(2)}%<br>
+              Time to Signal Flip (Days Estimate): ${daysToFlip}<br>
+              Standard Deviation (Closing Prices): ${stdev.toFixed(2)}<br>
+              Variance (Closing Prices): ${variance.toFixed(2)}<br>
+              Black-Scholes Call Option Price: ${isNaN(blackScholesCall.price) ? 'N/A' : blackScholesCall.price.toFixed(2)}<br>
+              Probability (Call): ${isNaN(blackScholesCall.probability) ? 'N/A' : (blackScholesCall.probability * 100).toFixed(2)}%<br>
+              Black-Scholes Put Option Price: ${isNaN(blackScholesPut.price) ? 'N/A' : blackScholesPut.price.toFixed(2)}<br>
+               Probability (Put): ${isNaN(blackScholesPut.probability) ? 'N/A' : (blackScholesPut.probability * 100).toFixed(2)}%
+            </div>
+          `; //Return Price + Probability
+    }
+}
+
+
+class ChartPlotter {
+    constructor() {
+        this.zoomData = {}; //Object to store zoom
+    }
+    plotCharts(data, interval, ticker, indicatorCalculator, summaryGenerator, isDaily, strategy) {
+        let timeSeriesKey = isDaily ? 'Time Series (Daily)' : `Time Series (${interval})`;
+        if (!data[timeSeriesKey]) {
+            console.error('Invalid data format for interval:', interval, data);
+            document.getElementById('summary').innerHTML = `<p>Error: Invalid data format for interval ${interval}. Please try again later.</p>`;
+            return;
+        }
+        // Use adjusted close for daily, regular close for intraday
+        const dates = Object.keys(data[timeSeriesKey]).reverse();
+        const closingPrices = dates.map(date => parseFloat(data[timeSeriesKey][date][isDaily ? '5. adjusted close' : '4. close']));
+        const highPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['2. high']));
+        const lowPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['3. low']));
+        const openPrices = dates.map(date => parseFloat(data[timeSeriesKey][date]['1. open']));
+
+
+        const macd = indicatorCalculator.calculateMACD(closingPrices);
+        const atr = indicatorCalculator.calculateATR(highPrices, lowPrices, closingPrices);
+        const stoch = indicatorCalculator.calculateStochastics(highPrices, lowPrices, closingPrices);
+        const stdev = indicatorCalculator.calculateStdev(closingPrices);
+        const variance = indicatorCalculator.calculateVariance(closingPrices);
+
+        // Black-Scholes Approximation - using last closing price, ATR as volatility proxy,
+        // and using 1/365 for T, for all intervals.
+        const lastClosingPrice = closingPrices[closingPrices.length - 1];
+        const volatilityProxy = atr[atr.length - 1] / lastClosingPrice; // Rough volatility proxy using ATR, needs refinement
+        const riskFreeRate = 0.02; // Placeholder risk-free rate (e.g., 2%)
+
+        //If daily, use year, else use day.
+        const timeToExpiration = 1/365; // Use 1 day for BSM, regardless of interval
+
+        const blackScholesCall = indicatorCalculator.calculateBlackScholes(lastClosingPrice, lastClosingPrice, timeToExpiration, riskFreeRate, volatilityProxy, 'call');
+        const blackScholesPut = indicatorCalculator.calculateBlackScholes(lastClosingPrice, lastClosingPrice, timeToExpiration, riskFreeRate, volatilityProxy, 'put');
+
+
+        const summaryHTML = summaryGenerator.generateSummary(closingPrices, macd, atr, stoch, stdev, variance, blackScholesCall, blackScholesPut, ticker, strategy);
+        document.getElementById('summary').innerHTML = summaryHTML;
+
+        this.plotPriceChart(
 dates, openPrices, highPrices, lowPrices, closingPrices, ticker, interval, macd, isDaily); // Pass open, high, low, macd
         this.plotIndicatorChart(dates, macd, atr, stoch, stdev, variance, interval, isDaily);
         this.plotCoshPrediction(dates, openPrices, highPrices, lowPrices, closingPrices, interval, isDaily); // Add cosh prediction chart
