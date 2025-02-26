@@ -1,17 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></title>
+<html>
+<head>
+    <title>TSLA Chart</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <link rel="stylesheet" href="../../style/124w9bhcn7847ai839243ha9y8g.css" />
-    <script src="../../script/1w249bh7c8n4a7i839243ha9y8g.js"></script>
+    <link rel="stylesheet" href="../../style/example.css">
+    <script src="../../script/example.js"></script>
   </head>
   <body>
-    <iframe id="menu-iframe" src="../menu.html" scrolling="no"></iframe>
+    <iframe id="menu-iframe" src="../index.html" scrolling="no" style="width: 100%; border: none;"></iframe>
     <div class="container mt-3">
       <div class="btn-group mb-3" role="group" aria-label="Interval selection">
         <button type="button" class="btn btn-outline-primary interval-btn" data-interval="1min">1min</button>
@@ -33,5 +31,177 @@
       <div id="indicator-chart"></div>
       <div id="cosh-chart"></div>
     </div>
+        <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const interval = urlParams.get('interval');
+        const period = urlParams.get('period');
+        const version = urlParams.get('v');
+        console.log("Interval:", interval, "Period:", period, "Version:", version);
+
+
+      // Check for Background Fetch API support
+      if ('BackgroundFetchManager' in self) {
+          console.log("Background Fetch API is supported.");
+          // You can use Background Fetch here.
+      } else {
+          console.log("Background Fetch API is NOT supported.");
+          // Provide a fallback mechanism or inform the user.
+      }
+
+       async function getFile() {
+            try{
+                // Open file picker and destructure the result the first handle
+                const [fileHandle] = await window.showOpenFilePicker();
+                const file = await fileHandle.getFile();
+                return file;
+            } catch (error){
+                console.error("Error opening the file or getting the file: ", error);
+                return null;
+            }
+        }
+
+       const pickerOpts = {
+            types: [
+              {
+                description: "Images",
+                accept: {
+                  "image/*": [".png", ".gif", ".jpeg", ".jpg"],
+                },
+              },
+            ],
+            excludeAcceptAllOption: true,
+            multiple: false,
+          };
+
+        async function getTheFile() {
+            try{
+                // Open file picker and destructure the result the first handle
+                const [fileHandle] = await window.showOpenFilePicker(pickerOpts);
+                // get file contents
+                const fileData = await fileHandle.getFile();
+                return fileData; //return data.
+            } catch (error){
+                console.error("Could not get file. ", error);
+                return null;
+            }
+        }
+
+       const dirName = "directoryToGetName";
+       async function getDirectoryHandle(currentDirHandle){
+            try {
+                // assuming we have a directory handle: 'currentDirHandle'
+                const subDir = await currentDirHandle.getDirectoryHandle(dirName, { create: true });
+                return subDir;
+            } catch (error){
+                console.error("Could not get directory handle: ", error);
+                return null;
+            }
+       }
+
+
+        async function returnPathDirectories(directoryHandle) {
+            try{
+                // Get a file handle by showing a file picker:
+                const [handle] = await self.showOpenFilePicker();
+                if (!handle) {
+                  // User cancelled, or otherwise failed to open a file.
+                  return;
+                }
+                // Check if handle exists inside our directory handle
+                const relativePaths = await directoryHandle.resolve(handle);
+                if (relativePaths === null) {
+                  // Not inside directory handle
+                    console.log("Not inside directory handle.");
+                } else {
+                  // relativePaths is an array of names, giving the relative path
+                  for (const name of relativePaths) {
+                    // log each entry
+                    console.log(name);
+                  }
+                }
+            } catch(error){
+                console.error("Error returning path directories: ", error);
+            }
+        }
+
+
+        async function saveFile(imgBlob) { //add parameter
+            try {
+                  // create a new handle
+                  const newHandle = await window.showSaveFilePicker();
+                  // create a FileSystemWritableFileStream to write to
+                  const writableStream = await newHandle.createWritable();
+                  // write our file
+                  await writableStream.write(imgBlob);
+                  // close the file and write the contents to disk.
+                  await writableStream.close();
+            } catch (error){
+                console.error("Could not save file: ", error);
+            }
+        }
+
+        async function writeToFileExample(fileHandle, data, position = null){
+            try{
+                const writableStream = await fileHandle.createWritable();
+                if(position === null){ //just type data
+                    await writableStream.write(data);
+                }
+                else if (typeof position === 'number'){ //position is a number
+                    await writableStream.write({ type: "write", position, data });
+                } else{
+                    console.log("Invlid position. Must be number or null. ");
+                }
+            } catch(error){
+                console.error("Error writing to file: ", error);
+            }
+        }
+        async function seekFile(fileHandle, position){
+            try{
+                const writableStream = await fileHandle.createWritable();
+                await writableStream.write({ type: "seek", position});
+            } catch (error){
+                console.error("Could not seek file: ", error);
+            }
+        }
+        async function truncateFile(fileHandle, size){
+            try{
+                const writableStream = await fileHandle.createWritable();
+                await writableStream.write({type: "truncate", size});
+            } catch (error){
+                console.error("Could not trunctae file: ", error);
+            }
+        }
+        async function workerMessageHandler(message){
+            try {
+                const worker = new Worker("worker.js");
+                worker.postMessage(message);
+
+                 // retrieve message sent to work from main script
+
+                // Get handle to draft file in OPFS
+                const root = await navigator.storage.getDirectory();
+                const draftHandle = await root.getFileHandle("draft.txt", { create: true });
+                // Get sync access handle
+                const accessHandle = await draftHandle.createSyncAccessHandle();
+                // Get size of the file.
+                const fileSize = accessHandle.getSize();
+                // Read file content to a buffer.
+                const buffer = new DataView(new ArrayBuffer(fileSize));
+                const readBuffer = accessHandle.read(buffer, { at: 0 });
+                // Write the message to the end of the file.
+                const encoder = new TextEncoder();
+                const encodedMessage = encoder.encode(message);
+                const writeBuffer = accessHandle.write(encodedMessage, { at: readBuffer });
+                // Persist changes to disk.
+                accessHandle.flush();
+                // Always close FileSystemSyncAccessHandle if done.
+                accessHandle.close();
+            } catch(error) {
+                console.error("Error in worker message handler:", error);
+            }
+
+        }
+
+    </script>
   </body>
 </html>
