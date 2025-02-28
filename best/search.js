@@ -2,8 +2,12 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('userSearch');
     const searchResultsContainer = document.getElementById('searchResults');
-    const mainIframe = document.getElementById('mainIframe'); // Get mainIframe reference
-    const secondIframe = document.getElementById('secondIframe'); // Get secondIframe reference
+    const mainIframe = document.getElementById('mainIframe');
+    const secondIframe = document.getElementById('secondIframe');
+    const ageFromInput = document.getElementById('ageFrom'); // New age filter input
+    const ageToInput = document.getElementById('ageTo');     // New age filter input
+    const tagSearchInput = document.getElementById('tagSearch'); // New tag filter input
+
     let allUsers = []; // Store combined online and previous users for search
 
     // Function to initialize allUsers - call this after online and previous users are loaded initially
@@ -21,7 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 image_url: userElement.querySelector('img').src,
                 iframe_embed: userElement.querySelector('img').dataset.iframeUrl,
                 age: age,
-                location: detailsParagraphs[2].textContent.split(': ')[1] // Extract location
+                location: detailsParagraphs[2].textContent.split(': ')[1], // Extract location
+                tags: [] // **Important:** Add tags array, populate if API provides tags, or leave empty
                 // Add other relevant properties if needed
             };
         });
@@ -36,13 +41,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 image_url: userElement.querySelector('img').src,
                 iframe_embed: userElement.querySelector('img').dataset.iframeUrl,
                 age: age,
+                tags: [] // **Important:** Add tags array, populate if API provides tags, or leave empty
                 // Add other relevant properties if needed
             };
         });
         allUsers = [...onlineUsers, ...previousUsers];
     }
 
-    // Debounce function to limit API calls (no API calls in search.js anymore, but keep debounce for input)
+    // Debounce function for search input
     function debounce(func, delay) {
         let timeoutId;
         return function(...args) {
@@ -53,19 +59,37 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    const debouncedSearch = debounce(handleSearch, 300); // 300ms delay
+    const debouncedSearch = debounce(handleSearch, 300);
 
     searchInput.addEventListener('input', debouncedSearch);
+    ageFromInput.addEventListener('input', debouncedSearch); // Age From filter
+    ageToInput.addEventListener('input', debouncedSearch);     // Age To filter
+    tagSearchInput.addEventListener('input', debouncedSearch);   // Tag filter
+
 
     function handleSearch() {
         const searchTerm = searchInput.value.trim().toLowerCase();
-        if (searchTerm.length < 2) { // Minimum characters to start search
-            clearSearchResults();
-            return;
-        }
+        const ageFrom = parseInt(ageFromInput.value);
+        const ageTo = parseInt(ageToInput.value);
+        const tagSearchTerms = tagSearchInput.value.trim().toLowerCase().split(',').map(tag => tag.trim()).filter(tag => tag !== ''); // Split and trim tags
 
         const filteredUsers = allUsers.filter(user => {
-            return user.username.toLowerCase().includes(searchTerm);
+            // Username filter (existing)
+            const usernameMatch = searchTerm === '' || user.username.toLowerCase().includes(searchTerm);
+
+            // Age filter (new)
+            const ageMatch =
+                (isNaN(ageFrom) || isNaN(ageTo)) || // No age range specified
+                (isNaN(ageFrom) && user.age <= ageTo) || // Only ageTo specified
+                (isNaN(ageTo) && user.age >= ageFrom) || // Only ageFrom specified
+                (user.age >= ageFrom && user.age <= ageTo) || (user.age === 'N/A'); // Age range specified, include N/A
+
+            // Tag filter (new) - Assuming user.tags is an array of strings
+            const tagMatch = tagSearchTerms.length === 0 || tagSearchTerms.every(searchTag => {
+                return user.tags.some(userTag => userTag.toLowerCase().includes(searchTag)); // Check if any user tag includes search tag
+            });
+
+            return usernameMatch && ageMatch && tagMatch; // Combine all filters
         });
 
         displaySearchResults(filteredUsers);
@@ -81,24 +105,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         users.forEach(user => {
             const userElement = document.createElement("div");
-            userElement.className = "search-user-info"; // Different class for search results
+            userElement.className = "search-user-info";
+            let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : ''; // Display tags if available
             userElement.innerHTML = `
                 <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
                 <div class="user-details">
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'}</p>
+                    ${tagsHtml}
                 </div>
             `;
             userElement.addEventListener("click", function () {
                 const usr = userElement.querySelector("img").dataset.username;
 
-                // Load into main iframe - existing functionality
                 mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                secondIframe.src = 'https://www.google.com/search?q=' + usr;
 
-                // Load into second iframe - NEW functionality
-                secondIframe.src = 'https://www.google.com/search?q=' + usr; // Example: Google Search for username
-
-                // Add to previousUsers and update localStorage (reuse function from script.js)
+                // Add to previousUsers and update localStorage
                 const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
                 let onlineUsersData = Array.from(onlineUsersDiv.querySelectorAll('.user-info')).map(el => {
                     const detailsParagraphs = el.querySelector('.user-details').querySelectorAll('p');
@@ -109,7 +132,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         image_url: el.querySelector('img').src,
                         iframe_embed: el.querySelector('img').dataset.iframeUrl,
                         age: age,
-                        location: detailsParagraphs[2].textContent.split(': ')[1]
+                        location: detailsParagraphs[2].textContent.split(': ')[1],
+                        tags: [] // Assuming tags are not updated in onlineUsersData refetch for now
                     };
                 });
                 let selectedUser = onlineUsersData.find(u => u.username === usr);
@@ -123,21 +147,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             username: el.querySelector('img').alt,
                             image_url: el.querySelector('img').src,
                             iframe_embed: el.querySelector('img').dataset.iframeUrl,
-                            age: age
+                            age: age,
+                            tags: [] // Assuming tags are not updated in previousUsersData refetch for now
                         };
                     });
                     selectedUser = previousUsersData.find(u => u.username === usr);
                 }
 
-
                 if (selectedUser) {
-                    // Assuming addToPreviousUsers and displayPreviousUsers are globally accessible from script.js
                     addToPreviousUsers(selectedUser);
                     displayPreviousUsers();
                 }
 
-                clearSearchResults(); // Clear search results after selection
-                searchInput.value = ''; // Clear search input
+                clearSearchResults();
+                searchInput.value = '';
+                ageFromInput.value = ''; // Clear ageFrom input
+                ageToInput.value = '';     // Clear ageTo input
+                tagSearchInput.value = '';   // Clear tag input
             });
             searchResultsContainer.appendChild(userElement);
         });
@@ -148,22 +174,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    // Expose initializeAllUsers, addToPreviousUsers, displayPreviousUsers globally so script.js can call them
     window.initializeAllUsers = initializeAllUsers;
-    window.addToPreviousUsers = function(user) { // Dummy function - script.js will override
+    window.addToPreviousUsers = function(user) {
         console.warn("addToPreviousUsers needs to be defined in script.js");
     };
-    window.displayPreviousUsers = function() { // Dummy function - script.js will override
+    window.displayPreviousUsers = function() {
         console.warn("displayPreviousUsers needs to be defined in script.js");
     };
 
-    // Wait for script.js to load and populate online/previous users before initializing allUsers
     let scriptLoadedCheck = setInterval(() => {
-        if (typeof initializeAllUsersFromScriptJS !== 'undefined') { // Check for a flag from script.js
+        if (typeof initializeAllUsersFromScriptJS !== 'undefined') {
             clearInterval(scriptLoadedCheck);
-            initializeAllUsersFromScriptJS(initializeAllUsers); // Call the initialization after script.js data is ready
+            initializeAllUsersFromScriptJS(initializeAllUsers);
         }
     }, 100);
 
 });
-
