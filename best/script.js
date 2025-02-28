@@ -6,11 +6,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let previousUsers = loadPreviousUsers();
     displayPreviousUsers();
+    let allOnlineUsersData = []; // Store all online users data for pagination
 
-    function fetchData() {
-        const apiUrl = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500'; // &offset=' o ?? 0;
+    function fetchData(offset = 0) {
+        const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
 
-        fetch(apiUrl)
+        return fetch(apiUrl) // Return the fetch promise to manage recursion
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -19,15 +20,30 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.results && data.results.length > 0) {
-                    onlineUsersDiv.innerHTML = ""; // Clear loading message
-                    displayOnlineUsers(data.results);
+                    allOnlineUsersData = allOnlineUsersData.concat(data.results); // Accumulate results
+
+                    if (data.results.length === 500) { // Assuming 'limit=500' was reached, fetch next page
+                        return fetchData(offset + 500); // Recursive call for next page
+                    } else {
+                        // Less than limit, assume no more pages, display all users and initialize search
+                        onlineUsersDiv.innerHTML = ""; // Clear loading message
+                        displayOnlineUsers(allOnlineUsersData);
+
+                        if(typeof initializeAllUsers === 'function') {
+                            window.initializeAllUsers(); // Call from search.js to initialize search data
+                        }
+                        return Promise.resolve(); // Resolve promise to end the chain
+                    }
                 } else {
+                    // No results, or empty results, no more users to fetch
                     onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
+                    return Promise.resolve(); // Resolve promise to end the chain
                 }
             })
             .catch(error => {
                 console.error("Fetch error:", error);
                 onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
+                return Promise.reject(error); // Reject promise to propagate error
             });
     }
 
@@ -71,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            // previousUsers = previousUsers.slice(0, 20);
+            previousUsers = previousUsers.slice(0, 20); // Limit previous users to 20
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
@@ -111,15 +127,26 @@ document.addEventListener('DOMContentLoaded', function() {
         return storedUsers ? JSON.parse(storedUsers) : [];
     }
 
+    // Override dummy functions in search.js with actual implementations from script.js
+    if (typeof window.addToPreviousUsers !== 'undefined') {
+        window.addToPreviousUsers = addToPreviousUsers;
+    }
+    if (typeof window.displayPreviousUsers !== 'undefined') {
+        window.displayPreviousUsers = displayPreviousUsers;
+    }
+
+
+     // Expose a function to signal search.js when to initialize and provide data
+    window.initializeAllUsersFromScriptJS = function(callback) {
+        callback(); // Execute the initializeAllUsers function from search.js
+    };
+
+
     // Initial fetch when page loads
     fetchData();
-    setInterval(fetchData, 5000);
-    // let counter = 0;
-    // const intervalId = setInterval(() => {
-    //   // fetchData(counter);
-    //   counter += 500;
-    //   if (counter > 15000) {
-    //     clearInterval(intervalId);
-    //   }
-    // }, 0);
+    setInterval(() => {
+        allOnlineUsersData = []; // Reset online users array before each interval fetch
+        fetchData();
+    }, 300000);
+
 });
