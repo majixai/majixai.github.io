@@ -2,6 +2,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('userSearch');
     const searchResultsContainer = document.getElementById('searchResults');
+    const mainIframe = document.getElementById('mainIframe'); // Get mainIframe reference
+    const secondIframe = document.getElementById('secondIframe'); // Get secondIframe reference
     let allUsers = []; // Store combined online and previous users for search
 
     // Function to initialize allUsers - call this after online and previous users are loaded initially
@@ -89,8 +91,12 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             userElement.addEventListener("click", function () {
                 const usr = userElement.querySelector("img").dataset.username;
-                const mainIframe = document.getElementById("mainIframe");
+
+                // Load into main iframe - existing functionality
                 mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+
+                // Load into second iframe - NEW functionality
+                secondIframe.src = 'https://www.google.com/search?q=' + usr; // Example: Google Search for username
 
                 // Add to previousUsers and update localStorage (reuse function from script.js)
                 const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
@@ -160,3 +166,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 100);
 
 });
+
