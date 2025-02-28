@@ -1,34 +1,144 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0" />
-    <title>Jinx Stock Chart Menu</title>
+    <title>Jinx Chart with Indicators</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="../style/1wz8q4p9t56e4x7d12059ulkm8g.css" />
     <style>
-      body {
-        padding: 0;
-        margin: 0;
-        font-family: Arial, sans-serif;
-      }
-      .w3-sidebar {
-        width: 200px;
-        background-color: #f1f1f1;
-        position: fixed;
-        height: 100%;
-        overflow: auto;
-      }
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: Calibri, sans-serif;
+            color: #000000;
+            background-color: #f0f0f0;
+        }
+        /* Adjust container to be beside the sidebar */
+        #container {
+            margin-left: 200px; /* Width of the sidebar */
+            padding: 20px; /* Add some padding to the content area */
+            width: calc(100% - 200px); /* Adjust width to account for sidebar */
+            height: auto; /* Adjust height to content, not full viewport */
+            min-height: 100vh; /* Ensure it covers full viewport height */
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box; /* Include padding and margin in element's total width and height */
+        }
+        .chart-container {
+            flex: 1;
+            width: 100%;
+            height: 300px;
+            min-height: 300px;
+            margin-bottom: 20px; /* Space between charts */
+        }
+        #summary {
+            padding: 10px;
+            background-color: #e0e0e0;
+            border: 1px solid #d0d0d0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .indicator-summary {
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+        }
+        .button-bar {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .interval-btn, .strategy-btn, #daily-btn {
+            background-color: #f0f0f0;
+            border: 1px solid #d0d0d0;
+            padding: 8px 12px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+        .interval-btn.active, .strategy-btn.active, #daily-btn.active {
+            background-color: #d0d0d0;
+        }
+        .interval-btn:hover, .strategy-btn:hover, #daily-btn:hover {
+            background-color: #e0e0e0;
+        }
     </style>
-  </head>
-  <body>
+</head>
+<body>
 
     <nav class="w3-sidebar w3-bar-block w3-small w3-hide-small w3-center">
-      <h4 class="w3-bar-item">Stock Charts</h4>
-      <a href="./tsla/index.html" class="w3-bar-item w3-button w3-padding-small w3-hover-light-grey">TSLA</a>
-      <a href="./aapl/index.html" class="w3-bar-item w3-button w3-padding-small w3-hover-light-grey">AAPL</a>
-      <a href="./googl/index.html" class="w3-bar-item w3-button w3-padding-small w3-hover-light-grey">GOOGL</a>
-      <a href="./meta/index.html" class="w3-bar-item w3-button w3-padding-small w3-hover-light-grey">META</a>
-      </nav>
+      <h4 class="w3-bar-item">Charts</h4>
+      <div id="menu-links">
+        </div>
+    </nav>
 
-  </body>
+    <div class="w3-bar w3-top w3-large w3-hide-large w3-hide-medium" style="z-index:4;">
+      <button class="w3-bar-item w3-button w3-padding-16" onclick="toggleMobileMenu()">☰ Menu</button>
+    </div>
+
+    <div id="mobile-menu" class="w3-bar-block w3-light-grey w3-hide w3-hide-large w3-hide-medium w3-top" style="margin-top:46px">
+        </div>
+
+    <div id="container">
+      <div id="summary">
+          </div>
+
+      <div class="button-bar">
+          <button class="interval-btn active" data-interval="1min">1 Minute</button>
+          <button class="interval-btn" data-interval="5min">5 Minute</button>
+          <button class="interval-btn" data-interval="15min">15 Minute</button>
+          <button class="interval-btn" data-interval="30min">30 Minute</button>
+          <button class="interval-btn" data-interval="1hour">1 Hour</button>
+          <button id="daily-btn" class="interval-btn" >Daily</button>
+      </div>
+
+      <div class="button-bar">
+          <button class="strategy-btn active" data-strategy="combined">Combined</button>
+          <button class="strategy-btn" data-strategy="bull">Bull</button>
+          <button class="strategy-btn" data-strategy="bear">Bear</button>
+      </div>
+
+      <div id="price-chart" class="chart-container"></div>
+      <div id="indicator-chart" class="chart-container"></div>
+      <div id="cosh-chart" class="chart-container"></div>
+    </div>
+
+    <script src="tickers.js"></script>
+    <script src="../script/1wefs49yc8a64v9m45b7k103z8g.js"></script>
+    <script type="module">
+      import ChartDashboard from '../script/1w249bh7c8n4a7i839243ha9y8g.js';
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const dashboard = new ChartDashboard();
+        dashboard.initialize();
+
+        const defaultIntervalButton = document.querySelector('.interval-btn[data-interval="1min"]');
+        if (defaultIntervalButton) {
+            dashboard.setActiveButton(defaultIntervalButton);
+        }
+        const defaultStrategyButton = document.querySelector('.strategy-btn[data-strategy="combined"]');
+        if (defaultStrategyButton) {
+            dashboard.setActiveStrategyButton(defaultStrategyButton);
+        }
+      });
+
+       // Mobile menu toggle function (if not already in 1wefs49yc8a64v9m45b7k103z8g.js)
+      window.toggleMobileMenu = function() {
+        var x = document.getElementById("mobile-menu");
+        if (x.className.indexOf("w3-show") == -1) {
+          x.className += " w3-show";
+        } else {
+          x.className = x.className.replace(" w3-show", "");
+        }
+      }
+    </script>
+</body>
 </html>
