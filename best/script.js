@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            previousUsers = previousUsers.slice(0, 20);
+            // previousUsers = previousUsers.slice(0, 20);
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
@@ -224,6 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
         allOnlineUsersData = [];
         fetchData();
         displayPreviousUsers();
-    }, 300000);
+    }, 60000);
 
 });
