@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
-    const mainIframe2 = document.getElementById("mainIframe2"); // Assuming you have a mainIframe2 in your HTML
+    const mainIframe2 = document.getElementById("mainIframe2");
 
     let previousUsers = loadPreviousUsers();
     displayPreviousUsers();
@@ -21,7 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.results && data.results.length > 0) {
-                    allOnlineUsersData = allOnlineUsersData.concat(data.results);
+                    // Filter for public users here, before concatenating
+                    const publicUsers = data.results.filter(user => user.current_showstring === 'public');
+                    allOnlineUsersData = allOnlineUsersData.concat(publicUsers);
 
                     if (data.results.length === 500) {
                         return fetchData(offset + 500);
@@ -54,6 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         users.forEach(user => {
+            // Ensure user is public before displaying
+            if (user.current_showstring !== 'public') {
+                return; // Skip non-public users
+            }
             if (!user.image_url || !user.username) {
                 console.warn("Incomplete user data:", user);
                 return;
@@ -71,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
 
             userElement.addEventListener("click", function (event) {
-                event.preventDefault(); // Using preventDefault as requested
+                event.preventDefault();
                 const usr = userElement.querySelector("img").dataset.username;
                 const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
                 let selectedIframe;
@@ -79,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (iframeChoice === 'mainIframe2') {
                     selectedIframe = mainIframe2;
                 } else {
-                    selectedIframe = mainIframe; // Default to mainIframe if not mainIframe2 or if radio is not selected for some reason
+                    selectedIframe = mainIframe;
                 }
                 selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
@@ -109,14 +115,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const onlinePreviousUsers = previousUsers.filter(user => onlineUsernames.includes(user.username));
+            // Filter previous users to only include those who are currently online AND public
+            const onlinePreviousUsers = previousUsers.filter(user => onlineUsernames.includes(user.username) && user.current_showstring === 'public');
+
 
             if (onlinePreviousUsers.length === 0) {
-                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users currently online.</p>';
+                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>'; // Updated message to reflect public filter
                 return;
             }
 
             onlinePreviousUsers.forEach(user => {
+                if (user.current_showstring !== 'public') { // Double check here as well, though filter should handle this
+                    return; // Skip non-public users
+                }
                 if (!user.image_url || !user.username) {
                     return;
                 }
@@ -131,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
 
                 userElement.addEventListener("click", function (event) {
-                    event.preventDefault(); // Using preventDefault as requested
+                    event.preventDefault();
                     const usr = userElement.querySelector("img").dataset.username;
                     const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
                     let selectedIframe;
@@ -139,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (iframeChoice === 'mainIframe2') {
                         selectedIframe = mainIframe2;
                     } else {
-                        selectedIframe = mainIframe; // Default to mainIframe
+                        selectedIframe = mainIframe;
                     }
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                 });
@@ -166,13 +177,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .then(data => {
                         if (data.results && data.results.length > 0) {
-                            currentOnlineUsersData = currentOnlineUsersData.concat(data.results);
+                            // Only consider public users for username list
+                            const publicUsernames = data.results
+                                .filter(user => user.current_showstring === 'public')
+                                .map(user => user.username);
+                            currentOnlineUsersData = currentOnlineUsersData.concat(publicUsernames);
+
 
                             if (data.results.length === 500) {
                                 return recursiveFetch(offset + 500);
                             } else {
-                                const usernames = currentOnlineUsersData.map(user => user.username);
-                                resolve(usernames);
+                                resolve(currentOnlineUsersData); // Resolve with usernames of public users
                             }
                         } else {
                             resolve([]);
