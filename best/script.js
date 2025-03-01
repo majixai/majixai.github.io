@@ -3,10 +3,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
+    const mainIframe2 = document.getElementById("mainIframe2"); // Assuming you have a mainIframe2 in your HTML
 
     let previousUsers = loadPreviousUsers();
-    displayPreviousUsers(); // Modified to fetch online users before displaying
-    let allOnlineUsersData = []; // Store all online users data for pagination
+    displayPreviousUsers();
+    let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
         const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
@@ -69,12 +70,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
 
-            userElement.addEventListener("click", function () {
+            userElement.addEventListener("click", function (event) {
+                event.preventDefault(); // Using preventDefault as requested
                 const usr = userElement.querySelector("img").dataset.username;
-                // mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe; // Default to mainIframe if not mainIframe2 or if radio is not selected for some reason
+                }
+                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+
 
                 addToPreviousUsers(user);
-                displayPreviousUsers(); // Call displayPreviousUsers to refresh with online status
+                displayPreviousUsers();
             });
             onlineUsersDiv.appendChild(userElement);
         });
@@ -84,15 +95,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            previousUsers = previousUsers.slice(0, 250);
+            previousUsers = previousUsers.slice(0, 20);
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
 
     function displayPreviousUsers() {
-        previousUsersDiv.innerHTML = ""; // Clear previous users div
+        previousUsersDiv.innerHTML = "";
 
-        fetchOnlineUsernames().then(onlineUsernames => { // Fetch online usernames
+        fetchOnlineUsernames().then(onlineUsernames => {
             if (!onlineUsernames) {
                 previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Error fetching online users for previous users list.</p>';
                 return;
@@ -119,9 +130,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 `;
 
-                userElement.addEventListener("click", function () {
+                userElement.addEventListener("click", function (event) {
+                    event.preventDefault(); // Using preventDefault as requested
                     const usr = userElement.querySelector("img").dataset.username;
-                    mainIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                    const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                    let selectedIframe;
+
+                    if (iframeChoice === 'mainIframe2') {
+                        selectedIframe = mainIframe2;
+                    } else {
+                        selectedIframe = mainIframe; // Default to mainIframe
+                    }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                 });
                 previousUsersDiv.appendChild(userElement);
             });
@@ -152,14 +172,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                 return recursiveFetch(offset + 500);
                             } else {
                                 const usernames = currentOnlineUsersData.map(user => user.username);
-                                resolve(usernames); // Resolve with usernames
+                                resolve(usernames);
                             }
                         } else {
-                            resolve([]); // Resolve with empty array if no users online
+                            resolve([]);
                         }
                     })
                     .catch(error => {
-                        reject(error); // Reject promise on error
+                        reject(error);
                     });
             }
             recursiveFetch();
@@ -188,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(() => {
         allOnlineUsersData = [];
         fetchData();
-        displayPreviousUsers(); // Also refresh previous users online status on interval
+        displayPreviousUsers();
     }, 300000);
 
 });
