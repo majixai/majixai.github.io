@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     selectedIframe = mainIframe;
                 }
-                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                // selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
 
                 addToPreviousUsers(user);
