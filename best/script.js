@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.results && data.results.length > 0) {
                     // Filter for public users here, before concatenating
-                    const publicUsers = data.results.filter(user => user.current_showstring === 'public');
+                    const publicUsers = data.results.filter(user => user.current_show === 'public');
                     allOnlineUsersData = allOnlineUsersData.concat(publicUsers);
 
                     if (data.results.length === 500) {
