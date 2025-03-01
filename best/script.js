@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            previousUsers = previousUsers.slice(0, 20);
+            previousUsers = previousUsers.slice(0, 250);
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
         }
     }
