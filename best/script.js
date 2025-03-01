@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         users.forEach(user => {
             // Ensure user is public before displaying
-            if (user.current_showstring !== 'public') {
+            if (user.current_show !== 'public') {
                 return; // Skip non-public users
             }
             if (!user.image_url || !user.username) {
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Filter previous users to only include those who are currently online AND public
-            const onlinePreviousUsers = previousUsers.filter(user => onlineUsernames.includes(user.username) && user.current_showstring === 'public');
+            const onlinePreviousUsers = previousUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
 
 
             if (onlinePreviousUsers.length === 0) {
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             onlinePreviousUsers.forEach(user => {
-                if (user.current_showstring !== 'public') { // Double check here as well, though filter should handle this
+                if (user.current_show !== 'public') { // Double check here as well, though filter should handle this
                     return; // Skip non-public users
                 }
                 if (!user.image_url || !user.username) {
@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.results && data.results.length > 0) {
                             // Only consider public users for username list
                             const publicUsernames = data.results
-                                .filter(user => user.current_showstring === 'public')
+                                .filter(user => user.current_show === 'public')
                                 .map(user => user.username);
                             currentOnlineUsersData = currentOnlineUsersData.concat(publicUsernames);
 
