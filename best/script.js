@@ -1,4 +1,3 @@
-// script.js
 document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
@@ -6,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainIframe2 = document.getElementById("mainIframe2");
 
     let previousUsers = loadPreviousUsers();
-    displayPreviousUsers();
+    displayPreviousUsers(); // Initial display from localStorage
     let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
@@ -90,8 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
 
-                addToPreviousUsers(user);
-                displayPreviousUsers();
+                addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
             });
             onlineUsersDiv.appendChild(userElement);
         });
@@ -101,32 +99,73 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            // previousUsers = previousUsers.slice(0, 20);
+            previousUsers = previousUsers.slice(0, 20); // Keep only latest 20
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+
+            // Create and prepend the new user element
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Username: ${user.username}</p>
+                </div>
+            `;
+
+            userElement.addEventListener("click", function (event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+            });
+
+            // Prepend the new user element to the previous users div
+            previousUsersDiv.prepend(userElement);
+
+            // Keep only a maximum of 20 user elements in previousUsersDiv
+            if (previousUsersDiv.children.length > 20) {
+                previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
+            }
         }
     }
 
     function displayPreviousUsers() {
-        previousUsersDiv.innerHTML = "";
+        previousUsersDiv.innerHTML = ""; // Clear for initial load
 
-        fetchOnlineUsernames().then(onlineUsernames => {
+        const onlineUsernamesPromise = fetchOnlineUsernames(); // Start fetching usernames immediately
+
+        const storedUsers = loadPreviousUsers();
+        if (storedUsers.length === 0) {
+            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
+            return; // Exit early if no stored users
+        }
+
+        onlineUsernamesPromise.then(onlineUsernames => {
             if (!onlineUsernames) {
                 previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Error fetching online users for previous users list.</p>';
                 return;
             }
 
-            // Filter previous users to only include those who are currently online AND public
-            const onlinePreviousUsers = previousUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
+            // Filter previous users to only include those who are currently online AND public for initial display
+            const onlinePreviousUsersInitial = storedUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
 
-
-            if (onlinePreviousUsers.length === 0) {
-                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>'; // Updated message to reflect public filter
+            if (onlinePreviousUsersInitial.length === 0) {
+                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>';
                 return;
             }
 
-            onlinePreviousUsers.forEach(user => {
-                if (user.current_show !== 'public') { // Double check here as well, though filter should handle this
-                    return; // Skip non-public users
+
+            onlinePreviousUsersInitial.forEach(user => { // Use filtered list for initial display
+                if (user.current_show !== 'public') {
+                    return;
                 }
                 if (!user.image_url || !user.username) {
                     return;
@@ -223,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(() => {
         allOnlineUsersData = [];
         fetchData();
-        displayPreviousUsers();
+        // displayPreviousUsers(); // Removed periodic refresh of previous users
     }, 60000);
 
 });
