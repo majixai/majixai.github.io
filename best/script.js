@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
             previousUsersDiv.prepend(userElement);
 
             // Keep only a maximum of 20 user elements in previousUsersDiv
-            if (previousUsersDiv.children.length > 20) {
+            if (previousUsersDiv.children.length > 2000) {
                 previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
             }
         }
