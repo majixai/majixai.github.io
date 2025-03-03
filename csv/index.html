@@ -1,99 +1,196 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Enhanced Financial Analysis & Prediction Demo</title>
+    <title>Plotly Candlestick with Indicators</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; }
+        .input-section { margin-bottom: 20px; }
+        .input-section label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-section input, .input-section select { padding: 8px; width: calc(100% - 20px); margin-bottom: 10px; border: 1px solid #ccc; }
+        button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+        #plot-area { width: 800px; height: 600px; margin-top: 20px; }
+        #indicator-data { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        #indicator-data h2 { margin-top: 0; }
+        #covariance-display, #stdev-display, #black-scholes-display, #error-display { margin-bottom: 10px; }
+        #covariance-display pre, #stdev-display pre, #black-scholes-display pre, #error-display pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; }
+        #error-display pre { color: red; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>Enhanced Financial Analysis & Prediction Demo</h1>
-    <div id="file-storage">
-        <h2>File Storage Management</h2>
-        <div id="file-storage-status"></div>
-        <div id="uploaded-files-list"></div>
-        <button id="clear-all-files-btn">Clear All Uploaded Files</button>
-        <p>Manage uploaded files stored in local storage.</p>
-    </div>
-    <div id="data-controls">
-        <h2>Data Controls</h2>
-        <label for="csv-select">Select CSV File:</label>
-        <select id="csv-select" onchange="loadAndAnalyzeData()"></select>
-        <div id="status"></div>
-    </div>
-        <!-- Add Input for cosh parameters -->
-    <div id="cosh-inputs">
-        <h2>cosh Chart Parameters</h2>
-        <div class="input-group">
-            <label for="low1x">low1 X:</label>
-            <input type="number" id="low1x" value="0">
-            <label for="low1y">low1 Y:</label>
-            <input type="number" id="low1y" value="1">
-        </div>
-        <div class="input-group">
-            <label for="high1x">high1 X:</label>
-            <input type="number" id="high1x" value="1">
-            <label for="high1y">high1 Y:</label>
-            <input type="number" id="high1y" value="3">
-        </div>
-        <div class="input-group">
-            <label for="low2x">low2 X:</label>
-            <input type="number" id="low2x" value="2">
-            <label for="low2y">low2 Y:</label>
-            <input type="number" id="low2y" value="1">
-        </div>
-        <button id="plot-cosh-btn">Plot cosh</button>
-    </div>
-    <div id="plot-container"></div> <!-- Plotly chart will be rendered here -->
 
-    <!-- Calculations output -->
-    <div id="calculations">
-        <h2>Calculations</h2>
-        <div id="calculations-output"></div>
+    <h1>Plotly Candlestick Chart with Indicators</h1>
+
+    <div class="input-section">
+        <label for="ticker1">Ticker 1:</label>
+        <input type="text" id="ticker1" value="AAPL" placeholder="Enter Ticker 1 (e.g., AAPL)">
     </div>
 
-    <!-- Prediction output -->
-    <div id="prediction">
-        <h2>Prediction</h2>
-        <div id="prediction-output"></div>
+    <div class="input-section">
+        <label for="ticker2">Ticker 2 (Optional for Covariance):</label>
+        <input type="text" id="ticker2" placeholder="Enter Ticker 2 (Optional)">
     </div>
 
-        <!-- Gemini output -->
-        <div id="gemini-insights">
-        <h2>Gemini Insights</h2>
-        <button id="gemini-btn" onclick="getGeminiAnalysis()">Get Gemini Insights</button>
-        <div id="gemini-output"></div>
+    <div class="input-section">
+        <label for="interval">Interval:</label>
+        <select id="interval">
+            <option value="1m">1 Minute</option>
+            <option value="5m">5 Minutes</option>
+            <option value="1h">1 Hour</option>
+            <option value="1d" selected>1 Day</option>
+        </select>
     </div>
-    <div id="ticker-storage">
-        <h2>Ticker List Management</h2>
-        <label for="ticker-list-textarea">Ticker List:</label>
-        <textarea id="ticker-list-textarea"></textarea>
-        <button id="save-ticker-list-btn">Save Ticker List</button>
-        <div id="ticker-storage-output"></div>
+
+    <button id="plot-button">Fetch Data and Plot</button>
+
+    <div id="plot-area"></div>
+
+    <div id="indicator-data">
+        <h2>Indicator Data</h2>
+        <div id="covariance-display">
+            <h3>Covariance (Open & Close of Ticker 1):</h3>
+            <pre id="covariance-output">N/A</pre>
+        </div>
+        <div id="stdev-display">
+            <h3>Standard Deviation (Close Price Ticker 1):</h3>
+            <pre id="stdev-output">N/A</pre>
+        </div>
+        <div id="black-scholes-display">
+            <h3>Black-Scholes (Simplified Volatility - Placeholder):</h3>
+            <pre id="black-scholes-output">Black-Scholes calculation requires more inputs and a proper model. Placeholder.</pre>
+        </div>
+        <div id="error-display">
+            <pre id="error-output"></pre>
+        </div>
     </div>
-    <div id="file-storage">
-      <h2>File Storage Management</h2>
-      <div id="file-storage-status"></div>
-      <div id="uploaded-files-list"></div>
-      <button id="clear-all-files-btn">Clear All Uploaded Files</button>
-      <p>Manage uploaded files stored in local storage.</p>
-  </div>
-  <script>
-    document.getElementById('clear-all-files-btn').addEventListener('click', clearAllUploadedFiles);
-  </script>
-    <script src="script.js"></script>
+
     <script>
-        document.getElementById('clear-all-files-btn').addEventListener('click', clearAllUploadedFiles);
-        document.getElementById('save-ticker-list-btn').addEventListener('click', saveTickerList);
-        document.getElementById('plot-cosh-btn').addEventListener('click', () => {
-          const low1 = { x: parseFloat(document.getElementById('low1x').value), y: parseFloat(document.getElementById('low1y').value) };
-          const high1 = { x: parseFloat(document.getElementById('high1x').value), y: parseFloat(document.getElementById('high1y').value) };
-          const low2 = { x: parseFloat(document.getElementById('low2x').value), y: parseFloat(document.getElementById('low2y').value) };
-          plotCoshFromThreePoints(low1, high1, low2);
-        });
-        initializePage()
+        document.getElementById('plot-button').addEventListener('click', fetchDataAndPlot);
+
+        const intervalPeriodMap = {
+            '1m': '5d',
+            '5m': '5d',
+            '1h': '5d',
+            '1d': '1y'
+        };
+
+        async function fetchDataAndPlot() {
+            const ticker1 = document.getElementById('ticker1').value.toUpperCase();
+            const ticker2 = document.getElementById('ticker2').value.toUpperCase();
+            const interval = document.getElementById('interval').value;
+            const period = intervalPeriodMap[interval]; // Get the period from the map
+
+            document.getElementById('error-output').textContent = ''; // Clear previous errors
+
+            const csvURL1 = `placeholder_data/${ticker1}_${interval}_${period}.csv`; // Updated CSV URL to include period
+            const csvURL2 = ticker2 ? `placeholder_data/${ticker2}_${interval}_${period}.csv` : null; // Updated for ticker2
+
+            try {
+                const data1 = await fetchCSVData(csvURL1);
+                let data2 = null;
+                if (csvURL2) {
+                    data2 = await fetchCSVData(csvURL2);
+                }
+                plotCandlestickChart(data1, ticker1);
+                calculateAndDisplayIndicators(data1, data2, ticker1, ticker2);
+
+            } catch (error) {
+                console.error("Error fetching or processing data:", error);
+                document.getElementById('error-output').textContent = `Error: Could not fetch data for ${ticker1}. Check console for details.`;
+            }
+        }
+
+        async function fetchCSVData(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}, URL: ${url}`);
+            }
+            const csvText = await response.text();
+            return parseCSV(csvText);
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = { dates: [], open: [], high: [], low: [], close: [], volume: [] };
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                if (values.length === headers.length) { // Basic validation
+                    try {
+                        data.dates.push(new Date(values[0])); // Assuming Date is first column
+                        data.open.push(parseFloat(values[1])); // Open price
+                        data.high.push(parseFloat(values[2])); // High price
+                        data.low.push(parseFloat(values[3]));  // Low price
+                        data.close.push(parseFloat(values[4])); // Close price
+                        data.volume.push(parseFloat(values[5]));// Volume
+                    } catch (e) {
+                        console.warn("Skipping row due to parsing error:", values, e); // Warn but continue
+                    }
+                } else {
+                    console.warn("Skipping row due to incorrect number of columns:", values);
+                }
+            }
+            return data;
+        }
+
+        function plotCandlestickChart(data, ticker) {
+            const trace = {
+                x: data.dates,
+                type: 'candlestick',
+                open: data.open,
+                high: data.high,
+                low: data.low,
+                close: data.close,
+                name: ticker,
+                yaxis: 'y',
+            };
+
+            const layout = {
+                title: `Candlestick Chart for ${ticker}`,
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Price' }
+            };
+
+            Plotly.newPlot('plot-area', [trace], layout);
+        }
+
+        function calculateAndDisplayIndicators(data1, data2, ticker1, ticker2) {
+            const covariance = calculateCovariance(data1.open, data1.close);
+            document.getElementById('covariance-output').textContent = covariance.toFixed(4) || 'N/A';
+
+            const stdev = calculateStandardDeviation(data1.close);
+            document.getElementById('stdev-output').textContent = stdev.toFixed(4) || 'N/A';
+
+            // Black-Scholes placeholder remains as is in HTML <pre id="black-scholes-output">
+
+        }
+
+        function calculateCovariance(arr1, arr2) {
+            if (!arr1 || !arr2 || arr1.length !== arr2.length || arr1.length < 2) return NaN;
+
+            const n = arr1.length;
+            const mean1 = arr1.reduce((a, b) => a + b, 0) / n;
+            const mean2 = arr2.reduce((a, b) => a + b, 0) / n;
+
+            let covarianceSum = 0;
+            for (let i = 0; i < n; i++) {
+                covarianceSum += (arr1[i] - mean1) * (arr2[i] - mean2);
+            }
+            return covarianceSum / (n - 1); // Sample covariance
+        }
+
+        function calculateStandardDeviation(arr) {
+            if (!arr || arr.length < 2) return NaN;
+            const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const sqDiffArray = arr.map(val => (val - mean) ** 2);
+            const avgSqDiff = sqDiffArray.reduce((a, b) => a + b, 0) / (arr.length - 1);
+            return Math.sqrt(avgSqDiff);
+        }
+
+
     </script>
+
 </body>
 </html>
