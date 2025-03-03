@@ -20,7 +20,7 @@
 <body>
 
     <h1>Enhanced Financial Data Analysis & Gemini Insights Demo</h1>
-    <p>This demo analyzes CSV files based on a ticker list in local storage, supporting different intervals and periods, and uses the Google Gemini API.</p>
+    <p>This demo analyzes CSV files based on a ticker list stored in local browser storage and uses the Google Gemini API.</p>
 
     <div id="ticker-storage">
         <h2>Ticker List Management (Local Storage)</h2>
@@ -40,7 +40,7 @@
             </select>
         <button id="load-data-btn">Load & Analyze Data</button>
         <p><b>Note:</b> CSV files should be named as <b>&lt;ticker&gt;_&lt;interval&gt;_&lt;period&gt;.csv</b> (e.g., AAPL_1m_5d.csv) and in the same directory as this HTML file.</p>
-        <p><b>Available Data Options:</b> 1m interval (5d period), 1h interval (5d period), 1d interval (1y period).</p>
+        <p><b>Available Intervals/Periods:</b> 1m, 1h, 1d.</p>
     </div>
 
     <div id="calculations">
@@ -112,8 +112,18 @@
         }
 
         function initializePage() {
-            loadTickerListFromLocalStorage();
-            populateCsvDropdown();
+            // Check if tickerList exists in localStorage
+            let tickersText = localStorage.getItem('tickerList');
+            if (!tickersText) {
+                // Default ticker list if not found in localStorage
+                tickersText = "AAPL,MSFT,GOOGL,GOOG,AMZN,NVDA,TSLA,META,BRK.B,JPM,V,JNJ,UNH,PG,XOM,HD,CVX,MA,ABBV,MRK,PEP,KO,COST,CRM,ADBE,NFLX,DIS,WMT,BAC,PFE,TMO,LLY,DHR,LIN,UNP,RTX,MCD,CAT,DOW,IBM,AMD,MMM,AMGN,TXN,GILD,CSCO,INTC,CMCSA,WFC,UPS,MS,GS,NKE,ORCL,T,VZ,CRM,ABT,COP,PM,MDT,HON,LOW,SBUX,C,SPGI,ISRG,ADP,TJX,BKNG,CME,CVS,DG,FDX,GM,HCA,LMT,MO,MSFT,MU,OXY,PYPL,RTX,SCHW,SHOP,SNAP,SO,TGT,UNP,USB,VRTX,WBA,XOM,X,ZM,Z,ZBRA,ZBH,ZTS";
+                localStorage.setItem('tickerList', tickersText); // Save default to localStorage
+                document.getElementById('ticker-list-textarea').value = tickersText; // Populate textarea too
+                document.getElementById('ticker-storage-output').textContent = "Default ticker list loaded and saved to local storage.";
+            } else {
+                document.getElementById('ticker-list-textarea').value = tickersText; // Ensure textarea is populated on load if list exists
+            }
+            populateCsvDropdown(); // Finally, populate the dropdown
         }
 
 
@@ -128,11 +138,13 @@
             }
 
             const tickers = tickersText.split(',').map(ticker => ticker.trim()).filter(ticker => ticker);
+            const intervals = ['1m', '1h', '1d']; // Available intervals/periods
             const dataOptions = [  // Array of interval-period combinations
                 { interval: '1m', period: '5d' },
                 { interval: '1h', period: '5d' },
                 { interval: '1d', period: '1y' }
             ];
+
 
             tickers.forEach(ticker => {
                 dataOptions.forEach(option => {
@@ -141,7 +153,7 @@
                     const displayPeriod = option.period;
                     const optionElement = document.createElement('option');
                     optionElement.value = filename;
-                    optionElement.textContent = `${ticker} - ${displayInterval} Interval, ${displayPeriod} Period`; // More descriptive display text
+                    optionElement.textContent = `${ticker} - ${displayInterval} Interval, ${displayPeriod} Period`;
                     csvSelect.appendChild(optionElement);
                 });
             });
@@ -420,7 +432,7 @@
                 }
 
                 const currentClose = data[i]['Close'];
-                const K = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+                const K = ((currentClose - lowestLow) / (highestHigh - lowestHigh)) * 100;
                 K_values.push(K);
             }
              // Calculate %D as 3-period moving average of %K
