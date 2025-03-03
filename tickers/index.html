@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Plot Curve from 3 Points with Data Display</title>
+    <title>Plot Curve from 3 Points with Data Storage</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: sans-serif; }
@@ -13,13 +13,14 @@
         #plot-area { width: 800px; height: 600px; margin-top: 20px; }
         #data-display { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
         #data-display h2 { margin-top: 0; }
-        #input-points-display, #amplitude-display { margin-bottom: 10px; }
-        #input-points-display pre, #amplitude-display pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; }
+        #input-points-display, #amplitude-display, #storage-status { margin-bottom: 10px; }
+        #input-points-display pre, #amplitude-display pre, #storage-status pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; }
+        #storage-status pre { font-size: 0.9em; color: #777; }
     </style>
 </head>
 <body>
 
-    <h1>Curve from 3 XY Points with Data Display using Plotly.js</h1>
+    <h1>Curve from 3 XY Points with Local Storage using Plotly.js</h1>
 
     <div class="point-input">
         <label>Point 1:</label>
@@ -40,6 +41,8 @@
     </div>
 
     <button id="plot-button">Plot Curve</button>
+    <button id="save-points-button">Save Points</button>
+    <button id="load-points-button">Load Points</button>
 
     <div id="plot-area"></div>
 
@@ -53,22 +56,70 @@
             <h3>Amplitude (Range of Y-values):</h3>
             <pre id="amplitude-output"></pre>
         </div>
+        <div id="storage-status">
+            <pre id="storage-output"></pre>
         </div>
+    </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', initializePage);
         document.getElementById('plot-button').addEventListener('click', plotCurve);
+        document.getElementById('save-points-button').addEventListener('click', savePointsToLocalStorage);
+        document.getElementById('load-points-button').addEventListener('click', loadPointsFromLocalStorage);
+
+        function initializePage() {
+            loadPointsFromLocalStorage(); // Load points on page load
+        }
+
+        function getPointsFromInput() {
+            return {
+                x1: parseFloat(document.getElementById('x1').value),
+                y1: parseFloat(document.getElementById('y1').value),
+                x2: parseFloat(document.getElementById('x2').value),
+                y2: parseFloat(document.getElementById('y2').value),
+                x3: parseFloat(document.getElementById('x3').value),
+                y3: parseFloat(document.getElementById('y3').value)
+            };
+        }
+
+        function setInputFields(points) {
+            document.getElementById('x1').value = points.x1;
+            document.getElementById('y1').value = points.y1;
+            document.getElementById('x2').value = points.x2;
+            document.getElementById('y2').value = points.y2;
+            document.getElementById('x3').value = points.x3;
+            document.getElementById('y3').value = points.y3;
+        }
+
+
+        function savePointsToLocalStorage() {
+            const points = getPointsFromInput();
+            localStorage.setItem('curvePoints', JSON.stringify(points));
+            document.getElementById('storage-output').textContent = "Points saved to local storage.";
+        }
+
+        function loadPointsFromLocalStorage() {
+            const storedPointsJSON = localStorage.getItem('curvePoints');
+            if (storedPointsJSON) {
+                try {
+                    const storedPoints = JSON.parse(storedPointsJSON);
+                    setInputFields(storedPoints);
+                    document.getElementById('storage-output').textContent = "Points loaded from local storage.";
+                } catch (e) {
+                    console.error("Error parsing stored points from localStorage:", e);
+                    document.getElementById('storage-output').textContent = "Error loading points from local storage.";
+                }
+            } else {
+                document.getElementById('storage-output').textContent = "No points found in local storage.";
+            }
+        }
+
 
         function plotCurve() {
-            // Get XY points from input fields
-            const x1 = parseFloat(document.getElementById('x1').value);
-            const y1 = parseFloat(document.getElementById('y1').value);
-            const x2 = parseFloat(document.getElementById('x2').value);
-            const y2 = parseFloat(document.getElementById('y2').value);
-            const x3 = parseFloat(document.getElementById('x3').value);
-            const y3 = parseFloat(document.getElementById('y3').value);
+            const points = getPointsFromInput();
 
-            const xPoints = [x1, x2, x3];
-            const yPoints = [y1, y2, y3];
+            const xPoints = [points.x1, points.x2, points.x3];
+            const yPoints = [points.y1, points.y2, points.y3];
 
             // Function to calculate Lagrange interpolation polynomial (same as before)
             function interpolateLagrange(xValues, yValues) {
@@ -90,8 +141,8 @@
             const lagrangePolynomial = interpolateLagrange(xPoints, yPoints);
 
             // Generate points for the curve (same as before)
-            const minX = Math.min(x1, x2, x3);
-            const maxX = Math.max(x1, x2, x3);
+            const minX = Math.min(...xPoints);
+            const maxX = Math.max(...xPoints);
             const curveXValues = [];
             const curveYValues = [];
             for (let x = minX - 1; x <= maxX + 1; x += 0.1) {
