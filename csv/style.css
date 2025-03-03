@@ -1,0 +1,31 @@
+body { font-family: sans-serif; }
+#data-controls, #calculations, #prediction, #plot-container, #bs-controls, #gemini-insights, #ticker-storage, #file-storage { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
+#data-controls label, #bs-controls label, #ticker-storage label, #file-storage label { display: block; margin-bottom: 5px; font-weight: bold; }
+#csv-select, #bs-controls input[type='number'], #ticker-list-textarea { width: calc(100% - 20px); padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; }
+button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+button:hover { background-color: #0056b3; }
+#calculations pre, #prediction pre, #gemini-insights pre, #ticker-storage pre, #file-storage pre { background-color: #f8f8f8; padding: 15px; border: 1px solid #eee; overflow-x: auto; white-space: pre-wrap; }
+.calculation-section { margin-bottom: 15px; }
+.calculation-section h3 { margin-top: 0; color: #333; }
+.warning { color: darkred; font-weight: bold; }
+#ticker-list-textarea { height: 100px; } /* Adjust height as needed */
+  .status-success { color: green; }
+  .status-warning { color: orange; }
+  .status-error { color: red; }
+  .status-info { color: blue; }
+#uploaded-files-list ul {
+   list-style-type: none;
+   padding: 0;
+}
+ #uploaded-files-list li {
+   margin-bottom: 5px;
+}
+#uploaded-files-list button {
+    margin-left: 10px;
+    padding: 5px 10px;
+    background-color: #dc3545; /* Red delete button */
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
