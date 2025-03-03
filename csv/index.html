@@ -112,7 +112,7 @@
                 console.error("Error in fetchDataAndPlot:", error); // Keep console.error for actual errors
                 document.getElementById('error-output').textContent = `Error: Could not fetch data for ${ticker1}. Check console for details.`;
             }
-             alert("fetchDataAndPlot finished (or error caught)"); // <--- Changed to alert
+             alert("fetchDataAndPlot finished (or error caught) {error: " + error + "}"); // <--- Changed to alert
         }
     
         async function fetchCSVData(url) {
