@@ -5,12 +5,12 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: sans-serif; }
-        #data-controls, #calculations, #prediction, #plot-container, #bs-controls, #gemini-insights, #filesystem-access { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
-        #data-controls label, #bs-controls label, #filesystem-access label { display: block; margin-bottom: 5px; font-weight: bold; }
+        #data-controls, #calculations, #prediction, #plot-container, #bs-controls, #gemini-insights, #ticker-storage { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
+        #data-controls label, #bs-controls label, #ticker-storage label { display: block; margin-bottom: 5px; font-weight: bold; }
         #csv-select, #bs-controls input[type='number'], #ticker-list-textarea { width: calc(100% - 20px); padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; }
         button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
         button:hover { background-color: #0056b3; }
-        #calculations pre, #prediction pre, #gemini-insights pre, #filesystem-access pre { background-color: #f8f8f8; padding: 15px; border: 1px solid #eee; overflow-x: auto; white-space: pre-wrap; }
+        #calculations pre, #prediction pre, #gemini-insights pre, #ticker-storage pre { background-color: #f8f8f8; padding: 15px; border: 1px solid #eee; overflow-x: auto; white-space: pre-wrap; }
         .calculation-section { margin-bottom: 15px; }
         .calculation-section h3 { margin-top: 0; color: #333; }
         .warning { color: darkred; font-weight: bold; }
@@ -20,17 +20,7 @@
 <body>
 
     <h1>Enhanced Financial Data Analysis & Gemini Insights Demo</h1>
-    <p>This demo dynamically lists and analyzes CSV files from the server directory and uses local storage for ticker lists.</p>
-
-    <div id="data-controls">
-        <h2>Step 1: Data Selection</h2>
-        <label for="csv-select">Choose a CSV File from the Directory (Server-Side):</label>
-        <select id="csv-select">
-            <option value="">-- Select a CSV File --</option>
-            </select>
-        <button id="load-data-btn">Load & Analyze Data</button>
-        <p><b>Note:</b> CSV files are listed from the server's directory. The backend Python script needs to be running.</p>
-    </div>
+    <p>This demo analyzes CSV files based on a ticker list in local storage, supporting different intervals and periods, and uses the Google Gemini API.</p>
 
     <div id="ticker-storage">
         <h2>Ticker List Management (Local Storage)</h2>
@@ -39,21 +29,23 @@
         <button id="save-tickers-btn">Save Ticker List to Local Storage</button>
         <button id="load-tickers-btn">Load Ticker List from Local Storage</button>
         <pre id="ticker-storage-output"></pre>
-        <p>This section demonstrates storing a ticker list in your browser's local storage. This list is NOT used for CSV file selection in the dropdown (which is server-driven).</p>
+        <p>Manage tickers in local storage. Used to populate the CSV file dropdown.</p>
     </div>
 
-    <div id="filesystem-access">
-        <h2>Client-Side Filesystem Access (Conceptual - User-Driven)</h2>
-        <p><b>Important:</b> Web browsers heavily restrict direct filesystem access for security. This section demonstrates the Filesystem Access API, which requires <b>user interaction</b> to grant permission.</p>
-        <button id="request-directory-btn">Request Access to a Directory (User Select)</button>
-        <pre id="filesystem-output"></pre>
-        <p class="warning"><b>Warning:</b> Browsers do not allow listing directories silently. User interaction is required to grant access via a file picker.</p>
+    <div id="data-controls">
+        <h2>Step 1: Data Selection</h2>
+        <label for="csv-select">Choose a CSV File (from Local Storage Tickers):</label>
+        <select id="csv-select">
+            <option value="">-- Select a CSV File --</option>
+            </select>
+        <button id="load-data-btn">Load & Analyze Data</button>
+        <p><b>Note:</b> CSV files should be named as <b>&lt;ticker&gt;_&lt;interval&gt;_&lt;period&gt;.csv</b> (e.g., AAPL_1m_5d.csv) and in the same directory as this HTML file.</p>
+        <p><b>Available Data Options:</b> 1m interval (5d period), 1h interval (5d period), 1d interval (1y period).</p>
     </div>
-
 
     <div id="calculations">
         <h2>Step 2: Financial Indicator Calculations</h2>
-        <p>Below are calculated financial indicators based on the loaded CSV data.</p>
+        <p>Financial indicators based on loaded CSV data.</p>
         <div class="calculation-section"><h3>Standard Deviation</h3><pre id="stdev-output"></pre></div>
         <div class="calculation-section"><h3>Stochastic Oscillator</h3><pre id="stochastics-output"></pre></div>
         <div class="calculation-section"><h3>Average True Range (ATR)</h3><pre id="atr-output"></pre></div>
@@ -61,14 +53,14 @@
         <div class="calculation-section"><h3>Cosh Function (Example)</h3><pre id="cosh-output"></pre></div>
         <div id="bs-controls">
             <h3>Simplified Black-Scholes Option Pricing</h3>
-            <p>Adjust the parameters below to calculate a simplified European call option price using Black-Scholes:</p>
+            <p>Simplified European call option price calculation using Black-Scholes:</p>
             <label for="spot-price">Spot Price (Current Price):</label><input type="number" id="spot-price" value="150">
             <label for="strike-price">Strike Price:</label><input type="number" id="strike-price" value="160">
-            <label for="risk-free-rate">Risk-Free Rate (as decimal, e.g., 0.05 for 5%):</label><input type="number" id="risk-free-rate" value="0.05">
-            <label for="time-to-expiry">Time to Expiry (in years, e.g., 0.5 for 6 months):</label><input type="number" id="time-to-expiry" value="0.5">
-            <label for="volatility">Volatility (as decimal, e.g., 0.2 for 20%):</label><input type="number" id="volatility" value="0.2">
+            <label for="risk-free-rate">Risk-Free Rate (decimal, e.g., 0.05 for 5%):</label><input type="number" id="risk-free-rate" value="0.05">
+            <label for="time-to-expiry">Time to Expiry (years, e.g., 0.5 for 6 months):</label><input type="number" id="time-to-expiry" value="0.5">
+            <label for="volatility">Volatility (decimal, e.g., 0.2 for 20%):</label><input type="number" id="volatility" value="0.2">
             <button id="calculate-bs-btn">Calculate Black-Scholes Price</button><pre id="bs-output"></pre>
-            <p class="warning"><b>Warning:</b> This is a simplified Black-Scholes model for demonstration only.</p>
+            <p class="warning"><b>Warning:</b> Simplified Black-Scholes model for demonstration only.</p>
         </div>
         <div class="calculation-section"><h3>Bayesian Methods in Finance (Conceptual)</h3><pre id="bayesian-output"></pre></div>
         <pre id="calculations-output" style="display:none;"><i>(Raw Calculation Output - hidden)</i></pre>
@@ -77,13 +69,13 @@
     <div id="prediction">
         <h2>Step 3: (Extremely Rudimentary) 1-Hour "Prediction"</h2>
         <pre id="prediction-output"></pre>
-        <p class="warning"><b>CRITICAL WARNING:</b> The "prediction" here is oversimplified and unreliable.</p>
+        <p class="warning"><b>CRITICAL WARNING:</b> Oversimplified and unreliable prediction.</p>
     </div>
 
     <div id="gemini-insights">
         <h2>Step 4: Gemini API Insights</h2>
         <button id="get-gemini-btn">Get Gemini API Analysis</button><pre id="gemini-output"></pre>
-        <p class="warning"><b>Disclaimer:</b> Gemini API-generated insights are not financial advice.</p>
+        <p class="warning"><b>Disclaimer:</b> Gemini API insights are not financial advice.</p>
     </div>
 
     <div id="plot-container">
@@ -92,7 +84,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', populateCsvDropdown); // Call on page load
+        document.addEventListener('DOMContentLoaded', initializePage);
         document.getElementById('load-data-btn').addEventListener('click', loadAndAnalyzeData);
         document.getElementById('calculate-bs-btn').addEventListener('click', displayBlackScholes);
         document.getElementById('get-gemini-btn').addEventListener('click', getGeminiAnalysis);
@@ -105,6 +97,7 @@
             const tickerListText = document.getElementById('ticker-list-textarea').value;
             localStorage.setItem('tickerList', tickerListText);
             document.getElementById('ticker-storage-output').textContent = "Ticker list saved to local storage.";
+            populateCsvDropdown();
         }
 
         function loadTickerListFromLocalStorage() {
@@ -112,53 +105,46 @@
             if (tickerListText) {
                 document.getElementById('ticker-list-textarea').value = tickerListText;
                 document.getElementById('ticker-storage-output').textContent = "Ticker list loaded from local storage.";
+                populateCsvDropdown();
             } else {
                 document.getElementById('ticker-storage-output').textContent = "No ticker list found in local storage.";
             }
         }
 
-        // ---- Conceptual Filesystem Access API (User-Driven) ----
-        document.getElementById('request-directory-btn').addEventListener('click', requestDirectoryAccess);
-
-        async function requestDirectoryAccess() {
-            try {
-                const directoryHandle = await window.showDirectoryPicker(); // User selects directory
-                document.getElementById('filesystem-output').textContent = "User granted access to directory. (Listing files is for demonstration - actual file content access requires further steps with the API).";
-                // Note: To actually list files and access content, you would need to iterate through directoryHandle.entries() and handle file handles, which is more complex.
-                // This is just a demonstration of requesting directory access - silent listing is not possible.
-
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    document.getElementById('filesystem-output').textContent = "Directory access request cancelled by user.";
-                } else {
-                    console.error("Filesystem Access API Error:", error);
-                    document.getElementById('filesystem-output').textContent = "Error accessing directory: " + error.message;
-                }
-            }
+        function initializePage() {
+            loadTickerListFromLocalStorage();
+            populateCsvDropdown();
         }
 
 
         async function populateCsvDropdown() {
             const csvSelect = document.getElementById('csv-select');
-            try {
-                const response = await fetch('/csv_files'); // Fetch CSV list from backend
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                const csvFiles = data.csv_files;
+            csvSelect.innerHTML = '<option value="">-- Select a CSV File --</option>';
 
-                csvFiles.forEach(filename => { // Create and append options
-                    const option = document.createElement('option');
-                    option.value = filename;
-                    option.textContent = filename;
-                    csvSelect.appendChild(option);
-                });
-
-            } catch (error) {
-                console.error("Error fetching CSV file list:", error);
-                alert("Failed to load CSV file list. Is the backend running?");
+            const tickersText = localStorage.getItem('tickerList');
+            if (!tickersText) {
+                console.warn("No ticker list found in local storage to populate CSV dropdown.");
+                return;
             }
+
+            const tickers = tickersText.split(',').map(ticker => ticker.trim()).filter(ticker => ticker);
+            const dataOptions = [  // Array of interval-period combinations
+                { interval: '1m', period: '5d' },
+                { interval: '1h', period: '5d' },
+                { interval: '1d', period: '1y' }
+            ];
+
+            tickers.forEach(ticker => {
+                dataOptions.forEach(option => {
+                    const filename = `${ticker}_${option.interval}_${option.period}.csv`; // Filename format: <ticker>_<interval>_<period>.csv
+                    const displayInterval = option.interval;
+                    const displayPeriod = option.period;
+                    const optionElement = document.createElement('option');
+                    optionElement.value = filename;
+                    optionElement.textContent = `${ticker} - ${displayInterval} Interval, ${displayPeriod} Period`; // More descriptive display text
+                    csvSelect.appendChild(optionElement);
+                });
+            });
         }
 
 
@@ -172,18 +158,18 @@
             document.getElementById('calculations-output').textContent = "Loading and processing data...";
             document.getElementById('prediction-output').textContent = "Analyzing data for prediction...";
             document.getElementById('price-chart').innerHTML = "Loading chart...";
-            document.getElementById('gemini-output').textContent = ""; // Clear Gemini output
+            document.getElementById('gemini-output').textContent = "";
 
             try {
                 const csvData = await loadCSV(csvFile);
                 if (!csvData || csvData.length === 0) {
-                    document.getElementById('calculations-output').textContent = "Error loading or parsing CSV data.";
+                    document.getElementById('calculations-output').textContent = "Error loading or parsing CSV data. Ensure the CSV file named: " + csvFile + " is in the same directory.";
                     document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
                     document.getElementById('price-chart').innerHTML = "Error loading data for chart.";
                     return;
                 }
 
-                parsedData = parseCSVData(csvData); // Assign to the global parsedData
+                parsedData = parseCSVData(csvData);
                 if (!parsedData || parsedData.length === 0) {
                     document.getElementById('calculations-output').textContent = "Error processing CSV data.";
                     document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
