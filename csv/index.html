@@ -16,6 +16,214 @@
         .warning { color: darkred; font-weight: bold; }
         #ticker-list-textarea { height: 100px; } /* Adjust height as needed */
     </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+    // This JavaScript code is designed to be included within the provided HTML file (index.html)
+    // and modifies the existing functionality to upload the *content* of CSV files to
+    // Local Storage rather than just relying on pre-existing files in the directory.
+        
+    // --- Add this code within the <script> tags of index.html ---
+    // --- The existing code in index.html is assumed to be present ---
+    
+    // --- New Global Variable to track uploaded files ---
+    let uploadedFiles = {};
+    
+    // --- Modified Functions ---
+    
+    // **1. Modify `populateCsvDropdown()`**
+    //    - Now checks for CSV files in local storage.
+    //    - Prioritizes files from local storage over the directory.
+    async function populateCsvDropdown() {
+        const csvSelect = document.getElementById('csv-select');
+        csvSelect.innerHTML = '<option value="">-- Select a CSV File --</option>';
+    
+        // First, check local storage for CSV files
+        const storedCsvFiles = getCsvFilesFromLocalStorage();
+        if (storedCsvFiles.length > 0) {
+            storedCsvFiles.forEach(filename => {
+                const optionElement = document.createElement('option');
+                optionElement.value = `local:${filename}`; // Indicate it's from local storage
+                optionElement.textContent = `${filename} (Local Storage)`;
+                csvSelect.appendChild(optionElement);
+            });
+        }
+    
+        // Next, look at the ticker list for other potential options (if any)
+        const tickersText = localStorage.getItem('tickerList');
+        if (tickersText) {
+            const tickers = tickersText.split(',').map(ticker => ticker.trim()).filter(ticker => ticker);
+            const dataOptions = [
+                { interval: '1m', period: '5d' },
+                { interval: '1h', period: '5d' },
+                { interval: '1d', period: '1y' }
+            ];
+            
+            tickers.forEach(ticker => {
+                dataOptions.forEach(option => {
+                    const filename = `${ticker}_${option.interval}_${option.period}.csv`;
+                     //Check if it is already stored in local storage
+                    if(!storedCsvFiles.includes(filename)){
+                        const displayInterval = option.interval;
+                        const displayPeriod = option.period;
+                        const optionElement = document.createElement('option');
+                        optionElement.value = filename;
+                        optionElement.textContent = `${ticker} - ${displayInterval} Interval, ${displayPeriod} Period`;
+                        csvSelect.appendChild(optionElement);
+                    }
+                
+                });
+            });
+        }
+    
+        // Add upload option last
+        const uploadOption = document.createElement('option');
+        uploadOption.value = 'upload';
+        uploadOption.textContent = 'Upload a New CSV File';
+        csvSelect.appendChild(uploadOption);
+    }
+    
+    // **2. Modified `loadAndAnalyzeData()`**
+    //    - Now handles both local storage and direct directory files.
+    async function loadAndAnalyzeData() {
+        const csvSelect = document.getElementById('csv-select');
+        const csvFileValue = csvSelect.value;
+        let csvData = null;
+    
+        if (!csvFileValue) {
+            alert("Please select a CSV file.");
+            return;
+        }
+    
+        document.getElementById('calculations-output').textContent = "Loading and processing data...";
+        document.getElementById('prediction-output').textContent = "Analyzing data for prediction...";
+        document.getElementById('price-chart').innerHTML = "Loading chart...";
+        document.getElementById('gemini-output').textContent = "";
+    
+        try {
+            if (csvFileValue.startsWith('local:')) {
+                // Load from local storage
+                const filename = csvFileValue.substring(6);
+                csvData = localStorage.getItem(filename);
+                if(!csvData){
+                    throw new Error("Error: File not found in local storage.");
+                }
+            } else if (csvFileValue === 'upload'){
+                 //add file uploader here:
+                await promptForCsvUpload();
+                return; //Stop the rest of the function and let the file upload call loadAndAnalyzeData again.
+            }
+            else {
+                // Load from directory (original behavior)
+                csvData = await loadCSV(csvFileValue);
+            }
+            if (!csvData || csvData.length === 0) {
+                document.getElementById('calculations-output').textContent = "Error loading or parsing CSV data. Ensure the CSV file named: " + csvFileValue + " is in the same directory or that it is uploaded to local storage.";
+                document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
+                document.getElementById('price-chart').innerHTML = "Error loading data for chart.";
+                return;
+            }
+        
+            parsedData = parseCSVData(csvData);
+            if (!parsedData || parsedData.length === 0) {
+                document.getElementById('calculations-output').textContent = "Error processing CSV data.";
+                document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
+                document.getElementById('price-chart').innerHTML = "Error processing data for chart.";
+                return;
+            }
+        
+            displayIndicatorCalculations(parsedData);
+            displayPrediction(parsedData);
+            plotData(parsedData);
+            document.getElementById('calculations-output').style.display = 'none';
+        
+        } catch (error) {
+            console.error("Error:", error);
+            document.getElementById('calculations-output').textContent = "An error occurred: " + error.message;
+            document.getElementById('prediction-output').textContent = "Prediction unavailable due to error.";
+            document.getElementById('price-chart').innerHTML = "Error generating chart.";
+        }
+    }
+    //**3. New function for file upload.**/
+    async function promptForCsvUpload() {
+      return new Promise((resolve, reject) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv';
+        input.multiple = false; // for now only allow 1 at a time.
+        input.onchange = async (event) => {
+          const file = event.target.files[0];
+          if (!file) {
+            alert('No file selected.');
+            resolve(); // Resolve to continue normal operation if no file.
+            return;
+          }
+          if (!file.name.endsWith('.csv')) {
+            alert('Only CSV files are supported.');
+            resolve();// Resolve to continue normal operation if not csv.
+            return;
+          }
+      
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const content = e.target.result;
+        
+            if (localStorage.getItem(file.name)) {
+                if (!confirm(`A file named "${file.name}" already exists. Do you want to replace it?`)) {
+                  alert(`Upload of ${file.name} skipped (file already exists).`);
+                  populateCsvDropdown(); //refresh the options
+                  resolve();// Resolve to continue normal operation if file already exists.
+                  return;
+                }
+            }
+        
+            localStorage.setItem(file.name, content);
+            alert(`File ${file.name} uploaded successfully to local storage.`);
+            uploadedFiles[file.name] = content; // Store content in uploadedFiles
+            populateCsvDropdown();//refresh the options
+            resolve(loadAndAnalyzeData()); // After upload, call loadAndAnalyzeData again
+          };
+          reader.onerror = (error) => {
+            alert(`Error uploading file ${file.name}: ${error}`);
+            resolve(); // Resolve to continue normal operation if error.
+          };
+          reader.readAsText(file);
+        };
+        input.click();
+      });
+    }
+    // **4. New Helper Function `getCsvFilesFromLocalStorage()`**
+    //    - Extracts a list of CSV filenames from Local Storage.
+    function getCsvFilesFromLocalStorage() {
+        const csvFiles = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.endsWith('.csv')) {
+                csvFiles.push(key);
+            }
+        }
+        return csvFiles;
+    }
+    
+    // **5. Modify the `initializePage()`**
+    //    - now automatically populates the dropdown even if the local storage is empty.
+    function initializePage() {
+        // Check if tickerList exists in localStorage
+        let tickersText = localStorage.getItem('tickerList');
+        if (!tickersText) {
+            // Default ticker list if not found in localStorage
+            tickersText = "AAPL,MSFT,GOOGL,GOOG,AMZN,NVDA,TSLA,META,BRK.B,JPM,V,JNJ,UNH,PG,XOM,HD,CVX,MA,ABBV,MRK,PEP,KO,COST,CRM,ADBE,NFLX,DIS,WMT,BAC,PFE,TMO,LLY,DHR,LIN,UNP,RTX,MCD,CAT,DOW,IBM,AMD,MMM,AMGN,TXN,GILD,CSCO,INTC,CMCSA,WFC,UPS,MS,GS,NKE,ORCL,T,VZ,CRM,ABT,COP,PM,MDT,HON,LOW,SBUX,C,SPGI,ISRG,ADP,TJX,BKNG,CME,CVS,DG,FDX,GM,HCA,LMT,MO,MSFT,MU,OXY,PYPL,RTX,SCHW,SHOP,SNAP,SO,TGT,UNP,USB,VRTX,WBA,XOM,X,ZM,Z,ZBRA,ZBH,ZTS";
+            localStorage.setItem('tickerList', tickersText); // Save default to localStorage
+            document.getElementById('ticker-list-textarea').value = tickersText; // Populate textarea too
+            document.getElementById('ticker-storage-output').textContent = "Default ticker list loaded and saved to local storage.";
+        } else {
+            document.getElementById('ticker-list-textarea').value = tickersText; // Ensure textarea is populated on load if list exists
+        }
+        populateCsvDropdown(); // Finally, populate the dropdown
+    }
+    
+    // --- End of Added Code ---
+    
+    </script>
 </head>
 <body>
 
