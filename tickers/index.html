@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Plot Curve from 3 Points with Plotly</title>
+    <title>Plot Curve from 3 Points with Data Display</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body { font-family: sans-serif; }
@@ -11,11 +11,15 @@
         button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
         button:hover { background-color: #0056b3; }
         #plot-area { width: 800px; height: 600px; margin-top: 20px; }
+        #data-display { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        #data-display h2 { margin-top: 0; }
+        #input-points-display, #amplitude-display { margin-bottom: 10px; }
+        #input-points-display pre, #amplitude-display pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; }
     </style>
 </head>
 <body>
 
-    <h1>Curve from 3 XY Points using Plotly.js</h1>
+    <h1>Curve from 3 XY Points with Data Display using Plotly.js</h1>
 
     <div class="point-input">
         <label>Point 1:</label>
@@ -39,6 +43,18 @@
 
     <div id="plot-area"></div>
 
+    <div id="data-display">
+        <h2>Relevant Data</h2>
+        <div id="input-points-display">
+            <h3>Input Points:</h3>
+            <pre id="input-points-output"></pre>
+        </div>
+        <div id="amplitude-display">
+            <h3>Amplitude (Range of Y-values):</h3>
+            <pre id="amplitude-output"></pre>
+        </div>
+        </div>
+
     <script>
         document.getElementById('plot-button').addEventListener('click', plotCurve);
 
@@ -54,7 +70,7 @@
             const xPoints = [x1, x2, x3];
             const yPoints = [y1, y2, y3];
 
-            // Function to calculate Lagrange interpolation polynomial
+            // Function to calculate Lagrange interpolation polynomial (same as before)
             function interpolateLagrange(xValues, yValues) {
                 return function(x) {
                     let result = 0;
@@ -73,17 +89,17 @@
 
             const lagrangePolynomial = interpolateLagrange(xPoints, yPoints);
 
-            // Generate points for the curve
+            // Generate points for the curve (same as before)
             const minX = Math.min(x1, x2, x3);
             const maxX = Math.max(x1, x2, x3);
             const curveXValues = [];
             const curveYValues = [];
-            for (let x = minX - 1; x <= maxX + 1; x += 0.1) { // Adjust step for curve smoothness
+            for (let x = minX - 1; x <= maxX + 1; x += 0.1) {
                 curveXValues.push(x);
                 curveYValues.push(lagrangePolynomial(x));
             }
 
-            // Plotly traces
+            // Plotly traces (same as before)
             const pointsTrace = {
                 x: xPoints,
                 y: yPoints,
@@ -99,7 +115,7 @@
                 mode: 'lines',
                 type: 'scatter',
                 name: 'Curve',
-                line: { shape: 'linear' } // 'linear' for polynomial interpolation
+                line: { shape: 'linear' }
             };
 
             const layout = {
@@ -109,6 +125,25 @@
             };
 
             Plotly.newPlot('plot-area', [pointsTrace, curveTrace], layout);
+
+            // ---- Display Relevant Data ----
+            displayRelevantData(xPoints, yPoints, curveYValues);
+        }
+
+        function displayRelevantData(xPoints, yPoints, curveYValues) {
+            // Display Input Points
+            const inputPointsText = xPoints.map((x, index) => `(${x}, ${yPoints[index]})`).join(', ');
+            document.getElementById('input-points-output').textContent = inputPointsText;
+
+            // Calculate and Display Amplitude
+            if (curveYValues.length > 0) {
+                const minY = Math.min(...curveYValues);
+                const maxY = Math.max(...curveYValues);
+                const amplitude = maxY - minY;
+                document.getElementById('amplitude-output').textContent = amplitude.toFixed(2); // Display amplitude with 2 decimal places
+            } else {
+                document.getElementById('amplitude-output').textContent = "N/A (No curve data)";
+            }
         }
     </script>
 
