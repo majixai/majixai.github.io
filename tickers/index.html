@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced Financial Analysis & Prediction Demo</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: sans-serif; }
+        #data-controls, #calculations, #prediction, #plot-container, #bs-controls { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
+        #data-controls label, #bs-controls label { display: block; margin-bottom: 5px; font-weight: bold; } /* Added font-weight for labels */
+        #csv-select, #bs-controls input[type='number'] { width: calc(100% - 20px); padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; } /* Improved input styling */
+        button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; } /* Styled button */
+        button:hover { background-color: #0056b3; }
+        #calculations pre, #prediction pre { background-color: #f8f8f8; padding: 15px; border: 1px solid #eee; overflow-x: auto; white-space: pre-wrap; /* Improved pre styling */ }
+        .calculation-section { margin-bottom: 15px; } /* Spacing for calculation sections */
+        .calculation-section h3 { margin-top: 0; color: #333; } /* Section heading style */
+        .warning { color: darkred; font-weight: bold; } /* Warning class */
+    </style>
+</head>
+<body>
+
+    <h1>Enhanced Financial Data Analysis & (Still Rudimentary) Prediction Demo</h1>
+    <p>This demo provides a basic client-side analysis of financial CSV data. It calculates common technical indicators, demonstrates a simplified Black-Scholes option pricing model, and includes a conceptual overview of Bayesian methods in finance.  <b>Crucially, the "prediction" section remains highly simplified and should NOT be used for actual trading decisions.</b></p>
+
+    <div id="data-controls">
+        <h2>Step 1: Data Selection</h2>
+        <label for="csv-select">Choose a CSV File from the Directory:</label>
+        <select id="csv-select">
+            <option value="">-- Select a CSV File --</option>
+            <option value="TSLA_1m_5d.csv">TSLA_1m_5d.csv (Example 1-Minute Data)</option>
+            <option value="TSLA_1d_1y.csv">TSLA_1d_1y.csv (Example 1-Day Data)</option>
+            </select>
+        <button id="load-data-btn">Load & Analyze Data</button>
+        <p><b>Note:</b> CSV files must be in the same directory as this HTML file and should contain columns like 'Date', 'Open', 'High', 'Low', 'Close', 'Volume'.</p>
+    </div>
+
+    <div id="calculations">
+        <h2>Step 2: Financial Indicator Calculations</h2>
+        <p>Below are calculated financial indicators based on the loaded CSV data. These are common tools used in technical analysis.  The periods for indicators are set to default values in this demo but are typically adjusted based on analysis needs.</p>
+
+        <div class="calculation-section">
+            <h3>Standard Deviation</h3>
+            <pre id="stdev-output"></pre>
+        </div>
+
+        <div class="calculation-section">
+            <h3>Stochastic Oscillator</h3>
+            <pre id="stochastics-output"></pre>
+            <p>The Stochastic Oscillator is a momentum indicator comparing a particular closing price of a security to a range of its prices over a certain period of time.  It is used to generate overbought and oversold trading signals.</p>
+        </div>
+
+        <div class="calculation-section">
+            <h3>Average True Range (ATR)</h3>
+            <pre id="atr-output"></pre>
+            <p>The Average True Range (ATR) is a technical analysis indicator that measures market volatility by decomposing the entire range of an asset's price for that period.</p>
+        </div>
+
+        <div class="calculation-section">
+            <h3>Bollinger Bands</h3>
+            <pre id="bbands-output"></pre>
+            <p>Bollinger Bands are volatility bands placed above and below a moving average. Volatility is based on the standard deviation, which changes as volatility increases and decreases.</p>
+        </div>
+
+        <div class="calculation-section">
+            <h3>Cosh Function (Example)</h3>
+            <pre id="cosh-output"></pre>
+            <p>Hyperbolic Cosine (Cosh) is included as a mathematical example. While not directly a financial indicator itself, hyperbolic functions can appear in various financial models.</p>
+        </div>
+
+        <div id="bs-controls">
+            <h3>Simplified Black-Scholes Option Pricing</h3>
+            <p>Adjust the parameters below to calculate a simplified European call option price using Black-Scholes:</p>
+            <label for="spot-price">Spot Price (Current Price):</label>
+            <input type="number" id="spot-price" value="150">
+            <label for="strike-price">Strike Price:</label>
+            <input type="number" id="strike-price" value="160">
+            <label for="risk-free-rate">Risk-Free Rate (as decimal, e.g., 0.05 for 5%):</label>
+            <input type="number" id="risk-free-rate" value="0.05">
+            <label for="time-to-expiry">Time to Expiry (in years, e.g., 0.5 for 6 months):</label>
+            <input type="number" id="time-to-expiry" value="0.5">
+            <label for="volatility">Volatility (as decimal, e.g., 0.2 for 20%):</label>
+            <input type="number" id="volatility" value="0.2">
+            <button id="calculate-bs-btn">Calculate Black-Scholes Price</button>
+            <pre id="bs-output"></pre>
+            <p class="warning"><b>Warning:</b> This is a highly simplified Black-Scholes model for demonstration only. Real option pricing is more complex and requires careful consideration of model assumptions and market conditions.</p>
+        </div>
+
+
+        <div class="calculation-section">
+            <h3>Bayesian Methods in Finance (Conceptual)</h3>
+            <pre id="bayesian-output"></pre>
+            <p>While not directly calculated here due to complexity and data requirements, Bayesian methods are increasingly used in finance. They allow for incorporating prior beliefs and updating probabilities as new data becomes available.  Examples include Bayesian networks for risk assessment and Bayesian regression for forecasting. A true Bayesian analysis would require defining prior distributions, likelihood functions, and computational methods beyond the scope of this client-side demo.</p>
+        </div>
+
+
+        <pre id="calculations-output" style="display:none;"><i>(Raw Calculation Output - hidden)</i></pre> </div>
+
+    <div id="prediction">
+        <h2>Step 3: (Extremely Rudimentary) 1-Hour "Prediction"</h2>
+        <pre id="prediction-output"></pre>
+        <p class="warning"><b>CRITICAL WARNING:</b> The "prediction" displayed here is based on an oversimplified trend analysis (comparing the very last data point to the one preceding it).  It is <b>purely for illustrative purposes</b> and has <b>no predictive power in real financial markets.</b>  Financial markets are influenced by countless factors, and such simplistic methods are not reliable.  <b>Do not make any investment decisions based on this demo.</b> Real financial forecasting requires sophisticated models, extensive data, and expert judgment.  This section is designed to highlight the <b>dangers of naive prediction</b> in finance, not to offer actual predictive capability.</p>
+    </div>
+
+    <div id="plot-container">
+        <h2>Step 4: Interactive Price Chart with Indicators</h2>
+        <p>The chart below visualizes the 'Close Price' data from the selected CSV file, along with calculated Stochastic Oscillator, Average True Range (ATR), and Bollinger Bands. You can interact with the chart (zoom, pan, hover for data points) using Plotly.js controls.</p>
+        <div id="price-chart"></div>
+    </div>
+
+    <script>
+        document.getElementById('load-data-btn').addEventListener('click', loadAndAnalyzeData);
+        document.getElementById('calculate-bs-btn').addEventListener('click', displayBlackScholes);
+
+
+        async function loadAndAnalyzeData() {
+            const csvFile = document.getElementById('csv-select').value;
+            if (!csvFile) {
+                alert("Please select a CSV file.");
+                return;
+            }
+
+            document.getElementById('calculations-output').textContent = "Loading and processing data...";
+            document.getElementById('prediction-output').textContent = "Analyzing data for prediction...";
+            document.getElementById('price-chart').innerHTML = "Loading chart..."; // Clear previous chart
+
+            try {
+                const csvData = await loadCSV(csvFile);
+                if (!csvData || csvData.length === 0) {
+                    document.getElementById('calculations-output').textContent = "Error loading or parsing CSV data.";
+                    document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
+                    document.getElementById('price-chart').innerHTML = "Error loading data for chart.";
+                    return;
+                }
+
+                const parsedData = parseCSVData(csvData);
+                if (!parsedData || parsedData.length === 0) {
+                    document.getElementById('calculations-output').textContent = "Error processing CSV data.";
+                    document.getElementById('prediction-output').textContent = "Prediction unavailable due to data error.";
+                    document.getElementById('price-chart').innerHTML = "Error processing data for chart.";
+                    return;
+                }
+
+                displayIndicatorCalculations(parsedData); // Separate function for indicators
+                displayPrediction(parsedData);
+                plotData(parsedData);
+                document.getElementById('calculations-output').style.display = 'none'; // Hide raw output after processing
+
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('calculations-output').textContent = "An error occurred: " + error.message;
+                document.getElementById('prediction-output').textContent = "Prediction unavailable due to error.";
+                document.getElementById('price-chart').innerHTML = "Error generating chart.";
+            }
+        }
+
+        async function loadCSV(filename) {
+            try {
+                const response = await fetch(filename);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.text();
+            } catch (error) {
+                console.error("Error fetching CSV:", error);
+                return null;
+            }
+        }
+
+        function parseCSVData(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length <= 1) return null;
+
+            const header = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const currentLine = lines[i].split(',');
+                if (currentLine.length !== header.length) continue;
+
+                const entry = {};
+                for (let j = 0; j < header.length; j++) {
+                    let value = currentLine[j].trim();
+                    if (!isNaN(value)) {
+                        value = parseFloat(value);
+                    }
+                    entry[header[j].trim()] = value;
+                }
+                data.push(entry);
+            }
+            return data;
+        }
+
+        function displayIndicatorCalculations(parsedData) {
+            if (!parsedData || parsedData.length === 0) {
+                document.getElementById('calculations-output').textContent = "No data to calculate indicators.";
+                return;
+            }
+
+            const closePrices = parsedData.map(item => item['Close']); // Assuming 'Close' column
+             if (closePrices.includes(undefined)) {
+                document.getElementById('calculations-output').textContent = "Error: 'Close' prices not found in data.";
+                return;
+            }
+
+
+            const stdevVal = standardDeviation(closePrices);
+            document.getElementById('stdev-output').textContent = `Standard Deviation of Close Prices: ${isNaN(stdevVal) ? 'N/A (Not enough data)' : stdevVal.toFixed(4)}`;
+
+            const stochasticsData = calculateStochastics(parsedData, 14);
+            document.getElementById('stochastics-output').textContent = `Stochastic Oscillator (%K): ${stochasticsData.K.length > 0 ? stochasticsData.K[stochasticsData.K.length-1].toFixed(4) : 'N/A'} \nStochastic Oscillator (%D): ${stochasticsData.D.length > 0 ? stochasticsData.D[stochasticsData.D.length-1].toFixed(4) : 'N/A'}`;
+
+            const atrData = calculateATR(parsedData, 14);
+            document.getElementById('atr-output').textContent = `Average True Range (ATR): ${atrData.atrValues.length > 0 ? atrData.atrValues[atrData.atrValues.length-1].toFixed(4) : 'N/A'}`;
+
+            const bbandsData = calculateBollingerBands(closePrices, 20, 2);
+            document.getElementById('bbands-output').textContent = `Bollinger Bands (Middle Band): ${bbandsData.middleBand.length > 0 ? bbandsData.middleBand[bbandsData.middleBand.length-1].toFixed(4) : 'N/A'} \nBollinger Bands (Upper Band): ${bbandsData.upperBand.length > 0 ? bbandsData.upperBand[bbandsData.upperBand.length-1].toFixed(4) : 'N/A'} \nBollinger Bands (Lower Band): ${bbandsData.lowerBand.length > 0 ? bbandsData.lowerBand[bbandsData.lowerBand.length-1].toFixed(4) : 'N/A'}`;
+
+            const coshExampleVal = Math.cosh(1.5);
+            document.getElementById('cosh-output').textContent = `cosh(1.5) Example: ${coshExampleVal.toFixed(4)}`;
+
+            // Conceptual Bayesian Explanation (No Calculation)
+            document.getElementById('bayesian-output').textContent = `Bayesian methods are used in finance to update beliefs based on new evidence. For example, in risk management, Bayesian models can refine risk assessments as market data changes.  They require defining prior probabilities (initial beliefs), likelihood functions (how data updates beliefs), and can be computationally intensive.`;
+
+
+        }
+
+
+        function displayBlackScholes() {
+            const spotPrice = parseFloat(document.getElementById('spot-price').value);
+            const strikePrice = parseFloat(document.getElementById('strike-price').value);
+            const riskFreeRate = parseFloat(document.getElementById('risk-free-rate').value);
+            const timeToExpiry = parseFloat(document.getElementById('time-to-expiry').value);
+            const volatility = parseFloat(document.getElementById('volatility').value);
+
+            if (isNaN(spotPrice) || isNaN(strikePrice) || isNaN(riskFreeRate) || isNaN(timeToExpiry) || isNaN(volatility)) {
+                document.getElementById('bs-output').textContent = "Please enter valid numeric values for Black-Scholes parameters.";
+                return;
+            }
+
+            const bsPrice = blackScholesSimplified(spotPrice, strikePrice, riskFreeRate, timeToExpiry, volatility);
+            document.getElementById('bs-output').textContent = `Simplified Black-Scholes Call Option Price: ${bsPrice.toFixed(4)}`;
+        }
+
+
+        function displayPrediction(data) {
+             if (!data || data.length === 0) {
+                document.getElementById('prediction-output').textContent = "No data for prediction.";
+                return;
+            }
+
+            const closePrices = data.map(item => item['Close']);
+            if (closePrices.length < 2) {
+                document.getElementById('prediction-output').textContent = "Not enough data for even a basic prediction.";
+                return;
+            }
+
+            const lastPrice = closePrices[closePrices.length - 1];
+            const previousPrice = closePrices[closePrices.length - 2];
+            let predictionText = "";
+
+            if (lastPrice > previousPrice) {
+                predictionText = "Based on the very recent trend (last data point vs. previous), there's a hint of upward momentum. A naive extrapolation might suggest a slight increase in the immediate short-term (e.g., next hour if data is 1-minute intervals or next day if data is daily).\n";
+            } else if (lastPrice < previousPrice) {
+                predictionText = "The recent trend shows a slight downward movement. A simple extrapolation could imply a slight decrease in the immediate short-term.\n";
+            } else {
+                predictionText = "Recent price action is flat with no directional trend evident from this simplistic viewpoint.\n";
+            }
+
+            predictionText += "\n**WARNING:  EXTREME CAUTION ADVISED.** This is an **oversimplified and unreliable approach to 'prediction'.** Real market movements are driven by a vast array of factors far beyond just the immediately preceding price action.  This is not a trading signal.  Do not use this for investment decisions.  This demo aims to illustrate the concept of trend-based extrapolation in an extremely basic way, but it is not a viable method for actual financial forecasting.";
+
+            document.getElementById('prediction-output').textContent = predictionText;
+        }
+
+
+        function plotData(data) {
+            if (!data || data.length === 0) return;
+
+            const dates = data.map(item => item['Date'] || item['Datetime'] || item['timestamp'] || String(data.indexOf(item)));
+            const closePrices = data.map(item => item['Close']);
+            const stochasticsData = calculateStochastics(data, 14);
+            const atrData = calculateATR(data, 14);
+            const bbandsData = calculateBollingerBands(closePrices, 20, 2);
+
+            const tracePrice = {
+                x: dates,
+                y: closePrices,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Close Price'
+            };
+
+            const traceStochasticsK = {
+                x: dates.slice(13), // Stochastics starts after 14 periods
+                y: stochasticsData.K,
+                type: 'scatter',
+                mode: 'lines',
+                name: '%K',
+                yaxis: 'y2'
+            };
+            const traceStochasticsD = {
+                x: dates.slice(13),
+                y: stochasticsData.D,
+                type: 'scatter',
+                mode: 'lines',
+                name: '%D',
+                yaxis: 'y2'
+            };
+
+            const traceATR = {
+                x: dates.slice(13), // ATR starts after 14 periods
+                y: atrData.atrValues,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'ATR',
+                yaxis: 'y3'
+            };
+
+            const traceBB_Upper = {
+                x: dates.slice(19), // BB starts after 20 periods
+                y: bbandsData.upperBand,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'BB Upper',
+                line: {dash: 'dash', color: 'rgba(200,200,200,0.7)'},
+                yaxis: 'y'
+            };
+            const traceBB_Middle = {
+                x: dates.slice(19),
+                y: bbandsData.middleBand,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'BB Middle',
+                line: {dash: 'dash', color: 'rgba(150,150,150,0.7)'},
+                yaxis: 'y'
+            };
+            const traceBB_Lower = {
+                x: dates.slice(19),
+                y: bbandsData.lowerBand,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'BB Lower',
+                line: {dash: 'dash', color: 'rgba(200,200,200,0.7)'},
+                yaxis: 'y'
+            };
+
+
+            const layout = {
+                title: 'Price Chart with Indicators',
+                yaxis: {title: 'Price'},
+                yaxis2: {title: 'Stochastics', overlaying: 'y', side: 'right'},
+                yaxis3: {title: 'ATR', overlaying: 'y', side: 'left', position: 0.15},
+                yaxis2: {title: 'Stochastics', overlaying: 'y', side: 'right', position: 0.85},
+                xaxis: {
+                    rangeslider: {visible: false},
+                    type: 'date'
+                },
+                legend: {orientation: 'h', yanchor: 'bottom', y: 1.02, xanchor: 'right', x: 1}
+            };
+
+
+            Plotly.newPlot('price-chart', [tracePrice, traceStochasticsK, traceStochasticsD, traceATR, traceBB_Upper, traceBB_Middle, traceBB_Lower], layout);
+        }
+
+
+        // ---- Calculation Functions ----
+        function standardDeviation(arr) {
+            if (!arr || arr.length < 2) return NaN;
+            const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const sqDiffArray = arr.map(val => (val - mean) ** 2);
+            const avgSqDiff = sqDiffArray.reduce((a, b) => a + b, 0) / (arr.length - 1);
+            return Math.sqrt(avgSqDiff);
+        }
+
+        function calculateStochastics(data, period) {
+            const K_values = [];
+            const D_values = [];
+
+            for (let i = period - 1; i < data.length; i++) {
+                const periodData = data.slice(i - period + 1, i + 1);
+                let lowestLow = Infinity;
+                let highestHigh = -Infinity;
+
+                for (const item of periodData) {
+                    lowestLow = Math.min(lowestLow, item['Low']);
+                    highestHigh = Math.max(highestHigh, item['High']);
+                }
+
+                const currentClose = data[i]['Close'];
+                const K = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+                K_values.push(K);
+            }
+             // Calculate %D as 3-period moving average of %K
+            for (let i = 2; i < K_values.length; i++) {
+                const dPeriod = K_values.slice(i-2, i+1); // 3 periods for D
+                const dAvg = dPeriod.reduce((a,b) => a + b, 0) / 3;
+                D_values.push(dAvg);
+            }
+
+
+            return { K: K_values, D: D_values };
+        }
+
+
+        function calculateATR(data, period) {
+            const atrValues = [];
+            let previousClose = 0; // Initialize for the first TR calculation
+
+            for (let i = 0; i < data.length; i++) {
+                const currentHigh = data[i]['High'];
+                const currentLow = data[i]['Low'];
+                const currentClose = data[i]['Close'];
+
+                let trueRange = 0;
+                if (i > 0) {
+                    trueRange = Math.max(
+                        currentHigh - currentLow,
+                        Math.abs(currentHigh - previousClose),
+                        Math.abs(currentLow - previousClose)
+                    );
+                } else {
+                    trueRange = currentHigh - currentLow; // For the first period, TR is just H-L
+                }
+
+
+                if (i < period) {
+                    atrValues.push(trueRange); // Accumulate TR for the initial period
+                } else {
+                    // Calculate ATR as moving average of TR over the period
+                    let sumTR = 0;
+                    for (let j = i - period + 1; j <= i; j++) {
+                        const pastHigh = data[j]['High'];
+                        const pastLow = data[j]['Low'];
+                        const pastClose = data[j]['Close'];
+                        let pastTR = 0;
+                        if (j > 0) {
+                             pastTR = Math.max(
+                                pastHigh - pastLow,
+                                Math.abs(pastHigh - data[j-1]['Close']), // Use data[j-1]['Close'] for previous close
+                                Math.abs(pastLow - data[j-1]['Close'])    // Corrected to use data[j-1]['Close']
+                            );
+                        } else {
+                            pastTR = pastHigh - pastLow;
+                        }
+                        sumTR += pastTR;
+                    }
+
+
+                    atrValues.push(sumTR / period); // Moving average ATR
+                }
+                previousClose = currentClose; // Update previous close for the next iteration
+            }
+
+            return { atrValues: atrValues.slice(period-1) }; // Return ATR values starting from where it's valid
+        }
+
+
+        function calculateBollingerBands(closePrices, period, numStdev) {
+            const middleBand = [];
+            const upperBand = [];
+            const lowerBand = [];
+
+            for (let i = period - 1; i < closePrices.length; i++) {
+                const periodPrices = closePrices.slice(i - period + 1, i + 1);
+                const sma = periodPrices.reduce((a, b) => a + b, 0) / period;
+                const stdDev = standardDeviation(periodPrices);
+
+                middleBand.push(sma);
+                upperBand.push(sma + stdDev * numStdev);
+                lowerBand.push(sma - stdDev * numStdev);
+            }
+
+            return { middleBand: middleBand, upperBand: upperBand, lowerBand: lowerBand };
+        }
+
+
+        function blackScholesSimplified(spotPrice, strikePrice, riskFreeRate, timeToExpiryYears, volatility) {
+            const d1 = (Math.log(spotPrice / strikePrice) + (riskFreeRate + 0.5 * volatility ** 2) * timeToExpiryYears) / (volatility * Math.sqrt(timeToExpiryYears));
+            const d2 = d1 - volatility * Math.sqrt(timeToExpiryYears);
+            const callPrice = spotPrice * cdfNormal(d1) - strikePrice * Math.exp(-riskFreeRate * timeToExpiryYears) * cdfNormal(d2);
+            return callPrice;
+        }
+
+        function cdfNormal(x) {
+            // Approximation of Cumulative Distribution Function for Standard Normal Distribution
+            const a1 =  0.254829592;
+            const a2 = -0.284496736;
+            const a3 =  1.421413741;
+            const a4 = -1.453152027;
+            const a5 =  1.061405429;
+            const p  =  0.3275911;
+            const sign = x < 0 ? -1 : 1;
+            x = Math.abs(x) / Math.sqrt(2.0);
+            const t = 1.0 / (1.0 + p * x);
+            const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+            return 0.5 * (1.0 + sign * y);
+        }
+
+
+    </script>
+
+</body>
+</html>
