@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
+    <h1>Enhanced Financial Analysis & Prediction Demo</h1>
     <div id="file-storage">
         <h2>File Storage Management</h2>
         <div id="file-storage-status"></div>
@@ -16,9 +17,83 @@
         <button id="clear-all-files-btn">Clear All Uploaded Files</button>
         <p>Manage uploaded files stored in local storage.</p>
     </div>
+    <div id="data-controls">
+        <h2>Data Controls</h2>
+        <label for="csv-select">Select CSV File:</label>
+        <select id="csv-select" onchange="loadAndAnalyzeData()"></select>
+        <div id="status"></div>
+    </div>
+        <!-- Add Input for cosh parameters -->
+    <div id="cosh-inputs">
+        <h2>cosh Chart Parameters</h2>
+        <div class="input-group">
+            <label for="low1x">low1 X:</label>
+            <input type="number" id="low1x" value="0">
+            <label for="low1y">low1 Y:</label>
+            <input type="number" id="low1y" value="1">
+        </div>
+        <div class="input-group">
+            <label for="high1x">high1 X:</label>
+            <input type="number" id="high1x" value="1">
+            <label for="high1y">high1 Y:</label>
+            <input type="number" id="high1y" value="3">
+        </div>
+        <div class="input-group">
+            <label for="low2x">low2 X:</label>
+            <input type="number" id="low2x" value="2">
+            <label for="low2y">low2 Y:</label>
+            <input type="number" id="low2y" value="1">
+        </div>
+        <button id="plot-cosh-btn">Plot cosh</button>
+    </div>
+    <div id="plot-container"></div> <!-- Plotly chart will be rendered here -->
+
+    <!-- Calculations output -->
+    <div id="calculations">
+        <h2>Calculations</h2>
+        <div id="calculations-output"></div>
+    </div>
+
+    <!-- Prediction output -->
+    <div id="prediction">
+        <h2>Prediction</h2>
+        <div id="prediction-output"></div>
+    </div>
+
+        <!-- Gemini output -->
+        <div id="gemini-insights">
+        <h2>Gemini Insights</h2>
+        <button id="gemini-btn" onclick="getGeminiAnalysis()">Get Gemini Insights</button>
+        <div id="gemini-output"></div>
+    </div>
+    <div id="ticker-storage">
+        <h2>Ticker List Management</h2>
+        <label for="ticker-list-textarea">Ticker List:</label>
+        <textarea id="ticker-list-textarea"></textarea>
+        <button id="save-ticker-list-btn">Save Ticker List</button>
+        <div id="ticker-storage-output"></div>
+    </div>
+    <div id="file-storage">
+      <h2>File Storage Management</h2>
+      <div id="file-storage-status"></div>
+      <div id="uploaded-files-list"></div>
+      <button id="clear-all-files-btn">Clear All Uploaded Files</button>
+      <p>Manage uploaded files stored in local storage.</p>
+  </div>
+  <script>
+    document.getElementById('clear-all-files-btn').addEventListener('click', clearAllUploadedFiles);
+  </script>
     <script src="script.js"></script>
     <script>
-      document.getElementById('clear-all-files-btn').addEventListener('click', clearAllUploadedFiles);
+        document.getElementById('clear-all-files-btn').addEventListener('click', clearAllUploadedFiles);
+        document.getElementById('save-ticker-list-btn').addEventListener('click', saveTickerList);
+        document.getElementById('plot-cosh-btn').addEventListener('click', () => {
+          const low1 = { x: parseFloat(document.getElementById('low1x').value), y: parseFloat(document.getElementById('low1y').value) };
+          const high1 = { x: parseFloat(document.getElementById('high1x').value), y: parseFloat(document.getElementById('high1y').value) };
+          const low2 = { x: parseFloat(document.getElementById('low2x').value), y: parseFloat(document.getElementById('low2y').value) };
+          plotCoshFromThreePoints(low1, high1, low2);
+        });
+        initializePage()
     </script>
 </body>
 </html>
