@@ -99,33 +99,43 @@
             const container = document.getElementById('curve-configs-container');
             container.innerHTML = '';
 
+
             for (let i = 0; i < numCurves; i++) {
                 const curveSection = document.createElement('div');
                 curveSection.classList.add('curve-config-section');
-                curveSection.id = 'curve-config-${i}';
+                curveSection.id = `curve-config-${i}`;
 
                 const curveHeader = document.createElement('h3');
-                curveHeader.textContent = 'Curve ${i + 1} Configuration';
+                curveHeader.textContent = `Curve ${i + 1} Configuration`;
                 curveSection.appendChild(curveHeader);
 
+                const tickerLabel = document.createElement('label');
+                tickerLabel.setAttribute('for', `curve-${i}-ticker`);
+                tickerLabel.textContent = `Curve ${i + 1} Name (Ticker):`;
+                curveSection.appendChild(tickerLabel);
+                const tickerInput = document.createElement('input');
+                tickerInput.type = 'text';
+                tickerInput.id = `curve-${i}-ticker`;
+                tickerInput.placeholder = `Curve ${i + 1} Name`;
+                curveSection.appendChild(tickerInput);
 
                 for (let j = 0; j < 3; j++) {
                     const pointDiv = document.createElement('div');
                     pointDiv.classList.add('point-input');
                     const pointLabel = document.createElement('label');
-                    pointLabel.textContent = 'Point ${j + 1}:';
+                    pointLabel.textContent = `Point ${j + 1}:`;
                     pointDiv.appendChild(pointLabel);
                     const dateInput = document.createElement('input');
                     dateInput.type = 'date';
-                    dateInput.id = 'curve-${i}-x${j + 1}';
-                    dateInput.placeholder = 'Date ${j + 1}';
-                    dateInput.value = getDefaultDate(j);
+                    dateInput.id = `curve-${i}-x${j + 1}`;
+                    dateInput.placeholder = `Date ${j + 1}`;
+                    dateInput.value = getDefaultDate(j); // Default dates
                     pointDiv.appendChild(dateInput);
                     const yInput = document.createElement('input');
                     yInput.type = 'number';
-                    yInput.id = 'curve-${i}-y${j + 1}';
-                    yInput.placeholder = 'Y${j + 1}';
-                    yInput.value = getDefaultY(j);
+                    yInput.id = `curve-${i}-y${j + 1}`;
+                    yInput.placeholder = `Y${j + 1}`;
+                    yInput.value = getDefaultY(j); // Default Y values
                     pointDiv.appendChild(yInput);
                     curveSection.appendChild(pointDiv);
                 }
