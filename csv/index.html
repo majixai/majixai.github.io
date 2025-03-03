@@ -36,7 +36,7 @@
         <label for="interval">Interval:</label>
         <select id="interval">
             <option value="1m">1 Minute</option>
-            <option value="5m">5 Minutes</option>
+            <option value="5m">5 Minute</option>
             <option value="1h">1 Hour</option>
             <option value="1d" selected>1 Day</option>
         </select>
@@ -67,20 +67,18 @@
 
     <script>
         document.getElementById('plot-button').addEventListener('click', function() {
-            alert("Button clicked!"); // <--- Changed to alert
+            alert("Button clicked!");
             fetchDataAndPlot();
         });
     
         const intervalPeriodMap = {
-            '1m': '5d',
-            '5m': '5d',
-            '1h': '5d',
+            '1m': '1d',
+            '5m': '1d',
+            '1h': '10d',
             '1d': '1y'
         };
     
         async function fetchDataAndPlot() {
-            alert("fetchDataAndPlot started"); // <--- Changed to alert
-    
             const ticker1 = document.getElementById('ticker1').value.toUpperCase();
             const ticker2 = document.getElementById('ticker2').value.toUpperCase();
             const interval = document.getElementById('interval').value;
@@ -88,151 +86,115 @@
     
             document.getElementById('error-output').textContent = '';
     
-            const csvURL1 = `placeholder_data/${ticker1}_${interval}_${period}.csv`;
-            const csvURL2 = ticker2 ? `placeholder_data/${ticker2}_${interval}_${period}.csv` : null;
+            const csvURL1 = `https://www.majixai.github.io/csv/${ticker1}_${interval}_${period}.csv`;
+            const csvURL2 = ticker2 ? `https://www.majixai.github.io/csv/${ticker2}_${interval}_${period}.csv` : null;
     
             try {
-                alert("Before fetchCSVData(csvURL1)"); // <--- Changed to alert
                 const data1 = await fetchCSVData(csvURL1);
-                alert("After fetchCSVData(csvURL1), data1: " + JSON.stringify(data1)); // <--- Changed to alert, need to stringify data
                 let data2 = null;
                 if (csvURL2) {
-                    alert("Before fetchCSVData(csvURL2)"); // <--- Changed to alert
                     data2 = await fetchCSVData(csvURL2);
-                    alert("After fetchCSVData(csvURL2), data2: " + JSON.stringify(data2)); // <--- Changed to alert, need to stringify data
                 }
-                alert("Before plotCandlestickChart"); // <--- Changed to alert
                 plotCandlestickChart(data1, ticker1);
-                alert("After plotCandlestickChart"); // <--- Changed to alert
-                alert("Before calculateAndDisplayIndicators"); // <--- Changed to alert
                 calculateAndDisplayIndicators(data1, data2, ticker1, ticker2);
-                alert("After calculateAndDisplayIndicators"); // <--- Changed to alert
-    
             } catch (error) {
-                console.error("Error in fetchDataAndPlot:", error); // Keep console.error for actual errors
+                console.error("Error in fetchDataAndPlot:", error);
                 document.getElementById('error-output').textContent = `Error: Could not fetch data for ${ticker1}. Check console for details.`;
             }
-             alert("fetchDataAndPlot finished (or error caught) {error: " + error + "}"); // <--- Changed to alert
         }
     
         async function fetchCSVData(url) {
-            alert("fetchCSVData started, URL: " + url); // <--- Changed to alert
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}, URL: ${url}`);
             }
             const csvText = await response.text();
-            alert("fetchCSVData finished, CSV text length: " + csvText.length); // <--- Changed to alert
             return parseCSV(csvText);
         }
     
         function parseCSV(csvText) {
-            alert("parseCSV started, CSV text length: " + csvText.length); // <--- Changed to alert
             const lines = csvText.trim().split('\n');
             const headers = lines[0].split(',');
-            const data = { dates: [], open: [], high: [], low: [], close: [], volume: [] };
+            const data = [];
     
             for (let i = 1; i < lines.length; i++) {
                 const values = lines[i].split(',');
-                if (values.length === headers.length) { // Basic validation
-                    try {
-                        data.dates.push(new Date(values[0])); // Assuming Date is first column
-                        data.open.push(parseFloat(values[1])); // Open price
-                        data.high.push(parseFloat(values[2])); // High price
-                        data.low.push(parseFloat(values[3]));  // Low price
-                        data.close.push(parseFloat(values[4])); // Close price
-                        data.volume.push(parseFloat(values[5]));// Volume
-                    } catch (e) {
-                        console.warn("Skipping row due to parsing error:", values, e); // Keep console.warn for warnings
+                if (values.length === headers.length) {
+                    const row = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        if (headers[j] === 'Date') {
+                            row[headers[j]] = new Date(values[j]);
+                        } else {
+                            row[headers[j]] = parseFloat(values[j]);
+                        }
                     }
+                    data.push(row);
                 } else {
-                    console.warn("Skipping row due to incorrect number of columns:", values); // Keep console.warn for warnings
+                    console.warn("Skipping row due to incorrect number of columns:", values);
                 }
             }
-            alert("parseCSV finished, data: " + JSON.stringify(data)); // <--- Changed to alert, need to stringify data
             return data;
         }
     
         function plotCandlestickChart(data, ticker) {
-            alert("plotCandlestickChart started, ticker: " + ticker + ", data: " + JSON.stringify(data)); // <--- Changed to alert, need to stringify data
             const trace = {
-                x: data.dates,
+                x: data.map(row => row.Date),
+                open: data.map(row => row.Open),
+                high: data.map(row => row.High),
+                low: data.map(row => row.Low),
+                close: data.map(row => row.Close),
                 type: 'candlestick',
-                open: data.open,
-                high: data.high,
-                low: data.low,
-                close: data.close,
                 name: ticker,
-                yaxis: 'y',
+                increasing: { line: { color: 'green' } },
+                decreasing: { line: { color: 'red' } }
             };
     
             const layout = {
-                title: `Candlestick Chart for ${ticker}`,
-                xaxis: { title: 'Date' },
+                title: `${ticker} Candlestick Chart`,
+                xaxis: {
+                    title: 'Date',
+                    type: 'date'
+                },
                 yaxis: { title: 'Price' }
             };
     
             Plotly.newPlot('plot-area', [trace], layout);
-            alert("plotCandlestickChart finished"); // <--- Changed to alert
         }
     
         function calculateAndDisplayIndicators(data1, data2, ticker1, ticker2) {
-            alert("calculateAndDisplayIndicators started, tickers: " + ticker1 + ", " + ticker2 + ", data1: " + JSON.stringify(data1) + ", data2: " + JSON.stringify(data2)); // <--- Changed to alert, need to stringify data
-            const covariance = calculateCovariance(data1.open, data1.close);
-            document.getElementById('covariance-output').textContent = covariance.toFixed(4) || 'N/A';
-            alert("Covariance calculated: " + covariance); // <--- Changed to alert
-    
-            const stdev = calculateStandardDeviation(data1.close);
-            document.getElementById('stdev-output').textContent = stdev.toFixed(4) || 'N/A';
-            alert("Standard Deviation calculated: " + stdev); // <--- Changed to alert
-    
-    
-            alert("calculateAndDisplayIndicators finished"); // <--- Changed to alert
-            // Black-Scholes placeholder remains as is in HTML <pre id="black-scholes-output">
-    
+            if (data1 && data1.length > 0 && data1[0].Open && data1[0].Close) {
+                const covariance = calculateCovariance(data1.map(row => row.Open), data1.map(row => row.Close));
+                document.getElementById('covariance-output').textContent = isNaN(covariance) ? 'N/A' : covariance.toFixed(4);
+            } else {
+                document.getElementById('covariance-output').textContent = 'N/A';
+            }
+            if (data1 && data1.length > 0 && data1[0].Close) {
+                const stdev = calculateStandardDeviation(data1.map(row => row.Close));
+                document.getElementById('stdev-output').textContent = isNaN(stdev) ? 'N/A' : stdev.toFixed(4);
+            } else {
+                document.getElementById('stdev-output').textContent = 'N/A';
+            }
         }
     
         function calculateCovariance(arr1, arr2) {
-            alert("calculateCovariance started, arr1 length: " + arr1.length + ", arr2 length: " + arr2.length); // <--- Changed to alert
             if (!arr1 || !arr2 || arr1.length !== arr2.length || arr1.length < 2) return NaN;
-    
             const n = arr1.length;
             const mean1 = arr1.reduce((a, b) => a + b, 0) / n;
             const mean2 = arr2.reduce((a, b) => a + b, 0) / n;
-    
             let covarianceSum = 0;
             for (let i = 0; i < n; i++) {
                 covarianceSum += (arr1[i] - mean1) * (arr2[i] - mean2);
             }
-            const result = covarianceSum / (n - 1); // Sample covariance
-            alert("calculateCovariance finished, result: " + result); // <--- Changed to alert
-            return result;
+            return covarianceSum / (n - 1);
         }
     
         function calculateStandardDeviation(arr) {
-            alert("calculateStandardDeviation started, arr length: " + arr.length); // <--- Changed to alert
             if (!arr || arr.length < 2) return NaN;
             const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
             const sqDiffArray = arr.map(val => (val - mean) ** 2);
             const avgSqDiff = sqDiffArray.reduce((a, b) => a + b, 0) / (arr.length - 1);
-            const result = Math.sqrt(avgSqDiff);
-            alert("calculateStandardDeviation finished, result: " + result); // <--- Changed to alert
-            return result;
+            return Math.sqrt(avgSqDiff);
         }
-    
-    
-        function testPlotly() { // Example test function
-            Plotly.newPlot('plot-area', [{
-                y: [10, 15, 13, 17]
-            }], {
-                title: 'A Simple Plotly Test'
-            });
-            alert("testPlotly function executed, simple plot should be visible."); // <--- Changed to alert
-        }
-    
-        //testPlotly(); // You can uncomment this to run the test on page load if needed
-    
     </script>
-    
 </body>
 </html>
