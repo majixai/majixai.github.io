@@ -5,24 +5,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
     const mainIframe2 = document.getElementById("mainIframe2");
-    const userSearchInput = document.getElementById('userSearchInput'); // Get search input element
 
     let previousUsers = loadPreviousUsers();
     let removedUsers = loadRemovedUsers();
     displayPreviousUsers();
 
     let allOnlineUsersData = [];
-    let currentOnlineUsersDisplayed = []; // To store currently displayed online users, for filtering
-    let currentPreviousUsersDisplayed = []; // To store currently displayed previous users, for filtering
-
-
     const API_ENDPOINT = 'https://chaturbate.com/api/public/affiliates/onlinerooms/';
     const AFFILIATE_PARAMS = '?wm=9cg6A&client_ip=request_ip&gender=f&limit=500';
     const FETCH_LIMIT = 500;
     const REFRESH_INTERVAL = 60000;
-    const PHASH_THRESHOLD = 10;
-
-    const imageHashCache = new Map();
 
     /**
      * Fetches online user data from the API, handling pagination.
@@ -48,8 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return fetchData(offset + FETCH_LIMIT);
                     } else {
                         onlineUsersDiv.innerHTML = "";
-                        currentOnlineUsersDisplayed = allOnlineUsersData; // Update displayed users
-                        displayOnlineUsers(currentOnlineUsersDisplayed);
+                        displayOnlineUsers(allOnlineUsersData);
 
                         if(typeof initializeAllUsers === 'function') {
                             window.initializeAllUsers();
@@ -69,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Displays online users in the onlineUsersDiv and performs image similarity detection.
+     * Displays online users in the onlineUsersDiv.
      * @param {Array<Object>} users - Array of user objects to display.
      */
     function displayOnlineUsers(users) {
@@ -79,8 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
             onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
             return;
         }
-
-        const displayedHashes = [];
 
         users.forEach(user => {
             if (user.current_show !== 'public') {
@@ -92,25 +81,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const userElement = createUserElement(user, 'online');
-
-            getImageHash(user.image_url).then(currentHash => {
-                if (currentHash) {
-                    let isSimilarImageFound = false;
-                    for (const displayedHash of displayedHashes) {
-                        if (isSimilarHash(currentHash, displayedHash, PHASH_THRESHOLD)) {
-                            isSimilarImageFound = true;
-                            break;
-                        }
-                    }
-
-                    if (isSimilarImageFound) {
-                        userElement.classList.add('similar-image');
-                        console.log(`Similar image detected for user: ${user.username} (URL: ${user.image_url})`);
-                    }
-                    displayedHashes.push(currentHash);
-                }
-            });
-
             onlineUsersDiv.appendChild(userElement);
         });
     }
@@ -138,7 +108,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (listType === 'online') {
                 userElement.remove();
                 allOnlineUsersData = allOnlineUsersData.filter(u => u.username !== user.username);
-                currentOnlineUsersDisplayed = currentOnlineUsersDisplayed.filter(u => u.username !== user.username); // Update displayed list too
                 addToPreviousUsers(user);
             }
         });
@@ -179,8 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const usernameToRemove = user.username;
 
         previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-        savePreviousUsers(previousUsers);
-        currentPreviousUsersDisplayed = currentPreviousUsersDisplayed.filter(u => u.username !== usernameToRemove); // Update displayed list
+        savePreviousUsers(previousUsers); // Use function to save
 
         removedUsers.push(user);
         saveRemovedUsers();
@@ -198,9 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            savePreviousUsers(previousUsers);
-            currentPreviousUsersDisplayed = previousUsers; // Update displayed list to reflect all previous users (or filtered later)
-            displayFilteredPreviousUsers(currentPreviousUsersDisplayed); // Re-display to include the new user (apply current filter if any)
+            savePreviousUsers(previousUsers); // Use function to save
 
             const userElement = createUserElement(user, 'previous');
             previousUsersDiv.prepend(userElement);
@@ -233,38 +199,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Filter to show only previous users who are currently online and public
             const onlinePreviousUsersInitial = storedUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
-            currentPreviousUsersDisplayed = onlinePreviousUsersInitial; // Initialize displayed previous users
 
-            if (!currentPreviousUsersDisplayed || currentPreviousUsersDisplayed.length === 0) {
+            if (!onlinePreviousUsersInitial || onlinePreviousUsersInitial.length === 0) {
                 previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>';
                 return;
             }
 
-            displayFilteredPreviousUsers(currentPreviousUsersDisplayed); // Use filtered display function
+            onlinePreviousUsersInitial.forEach(user => {
+                if (user.current_show !== 'public') return;
+                if (!user.image_url || !user.username) return;
+
+                const userElement = createUserElement(user, 'previous');
+                previousUsersDiv.appendChild(userElement);
+            });
+
         }).catch(error => {
             console.error("Error updating previous users online status:", error);
             previousUsersDiv.innerHTML = '<p class="text-danger w3-center">Error updating previous users list.</p>';
-        });
-    }
-
-    /**
-     * Displays filtered previous users. This function handles the actual DOM manipulation for displaying previous users.
-     * @param {Array<Object>} users - Array of user objects to display.
-     */
-    function displayFilteredPreviousUsers(users) {
-        previousUsersDiv.innerHTML = ""; // Clear before displaying filtered results
-
-        if (!users || users.length === 0) {
-            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users match your search.</p>'; // Updated message
-            return;
-        }
-
-        users.forEach(user => {
-            if (user.current_show !== 'public') return;
-            if (!user.image_url || !user.username) return;
-
-            const userElement = createUserElement(user, 'previous');
-            previousUsersDiv.appendChild(userElement);
         });
     }
 
@@ -336,10 +287,14 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (e) {
             if (e instanceof DOMException && (e.code === 22 || e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
                 console.warn("localStorage quota exceeded for list", storageKey, ". Creating a new list.");
+                // Increment list index and store it
                 currentListIndex = String(parseInt(currentListIndex, 10) + 1);
                 localStorage.setItem('currentPreviousUsersListIndex', currentListIndex);
-                storageKey = `previousUsers_${currentListIndex}`;
-                localStorage.setItem(storageKey, JSON.stringify(users));
+                storageKey = `previousUsers_${currentListIndex}`; // New storage key
+                // localStorage.setItem(storageKey, JSON.stringify(users)); // Try saving again to the new list - No need to retry here, the next save attempt will use the new key
+                // It's crucial NOT to recursively call savePreviousUsers here, as it can lead to infinite recursion in case quota is always exceeded.
+                // Just update the current list index and the next save attempt will use the new list.
+                localStorage.setItem(storageKey, JSON.stringify(users)); // Save to the new list - ensure save happens on new list after incrementing index.
             } else {
                 console.error("Error saving to localStorage:", e);
             }
@@ -363,104 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem("removedUsers", JSON.stringify(removedUsers));
     }
 
-    /**
-     * Calculates the pHash of an image from its URL.
-     * Uses a cache to avoid recalculating hashes for the same image URL.
-     * @param {string} imageUrl - URL of the image.
-     * @returns {Promise<string|null>} - Promise resolving to the pHash string or null on error.
-     */
-    function getImageHash(imageUrl) {
-        if (imageHashCache.has(imageUrl)) {
-            return Promise.resolve(imageHashCache.get(imageUrl));
-        }
-
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const hash = pHash(imageData);
-                imageHashCache.set(imageUrl, hash);
-                resolve(hash);
-            };
-            img.onerror = function() {
-                console.error("Error loading image for pHash calculation:", imageUrl);
-                imageHashCache.set(imageUrl, null);
-                resolve(null);
-            };
-            img.src = imageUrl;
-        });
-    }
-
-    /**
-     * Compares two pHashes and determines if they are similar based on a threshold.
-     * @param {string} hash1 - First pHash string.
-     * @param {string} hash2 - Second pHash string.
-     * @param {number} threshold - Hamming distance threshold.
-     * @returns {boolean} - True if hashes are similar (distance <= threshold), false otherwise.
-     */
-    function isSimilarHash(hash1, hash2, threshold) {
-        if (!hash1 || !hash2) return false;
-        const distance = pHash.hammingDistance(hash1, hash2);
-        return distance <= threshold;
-    }
-
-    /**
-     * Filters users based on search term across username, age, and tags.
-     * @param {string} searchTerm - The search term to filter by.
-     * @param {Array<Object>} onlineUsers - Array of online user objects.
-     * @param {Array<Object>} previousUsers - Array of previous user objects.
-     * @returns {Object} - Object containing filtered online and previous users.
-     */
-    function filterUsers(searchTerm, onlineUsers, previousUsers) {
-        const searchTermLower = searchTerm.toLowerCase();
-        const filteredOnlineUsers = onlineUsers.filter(user => {
-            return (
-                user.username.toLowerCase().includes(searchTermLower) ||
-                (user.age && String(user.age) === searchTerm) || // Age search, exact match as string
-                (user.tags && user.tags.some(tag => tag.toLowerCase().includes(searchTermLower)))
-            );
-        });
-
-        const filteredPreviousUsers = previousUsers.filter(user => {
-            return (
-                user.username.toLowerCase().includes(searchTermLower) ||
-                (user.age && String(user.age) === searchTerm) || // Age search, exact match as string
-                (user.tags && user.tags.some(tag => tag.toLowerCase().includes(searchTermLower)))
-            );
-        });
-
-        return { online: filteredOnlineUsers, previous: filteredPreviousUsers };
-    }
-
-
-    // --- Event listener for search input ---
-    userSearchInput.addEventListener('input', function() {
-        const searchTerm = userSearchInput.value.trim();
-
-        if (searchTerm) {
-            const filteredResults = filterUsers(searchTerm, allOnlineUsersData, previousUsers);
-            currentOnlineUsersDisplayed = filteredResults.online; // Update displayed online users with filtered results
-            currentPreviousUsersDisplayed = filteredResults.previous; // Update displayed previous users with filtered results
-
-            displayOnlineUsers(currentOnlineUsersDisplayed); // Display filtered online users
-            displayFilteredPreviousUsers(currentPreviousUsersDisplayed); // Display filtered previous users using dedicated function
-
-        } else {
-            // If search term is empty, reset to display all
-            currentOnlineUsersDisplayed = allOnlineUsersData;
-            currentPreviousUsersDisplayed = previousUsers;
-
-            displayOnlineUsers(currentOnlineUsersDisplayed);
-            displayFilteredPreviousUsers(currentPreviousUsersDisplayed);
-        }
-    });
-
 
     // Expose functions globally if needed
     window.addToPreviousUsers = addToPreviousUsers;
@@ -476,6 +333,6 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(() => {
         allOnlineUsersData = [];
         fetchData();
-        // displayPreviousUsers(); // No need to refresh previous users list on interval anymore, it's updated on user interaction.
-    }, REFREH_INTERVAL);
+        // displayPreviousUsers();
+    }, REFRESH_INTERVAL);
 });
