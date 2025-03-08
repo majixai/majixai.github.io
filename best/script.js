@@ -72,9 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
                     <p>Tags: ${user.tags[0] || ""} ${user.tags[1] || ""} ${user.tags[2] || ""} ${user.tags[3] || ""}  ${user.tags[4] || ""}</p>
-                    <!--p>Location: ${user.location || 'Unknown'}</p-->
-                </div>
+                    </div>
             `;
+
 
             userElement.addEventListener("click", function (event) {
                 event.preventDefault();
