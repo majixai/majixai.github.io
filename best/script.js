@@ -67,14 +67,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const userElement = document.createElement("div");
             userElement.className = "user-info";
             userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed} data-username="${user.username}">
                 <div class="user-details">
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
-                    <p>Tags: ${user.tags[0] || ""} ${user.tags[1] || ""} ${user.tags[2] || ""} ${user.tags[3] || ""}  ${user.tags[4] || ""}</p>
-                    </div>
+                    <p>Tags: ${user.tags[0]} || ''} ${user.tags[1]} || ''} ${user.tags[2]} || ''} ${user.tags[3]} || ''}  ${user.tags[4]} || ''}</p>
+                    <!--p>Location: ${user.location || 'Unknown'}</p-->
+                </div>
             `;
-
 
             userElement.addEventListener("click", function (event) {
                 event.preventDefault();
