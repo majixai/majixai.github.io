@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainIframe2 = document.getElementById("mainIframe2");
 
     let previousUsers = loadPreviousUsers();
+    let removedUsers = loadRemovedUsers(); // Load removed users from localStorage
     displayPreviousUsers(); // Initial display from localStorage
     let allOnlineUsersData = [];
 
@@ -67,13 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const userElement = document.createElement("div");
             userElement.className = "user-info";
             userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed} data-username="${user.username}">
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
                 <div class="user-details">
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
                     <p>Tags: ${user.tags[0] || ''} ${user.tags[1] || ''} ${user.tags[2] || ''} ${user.tags[3] || ''}  ${user.tags[4] || ''}</p>
-                    <!--p>Location: ${user.location || 'Unknown'}</p-->
-                </div>
+                    </div>
             `;
 
             userElement.addEventListener("click", function (event) {
@@ -89,8 +89,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
-
                 addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
+
+                // Remove user from online users list visually and from data
+                userElement.remove(); // Remove from display
+                allOnlineUsersData = allOnlineUsersData.filter(u => u.username !== user.username); // Remove from data array
             });
             onlineUsersDiv.appendChild(userElement);
         });
@@ -128,13 +131,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
             });
 
+            userElement.addEventListener("dblclick", function(event) {
+                event.preventDefault();
+                const usernameToRemove = user.username;
+
+                // Remove from previousUsers array and localStorage
+                previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+
+                // Add to removedUsers array and localStorage
+                removedUsers.push(user);
+                saveRemovedUsers();
+
+                // Remove user element from display
+                userElement.remove();
+            });
+
+
             // Prepend the new user element to the previous users div
             previousUsersDiv.prepend(userElement);
 
-            // Keep only a maximum of 20 user elements in previousUsersDiv
-            if (previousUsersDiv.children.length > 2000) {
-                previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
-            }
+            // // Keep only a maximum of 20 user elements in previousUsersDiv
+            // if (previousUsersDiv.children.length > 2000) {
+            //     previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
+            // }
         }
     }
 
@@ -194,6 +214,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                 });
+
+                userElement.addEventListener("dblclick", function(event) {
+                    event.preventDefault();
+                    const usernameToRemove = user.username;
+
+                    // Remove from previousUsers array and localStorage
+                    previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                    localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+
+                    // Add to removedUsers array and localStorage
+                    removedUsers.push(user);
+                    saveRemovedUsers();
+
+                    // Remove user element from display
+                    userElement.remove();
+                });
+
                 previousUsersDiv.appendChild(userElement);
             });
         }).catch(error => {
@@ -246,6 +283,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const storedUsers = localStorage.getItem("previousUsers");
         return storedUsers ? JSON.parse(storedUsers) : [];
     }
+
+    function loadRemovedUsers() {
+        const storedRemovedUsers = localStorage.getItem("removedUsers");
+        return storedRemovedUsers ? JSON.parse(storedRemovedUsers) : [];
+    }
+
+    function saveRemovedUsers() {
+        localStorage.setItem("removedUsers", JSON.stringify(removedUsers));
+    }
+
 
     if (typeof window.addToPreviousUsers !== 'undefined') {
         window.addToPreviousUsers = addToPreviousUsers;
