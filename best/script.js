@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const userElement = document.createElement("div");
             userElement.className = "user-info";
             userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed} data-username="${user.username}">
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
                 <div class="user-details">
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
