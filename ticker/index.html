@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Jinx Ticker Tape Widget</title>
+<style>
+  .tradingview-widget-container {
+    width: 100%; /* Adjust as needed */
+    margin-bottom: 20px; /* Spacing below the ticker tape */
+  }
+  .input-area {
+    margin-bottom: 10px;
+  }
+  .input-area input[type="text"] {
+    width: 80%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .input-area button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #00539B; /* Green button */
+    color: white;
+    cursor: pointer;
+  }
+  .input-area button:hover {
+    background-color: #45a049;
+  }
+</style>
+</head>
+<body>
+
+<div class="input-area">
+  <label for="tickersInput">Enter Tickers (comma-separated):</label>
+  <input type="text" id="tickersInput" placeholder="e.g., AAPL,GOOG,MSFT">
+  <button onclick="updateTickers()">Update Tickers</button>
+</div>
+
+<div class="tradingview-widget-container">
+  <div id="tradingview_ticker_tape" class="tradingview-widget-container__widget"></div>
+  <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+</div>
+
+<script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    loadTickersFromLocalStorage(); // Load tickers when the page loads
+  });
+
+  let widgetInstance = null; // To store the widget instance if we needed to manage it directly (not currently used in this simple example)
+  const tickerTapeContainerId = 'tradingview_ticker_tape';
+  const defaultTickers = [
+    { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500 Index" },
+    { "proName": "FOREXCOM:NSXUSD", "title": "US 100 Cash CFD" },
+    { "proName": "FX_IDC:EURUSD", "title": "EUR to USD" },
+    { "proName": "BITSTAMP:BTCUSD", "title": "Bitcoin" },
+    { "proName": "BITSTAMP:ETHUSD", "title": "Ethereum" }
+  ];
+
+  function updateTickers() {
+    const tickersInput = document.getElementById('tickersInput').value;
+    let tickersArray = tickersInput.trim().toUpperCase().split(/[,\s]+/); // Split by commas or spaces, uppercase
+    tickersArray = tickersArray.filter(ticker => ticker !== ''); // Remove empty tickers
+
+    if (tickersArray.length === 0) {
+      loadDefaultTickers(); // If input is empty, load default tickers
+      saveTickersToLocalStorage(defaultTickers); // Also save default to localStorage
+      return;
+    }
+
+    const symbols = tickersArray.map(ticker => ({ proName: ticker, title: ticker })); // Create symbols array
+
+    embedTickerTapeWidget(symbols); // Embed widget with new tickers
+    saveTickersToLocalStorage(symbols); // Save tickers to localStorage
+  }
+
+  function embedTickerTapeWidget(symbolsConfig) {
+    const container = document.getElementById(tickerTapeContainerId);
+    container.innerHTML = ''; // Clear previous widget content
+
+    TradingView.widget(
+      {
+        "symbols": symbolsConfig,
+        "showSymbolLogo": false,
+        "isTransparent": true,
+        "displayMode": "adaptive",
+        "colorTheme": "light",
+        "locale": "en",
+        "container_id": tickerTapeContainerId // Ensure container_id matches the div ID
+      }
+    );
+  }
+
+  function loadDefaultTickers() {
+    embedTickerTapeWidget(defaultTickers);
+    document.getElementById('tickersInput').value = ""; // Clear input field when loading defaults
+  }
+
+  function loadTickersFromLocalStorage() {
+    const storedTickers = localStorage.getItem('tradingviewTickers');
+    if (storedTickers) {
+      try {
+        const tickers = JSON.parse(storedTickers);
+        if (Array.isArray(tickers) && tickers.length > 0 && tickers.every(item => item.proName && item.title)) {
+          embedTickerTapeWidget(tickers);
+          // Pre-fill the input field with the loaded tickers (for better UX)
+          document.getElementById('tickersInput').value = tickers.map(item => item.proName).join(', ');
+          return; // Loaded from local storage, no need to load defaults
+        }
+      } catch (e) {
+        console.error("Error parsing tickers from localStorage:", e);
+      }
+    }
+    // If no valid tickers in localStorage or parsing failed, load default tickers
+    loadDefaultTickers();
+  }
+
+  function saveTickersToLocalStorage(symbolsConfig) {
+    localStorage.setItem('tradingviewTickers', JSON.stringify(symbolsConfig));
+  }
+
+</script>
+
+</body>
+</html>
