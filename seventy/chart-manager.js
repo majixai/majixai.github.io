@@ -9,7 +9,7 @@ export default class ChartManager {
     this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA"; // Use environment variable for API key
     this.#errorMessageElement = document.getElementById('error-message');
     this.init().then(() => {
-      this.render('IBM'); // Render initial series for IBM
+      this.render(); // Render initial series for IBM
     });
   }
 
