@@ -3,15 +3,147 @@
 <head>
   <title>Jinx Charts</title>
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script> </head>
+  <style>
+    /* CSS styles for chart elements and responsiveness - INLINED FROM style.css */
+    .chart-container {
+        width: 80%;
+        height: 400px;
+        margin: 20px auto;
+      }
+
+    .error-message {
+        font-weight: bold; /* Example: Make error messages bold */
+        color: red; /* Set error message color to red */
+        margin-top: 10px; /* Add some margin above the error message */
+    }
+  </style>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
 <body>
 
   <div class="w3-container">
     <h2>Jinx Charts</h2>
     <div id="chart" class="chart-container"></div>
-    <div id="error-message" class="error-message" style="color: red; margin-top: 10px;"></div>
+    <div id="error-message" class="error-message"></div>
   </div>
-  <script src="main.js" type="module"></script>
+
+  <script>
+    // INLINED JAVASCRIPT FROM chart-manager.js and main.js - IIFE REMOVED
+
+    class ChartManager {
+      #chartDiv;
+      #apiKey;
+      #errorMessageElement;
+      static MAX_RGB_VALUE = 255;
+
+      constructor() {
+        this.#chartDiv = document.getElementById('chart');
+        this.#errorMessageElement = document.getElementById('error-message');
+        this.#apiKey = process.env.API_KEY || "YOUR_ALPHA_VANTAGE_API_KEY"; // <--- REPLACE THIS WITH YOUR ACTUAL API KEY HERE!
+
+        this.init().then(() => {
+          this.render();
+          // this.render('AAPL');
+          // this.render('TSLA');
+        });
+      }
+
+      async init() {
+        Plotly.newPlot(this.#chartDiv, [], {
+          title: 'Stock Chart',
+          xaxis: {
+            title: 'Date'
+          },
+          yaxis: {
+            title: 'Price'
+          },
+          plot_bgcolor: '#fff',
+          paper_bgcolor: '#fff',
+          font: {
+            color: '#333'
+          }
+        });
+      }
+
+      async render(symbol = 'MSFT') {
+        try {
+          const newData = await this.#loadData(symbol);
+          if (newData && newData.x.length > 0) {
+            this.#clearErrorMessage();
+            const trace = {
+              x: newData.x,
+              y: newData.y,
+              mode: 'lines',
+              name: symbol,
+              line: {
+                color: this.#getRandomColor()
+              }
+            };
+            Plotly.addTraces(this.#chartDiv, [trace]);
+          } else {
+            this.#handleError(`No data found for symbol: ${symbol}`);
+          }
+        } catch (error) {
+          this.#handleError(`Error rendering chart for ${symbol}: ${error.message}`);
+        }
+      }
+
+      async #loadData(symbol) {
+        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${this.#apiKey}`;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            return this.#handleError(`API Error: ${response.status} ${response.statusText}`);
+          }
+          const data = await response.json();
+
+          if (data['Error Message']) {
+            return this.#handleError(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`);
+          }
+          if (data['Note']) {
+            return this.#handleError(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`);
+          }
+
+          const timeSeriesData = data['Time Series (Daily)'];
+          if (!timeSeriesData) {
+            return this.#handleError(`No Time Series data found for symbol: ${symbol} in API response.`);
+          }
+
+          const formattedData = { x: [], y: [] };
+          Object.entries(timeSeriesData).forEach(([time, values]) => {
+            formattedData.x.unshift(time);
+            formattedData.y.unshift(parseFloat(values['4. close']));
+          });
+          return formattedData;
+
+        } catch (error) {
+          return this.#handleError(`Network error loading data for ${symbol}: ${error.message}`);
+        }
+      }
+
+      #getRandomColor() {
+        const r = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+        const g = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+        const b = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+
+      #displayErrorMessage(message) {
+        this.#errorMessageElement.textContent = message;
+      }
+
+      #clearErrorMessage() {
+        this.#errorMessageElement.textContent = '';
+      }
+
+      #handleError(message) {
+        this.#displayErrorMessage(message);
+        return null;
+      }
+    }
+
+    new ChartManager();
+
+  </script>
 </body>
 </html>
