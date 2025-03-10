@@ -1,7 +1,7 @@
 // chart-manager.js
 export default class ChartManager {
   #chart;
-  #apiKey = "YOUR_ALPHA_VANTAGE_API_KEY"; // <--- REPLACE THIS WITH YOUR ACTUAL API KEY
+  #apiKey = "XVYHOWRTRNPN3FJA";
   #errorMessageElement; // Element to display error messages
 
   constructor() {
