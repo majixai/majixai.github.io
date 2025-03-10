@@ -3,7 +3,7 @@
 
   class ChartManager {
     #chart;
-    #apiKey = "YOUR_ALPHA_VANTAGE_API_KEY"; // <--- REPLACE THIS WITH YOUR ACTUAL API KEY
+    #apiKey = "XVYHOWRTRNPN3FJA";
 
     constructor() {
       this.init().then(() => {
