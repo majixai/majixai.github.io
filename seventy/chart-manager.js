@@ -1,21 +1,20 @@
 // chart-manager.js
 export default class ChartManager {
   #chart;
-  #apiKey = "XVYHOWRTRNPN3FJA";
+  #apiKey;
   #errorMessageElement; // Element to display error messages
+  static MAX_RGB_VALUE = 255; // Constant for max RGB value
 
   constructor() {
+    this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA"; // Use environment variable for API key
     this.#errorMessageElement = document.getElementById('error-message');
     this.init().then(() => {
       this.render('IBM'); // Render initial series for IBM
-      // this.render('AAPL'); // Render another series for AAPL
-      // this.render('TSLA'); // Render another series for TSLA
     });
   }
 
   async init() {
     this.#chart = LightweightCharts.createChart(document.getElementById('chart'), {
-      // Chart configuration options
       width: 800,
       height: 400,
       layout: {
@@ -57,36 +56,29 @@ export default class ChartManager {
         this.#displayErrorMessage(`No data found for symbol: ${symbol}`);
       }
     } catch (error) {
-      this.#displayErrorMessage(`Error rendering chart for ${symbol}: ${error.message}`);
+      this.#handleError(`Error rendering chart for ${symbol}: ${error.message}`);
     }
   }
 
   async #loadData(symbol) {
-    const url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=ibm&apikey=XVYHOWRTRNPN3FJA'
-    // const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        const message = `API Error: ${response.status} ${response.statusText}`;
-        this.#displayErrorMessage(`Failed to load data for ${symbol}: ${message}`);
-        return null; // Indicate error to the caller
+        return this.#handleError(`API Error: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
 
-      // Check for API error messages in the JSON response
       if (data['Error Message']) {
-        this.#displayErrorMessage(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`);
-        return null;
+        return this.#handleError(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`);
       }
-      if (data['Note']) { // API rate limit note
-        this.#displayErrorMessage(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`);
-        return null;
+      if (data['Note']) {
+        return this.#handleError(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`);
       }
 
       const timeSeriesData = data['Time Series (Daily)'];
       if (!timeSeriesData) {
-        this.#displayErrorMessage(`No Time Series data found for symbol: ${symbol} in API response.`);
-        return null;
+        return this.#handleError(`No Time Series data found for symbol: ${symbol} in API response.`);
       }
 
       const formattedData = Object.entries(timeSeriesData).map(([time, values]) => ({
@@ -96,15 +88,14 @@ export default class ChartManager {
       return formattedData;
 
     } catch (error) {
-      this.#displayErrorMessage(`Network error loading data for ${symbol}: ${error.message}`);
-      return null; // Indicate network error
+      return this.#handleError(`Network error loading data for ${symbol}: ${error.message}`);
     }
   }
 
   #getRandomColor() {
-    const r = Math.floor(Math.random() * 255);
-    const g = Math.floor(Math.random() * 255);
-    const b = Math.floor(Math.random() * 255);
+    const r = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+    const g = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+    const b = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
     return `rgba(${r}, ${g}, ${b}, 0.7)`;
   }
 
@@ -114,5 +105,10 @@ export default class ChartManager {
 
   #clearErrorMessage() {
     this.#errorMessageElement.textContent = '';
+  }
+
+  #handleError(message) {
+    this.#displayErrorMessage(message);
+    return null; // Indicate error to the caller
   }
 }
