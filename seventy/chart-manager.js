@@ -62,7 +62,7 @@ export default class ChartManager {
   }
 
   async #loadData(symbol) {
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${this.#apiKey}`;
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
