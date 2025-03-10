@@ -8,7 +8,7 @@ export default class ChartManager {
     this.#errorMessageElement = document.getElementById('error-message');
     this.init().then(() => {
       this.render('IBM'); // Render initial series for IBM
-      this.render('AAPL'); // Render another series for AAPL
+      // this.render('AAPL'); // Render another series for AAPL
       this.render('TSLA'); // Render another series for TSLA
     });
   }
