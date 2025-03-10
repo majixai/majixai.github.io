@@ -9,7 +9,7 @@ export default class ChartManager {
     this.init().then(() => {
       this.render('IBM'); // Render initial series for IBM
       // this.render('AAPL'); // Render another series for AAPL
-      this.render('TSLA'); // Render another series for TSLA
+      // this.render('TSLA'); // Render another series for TSLA
     });
   }
 
