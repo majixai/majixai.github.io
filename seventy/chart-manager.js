@@ -1,42 +1,36 @@
 // chart-manager.js
 export default class ChartManager {
-  #chart;
-  #apiKey;
-  #errorMessageElement; // Element to display error messages
-  static MAX_RGB_VALUE = 255; // Constant for max RGB value
+  #chartDiv; // Using #chartDiv for Plotly container
+  #apiKey;    // API Key (now configurable from environment variables)
+  #errorMessageElement; // Element for displaying error messages
+  static MAX_RGB_VALUE = 255; // Constant for max RGB color value
 
   constructor() {
-    this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA"; // Use environment variable for API key
+    this.#chartDiv = document.getElementById('chart');
     this.#errorMessageElement = document.getElementById('error-message');
+    // API Key from environment variable or default
+    this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA";
+
     this.init().then(() => {
-      this.render(); // Render initial series for IBM
+      this.render('IBM'); // Initial series
+      this.render('AAPL');
+      this.render('TSLA');
     });
   }
 
   async init() {
-    this.#chart = LightweightCharts.createChart(document.getElementById('chart'), {
-      width: 800,
-      height: 400,
-      layout: {
-        backgroundColor: '#fff',
-        textColor: '#333'
+    Plotly.newPlot(this.#chartDiv, [], {
+      title: 'Stock Chart',
+      xaxis: {
+        title: 'Date'
       },
-      grid: {
-        vertLines: {
-          color: 'rgba(197, 203, 206, 0.5)'
-        },
-        horzLines: {
-          color: 'rgba(197, 203, 206, 0.5)'
-        }
+      yaxis: {
+        title: 'Price'
       },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal
-      },
-      priceScale: {
-        borderColor: 'rgba(197, 203, 206, 0.8)'
-      },
-      timeScale: {
-        borderColor: 'rgba(197, 203, 206, 0.8)'
+      plot_bgcolor: '#fff',
+      paper_bgcolor: '#fff',
+      font: {
+        color: '#333'
       }
     });
   }
@@ -44,59 +38,64 @@ export default class ChartManager {
   async render(symbol = 'MSFT') {
     try {
       const newData = await this.#loadData(symbol);
-      if (newData && newData.length > 0) {
-        this.#clearErrorMessage(); // Clear any previous error
-        const newSeries = this.#chart.addLineSeries({
+      if (newData && newData.x.length > 0) {
+        this.#clearErrorMessage();
+        const trace = {
+          x: newData.x,
+          y: newData.y,
+          mode: 'lines',
           name: symbol,
-          color: this.#getRandomColor(),
-          lineWidth: 2
-        });
-        newSeries.setData(newData);
+          line: {
+            color: this.#getRandomColor()
+          }
+        };
+        Plotly.addTraces(this.#chartDiv, [trace]);
       } else {
-        this.#displayErrorMessage(`No data found for symbol: ${symbol}`);
+        this.#handleError(`No data found for symbol: ${symbol}`); // Use handleError
       }
     } catch (error) {
-      this.#handleError(`Error rendering chart for ${symbol}: ${error.message}`);
+      this.#handleError(`Error rendering chart for ${symbol}: ${error.message}`); // Use handleError
     }
   }
 
   async #loadData(symbol) {
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
+    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${this.#apiKey}`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        return this.#handleError(`API Error: ${response.status} ${response.statusText}`);
+        return this.#handleError(`API Error: ${response.status} ${response.statusText}`); // Use handleError
       }
       const data = await response.json();
 
       if (data['Error Message']) {
-        return this.#handleError(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`);
+        return this.#handleError(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`); // Use handleError
       }
       if (data['Note']) {
-        return this.#handleError(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`);
+        return this.#handleError(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`); // Use handleError
       }
 
       const timeSeriesData = data['Time Series (Daily)'];
       if (!timeSeriesData) {
-        return this.#handleError(`No Time Series data found for symbol: ${symbol} in API response.`);
+        return this.#handleError(`No Time Series data found for symbol: ${symbol} in API response.`); // Use handleError
       }
 
-      const formattedData = Object.entries(timeSeriesData).map(([time, values]) => ({
-        time: time,
-        value: parseFloat(values['4. close'])
-      }));
+      const formattedData = { x: [], y: [] };
+      Object.entries(timeSeriesData).forEach(([time, values]) => {
+        formattedData.x.unshift(time);
+        formattedData.y.unshift(parseFloat(values['4. close']));
+      });
       return formattedData;
 
     } catch (error) {
-      return this.#handleError(`Network error loading data for ${symbol}: ${error.message}`);
+      return this.#handleError(`Network error loading data for ${symbol}: ${error.message}`); // Use handleError
     }
   }
 
   #getRandomColor() {
-    const r = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+    const r = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE); // Use MAX_RGB_VALUE constant
     const g = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
     const b = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
-    return `rgba(${r}, ${g}, ${b}, 0.7)`;
+    return `rgb(${r}, ${g}, ${b})`;
   }
 
   #displayErrorMessage(message) {
@@ -107,7 +106,7 @@ export default class ChartManager {
     this.#errorMessageElement.textContent = '';
   }
 
-  #handleError(message) {
+  #handleError(message) { // Centralized error handling
     this.#displayErrorMessage(message);
     return null; // Indicate error to the caller
   }
