@@ -41,15 +41,11 @@
         this.#errorMessageElement = document.getElementById('error-message');
         this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA";
 
-        this.init().then(() => {
-          this.render();
-          // this.render('AAPL');
-          // this.render('TSLA');
-        });
+        this.init(); // Call init directly, render initial data in init
       }
 
       async init() {
-        Plotly.newPlot(this.#chartDiv, [], {
+        Plotly.newPlot(this.#chartDiv, [], { // Initialize Plotly chart with empty data and layout
           title: 'Stock Chart',
           xaxis: {
             title: 'Date'
@@ -63,6 +59,10 @@
             color: '#333'
           }
         });
+        // Render initial series data *immediately after* Plotly.newPlot:
+        await this.render();
+        // await this.render('AAPL');
+        // await this.render('TSLA');
       }
 
       async render(symbol = 'MSFT') {
@@ -79,7 +79,7 @@
                 color: this.#getRandomColor()
               }
             };
-            Plotly.addTraces(this.#chartDiv, [trace]);
+            Plotly.addTraces(this.#chartDiv, [trace]); // Use addTraces for adding *new* series after initial render
           } else {
             this.#handleError(`No data found for symbol: ${symbol}`);
           }
@@ -89,7 +89,7 @@
       }
 
       async #loadData(symbol) {
-        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&apikey=${this.#apiKey}`;
+        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
         try {
           const response = await fetch(url);
           if (!response.ok) {
