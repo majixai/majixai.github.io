@@ -1,4 +1,5 @@
 # multiply_script.py
+import pytest
 
 def multiply_numbers(num1, num2):
   """
