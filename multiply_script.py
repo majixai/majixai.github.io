@@ -20,4 +20,4 @@ if __name__ == "__main__":
 
   product = multiply_numbers(number1, number2)
 
-  print(f"The product of {number1} and {number2} is: {product}")
+  print(f"The Jinx product of {number1} and {number2} is: {product}")
