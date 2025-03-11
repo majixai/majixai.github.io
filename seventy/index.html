@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Jinx Charts</title>
+  <title>Jinx Real-Time(ish) Charts - Google Finance (UNRELIABLE)</title>
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
   <style>
-    /* CSS styles for chart elements and responsiveness - INLINED FROM style.css */
+    /* CSS styles - Inlined for simplicity */
     .chart-container {
         width: 80%;
         height: 400px;
         margin: 20px auto;
-      }
-
+    }
     .error-message {
-        font-weight: bold; /* Example: Make error messages bold */
-        color: red; /* Set error message color to red */
-        margin-top: 10px; /* Add some margin above the error message */
+        font-weight: bold;
+        color: red;
+        margin-top: 10px;
+    }
+    .input-area {
+      margin-bottom: 10px;
     }
   </style>
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
@@ -22,33 +24,43 @@
 <body>
 
   <div class="w3-container">
-    <h2>Jinx Tickers</h2>
+    <h2>Jinx Real-Time(ish) Tickers - Google Finance</h2>
+    <div class="input-area">
+      <label for="tickerExchange">Ticker:Exchange (e.g., AAPL:NASDAQ):</label>
+      <input type="text" id="tickerExchange" value="AAPL:NASDAQ">
+      <button onclick="chartManager.changeSymbol()">Change Symbol</button>
+    </div>
     <div id="chart" class="chart-container"></div>
     <div id="error-message" class="error-message"></div>
+    <p style="font-style: italic; color: gray;">
+      <strong>Warning:</strong> Data from Google Finance is scraped and extremely unreliable. This is for demonstration only and will likely break.
+      CORS issues may prevent data loading in some browsers. HTML structure scraping is very fragile.
+    </p>
   </div>
 
   <script>
-    // INLINED JAVASCRIPT FROM chart-manager.js and main.js - IIFE REMOVED
+    // INLINED JAVASCRIPT - Real-Time(ish) Chart with Plotly - GOOGLE FINANCE SCRAPING (UNRELIABLE!)
 
     class ChartManager {
       #chartDiv;
-      #apiKey;
       #errorMessageElement;
-      static MAX_RGB_VALUE = 255;
+      #tickerExchangeInput; // Input for ticker:exchange
+      #currentSymbolExchange = 'AAPL:NASDAQ'; // Default ticker:exchange
+      static UPDATE_INTERVAL_MS = 10000; // 10 seconds - Adjust as needed for scraping frequency
 
       constructor() {
         this.#chartDiv = document.getElementById('chart');
         this.#errorMessageElement = document.getElementById('error-message');
-        this.#apiKey = process.env.API_KEY || "XVYHOWRTRNPN3FJA";
+        this.#tickerExchangeInput = document.getElementById('tickerExchange');
 
-        this.init(); // Call init directly, render initial data in init
+        this.init(); // Initialize and start updates
       }
 
       async init() {
-        Plotly.newPlot(this.#chartDiv, [], { // Initialize Plotly chart with empty data and layout
-          title: 'Stock Chart',
+        Plotly.newPlot(this.#chartDiv, [], {
+          title: `Real-Time(ish) Stock Chart (Google Finance) for ${this.#currentSymbolExchange}`,
           xaxis: {
-            title: 'Date'
+            title: 'Time'
           },
           yaxis: {
             title: 'Price'
@@ -59,72 +71,123 @@
             color: '#333'
           }
         });
-        // Render initial series data *immediately after* Plotly.newPlot:
-        await this.render();
-        // await this.render('AAPL');
-        // await this.render('TSLA');
+
+        this.#startDataUpdates(); // Start continuous data fetching and chart updates
       }
 
-      async render(symbol = 'MSFT') {
+      changeSymbol() {
+        const newSymbolExchange = this.#tickerExchangeInput.value.trim().toUpperCase();
+        if (newSymbolExchange && newSymbolExchange !== this.#currentSymbolExchange) {
+          this.#currentSymbolExchange = newSymbolExchange;
+          Plotly.relayout(this.#chartDiv, { title: `Real-Time(ish) Stock Chart (Google Finance) for ${this.#currentSymbolExchange}` }); // Update chart title
+          this.#clearChartData(); // Clear old data
+          this.#startDataUpdates(); // Restart updates with new symbol
+        }
+      }
+
+      #clearChartData() {
+        Plotly.deleteTraces(this.#chartDiv,  [0]); // Assuming single trace at index 0. Clears the existing series.
+      }
+
+
+      #startDataUpdates() {
+        this.renderChartData(); // Initial render immediately
+        setInterval(() => {
+          this.renderChartData(); // Then update at intervals
+        }, ChartManager.UPDATE_INTERVAL_MS);
+      }
+
+
+      async renderChartData() {
         try {
-          const newData = await this.#loadData(symbol);
+          const newData = await this.#loadDataFromGoogleFinance(this.#currentSymbolExchange);
           if (newData && newData.x.length > 0) {
             this.#clearErrorMessage();
             const trace = {
               x: newData.x,
               y: newData.y,
               mode: 'lines',
-              name: symbol,
+              name: this.#currentSymbolExchange,
               line: {
-                color: this.#getRandomColor()
+                color: 'blue' // Keep color consistent for real-time feel
               }
             };
-            Plotly.addTraces(this.#chartDiv, [trace]); // Use addTraces for adding *new* series after initial render
+
+            // Use Plotly.restyle to *update* existing trace data instead of adding new traces on each interval.
+            Plotly.restyle(this.#chartDiv, { x: [trace.x], y: [trace.y] }, [0]); // Index 0 assumes we are updating the first trace.
+             // If no trace exists yet (first update), addTraces will create it.
+            if (this.#chartDiv.data.length === 0) {
+               Plotly.addTraces(this.#chartDiv, [trace]);
+            }
+
+
           } else {
-            this.#handleError(`No data found for symbol: ${symbol}`);
+            this.#handleError(`No data found for ticker:exchange '${this.#currentSymbolExchange}' from Google Finance.`);
           }
         } catch (error) {
-          this.#handleError(`Error rendering chart for ${symbol}: ${error.message}`);
+          this.#handleError(`Error updating chart for ${this.#currentSymbolExchange}: ${error.message}`);
         }
       }
 
-      async #loadData(symbol) {
-        const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${this.#apiKey}`;
+
+      async #loadDataFromGoogleFinance(tickerExchange) {
+        const url = `https://www.google.com/finance/quote/${tickerExchange}`;
         try {
-          const response = await fetch(url);
+          const response = await fetch(url, {mode: 'cors'}); // Explicitly set mode to 'cors'
           if (!response.ok) {
-            return this.#handleError(`API Error: ${response.status} ${response.statusText}`);
+            return this.#handleError(`HTTP error! status: ${response.status}`);
           }
-          const data = await response.json();
+          const htmlText = await response.text();
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(htmlText, 'text/html');
 
-          if (data['Error Message']) {
-            return this.#handleError(`Alpha Vantage API Error for ${symbol}: ${data['Error Message']}`);
-          }
-          if (data['Note']) {
-            return this.#handleError(`Alpha Vantage API Note for ${symbol}: ${data['Note']}. Rate limit may be in effect.`);
+          // **Extremely Fragile HTML Scraping - Subject to Break!**
+          // Inspect Google Finance page source to find selectors for data.
+          // These selectors are VERY likely to change.
+          const historicalDataElement = htmlDoc.querySelector('div[jsname="F8xAl"]'); // This selector is HIGHLY likely to break
+          if (!historicalDataElement) {
+            return this.#handleError("Could not find historical data section on Google Finance page. HTML structure might have changed.");
           }
 
-          const timeSeriesData = data['Time Series (Daily)'];
-          if (!timeSeriesData) {
-            return this.#handleError(`No Time Series data found for symbol: ${symbol} in API response.`);
+          // **More fragile selectors - find actual data rows**
+          const dataRows = historicalDataElement.querySelectorAll('table > tbody > tr'); // Even table structure can change
+
+          if (!dataRows || dataRows.length === 0) {
+              return this.#handleError("No historical data rows found in the table. HTML structure might have changed.");
           }
+
 
           const formattedData = { x: [], y: [] };
-          Object.entries(timeSeriesData).forEach(([time, values]) => {
-            formattedData.x.unshift(time);
-            formattedData.y.unshift(parseFloat(values['4. close']));
+          dataRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 2) { // Expecting at least Date and Close Price
+              const dateText = cells[0].textContent.trim();
+              const priceText = cells[4].textContent.trim(); // Assuming Close Price is in the 5th column (index 4) - VERY FRAGILE
+
+              // **Date Parsing - might need adjustment based on Google Finance date format**
+              const date = new Date(dateText); // Try default Date parsing - may need to use a library like Date.js for robustness
+
+              const price = parseFloat(priceText.replace(/,/g, '')); // Remove commas and parse to float
+
+              if (!isNaN(date) && !isNaN(price)) {
+                formattedData.x.unshift(date); // Unshift for ascending date order
+                formattedData.y.unshift(price);
+              }
+            }
           });
+
           return formattedData;
 
         } catch (error) {
-          return this.#handleError(`Network error loading data for ${symbol}: ${error.message}`);
+          return this.#handleError(`Error during data fetch or parsing: ${error.message}`);
         }
       }
 
+
       #getRandomColor() {
-        const r = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
-        const g = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
-        const b = Math.floor(Math.random() * ChartManager.MAX_RGB_VALUE);
+        const r = Math.floor(Math.random() * 255);
+        const g = Math.floor(Math.random() * 255);
+        const b = Math.floor(Math.random() * 255);
         return `rgb(${r}, ${g}, ${b})`;
       }
 
@@ -142,7 +205,8 @@
       }
     }
 
-    new ChartManager();
+    // Instantiate ChartManager
+    const chartManager = new ChartManager();
 
   </script>
 </body>
