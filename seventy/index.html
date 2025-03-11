@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Jinx Real-Time(ish) Charts - Google Finance (UNRELIABLE)</title>
+  <title>Jinx Real-Time(ish) Charts - Google Finance</title>
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
   <style>
     /* CSS styles - Inlined for simplicity */
@@ -139,21 +139,16 @@
           const parser = new DOMParser();
           const htmlDoc = parser.parseFromString(htmlText, 'text/html');
 
-          // **Extremely Fragile HTML Scraping - Subject to Break!**
-          // Inspect Google Finance page source to find selectors for data.
-          // These selectors are VERY likely to change.
-          const historicalDataElement = htmlDoc.querySelector('div[jsname="F8xAl"]'); // This selector is HIGHLY likely to break
+          const historicalDataElement = htmlDoc.querySelector('div[jsname="F8xAl"]');
           if (!historicalDataElement) {
             return this.#handleError("Could not find historical data section on Google Finance page. HTML structure might have changed.");
           }
 
-          // **More fragile selectors - find actual data rows**
           const dataRows = historicalDataElement.querySelectorAll('table > tbody > tr'); // Even table structure can change
 
           if (!dataRows || dataRows.length === 0) {
               return this.#handleError("No historical data rows found in the table. HTML structure might have changed.");
           }
-
 
           const formattedData = { x: [], y: [] };
           dataRows.forEach(row => {
