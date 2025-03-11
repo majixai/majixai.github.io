@@ -28,11 +28,6 @@ jobs:
       run: |
         python multiply_script.py # Simply run the script
 
-    - name: Test requests library # Test requests library (as before)
-      run: |
-        pip install requests
-        python -c "import requests; try: response = requests.get('https://httpbin.org/get'); response.raise_for_status(); print(f'Requests test: Successfully fetched URL. Status code: {response.status_code}'); except requests.exceptions.RequestException as e: print(f'Requests test failed: {e}'); exit(1)"
-
     - name: Test with pytest # Run pytest (as before)
       run: |
         pip install pytest
