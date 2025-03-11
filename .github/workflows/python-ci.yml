@@ -1,0 +1,39 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ "alpha" ]
+  pull_request:
+    branches: [ "alpha" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout code
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run multiply_script.py # Step to execute multiply_script.py
+      run: |
+        python multiply_script.py # Simply run the script
+
+    - name: Test requests library # Test requests library (as before)
+      run: |
+        pip install requests
+        python -c "import requests; try: response = requests.get('https://httpbin.org/get'); response.raise_for_status(); print(f'Requests test: Successfully fetched URL. Status code: {response.status_code}'); except requests.exceptions.RequestException as e: print(f'Requests test failed: {e}'); exit(1)"
+
+    - name: Test with pytest # Run pytest (as before)
+      run: |
+        pip install pytest
+        pytest
