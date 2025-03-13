@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Jinx Add Numbers from Iframes</title>
+</head>
+<body>
+
+  <h1>Add Numbers from Iframes</h1>
+
+  <div style="display: flex;">
+    <div>
+      <h2>Iframe 1</h2>
+      <iframe id="iframe1" src="iframe1.html" style="border: 1px solid black;"></iframe>
+    </div>
+    <div style="margin-left: 20px;">
+      <h2>Iframe 2</h2>
+      <iframe id="iframe2" src="iframe2.html" style="border: 1px solid black;"></iframe>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <button onclick="calculateSum()">Calculate Sum</button>
+    <h2>Result: <span id="result"></span></h2>
+  </div>
+
+  <script>
+    function calculateSum() {
+      // Get the iframe elements
+      const iframe1 = document.getElementById('iframe1');
+      const iframe2 = document.getElementById('iframe2');
+
+      // Access the contentDocument of each iframe to get to their DOM
+      const iframeDoc1 = iframe1.contentDocument || iframe1.contentWindow.document; // For cross-browser compatibility
+      const iframeDoc2 = iframe2.contentDocument || iframe2.contentWindow.document;
+
+      // Get the input elements within each iframe
+      const num1Input = iframeDoc1.getElementById('num1');
+      const num2Input = iframeDoc2.getElementById('num2');
+
+      // Get the values from the input fields and convert to numbers
+      const number1 = parseInt(num1Input.value) || 0; // Default to 0 if not a valid number
+      const number2 = parseInt(num2Input.value) || 0;
+
+      // Calculate the sum
+      const sum = number1 + number2;
+
+      // Display the result in the main HTML
+      document.getElementById('result').textContent = sum;
+    }
+  </script>
+
+</body>
+</html>
