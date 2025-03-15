@@ -19,6 +19,7 @@
       gtag('config', 'G-64NCM5YMVB');
     </script>
     <style>
+        /* ... (All your CSS styles remain the same) ... */
         html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
 
         body {
@@ -47,16 +48,17 @@
         .iframe-container {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
-            position: relative;
-            width: 100%;
+            margin-bottom: 10px; /* Reduced margin */
+            position: relative; /* Important for aspect ratio wrapper */
+            width: 100%;       /* Ensure it takes full width */
+
         }
 
         .iframe-wrapper {
             position: relative;
-            width: calc(50% - 10px); /* Two iframes, side-by-side */
-            padding-bottom: 177.08333%; /* 850:480 aspect ratio */
-            overflow: hidden;
+            width: calc(50% - 10px);  /* Same as original iframe width */
+            padding-bottom: 177.08333%; /* Aspect ratio (850 / 480 = 1.7708333) */
+            overflow: hidden; /* Hide any overflowing content */
         }
 
         .ifr {
@@ -252,29 +254,27 @@
         @media (max-width: 768px) {
             .iframe-container {
                 flex-direction: column;
-                align-items: center;
+                align-items: center; /* Center iframes horizontally */
             }
 
             .iframe-wrapper {
                 width: 100%; /* Full width on smaller screens */
-                /* padding-bottom will still maintain aspect ratio */
+                 /* Reset or adjust padding-bottom as needed */
             }
-
-            .scrollable-list-container {
-                height: auto;
+             .scrollable-list-container {
+                height: auto; /*Allow to take the space they require.*/
             }
 
             .lists-filters-container > div {
                 width: 100%;
             }
         }
-
+        /*Smaller Screens and Mobile*/
         @media (max-width: 480px) {
           .iframe-wrapper{
             padding-bottom: 177.08333%; /* Maintain aspect ratio */
           }
         }
-
     </style>
 </head>
 <body class="w3-light-grey">
@@ -401,47 +401,66 @@
 
     // Function to set initial iframe sources, with view tracking
     function setInitialIframeSources() {
-        const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
-        const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
-        const mainIframe = document.getElementById('mainIframe');
-        const mainIframe2 = document.getElementById('mainIframe2');
+    const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
+    const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list'); // Corrected selector
+    const mainIframe = document.getElementById('mainIframe');
+    const mainIframe2 = document.getElementById('mainIframe2');
 
-        // Get the most viewed online user
-        let mostViewedOnlineUser = null;
-        let maxOnlineViews = -1;
+    // Get the most viewed online user
+    let mostViewedOnlineUser = null;
+    let maxOnlineViews = -1;
 
-        const onlineUserElements = onlineUsersDiv.querySelectorAll('.user-info');
-        onlineUserElements.forEach(userElement => {
-            const views = parseInt(userElement.dataset.views) || 0;
-            if (views > maxOnlineViews) {
-                maxOnlineViews = views;
-                mostViewedOnlineUser = userElement.querySelector('img');
-            }
-        });
-
-        if (mostViewedOnlineUser) {
-            const onlineUsername = mostViewedOnlineUser.dataset.iframeUrl.split('/').pop();
-            mainIframe.src = `https://chaturbate.com/${onlineUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
+    const onlineUserElements = onlineUsersDiv.querySelectorAll('.user-info');
+    onlineUserElements.forEach(userElement => {
+        const views = parseInt(userElement.dataset.views) || 0;
+        if (views > maxOnlineViews) {
+            maxOnlineViews = views;
+            mostViewedOnlineUser = userElement.querySelector('img');
         }
+    });
 
-        // Get the most viewed previous user
-        let mostViewedPreviousUser = null;
-        let maxPreviousViews = -1;
-
-        const previousUserElements = previousUsersDiv.querySelectorAll('.user-info');
-        previousUserElements.forEach(userElement => {
-            const views = parseInt(userElement.dataset.views) || 0;
-            if(views > maxPreviousViews) {
-                maxPreviousViews = views;
-                mostViewedPreviousUser = userElement.querySelector('img');
-            }
-        });
-
-        if (mostViewedPreviousUser) {
-            const previousUsername = mostViewedPreviousUser.dataset.iframeUrl.split('/').pop();
-             mainIframe2.src = `https://chaturbate.com/${previousUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
-        }
+    if (mostViewedOnlineUser) {
+        const onlineUsername = mostViewedOnlineUser.dataset.iframeUrl.split('/').pop();
+        mainIframe.src = `https://chaturbate.com/${onlineUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
     }
+
+
+     // Get the most viewed previous user from *all* previousUsers keys
+    let mostViewedPreviousUser = null;
+    let maxPreviousViews = -1;
+
+    for (let i = 0; ; i++) { // Loop indefinitely
+        const key = `previousUsers${i === 0 ? '' : i}`; // previousUsers, previousUsers1, previousUsers2, ...
+        const previousUsers = JSON.parse(localStorage.getItem(key)) || [];
+
+        if (previousUsers.length === 0) {
+            break; // Exit the loop when a key doesn't exist or is empty.
+        }
+
+        previousUsers.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'user-info';
+            userElement.dataset.views = user.views || 0;
+          // Create the image for data set.
+          const imgElement = document.createElement('img');
+          imgElement.src = user.image_url;
+          imgElement.alt = user.username;
+          imgElement.dataset.iframeUrl = user.iframe_embed; //iframe link
+
+            if (user.views > maxPreviousViews) {
+                maxPreviousViews = user.views;
+                mostViewedPreviousUser = imgElement;  //Use image.
+            }
+        });
+    }
+
+
+
+    if (mostViewedPreviousUser) {
+        const previousUsername = mostViewedPreviousUser.dataset.iframeUrl.split('/').pop();
+        mainIframe2.src = `https://chaturbate.com/${previousUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
+    }
+}
 
     // --- script.js additions (and modifications) ---
 
@@ -474,6 +493,11 @@
                 userElement.querySelector('.user-details').appendChild(viewsElement);
             }
             viewsElement.textContent = `Views: ${currentViews + 1}`;
+
+             // Update view count in localStorage (for previous users)
+            if (!isOnline) {
+              updatePreviousUserViews(username, currentViews + 1);
+            }
 
         }
     }
@@ -522,53 +546,110 @@
 
     function displayPreviousUsers() {
       return new Promise(resolve => {
-        let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
         const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
-        previousUsersDiv.innerHTML = '';
+        previousUsersDiv.innerHTML = ''; // Clear existing content
 
-        previousUsers.forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.className = 'user-info';
-            userElement.dataset.views = user.views || 0;
-            let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>`: '';
+        // Load *all* previousUsers keys
+        for (let i = 0; ; i++) {
+            const key = `previousUsers${i === 0 ? '' : i}`;
+            const previousUsers = JSON.parse(localStorage.getItem(key)) || [];
 
-            userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                <div class="user-details">
-                    <p>${user.username}</p>
-                    <p>Age: ${user.age}</p>
-                      ${tagsHtml}
-                    <p class="user-views">Views: ${user.views}</p>
-                </div>
-            `;
+            if (previousUsers.length === 0 && i > 0) { //Important check to avoid extra storage calls.
+               break; //Stop if the key does not exist.
+            }
 
-            userElement.addEventListener('click', () => {
-                document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
-                document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
-                incrementUserViewCount(user.username, false);
-                displayPreviousUsers();
+            previousUsers.forEach(user => {
+                const userElement = document.createElement('div');
+                userElement.className = 'user-info';
+                userElement.dataset.views = user.views || 0;
+                let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : '';
+
+                userElement.innerHTML = `
+                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                    <div class="user-details">
+                        <p>${user.username}</p>
+                        <p>Age: ${user.age}</p>
+                        ${tagsHtml}
+                        <p class="user-views">Views: ${user.views}</p>
+                    </div>
+                `;
+
+                userElement.addEventListener('click', () => {
+                    document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
+                    document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
+                    incrementUserViewCount(user.username, false); // Increment view count (previous user)
+                    displayPreviousUsers(); // Refresh to show updated count
+                });
+
+                previousUsersDiv.appendChild(userElement);
             });
+        }
 
-            previousUsersDiv.appendChild(userElement);
-
-        });
-         resolve();
+        resolve();
       });
     }
+    //Updates previous users views in local storage
+    function updatePreviousUserViews(username, newViews) {
+        for (let i = 0; ; i++) {
+            const key = `previousUsers${i === 0 ? '' : i}`;
+            let previousUsers = JSON.parse(localStorage.getItem(key)) || [];
 
-    function addToPreviousUsers(user) {
-        let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
+            if (previousUsers.length === 0 && i > 0) {
+              break; // Key doesn't exist, stop searching
+            }
+
+            const existingUserIndex = previousUsers.findIndex(u => u.username === username);
+            if (existingUserIndex > -1) {
+                previousUsers[existingUserIndex].views = newViews;
+                localStorage.setItem(key, JSON.stringify(previousUsers));
+                return; // Exit after updating
+            }
+        }
+    }
+
+
+  function addToPreviousUsers(user) {
+    let added = false;
+    for (let i = 0; ; i++) {
+        const key = `previousUsers${i === 0 ? '' : i}`;
+        let previousUsers = JSON.parse(localStorage.getItem(key)) || [];
+
+        // Check if user exists in *this* key.
         const existingUserIndex = previousUsers.findIndex(u => u.username === user.username);
 
         if (existingUserIndex > -1) {
+            // User exists, update view count in the correct key.  Don't add them again.
             previousUsers[existingUserIndex].views = (previousUsers[existingUserIndex].views || 0) + 1;
-        } else {
-            user.views = 1;
+            localStorage.setItem(key, JSON.stringify(previousUsers));
+            added = true;
+            break; // Exit the loop – we've found and updated the user
+        } else if (previousUsers.length < 5) { // Assuming a limit of 5 users per key. Change the 5.
+            // User doesn't exist and there's space, add them to this key.
+            user.views = 1; // Initial view is 1.
             previousUsers.push(user);
+            localStorage.setItem(key, JSON.stringify(previousUsers));
+            added = true;
+            break; // Exit – user added.
         }
+        // If we get here and haven't added, it means the current key is full *and* the user isn't in it.
+        // We move to the next key in the next loop iteration.
+     }
 
-        localStorage.setItem('previousUsers', JSON.stringify(previousUsers));
+    if (!added) {
+        // Find the next available key
+        let nextKeyIndex = 0;
+        while (localStorage.getItem(`previousUsers${nextKeyIndex === 0 ? '' : nextKeyIndex}`)) {
+            nextKeyIndex++;
+        }
+        const nextKey = `previousUsers${nextKeyIndex === 0 ? '' : nextKeyIndex}`;
+
+        // Add the user to the new key
+        user.views = 1;
+        localStorage.setItem(nextKey, JSON.stringify([user]));
     }
+}
+
     </script>
 </body>
 </html>
+
