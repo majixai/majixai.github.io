@@ -48,16 +48,28 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px; /* Reduced margin */
+            position: relative; /* Important for aspect ratio wrapper */
+            width: 100%;       /* Ensure it takes full width */
+
+        }
+
+        .iframe-wrapper {
+            position: relative;
+            width: calc(50% - 10px);  /* Same as original iframe width */
+            padding-bottom: 177.08333%; /* Aspect ratio (850 / 480 = 1.7708333) */
+            overflow: hidden; /* Hide any overflowing content */
         }
 
         .ifr {
-            height: 40vh;  /*  viewport height for iframes */
-            width: calc(50% - 10px);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             border: none;
             padding: 2px;
             margin: 0;
         }
-
         /* --- Scrollable List Styles --- */
 
         .scrollable-list-container {
@@ -241,11 +253,12 @@
         @media (max-width: 768px) {
             .iframe-container {
                 flex-direction: column;
+                align-items: center; /* Center iframes horizontally */
             }
 
-            .ifr {
-                width: 100%;
-                height: 30vh; /* Adjust height for stacked iframes */
+            .iframe-wrapper {
+                width: 100%; /* Full width on smaller screens */
+                 /* Reset or adjust padding-bottom as needed */
             }
              .scrollable-list-container {
                 height: auto; /*Allow to take the space they require.*/
@@ -257,8 +270,8 @@
         }
         /*Smaller Screens and Mobile*/
         @media (max-width: 480px) {
-          .ifr {
-            height: 20vh; /*Even Smaller for small phones.*/
+          .iframe-wrapper{
+            padding-bottom: 177.08333%; /* Maintain aspect ratio */
           }
         }
     </style>
@@ -268,8 +281,12 @@
         <iframe src="../ticker/index.html" width="100%" height="250px" frameborder="0" allowtransparency="true"></iframe>
 
         <div class="iframe-container">
-            <iframe class="ifr" id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
-            <iframe class="ifr" id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
+            <div class="iframe-wrapper">
+                <iframe class="ifr" id="mainIframe" src="" frameborder="0"></iframe>
+            </div>
+            <div class="iframe-wrapper">
+                <iframe class="ifr" id="mainIframe2" src="" frameborder="0"></iframe>
+            </div>
         </div>
 
         <div class="lists-filters-container">
@@ -387,6 +404,205 @@
         if (firstHighlighted) {
             firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+    }
+
+    // Function to set initial iframe sources, now with view tracking
+    function setInitialIframeSources() {
+        const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
+        const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+        const mainIframe = document.getElementById('mainIframe');
+        const mainIframe2 = document.getElementById('mainIframe2');
+
+        // Get the most viewed online user
+        let mostViewedOnlineUser = null;
+        let maxOnlineViews = -1;
+
+        const onlineUserElements = onlineUsersDiv.querySelectorAll('.user-info');
+        onlineUserElements.forEach(userElement => {
+            const views = parseInt(userElement.dataset.views) || 0; // Get views, default to 0
+            if (views > maxOnlineViews) {
+                maxOnlineViews = views;
+                mostViewedOnlineUser = userElement.querySelector('img');
+            }
+        });
+
+        if (mostViewedOnlineUser) {
+            const onlineUsername = mostViewedOnlineUser.dataset.iframeUrl.split('/').pop();
+            mainIframe.src = `https://chaturbate.com/${onlineUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
+        }
+
+        // Get the most viewed previous user
+        let mostViewedPreviousUser = null;
+        let maxPreviousViews = -1;
+
+        const previousUserElements = previousUsersDiv.querySelectorAll('.user-info');
+        previousUserElements.forEach(userElement => {
+            const views = parseInt(userElement.dataset.views) || 0; //Get views from data-views
+            if(views > maxPreviousViews) {
+                maxPreviousViews = views;
+                mostViewedPreviousUser = userElement.querySelector('img');
+            }
+        });
+
+        if (mostViewedPreviousUser) {
+            const previousUsername = mostViewedPreviousUser.dataset.iframeUrl.split('/').pop();
+             mainIframe2.src = `https://chaturbate.com/${previousUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
+        }
+    }
+
+    // --- script.js additions (and modifications) ---
+
+    // Call the function to set initial iframe sources when the DOM is loaded.
+    // Make sure this runs *after* the user lists have been populated.
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... (Other DOMContentLoaded code from your existing script.js) ...
+
+        // Assuming your displayOnlineUsers and displayPreviousUsers functions
+        // populate the lists, call setInitialIframeSources *after* those.
+        // You might need to adjust this depending on how your script.js
+        // fetches and displays the user data.  A good way to do this is
+        // to have displayOnlineUsers and displayPreviousUsers *return promises*
+        // and use .then()
+
+        // Example (adjust as needed):
+        Promise.all([displayOnlineUsers(), displayPreviousUsers()]) // Assuming these return promises
+            .then(() => {
+                setInitialIframeSources();
+                // Initialize allUsers array *after* initial display
+                if (typeof initializeAllUsers === 'function') { // Check for existence
+                     initializeAllUsers();
+                }
+            })
+            .catch(error => {
+                console.error("Error loading users:", error);
+                // Handle errors appropriately, perhaps show an error message to the user.
+            });
+    });
+     // Function to simulate incrementing views (for demonstration).  Replace with your actual view tracking.
+    function incrementUserViewCount(username, isOnline) {
+        const container = isOnline ? document.getElementById('onlineUsers') : document.getElementById('previousUsers');
+        const userElement = Array.from(container.querySelectorAll('.user-info')).find(el => {
+            return el.querySelector('img').dataset.iframeUrl.split('/').pop() === username; // Find by username
+        });
+
+        if (userElement) {
+            let currentViews = parseInt(userElement.dataset.views) || 0; // Get current views, default to 0 if not set.
+            userElement.dataset.views = currentViews + 1; // Increment and store
+             // Update displayed view count, add element if needed.
+            let viewsElement = userElement.querySelector('.user-views');
+            if (!viewsElement) {
+                viewsElement = document.createElement('p');
+                viewsElement.classList.add('user-views');
+                userElement.querySelector('.user-details').appendChild(viewsElement);
+            }
+            viewsElement.textContent = `Views: ${currentViews + 1}`;
+
+        }
+    }
+    //Example
+    // Mock functions for displayOnlineUsers and displayPreviousUsers
+    // (Replace these with your actual implementations)
+
+    function displayOnlineUsers() {
+      // Simulate fetching and displaying online users
+      return new Promise(resolve => {
+        // In a real application, you would fetch this data from your server
+        const onlineUsersData = [
+          { username: 'User1', image_url: 'path/to/image1.jpg', iframe_embed: 'https://chaturbate.com/User1/', age: 22, location: 'Location1', tags: ['tag1', 'tag2'], views: 10 },
+          { username: 'User2', image_url: 'path/to/image2.jpg', iframe_embed: 'https://chaturbate.com/User2/', age: 25, location: 'Location2', tags: ['tag3'], views: 5 },
+          { username: 'User3', image_url: 'path/to/image3.jpg', iframe_embed: 'https://chaturbate.com/User3/', age: 'N/A', location: 'Location3', tags: [], views: 12 }
+        ];
+
+        const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
+        onlineUsersDiv.innerHTML = ''; // Clear existing content
+
+        onlineUsersData.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'user-info';
+            userElement.dataset.views = user.views; // Store the views
+            let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : '';
+             userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                <div class="user-details">
+                    <p>${user.username}</p>
+                    <p>Age: ${user.age}</p>
+                    <p>Location: ${user.location}</p>
+                    ${tagsHtml}
+                    <p class="user-views">Views: ${user.views}</p>
+                </div>
+            `;
+            // Add click handler (if you haven't already) to update iframes.
+            userElement.addEventListener('click', () => {
+                document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
+                document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
+                incrementUserViewCount(user.username, true); // Increment view count
+                // Add user to "previous users" (using your existing addToPreviousUsers)
+                addToPreviousUsers(user); // Call your function to add to previous users
+                displayPreviousUsers();
+            });
+            onlineUsersDiv.appendChild(userElement);
+        });
+        resolve(); // Resolve the promise when done
+      });
+    }
+
+    function displayPreviousUsers() {
+        // Retrieve previous users from localStorage
+      return new Promise(resolve => {
+        let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
+        const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+        previousUsersDiv.innerHTML = ''; //Clear
+
+        //Display
+        previousUsers.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'user-info';
+            userElement.dataset.views = user.views || 0; // Store views, default to 0
+            let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>`: '';
+
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
+                <div class="user-details">
+                    <p>${user.username}</p>
+                    <p>Age: ${user.age}</p>
+                      ${tagsHtml}
+                    <p class="user-views">Views: ${user.views}</p>
+                </div>
+            `;
+
+            userElement.addEventListener('click', () => {
+                document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
+                document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
+                incrementUserViewCount(user.username, false); // Increment view count (previous user)
+                // You *don't* add to previous users here, as they are *already* in the previous users list
+                displayPreviousUsers(); // Refresh the list to show updated view count
+            });
+
+            previousUsersDiv.appendChild(userElement);
+
+        });
+         resolve(); // Resolve the promise when done.
+      });
+    }
+
+    //Add this to your script.js as well
+    // Function to add a user to the "previous users" list (and localStorage).
+    function addToPreviousUsers(user) {
+        let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
+
+        // Check if the user is already in the list (by username).
+        const existingUserIndex = previousUsers.findIndex(u => u.username === user.username);
+
+        if (existingUserIndex > -1) {
+            // User exists, update view count. Don't add them again.
+            previousUsers[existingUserIndex].views = (previousUsers[existingUserIndex].views || 0) + 1;
+        } else {
+            // New user, add to the list, setting initial view count to 1, *if* it does not exist.
+            user.views = 1; // Initial view count for newly added previous users
+            previousUsers.push(user);
+        }
+
+        localStorage.setItem('previousUsers', JSON.stringify(previousUsers));
     }
     </script>
 </body>
