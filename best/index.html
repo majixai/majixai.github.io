@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
     <title>ChatHer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -500,93 +500,6 @@
             }
 
         }
-    }
-
-    // Mock functions for displayOnlineUsers and displayPreviousUsers
-    // (Replace these with your actual implementations)
-
-    function displayOnlineUsers() {
-      return new Promise(resolve => {
-        const onlineUsersData = [
-          { username: 'User1', image_url: 'path/to/image1.jpg', iframe_embed: 'https://chaturbate.com/User1/', age: 22, location: 'Location1', tags: ['tag1', 'tag2'], views: 10 },
-          { username: 'User2', image_url: 'path/to/image2.jpg', iframe_embed: 'https://chaturbate.com/User2/', age: 25, location: 'Location2', tags: ['tag3'], views: 5 },
-          { username: 'User3', image_url: 'path/to/image3.jpg', iframe_embed: 'https://chaturbate.com/User3/', age: 'N/A', location: 'Location3', tags: [], views: 12 }
-        ];
-
-        const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
-        onlineUsersDiv.innerHTML = '';
-
-        onlineUsersData.forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.className = 'user-info';
-            userElement.dataset.views = user.views;
-            let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : '';
-             userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                <div class="user-details">
-                    <p>${user.username}</p>
-                    <p>Age: ${user.age}</p>
-                    <p>Location: ${user.location}</p>
-                    ${tagsHtml}
-                    <p class="user-views">Views: ${user.views}</p>
-                </div>
-            `;
-            userElement.addEventListener('click', () => {
-                document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
-                document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
-                incrementUserViewCount(user.username, true);
-                addToPreviousUsers(user);
-                displayPreviousUsers();
-            });
-            onlineUsersDiv.appendChild(userElement);
-        });
-        resolve();
-      });
-    }
-
-    function displayPreviousUsers() {
-      return new Promise(resolve => {
-        const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
-        previousUsersDiv.innerHTML = ''; // Clear existing content
-
-        // Load *all* previousUsers keys
-        for (let i = 0; ; i++) {
-            const key = `previousUsers${i === 0 ? '' : i}`;
-            const previousUsers = JSON.parse(localStorage.getItem(key)) || [];
-
-            if (previousUsers.length === 0 && i > 0) { //Important check to avoid extra storage calls.
-               break; //Stop if the key does not exist.
-            }
-
-            previousUsers.forEach(user => {
-                const userElement = document.createElement('div');
-                userElement.className = 'user-info';
-                userElement.dataset.views = user.views || 0;
-                let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : '';
-
-                userElement.innerHTML = `
-                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
-                    <div class="user-details">
-                        <p>${user.username}</p>
-                        <p>Age: ${user.age}</p>
-                        ${tagsHtml}
-                        <p class="user-views">Views: ${user.views}</p>
-                    </div>
-                `;
-
-                userElement.addEventListener('click', () => {
-                    document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
-                    document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
-                    incrementUserViewCount(user.username, false); // Increment view count (previous user)
-                    displayPreviousUsers(); // Refresh to show updated count
-                });
-
-                previousUsersDiv.appendChild(userElement);
-            });
-        }
-
-        resolve();
-      });
     }
     //Updates previous users views in local storage
     function updatePreviousUserViews(username, newViews) {
