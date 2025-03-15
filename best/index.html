@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ChatHer</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -19,7 +19,6 @@
       gtag('config', 'G-64NCM5YMVB');
     </script>
     <style>
-        /* ... (All your CSS styles remain the same) ... */
         html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
 
         body {
@@ -49,28 +48,16 @@
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px; /* Reduced margin */
-            position: relative; /* Important for aspect ratio wrapper */
-            width: 100%;       /* Ensure it takes full width */
-
-        }
-
-        .iframe-wrapper {
-            position: relative;
-            width: calc(50% - 10px);  /* Same as original iframe width */
-            padding-bottom: 177.08333%; /* Aspect ratio (850 / 480 = 1.7708333) */
-            overflow: hidden; /* Hide any overflowing content */
         }
 
         .ifr {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            height: 40vh;  /*  viewport height for iframes */
+            width: calc(50% - 10px);
             border: none;
             padding: 2px;
             margin: 0;
         }
+
         /* --- Scrollable List Styles --- */
 
         .scrollable-list-container {
@@ -254,12 +241,11 @@
         @media (max-width: 768px) {
             .iframe-container {
                 flex-direction: column;
-                align-items: center; /* Center iframes horizontally */
             }
 
-            .iframe-wrapper {
-                width: 100%; /* Full width on smaller screens */
-                 /* Reset or adjust padding-bottom as needed */
+            .ifr {
+                width: 100%;
+                height: 30vh; /* Adjust height for stacked iframes */
             }
              .scrollable-list-container {
                 height: auto; /*Allow to take the space they require.*/
@@ -271,8 +257,8 @@
         }
         /*Smaller Screens and Mobile*/
         @media (max-width: 480px) {
-          .iframe-wrapper{
-            padding-bottom: 177.08333%; /* Maintain aspect ratio */
+          .ifr {
+            height: 20vh; /*Even Smaller for small phones.*/
           }
         }
     </style>
@@ -282,17 +268,12 @@
         <iframe src="../ticker/index.html" width="100%" height="250px" frameborder="0" allowtransparency="true"></iframe>
 
         <div class="iframe-container">
-            <div class="iframe-wrapper">
-                <iframe class="ifr" id="mainIframe" src="" frameborder="0"></iframe>
-            </div>
-            <div class="iframe-wrapper">
-                <iframe class="ifr" id="mainIframe2" src="" frameborder="0"></iframe>
-            </div>
+            <iframe class="ifr" id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
+            <iframe class="ifr" id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&gender=f" frameborder="0"></iframe>
         </div>
 
         <div class="lists-filters-container">
-            <div>
-                <div id="onlineUsers" class="scrollable-list-container w3-card-4">
+            <div>  <div id="onlineUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">Loading online users...</p>
                     </div>
@@ -300,16 +281,14 @@
                 <div id="pagination" class="pagination"></div>
             </div>
 
-            <div>
-                <div id="previousUsers" class="scrollable-list-container w3-card-4">
+            <div>  <div id="previousUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">No previous users.</p>
                     </div>
                 </div>
             </div>
 
-            <div>
-                <div class="radio-group">
+            <div>  <div class="radio-group">
                     <label>
                         <input type="radio" name="iframeChoice" value="mainIframe" checked> Main Iframe 1
                     </label>
@@ -354,9 +333,10 @@
 
     // Custom Ctrl+F Search
     document.addEventListener('keydown', function(event) {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
-            event.preventDefault();
-            const searchTerm = prompt("Search users:");
+        if ((event.ctrlKey || event.metaKey) && event.key === 'f') { // Works for both Ctrl and Cmd
+            event.preventDefault(); // Prevent the browser's default search
+
+            const searchTerm = prompt("Search users:"); // Get search term from user
             if (searchTerm) {
                 searchUsers(searchTerm);
             }
@@ -366,203 +346,48 @@
     function searchUsers(searchTerm) {
       const onlineUsersContainer = document.getElementById('onlineUsers');
       const previousUsersContainer = document.getElementById('previousUsers');
+
+      // Clear previous highlights
       clearHighlights(onlineUsersContainer);
       clearHighlights(previousUsersContainer);
-      searchAndHighlight(onlineUsersContainer, searchTerm);
-      searchAndHighlight(previousUsersContainer, searchTerm);
-      scrollToFirstHighlight(onlineUsersContainer);
-    }
 
+      // Search and highlight in online users
+      searchAndHighlight(onlineUsersContainer, searchTerm);
+
+      // Search and highlight in previous users
+      searchAndHighlight(previousUsersContainer, searchTerm);
+
+      // Scroll to the first highlight in online users, if any.
+      scrollToFirstHighlight(onlineUsersContainer);
+
+    }
      function searchAndHighlight(container, searchTerm) {
-        const userElements = container.querySelectorAll('.user-details p:first-child');
+        const userElements = container.querySelectorAll('.user-details p:first-child'); // Target usernames
+
         userElements.forEach(element => {
             const text = element.textContent;
-            const regex = new RegExp(searchTerm, 'gi');
+            const regex = new RegExp(searchTerm, 'gi'); // 'g' for global, 'i' for case-insensitive
+
             if (regex.test(text)) {
                 const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
-                element.innerHTML = highlightedText;
+                element.innerHTML = highlightedText; // Replace with highlighted HTML
             }
         });
     }
-
       function clearHighlights(container) {
         const highlightedElements = container.querySelectorAll('.highlight');
         highlightedElements.forEach(element => {
+            // Replace the span with its inner text content
             element.outerHTML = element.innerHTML;
+
         });
     }
-
     function scrollToFirstHighlight(container) {
         const firstHighlighted = container.querySelector('.highlight');
         if (firstHighlighted) {
             firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }
-
-    // Function to set initial iframe sources, with view tracking
-    function setInitialIframeSources() {
-    const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
-    const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list'); // Corrected selector
-    const mainIframe = document.getElementById('mainIframe');
-    const mainIframe2 = document.getElementById('mainIframe2');
-
-    // Get the most viewed online user
-    let mostViewedOnlineUser = null;
-    let maxOnlineViews = -1;
-
-    const onlineUserElements = onlineUsersDiv.querySelectorAll('.user-info');
-    onlineUserElements.forEach(userElement => {
-        const views = parseInt(userElement.dataset.views) || 0;
-        if (views > maxOnlineViews) {
-            maxOnlineViews = views;
-            mostViewedOnlineUser = userElement.querySelector('img');
-        }
-    });
-
-    if (mostViewedOnlineUser) {
-        const onlineUsername = mostViewedOnlineUser.dataset.iframeUrl.split('/').pop();
-        mainIframe.src = `https://chaturbate.com/${onlineUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
-    }
-
-
-     // Get the most viewed previous user from *all* previousUsers keys
-    let mostViewedPreviousUser = null;
-    let maxPreviousViews = -1;
-
-    for (let i = 0; ; i++) { // Loop indefinitely
-        const key = `previousUsers${i === 0 ? '' : i}`; // previousUsers, previousUsers1, previousUsers2, ...
-        const previousUsers = JSON.parse(localStorage.getItem(key)) || [];
-
-        if (previousUsers.length === 0) {
-            break; // Exit the loop when a key doesn't exist or is empty.
-        }
-
-        previousUsers.forEach(user => {
-            const userElement = document.createElement('div');
-            userElement.className = 'user-info';
-            userElement.dataset.views = user.views || 0;
-          // Create the image for data set.
-          const imgElement = document.createElement('img');
-          imgElement.src = user.image_url;
-          imgElement.alt = user.username;
-          imgElement.dataset.iframeUrl = user.iframe_embed; //iframe link
-
-            if (user.views > maxPreviousViews) {
-                maxPreviousViews = user.views;
-                mostViewedPreviousUser = imgElement;  //Use image.
-            }
-        });
-    }
-
-
-
-    if (mostViewedPreviousUser) {
-        const previousUsername = mostViewedPreviousUser.dataset.iframeUrl.split('/').pop();
-        mainIframe2.src = `https://chaturbate.com/${previousUsername}/?campaign=9cg6A&disable_sound=0&tour=dU9X`;
-    }
-}
-
-    // --- script.js additions (and modifications) ---
-
-    document.addEventListener('DOMContentLoaded', function() {
-        Promise.all([displayOnlineUsers(), displayPreviousUsers()])
-            .then(() => {
-                setInitialIframeSources();
-                if (typeof initializeAllUsers === 'function') {
-                     initializeAllUsers();
-                }
-            })
-            .catch(error => {
-                console.error("Error loading users:", error);
-            });
-    });
-
-    function incrementUserViewCount(username, isOnline) {
-        const container = isOnline ? document.getElementById('onlineUsers') : document.getElementById('previousUsers');
-        const userElement = Array.from(container.querySelectorAll('.user-info')).find(el => {
-            return el.querySelector('img').dataset.iframeUrl.split('/').pop() === username;
-        });
-
-        if (userElement) {
-            let currentViews = parseInt(userElement.dataset.views) || 0;
-            userElement.dataset.views = currentViews + 1;
-            let viewsElement = userElement.querySelector('.user-views');
-            if (!viewsElement) {
-                viewsElement = document.createElement('p');
-                viewsElement.classList.add('user-views');
-                userElement.querySelector('.user-details').appendChild(viewsElement);
-            }
-            viewsElement.textContent = `Views: ${currentViews + 1}`;
-
-             // Update view count in localStorage (for previous users)
-            if (!isOnline) {
-              updatePreviousUserViews(username, currentViews + 1);
-            }
-
-        }
-    }
-    //Updates previous users views in local storage
-    function updatePreviousUserViews(username, newViews) {
-        for (let i = 0; ; i++) {
-            const key = `previousUsers${i === 0 ? '' : i}`;
-            let previousUsers = JSON.parse(localStorage.getItem(key)) || [];
-
-            if (previousUsers.length === 0 && i > 0) {
-              break; // Key doesn't exist, stop searching
-            }
-
-            const existingUserIndex = previousUsers.findIndex(u => u.username === username);
-            if (existingUserIndex > -1) {
-                previousUsers[existingUserIndex].views = newViews;
-                localStorage.setItem(key, JSON.stringify(previousUsers));
-                return; // Exit after updating
-            }
-        }
-    }
-
-
-  function addToPreviousUsers(user) {
-    let added = false;
-    for (let i = 0; ; i++) {
-        const key = `previousUsers${i === 0 ? '' : i}`;
-        let previousUsers = JSON.parse(localStorage.getItem(key)) || [];
-
-        // Check if user exists in *this* key.
-        const existingUserIndex = previousUsers.findIndex(u => u.username === user.username);
-
-        if (existingUserIndex > -1) {
-            // User exists, update view count in the correct key.  Don't add them again.
-            previousUsers[existingUserIndex].views = (previousUsers[existingUserIndex].views || 0) + 1;
-            localStorage.setItem(key, JSON.stringify(previousUsers));
-            added = true;
-            break; // Exit the loop – we've found and updated the user
-        } else if (previousUsers.length < 5) { // Assuming a limit of 5 users per key. Change the 5.
-            // User doesn't exist and there's space, add them to this key.
-            user.views = 1; // Initial view is 1.
-            previousUsers.push(user);
-            localStorage.setItem(key, JSON.stringify(previousUsers));
-            added = true;
-            break; // Exit – user added.
-        }
-        // If we get here and haven't added, it means the current key is full *and* the user isn't in it.
-        // We move to the next key in the next loop iteration.
-     }
-
-    if (!added) {
-        // Find the next available key
-        let nextKeyIndex = 0;
-        while (localStorage.getItem(`previousUsers${nextKeyIndex === 0 ? '' : nextKeyIndex}`)) {
-            nextKeyIndex++;
-        }
-        const nextKey = `previousUsers${nextKeyIndex === 0 ? '' : nextKeyIndex}`;
-
-        // Add the user to the new key
-        user.views = 1;
-        localStorage.setItem(nextKey, JSON.stringify([user]));
-    }
-}
-
     </script>
 </body>
 </html>
-
