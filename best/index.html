@@ -47,17 +47,16 @@
         .iframe-container {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px; /* Reduced margin */
-            position: relative; /* Important for aspect ratio wrapper */
-            width: 100%;       /* Ensure it takes full width */
-
+            margin-bottom: 10px;
+            position: relative;
+            width: 100%;
         }
 
         .iframe-wrapper {
             position: relative;
-            width: calc(50% - 10px);  /* Same as original iframe width */
-            padding-bottom: 177.08333%; /* Aspect ratio (850 / 480 = 1.7708333) */
-            overflow: hidden; /* Hide any overflowing content */
+            width: calc(50% - 10px); /* Two iframes, side-by-side */
+            padding-bottom: 177.08333%; /* 850:480 aspect ratio */
+            overflow: hidden;
         }
 
         .ifr {
@@ -253,27 +252,29 @@
         @media (max-width: 768px) {
             .iframe-container {
                 flex-direction: column;
-                align-items: center; /* Center iframes horizontally */
+                align-items: center;
             }
 
             .iframe-wrapper {
                 width: 100%; /* Full width on smaller screens */
-                 /* Reset or adjust padding-bottom as needed */
+                /* padding-bottom will still maintain aspect ratio */
             }
-             .scrollable-list-container {
-                height: auto; /*Allow to take the space they require.*/
+
+            .scrollable-list-container {
+                height: auto;
             }
 
             .lists-filters-container > div {
                 width: 100%;
             }
         }
-        /*Smaller Screens and Mobile*/
+
         @media (max-width: 480px) {
           .iframe-wrapper{
             padding-bottom: 177.08333%; /* Maintain aspect ratio */
           }
         }
+
     </style>
 </head>
 <body class="w3-light-grey">
@@ -290,7 +291,8 @@
         </div>
 
         <div class="lists-filters-container">
-            <div>  <div id="onlineUsers" class="scrollable-list-container w3-card-4">
+            <div>
+                <div id="onlineUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">Loading online users...</p>
                     </div>
@@ -298,14 +300,16 @@
                 <div id="pagination" class="pagination"></div>
             </div>
 
-            <div>  <div id="previousUsers" class="scrollable-list-container w3-card-4">
+            <div>
+                <div id="previousUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">No previous users.</p>
                     </div>
                 </div>
             </div>
 
-            <div>  <div class="radio-group">
+            <div>
+                <div class="radio-group">
                     <label>
                         <input type="radio" name="iframeChoice" value="mainIframe" checked> Main Iframe 1
                     </label>
@@ -350,10 +354,9 @@
 
     // Custom Ctrl+F Search
     document.addEventListener('keydown', function(event) {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'f') { // Works for both Ctrl and Cmd
-            event.preventDefault(); // Prevent the browser's default search
-
-            const searchTerm = prompt("Search users:"); // Get search term from user
+        if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+            event.preventDefault();
+            const searchTerm = prompt("Search users:");
             if (searchTerm) {
                 searchUsers(searchTerm);
             }
@@ -363,42 +366,32 @@
     function searchUsers(searchTerm) {
       const onlineUsersContainer = document.getElementById('onlineUsers');
       const previousUsersContainer = document.getElementById('previousUsers');
-
-      // Clear previous highlights
       clearHighlights(onlineUsersContainer);
       clearHighlights(previousUsersContainer);
-
-      // Search and highlight in online users
       searchAndHighlight(onlineUsersContainer, searchTerm);
-
-      // Search and highlight in previous users
       searchAndHighlight(previousUsersContainer, searchTerm);
-
-      // Scroll to the first highlight in online users, if any.
       scrollToFirstHighlight(onlineUsersContainer);
-
     }
-     function searchAndHighlight(container, searchTerm) {
-        const userElements = container.querySelectorAll('.user-details p:first-child'); // Target usernames
 
+     function searchAndHighlight(container, searchTerm) {
+        const userElements = container.querySelectorAll('.user-details p:first-child');
         userElements.forEach(element => {
             const text = element.textContent;
-            const regex = new RegExp(searchTerm, 'gi'); // 'g' for global, 'i' for case-insensitive
-
+            const regex = new RegExp(searchTerm, 'gi');
             if (regex.test(text)) {
                 const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
-                element.innerHTML = highlightedText; // Replace with highlighted HTML
+                element.innerHTML = highlightedText;
             }
         });
     }
+
       function clearHighlights(container) {
         const highlightedElements = container.querySelectorAll('.highlight');
         highlightedElements.forEach(element => {
-            // Replace the span with its inner text content
             element.outerHTML = element.innerHTML;
-
         });
     }
+
     function scrollToFirstHighlight(container) {
         const firstHighlighted = container.querySelector('.highlight');
         if (firstHighlighted) {
@@ -406,7 +399,7 @@
         }
     }
 
-    // Function to set initial iframe sources, now with view tracking
+    // Function to set initial iframe sources, with view tracking
     function setInitialIframeSources() {
         const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
         const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
@@ -419,7 +412,7 @@
 
         const onlineUserElements = onlineUsersDiv.querySelectorAll('.user-info');
         onlineUserElements.forEach(userElement => {
-            const views = parseInt(userElement.dataset.views) || 0; // Get views, default to 0
+            const views = parseInt(userElement.dataset.views) || 0;
             if (views > maxOnlineViews) {
                 maxOnlineViews = views;
                 mostViewedOnlineUser = userElement.querySelector('img');
@@ -437,7 +430,7 @@
 
         const previousUserElements = previousUsersDiv.querySelectorAll('.user-info');
         previousUserElements.forEach(userElement => {
-            const views = parseInt(userElement.dataset.views) || 0; //Get views from data-views
+            const views = parseInt(userElement.dataset.views) || 0;
             if(views > maxPreviousViews) {
                 maxPreviousViews = views;
                 mostViewedPreviousUser = userElement.querySelector('img');
@@ -452,43 +445,28 @@
 
     // --- script.js additions (and modifications) ---
 
-    // Call the function to set initial iframe sources when the DOM is loaded.
-    // Make sure this runs *after* the user lists have been populated.
     document.addEventListener('DOMContentLoaded', function() {
-        // ... (Other DOMContentLoaded code from your existing script.js) ...
-
-        // Assuming your displayOnlineUsers and displayPreviousUsers functions
-        // populate the lists, call setInitialIframeSources *after* those.
-        // You might need to adjust this depending on how your script.js
-        // fetches and displays the user data.  A good way to do this is
-        // to have displayOnlineUsers and displayPreviousUsers *return promises*
-        // and use .then()
-
-        // Example (adjust as needed):
-        Promise.all([displayOnlineUsers(), displayPreviousUsers()]) // Assuming these return promises
+        Promise.all([displayOnlineUsers(), displayPreviousUsers()])
             .then(() => {
                 setInitialIframeSources();
-                // Initialize allUsers array *after* initial display
-                if (typeof initializeAllUsers === 'function') { // Check for existence
+                if (typeof initializeAllUsers === 'function') {
                      initializeAllUsers();
                 }
             })
             .catch(error => {
                 console.error("Error loading users:", error);
-                // Handle errors appropriately, perhaps show an error message to the user.
             });
     });
-     // Function to simulate incrementing views (for demonstration).  Replace with your actual view tracking.
+
     function incrementUserViewCount(username, isOnline) {
         const container = isOnline ? document.getElementById('onlineUsers') : document.getElementById('previousUsers');
         const userElement = Array.from(container.querySelectorAll('.user-info')).find(el => {
-            return el.querySelector('img').dataset.iframeUrl.split('/').pop() === username; // Find by username
+            return el.querySelector('img').dataset.iframeUrl.split('/').pop() === username;
         });
 
         if (userElement) {
-            let currentViews = parseInt(userElement.dataset.views) || 0; // Get current views, default to 0 if not set.
-            userElement.dataset.views = currentViews + 1; // Increment and store
-             // Update displayed view count, add element if needed.
+            let currentViews = parseInt(userElement.dataset.views) || 0;
+            userElement.dataset.views = currentViews + 1;
             let viewsElement = userElement.querySelector('.user-views');
             if (!viewsElement) {
                 viewsElement = document.createElement('p');
@@ -499,14 +477,12 @@
 
         }
     }
-    //Example
+
     // Mock functions for displayOnlineUsers and displayPreviousUsers
     // (Replace these with your actual implementations)
 
     function displayOnlineUsers() {
-      // Simulate fetching and displaying online users
       return new Promise(resolve => {
-        // In a real application, you would fetch this data from your server
         const onlineUsersData = [
           { username: 'User1', image_url: 'path/to/image1.jpg', iframe_embed: 'https://chaturbate.com/User1/', age: 22, location: 'Location1', tags: ['tag1', 'tag2'], views: 10 },
           { username: 'User2', image_url: 'path/to/image2.jpg', iframe_embed: 'https://chaturbate.com/User2/', age: 25, location: 'Location2', tags: ['tag3'], views: 5 },
@@ -514,12 +490,12 @@
         ];
 
         const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
-        onlineUsersDiv.innerHTML = ''; // Clear existing content
+        onlineUsersDiv.innerHTML = '';
 
         onlineUsersData.forEach(user => {
             const userElement = document.createElement('div');
             userElement.className = 'user-info';
-            userElement.dataset.views = user.views; // Store the views
+            userElement.dataset.views = user.views;
             let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>` : '';
              userElement.innerHTML = `
                 <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}">
@@ -531,33 +507,29 @@
                     <p class="user-views">Views: ${user.views}</p>
                 </div>
             `;
-            // Add click handler (if you haven't already) to update iframes.
             userElement.addEventListener('click', () => {
                 document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
                 document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
-                incrementUserViewCount(user.username, true); // Increment view count
-                // Add user to "previous users" (using your existing addToPreviousUsers)
-                addToPreviousUsers(user); // Call your function to add to previous users
+                incrementUserViewCount(user.username, true);
+                addToPreviousUsers(user);
                 displayPreviousUsers();
             });
             onlineUsersDiv.appendChild(userElement);
         });
-        resolve(); // Resolve the promise when done
+        resolve();
       });
     }
 
     function displayPreviousUsers() {
-        // Retrieve previous users from localStorage
       return new Promise(resolve => {
         let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
         const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
-        previousUsersDiv.innerHTML = ''; //Clear
+        previousUsersDiv.innerHTML = '';
 
-        //Display
         previousUsers.forEach(user => {
             const userElement = document.createElement('div');
             userElement.className = 'user-info';
-            userElement.dataset.views = user.views || 0; // Store views, default to 0
+            userElement.dataset.views = user.views || 0;
             let tagsHtml = user.tags.length > 0 ? `<p>Tags: ${user.tags.join(', ')}</p>`: '';
 
             userElement.innerHTML = `
@@ -573,32 +545,25 @@
             userElement.addEventListener('click', () => {
                 document.getElementById('mainIframe').src = user.iframe_embed + '?campaign=9cg6A&disable_sound=0&tour=dU9X';
                 document.getElementById('secondIframe').src = 'https://www.google.com/search?q=' + user.username;
-                incrementUserViewCount(user.username, false); // Increment view count (previous user)
-                // You *don't* add to previous users here, as they are *already* in the previous users list
-                displayPreviousUsers(); // Refresh the list to show updated view count
+                incrementUserViewCount(user.username, false);
+                displayPreviousUsers();
             });
 
             previousUsersDiv.appendChild(userElement);
 
         });
-         resolve(); // Resolve the promise when done.
+         resolve();
       });
     }
 
-    //Add this to your script.js as well
-    // Function to add a user to the "previous users" list (and localStorage).
     function addToPreviousUsers(user) {
         let previousUsers = JSON.parse(localStorage.getItem('previousUsers')) || [];
-
-        // Check if the user is already in the list (by username).
         const existingUserIndex = previousUsers.findIndex(u => u.username === user.username);
 
         if (existingUserIndex > -1) {
-            // User exists, update view count. Don't add them again.
             previousUsers[existingUserIndex].views = (previousUsers[existingUserIndex].views || 0) + 1;
         } else {
-            // New user, add to the list, setting initial view count to 1, *if* it does not exist.
-            user.views = 1; // Initial view count for newly added previous users
+            user.views = 1;
             previousUsers.push(user);
         }
 
