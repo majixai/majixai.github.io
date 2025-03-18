@@ -92,8 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
 
                 // Remove user from online users list visually and from data
-                userElement.remove(); // Remove from display
-                allOnlineUsersData = allOnlineUsersData.filter(u => u.username !== user.username); // Remove from data array
+                // userElement.remove(); // Remove from display
+                // allOnlineUsersData = allOnlineUsersData.filter(u => u.username !== user.username); // Remove from data array
             });
             onlineUsersDiv.appendChild(userElement);
         });
