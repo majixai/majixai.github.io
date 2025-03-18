@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 event.preventDefault();
                 const usernameToRemove = user.username;
 
-                Remove from previousUsers array and localStorage
+                // Remove from previousUsers array and localStorage
                 previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
                 // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
