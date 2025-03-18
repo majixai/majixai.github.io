@@ -7,10 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let previousUsers = loadPreviousUsers();
     let removedUsers = loadRemovedUsers(); // Load removed users from localStorage
     displayPreviousUsers(); // Initial display from localStorage
-
-    let allOnlineUsersData = []; // Initialize *once* here
-    let onlineUsernamesSet = new Set(); // Store online usernames for efficient lookup
-
+    let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
         const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
@@ -24,51 +21,48 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.results && data.results.length > 0) {
+                    // Filter for public users here, before concatenating
                     const publicUsers = data.results.filter(user => user.current_show === 'public');
-                    // Update the existing allOnlineUsersData array (don't reset it!)
-                    publicUsers.forEach(newUser => {
-                        if (!allOnlineUsersData.some(existingUser => existingUser.username === newUser.username)) {
-                            allOnlineUsersData.push(newUser);
-                        }
-                    });
-
-                    // Update onlineUsernamesSet
-                    publicUsers.forEach(user => onlineUsernamesSet.add(user.username));
+                    allOnlineUsersData = allOnlineUsersData.concat(publicUsers);
 
                     if (data.results.length === 500) {
-                        // Continue fetching if necessary
                         return fetchData(offset + 500);
                     } else {
-                        // Filter out users that are no longer online
-                        allOnlineUsersData = allOnlineUsersData.filter(user => onlineUsernamesSet.has(user.username));
+                        onlineUsersDiv.innerHTML = "";
                         displayOnlineUsers(allOnlineUsersData);
-                        return Promise.resolve(); // Resolve the promise chain
-                    }
 
+                        if(typeof initializeAllUsers === 'function') {
+                            window.initializeAllUsers();
+                        }
+                        return Promise.resolve();
+                    }
                 } else {
                     onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-                    return Promise.resolve(); // Resolve even if no users found
+                    return Promise.resolve();
                 }
             })
             .catch(error => {
                 console.error("Fetch error:", error);
                 onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
-                return Promise.reject(error); // Propagate the rejection
+                return Promise.reject(error);
             });
     }
 
-
-
     function displayOnlineUsers(users) {
-        onlineUsersDiv.innerHTML = ""; // Clear the list before updating
+        onlineUsersDiv.innerHTML = "";
         if (users.length === 0) {
             onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
             return;
         }
 
         users.forEach(user => {
-            if (user.current_show !== 'public' || !user.image_url || !user.username) {
-                return; // Skip invalid users
+            // Ensure user is public before displaying
+            if (user.current_show !== 'public') {
+                return; // Skip non-public users
+            }
+            if (!user.image_url || !user.username) {
+                console.warn("Incomplete user data:", user);
+                return;
             }
 
             const userElement = document.createElement("div");
@@ -79,17 +73,27 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
                     <p>Tags: ${user.tags[0] || ''} ${user.tags[1] || ''} ${user.tags[2] || ''} ${user.tags[3] || ''}  ${user.tags[4] || ''}</p>
-                </div>
+                    </div>
             `;
 
-            userElement.addEventListener("click", function(event) {
+            userElement.addEventListener("click", function (event) {
                 event.preventDefault();
-                const usr = this.querySelector("img").dataset.username;
+                const usr = userElement.querySelector("img").dataset.username;
                 const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-                const selectedIframe = iframeChoice === 'mainIframe2' ? mainIframe2 : mainIframe;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
                 selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
-                addToPreviousUsers(user);
+                addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
+
+                // Remove user from online users list visually and from data
+                userElement.remove(); // Remove from display
+                allOnlineUsersData = allOnlineUsersData.filter(u => u.username !== user.username); // Remove from data array
             });
             onlineUsersDiv.appendChild(userElement);
         });
@@ -99,8 +103,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
+            // previousUsers = previousUsers.slice(0, 20); // Keep only latest 20
             localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
+            // Create and prepend the new user element
             const userElement = document.createElement("div");
             userElement.className = "user-info";
             userElement.innerHTML = `
@@ -111,75 +117,164 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
 
-            userElement.addEventListener("click", function(event) {
+            userElement.addEventListener("click", function (event) {
                 event.preventDefault();
-                const usr = this.querySelector("img").dataset.username;
+                const usr = userElement.querySelector("img").dataset.username;
                 const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-                const selectedIframe = iframeChoice === 'mainIframe2' ? mainIframe2 : mainIframe;
-                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
             });
 
-            userElement.addEventListener("dblclick", function(event) {
-                event.preventDefault();
-                const usernameToRemove = user.username;
-                previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
-                this.remove(); // Correctly removes the element
-            });
+            // userElement.addEventListener("dblclick", function(event) {
+                // event.preventDefault();
+                // const usernameToRemove = user.username;
 
-            previousUsersDiv.prepend(userElement); // Prepend to the list
+                // Remove from previousUsers array and localStorage
+                // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+
+                // Add to removedUsers array and localStorage
+                // removedUsers.push(user);
+                // saveRemovedUsers();
+
+                // Remove user element from display
+                // userElement.remove();
+            // });
+
+
+            // Prepend the new user element to the previous users div
+            previousUsersDiv.prepend(userElement);
+
+            // // Keep only a maximum of 20 user elements in previousUsersDiv
+            // if (previousUsersDiv.children.length > 2000) {
+            //     previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
+            // }
         }
     }
-   function displayPreviousUsers() {
+
+    function displayPreviousUsers() {
         previousUsersDiv.innerHTML = ""; // Clear for initial load
+
+        const onlineUsernamesPromise = fetchOnlineUsernames(); // Start fetching usernames immediately
 
         const storedUsers = loadPreviousUsers();
         if (storedUsers.length === 0) {
             previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
-            return;
+            return; // Exit early if no stored users
         }
 
-        storedUsers.forEach(user => {
-            if (!user.image_url || !user.username) {
+        onlineUsernamesPromise.then(onlineUsernames => {
+            if (!onlineUsernames) {
+                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Error fetching online users for previous users list.</p>';
                 return;
             }
 
-            const userElement = document.createElement("div");
-            userElement.className = "user-info";
-            userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
-                <div class="user-details">
-                    <p>Age: ${user.age || 'N/A'}</p>
-                    <p>Username: ${user.username}</p>
-                </div>
-            `;
+            // Filter previous users to only include those who are currently online AND public for initial display
+            const onlinePreviousUsersInitial = storedUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
 
-            // Add online/offline indicator (using onlineUsernamesSet)
-            if (onlineUsernamesSet.has(user.username)) {
-                userElement.classList.add("online"); // You'll need CSS for this
-            } else {
-                userElement.classList.add("offline");  // And CSS for this
+            if (onlinePreviousUsersInitial.length === 0) {
+                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>';
+                return;
             }
 
 
-            userElement.addEventListener("click", function(event) {
-                event.preventDefault();
-                const usr = this.querySelector("img").dataset.username;
-                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-                const selectedIframe = iframeChoice === 'mainIframe2' ? mainIframe2 : mainIframe;
-                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+            onlinePreviousUsersInitial.forEach(user => { // Use filtered list for initial display
+                if (user.current_show !== 'public') {
+                    return;
+                }
+                if (!user.image_url || !user.username) {
+                    return;
+                }
+                const userElement = document.createElement("div");
+                userElement.className = "user-info";
+                userElement.innerHTML = `
+                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                    <div class="user-details">
+                        <p>Age: ${user.age || 'N/A'}</p>
+                        <p>Username: ${user.username}</p>
+                    </div>
+                `;
+
+                userElement.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    const usr = userElement.querySelector("img").dataset.username;
+                    const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                    let selectedIframe;
+
+                    if (iframeChoice === 'mainIframe2') {
+                        selectedIframe = mainIframe2;
+                    } else {
+                        selectedIframe = mainIframe;
+                    }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                });
+
+                // userElement.addEventListener("dblclick", function(event) {
+                    // event.preventDefault();
+                    // const usernameToRemove = user.username;
+
+                    // Remove from previousUsers array and localStorage
+                    // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                    // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+
+                    // Add to removedUsers array and localStorage
+                    // removedUsers.push(user);
+                    // saveRemovedUsers();
+
+                    // Remove user element from display
+                    // userElement.remove();
+                // });
+
+                previousUsersDiv.appendChild(userElement);
             });
+        }).catch(error => {
+            console.error("Error fetching online users for previous users:", error);
+            previousUsersDiv.innerHTML = '<p class="text-danger w3-center">Error updating previous users online status.</p>';
+        });
+    }
 
-             userElement.addEventListener("dblclick", function(event) {
-                event.preventDefault();
-                const usernameToRemove = user.username;
-                previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-                localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
-                this.remove(); // Correctly removes the element
-            });
+    function fetchOnlineUsernames() {
+        return new Promise((resolve, reject) => {
+            let currentOnlineUsersData = [];
+            function recursiveFetch(offset = 0) {
+                const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
+
+                fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.results && data.results.length > 0) {
+                            // Only consider public users for username list
+                            const publicUsernames = data.results
+                                .filter(user => user.current_show === 'public')
+                                .map(user => user.username);
+                            currentOnlineUsersData = currentOnlineUsersData.concat(publicUsernames);
 
 
-            previousUsersDiv.appendChild(userElement);
+                            if (data.results.length === 500) {
+                                return recursiveFetch(offset + 500);
+                            } else {
+                                resolve(currentOnlineUsersData); // Resolve with usernames of public users
+                            }
+                        } else {
+                            resolve([]);
+                        }
+                    })
+                    .catch(error => {
+                        reject(error);
+                    });
+            }
+            recursiveFetch();
         });
     }
 
@@ -198,15 +293,24 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem("removedUsers", JSON.stringify(removedUsers));
     }
 
-    // Initial fetch and setup
-    fetchData().then(() => {
-        // Now that initial data is loaded, set up the interval
-        setInterval(() => {
-            onlineUsernamesSet.clear(); // Clear the Set before refetching
-            fetchData().then(displayPreviousUsers).catch(err=> console.error("Error in set interval displayPreviousUsers:", err)); // Update online status
-              //Update online status
-        }, 60000);
-    }).catch(error => {
-      console.error("initial fetch error:", error);
-    });
+
+    if (typeof window.addToPreviousUsers !== 'undefined') {
+        window.addToPreviousUsers = addToPreviousUsers;
+    }
+    if (typeof window.displayPreviousUsers !== 'undefined') {
+        window.displayPreviousUsers = displayPreviousUsers;
+    }
+
+    window.initializeAllUsersFromScriptJS = function(callback) {
+        callback();
+    };
+
+
+    fetchData();
+    setInterval(() => {
+        allOnlineUsersData = [];
+        fetchData();
+        // displayPreviousUsers(); // Removed periodic refresh of previous users
+    }, 60000);
+
 });
