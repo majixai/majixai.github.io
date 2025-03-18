@@ -139,9 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
                 // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
-                // Add to removedUsers array and localStorage
-                removedUsers.push(user);
-                saveRemovedUsers();
+                // // Add to removedUsers array and localStorage
+                // removedUsers.push(user);
+                // saveRemovedUsers();
 
                 // Remove user element from display
                 userElement.remove();
@@ -223,9 +223,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
                     localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
-                    // Add to removedUsers array and localStorage
-                    removedUsers.push(user);
-                    saveRemovedUsers();
+                    // // Add to removedUsers array and localStorage
+                    // removedUsers.push(user);
+                    // saveRemovedUsers();
 
                     // Remove user element from display
                     userElement.remove();
