@@ -131,21 +131,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
             });
 
-            // userElement.addEventListener("dblclick", function(event) {
-                // event.preventDefault();
-                // const usernameToRemove = user.username;
+            userElement.addEventListener("dblclick", function(event) {
+                event.preventDefault();
+                const usernameToRemove = user.username;
 
-                // Remove from previousUsers array and localStorage
-                // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                Remove from previousUsers array and localStorage
+                previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
                 // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
                 // Add to removedUsers array and localStorage
-                // removedUsers.push(user);
-                // saveRemovedUsers();
+                removedUsers.push(user);
+                saveRemovedUsers();
 
                 // Remove user element from display
-                // userElement.remove();
-            // });
+                userElement.remove();
+            });
 
 
             // Prepend the new user element to the previous users div
@@ -215,21 +215,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                 });
 
-                // userElement.addEventListener("dblclick", function(event) {
-                    // event.preventDefault();
-                    // const usernameToRemove = user.username;
+                userElement.addEventListener("dblclick", function(event) {
+                    event.preventDefault();
+                    const usernameToRemove = user.username;
 
                     // Remove from previousUsers array and localStorage
-                    // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-                    // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
+                    previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
+                    localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
 
                     // Add to removedUsers array and localStorage
-                    // removedUsers.push(user);
-                    // saveRemovedUsers();
+                    removedUsers.push(user);
+                    saveRemovedUsers();
 
                     // Remove user element from display
-                    // userElement.remove();
-                // });
+                    userElement.remove();
+                });
 
                 previousUsersDiv.appendChild(userElement);
             });
