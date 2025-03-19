@@ -1,12 +1,17 @@
+// The previous version from this works, without showing the 2 previous users (new users in the second case).
+
 document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+    const newUsersDiv = document.getElementById("newUsers").querySelector('.user-list'); // New users box
     const mainIframe = document.getElementById("mainIframe");
     const mainIframe2 = document.getElementById("mainIframe2");
 
     let previousUsers = loadPreviousUsers();
+    let newUsers = loadNewUsers(); // Load new users from localStorage
     let removedUsers = loadRemovedUsers(); // Load removed users from localStorage
     displayPreviousUsers(); // Initial display from localStorage
+    displayNewUsers(); // Initial display for new users
     let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
@@ -90,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
                 addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
+                addToNewUsers(user); // Add to new users box
 
                 // Remove user from online users list visually and from data
                 // userElement.remove(); // Remove from display
@@ -98,7 +104,6 @@ document.addEventListener('DOMContentLoaded', function() {
             onlineUsersDiv.appendChild(userElement);
         });
     }
-
 
     function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
@@ -131,30 +136,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
             });
 
-            // userElement.addEventListener("dblclick", function(event) {
-                // event.preventDefault();
-                // const usernameToRemove = user.username;
-
-                // Remove from previousUsers array and localStorage
-                // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-                // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
-
-                // Add to removedUsers array and localStorage
-                // removedUsers.push(user);
-                // saveRemovedUsers();
-
-                // Remove user element from display
-                // userElement.remove();
-            // });
-
-
-            // Prepend the new user element to the previous users div
             previousUsersDiv.prepend(userElement);
 
             // // Keep only a maximum of 20 user elements in previousUsersDiv
             // if (previousUsersDiv.children.length > 2000) {
             //     previousUsersDiv.removeChild(previousUsersDiv.lastElementChild);
             // }
+        }
+    }
+
+    function addToNewUsers(user) {
+        if (!newUsers.some(u => u.username === user.username)) {
+            newUsers.unshift(user);
+            localStorage.setItem("newUsers", JSON.stringify(newUsers));
+
+            // Create and prepend the new user element
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Username: ${user.username}</p>
+                </div>
+            `;
+
+            userElement.addEventListener("click", function (event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+            });
+
+            newUsersDiv.prepend(userElement);
         }
     }
 
@@ -182,7 +203,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous public users currently online.</p>';
                 return;
             }
-
 
             onlinePreviousUsersInitial.forEach(user => { // Use filtered list for initial display
                 if (user.current_show !== 'public') {
@@ -215,27 +235,75 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                 });
 
-                // userElement.addEventListener("dblclick", function(event) {
-                    // event.preventDefault();
-                    // const usernameToRemove = user.username;
-
-                    // Remove from previousUsers array and localStorage
-                    // previousUsers = previousUsers.filter(u => u.username !== usernameToRemove);
-                    // localStorage.setItem("previousUsers", JSON.stringify(previousUsers));
-
-                    // Add to removedUsers array and localStorage
-                    // removedUsers.push(user);
-                    // saveRemovedUsers();
-
-                    // Remove user element from display
-                    // userElement.remove();
-                // });
-
                 previousUsersDiv.appendChild(userElement);
             });
         }).catch(error => {
             console.error("Error fetching online users for previous users:", error);
             previousUsersDiv.innerHTML = '<p class="text-danger w3-center">Error updating previous users online status.</p>';
+        });
+    }
+
+    function displayNewUsers() {
+        newUsersDiv.innerHTML = ""; // Clear for initial load
+
+        const onlineUsernamesPromise = fetchOnlineUsernames(); // Start fetching usernames immediately
+
+        const storedUsers = loadNewUsers();
+        if (storedUsers.length === 0) {
+            newUsersDiv.innerHTML = '<p class="text-muted w3-center">No new users yet.</p>';
+            return; // Exit early if no stored users
+        }
+
+        onlineUsernamesPromise.then(onlineUsernames => {
+            if (!onlineUsernames) {
+                newUsersDiv.innerHTML = '<p class="text-muted w3-center">Error fetching online users for new users list.</p>';
+                return;
+            }
+
+            // Filter new users to only include those who are currently online AND public for initial display
+            const onlineNewUsersInitial = storedUsers.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
+
+            if (onlineNewUsersInitial.length === 0) {
+                newUsersDiv.innerHTML = '<p class="text-muted w3-center">No new public users currently online.</p>';
+                return;
+            }
+
+            onlineNewUsersInitial.forEach(user => { // Use filtered list for initial display
+                if (user.current_show !== 'public') {
+                    return;
+                }
+                if (!user.image_url || !user.username) {
+                    return;
+                }
+                const userElement = document.createElement("div");
+                userElement.className = "user-info";
+                userElement.innerHTML = `
+                    <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                    <div class="user-details">
+                        <p>Age: ${user.age || 'N/A'}</p>
+                        <p>Username: ${user.username}</p>
+                    </div>
+                `;
+
+                userElement.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    const usr = userElement.querySelector("img").dataset.username;
+                    const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                    let selectedIframe;
+
+                    if (iframeChoice === 'mainIframe2') {
+                        selectedIframe = mainIframe2;
+                    } else {
+                        selectedIframe = mainIframe;
+                    }
+                    selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+                });
+
+                newUsersDiv.appendChild(userElement);
+            });
+        }).catch(error => {
+            console.error("Error fetching online users for new users:", error);
+            newUsersDiv.innerHTML = '<p class="text-danger w3-center">Error updating new users online status.</p>';
         });
     }
 
@@ -260,7 +328,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 .map(user => user.username);
                             currentOnlineUsersData = currentOnlineUsersData.concat(publicUsernames);
 
-
                             if (data.results.length === 500) {
                                 return recursiveFetch(offset + 500);
                             } else {
@@ -278,10 +345,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-
     function loadPreviousUsers() {
         const storedUsers = localStorage.getItem("previousUsers");
         return storedUsers ? JSON.parse(storedUsers) : [];
+    }
+
+    function loadNewUsers() {
+        const storedNewUsers = localStorage.getItem("newUsers");
+        return storedNewUsers ? JSON.parse(storedNewUsers) : [];
     }
 
     function loadRemovedUsers() {
@@ -293,18 +364,22 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem("removedUsers", JSON.stringify(removedUsers));
     }
 
-
     if (typeof window.addToPreviousUsers !== 'undefined') {
         window.addToPreviousUsers = addToPreviousUsers;
     }
     if (typeof window.displayPreviousUsers !== 'undefined') {
         window.displayPreviousUsers = displayPreviousUsers;
     }
+    if (typeof window.addToNewUsers !== 'undefined') {
+        window.addToNewUsers = addToNewUsers;
+    }
+    if (typeof window.displayNewUsers !== 'undefined') {
+        window.displayNewUsers = displayNewUsers;
+    }
 
     window.initializeAllUsersFromScriptJS = function(callback) {
         callback();
     };
-
 
     fetchData();
     setInterval(() => {
@@ -312,5 +387,4 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchData();
         // displayPreviousUsers(); // Removed periodic refresh of previous users
     }, 60000);
-
 });
