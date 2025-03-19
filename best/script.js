@@ -3,15 +3,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
-    const newUsersDiv = document.getElementById("newUsers").querySelector('.user-list'); // New users box
+    // const newUsersDiv = document.getElementById("newUsers").querySelector('.user-list'); // New users box
     const mainIframe = document.getElementById("mainIframe");
     const mainIframe2 = document.getElementById("mainIframe2");
 
     let previousUsers = loadPreviousUsers();
-    let newUsers = loadNewUsers(); // Load new users from localStorage
+    // let newUsers = loadNewUsers(); // Load new users from localStorage
     let removedUsers = loadRemovedUsers(); // Load removed users from localStorage
     displayPreviousUsers(); // Initial display from localStorage
-    displayNewUsers(); // Initial display for new users
+    // displayNewUsers(); // Initial display for new users
     let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
                 addToPreviousUsers(user); // Now addToPreviousUsers will handle display update
-                addToNewUsers(user); // Add to new users box
+                // addToNewUsers(user); // Add to new users box
 
                 // Remove user from online users list visually and from data
                 // userElement.remove(); // Remove from display
@@ -370,12 +370,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof window.displayPreviousUsers !== 'undefined') {
         window.displayPreviousUsers = displayPreviousUsers;
     }
-    if (typeof window.addToNewUsers !== 'undefined') {
-        window.addToNewUsers = addToNewUsers;
-    }
-    if (typeof window.displayNewUsers !== 'undefined') {
-        window.displayNewUsers = displayNewUsers;
-    }
+    // if (typeof window.addToNewUsers !== 'undefined') {
+     //    window.addToNewUsers = addToNewUsers;
+    // }
+    // if (typeof window.displayNewUsers !== 'undefined') {
+    //     window.displayNewUsers = displayNewUsers;
+    // }
 
     window.initializeAllUsersFromScriptJS = function(callback) {
         callback();
