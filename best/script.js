@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let allOnlineUsersData = [];
 
     function fetchData(offset = 0) {
-        const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
+        const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&tag=asian&tag=18&tag=deepthroat&tag=bigboobs&tag=fuckmachine&limit=500&offset=${offset}`;
 
         return fetch(apiUrl)
             .then(response => {
