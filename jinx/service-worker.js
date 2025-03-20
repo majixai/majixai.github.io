@@ -9,19 +9,15 @@ const assetsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(cacheName)
-      .then(cache => {
-        return cache.addAll(assetsToCache);
-      })
-  );
+  console.log('Service Worker installed');
 });
 
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
-  );
+self.addEventListener('activate', event => {
+  console.log('Service Worker activated');
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  // You can add custom actions here when a notification is clicked
+  console.log('Notification clicked');
 });
