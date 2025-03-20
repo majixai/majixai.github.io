@@ -26,7 +26,7 @@ function showNotification() {
 }
 
 function startNotificationInterval() {
-  notificationInterval = setInterval(showNotification, 5 * 60 * 1000); // Every 5 minutes (adjust to 15 * 60 * 1000 for 15 minutes)
+  notificationInterval = setInterval(showNotification, 20 * 1000); // Every 5 minutes (adjust to 15 * 60 * 1000 for 15 minutes)
   notificationStatus.textContent = 'Notifications enabled and will appear periodically.';
   enableNotificationsButton.disabled = true;
 }
