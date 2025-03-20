@@ -2,7 +2,7 @@ const cacheName = 'pwa-alert-cache-v1';
 const assetsToCache = [
   '/',
   '/index.html',
-  '/script.js',
+  '/index.js',
   '/style.css',
   '/manifest.json',
   '/icon.png'
