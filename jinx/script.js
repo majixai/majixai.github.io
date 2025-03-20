@@ -11,4 +11,4 @@ function showAlert() {
 }
 
 // Set up the interval (15 minutes = 900000 milliseconds)
-setInterval(showAlert, 900000);
+setInterval(showAlert, 60000);
