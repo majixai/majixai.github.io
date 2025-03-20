@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PWA Alert App</title>
+  <title>PWA with Notifications</title>
   <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>PWA Alert App</h1>
-  <p>This app will show an alert every 15 minutes.</p>
+  <div class="container mt-5 text-center">
+    <h1>PWA with Local Notifications</h1>
+    <p>This app will send you a notification periodically.</p>
+    <button id="enableNotifications" class="btn btn-primary">Enable Notifications</button>
+    <p id="notificationStatus" class="mt-3"></p>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
