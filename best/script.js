@@ -21,42 +21,43 @@ document.addEventListener('DOMContentLoaded', function() {
         displayPreviousUsers();
     });
 
-    function fetchData(offset = 0) {
-        const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=500&offset=${offset}`;
+    async function fetchData() {
+        const limit = 500;
+        let offset = 0;
+        let continueFetching = true;
 
-        return fetch(apiUrl)
-            .then(response => {
+        while (continueFetching) {
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&limit=${limit}&offset=${offset}`;
+            try {
+                const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
-            })
-            .then(data => {
+                const data = await response.json();
                 if (data.results && data.results.length > 0) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
-
-                    if (data.results.length === 500) {
-                        return fetchData(offset + 500);
+                    if (data.results.length < limit) {
+                        continueFetching = false;
                     } else {
-                        populateFilters(allOnlineUsersData);
-                        onlineUsersDiv.innerHTML = "";
-                        displayOnlineUsers(allOnlineUsersData);
-
-                        if (typeof initializeAllUsers === 'function') {
-                            window.initializeAllUsers();
-                        }
-                        return Promise.resolve();
+                        offset += limit;
                     }
                 } else {
-                    onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-                    return Promise.resolve();
+                    continueFetching = false;
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error("Fetch error:", error);
                 onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
-                return Promise.reject(error);
-            });
+                return;
+            }
+        }
+
+        populateFilters(allOnlineUsersData);
+        onlineUsersDiv.innerHTML = "";
+        displayOnlineUsers(allOnlineUsersData);
+
+        if (typeof initializeAllUsers === 'function') {
+            window.initializeAllUsers();
+        }
     }
 
     function populateFilters(users) {
