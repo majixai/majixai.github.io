@@ -312,15 +312,24 @@
                 </div>
 
                 <div class="search-filters">
-                    <input type="text" id="userSearch" placeholder="Search usernames...">
-                    <input type="text" id="tagSearch" placeholder="Search tags (comma-separated)">
+
+<label for="storageType">Storage Type:</label>
+<select id="storageType">
+    <option value="local">Local Storage</option>
+    <option value="session">Session Storage</option>
+</select>                                            <label for="filterTags">Filter Tags (comma separated):</label>
+<input type="text" id="filterTags" placeholder="e.g. asian, 18, deepthroat">                                               <label for="filterAge">Filter Age (max age):</label>
+<input type="number" id="filterAge" placeholder="e.g. 25">
+                    
+                    <!-- input type="text" id="userSearch" placeholder="Search usernames...">
+                    <input type="text" id="tagSearch" placeholder="Search tags (comma-separated)" >
                 </div>
                 <div class="search-filters">
                     <input type="number" id="ageFrom" placeholder="Age From">
-                    <input type="number" id="ageTo" placeholder="Age To">
+                    <input type="number" id="ageTo" placeholder="Age To" -->
                 </div>
                 <div id="secondIframeResults"></div>
-                <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" src="https://majixai.github.io/best/texther" frameborder="0" scrolling="no"></iframe>
+                <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/texther" frameborder="0" scrolling="no"></iframe>
             </div>
         </div>
     </div>
