@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let storageType = storageTypeSelector.value;
     let previousUsers = loadUsers("previousUsers");
     let removedUsers = loadUsers("removedUsers");
-    displayPreviousUsers();
+    await displayPreviousUsers();
     let allOnlineUsersData = [];
 
     storageTypeSelector.addEventListener("change", async function() {
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         populateFilters(allOnlineUsersData);
         onlineUsersDiv.innerHTML = "";
-        displayOnlineUsers(allOnlineUsersData);
+        await displayOnlineUsers(allOnlineUsersData);
 
         if (typeof initializeAllUsers === 'function') {
             window.initializeAllUsers();
@@ -239,9 +239,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         callback();
     };
 
+    async function monitorContentWindow(iframe) {
+        const onIframeLoad = async () => {
+            try {
+                const contentWindow = iframe.contentWindow;
+                if (contentWindow) {
+                    contentWindow.document.addEventListener("click", async function(event) {
+                        const target = event.target;
+                        if (target && target.matches(".user-info img")) {
+                            const username = target.dataset.username;
+                            const user = allOnlineUsersData.find(u => u.username === username);
+                            if (user) {
+                                await addToPreviousUsers(user);
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("Error monitoring content window:", error);
+            }
+        };
+
+        iframe.addEventListener('load', onIframeLoad);
+    }
+
     await fetchData();
+    await monitorContentWindow(mainIframe);
+    await monitorContentWindow(mainIframe2);
     setInterval(async () => {
         allOnlineUsersData = [];
         await fetchData();
-    }, 120000);
+    }, 60000);
 });
