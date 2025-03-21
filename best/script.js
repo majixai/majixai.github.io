@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', function() {
     displayPreviousUsers();
     let allOnlineUsersData = [];
 
-    storageTypeSelector.addEventListener("change", function() {
+    storageTypeSelector.addEventListener("change", async function() {
         storageType = this.value;
         previousUsers = loadUsers("previousUsers");
         removedUsers = loadUsers("removedUsers");
-        displayPreviousUsers();
+        await displayPreviousUsers();
     });
 
     async function fetchData() {
@@ -65,15 +65,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const ages = new Set();
 
         users.forEach(user => {
-            user.tags.forEach(tag => tags.add(tag));
-            ages.add(user.age);
+            if (user.tags) {
+                user.tags.forEach(tag => tags.add(tag));
+            }
+            if (user.age) {
+                ages.add(user.age);
+            }
         });
 
         filterTagsSelect.innerHTML = Array.from(tags).map(tag => `<option value="${tag}">${tag}</option>`).join('');
         filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
     }
 
-    function displayOnlineUsers(users) {
+    async function displayOnlineUsers(users) {
         const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
         const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
 
@@ -127,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function addToPreviousUsers(user) {
+    async function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
             saveUsers("previousUsers", previousUsers);
@@ -161,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayPreviousUsers() {
+    async function displayPreviousUsers() {
         previousUsersDiv.innerHTML = "";
 
         const storedUsers = loadUsers("previousUsers");
@@ -235,9 +239,9 @@ document.addEventListener('DOMContentLoaded', function() {
         callback();
     };
 
-    fetchData();
-    setInterval(() => {
+    await fetchData();
+    setInterval(async () => {
         allOnlineUsersData = [];
-        fetchData();
-    }, 60000);
+        await fetchData();
+    }, 120000);
 });
