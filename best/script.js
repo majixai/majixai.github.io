@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.results.length === 500) {
                         return fetchData(offset + 500);
                     } else {
+                        populateFilters(allOnlineUsersData);
                         onlineUsersDiv.innerHTML = "";
                         displayOnlineUsers(allOnlineUsersData);
 
@@ -56,6 +57,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
                 return Promise.reject(error);
             });
+    }
+
+    function populateFilters(users) {
+        const tags = new Set();
+        const ages = new Set();
+
+        users.forEach(user => {
+            user.tags.forEach(tag => tags.add(tag));
+            ages.add(user.age);
+        });
+
+        filterTagsSelect.innerHTML = Array.from(tags).map(tag => `<option value="${tag}">${tag}</option>`).join('');
+        filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
     }
 
     function displayOnlineUsers(users) {
