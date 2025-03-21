@@ -313,13 +313,30 @@
 
                 <div class="search-filters">
 
-<label for="storageType">Storage Type:</label>
+
+                    <!-- Storage Type Selector -->
+<select id="storageType">
+    <option value="local">Local Storage</option>
+    <option value="session">Session Storage</option>
+</select>
+
+<!-- Filter Tags Dropdown -->
+<select id="filterTags" multiple>
+    <!-- Options will be dynamically populated -->
+</select>
+
+<!-- Filter Age Dropdown -->
+<select id="filterAge" multiple>
+    <!-- Options will be dynamically populated -->
+</select>
+                    
+<!-- label for="storageType">Storage Type:</label>
 <select id="storageType">
     <option value="local">Local Storage</option>
     <option value="session">Session Storage</option>
 </select>                                            <label for="filterTags">Filter Tags (comma separated):</label>
 <input type="text" id="filterTags" placeholder="e.g. asian, 18, deepthroat">                                               <label for="filterAge">Filter Age (max age):</label>
-<input type="number" id="filterAge" placeholder="e.g. 25">
+<input type="number" id="filterAge" placeholder="e.g. 25" -->
                     
                     <!-- input type="text" id="userSearch" placeholder="Search usernames...">
                     <input type="text" id="tagSearch" placeholder="Search tags (comma-separated)" >
