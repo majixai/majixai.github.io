@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainIframe2 = document.getElementById("mainIframe2");
 
     const storageTypeSelector = document.getElementById("storageType");
-    const filterTagsInput = document.getElementById("filterTags");
-    const filterAgeInput = document.getElementById("filterAge");
+    const filterTagsSelect = document.getElementById("filterTags");
+    const filterAgeSelect = document.getElementById("filterAge");
 
     let storageType = storageTypeSelector.value;
     let previousUsers = loadUsers("previousUsers");
@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayOnlineUsers(users) {
-        const filterTags = filterTagsInput.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-        const filterAge = parseInt(filterAgeInput.value);
+        const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
+        const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
 
         const filteredUsers = users.filter(user => {
             const isPublic = user.current_show === 'public';
             const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
-            const isAgeMatch = isNaN(filterAge) || user.age <= filterAge;
+            const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
             return isPublic && hasTags && isAgeMatch;
         });
 
@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>Username: ${user.username}</p>
                     <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
                     <p>Tags: ${user.tags.join(', ')}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
                 </div>
             `;
 
@@ -123,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="user-details">
                     <p>Age: ${user.age || 'N/A'}</p>
                     <p>Username: ${user.username}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
                 </div>
             `;
 
@@ -167,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="user-details">
                     <p>Age: ${user.age || 'N/A'}</p>
                     <p>Username: ${user.username}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
                 </div>
             `;
 
@@ -186,6 +189,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             previousUsersDiv.appendChild(userElement);
         });
+    }
+
+    function isBirthday(birthday) {
+        if (!birthday) return false;
+        const today = new Date();
+        const birthDate = new Date(birthday);
+        return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
     }
 
     function loadUsers(key) {
