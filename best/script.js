@@ -1,271 +1,248 @@
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/serviceWorker.js')
-        .then(registration => {
-            console.log('Service Worker registered with scope:', registration.scope);
-        }).catch(error => {
-            console.error('Service Worker registration failed:', error);
-        });
-}
-
+// Copied from 4d6957c8b6df8c34ce06079f92f9d3a334f689a4
 document.addEventListener('DOMContentLoaded', async function() {
-    class User {
-        #username;
-        #imageUrl;
-        #iframeUrl;
-        #age;
-        #tags;
-        #birthday;
-        #isNew;
-        #currentShow;
+    const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
+    const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+    const mainIframe = document.getElementById("mainIframe");
+    const mainIframe2 = document.getElementById("mainIframe2");
 
-        constructor({ username, image_url, iframe_embed, age, tags, birthday, is_new, current_show }) {
-            this.#username = username;
-            this.#imageUrl = image_url;
-            this.#iframeUrl = iframe_embed;
-            this.#age = age;
-            this.#tags = tags;
-            this.#birthday = birthday;
-            this.#isNew = is_new;
-            this.#currentShow = current_show;
+    const storageTypeSelector = document.getElementById("storageType");
+    const filterTagsSelect = document.getElementById("filterTags");
+    const filterAgeSelect = document.getElementById("filterAge");
+
+    let storageType = storageTypeSelector.value;
+    let previousUsers = loadUsers("previousUsers");
+    let removedUsers = loadUsers("removedUsers");
+    displayPreviousUsers();
+    let allOnlineUsersData = [];
+
+    storageTypeSelector.addEventListener("change", async function() {
+        storageType = this.value;
+        previousUsers = loadUsers("previousUsers");
+        removedUsers = loadUsers("removedUsers");
+        await displayPreviousUsers();
+    });
+
+    async function fetchData() {
+        const limit = 500;
+        let offset = 0;
+        let continueFetching = true;
+
+        while (continueFetching) {
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&limit=${limit}&offset=${offset}`;
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.results && data.results.length > 0) {
+                    allOnlineUsersData = allOnlineUsersData.concat(data.results);
+                    if (data.results.length < limit) {
+                        continueFetching = false;
+                    } else {
+                        offset += limit;
+                    }
+                } else {
+                    continueFetching = false;
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
+                return;
+            }
         }
 
-        get username() {
-            return this.#username;
+        populateFilters(allOnlineUsersData);
+        onlineUsersDiv.innerHTML = "";
+        displayOnlineUsers(allOnlineUsersData);
+
+        if (typeof initializeAllUsers === 'function') {
+            window.initializeAllUsers();
+        }
+    }
+
+    function populateFilters(users) {
+        const tags = new Set();
+        const ages = new Set();
+
+        users.forEach(user => {
+            if (user.tags) {
+                user.tags.forEach(tag => tags.add(tag));
+            }
+            if (user.age) {
+                ages.add(user.age);
+            }
+        });
+
+        filterTagsSelect.innerHTML = Array.from(tags).map(tag => `<option value="${tag}">${tag}</option>`).join('');
+        filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
+    }
+
+    async function displayOnlineUsers(users) {
+        const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
+        const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
+
+        const filteredUsers = users.filter(user => {
+            const isPublic = user.current_show === 'public';
+            const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
+            const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
+            return isPublic && hasTags && isAgeMatch;
+        });
+
+        onlineUsersDiv.innerHTML = "";
+        if (filteredUsers.length === 0) {
+            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
+            return;
         }
 
-        get imageUrl() {
-            return this.#imageUrl;
-        }
+        filteredUsers.forEach(user => {
+            if (!user.image_url || !user.username) {
+                console.warn("Incomplete user data:", user);
+                return;
+            }
 
-        get iframeUrl() {
-            return this.#iframeUrl;
-        }
-
-        get age() {
-            return this.#age;
-        }
-
-        get tags() {
-            return this.#tags;
-        }
-
-        get birthday() {
-            return this.#birthday;
-        }
-
-        get isNew() {
-            return this.#isNew;
-        }
-
-        get currentShow() {
-            return this.#currentShow;
-        }
-
-        isBirthday() {
-            if (!this.#birthday) return false;
-            const today = new Date();
-            const birthDate = new Date(this.#birthday);
-            return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
-        }
-
-        toHTML() {
-            return `
-                <div class="user-info">
-                    <img src="${this.#imageUrl}" alt="${this.#username}" data-iframe-url="${this.#iframeUrl}" data-username="${this.#username}">
-                    <div class="user-details">
-                        <p>Username: ${this.#username}</p>
-                        <p>Age: ${this.#age || 'N/A'} ${this.#isNew ? 'New' : ''}</p>
-                        <p>Tags: ${this.#tags.join(', ')}</p>
-                        ${this.isBirthday() ? `<p>Happy Birthday!</p>` : ''}
-                    </div>
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Username: ${user.username}</p>
+                    <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
+                    <p>Tags: ${user.tags.join(', ')}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
                 </div>
             `;
-        }
-    }
 
-    class UserManager {
-        #users;
-        #storageType;
+            userElement.addEventListener("click", function(event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
 
-        constructor(storageType = 'local') {
-            this.#storageType = storageType;
-            this.#users = new Set();
-        }
-
-        addUser(user) {
-            this.#users.add(user);
-        }
-
-        removeUser(username) {
-            this.#users = new Set([...this.#users].filter(user => user.username !== username));
-        }
-
-        get allUsers() {
-            return [...this.#users];
-        }
-
-        get filteredUsers() {
-            const filterTags = Array.from(document.getElementById("filterTags").selectedOptions).map(option => option.value);
-            const filterAges = Array.from(document.getElementById("filterAge").selectedOptions).map(option => parseInt(option.value));
-
-            return this.allUsers.filter(user => {
-                const isPublic = user.currentShow === 'public';
-                const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
-                const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
-                return isPublic && hasTags && isAgeMatch;
-            });
-        }
-
-        saveUsers(key) {
-            const storage = this.#storageType === "local" ? localStorage : sessionStorage;
-            storage.setItem(key, JSON.stringify([...this.#users]));
-        }
-
-        loadUsers(key) {
-            const storage = this.#storageType === "local" ? localStorage : sessionStorage;
-            const storedUsers = storage.getItem(key);
-            this.#users = storedUsers ? new Set(JSON.parse(storedUsers).map(user => new User(user))) : new Set();
-        }
-    }
-
-    class UserDisplay {
-        #onlineUsersDiv;
-        #previousUsersDiv;
-        #mainIframe;
-        #mainIframe2;
-        #userManager;
-
-        constructor(onlineUsersDiv, previousUsersDiv, mainIframe, mainIframe2, userManager) {
-            this.#onlineUsersDiv = onlineUsersDiv;
-            this.#previousUsersDiv = previousUsersDiv;
-            this.#mainIframe = mainIframe;
-            this.#mainIframe2 = mainIframe2;
-            this.#userManager = userManager;
-        }
-
-        displayOnlineUsers() {
-            this.#onlineUsersDiv.innerHTML = "";
-            const filteredUsers = this.#userManager.filteredUsers;
-
-            if (filteredUsers.length === 0) {
-                this.#onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-                return;
-            }
-
-            filteredUsers.forEach(user => {
-                const userElement = document.createElement("div");
-                userElement.innerHTML = user.toHTML();
-                userElement.querySelector("img").addEventListener("click", (event) => this.#handleUserClick(event, user));
-                this.#onlineUsersDiv.appendChild(userElement);
-            });
-        }
-
-        displayPreviousUsers() {
-            this.#previousUsersDiv.innerHTML = "";
-            const previousUsers = this.#userManager.allUsers.filter(user => user.currentShow === 'public');
-
-            if (previousUsers.length === 0) {
-                this.#previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
-                return;
-            }
-
-            previousUsers.forEach(user => {
-                const userElement = document.createElement("div");
-                userElement.innerHTML = user.toHTML();
-                userElement.querySelector("img").addEventListener("click", (event) => this.#handleUserClick(event, user));
-                this.#previousUsersDiv.appendChild(userElement);
-            });
-        }
-
-        #handleUserClick(event, user) {
-            event.preventDefault();
-            const usr = user.username;
-            const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-            let selectedIframe;
-
-            if (iframeChoice === 'mainIframe2') {
-                selectedIframe = this.#mainIframe2;
-            } else {
-                selectedIframe = this.#mainIframe;
-            }
-
-            selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
-            this.#userManager.addUser(user);
-            this.#userManager.saveUsers("previousUsers");
-        }
-    }
-
-    class App {
-        #userManager;
-        #userDisplay;
-
-        constructor() {
-            this.#userManager = new UserManager();
-            this.#userDisplay = new UserDisplay(
-                document.getElementById("onlineUsers").querySelector('.user-list'),
-                document.getElementById("previousUsers").querySelector('.user-list'),
-                document.getElementById("mainIframe"),
-                document.getElementById("mainIframe2"),
-                this.#userManager
-            );
-        }
-
-        async init() {
-            this.#userManager.loadUsers("previousUsers");
-            this.#userDisplay.displayPreviousUsers();
-            await this.fetchData();
-            await this.monitorContentWindow(document.getElementById("mainIframe"));
-            await this.monitorContentWindow(document.getElementById("mainIframe2"));
-            setInterval(async () => {
-                this.#userManager = new UserManager();
-                await this.fetchData();
-            }, 60000);
-        }
-
-        async fetchData() {
-            if (navigator.serviceWorker.controller) {
-                const messageChannel = new MessageChannel();
-                messageChannel.port1.onmessage = (event) => {
-                    if (event.data && event.data.data) {
-                        event.data.data.forEach(userData => {
-                            const user = new User(userData);
-                            this.#userManager.addUser(user);
-                        });
-                        this.#userDisplay.displayOnlineUsers();
-                    }
-                };
-
-                navigator.serviceWorker.controller.postMessage({ type: 'FETCH_USERS' }, [messageChannel.port2]);
-            } else {
-                console.error("Service Worker controller not found.");
-            }
-        }
-
-        async monitorContentWindow(iframe) {
-            const onIframeLoad = async () => {
-                try {
-                    const contentWindow = iframe.contentWindow;
-                    if (contentWindow) {
-                        contentWindow.document.addEventListener("click", async (event) => {
-                            const target = event.target;
-                            if (target && target.matches(".user-info img")) {
-                                const username = target.dataset.username;
-                                const user = this.#userManager.allUsers.find(u => u.username === username);
-                                if (user) {
-                                    await this.#userManager.addUser(user);
-                                }
-                            }
-                        });
-                    }
-                } catch (error) {
-                    console.error("Error monitoring content window:", error);
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
                 }
-            };
+                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
-            iframe.addEventListener('load', onIframeLoad);
+                addToPreviousUsers(user);
+            });
+            onlineUsersDiv.appendChild(userElement);
+        });
+    }
+
+    async function addToPreviousUsers(user) {
+        if (!previousUsers.some(u => u.username === user.username)) {
+            previousUsers.unshift(user);
+            saveUsers("previousUsers", previousUsers);
+
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Username: ${user.username}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
+                </div>
+            `;
+
+            userElement.addEventListener("click", function(event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+            });
+
+            previousUsersDiv.prepend(userElement);
         }
     }
 
-    const app = new App();
-    await app.init();
+    async function displayPreviousUsers() {
+        previousUsersDiv.innerHTML = "";
+
+        const storedUsers = loadUsers("previousUsers");
+        if (storedUsers.length === 0) {
+            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
+            return;
+        }
+
+        storedUsers.forEach(user => {
+            if (user.current_show !== 'public') {
+                return;
+            }
+            if (!user.image_url || !user.username) {
+                return;
+            }
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Age: ${user.age || 'N/A'}</p>
+                    <p>Username: ${user.username}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
+                </div>
+            `;
+
+            userElement.addEventListener("click", function(event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+            });
+
+            previousUsersDiv.appendChild(userElement);
+        });
+    }
+
+    function isBirthday(birthday) {
+        if (!birthday) return false;
+        const today = new Date();
+        const birthDate = new Date(birthday);
+        return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
+    }
+
+    function loadUsers(key) {
+        const storage = storageType === "local" ? localStorage : sessionStorage;
+        const storedUsers = storage.getItem(key);
+        return storedUsers ? JSON.parse(storedUsers) : [];
+    }
+
+    function saveUsers(key, users) {
+        const storage = storageType === "local" ? localStorage : sessionStorage;
+        storage.setItem(key, JSON.stringify(users));
+    }
+
+    if (typeof window.addToPreviousUsers !== 'undefined') {
+        window.addToPreviousUsers = addToPreviousUsers;
+    }
+    if (typeof window.displayPreviousUsers !== 'undefined') {
+        window.displayPreviousUsers = displayPreviousUsers;
+    }
+
+    window.initializeAllUsersFromScriptJS = function(callback) {
+        callback();
+    };
+
+    await fetchData();
+    setInterval(async () => {
+        allOnlineUsersData = [];
+        await fetchData();
+    }, 120000);
 });
