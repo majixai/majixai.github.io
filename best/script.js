@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         let continueFetching = true;
 
         while (continueFetching) {
-            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&limit=${limit}&offset=${offset}`;
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`;
             try {
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
