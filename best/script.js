@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const sortTagsSelect = document.getElementById("sortTags");
         const sortAgeSelect = document.getElementById("sortAge");
 
-        if (!storageTypeSelector || !filterTagsSelect || !filterAgeSelect || !sortTagsSelect || !sortAgeSelect) {
-            handleError("Initialization Error", new Error("One or more select elements are missing. Fix this/these"));
+        if (!filterTagsSelect || !filterAgeSelect || !sortTagsSelect || !sortAgeSelect) {
+            handleError("Initialization Error", new Error("One or more select elements are missing."));
             return;
         }
 
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 } catch (error) {
                     handleError("Fetch error", error);
-                    onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data. Fix this/these</p>';
+                    onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
                     return;
                 }
             }
@@ -101,8 +101,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         async function displayOnlineUsers(users) {
             try {
-                const filterTags = filterTagsSelect ? Array.from(filterTagsSelect.selectedOptions).map(option => option.value) : [];
-                const filterAges = filterAgeSelect ? Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value)) : [];
+                const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
+                const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
 
                 const filteredUsers = users.filter(user => {
                     const isPublic = user.current_show === 'public';
@@ -336,8 +336,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function handleError(message, error) {
-        errorMessages.push(`${message}: ${error.message} Fix this/these`);
-        alert(errorMessages.join("\n"));
+        errorMessages.push(`${message}: ${error.message}`);
+        alert(message + ": " + error.message);
         navigator.clipboard.writeText(errorMessages.join("\n")).then(() => {
             console.log('All error messages copied to clipboard');
         }).catch(err => {
