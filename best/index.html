@@ -319,16 +319,7 @@
     <option value="local">Local Storage</option>
     <option value="session">Session Storage</option>
 </select>
-<select id="sortTags">
-    <option value="">Sort by Tag</option>
-    <!-- Add options dynamically based on available tags in the script or manually -->
-</select>
 
-<select id="sortAge">
-    <option value="">Sort by Age</option>
-    <option value="asc">Ascending</option>
-    <option value="desc">Descending</option>
-</select>
 <!-- Filter Tags Dropdown -->
 <select id="filterTags" multiple>
     <!-- Options will be dynamically populated -->
@@ -345,14 +336,14 @@
     <option value="session">Session Storage</option>
 </select>                                            <label for="filterTags">Filter Tags (comma separated):</label>
 <input type="text" id="filterTags" placeholder="e.g. asian, 18, deepthroat">                                               <label for="filterAge">Filter Age (max age):</label>
-<input type="number" id="filterAge" placeholder="e.g. 25">
+<input type="number" id="filterAge" placeholder="e.g. 25" -->
                     
                     <!-- input type="text" id="userSearch" placeholder="Search usernames...">
                     <input type="text" id="tagSearch" placeholder="Search tags (comma-separated)" >
                 </div>
                 <div class="search-filters">
                     <input type="number" id="ageFrom" placeholder="Age From">
-                    <input type="number" id="ageTo" placeholder="Age To">
+                    <input type="number" id="ageTo" placeholder="Age To" -->
                 </div>
                 <div id="secondIframeResults"></div>
                 <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/texther" frameborder="0" scrolling="no"></iframe>
@@ -384,7 +375,7 @@
 
     // Custom Ctrl+F Search
     document.addEventListener('keydown', function(event) {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'f') { // Works for both Ctrl and Cmd
+        if ((event.ctrlKey || event.metaKey) && event.key === 'i') { // Works for both Ctrl and Cmd
             event.preventDefault(); // Prevent the browser's default search
 
             const searchTerm = prompt("Search users:"); // Get search term from user
