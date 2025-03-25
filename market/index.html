@@ -1,1 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Data</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="scripts/main.js" defer></script>
+</head>
+<body>
+    <div class="w3-container w3-teal">
+        <h1>Market Data from Google Finance</h1>
+    </div>
 
+    <div class="w3-container">
+        <h2>Enter Stock Symbol</h2>
+        <input class="w3-input w3-border" type="text" id="stock-symbol" placeholder="e.g. AAPL">
+        <button class="w3-button w3-teal" onclick="market.fetchMarketData()">Fetch Data</button>
+    </div>
+
+    <div class="w3-container" id="market-data">
+        <!-- Market data will be displayed here -->
+    </div>
+
+    <div class="w3-container">
+        <canvas id="market-chart"></canvas>
+    </div>
+</body>
+</html>
