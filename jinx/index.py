@@ -7,21 +7,18 @@ def main():
     ticker = "AAPL"
     stock = yf.Ticker(ticker).history(period="1mo")
 
-    # Get historical market data
-    hist = stock.history(period="1mo")
-
     # Save the historical data to a CSV file
-    hist.to_csv("data.csv")
+    stock.to_csv("data.csv")
 
     # Create an HTML table from the historical data
-    hist_html = hist.to_html(classes='w3-table w3-striped w3-bordered', border=0)
+    stock_html = stock.to_html(classes='w3-table w3-striped w3-bordered', border=0)
 
     # Create a Plotly graph
-    fig = go.Figure(data=[go.Candlestick(x=hist.index,
-                                         open=hist['Open'],
-                                         high=hist['High'],
-                                         low=hist['Low'],
-                                         close=hist['Close'])])
+    fig = go.Figure(data=[go.Candlestick(x=stock.index,
+                                         open=stock['Open'],
+                                         high=stock['High'],
+                                         low=stock['Low'],
+                                         close=stock['Close'])])
     fig.update_layout(title=f'{ticker} Stock Price',
                       yaxis_title='Price (USD)',
                       xaxis_title='Date')
@@ -42,7 +39,7 @@ def main():
         <body onload="renderGraph()">
             <h1 class="w3-center">YFinance Data for {ticker}</h1>
             <div class="w3-container">
-                {hist_html}
+                {stock_html}
             </div>
             <div class="w3-container" id="graph-container">
                 {graph_html}
