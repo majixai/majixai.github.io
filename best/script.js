@@ -78,23 +78,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
     }
 
-    async function displayOnlineUsers(users) {
-        const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
-        const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
-
-        const filteredUsers = users.filter(user => {
-            const isPublic = user.current_show === 'public';
-            const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
-            const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
-            return isPublic && hasTags && isAgeMatch;
-        });
-
-        onlineUsersDiv.innerHTML = "";
-        if (filteredUsers.length === 0) {
-            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-            return;
-        }
-
 async function displayOnlineUsers(users) {
     const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
     const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
