@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const sortTagsSelect = document.getElementById("sortTags");
         const sortAgeSelect = document.getElementById("sortAge");
 
-        if (!filterTagsSelect || !filterAgeSelect || !sortTagsSelect || !sortAgeSelect) {
-            handleError("Initialization Error", new Error("One or more select elements are missing."));
+        if (!storageTypeSelector || !filterTagsSelect || !filterAgeSelect || !sortTagsSelect || !sortAgeSelect) {
+            handleError("Initialization Error", new Error("One or more select elements are missing. Fix this/these"));
             return;
         }
 
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 } catch (error) {
                     handleError("Fetch error", error);
-                    onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
+                    onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data. Fix this/these</p>';
                     return;
                 }
             }
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function handleError(message, error) {
-        errorMessages.push(`${message}: ${error.message}`);
+        errorMessages.push(`${message}: ${error.message} Fix this/these`);
         alert(errorMessages.join("\n"));
         navigator.clipboard.writeText(errorMessages.join("\n")).then(() => {
             console.log('All error messages copied to clipboard');
