@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', async function() {
+    let errorMessages = [];
+
     try {
-        const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
-        const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
+        const onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
+        const previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
         const mainIframe = document.getElementById("mainIframe");
         const mainIframe2 = document.getElementById("mainIframe2");
 
@@ -10,6 +12,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         const filterAgeSelect = document.getElementById("filterAge");
         const sortTagsSelect = document.getElementById("sortTags");
         const sortAgeSelect = document.getElementById("sortAge");
+
+        if (!filterTagsSelect || !filterAgeSelect || !sortTagsSelect || !sortAgeSelect) {
+            handleError("Initialization Error", new Error("One or more select elements are missing."));
+            return;
+        }
 
         let storageType = storageTypeSelector.value;
         let previousUsers = loadUsers("previousUsers");
@@ -329,11 +336,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function handleError(message, error) {
+        errorMessages.push(`${message}: ${error.message}`);
         alert(message + ": " + error.message);
-        navigator.clipboard.writeText(error.message).then(() => {
-            console.log('Error message copied to clipboard');
+        navigator.clipboard.writeText(errorMessages.join("\n")).then(() => {
+            console.log('All error messages copied to clipboard');
         }).catch(err => {
-            alert('Failed to copy error message to clipboard: ' + err);
+            alert('Failed to copy error messages to clipboard: ' + err);
         });
     }
 });
