@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 removedUsers = loadUsers("removedUsers");
                 await displayPreviousUsers();
             } catch (error) {
-                alert("Error in storageTypeSelector change event: " + error.message);
+                handleError("Error in storageTypeSelector change event", error);
             }
         });
 
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         continueFetching = false;
                     }
                 } catch (error) {
-                    alert("Fetch error: " + error.message);
+                    handleError("Fetch error", error);
                     onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>';
                     return;
                 }
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     window.initializeAllUsers();
                 }
             } catch (error) {
-                alert("Error in fetchData: " + error.message);
+                handleError("Error in fetchData", error);
             }
         }
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 filterTagsSelect.innerHTML = Array.from(tags).map(tag => `<option value="${tag}">${tag}</option>`).join('');
                 filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
             } catch (error) {
-                alert("Error in populateFilters: " + error.message);
+                handleError("Error in populateFilters", error);
             }
         }
 
@@ -163,13 +163,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                             addToPreviousUsers(user);
                         } catch (error) {
-                            alert("Error in userElement click event: " + error.message);
+                            handleError("Error in userElement click event", error);
                         }
                     });
                     onlineUsersDiv.appendChild(userElement);
                 });
             } catch (error) {
-                alert("Error in displayOnlineUsers: " + error.message);
+                handleError("Error in displayOnlineUsers", error);
             }
         }
 
@@ -204,14 +204,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                             }
                             selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                         } catch (error) {
-                            alert("Error in userElement click event: " + error.message);
+                            handleError("Error in userElement click event", error);
                         }
                     });
 
                     previousUsersDiv.prepend(userElement);
                 }
             } catch (error) {
-                alert("Error in addToPreviousUsers: " + error.message);
+                handleError("Error in addToPreviousUsers", error);
             }
         }
 
@@ -257,14 +257,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                             }
                             selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
                         } catch (error) {
-                            alert("Error in userElement click event: " + error.message);
+                            handleError("Error in userElement click event", error);
                         }
                     });
 
                     previousUsersDiv.appendChild(userElement);
                 });
             } catch (error) {
-                alert("Error in displayPreviousUsers: " + error.message);
+                handleError("Error in displayPreviousUsers", error);
             }
         }
 
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const birthDate = new Date(birthday);
                 return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
             } catch (error) {
-                alert("Error in isBirthday: " + error.message);
+                handleError("Error in isBirthday", error);
                 return false;
             }
         }
@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const storedUsers = storage.getItem(key);
                 return storedUsers ? JSON.parse(storedUsers) : [];
             } catch (error) {
-                alert("Error in loadUsers: " + error.message);
+                handleError("Error in loadUsers", error);
                 return [];
             }
         }
@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const storage = storageType === "local" ? localStorage : sessionStorage;
                 storage.setItem(key, JSON.stringify(users));
             } catch (error) {
-                alert("Error in saveUsers: " + error.message);
+                handleError("Error in saveUsers", error);
             }
         }
 
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             try {
                 callback();
             } catch (error) {
-                alert("Error in initializeAllUsersFromScriptJS: " + error.message);
+                handleError("Error in initializeAllUsersFromScriptJS", error);
             }
         };
 
@@ -321,10 +321,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                 allOnlineUsersData = [];
                 await fetchData();
             } catch (error) {
-                alert("Error in setInterval fetchData: " + error.message);
+                handleError("Error in setInterval fetchData", error);
             }
         }, 120000);
     } catch (error) {
-        alert("Error in DOMContentLoaded: " + error.message);
+        handleError("Error in DOMContentLoaded", error);
+    }
+
+    function handleError(message, error) {
+        alert(message + ": " + error.message);
+        navigator.clipboard.writeText(error.message).then(() => {
+            console.log('Error message copied to clipboard');
+        }).catch(err => {
+            alert('Failed to copy error message to clipboard: ' + err);
+        });
     }
 });
