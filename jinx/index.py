@@ -5,7 +5,7 @@ import pandas as pd
 def main():
     # Fetch data for a specific stock
     ticker = "AAPL"
-    stock = yf.Ticker(ticker)
+    stock = yf.TTicker(ticker).history(period="1mo")
 
     # Get historical market data
     hist = stock.history(period="1mo")
@@ -39,14 +39,20 @@ def main():
             <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
             <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         </head>
-        <body>
+        <body onload="renderGraph()">
             <h1 class="w3-center">YFinance Data for {ticker}</h1>
             <div class="w3-container">
                 {hist_html}
             </div>
-            <div class="w3-container">
+            <div class="w3-container" id="graph-container">
                 {graph_html}
             </div>
+            <script>
+                function renderGraph() {{
+                    var graphContainer = document.getElementById('graph-container');
+                    graphContainer.innerHTML = `{graph_html}`;
+                }}
+            </script>
         </body>
         </html>
         """)
