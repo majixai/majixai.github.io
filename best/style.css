@@ -6,6 +6,9 @@ html, body, h1, h2, h3, h4, h5, h6 {
 }
 
 body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     background-color: #f8f9fa; /* Light grey background for the whole page */
     color: #00539B; /* Dark grey text for better readability */
     line-height: 1.6;
@@ -19,22 +22,150 @@ body {
     background-color: #fff; /* White background for content area */
     border-radius: 8px;
     box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-h1 {
-    text-align: center;
-    color: #00539B;
-    margin-bottom: 3px;
-    font-size: 10px;
+/* --- Iframe Styles --- */
+.iframe-container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    margin-bottom: 5px; /* Spacing below iframes */
 }
 
-h2 {
-    color: #8C1515;
-    margin-top: 2px;
+.ifr {
+    height: 56vh;
+    width: calc(50% - 2px);
+    border: none;
+    padding: 1px;
+    margin: 0;
+    border-radius: 5px; /* Rounded corners for iframes */
+    overflow: hidden; /* Ensure content within iframe is clipped to bounds */
+}
+
+/* --- Scrollable List Styles --- */
+.scrollable-list-container {
+    overflow-y: auto;
+    border: 1px solid #00539B;
+    padding: 1px;
     margin-bottom: 1px;
-    font-size: 10px;
+    height: 30vh;
 }
 
+.scrollable-list-container-2 {
+    height: 20vh;
+}
+
+.lists-filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.lists-filters-container > div {
+    width: 32%;
+    margin-bottom: 2px;
+}
+
+.highlight {
+    background-color: yellow;
+    font-weight: bold;
+}
+
+/* --- Other Styles (user-list, user-info, pagination, etc.) --- */
+.user-list, .user-info, .user-details, .pagination, .pagination button,
+.filters, .filters .form-control, .search-filters input, .btn-container button,
+.recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
+.w3-theme-d2, .w3-bar .w3-button, .w3-bar-block .w3-button, .w3-bar-item, .w3-bar,
+.w3-center
+{ /*Your other styles remain here */}
+
+.user-list {
+    list-style: none;
+    padding: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    padding-bottom: 2px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 2px;
+}
+
+.user-info:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.user-info img {
+    width: 80px;
+    height: 60px;
+    margin-right: 10px;
+    border-radius: 5px;
+}
+
+.user-details {
+    flex-grow: 1;
+}
+
+.user-details p {
+    margin: 0 0 5px 0;
+    font-size: 0.9em;
+    color: #00539B;
+}
+
+.user-details p:last-child {
+    margin-bottom: 0;
+}
+
+/* Pagination styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 1px;
+}
+
+.pagination button {
+    margin: 0 5px;
+    padding: 1px 2px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.pagination button:hover {
+    background-color: #eee;
+}
+
+.pagination button.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Filter styles */
+.filters {
+    margin-bottom: 2px;
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.filters .form-control {
+    margin-bottom: 1px;
+}
+.search-filters input{
+    margin-bottom: 1px;
+}
+
+/* Button Styles */
 .btn-container {
     text-align: center;
     margin-bottom: 20px;
@@ -60,239 +191,60 @@ h2 {
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5); /* Add focus indication */
 }
 
-/* Iframe styling - responsive width and fixed height */
-.ifr {
-    height: 528px; /* Fixed iframe height */
-    width: 850px; /* 100%; Responsive width within its container */
-    border: none;
-    padding: 0;
-    margin: 0;
-    border-radius: 5px;
-    overflow: hidden; /* Ensure content within iframe is clipped to bounds */
-}
-
-/* Iframe container to manage layout of iframes */
-.iframe-container {
-    display: flex;
-    justify-content: flex-start; /* Align iframes to the start */
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
-    margin-bottom: 5px; /* Spacing below iframes */
-}
-
-.iframe-container iframe.ifr {
-    margin-right: 1px; /* Spacing between iframes */
-    margin-bottom: 1px; /* Spacing if iframes wrap */
-    border: 1px solid #ddd; /* Light border for visual separation */
-}
-
-/* List container to hold online and previous users */
-.lists-container {
-    display: flex;
-    justify-content: space-between; /* Distribute lists evenly */
-    flex-wrap: wrap; /* Allow lists to wrap on smaller screens */
-}
-
-/* Scrollable list container for user lists */
-/* .scrollable-list-container { */
-/*     height: 550px;  *//* Fixed height for the scrollable list area */
-/*     overflow-y: auto;  *//* Enable vertical scrollbar when content overflows */
-/*     border: 1px solid #ddd;  *//* Light border to visually contain the list */
-/*     border-radius: 5px; */
-/*     padding: 10px; */
-/*     background-color: #fff;  *//* White background for list area */
-/* } */
-
-/* User list styling */
-.user-list {
-    list-style: none;
-    padding: 0;
-}
-
-/* Individual user info styling within list */
-.user-info {
-    display: flex;
-    align-items: center; /* Vertically align image and details */
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    border-bottom: 1px dashed #eee; /* Light dashed line to separate users */
-}
-
-.user-info:last-child {
-    border-bottom: none; /* No border for the last user item */
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-.user-info img {
-    width: 80px; /* Size of user image */
-    height: 60px;
-    margin-right: 15px;
-    border-radius: 5px; /* Rounded corners for user images */
-    object-fit: cover; /* Ensure images cover the area without distortion */
-}
-
-.user-details {
-    flex-grow: 1; /* Allow user details to take up remaining space */
-}
-
-.user-details p {
-    margin: 0 0 5px 0;
-    font-size: 0.95em;
-    color: #555; /* Slightly muted color for details */
-    line-height: 1.4;
-}
-
-.user-details p:last-child {
-    margin-bottom: 0; /* No bottom margin for last detail paragraph */
-}
-
-/* Pagination styling for user lists */
-.pagination {
-    display: flex;
-    justify-content: center; /* Center pagination buttons */
-    margin-top: 15px;
-    margin-bottom: 20px;
-}
-
-.pagination button {
-    padding: 8px 15px;
-    margin: 0 5px;
+/* Record Container */
+.recordContainer {
+    margin-top: 5px;
+    padding: 5px;
     border: 1px solid #ddd;
     border-radius: 5px;
-    background-color: #f8f9fa;
-    color: #343a40;
-    cursor: pointer;
-    transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.pagination button:hover,
-.pagination button.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-.pagination button:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
-}
-
-/* Filters section styling */
-.filters {
-    padding: 20px;
-    margin-bottom: 25px;
-    background-color: #fefefe; /* Very light grey for filter background */
-    border: 1px solid #eee; /* Very light border */
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.05); /* Subtle inner shadow */
-}
-
-.filters h3 {
-    color: #495057;
-    margin-top: 0;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.filters .form-control {
-    margin-bottom: 15px;
-    border-radius: 4px;
-    border: 1px solid #ced4da; /* Default form control border color */
-    padding: 10px 12px;
-    font-size: 1rem;
-}
-
-.filters .form-control:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    outline: 0;
-}
-
-.filters .form-row {
-    margin-bottom: 15px;
-}
-
-/* Controls section styling */
-.controls {
-    padding: 20px;
-    margin-bottom: 25px;
-    background-color: #fefefe;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-    text-align: center;
-}
-
-.controls h3 {
-    color: #495057;
-    margin-top: 0;
-    margin-bottom: 20px;
-}
-
-.controls button {
-    margin: 5px 10px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    background-color: #007bff;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.controls button:hover {
-    background-color: #0056b3;
-}
-
-.controls button:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
-}
-
-
-/* Record Container Styling */
-.recordContainer {
-    padding: 20px;
-    margin-bottom: 25px;
-    background-color: #fefefe;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-}
-
-.recordContainer h3 {
-    color: #495057;
-    margin-top: 0;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.recordButton {
-    text-align: center;
+    background-color: #f9f9f9;
 }
 
 .recordButton button {
-    margin: 5px 10px;
-    padding: 10px 20px;
+    margin-right: 8px;
+}
+
+/* W3CSS modifications for better integration */
+.w3-card-4 {
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
+}
+
+.w3-button {
     border: none;
-    border-radius: 5px;
-    color: white;
-    background-color: #28a745; /* Bootstrap success green */
+    display: inline-block;
+    padding: 1px 2px;
+    vertical-align: middle;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    background-color: inherit;
+    text-align: center;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    white-space: nowrap;
 }
 
-.recordButton button:hover {
-    background-color: #218838; /* Darker green on hover */
+.w3-button:hover {
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
 }
 
-.recordButton button:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.5); /* Focus indication for record buttons */
+.w3-theme-d2 {color:#fff !important; background-color:#007bff !important}
+.w3-bar .w3-button {padding:1px 2px;}
+.w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:1px;padding-top:1px;}
+.w3-bar-item {padding:1px 2px;float:left;width:auto;border:none;display:block;outline:0}
+.w3-bar {width:100%;overflow:hidden}
+.w3-center {text-align:center !important}
+
+/* Stack radio buttons and inputs vertically */
+.radio-group, .search-filters {
+    display: flex;
+    flex-direction: row;
+}
+.radio-group label {
+    margin-bottom: 1px;
+    display: inline-block;
 }
 
-
-/* Responsive adjustments for smaller screens */
+/* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
     .container {
         padding: 15px;
@@ -308,9 +260,13 @@ h2 {
         font-size: 0.9rem;
     }
 
-    .iframe-container iframe.ifr {
-        height: 300px; /* Adjust iframe height for smaller screens */
-        margin-right: 0; /* Remove right margin on stacked iframes */
+    .iframe-container {
+        flex-direction: column;
+    }
+
+    .ifr {
+        width: 100%;
+        height: 30vh;
     }
 
     .lists-container {
@@ -324,7 +280,7 @@ h2 {
     }
 
     .scrollable-list-container {
-        height: 400px; /* Adjust list height for smaller screens */
+        height: auto;
     }
 
     .filters, .controls, .recordContainer {
@@ -334,4 +290,10 @@ h2 {
     .filters h3, .controls h3, .recordContainer h3 {
         font-size: 1.3rem;
     }
+}
+
+@media (max-width: 480px) {
+  .ifr {
+    height: 20vh;
+  }
 }
