@@ -5,7 +5,7 @@ import pandas as pd
 def main():
     # Fetch data for a specific stock
     ticker = "AAPL"
-    stock = yf.TTicker(ticker).history(period="1mo")
+    stock = yf.Ticker(ticker).history(period="1mo")
 
     # Get historical market data
     hist = stock.history(period="1mo")
