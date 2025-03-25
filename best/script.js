@@ -101,8 +101,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         async function displayOnlineUsers(users) {
             try {
-                const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
-                const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
+                const filterTags = filterTagsSelect ? Array.from(filterTagsSelect.selectedOptions).map(option => option.value) : [];
+                const filterAges = filterAgeSelect ? Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value)) : [];
 
                 const filteredUsers = users.filter(user => {
                     const isPublic = user.current_show === 'public';
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     function handleError(message, error) {
         errorMessages.push(`${message}: ${error.message}`);
-        alert(message + ": " + error.message);
+        alert(errorMessages.join("\n"));
         navigator.clipboard.writeText(errorMessages.join("\n")).then(() => {
             console.log('All error messages copied to clipboard');
         }).catch(err => {
