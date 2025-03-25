@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const sortTag = sortTagsSelect.value;
         const sortAge = sortAgeSelect.value;
 
-        if (sortTag) {
+        if (sortTag !== 'Sort by Tag') {
             filteredUsers.sort((a, b) => {
                 const aHasTag = a.tags.includes(sortTag);
                 const bHasTag = b.tags.includes(sortTag);
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
         }
 
-        if (sortAge) {
+        if (sortAge !== 'Sort by Age') {
             if (sortAge === "asc") {
                 filteredUsers.sort((a, b) => a.age - b.age);
             } else if (sortAge === "desc") {
