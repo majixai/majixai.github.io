@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const storageTypeSelector = document.getElementById("storageType");
     const filterTagsSelect = document.getElementById("filterTags");
     const filterAgeSelect = document.getElementById("filterAge");
+    const sortTagsSelect = document.getElementById("sortTags"); // Added initialization
+    const sortAgeSelect = document.getElementById("sortAge");   // Added initialization
 
     let storageType = storageTypeSelector.value;
     let previousUsers = loadUsers("previousUsers");
@@ -78,78 +80,79 @@ document.addEventListener('DOMContentLoaded', async function() {
         filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
     }
 
-async function displayOnlineUsers(users) {
-    const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
-    const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
+    async function displayOnlineUsers(users) {
+        const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
+        const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
 
-    const filteredUsers = users.filter(user => {
-        const isPublic = user.current_show === 'public';
-        const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
-        const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
-        return isPublic && hasTags && isAgeMatch;
-    });
-
-    const sortTag = sortTagsSelect.value;
-    const sortAge = sortAgeSelect.value;
-
-    if (sortTag) {
-        filteredUsers.sort((a, b) => {
-            const aHasTag = a.tags.includes(sortTag);
-            const bHasTag = b.tags.includes(sortTag);
-            return aHasTag === bHasTag ? 0 : aHasTag ? -1 : 1;
+        const filteredUsers = users.filter(user => {
+            const isPublic = user.current_show === 'public';
+            const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
+            const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
+            return isPublic && hasTags && isAgeMatch;
         });
-    }
 
-    if (sortAge) {
-        if (sortAge === "asc") {
-            filteredUsers.sort((a, b) => a.age - b.age);
-        } else if (sortAge === "desc") {
-            filteredUsers.sort((a, b) => b.age - a.age);
+        const sortTag = sortTagsSelect.value;
+        const sortAge = sortAgeSelect.value;
+
+        if (sortTag) {
+            filteredUsers.sort((a, b) => {
+                const aHasTag = a.tags.includes(sortTag);
+                const bHasTag = b.tags.includes(sortTag);
+                return aHasTag === bHasTag ? 0 : aHasTag ? -1 : 1;
+            });
         }
-    }
 
-    onlineUsersDiv.innerHTML = "";
-    if (filteredUsers.length === 0) {
-        onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-        return;
-    }
+        if (sortAge) {
+            if (sortAge === "asc") {
+                filteredUsers.sort((a, b) => a.age - b.age);
+            } else if (sortAge === "desc") {
+                filteredUsers.sort((a, b) => b.age - a.age);
+            }
+        }
 
-    filteredUsers.forEach(user => {
-        if (!user.image_url || !user.username) {
-            console.warn("Incomplete user data:", user);
+        onlineUsersDiv.innerHTML = "";
+        if (filteredUsers.length === 0) {
+            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
             return;
         }
 
-        const userElement = document.createElement("div");
-        userElement.className = "user-info";
-        userElement.innerHTML = `
-            <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
-            <div class="user-details">
-                <p>Username: ${user.username}</p>
-                <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
-                <p>Tags: ${user.tags.join(', ')}</p>
-                ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
-            </div>
-        `;
-
-        userElement.addEventListener("click", function(event) {
-            event.preventDefault();
-            const usr = userElement.querySelector("img").dataset.username;
-            const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-            let selectedIframe;
-
-            if (iframeChoice === 'mainIframe2') {
-                selectedIframe = mainIframe2;
-            } else {
-                selectedIframe = mainIframe;
+        filteredUsers.forEach(user => {
+            if (!user.image_url || !user.username) {
+                console.warn("Incomplete user data:", user);
+                return;
             }
-            selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
 
-            addToPreviousUsers(user);
+            const userElement = document.createElement("div");
+            userElement.className = "user-info";
+            userElement.innerHTML = `
+                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
+                <div class="user-details">
+                    <p>Username: ${user.username}</p>
+                    <p>Age: ${user.age || 'N/A'} ${user.is_new ? 'New' : ''}</p>
+                    <p>Tags: ${user.tags.join(', ')}</p>
+                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
+                </div>
+            `;
+
+            userElement.addEventListener("click", function(event) {
+                event.preventDefault();
+                const usr = userElement.querySelector("img").dataset.username;
+                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
+                let selectedIframe;
+
+                if (iframeChoice === 'mainIframe2') {
+                    selectedIframe = mainIframe2;
+                } else {
+                    selectedIframe = mainIframe;
+                }
+                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
+
+                addToPreviousUsers(user);
+            });
+            onlineUsersDiv.appendChild(userElement);
         });
-        onlineUsersDiv.appendChild(userElement);
-    });
-}
+    }
+
     async function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
