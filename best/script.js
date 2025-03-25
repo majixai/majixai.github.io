@@ -1,4 +1,3 @@
-// Copied from 4d6957c8b6df8c34ce06079f92f9d3a334f689a4
 document.addEventListener('DOMContentLoaded', async function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
@@ -8,8 +7,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const storageTypeSelector = document.getElementById("storageType");
     const filterTagsSelect = document.getElementById("filterTags");
     const filterAgeSelect = document.getElementById("filterAge");
-    const sortTagsSelect = document.getElementById("sortTags"); // Added initialization
-    const sortAgeSelect = document.getElementById("sortAge");   // Added initialization
+    const sortTagsSelect = document.getElementById("sortTags");
+    const sortAgeSelect = document.getElementById("sortAge");
 
     let storageType = storageTypeSelector.value;
     let previousUsers = loadUsers("previousUsers");
@@ -94,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const sortTag = sortTagsSelect.value;
         const sortAge = sortAgeSelect.value;
 
-        if (sortTag !== 'Sort by Tag') {
+        if (sortTag && sortTag !== 'Sort by Tag') {
             filteredUsers.sort((a, b) => {
                 const aHasTag = a.tags.includes(sortTag);
                 const bHasTag = b.tags.includes(sortTag);
@@ -102,7 +101,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             });
         }
 
-        if (sortAge !== 'Sort by Age') {
+        if (sortAge && sortAge !== 'Sort by Age') {
             if (sortAge === "asc") {
                 filteredUsers.sort((a, b) => a.age - b.age);
             } else if (sortAge === "desc") {
