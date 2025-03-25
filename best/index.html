@@ -319,16 +319,25 @@
     <option value="local">Local Storage</option>
     <option value="session">Session Storage</option>
 </select>
-
-<!-- Filter Tags Dropdown -->
-<select id="filterTags" multiple>
-    <!-- Options will be dynamically populated -->
+<select id="sortTags">
+    <option value="">Sort by Tag</option>
+    <!-- Add options dynamically based on available tags in the script or manually -->
 </select>
+
+<select id="sortAge">
+    <option value="">Sort by Age</option>
+    <option value="asc">Ascending</option>
+    <option value="desc">Descending</option>
+</select>
+<!-- Filter Tags Dropdown -->
+<!-- select id="filterTags" multiple>
+    < !-- Options will be dynamically populated -- >
+                </select -->
 
 <!-- Filter Age Dropdown -->
-<select id="filterAge" multiple>
-    <!-- Options will be dynamically populated -->
-</select>
+<!-- select id="filterAge" multiple>
+    < !-- Options will be dynamically populated -- >
+                </select -->
                     
 <!-- label for="storageType">Storage Type:</label>
 <select id="storageType">
