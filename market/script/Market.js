@@ -19,6 +19,7 @@ function handleErrors(target, propertyKey, descriptor) {
             return await originalMethod.apply(this, args);
         } catch (error) {
             handleFetchError(error);
+            throw error; // Allow the error to propagate
         }
     };
     return descriptor;
@@ -40,13 +41,16 @@ class Market {
     async fetchMarketData() {
         const symbol = this.#getStockSymbol();
         if (!symbol) {
-            alert('Please enter a stock symbol.');
-            return;
+            const error = new Error('Please enter a stock symbol.');
+            handleFetchError(error);
+            throw error;
         }
 
         const response = await fetch(`${this.apiUrl}/quote/${symbol}:NASDAQ`);
         if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
+            const error = new Error('Network response was not ok ' + response.statusText);
+            handleFetchError(error);
+            throw error;
         }
         const html = await response.text();
         document.getElementById('market-data').innerHTML = html;
