@@ -152,15 +152,6 @@
     <!-- <script src="../script/1wefs49yc8a64v9m45b7k103z8g.js"></script> -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const defaultIntervalButton = document.querySelector('.interval-btn[data-interval="1min"]');
-            if (defaultIntervalButton) {
-                setActiveButton(defaultIntervalButton);
-            }
-            const defaultStrategyButton = document.querySelector('.strategy-btn[data-strategy="combined"]');
-            if (defaultStrategyButton) {
-                setActiveStrategyButton(defaultStrategyButton);
-            }
-
             const tabs = document.querySelectorAll('.tab');
             const addRowButton = document.getElementById('add-row-button');
             tabs.forEach(tab => {
@@ -172,14 +163,14 @@
                     event.target.classList.add('active');
 
                     // Show or hide the add row button based on the active tab
-                    if (event.target.getAttribute('data-ticker') === 'others') {
+                    const ticker = event.target.getAttribute('data-ticker');
+                    if (ticker !== 'current_day' && ticker !== 'others') {
                         addRowButton.style.display = 'block';
                     } else {
                         addRowButton.style.display = 'none';
                     }
 
                     // Load data for the selected ticker
-                    const ticker = event.target.getAttribute('data-ticker');
                     loadTickerData(ticker);
                 });
             });
@@ -188,8 +179,33 @@
             loadTickerData('current_day');
 
             // Add row button click event
-            addRowButton.addEventListener('click', addNewRow);
+            addRowButton.addEventListener('click', () => {
+                const activeTab = document.querySelector('.tab.active');
+                const ticker = activeTab.getAttribute('data-ticker');
+                addNewRow(ticker);
+            });
+
+            // Automatically add a new row every weekday at midnight
+            setInterval(checkAndAddRow, 1000 * 60 * 60); // Check every hour
+            checkAndAddRow(); // Initial check when the page loads
         });
+
+        function checkAndAddRow() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 (Sunday) to 6 (Saturday)
+            if (dayOfWeek === 0 || dayOfWeek === 6) return; // Skip weekends
+
+            const currentDate = today.toISOString().split('T')[0];
+            const lastCheckDate = localStorage.getItem('lastCheckDate');
+            if (lastCheckDate === currentDate) return; // Already added for today
+
+            // Add rows for all tabs except "current day" and "all others"
+            const tabs = ['TSLA', 'META', 'NVDA'];
+            tabs.forEach(ticker => addNewRow(ticker));
+
+            // Update the last check date
+            localStorage.setItem('lastCheckDate', currentDate);
+        }
 
         function loadTickerData(ticker) {
             // Clear existing table data
@@ -203,12 +219,12 @@
 
             // Fetch and display new data (replace with actual data fetching logic)
             const sampleData = [
-                { 
-                    ticker: ticker, date: '2025-03-26', price: 100, 
-                    signal15Min: 'Buy', price15Min: 101, 
-                    signal1Hour: 'Sell', price1Hour: 102, 
-                    signal24Hour: 'Hold', price24Hour: 103, 
-                    signal3Day: 'Buy', price3Day: 104 
+                {
+                    ticker: ticker, date: '2025-03-26', price: 100,
+                    signal15Min: 'Buy', price15Min: 101,
+                    signal1Hour: 'Sell', price1Hour: 102,
+                    signal24Hour: 'Hold', price24Hour: 103,
+                    signal3Day: 'Buy', price3Day: 104
                 }
             ];
 
@@ -312,37 +328,13 @@
             }
         }
 
-        function setActiveButton(button) {
-            const activeButton = document.querySelector('.interval-btn.active');
-            if (activeButton) {
-                activeButton.classList.remove('active');
-            }
-            button.classList.add('active');
-        }
-
-        function setActiveStrategyButton(button) {
-            const activeButton = document.querySelector('.strategy-btn.active');
-            if (activeButton) {
-                activeButton.classList.remove('active');
-            }
-            button.classList.add('active');
-        }
-
-        window.toggleMobileMenu = function () {
-            var x = document.getElementById("mobile-menu");
-            if (x.className.indexOf("w3-show") == -1) {
-                x.className += " w3-show";
-            } else {
-                x.className = x.className.replace(" w3-show", "");
-            }
-        }
-
-        function addNewRow() {
+        function addNewRow(ticker) {
+            const today = new Date().toISOString().split('T')[0];
             const tableBody = document.getElementById('signals-table-body');
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
-                <td contenteditable="true" class="editable"></td>
-                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable">${ticker}</td>
+                <td contenteditable="true" class="editable">${today}</td>
                 <td contenteditable="true" class="editable"></td>
                 <td contenteditable="true" class="editable"></td>
                 <td contenteditable="true" class="editable"></td>
@@ -355,6 +347,22 @@
             `;
             tableBody.appendChild(newRow);
             addInputListeners();
+
+            // Save the new row data to localStorage
+            const newData = {
+                ticker: ticker,
+                date: today,
+                price: '',
+                signal15Min: '',
+                price15Min: '',
+                signal1Hour: '',
+                price1Hour: '',
+                signal24Hour: '',
+                price24Hour: '',
+                signal3Day: '',
+                price3Day: '',
+            };
+            saveToStorage(ticker, newData);
         }
 
         function sortAndDisplayData(ticker, data) {
