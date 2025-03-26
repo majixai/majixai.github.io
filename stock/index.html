@@ -90,6 +90,18 @@
         th {
             background-color: #e0e0e0;
         }
+
+        .add-row-button {
+            display: none;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
     </style>
 </head>
 
@@ -107,8 +119,10 @@
             <div class="tab" data-ticker="others">All Others</div>
         </div>
 
+        <button class="add-row-button" id="add-row-button">Add Row</button>
+
         <div class="table-container w3-responsive">
-            <table>
+            <table id="main-table">
                 <thead>
                     <tr>
                         <th>Ticker</th>
@@ -128,6 +142,10 @@
                 </tbody>
             </table>
         </div>
+
+        <div id="sorted-tables-container">
+            <!-- Additional tables sorted by ticker will be added here -->
+        </div>
     </div>
 
     <!-- <script src="tickers.js"></script> -->
@@ -144,6 +162,7 @@
             }
 
             const tabs = document.querySelectorAll('.tab');
+            const addRowButton = document.getElementById('add-row-button');
             tabs.forEach(tab => {
                 tab.addEventListener('click', (event) => {
                     const activeTab = document.querySelector('.tab.active');
@@ -151,6 +170,13 @@
                         activeTab.classList.remove('active');
                     }
                     event.target.classList.add('active');
+
+                    // Show or hide the add row button based on the active tab
+                    if (event.target.getAttribute('data-ticker') === 'others') {
+                        addRowButton.style.display = 'block';
+                    } else {
+                        addRowButton.style.display = 'none';
+                    }
 
                     // Load data for the selected ticker
                     const ticker = event.target.getAttribute('data-ticker');
@@ -160,6 +186,9 @@
 
             // Initialize with the first tab
             loadTickerData('current_day');
+
+            // Add row button click event
+            addRowButton.addEventListener('click', addNewRow);
         });
 
         function loadTickerData(ticker) {
@@ -306,6 +335,84 @@
             } else {
                 x.className = x.className.replace(" w3-show", "");
             }
+        }
+
+        function addNewRow() {
+            const tableBody = document.getElementById('signals-table-body');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+                <td contenteditable="true" class="editable"></td>
+            `;
+            tableBody.appendChild(newRow);
+            addInputListeners();
+        }
+
+        function sortAndDisplayData(ticker, data) {
+            const sortedTablesContainer = document.getElementById('sorted-tables-container');
+            sortedTablesContainer.innerHTML = '';
+
+            const sortedData = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            const tickers = [...new Set(sortedData.map(item => item.ticker))];
+
+            tickers.forEach(ticker => {
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'table-container w3-responsive';
+                const table = document.createElement('table');
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Ticker</th>
+                            <th>Date</th>
+                            <th>Price</th>
+                            <th>15 Min Signal</th>
+                            <th>15 Min Price</th>
+                            <th>1 Hour Signal</th>
+                            <th>1 Hour Price</th>
+                            <th>24 Hour Signal</th>
+                            <th>24 Hour Price</th>
+                            <th>3 Day Signal</th>
+                            <th>3 Day Price</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                `;
+                tableContainer.appendChild(table);
+                sortedTablesContainer.appendChild(tableContainer);
+
+                const tableBody = table.querySelector('tbody');
+                sortedData
+                    .filter(item => item.ticker === ticker)
+                    .forEach(item => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${item.ticker}</td>
+                            <td contenteditable="true" class="editable">${item.date}</td>
+                            <td contenteditable="true" class="editable">${item.price}</td>
+                            <td contenteditable="true" class="editable">${item.signal15Min}</td>
+                            <td contenteditable="true" class="editable">${item.price15Min}</td>
+                            <td contenteditable="true" class="editable">${item.signal1Hour}</td>
+                            <td contenteditable="true" class="editable">${item.price1Hour}</td>
+                            <td contenteditable="true" class="editable">${item.signal24Hour}</td>
+                            <td contenteditable="true" class="editable">${item.price24Hour}</td>
+                            <td contenteditable="true" class="editable">${item.signal3Day}</td>
+                            <td contenteditable="true" class="editable">${item.price3Day}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+            });
+
+            addInputListeners();
         }
     </script>
 </body>
