@@ -17,9 +17,10 @@
         }
 
         #container {
-            margin-left: 200px;
+            margin: 0 auto;
             padding: 20px;
-            width: calc(100% - 200px);
+            width: 100%;
+            max-width: 1200px;
             height: auto;
             min-height: 100vh;
             display: flex;
@@ -47,37 +48,6 @@
             padding: 10px;
         }
 
-        .button-bar {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .interval-btn,
-        .strategy-btn,
-        #daily-btn {
-            background-color: #f0f0f0;
-            border: 1px solid #d0d0d0;
-            padding: 8px 12px;
-            margin: 0 5px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 0.9em;
-            transition: background-color 0.3s;
-        }
-
-        .interval-btn.active,
-        .strategy-btn.active,
-        #daily-btn.active {
-            background-color: #d0d0d0;
-        }
-
-        .interval-btn:hover,
-        .strategy-btn:hover,
-        #daily-btn:hover {
-            background-color: #e0e0e0;
-        }
-
         .tabs {
             display: flex;
             justify-content: center;
@@ -101,6 +71,7 @@
 
         .table-container {
             margin-bottom: 20px;
+            overflow-x: auto;
         }
 
         table {
@@ -113,6 +84,7 @@
             border: 1px solid #d0d0d0;
             padding: 8px;
             text-align: center;
+            min-width: 100px;
         }
 
         th {
@@ -127,21 +99,6 @@
         <div id="summary">
         </div>
 
-        <div class="button-bar">
-            <button class="interval-btn active" data-interval="1min">1 Minute</button>
-            <button class="interval-btn" data-interval="5min">5 Minute</button>
-            <button class="interval-btn" data-interval="15min">15 Minute</button>
-            <button class="interval-btn" data-interval="30min">30 Minute</button>
-            <button class="interval-btn" data-interval="1hour">1 Hour</button>
-            <button id="daily-btn" class="interval-btn">Daily</button>
-        </div>
-
-        <div class="button-bar">
-            <button class="strategy-btn active" data-strategy="combined">Combined</button>
-            <button class="strategy-btn" data-strategy="bull">Bull</button>
-            <button class="strategy-btn" data-strategy="bear">Bear</button>
-        </div>
-
         <div class="tabs">
             <div class="tab active" data-ticker="current_day">Current Day</div>
             <div class="tab" data-ticker="TSLA">TSLA</div>
@@ -150,7 +107,7 @@
             <div class="tab" data-ticker="others">All Others</div>
         </div>
 
-        <div class="table-container">
+        <div class="table-container w3-responsive">
             <table>
                 <thead>
                     <tr>
