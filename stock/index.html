@@ -123,20 +123,6 @@
 
 <body>
 
-    <nav class="w3-sidebar w3-bar-block w3-small w3-hide-small w3-center">
-        <h4 class="w3-bar-item">Charts</h4>
-        <div id="menu-links">
-        </div>
-    </nav>
-
-    <div class="w3-bar w3-top w3-large w3-hide-large w3-hide-medium" style="z-index:4;">
-        <button class="w3-bar-item w3-button w3-padding-16" onclick="toggleMobileMenu()">☰ Menu</button>
-    </div>
-
-    <div id="mobile-menu" class="w3-bar-block w3-light-grey w3-hide w3-hide-large w3-hide-medium w3-top"
-        style="margin-top:46px">
-    </div>
-
     <div id="container">
         <div id="summary">
         </div>
@@ -168,11 +154,16 @@
                 <thead>
                     <tr>
                         <th>Ticker</th>
+                        <th>Date</th>
                         <th>Price</th>
                         <th>15 Min Signal</th>
+                        <th>15 Min Price</th>
                         <th>1 Hour Signal</th>
+                        <th>1 Hour Price</th>
                         <th>24 Hour Signal</th>
+                        <th>24 Hour Price</th>
                         <th>3 Day Signal</th>
+                        <th>3 Day Price</th>
                     </tr>
                 </thead>
                 <tbody id="signals-table-body">
@@ -220,24 +211,89 @@
             // Clear existing table data
             const tableBody = document.getElementById('signals-table-body');
             tableBody.innerHTML = '';
-
+            
             // Fetch and display new data (replace with actual data fetching logic)
             const sampleData = [
-                { ticker: ticker, price: 100, signal15Min: 'Buy', signal1Hour: 'Sell', signal24Hour: 'Hold', signal3Day: 'Buy' }
+                { 
+                    ticker: ticker, date: '2025-03-26', price: 100, 
+                    signal15Min: 'Buy', price15Min: 101, 
+                    signal1Hour: 'Sell', price1Hour: 102, 
+                    signal24Hour: 'Hold', price24Hour: 103, 
+                    signal3Day: 'Buy', price3Day: 104 
+                }
             ];
 
             sampleData.forEach(data => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${data.ticker}</td>
-                    <td>${data.price}</td>
-                    <td>${data.signal15Min}</td>
-                    <td>${data.signal1Hour}</td>
-                    <td>${data.signal24Hour}</td>
-                    <td>${data.signal3Day}</td>
+                    <td contenteditable="true" class="editable">${data.date}</td>
+                    <td contenteditable="true" class="editable">${data.price}</td>
+                    <td contenteditable="true" class="editable">${data.signal15Min}</td>
+                    <td contenteditable="true" class="editable">${data.price15Min}</td>
+                    <td contenteditable="true" class="editable">${data.signal1Hour}</td>
+                    <td contenteditable="true" class="editable">${data.price1Hour}</td>
+                    <td contenteditable="true" class="editable">${data.signal24Hour}</td>
+                    <td contenteditable="true" class="editable">${data.price24Hour}</td>
+                    <td contenteditable="true" class="editable">${data.signal3Day}</td>
+                    <td contenteditable="true" class="editable">${data.price3Day}</td>
                 `;
                 tableBody.appendChild(row);
             });
+
+            loadFromStorage(ticker);
+            addInputListeners();
+        }
+
+        function addInputListeners() {
+            const cells = document.querySelectorAll('.editable');
+            cells.forEach(cell => {
+                cell.addEventListener('input', () => {
+                    const row = cell.parentElement;
+                    const ticker = row.children[0].innerText;
+                    const data = {
+                        ticker: ticker,
+                        date: row.children[1].innerText,
+                        price: row.children[2].innerText,
+                        signal15Min: row.children[3].innerText,
+                        price15Min: row.children[4].innerText,
+                        signal1Hour: row.children[5].innerText,
+                        price1Hour: row.children[6].innerText,
+                        signal24Hour: row.children[7].innerText,
+                        price24Hour: row.children[8].innerText,
+                        signal3Day: row.children[9].innerText,
+                        price3Day: row.children[10].innerText,
+                    };
+                    saveToStorage(ticker, data);
+                });
+            });
+        }
+
+        function saveToStorage(ticker, data) {
+            localStorage.setItem(ticker, JSON.stringify(data));
+        }
+
+        function loadFromStorage(ticker) {
+            const data = JSON.parse(localStorage.getItem(ticker));
+            if (data) {
+                const tableBody = document.getElementById('signals-table-body');
+                tableBody.innerHTML = '';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${data.ticker}</td>
+                    <td contenteditable="true" class="editable">${data.date}</td>
+                    <td contenteditable="true" class="editable">${data.price}</td>
+                    <td contenteditable="true" class="editable">${data.signal15Min}</td>
+                    <td contenteditable="true" class="editable">${data.price15Min}</td>
+                    <td contenteditable="true" class="editable">${data.signal1Hour}</td>
+                    <td contenteditable="true" class="editable">${data.price1Hour}</td>
+                    <td contenteditable="true" class="editable">${data.signal24Hour}</td>
+                    <td contenteditable="true" class="editable">${data.price24Hour}</td>
+                    <td contenteditable="true" class="editable">${data.signal3Day}</td>
+                    <td contenteditable="true" class="editable">${data.price3Day}</td>
+                `;
+                tableBody.appendChild(row);
+            }
         }
 
         function setActiveButton(button) {
