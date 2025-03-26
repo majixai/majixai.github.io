@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0" />
     <title>Stock Signals</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="../style/1wz8q4p9t56e4x7d12059ulkm8g.css" />
+    <!-- <link rel="stylesheet" href="../style/1wz8q4p9t56e4x7d12059ulkm8g.css" /> -->
     <style>
         body {
             padding: 0;
             margin: 0;
             font-family: Calibri, sans-serif;
             color: #000000;
-            background-color: #f0f0f0;
+            background-color: #ffffff;
         }
 
         #container {
@@ -143,7 +143,8 @@
         </div>
 
         <div class="tabs">
-            <div class="tab active" data-ticker="TSLA">TSLA</div>
+            <div class="tab active" data-ticker="current_day">Current Day</div>
+            <div class="tab" data-ticker="TSLA">TSLA</div>
             <div class="tab" data-ticker="META">META</div>
             <div class="tab" data-ticker="NVDA">NVDA</div>
             <div class="tab" data-ticker="others">All Others</div>
@@ -172,8 +173,8 @@
         </div>
     </div>
 
-    <script src="tickers.js"></script>
-    <script src="../script/1wefs49yc8a64v9m45b7k103z8g.js"></script>
+    <!-- <script src="tickers.js"></script> -->
+    <!-- <script src="../script/1wefs49yc8a64v9m45b7k103z8g.js"></script> -->
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             const defaultIntervalButton = document.querySelector('.interval-btn[data-interval="1min"]');
@@ -201,17 +202,19 @@
             });
 
             // Initialize with the first tab
-            loadTickerData('TSLA');
+            loadTickerData('current_day');
         });
 
         function loadTickerData(ticker) {
-            // Placeholder function to load data for the selected ticker
-            console.log(`Loading data for ${ticker}`);
-
             // Clear existing table data
             const tableBody = document.getElementById('signals-table-body');
             tableBody.innerHTML = '';
-            
+
+            if (ticker === 'current_day') {
+                loadCurrentDayData();
+                return;
+            }
+
             // Fetch and display new data (replace with actual data fetching logic)
             const sampleData = [
                 { 
@@ -243,6 +246,33 @@
 
             loadFromStorage(ticker);
             addInputListeners();
+        }
+
+        function loadCurrentDayData() {
+            const tickers = ['TSLA', 'META', 'NVDA'];
+            const tableBody = document.getElementById('signals-table-body');
+            tableBody.innerHTML = '';
+
+            tickers.forEach(ticker => {
+                const data = JSON.parse(localStorage.getItem(ticker));
+                if (data) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${data.ticker}</td>
+                        <td>${data.date}</td>
+                        <td>${data.price}</td>
+                        <td>${data.signal15Min}</td>
+                        <td>${data.price15Min}</td>
+                        <td>${data.signal1Hour}</td>
+                        <td>${data.price1Hour}</td>
+                        <td>${data.signal24Hour}</td>
+                        <td>${data.price24Hour}</td>
+                        <td>${data.signal3Day}</td>
+                        <td>${data.price3Day}</td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
         }
 
         function addInputListeners() {
