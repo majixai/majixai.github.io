@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day Trade Tracker & Weekly Plan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .calculator-card, .chart-card {
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .trade-count {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+        .table thead th {
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="mb-4 text-center">Day Trade Limit Tracker (3 per 5 Rolling Days)</h1>
+
+    <div class="card calculator-card bg-light">
+        <div class="card-body">
+            <h2 class="card-title mb-3">Simple Trade Counter</h2>
+            <p class="card-text">Log trades within a conceptual 5-day period. Remember the actual rule applies to *any* 5 consecutive business days.</p>
+
+            <div class="mb-3">
+                Trades Logged in Period: <span id="tradeCount" class="trade-count text-primary">0</span> / 3
+            </div>
+            <div class="mb-3">
+                Remaining Trades Allowed: <span id="remainingTrades" class="trade-count text-success">3</span>
+            </div>
+            <div id="statusMessage" class="mb-3">&nbsp;</div>
+
+            <button id="logTradeBtn" class="btn btn-primary me-2">Log 1 Day Trade</button>
+            <button id="resetBtn" class="btn btn-secondary">Reset Period Counter</button>
+        </div>
+    </div>
+
+    <div class="card chart-card">
+        <div class="card-body">
+            <h2 class="card-title mb-3">Weekly Planning View</h2>
+            <p class="card-text">
+                This chart helps visualize planning your trades across a standard week, keeping the "max 3 trades in any 5 rolling business days" rule in mind. You can't average more than 3 trades per week sustainably.
+            </p>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped text-center">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Day</th>
+                            <th>Planning Notes (Max 3 / 5 Rolling Days)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Monday</td>
+                            <td>Start of week. Track trades carefully.</td>
+                        </tr>
+                        <tr>
+                            <td>Tuesday</td>
+                            <td>Consider trades made yesterday.</td>
+                        </tr>
+                        <tr>
+                            <td>Wednesday</td>
+                            <td>Mid-week check. How many trades in the last 3 days?</td>
+                        </tr>
+                        <tr>
+                            <td>Thursday</td>
+                            <td>Look back Mon-Thu (4 days).</td>
+                        </tr>
+                        <tr>
+                            <td>Friday</td>
+                            <td>Look back Mon-Fri (5 days). Limit applies.</td>
+                        </tr>
+                         <tr>
+                            <td colspan="2" class="text-muted small pt-3">
+                                **Important:** Always check the actual 5-day rolling period. E.g., trades made this Wednesday count towards the Wednesday-Tuesday (next week) window.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<script>
+    const maxTrades = 3;
+    let currentTrades = 0;
+
+    const tradeCountDisplay = document.getElementById('tradeCount');
+    const remainingTradesDisplay = document.getElementById('remainingTrades');
+    const statusMessageDisplay = document.getElementById('statusMessage');
+    const logTradeBtn = document.getElementById('logTradeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function updateDisplay() {
+        tradeCountDisplay.textContent = currentTrades;
+        const remaining = maxTrades - currentTrades;
+        remainingTradesDisplay.textContent = remaining;
+
+        // Update colors based on remaining trades
+        if (remaining <= 0) {
+            remainingTradesDisplay.classList.remove('text-success', 'text-warning');
+            remainingTradesDisplay.classList.add('text-danger');
+        } else if (remaining === 1) {
+            remainingTradesDisplay.classList.remove('text-success', 'text-danger');
+            remainingTradesDisplay.classList.add('text-warning');
+        } else {
+             remainingTradesDisplay.classList.remove('text-danger', 'text-warning');
+             remainingTradesDisplay.classList.add('text-success');
+        }
+
+        if (currentTrades >= maxTrades) {
+            statusMessageDisplay.textContent = "Limit reached for this period! Do not place another day trade.";
+            statusMessageDisplay.classList.add('warning');
+            logTradeBtn.disabled = true;
+        } else {
+            statusMessageDisplay.textContent = "\u00A0"; // Non-breaking space
+            statusMessageDisplay.classList.remove('warning');
+            logTradeBtn.disabled = false;
+        }
+    }
+
+    logTradeBtn.addEventListener('click', () => {
+        if (currentTrades < maxTrades) {
+            currentTrades++;
+            updateDisplay();
+        }
+    });
+
+    resetBtn.addEventListener('click', () => {
+        currentTrades = 0;
+        updateDisplay();
+    });
+
+    // Initial display update on load
+    updateDisplay();
+
+</script>
+
+</body>
+</html>
