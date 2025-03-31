@@ -3,95 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Day Trade Tracker & Weekly Plan</title>
+    <title>Advanced Day Trade Tracker (Storage Demo)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <style>
-        body {
-            padding: 20px;
-            background-color: #f8f9fa;
-        }
-        .calculator-card, .chart-card {
-            margin-bottom: 30px;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .trade-count {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-        .warning {
-            color: red;
-            font-weight: bold;
-        }
-        .table thead th {
-            background-color: #e9ecef;
-        }
+        body { padding: 20px; background-color: #f8f9fa; }
+        .card { margin-bottom: 30px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .trade-count { font-size: 1.5em; font-weight: bold; }
+        .warning { color: red; font-weight: bold; }
+        .text-muted small { display: block; margin-top: 5px; }
+        .table thead th { background-color: #e9ecef; }
+        .db-status { font-style: italic; color: #6c757d; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1 class="mb-4 text-center">Day Trade Limit Tracker (3 per 5 Rolling Days)</h1>
+    <h1 class="mb-4 text-center">Advanced Day Trade Tracker (Storage Demo)</h1>
+    <p class="text-center text-muted">Current Time: <span id="currentTime"></span></p>
+    <p class="text-center text-muted mb-4">Location: Chico, California, United States</p>
 
-    <div class="card calculator-card bg-light">
+
+    <div class="card bg-light border-primary">
         <div class="card-body">
-            <h2 class="card-title mb-3">Simple Trade Counter</h2>
-            <p class="card-text">Log trades within a conceptual 5-day period. Remember the actual rule applies to *any* 5 consecutive business days.</p>
+            <h2 class="card-title mb-3">Accurate Rolling 5-Business-Day Counter</h2>
+            <p class="card-text">Uses <strong>IndexedDB</strong> to store individual trades and accurately count trades made in the last 5 business days. Persists across browser sessions.</p>
+            <p class="db-status" id="dbStatus">IndexedDB status: Initializing...</p>
 
             <div class="mb-3">
-                Trades Logged in Period: <span id="tradeCount" class="trade-count text-primary">0</span> / 3
+                Trades in Last 5 Business Days: <span id="accurateTradeCount" class="trade-count text-primary">...</span> / 3
+                 <span class="text-muted small">(Last known count loaded from localStorage, verifying with IndexedDB...)</span>
             </div>
             <div class="mb-3">
-                Remaining Trades Allowed: <span id="remainingTrades" class="trade-count text-success">3</span>
+                Remaining Trades Allowed (Accurate): <span id="accurateRemainingTrades" class="trade-count text-success">...</span>
             </div>
-            <div id="statusMessage" class="mb-3">&nbsp;</div>
+            <div id="accurateStatusMessage" class="mb-3">&nbsp;</div>
 
-            <button id="logTradeBtn" class="btn btn-primary me-2">Log 1 Day Trade</button>
-            <button id="resetBtn" class="btn btn-secondary">Reset Period Counter</button>
+            <button id="logAccurateTradeBtn" class="btn btn-primary me-2" disabled>Log 1 Day Trade (IndexedDB)</button>
+            <button id="resetAccurateBtn" class="btn btn-danger" disabled>Clear ALL Accurate Trades (IndexedDB)</button>
         </div>
     </div>
+
+     <div class="card bg-light border-secondary">
+        <div class="card-body">
+            <h2 class="card-title mb-3">Simple Session Counter</h2>
+            <p class="card-text">Uses <strong>sessionStorage</strong>. Counts trades within this browser tab session only. Resets when tab is closed. Does NOT track the rolling 5-day period accurately.</p>
+
+            <div class="mb-3">
+                Trades Logged this Session: <span id="sessionTradeCount" class="trade-count text-secondary">0</span> / 3
+            </div>
+             <div id="sessionStatusMessage" class="mb-3">&nbsp;</div>
+
+            <button id="logSessionTradeBtn" class="btn btn-secondary me-2">Log 1 Session Trade</button>
+            <button id="resetSessionBtn" class="btn btn-outline-secondary">Reset Session Counter</button>
+        </div>
+    </div>
+
 
     <div class="card chart-card">
         <div class="card-body">
             <h2 class="card-title mb-3">Weekly Planning View</h2>
-            <p class="card-text">
-                This chart helps visualize planning your trades across a standard week, keeping the "max 3 trades in any 5 rolling business days" rule in mind. You can't average more than 3 trades per week sustainably.
-            </p>
+            <p class="card-text">Static visual guide for planning based on the accurate 3-trade / 5-rolling-business-day rule.</p>
             <div class="table-responsive">
                 <table class="table table-bordered table-striped text-center">
-                    <thead class="table-light">
+                     <thead class="table-light">
                         <tr>
                             <th>Day</th>
-                            <th>Planning Notes (Max 3 / 5 Rolling Days)</th>
+                            <th>Planning Notes (Max 3 / 5 Rolling Business Days)</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr>
-                            <td>Monday</td>
-                            <td>Start of week. Track trades carefully.</td>
-                        </tr>
-                        <tr>
-                            <td>Tuesday</td>
-                            <td>Consider trades made yesterday.</td>
-                        </tr>
-                        <tr>
-                            <td>Wednesday</td>
-                            <td>Mid-week check. How many trades in the last 3 days?</td>
-                        </tr>
-                        <tr>
-                            <td>Thursday</td>
-                            <td>Look back Mon-Thu (4 days).</td>
-                        </tr>
-                        <tr>
-                            <td>Friday</td>
-                            <td>Look back Mon-Fri (5 days). Limit applies.</td>
-                        </tr>
-                         <tr>
-                            <td colspan="2" class="text-muted small pt-3">
-                                **Important:** Always check the actual 5-day rolling period. E.g., trades made this Wednesday count towards the Wednesday-Tuesday (next week) window.
-                            </td>
-                        </tr>
+                     <tbody>
+                        <tr><td>Monday</td><td>Start of week. Track trades carefully.</td></tr>
+                        <tr><td>Tuesday</td><td>Consider trades made yesterday.</td></tr>
+                        <tr><td>Wednesday</td><td>Mid-week check. How many trades in the last 3 days?</td></tr>
+                        <tr><td>Thursday</td><td>Look back Mon-Thu (4 days).</td></tr>
+                        <tr><td>Friday</td><td>Look back Mon-Fri (5 days). Limit applies.</td></tr>
+                        <tr><td colspan="2" class="text-muted small pt-3">**Important:** Always check the actual 5-day rolling period using the accurate counter above.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -103,57 +89,313 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 
 <script>
-    const maxTrades = 3;
-    let currentTrades = 0;
+    const DB_NAME = 'tradeTrackerDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'trades';
+    const MAX_TRADES = 3;
 
-    const tradeCountDisplay = document.getElementById('tradeCount');
-    const remainingTradesDisplay = document.getElementById('remainingTrades');
-    const statusMessageDisplay = document.getElementById('statusMessage');
-    const logTradeBtn = document.getElementById('logTradeBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    const accurateTradeCountDisplay = document.getElementById('accurateTradeCount');
+    const accurateRemainingTradesDisplay = document.getElementById('accurateRemainingTrades');
+    const accurateStatusMessageDisplay = document.getElementById('accurateStatusMessage');
+    const logAccurateTradeBtn = document.getElementById('logAccurateTradeBtn');
+    const resetAccurateBtn = document.getElementById('resetAccurateBtn');
+    const dbStatusDisplay = document.getElementById('dbStatus');
 
-    function updateDisplay() {
-        tradeCountDisplay.textContent = currentTrades;
-        const remaining = maxTrades - currentTrades;
-        remainingTradesDisplay.textContent = remaining;
+    const sessionTradeCountDisplay = document.getElementById('sessionTradeCount');
+    const sessionStatusMessageDisplay = document.getElementById('sessionStatusMessage');
+    const logSessionTradeBtn = document.getElementById('logSessionTradeBtn');
+    const resetSessionBtn = document.getElementById('resetSessionBtn');
 
-        // Update colors based on remaining trades
-        if (remaining <= 0) {
-            remainingTradesDisplay.classList.remove('text-success', 'text-warning');
-            remainingTradesDisplay.classList.add('text-danger');
-        } else if (remaining === 1) {
-            remainingTradesDisplay.classList.remove('text-success', 'text-danger');
-            remainingTradesDisplay.classList.add('text-warning');
-        } else {
-             remainingTradesDisplay.classList.remove('text-danger', 'text-warning');
-             remainingTradesDisplay.classList.add('text-success');
+    const currentTimeDisplay = document.getElementById('currentTime');
+
+    let db; // Holds the IndexedDB database instance
+
+    // --- IndexedDB Helper Functions ---
+
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            dbStatusDisplay.textContent = 'IndexedDB status: Opening...';
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onupgradeneeded = (event) => {
+                dbStatusDisplay.textContent = 'IndexedDB status: Upgrading...';
+                const dbInstance = event.target.result;
+                if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
+                    const store = dbInstance.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('timestamp', 'timestamp', { unique: false });
+                    dbStatusDisplay.textContent = 'IndexedDB status: Object store created.';
+                }
+            };
+
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                dbStatusDisplay.textContent = 'IndexedDB status: Ready.';
+                logAccurateTradeBtn.disabled = false;
+                resetAccurateBtn.disabled = false;
+                console.log('Database opened successfully');
+                resolve(db);
+            };
+
+            request.onerror = (event) => {
+                dbStatusDisplay.textContent = `IndexedDB status: Error opening database - ${event.target.error}`;
+                console.error('Database error:', event.target.error);
+                reject(event.target.error);
+            };
+        });
+    }
+
+    function addTrade() {
+        return new Promise((resolve, reject) => {
+            if (!db) return reject('DB not initialized');
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const trade = { timestamp: Date.now() };
+            const request = store.add(trade);
+
+            request.onsuccess = () => {
+                console.log('Trade added successfully');
+                resolve();
+            };
+            request.onerror = (event) => {
+                console.error('Error adding trade:', event.target.error);
+                reject(event.target.error);
+            };
+        });
+    }
+
+     function getTimestampFiveBusinessDaysAgo() {
+        const today = new Date();
+        let businessDaysAgo = 0;
+        let currentDate = new Date(today); // Clone today's date
+
+        while (businessDaysAgo < 5) {
+            currentDate.setDate(currentDate.getDate() - 1); // Go back one day
+            const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                businessDaysAgo++;
+            }
         }
+         // Set time to the beginning of that day for consistent comparison
+        currentDate.setHours(0, 0, 0, 0);
+        return currentDate.getTime();
+    }
 
-        if (currentTrades >= maxTrades) {
-            statusMessageDisplay.textContent = "Limit reached for this period! Do not place another day trade.";
-            statusMessageDisplay.classList.add('warning');
-            logTradeBtn.disabled = true;
-        } else {
-            statusMessageDisplay.textContent = "\u00A0"; // Non-breaking space
-            statusMessageDisplay.classList.remove('warning');
-            logTradeBtn.disabled = false;
+
+    function countRecentTrades() {
+        return new Promise((resolve, reject) => {
+            if (!db) return reject('DB not initialized');
+
+            const startTime = getTimestampFiveBusinessDaysAgo();
+            console.log(`Counting trades since: ${new Date(startTime).toLocaleString()}`);
+
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const index = store.index('timestamp'); // Use the index for efficiency
+            const range = IDBKeyRange.lowerBound(startTime); // Get all trades from startTime onwards
+            let count = 0;
+
+            // Use cursor iteration to count matching records efficiently
+            const cursorRequest = index.openCursor(range);
+
+            cursorRequest.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    count++;
+                    cursor.continue(); // Move to the next record in the range
+                } else {
+                    // No more entries match, resolve the promise with the final count
+                    console.log(`Found ${count} trades in the last 5 business days.`);
+                    resolve(count);
+                }
+            };
+
+            cursorRequest.onerror = (event) => {
+                console.error('Error counting trades:', event.target.error);
+                reject(event.target.error);
+            };
+        });
+    }
+
+
+    function clearAllTrades() {
+         return new Promise((resolve, reject) => {
+            if (!db) return reject('DB not initialized');
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.clear();
+
+            request.onsuccess = () => {
+                console.log('All trades cleared successfully');
+                resolve();
+            };
+            request.onerror = (event) => {
+                console.error('Error clearing trades:', event.target.error);
+                reject(event.target.error);
+            };
+        });
+    }
+
+
+    // --- UI Update Functions ---
+
+    async function updateAccurateDisplay() {
+        try {
+            const count = await countRecentTrades();
+            accurateTradeCountDisplay.textContent = count;
+            localStorage.setItem('lastKnownAccurateCount', count); // Save to localStorage
+
+            const remaining = MAX_TRADES - count;
+            accurateRemainingTradesDisplay.textContent = remaining;
+
+            // Update colors
+            if (remaining <= 0) {
+                accurateRemainingTradesDisplay.classList.remove('text-success', 'text-warning');
+                accurateRemainingTradesDisplay.classList.add('text-danger');
+            } else if (remaining === 1) {
+                 accurateRemainingTradesDisplay.classList.remove('text-success', 'text-danger');
+                 accurateRemainingTradesDisplay.classList.add('text-warning');
+            } else {
+                 accurateRemainingTradesDisplay.classList.remove('text-danger', 'text-warning');
+                 accurateRemainingTradesDisplay.classList.add('text-success');
+            }
+
+            // Update status message
+             if (count >= MAX_TRADES) {
+                accurateStatusMessageDisplay.textContent = "PDT Limit reached! Do not place another day trade.";
+                accurateStatusMessageDisplay.classList.add('warning');
+                logAccurateTradeBtn.disabled = true; // Disable button if limit reached
+            } else {
+                accurateStatusMessageDisplay.textContent = "\u00A0"; // Non-breaking space
+                accurateStatusMessageDisplay.classList.remove('warning');
+                logAccurateTradeBtn.disabled = false; // Ensure button is enabled if below limit
+            }
+        } catch (error) {
+            accurateStatusMessageDisplay.textContent = `Error updating display: ${error}`;
+            accurateStatusMessageDisplay.classList.add('warning');
         }
     }
 
-    logTradeBtn.addEventListener('click', () => {
-        if (currentTrades < maxTrades) {
-            currentTrades++;
-            updateDisplay();
+
+    function updateSessionDisplay(count) {
+         sessionTradeCountDisplay.textContent = count;
+         if (count >= MAX_TRADES) {
+             sessionStatusMessageDisplay.textContent = "Session limit hit (demo only).";
+             sessionStatusMessageDisplay.classList.add('warning');
+             logSessionTradeBtn.disabled = true;
+         } else {
+             sessionStatusMessageDisplay.textContent = "\u00A0";
+             sessionStatusMessageDisplay.classList.remove('warning');
+             logSessionTradeBtn.disabled = false;
+         }
+    }
+
+    // --- Event Listeners ---
+
+    logAccurateTradeBtn.addEventListener('click', async () => {
+         logAccurateTradeBtn.disabled = true; // Disable temporarily
+         try {
+            // Check current count *before* adding
+            const currentCount = await countRecentTrades();
+            if (currentCount < MAX_TRADES) {
+                 await addTrade();
+                 await updateAccurateDisplay(); // Update display after adding
+                 console.log("Accurate trade logged and display updated.");
+            } else {
+                 console.log("Accurate trade not logged, limit already reached.");
+                 accurateStatusMessageDisplay.textContent = "Limit already reached. Trade not logged.";
+                 accurateStatusMessageDisplay.classList.add('warning');
+                 logAccurateTradeBtn.disabled = true; // Keep disabled
+            }
+         } catch (error) {
+            accurateStatusMessageDisplay.textContent = `Error logging trade: ${error}`;
+            accurateStatusMessageDisplay.classList.add('warning');
+            logAccurateTradeBtn.disabled = false; // Re-enable on error
+         }
+    });
+
+    resetAccurateBtn.addEventListener('click', async () => {
+         if (confirm('Are you sure you want to clear ALL trade history from IndexedDB? This cannot be undone.')) {
+             try {
+                await clearAllTrades();
+                await updateAccurateDisplay(); // Update display to show 0
+                console.log("Accurate trades cleared and display updated.");
+             } catch (error) {
+                 accurateStatusMessageDisplay.textContent = `Error clearing trades: ${error}`;
+                 accurateStatusMessageDisplay.classList.add('warning');
+             }
+         }
+    });
+
+
+    logSessionTradeBtn.addEventListener('click', () => {
+        let count = parseInt(sessionStorage.getItem('sessionTradeCount') || '0');
+        if (count < MAX_TRADES) {
+            count++;
+            sessionStorage.setItem('sessionTradeCount', count);
+            updateSessionDisplay(count);
         }
     });
 
-    resetBtn.addEventListener('click', () => {
-        currentTrades = 0;
-        updateDisplay();
+    resetSessionBtn.addEventListener('click', () => {
+        sessionStorage.setItem('sessionTradeCount', '0');
+        updateSessionDisplay(0);
     });
 
-    // Initial display update on load
-    updateDisplay();
+
+    // --- Initialization ---
+
+    function initialize() {
+        // Set current time display
+        const now = new Date();
+        currentTimeDisplay.textContent = now.toLocaleString('en-US', {
+            timeZone: 'America/Los_Angeles', // PDT/PST
+            dateStyle: 'full',
+            timeStyle: 'long'
+        });
+
+        // Load initial state for session counter
+        const initialSessionCount = parseInt(sessionStorage.getItem('sessionTradeCount') || '0');
+        updateSessionDisplay(initialSessionCount);
+
+        // Load last known accurate count from localStorage for immediate display
+        const lastKnownCount = localStorage.getItem('lastKnownAccurateCount');
+         if (lastKnownCount !== null) {
+            const count = parseInt(lastKnownCount);
+            accurateTradeCountDisplay.textContent = count;
+            accurateRemainingTradesDisplay.textContent = MAX_TRADES - count;
+            // Set initial color/status based on this potentially stale data
+             if (count >= MAX_TRADES) {
+                accurateRemainingTradesDisplay.classList.add('text-danger');
+                accurateStatusMessageDisplay.textContent = "PDT Limit likely reached (verifying...)";
+                accurateStatusMessageDisplay.classList.add('warning');
+            } else if (count === MAX_TRADES - 1) {
+                 accurateRemainingTradesDisplay.classList.add('text-warning');
+            } else {
+                 accurateRemainingTradesDisplay.classList.add('text-success');
+            }
+        } else {
+            // No stored data, indicate loading
+            accurateTradeCountDisplay.textContent = 'N/A';
+            accurateRemainingTradesDisplay.textContent = 'N/A';
+        }
+
+
+        // Open DB and then perform the accurate count
+        openDB()
+            .then(() => {
+                // Update the display with the fresh count from DB
+                return updateAccurateDisplay();
+            })
+            .catch(error => {
+                console.error("Initialization failed:", error);
+                accurateStatusMessageDisplay.textContent = `Error initializing database: ${error}`;
+                accurateStatusMessageDisplay.classList.add('warning');
+            });
+    }
+
+    // Run initialization when the DOM is ready
+    document.addEventListener('DOMContentLoaded', initialize);
 
 </script>
 
