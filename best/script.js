@@ -1,4 +1,3 @@
-// Copied from 4d6957c8b6df8c34ce06079f92f9d3a334f689a4
 document.addEventListener('DOMContentLoaded', async function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
@@ -10,8 +9,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const filterAgeSelect = document.getElementById("filterAge");
 
     let storageType = storageTypeSelector.value;
-    let previousUsers = loadUsers("previousUsers");
-    let removedUsers = loadUsers("removedUsers");
+    let previousUsers = await loadUsers("previousUsers");
+    let removedUsers = await loadUsers("removedUsers");
     displayPreviousUsers();
     let allOnlineUsersData = [];
 
@@ -62,19 +61,26 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function populateFilters(users) {
-        const tags = new Set();
+        const tagFrequency = {};
         const ages = new Set();
 
         users.forEach(user => {
             if (user.tags) {
-                user.tags.forEach(tag => tags.add(tag));
+                user.tags.forEach(tag => {
+                    tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
+                });
             }
             if (user.age) {
                 ages.add(user.age);
             }
         });
 
-        filterTagsSelect.innerHTML = Array.from(tags).map(tag => `<option value="${tag}">${tag}</option>`).join('');
+        const sortedTags = Object.entries(tagFrequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 20)
+            .map(entry => entry[0]);
+
+        filterTagsSelect.innerHTML = sortedTags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
         filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
     }
 
@@ -135,7 +141,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
             previousUsers.unshift(user);
-            saveUsers("previousUsers", previousUsers);
+            await saveUsers("previousUsers", previousUsers);
 
             const userElement = document.createElement("div");
             userElement.className = "user-info";
@@ -169,7 +175,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function displayPreviousUsers() {
         previousUsersDiv.innerHTML = "";
 
-        const storedUsers = loadUsers("previousUsers");
+        const storedUsers = await loadUsers("previousUsers");
         if (storedUsers.length === 0) {
             previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
             return;
@@ -218,9 +224,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
     }
 
-    function loadUsers(key) {
-        if (storageType === "indexeddb") {
-            return loadFromIndexedDB(key);
+    async function loadUsers(key) {
+        if (storageType === "indexedClicked") {
+            return await loadFromIndexedDB(key);
         } else {
             const storage = storageType === "local" ? localStorage : sessionStorage;
             const storedUsers = storage.getItem(key);
@@ -228,9 +234,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    function saveUsers(key, users) {
-        if (storageType === "indexeddb") {
-            saveToIndexedDB(key, users);
+    async function saveUsers(key, users) {
+        if (storageType === "indexedClicked") {
+            await saveToIndexedDB(key, users);
         } else {
             const storage = storageType === "local" ? localStorage : sessionStorage;
             storage.setItem(key, JSON.stringify(users));
@@ -242,7 +248,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             const request = indexedDB.open('UserDatabase', 1);
             request.onupgradeneeded = function(event) {
                 const db = event.target.result;
-                db.createObjectStore('users', { keyPath: 'key' });
+                const objectStore = db.createObjectStore('users', { keyPath: 'key' });
+                objectStore.createIndex('tags', 'tags', { unique: false });
             };
             request.onsuccess = function(event) {
                 resolve(event.target.result);
@@ -259,7 +266,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const transaction = db.transaction('users', 'readonly');
             const store = transaction.objectStore('users');
             const request = store.get(key);
-    
+
             request.onsuccess = function(event) {
                 resolve(event.target.result ? event.target.result.value : []);
             };
@@ -268,14 +275,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
         });
     }
-    
+
     function saveToIndexedDB(key, users) {
         return new Promise(async (resolve, reject) => {
             const db = await openIndexedDB();
             const transaction = db.transaction('users', 'readwrite');
             const store = transaction.objectStore('users');
             const request = store.put({ key: key, value: users });
-    
+
             request.onsuccess = function(event) {
                 resolve();
             };
@@ -284,6 +291,23 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
         });
     }
+
+    async function populateStorageOptions() {
+        const db = await openIndexedDB();
+        const transaction = db.transaction('users', 'readonly');
+        const store = transaction.objectStore('users');
+        const request = store.getAllKeys();
+
+        request.onsuccess = function(event) {
+            const keys = event.target.result;
+            storageTypeSelector.innerHTML += keys.map(key => `<option value="${key}">${key}</option>`).join('');
+        };
+        request.onerror = function(event) {
+            console.error("Error fetching keys from IndexedDB:", event.target.error);
+        };
+    }
+
+    populateStorageOptions();
 
     if (typeof window.addToPreviousUsers !== 'undefined') {
         window.addToPreviousUsers = addToPreviousUsers;
@@ -300,5 +324,5 @@ document.addEventListener('DOMContentLoaded', async function() {
     setInterval(async () => {
         allOnlineUsersData = [];
         await fetchData();
-    }, 120000);
+    }, 300000);
 });
