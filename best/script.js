@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     storageTypeSelector.addEventListener("change", async function() {
         storageType = this.value;
-        previousUsers = loadUsers("previousUsers");
-        removedUsers = loadUsers("removedUsers");
+        previousUsers = await loadUsers("previousUsers");
+        removedUsers = await loadUsers("removedUsers");
         await displayPreviousUsers();
     });
 
@@ -219,14 +219,70 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function loadUsers(key) {
-        const storage = storageType === "local" ? localStorage : sessionStorage;
-        const storedUsers = storage.getItem(key);
-        return storedUsers ? JSON.parse(storedUsers) : [];
+        if (storageType === "indexeddb") {
+            return loadFromIndexedDB(key);
+        } else {
+            const storage = storageType === "local" ? localStorage : sessionStorage;
+            const storedUsers = storage.getItem(key);
+            return storedUsers ? JSON.parse(storedUsers) : [];
+        }
     }
 
     function saveUsers(key, users) {
-        const storage = storageType === "local" ? localStorage : sessionStorage;
-        storage.setItem(key, JSON.stringify(users));
+        if (storageType === "indexeddb") {
+            saveToIndexedDB(key, users);
+        } else {
+            const storage = storageType === "local" ? localStorage : sessionStorage;
+            storage.setItem(key, JSON.stringify(users));
+        }
+    }
+
+    function openIndexedDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('UserDatabase', 1);
+            request.onupgradeneeded = function(event) {
+                const db = event.target.result;
+                db.createObjectStore('users', { keyPath: 'key' });
+            };
+            request.onsuccess = function(event) {
+                resolve(event.target.result);
+            };
+            request.onerror = function(event) {
+                reject(event.target.error);
+            };
+        });
+    }
+
+    function loadFromIndexedDB(key) {
+        return new Promise(async (resolve, reject) => {
+            const db = await openIndexedDB();
+            const transaction = db.transaction('users', 'readonly');
+            const store = transaction.objectStore('users');
+            const request = store.get(key);
+    
+            request.onsuccess = function(event) {
+                resolve(event.target.result ? event.target.result.value : []);
+            };
+            request.onerror = function(event) {
+                reject(event.target.error);
+            };
+        });
+    }
+    
+    function saveToIndexedDB(key, users) {
+        return new Promise(async (resolve, reject) => {
+            const db = await openIndexedDB();
+            const transaction = db.transaction('users', 'readwrite');
+            const store = transaction.objectStore('users');
+            const request = store.put({ key: key, value: users });
+    
+            request.onsuccess = function(event) {
+                resolve();
+            };
+            request.onerror = function(event) {
+                reject(event.target.error);
+            };
+        });
     }
 
     if (typeof window.addToPreviousUsers !== 'undefined') {
