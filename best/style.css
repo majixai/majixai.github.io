@@ -80,20 +80,61 @@ body {
 .recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
 .w3-theme-d2, .w3-bar .w3-button, .w3-bar-block .w3-button, .w3-bar-item, .w3-bar,
 .w3-center
-{ /*Your other styles remain here */}
+
+.user-info {
+    position: relative;
+    width: 18%; /* Adjust to fit 5 columns (100% / 5 = 20%) */
+    margin: 1%; /* Add some spacing between columns */
+    display: inline-block;
+    vertical-align: top;
+    text-align: center;
+}
+
+.user-info img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px; /* Optional: Add rounded corners */
+}
+
+.user-info .user-details {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent overlay */
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 8px; /* Match the rounded corners of the image */
+}
+
+.user-info:hover .user-details {
+    opacity: 1; /* Show overlay on hover */
+}
+
+.user-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
 
 .user-list {
     list-style: none;
     padding: 0;
 }
 
-.user-info {
+/* .user-info {
     display: flex;
     align-items: center;
     padding-bottom: 2px;
     border-bottom: 1px solid #eee;
     margin-bottom: 2px;
-}
+} */
 
 .user-info:last-child {
     border-bottom: none;
@@ -101,7 +142,7 @@ body {
     padding-bottom: 0;
 }
 
-.user-info img {
+/* .user-info img {
     width: 80px;
     height: 60px;
     margin-right: 10px;
@@ -110,7 +151,7 @@ body {
 
 .user-details {
     flex-grow: 1;
-}
+} */
 
 .user-details p {
     margin: 0 0 5px 0;
