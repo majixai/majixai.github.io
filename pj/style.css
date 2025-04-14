@@ -1,0 +1,109 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+h1, h2 {
+    text-align: center;
+    color: #333;
+}
+
+/* --- Video Player Area --- */
+.video-player-container {
+    max-width: 640px; /* Match iframe width or use desired max-width */
+    margin: 20px auto; /* Center the player */
+    background-color: #000; /* Black background for the iframe */
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+#video-iframe {
+    display: block; /* Remove extra space below iframe */
+    width: 100%;    /* Make iframe responsive within its container */
+    aspect-ratio: 16 / 9; /* Maintain aspect ratio (adjust if needed) */
+    height: auto;   /* Adjust height based on width and aspect-ratio */
+    border: none;   /* Clean look */
+}
+
+#video-title {
+    color: #eee;
+    margin-top: 10px;
+    font-size: 1em;
+    min-height: 1.2em; /* Prevent layout jump when title changes */
+    text-align: center;
+    padding: 0 10px;
+}
+
+/* --- Thumbnail Scrolling Area --- */
+.thumbnail-container {
+    max-width: 80%; /* Adjust width as needed */
+    margin: 30px auto;
+    overflow: hidden; /* Hide the main scrollbar */
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.thumbnails-scroll {
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Keep items in a single line */
+    padding-bottom: 15px; /* Space for scrollbar without overlapping content */
+    /* Add subtle scrollbar styling (optional, browser-dependent) */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #ccc #eee; /* Firefox */
+}
+
+/* Webkit (Chrome, Safari) scrollbar styling */
+.thumbnails-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+.thumbnails-scroll::-webkit-scrollbar-track {
+    background: #eee;
+    border-radius: 4px;
+}
+.thumbnails-scroll::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 4px;
+    border: 2px solid #eee; /* Creates padding around thumb */
+}
+
+/* --- Individual Thumbnail --- */
+.thumbnail-item {
+    display: inline-block; /* Arrange items horizontally */
+    width: 150px;         /* Fixed width for each item */
+    margin-right: 15px;   /* Spacing between items */
+    vertical-align: top;  /* Align items nicely */
+    cursor: pointer;
+    text-align: center;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.thumbnail-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.thumbnail-item img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 5px;
+    border-radius: 3px;
+}
+
+.thumbnail-item span {
+    display: block; /* Ensure span takes full width */
+    font-size: 0.85em;
+    color: #555;
+    white-space: normal; /* Allow title text to wrap */
+    word-wrap: break-word; /* Break long words if necessary */
+    min-height: 2.5em; /* Reserve space for ~2 lines of text */
+}
