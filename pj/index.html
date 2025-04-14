@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Gallery</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>Video Player</h1>
+
+    <div class="video-player-container">
+        <iframe id="video-iframe"
+                src="" width="640" height="480" frameborder="0"
+                allowfullscreen>
+        </iframe>
+        <h2 id="video-title">Select a video below</h2>
+    </div>
+
+    <div class="thumbnail-container">
+        <div class="thumbnails-scroll">
+            <div class="thumbnail-item"
+                 data-embed-url="YOUR_VIDEO_EMBED_URL_1"
+                 data-title="Video Title 1">
+                <img src="placeholder_thumb_1.jpg" alt="Video Title 1">
+                <span>Video Title 1</span>
+            </div>
+            <div class="thumbnail-item"
+                 data-embed-url="YOUR_VIDEO_EMBED_URL_2"
+                 data-title="Video Title 2">
+                <img src="placeholder_thumb_2.jpg" alt="Video Title 2">
+                <span>Video Title 2</span>
+            </div>
+
+            <div class="thumbnail-item"
+                 data-embed-url="YOUR_VIDEO_EMBED_URL_3"
+                 data-title="Video Title 3">
+                <img src="placeholder_thumb_3.jpg" alt="Video Title 3">
+                <span>Video Title 3</span>
+            </div>
+
+            <div class="thumbnail-item"
+                 data-embed-url="YOUR_VIDEO_EMBED_URL_4"
+                 data-title="Very Long Video Title That Might Wrap Or Need Truncation 4">
+                 <img src="placeholder_thumb_4.jpg" alt="Video Title 4">
+                <span>Very Long Video Title That Might Wrap Or Need Truncation 4</span>
+            </div>
+
+             <div class="thumbnail-item"
+                 data-embed-url="YOUR_VIDEO_EMBED_URL_5"
+                 data-title="Video Title 5">
+                <img src="placeholder_thumb_5.jpg" alt="Video Title 5">
+                <span>Video Title 5</span>
+            </div>
+            </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>
