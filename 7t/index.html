@@ -1,219 +1,47 @@
+<!-- TradingView Widget BEGIN -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradingView Widgets</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        .tradingview-widget-container {
-            margin: 20px 0;
-        }
-        .tradingview-widget-container__widget {
-            width: 100%;
-            height: 400px;
-        }
-        .w3-light-grey {
-            background-color: #f1f1f1;
-        }
-        .w3-col {
-            padding: 0 8px;
-        }
-        .w3-margin-bottom {
-            margin-bottom: 16px;
-        }
-        .w3-row-padding {
-            margin: 0 -8px;
-        }
-        .w3-row-padding > div {
-            padding: 0 8px;
-        }
-
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js-core.js"></script>
-
-    <script>
-        // Function to encrypt and decrypt data using CryptoJS
-        function encryptData(data, key) {
-            return CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
-        }
-
-        function decryptData(encryptedData, key) {
-            const bytes = CryptoJS.AES.decrypt(encryptedData, key);
-            return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        }
-        // Example usage
-        const secretKey = 'your-secret-key'; // Replace with your actual secret key
-        const dataToEncrypt = { symbols: ["NASDAQ:TSLA", "NASDAQ:META"] };
-        const encryptedData = encryptData(dataToEncrypt, secretKey);
-        console.log('Encrypted Data:', encryptedData);
-        const decryptedData = decryptData(encryptedData, secretKey);
-        console.log('Decrypted Data:', decryptedData);
-
-        // Get the data from the content window to the database.
-        function saveDataToDB(data) {
-            const dbRequest = indexedDB.open('TradingViewDB', 1);
-
-            dbRequest.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('symbols')) {
-                    db.createObjectStore('symbols', { keyPath: 'id', autoIncrement: true });
-                }
-            };
-
-            dbRequest.onsuccess = (event) => {
-                const db = event.target.result;
-                const transaction = db.transaction('symbols', 'readwrite');
-                const store = transaction.objectStore('symbols');
-
-                data.symbols.forEach(symbol => store.add({ symbol }));
-            };
-
-            dbRequest.onerror = () => {
-                console.error('Failed to save to IndexedDB');
-            };
-        }
-
-        // Load data from the database
-        function loadDataFromDB() {
-            const dbRequest = indexedDB.open('TradingViewDB', 1);
-
-            dbRequest.onsuccess = (event) => {
-                const db = event.target.result;
-                const transaction = db.transaction('symbols', 'readonly');
-                const store = transaction.objectStore('symbols');
-                const getAllRequest = store.getAll();
-
-                getAllRequest.onsuccess = () => {
-                    const symbols = getAllRequest.result.map(item => item.symbol);
-                    console.log('Loaded Symbols:', symbols);
-                };
-            };
-
-            dbRequest.onerror = () => {
-                console.error('Failed to load from IndexedDB');
-            };
-        }
-    </script>
 </head>
-<body class="w3-light-grey">
-    <div id="widget-container" class="w3-row-padding w3-margin"></div>
-
-    <script>
-        class TradingViewWidget {
-            constructor(symbol, containerId) {
-                this.symbol = symbol;
-                this.containerId = containerId;
-                this.widgetConfig = {
-                    autosize: true,
-                    symbol: this.symbol,
-                    interval: "D",
-                    timezone: "Etc/UTC",
-                    theme: "light",
-                    style: "1",
-                    locale: "en",
-                    allow_symbol_change: true,
-                    studies: ["STD;MACD", "STD;Relative_Volume", "STD;Stdev", "STD;Stochastics"],
-                    support_host: "https://www.tradingview.com"
-                };
-            }
-
-            render() {
-                const container = $(`#${this.containerId}`);
-                const widgetDiv = $('<div>').addClass('tradingview-widget-container__widget');
-                const script = $('<script>')
-                    .attr('type', 'text/javascript')
-                    .attr('src', 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js')
-                    .attr('async', true)
-                    .text(JSON.stringify(this.widgetConfig));
-
-                container.append(widgetDiv).append(script);
-            }
+<body>
+    <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        {
+            "autosize": true,
+            "symbol": "NASDAQ:TSLA",
+            "interval": "D",
+            "timezone": "Etc/UTC",
+            "theme": "light",
+            "style": "1",
+            "locale": "en",
+            "allow_symbol_change": true,
+            "studies": ["STD;MACD", "STD;Relative_Volume", "STD;Stdev", "STD;Stochastics"],
+            "support_host": "https://www.tradingview.com"
         }
-
-        class WidgetManager {
-            constructor(containerId) {
-                this.containerId = containerId;
-                this.widgets = [];
-            }
-
-            addWidget(symbol) {
-                const widgetId = `widget-${symbol.replace(/[:.]/g, '-')}`;
-                const widgetContainer = $('<div>')
-                    .addClass('tradingview-widget-container w3-col l4 m6 w3-margin-bottom')
-                    .attr('id', widgetId);
-                $(`#${this.containerId}`).append(widgetContainer);
-
-                const widget = new TradingViewWidget(symbol, widgetId);
-                this.widgets.push(widget);
-                widget.render();
-            }
-
-            loadWidgetsFromDB() {
-                const dbRequest = indexedDB.open('TradingViewDB', 1);
-
-                dbRequest.onupgradeneeded = (event) => {
-                    const db = event.target.result;
-                    if (!db.objectStoreNames.contains('symbols')) {
-                        db.createObjectStore('symbols', { keyPath: 'id', autoIncrement: true });
-                    }
-                };
-
-                dbRequest.onsuccess = (event) => {
-                    const db = event.target.result;
-                    const transaction = db.transaction('symbols', 'readonly');
-                    const store = transaction.objectStore('symbols');
-                    const getAllRequest = store.getAll();
-
-                    getAllRequest.onsuccess = () => {
-                        const symbols = getAllRequest.result.map(item => item.symbol);
-                        symbols.forEach(symbol => this.addWidget(symbol));
-                    };
-                };
-
-                dbRequest.onerror = () => {
-                    console.error('Failed to open IndexedDB');
-                };
-            }
-
-            saveWidgetsToDB(symbols) {
-                const dbRequest = indexedDB.open('TradingViewDB', 1);
-
-                dbRequest.onsuccess = (event) => {
-                    const db = event.target.result;
-                    const transaction = db.transaction('symbols', 'readwrite');
-                    const store = transaction.objectStore('symbols');
-
-                    symbols.forEach(symbol => store.add({ symbol }));
-                };
-
-                dbRequest.onerror = () => {
-                    console.error('Failed to save to IndexedDB');
-                };
-            }
+        </script>
+    </div>
+    <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        {
+            "autosize": true,
+            "symbol": "NASDAQ:META",
+            "interval": "D",
+            "timezone": "Etc/UTC",
+            "theme": "light",
+            "style": "1",
+            "locale": "en",
+            "allow_symbol_change": true,
+            "studies": ["STD;MACD", "STD;Relative_Volume", "STD;Stdev", "STD;Stochastics"],
+            "support_host": "https://www.tradingview.com"
         }
-
-        $(document).ready(() => {
-            const widgetManager = new WidgetManager('widget-container');
-
-            // Predefined symbols
-            const symbols = [
-                "NASDAQ:TSLA", "NASDAQ:META", "NASDAQ:NVDA",
-                "NASDAQ:GOOG", "NASDAQ:GOOGL", "NASDAQ:AAPL",
-                "NASDAQ:AMZN", "NASDAQ:MSFT", "NYSE:WFC", "NYSE:JPM"
-            ];
-
-            // Save symbols to IndexedDB and load widgets
-            widgetManager.saveWidgetsToDB(symbols);
-            widgetManager.loadWidgetsFromDB();
-        });
-    </script>
+        </script>
+    </div>
+    <!-- Repeat similar blocks for NVDA, GOOG, GOOGL, AAPL, AMZN, MSFT, WFC, JPM -->
 </body>
 </html>
+<!-- TradingView Widget END -->
