@@ -1,3 +1,4 @@
+<!-- TradingView Widget BEGIN -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,95 +8,626 @@
     <style>
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 15px;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
         .grid-item {
             width: 100%;
             height: 400px;
         }
-        .screener-item {
-            width: 100%;
-            height: 600px; /* Adjust height for the screener */
-        }
     </style>
-    <script>
-        // Define an array of ticker symbols
-        const tickers = [
-            "NASDAQ:TSLA",
-            "NASDAQ:META",
-            "NASDAQ:NVDA",
-            "NASDAQ:GOOG",
-            "NASDAQ:GOOGL",
-            "NASDAQ:AAPL",
-            "NASDAQ:AMZN",
-            "NASDAQ:MSFT",
-            "NYSE:WFC",
-            "NYSE:JPM",
-            "NYSE:BAC",
-            "NYSE:DIS",
-            "NYSE:V"
-        ];
-    </script>
 </head>
 <body>
-    <div class="grid-container" id="widgets-container">
-        <!-- Widgets will be dynamically injected here -->
-    </div>
-
-    <!-- Add Screener Widget -->
-    <div class="screener-item">
-        <div class="tradingview-widget-container">
-            <div class="tradingview-widget-container__widget"></div>
-            <div class="tradingview-widget-copyright">
-                <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
-                    <span class="blue-text">Track all markets on TradingView</span>
-                </a>
+    <div class="grid-container">
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:TSLA",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
             </div>
-            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
-            {
-                "width": "100%",
-                "height": "100%",
-                "defaultColumn": "overview",
-                "defaultScreen": "general",
-                "market": "forex",
-                "showToolbar": true,
-                "colorTheme": "light",
-                "locale": "en"
-            }
-            </script>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:META",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:NVDA",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:GOOG",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:GOOGL",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:AAPL",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:AMZN",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NASDAQ:MSFT",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NYSE:WFC",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
+        </div>
+        <div class="grid-item">
+            <div class="tradingview-widget-container">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+                {
+                    "autosize": true,
+                    "symbol": "NYSE:JPM",
+                    "interval": "D",
+                    "timezone": "Etc/UTC",
+                    "theme": "light",
+                    "style": "1",
+                    "locale": "en",
+                    "allow_symbol_change": true,
+                    "studies": ["STD;24h%Volume",
+    "STD;Accumulation_Distribution",
+    "STD;Advance_Decline_Ratio_Bars",
+    "STD;Bollinger_Bands",
+    "STD;Bollinger_Bands_Width",
+    "STD;Bollinger%1Bars",
+    "STD;Bull%Bear%Power",
+    "STD;DPO",
+    "STD;DMI",
+    "STD;DEMA",
+    "STD;Gaps",
+    "STD;Historical_Volatility",
+    "STD;Least%1Squares%1Moving%1Average",
+    "STD;Linear_Regression",
+    "STD;MA%1Cross",
+    "STD;Momentum",
+    "STD;MACD",
+    "STD;WMA",
+    "STD;Multi-Time%Period%Charts",
+    "STD;Net%1Volume",
+    "STD;On_Balance_Volume",
+    "STD;Open%Interest",
+    "STD;PSAR",
+    "STD;Pivot%1Points%1High%1Low",
+    "STD;ROC",
+    "STD;RSI",
+    "STD;Divergence%1Indicator",
+    "STD;Seasonality",
+    "STD;Stochastic",
+    "STD;SMI",
+    "STD;Stochastic_RSI",
+    "STD;Supertrend",
+    "STD;Technical%1Ratings",
+    "STD;Time%1Weighted%1Average%1Price",
+    "STD;TRIX",
+    "STD;UP_DOWN_Volume",
+    "STD;Visible%1Average%1Price",
+    "STD;VWAP",
+    "STD;VWMA",
+    "STD;Whilliams_Fractals",
+    "STD;Zig_Zag"],
+                    "support_host": "https://www.tradingview.com"
+                }
+                </script>
+            </div>
         </div>
     </div>
-
-    <script>
-        // Get the container where widgets will be added
-        const container = document.getElementById('widgets-container');
-
-        // Dynamically generate widgets for each ticker
-        tickers.forEach(ticker => {
-            const widgetDiv = document.createElement('div');
-            widgetDiv.className = 'grid-item';
-            widgetDiv.innerHTML = `
-                <div class="tradingview-widget-container">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-                    {
-                        "autosize": true,
-                        "symbol": "${ticker}",
-                        "interval": "D",
-                        "timezone": "Etc/UTC",
-                        "theme": "light",
-                        "style": "1",
-                        "locale": "en",
-                        "allow_symbol_change": true,
-                        "studies": ["STD;MACD", "STD;Relative_Volume", "STD;Stdev", "STD;Stochastics"],
-                        "support_host": "https://www.tradingview.com"
-                    }
-                    </script>
-                </div>
-            `;
-            container.appendChild(widgetDiv);
-        });
-    </script>
+    <!-- TradingView Widget BEGIN -->
+    <div class="tradingview-widget-container">
+      <div class="tradingview-widget-container__widget"></div>
+      <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>
+      {
+      "width": "100%",
+      "height": "100%",
+      "defaultColumn": "overview",
+      "defaultScreen": "unusual_volume",
+      "market": "america",
+      "showToolbar": true,
+      "colorTheme": "light",
+      "locale": "en"
+    }
+      </script>
+    </div>
+    <!-- TradingView Widget END -->
 </body>
 </html>
+<!-- TradingView Widget END -->
