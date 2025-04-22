@@ -27,14 +27,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         let continueFetching = true;
 
         while (continueFetching) {
-            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}&tag=18&tag=asian&tag=new&tag=bigboobs&tag=deepthroat`;
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`; // &tag=18&tag=asian&tag=new&tag=bigboobs&tag=deepthroat`;
             try {
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                if (data.results && data.results.length > 0) {
+                let alt = data.results.age <= 19
+                if (data.results && data.results.length > 0 && alt) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
                     if (data.results.length < limit) {
                         continueFetching = false;
