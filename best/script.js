@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                let alt = data.results.age <= 19
+                let alt = data.results.age <= 19         /////////////////////////////////////////////////////<<<<<<<<<<<<<<<<<<<<<==============================
                 if (data.results && data.results.length > 0 && alt) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
                     if (data.results.length < limit) {
