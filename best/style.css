@@ -1,8 +1,13 @@
-html, body, h1, h2, h3, h4, h5, h6, * {
+/* Global styles - Be cautious with global overrides like margin/padding */
+html, body, h1, h2, h3, h4, h5, h6 {
     font-family: "Segoe UI", sans-serif;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
+}
+
+/* Removing global !important overflow hidden which breaks scrolling */
+* {
+    margin: 0;
+    padding: 0;
+    /* overflow: hidden !important; - Removed */
 }
 
 body {
@@ -12,27 +17,35 @@ body {
     background-color: #f8f9fa; /* Light grey background for the whole page */
     color: #00539B; /* Dark grey text for better readability */
     line-height: 1.6;
+    /* Ensure body does not have overflow: hidden if you want page scrolling */
+    overflow-x: hidden; /* Hide horizontal overflow if necessary */
+    overflow-y: auto;   /* Allow vertical scrolling for the entire page if content exceeds viewport */
 }
 
-/* Updated container to manage overall page width */
 .container {
-    max-width: 1920px; /* Wider container to accommodate inline elements */
-    margin: 2px auto; /* Center container on page */
+    max-width: 1920px; /* Wider container */
+    margin: 2px auto; /* Center container */
     padding: 2px;
     background-color: #fff; /* White background for content area */
     border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); /* Subtle shadow */
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+}
+
+h1 {
+    text-align: center;
+    color: #8C1515;
+    margin-bottom: 2px;
 }
 
 /* --- Iframe Styles --- */
 .iframe-container {
     display: flex;
     justify-content: space-between;
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
-    margin-bottom: 5px; /* Spacing below iframes */
+    flex-wrap: wrap; /* Allow wrapping */
+    margin-bottom: 5px; /* Spacing below */
 }
 
 .ifr {
@@ -41,18 +54,24 @@ body {
     border: none;
     padding: 1px;
     margin: 0;
-    border-radius: 5px; /* Rounded corners for iframes */
-    overflow: hidden; /* Ensure content within iframe is clipped to bounds */
+    border-radius: 5px; /* Rounded corners */
+    overflow: hidden; /* Ensure content within iframe is clipped */
 }
 
 /* --- Scrollable List Styles --- */
 .scrollable-list-container {
-    overflow-y: auto;
+    overflow-y: auto; /* Keep vertical scrolling */
+    overflow-x: hidden; /* Hide horizontal scrolling */
     border: 1px solid #00539B;
     padding: 1px;
     margin-bottom: 1px;
     height: 30vh;
+    /* Add flex properties if using user-info inline-block layout */
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start; /* Align rows to the start */
 }
+
 
 .scrollable-list-container-2 {
     height: 20vh;
@@ -67,6 +86,8 @@ body {
 .lists-filters-container > div {
     width: 32%;
     margin-bottom: 2px;
+    /* Ensure flex children don't overflow */
+    min-width: 0; /* Allow flex items to shrink below content size */
 }
 
 .highlight {
@@ -74,26 +95,38 @@ body {
     font-weight: bold;
 }
 
-/* --- Other Styles (user-list, user-info, pagination, etc.) --- */
-.user-list, .user-info, .user-details, .pagination, .pagination button,
-.filters, .filters .form-control, .search-filters input, .btn-container button,
-.recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
-.w3-theme-d2, .w3-bar .w3-button, .w3-bar-block .w3-button, .w3-bar-item, .w3-bar,
-.w3-center
+/* --- User List Styles (Using the inline-block/hover layout) --- */
+
+.user-list {
+    list-style: none;
+    padding: 0;
+    /* Remove display: flex from here if the parent .scrollable-list-container is flex */
+    /* If .scrollable-list-container is NOT display: flex, uncomment below */
+    /* display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around; */
+    width: 100%; /* Take full width of parent scrollable container */
+}
 
 .user-info {
     position: relative;
-    width: 18%; /* Adjust to fit 5 columns (100% / 5 = 20%) */
-    margin: 1%; /* Add some spacing between columns */
-    display: inline-block;
+    width: calc(18% - 2px); /* Adjust width to fit roughly 5 per row with margin */
+    margin: 1px; /* Add spacing between items */
+    display: inline-block; /* Use inline-block for grid-like layout */
     vertical-align: top;
     text-align: center;
+    cursor: pointer; /* Indicate clickable */
+    overflow: hidden; /* Keep content within bounds, important for border-radius */
+    border-radius: 8px; /* Optional: Add rounded corners to the whole block */
+    box-sizing: border-box; /* Include padding/border in element's total width and height */
 }
 
 .user-info img {
+    display: block; /* Prevent extra space below image */
     width: 100%;
-    height: auto;
-    border-radius: 8px; /* Optional: Add rounded corners */
+    height: auto; /* Maintain aspect ratio */
+    border-radius: 8px; /* Match block rounded corners */
+    object-fit: cover; /* Ensure image covers the area without stretching */
 }
 
 .user-info .user-details {
@@ -102,7 +135,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent overlay */
+    background-color: rgba(0, 0, 0, 0.7); /* Slightly darker overlay */
     color: white;
     display: flex;
     flex-direction: column;
@@ -110,78 +143,50 @@ body {
     align-items: center;
     opacity: 0;
     transition: opacity 0.3s ease;
-    border-radius: 8px; /* Match the rounded corners of the image */
+    border-radius: 8px; /* Match the rounded corners */
+    padding: 5px; /* Add some padding inside the overlay */
+    box-sizing: border-box; /* Include padding in overlay size */
+    text-align: center;
 }
 
 .user-info:hover .user-details {
     opacity: 1; /* Show overlay on hover */
 }
 
-.user-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around;
+.user-info .user-details p {
+    margin: 0; /* Remove margin on paragraphs inside overlay */
+    padding: 0; /* Remove padding */
+    font-size: 0.8em; /* Smaller font size for overlay text */
+    color: white; /* Ensure text color is white */
+    word-break: break-word; /* Break long words if necessary */
+    white-space: normal; /* Allow text to wrap */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add subtle text shadow */
 }
 
-.user-list {
-    list-style: none;
-    padding: 0;
-}
 
-/* .user-info {
-    display: flex;
-    align-items: center;
-    padding-bottom: 2px;
-    border-bottom: 1px solid #eee;
-    margin-bottom: 2px;
-} */
-
-.user-info:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-}
-
-/* .user-info img {
-    width: 80px;
-    height: 60px;
-    margin-right: 10px;
-    border-radius: 5px;
-}
-
-.user-details {
-    flex-grow: 1;
-} */
-
-.user-details p {
-    margin: 0 0 5px 0;
-    font-size: 0.9em;
-    color: #00539B;
-}
-
-.user-details p:last-child {
-    margin-bottom: 0;
-}
-
-/* Pagination styles */
+/* --- Pagination styles --- */
 .pagination {
     display: flex;
     justify-content: center;
     margin-top: 1px;
+    padding: 5px 0; /* Add padding above/below pagination */
 }
 
 .pagination button {
-    margin: 0 5px;
-    padding: 1px 2px;
-    border: 1px solid #ddd;
+    margin: 0 3px; /* Slightly less margin for buttons */
+    padding: 3px 8px; /* Adjust padding */
+    border: 1px solid #007bff; /* Use primary color border */
     background-color: #fff;
-    color: #333;
+    color: #007bff; /* Use primary color text */
     cursor: pointer;
     border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .pagination button:hover {
-    background-color: #eee;
+    background-color: #e9ecef; /* Light grey hover */
+    border-color: #0056b3; /* Darker primary border on hover */
+    color: #0056b3;
 }
 
 .pagination button.active {
@@ -190,26 +195,123 @@ body {
     border-color: #007bff;
 }
 
-/* Filter styles */
-.filters {
-    margin-bottom: 2px;
-    padding: 2px;
+/* --- Filter and Controls Styles --- */
+/* .filters class seems unused in HTML, applying styles to the container div instead */
+/* You have a div containing filters/controls/lists, let's refine that */
+
+.lists-filters-container > div {
+    /* Already defined width: 32% and margin-bottom: 2px */
+    /* Add padding and border to these sections */
     border: 1px solid #ddd;
     border-radius: 5px;
+    padding: 10px; /* Add some padding inside filter/list containers */
     background-color: #f9f9f9;
+    box-sizing: border-box; /* Include padding/border in width */
+    display: flex; /* Use flexbox for internal layout */
+    flex-direction: column;
 }
 
-.filters .form-control {
-    margin-bottom: 1px;
-}
-.search-filters input{
-    margin-bottom: 1px;
+/* Style the specific filter/control sections within the 32% divs */
+#onlineUsers, #previousUsers, .filters-controls-section { /* Assuming you add a class like this to the 3rd div */
+     /* Specific padding and border moved to the parent 32% div */
+     /* background-color also moved to the parent 32% div */
+     flex-grow: 1; /* Allow content sections to grow */
+     display: flex;
+     flex-direction: column;
 }
 
-/* Button Styles */
+/* Adjust height for scrollable containers inside the padded div */
+#onlineUsers.scrollable-list-container {
+     height: calc(30vh - 20px); /* Subtract padding from height */
+     margin-bottom: 0; /* Remove bottom margin if parent has padding */
+     border: none; /* Remove redundant border */
+     padding: 0; /* Remove redundant padding */
+}
+#previousUsers.scrollable-list-container {
+     height: calc(30vh - 20px); /* Adjust height similarly */
+     margin-bottom: 0;
+     border: none;
+     padding: 0;
+}
+.scrollable-list-container-2 {
+     height: calc(20vh - 20px); /* Adjust height */
+     margin-bottom: 0;
+     border: none;
+     padding: 0;
+}
+
+
+.radio-group, .search-filters, .filter-buttons { /* Apply padding/margin to groups */
+    padding: 5px;
+    margin-bottom: 5px; /* Spacing between groups */
+    border-bottom: 1px solid #eee; /* Separator */
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap */
+    align-items: center; /* Vertically align items */
+}
+
+.radio-group label {
+    margin-right: 15px; /* Spacing between radio buttons */
+    margin-bottom: 0; /* Remove vertical margin within the flex container */
+    display: flex; /* Use flex to align checkbox/radio and text */
+    align-items: center;
+    cursor: pointer;
+}
+.radio-group input[type="radio"] {
+    margin-right: 5px; /* Spacing between radio and label text */
+    margin-bottom: 0;
+}
+
+.search-filters select,
+.search-filters input[type="text"],
+.search-filters input[type="number"] {
+    flex-grow: 1; /* Allow inputs/selects to grow */
+    margin-right: 10px; /* Spacing between filter inputs/selects */
+    margin-bottom: 0; /* Remove vertical margin within the flex container */
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+.search-filters input:last-child,
+.search-filters select:last-child {
+    margin-right: 0; /* Remove margin from the last item */
+}
+
+
+.filter-buttons button {
+    margin-right: 10px; /* Spacing between filter buttons */
+    margin-bottom: 5px; /* Spacing if buttons wrap */
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #007bff; /* Primary button color */
+    color: white;
+    transition: background-color 0.2s ease;
+    font-size: 0.9em;
+}
+
+.filter-buttons button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+.filter-buttons button:last-child {
+    margin-right: 0;
+}
+
+
+/* Storage Type Selector specific styling if needed */
+#storageType {
+    margin-right: 10px; /* Space before other filter elements */
+}
+
+
+/* Button Container (Assuming this wraps the toggle buttons) */
 .btn-container {
     text-align: center;
-    margin-bottom: 20px;
+    margin-top: 10px; /* Spacing above toggle buttons */
+    margin-bottom: 20px; /* Spacing below toggle buttons */
 }
 
 .btn-container button {
@@ -232,6 +334,7 @@ body {
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5); /* Add focus indication */
 }
 
+
 /* Record Container */
 .recordContainer {
     margin-top: 5px;
@@ -245,7 +348,8 @@ body {
     margin-right: 8px;
 }
 
-/* W3CSS modifications for better integration */
+
+/* W3CSS modifications for better integration (ensure these come after W3CSS stylesheet) */
 .w3-card-4 {
     box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
 }
@@ -255,7 +359,7 @@ body {
     display: inline-block;
     padding: 1px 2px;
     vertical-align: middle;
-    overflow: hidden;
+    overflow: hidden; /* Might conflict with content, check usage */
     text-decoration: none;
     color: inherit;
     background-color: inherit;
@@ -268,32 +372,35 @@ body {
     box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
 }
 
-.w3-theme-d2 {color:#fff !important; background-color:#007bff !important}
+.w3-theme-d2 {color:#fff !important; background-color:#007bff !important} /* Example primary color */
 .w3-bar .w3-button {padding:1px 2px;}
 .w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:1px;padding-top:1px;}
 .w3-bar-item {padding:1px 2px;float:left;width:auto;border:none;display:block;outline:0}
-.w3-bar {width:100%;overflow:hidden}
+.w3-bar {width:100%;overflow:hidden} /* Might hide content, check usage */
 .w3-center {text-align:center !important}
 
-/* Stack radio buttons and inputs vertically */
-.radio-group, .search-filters {
-    display: flex;
-    flex-direction: row;
-}
-.radio-group label {
-    margin-bottom: 1px;
-    display: inline-block;
-}
 
 /* --- Responsive Adjustments --- */
+@media (max-width: 1200px) {
+     .user-info {
+         width: calc(23% - 2px); /* Adjust width to fit 4 per row */
+     }
+}
+
+@media (max-width: 992px) {
+     .user-info {
+         width: calc(31.333% - 2px); /* Adjust width to fit 3 per row */
+     }
+}
+
 @media (max-width: 768px) {
     .container {
-        padding: 15px;
+        padding: 10px; /* Reduced padding */
     }
 
     h1 {
-        font-size: .75rem;
-        margin-bottom: 2px;
+        font-size: 1.5rem; /* Adjusted font size */
+        margin-bottom: 5px;
     }
 
     .btn-container button {
@@ -303,38 +410,120 @@ body {
 
     .iframe-container {
         flex-direction: column;
+        margin-bottom: 10px;
     }
 
     .ifr {
         width: 100%;
-        height: 30vh;
+        height: 30vh; /* Adjust height for stacked iframes */
+        margin-bottom: 5px; /* Space between stacked iframes */
+    }
+     .ifr:last-child {
+         margin-bottom: 0;
+     }
+
+
+    .lists-filters-container {
+        flex-direction: column; /* Stack lists and filters on smaller screens */
     }
 
-    .lists-container {
-        flex-direction: column; /* Stack lists on smaller screens */
+    .lists-filters-container > div {
+        width: 100%; /* Full width for stacked sections */
+        margin-bottom: 10px; /* Space between stacked sections */
+        padding: 10px;
+    }
+     .lists-filters-container > div:last-child {
+         margin-bottom: 0;
+     }
+
+
+    .scrollable-list-container,
+    #onlineUsers.scrollable-list-container,
+    #previousUsers.scrollable-list-container {
+        height: 40vh; /* Give stacked lists more height */
+        border: none; /* Border is on the parent div now */
+        padding: 0;
+    }
+     .scrollable-list-container-2 {
+         height: 25vh; /* Adjusted height for the second iframe */
+         border: none;
+         padding: 0;
+     }
+
+
+    /* Adjust user info layout for smaller screens if needed */
+     .user-info {
+         width: calc(48% - 2px); /* Adjust width to fit 2 per row */
+     }
+
+
+    .radio-group, .search-filters, .filter-buttons {
+        padding: 5px; /* Keep padding */
+        margin-bottom: 5px;
+        flex-direction: column; /* Stack filter controls vertically */
+        align-items: flex-start; /* Align items to the start */
     }
 
-    .lists-container > div {
-        width: 100%; /* Full width for stacked lists */
-        margin-right: 0; /* Remove right margin on stacked lists */
-        margin-bottom: 2px;
+    .radio-group label, .search-filters select, .search-filters input, .filter-buttons button {
+        width: 100%; /* Make filter controls take full width */
+        margin-right: 0; /* Remove horizontal margin */
+        margin-bottom: 5px; /* Add vertical spacing */
     }
+     .radio-group label:last-child, .search-filters input:last-child,
+     .search-filters select:last-child, .filter-buttons button:last-child {
+         margin-bottom: 0;
+     }
 
-    .scrollable-list-container {
-        height: auto;
-    }
+     .search-filters input[type="radio"], .search-filters input[type="checkbox"] {
+         width: auto; /* Don't force full width on radio/checkbox inputs themselves */
+         margin-right: 5px;
+     }
 
-    .filters, .controls, .recordContainer {
-        padding: 15px;
-    }
-
-    .filters h3, .controls h3, .recordContainer h3 {
-        font-size: 1.3rem;
-    }
 }
 
 @media (max-width: 480px) {
-  .ifr {
-    height: 20vh;
-  }
+     .ifr {
+         height: 25vh; /* Slightly less height on very small screens */
+     }
+     .scrollable-list-container,
+     #onlineUsers.scrollable-list-container,
+     #previousUsers.scrollable-list-container {
+         height: 30vh; /* Less height for lists */
+     }
+      .scrollable-list-container-2 {
+          height: 20vh; /* Less height for second iframe */
+      }
+
+     .user-info {
+         width: calc(98% - 2px); /* One per row on very small screens */
+     }
+     .user-info .user-details p {
+         font-size: 0.7em; /* Even smaller font */
+     }
+}
+
+/* Ensure filter buttons and selects stack correctly if wrap is not enough */
+@media (max-width: 576px) { /* Bootstrap small breakpoint */
+     .filter-buttons {
+         flex-direction: column;
+         align-items: stretch; /* Stretch buttons to full width */
+     }
+     .filter-buttons button {
+         margin-right: 0;
+         margin-bottom: 5px;
+     }
+      .filter-buttons button:last-child {
+          margin-bottom: 0;
+      }
+      .search-filters {
+          flex-direction: column;
+          align-items: stretch;
+      }
+      .search-filters select, .search-filters input {
+           margin-right: 0;
+           margin-bottom: 5px;
+      }
+       .search-filters select:last-child, .search-filters input:last-child {
+           margin-bottom: 0;
+       }
 }
