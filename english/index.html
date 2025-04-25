@@ -3,18 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jinx School: One Minute English Lesson</title>
+    <title>One Minute Lessons</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="lesson-container">
-        <h1 id="lesson-title" class="clickable">Click Here for a One Minute Lesson!</h1>
-        <div class="progress-bar-container">
-            <div id="progress-bar"></div>
+    <div class="container">
+        <!-- Topic Selection Buttons -->
+        <div id="topic-selector">
+            <button class="topic-btn" data-topic="english_structure">English Structure</button>
+            <button class="topic-btn" data-topic="mathematics">Mathematics</button>
+            <button class="topic-btn" data-topic="computer_science">Computer Science</button>
+            <button class="topic-btn" data-topic="options_trading">Options Trading</button>
         </div>
-        <div id="lesson-content">
-            <!-- Content will be loaded here -->
-            <p class="instructions">Loading lessons...</p>
+
+        <div class="lesson-container">
+            <!-- Make title initially unclickable/hidden -->
+            <h1 id="lesson-title" class="">Select a Topic Above</h1>
+            <div class="progress-bar-container">
+                <div id="progress-bar"></div>
+            </div>
+            <div id="lesson-content">
+                <p class="instructions">Please select a topic to begin.</p>
+                <!-- Disclaimer for Options -->
+                <div id="options-disclaimer" style="display: none; margin-top: 20px; padding: 10px; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 4px; color: #d46b08;">
+                    <strong>Disclaimer:</strong> Options trading involves substantial risk and is not suitable for all investors. This content is for educational purposes only and does not constitute financial advice. Consult a qualified professional before making any trading decisions.
+                </div>
+            </div>
         </div>
     </div>
 
