@@ -1,30 +1,75 @@
 body {
     font-family: sans-serif;
     display: flex;
-    justify-content: center;
+    flex-direction: column; /* Stack topic selector and lesson container */
+    justify-content: flex-start; /* Align top */
     align-items: center;
     min-height: 100vh;
     background-color: #f0f4f8;
     margin: 0;
-    padding: 20px; /* Add padding for smaller screens */
+    padding: 20px;
     box-sizing: border-box;
 }
 
+/* Container for the whole page */
+.container {
+    width: 100%;
+    max-width: 800px; /* Adjust overall max width if needed */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Topic Selector Styles */
+#topic-selector {
+    margin-bottom: 25px;
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    justify-content: center;
+    gap: 10px;
+}
+
+.topic-btn {
+    padding: 10px 18px;
+    font-size: 0.95em;
+    cursor: pointer;
+    border: 1px solid #bdc3c7;
+    background-color: #ffffff;
+    color: #3498db;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.topic-btn:hover {
+    background-color: #ecf0f1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.topic-btn.active {
+    background-color: #3498db;
+    color: #ffffff;
+    border-color: #2980b9;
+    font-weight: bold;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Lesson Container Styles (Mostly unchanged) */
 .lesson-container {
     background-color: #ffffff;
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     text-align: center;
-    width: 90%; /* Slightly wider */
-    max-width: 700px; /* Slightly wider max */
+    width: 100%; /* Take full width of the container */
+    /* max-width: 750px; - Handled by parent container */
 }
 
 #lesson-title {
-    color: #2c3e50;
+    color: #7f8c8d; /* Default color when inactive */
     margin-bottom: 20px;
     font-size: 1.8em;
     transition: color 0.3s ease;
+    min-height: 1.2em; /* Prevent layout shift when text changes */
 }
 
 #lesson-title.clickable {
@@ -38,7 +83,7 @@ body {
 
 #lesson-title.active {
     color: #16a085; /* Color when lesson is active */
-    cursor: default; /* Less emphasis on clicking while active */
+    cursor: default;
 }
 
 
@@ -48,63 +93,53 @@ body {
     background-color: #ecf0f1;
     border-radius: 10px;
     margin-bottom: 25px;
-    overflow: hidden; /* Ensures inner bar stays contained */
+    overflow: hidden;
     border: 1px solid #bdc3c7;
 }
 
 #progress-bar {
     height: 100%;
-    width: 0%; /* Start at 0 */
-    background-color: #2ecc71; /* Green progress */
+    width: 0%;
+    background-color: #2ecc71;
     border-radius: 10px;
-    transition: width 0.1s linear; /* Smooth transition for updates */
+    transition: width 0.1s linear;
 }
 
 #lesson-content {
     margin-top: 20px;
-    min-height: 200px; /* Increased min-height for longer content */
-    padding: 20px; /* Slightly more padding */
+    min-height: 250px;
+    padding: 25px;
     border: 1px solid #e0e0e0;
     border-radius: 5px;
     background-color: #f9f9f9;
-    text-align: left; /* Better for reading lesson content */
-    line-height: 1.7; /* Slightly increased line height */
+    text-align: left;
+    line-height: 1.7;
     color: #34495e;
-    overflow-y: auto; /* Add scroll if content overflows */
-    max-height: 60vh; /* Prevent it from getting excessively tall */
+    overflow-y: auto;
+    max-height: 60vh; /* Adjusted max height */
 }
 
-.instructions {
-    color: #7f8c8d;
-    font-style: italic;
-    text-align: center; /* Center initial instructions */
+#lesson-content h3 {
+    color: #16a085;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 4px;
 }
+#lesson-content h3:first-child { margin-top: 0; }
 
-/* Style for keywords or examples in lessons */
-strong {
-    color: #e74c3c;
-    font-weight: bold;
+#lesson-content blockquote {
+    border-left: 4px solid #3498db; margin-left: 15px; padding-left: 15px; font-style: italic; color: #555;
 }
-code {
-    background-color: #ecf0f1;
-    padding: 2px 5px;
-    border-radius: 3px;
-    font-family: monospace;
-    color: #2980b9;
-}
-em {
-    font-style: italic;
-    color: #8e44ad;
-}
+.instructions { color: #7f8c8d; font-style: italic; text-align: center; }
+strong { color: #c0392b; font-weight: bold; }
+code { background-color: #ecf0f1; padding: 3px 6px; border-radius: 4px; font-family: monospace; color: #2980b9; font-size: 0.95em; border: 1px solid #bdc3c7; }
+em { font-style: italic; color: #8e44ad; }
+#lesson-content ul, #lesson-content ol { margin-top: 10px; margin-bottom: 15px; padding-left: 30px; }
+#lesson-content li { margin-bottom: 8px; }
 
-/* Styling for lists used in lessons */
-#lesson-content ul,
-#lesson-content ol {
-    margin-top: 10px;
-    margin-bottom: 15px;
-    padding-left: 30px; /* Indent lists */
-}
-
-#lesson-content li {
-    margin-bottom: 8px; /* Space out list items */
+/* Disclaimer Style */
+#options-disclaimer strong {
+    color: #d46b08; /* Match text color */
 }
