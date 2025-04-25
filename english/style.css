@@ -1,0 +1,87 @@
+body {
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f4f8;
+    margin: 0;
+}
+
+.lesson-container {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 80%;
+    max-width: 600px;
+}
+
+#lesson-title {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    transition: color 0.3s ease;
+}
+
+#lesson-title.clickable {
+    cursor: pointer;
+    color: #3498db; /* Indicate clickable state */
+}
+
+#lesson-title.clickable:hover {
+    color: #2980b9;
+}
+
+#lesson-title.active {
+    color: #16a085; /* Color when lesson is active */
+    cursor: default; /* Less emphasis on clicking while active */
+}
+
+
+.progress-bar-container {
+    width: 100%;
+    height: 20px;
+    background-color: #ecf0f1;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    overflow: hidden; /* Ensures inner bar stays contained */
+    border: 1px solid #bdc3c7;
+}
+
+#progress-bar {
+    height: 100%;
+    width: 0%; /* Start at 0 */
+    background-color: #2ecc71; /* Green progress */
+    border-radius: 10px;
+    transition: width 0.1s linear; /* Smooth transition for updates */
+}
+
+#lesson-content {
+    margin-top: 20px;
+    min-height: 150px; /* Ensure space for content */
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    text-align: left; /* Better for reading lesson content */
+    line-height: 1.6;
+    color: #34495e;
+}
+
+.instructions {
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Style for keywords or examples in lessons */
+strong {
+    color: #e74c3c;
+}
+code {
+    background-color: #ecf0f1;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+}
