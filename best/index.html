@@ -18,6 +18,253 @@
 
       gtag('config', 'G-64NCM5YMVB');
     </script>
+    <style>
+        html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
+
+        body {
+            /* Adjust overall body height */
+            min-height: 100vh; /* Ensure the body takes at least the full viewport height */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1920px;
+            margin: 2px auto;
+            padding: 1px;
+            flex-grow: 1; /* Allow the container to grow and fill available space */
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            text-align: center;
+            color: #8C1515;
+            margin-bottom: 2px;
+        }
+
+        /* --- Iframe Styles --- */
+        .iframe-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1px; /* Reduced margin */
+        }
+
+        .ifr {
+            height: 56vh;  /*  viewport height for iframes */
+            width: calc(50% - 2px);
+            border: none;
+            padding: 1px;
+            margin: 0;
+        }
+
+        /* --- Scrollable List Styles --- */
+
+        .scrollable-list-container {
+            /* Height is now controlled by parent, see below */
+            overflow-y: auto;
+            border: 1px solid #00539B;
+            padding: 1px;
+            margin-bottom: 1px;
+            height: 30vh; /*  viewport height */
+        }
+
+        .scrollable-list-container-2 {
+            height: 20vh; /*  viewport height */
+        }
+
+        .lists-filters-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .lists-filters-container > div {
+            width: 32%;
+            margin-bottom: 2px; /* Reduced margin */
+            /* No fixed height here - let content dictate height */
+        }
+        .highlight {
+           background-color: yellow; /* Highlight color */
+           font-weight: bold;
+        }
+
+        /* --- Other Styles (user-list, user-info, pagination, etc.) --- */
+        .user-list, .user-info, .user-details, .pagination, .pagination button,
+        .filters, .filters .form-control, .search-filters input, .btn-container button,
+        .recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
+        .w3-theme-d2, .w3-bar .w3-button, .w3-bar-block .w3-button, .w3-bar-item, .w3-bar,
+        .w3-center
+        { /*Your other styles remain here */}
+
+        .user-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            padding-bottom: 2px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 2px;
+        }
+
+        .user-info:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .user-info img {
+            width: 80px;
+            height: 60px;
+            margin-right: 10px;
+            border-radius: 5px;
+        }
+
+        .user-details {
+            flex-grow: 1;
+        }
+
+        .user-details p {
+            margin: 0 0 5px 0;
+            font-size: 0.9em;
+            color: #00539B;
+        }
+
+        .user-details p:last-child {
+            margin-bottom: 0;
+        }
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 1px;
+        }
+
+        .pagination button {
+            margin: 0 5px;
+            padding: 1px 2px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            color: #333;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .pagination button:hover {
+            background-color: #eee;
+        }
+
+        .pagination button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        /* Filter styles */
+        .filters {
+            margin-bottom: 2px;
+            padding: 2px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .filters .form-control {
+            margin-bottom: 1px;
+        }
+         .search-filters input{
+            margin-bottom: 1px;
+        }
+
+        /* Button Styles */
+        .btn-container button {
+            margin-right: 8px;
+            margin-bottom: 1px;
+        }
+
+        /* Record Container */
+        .recordContainer {
+            margin-top: 5px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        .recordButton button {
+            margin-right: 8px;
+        }
+
+
+        /* W3CSS modifications for better integration */
+        .w3-card-4 {
+            box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
+        }
+
+        .w3-button {
+            border: none;
+            display: inline-block;
+            padding: 1px 2px;
+            vertical-align: middle;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            background-color: inherit;
+            text-align: center;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .w3-button:hover {
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+        }
+
+        .w3-theme-d2 {color:#fff !important; background-color:#007bff !important} /* Example primary color */
+        .w3-bar .w3-button {padding:1px 2px;}
+        .w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:1px;padding-top:1px;}
+        .w3-bar-item {padding:1px 2px;float:left;width:auto;border:none;display:block;outline:0}
+        .w3-bar {width:100%;overflow:hidden}
+        .w3-center {text-align:center !important}
+
+
+        /* Stack radio buttons and inputs vertically */
+        .radio-group, .search-filters {
+            display: flex;
+            flex-direction: row;
+        }
+       .radio-group label {
+            margin-bottom: 1px; /* Add some spacing between radio buttons */
+            display: inline-block;
+        }
+
+        /* --- Responsive Adjustments --- */
+        @media (max-width: 768px) {
+            .iframe-container {
+                flex-direction: column;
+            }
+
+            .ifr {
+                width: 100%;
+                height: 30vh; /* Adjust height for stacked iframes */
+            }
+             .scrollable-list-container {
+                height: auto; /*Allow to take the space they require.*/
+            }
+
+            .lists-filters-container > div {
+                width: 100%;
+            }
+        }
+        /*Smaller Screens and Mobile*/
+        @media (max-width: 480px) {
+          .ifr {
+            height: 20vh; /*Even Smaller for small phones.*/
+          }
+        }
+    </style>
 </head>
 <body class="w3-light-grey">
     <div class="container">
@@ -73,10 +320,10 @@
               <option value="session">Session Storage</option>
               <option value="indexeddb">IndexedDB</option>
             </select>
-    <div class="filter-buttons">
-        <button id="filterAge18" class="btn btn-secondary">Age 18</button>
-        <button id="filterTagAsian" class="btn btn-secondary">Asian</button>
-        <button id="filterTagBlonde" class="btn btn-secondary">Blonde</button>
+<div class="filter-buttons">
+    <button id="filterAge18" class="btn btn-secondary">Age 18</button>
+    <button id="filterTagAsian" class="btn btn-secondary">Asian</button>
+    <button id="filterTagBlonde" class="btn btn-secondary">Blonde</button>
     </div>
 
 <!-- Filter Tags Dropdown -->
@@ -111,6 +358,84 @@
     </div>
 
    <script src="script.js"></script>
-    <!-- script src="search.js"></script -->
+    <script src="search.js"></script>
+    <script>
+    // Toggle controls (if needed)
+     document.querySelectorAll('.btn-container button').forEach(button => {
+            button.addEventListener('click', function() {
+                let targetId = '';
+                if (this.id === 'toggleButton') targetId = 'controlsFilter';
+                else if (this.id === 'toggleButton1') targetId = 'recordContainer';
+                else if (this.id === 'toggleButton2') targetId = 'BatWoman';
+
+                if (targetId) {
+                    var controls = document.getElementById(targetId);
+                    if (controls.style.display === 'none') {
+                        controls.style.display = 'block';
+                    } else {
+                        controls.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+    // Custom Ctrl+F Search
+    document.addEventListener('keydown', function(event) {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'i') { // Works for both Ctrl and Cmd
+            event.preventDefault(); // Prevent the browser's default search
+
+            const searchTerm = prompt("Search users:"); // Get search term from user
+            if (searchTerm) {
+                searchUsers(searchTerm);
+            }
+        }
+    });
+
+    function searchUsers(searchTerm) {
+      const onlineUsersContainer = document.getElementById('onlineUsers');
+      const previousUsersContainer = document.getElementById('previousUsers');
+
+      // Clear previous highlights
+      clearHighlights(onlineUsersContainer);
+      clearHighlights(previousUsersContainer);
+
+      // Search and highlight in online users
+      searchAndHighlight(onlineUsersContainer, searchTerm);
+
+      // Search and highlight in previous users
+      searchAndHighlight(previousUsersContainer, searchTerm);
+
+      // Scroll to the first highlight in online users, if any.
+      scrollToFirstHighlight(onlineUsersContainer);
+
+    }
+     function searchAndHighlight(container, searchTerm) {
+        const userElements = container.querySelectorAll('.user-details p:first-child'); // Target usernames
+
+        userElements.forEach(element => {
+            const text = element.textContent;
+            const regex = new RegExp(searchTerm, 'gi'); // 'g' for global, 'i' for case-insensitive
+
+            if (regex.test(text)) {
+                const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
+                element.innerHTML = highlightedText; // Replace with highlighted HTML
+            }
+        });
+    }
+      function clearHighlights(container) {
+        const highlightedElements = container.querySelectorAll('.highlight');
+        highlightedElements.forEach(element => {
+            // Replace the span with its inner text content
+            element.outerHTML = element.innerHTML;
+
+        });
+    }
+    function scrollToFirstHighlight(container) {
+        const firstHighlighted = container.querySelector('.highlight');
+        if (firstHighlighted) {
+            firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+    </script>
 </body>
 </html>
