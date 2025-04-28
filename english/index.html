@@ -6,8 +6,9 @@
     <title>One Minute Lessons Hub</title>
     <!-- Link to W3.CSS -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <!-- Optional: Add some custom styles if needed -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Link to jQuery CDN -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
     <style>
         /* Custom styles not handled by W3.CSS */
         body {
@@ -65,6 +66,9 @@
             min-height: 1.2em; /* Prevent layout shift */
             margin-bottom: 20px;
             transition: color 0.3s ease;
+            user-select: none; /* Prevent text selection on click */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
         }
 
         #lesson-title.clickable {
@@ -74,11 +78,13 @@
 
         #lesson-title.clickable:hover {
             color: #2980b9; /* Darker Blue */
+            text-decoration: underline; /* Add underline hint */
         }
 
-        #lesson-title.active {
+        #lesson-title.active-lesson { /* Renamed from 'active' to avoid conflict with button class */
             color: #16a085; /* Green */
             cursor: default;
+            text-decoration: none; /* Remove underline */
         }
 
         .progress-bar-container {
@@ -88,13 +94,16 @@
             border: 1px solid #bdc3c7; /* Keep border */
             overflow: hidden; /* Ensure inner bar stays contained */
             margin-bottom: 25px;
+            cursor: pointer; /* Indicate it's clickable */
+             background-color: #ecf0f1; /* Match lesson content background */
         }
 
         #progress-bar {
             /* W3.CSS w3-green, w3-round handle color/shape */
             height: 100%;
             width: 0%; /* Start at 0 */
-            transition: width 0.1s linear; /* Keep smooth transition */
+            transition: width 0.4s ease-in-out; /* Smooth transition */
+            background-color: #16a085; /* Match title color */
         }
 
         #lesson-content {
@@ -107,6 +116,8 @@
             overflow-y: auto; /* Keep scroll */
             max-height: 65vh; /* Keep max height */
             margin-top: 20px; /* Keep margin */
+             padding: 15px; /* Consistent padding */
+             background-color: #ecf0f1; /* Light grey background */
         }
 
         /* Styles for elements INSIDE lesson-content */
@@ -115,7 +126,7 @@
             margin-top: 15px;
             margin-bottom: 8px;
             font-size: 1.1em;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid #bdc3c7; /* Use light grey border */
             padding-bottom: 4px;
         }
         #lesson-content h3:first-child { margin-top: 0; }
@@ -126,6 +137,10 @@
             padding-left: 15px;
             font-style: italic;
             color: #555;
+             background-color: #ffffff; /* White background for quote */
+             padding-top: 8px;
+             padding-bottom: 8px;
+             border-radius: 0 4px 4px 0;
         }
         /* Custom styles for text formatting */
         .instructions {
@@ -138,7 +153,7 @@
             font-weight: bold;
         }
         code {
-            background-color: #ecf0f1; /* Light Grey */
+            background-color: #ffffff; /* White */
             padding: 3px 6px;
             border-radius: 4px;
             font-family: monospace;
@@ -164,6 +179,7 @@
         /* Disclaimer Style (using W3.CSS panel) */
         #options-disclaimer {
             margin-top: 20px;
+            margin-bottom: 15px; /* Space below disclaimer */
             /* W3.CSS w3-panel, w3-pale-yellow, w3-border, w3-leftbar w3-border-yellow */
         }
         #options-disclaimer strong {
@@ -203,7 +219,7 @@
             <!-- Title - becomes clickable once a topic is loaded -->
             <h1 id="lesson-title" class="w3-large w3-center">Please Select a Topic Above</h1>
 
-            <!-- Progress Bar -->
+            <!-- Progress Bar - Make the container clickable -->
             <div class="progress-bar-container w3-light-grey w3-round">
                 <div id="progress-bar" class="w3-green w3-round" style="width:0%"></div>
             </div>
@@ -221,8 +237,166 @@
     </div> <!-- End w3-content -->
 
     <!-- Link to your JavaScript file -->
-    <!-- This script will be refactored into an OOP structure handling async loading and storage -->
-    <script src="script.js"></script>
+    <script>
+        // Use jQuery's document ready function to ensure the DOM is loaded
+        $(document).ready(function() {
+
+            let currentLessons = []; // Array to hold the lessons for the selected topic
+            let currentLessonIndex = 0; // Index of the currently displayed lesson
+            let selectedTopic = null; // Store the currently selected topic name
+
+            // Select DOM elements using jQuery
+            const $lessonTitle = $('#lesson-title');
+            const $lessonContent = $('#lesson-content');
+            const $progressBarContainer = $('.progress-bar-container'); // Get the container
+            const $progressBar = $('#progress-bar');
+            const $topicButtons = $('.topic-btn');
+            const $optionsDisclaimer = $('#options-disclaimer');
+
+            // Function to display a specific lesson by index
+            function displayLesson(index) {
+                // Check if the index is valid
+                if (index >= 0 && index < currentLessons.length) {
+                    const lesson = currentLessons[index];
+                    $lessonTitle.text(lesson.title);
+                    $lessonContent.html(lesson.content); // Use .html() to render HTML content
+
+                    // Update progress bar
+                    const progressPercentage = ((index + 1) / currentLessons.length) * 100;
+                    $progressBar.css('width', progressPercentage + '%');
+
+                    // Update current index
+                    currentLessonIndex = index;
+
+                    // Make the title clickable if there are more lessons, style if it's the current one
+                    $lessonTitle.removeClass('clickable active-lesson');
+                    if (currentLessonIndex < currentLessons.length - 1) {
+                         $lessonTitle.addClass('clickable');
+                    } else {
+                        // If it's the last lesson, style it as 'active-lesson' (completed for this topic)
+                        $lessonTitle.addClass('active-lesson');
+                    }
+
+
+                } else if (currentLessons.length > 0 && index >= currentLessons.length) {
+                    // All lessons viewed - triggered by clicking the last lesson or clicking past the end
+                    $lessonTitle.text(selectedTopic.replace(/_/g, ' ') + " Topic Complete!");
+                    $lessonContent.html("<p class='instructions'>You have finished all lessons for this topic. Please select another topic from the buttons above.</p>");
+                    $progressBar.css('width', '100%'); // Show 100% complete
+                     $lessonTitle.removeClass('clickable active-lesson'); // Remove clickable class
+
+                    // Reset state for next topic selection
+                    currentLessons = [];
+                    currentLessonIndex = 0;
+                    selectedTopic = null;
+                     $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer when complete
+                } else {
+                     // Initial state or error state (index < 0 or no lessons loaded)
+                    $lessonTitle.text("Please Select a Topic Above");
+                     $lessonContent.html("<p class='instructions'>Welcome! Choose a subject from the buttons above to load lessons on that topic.</p>");
+                    $progressBar.css('width', '0%');
+                     $lessonTitle.removeClass('clickable active-lesson');
+                     $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer
+                     currentLessons = []; // Ensure lessons are empty
+                     currentLessonIndex = 0; // Reset index
+                     selectedTopic = null; // Clear selected topic
+                }
+            }
+
+            // Handle topic button clicks
+            $topicButtons.on('click', function() {
+                selectedTopic = $(this).data('topic'); // Get topic name from data attribute
+                // IMPORTANT: Ensure the JSON file is in a 'lessons' subdirectory
+                const jsonFile = 'lessons/' + selectedTopic + '.json'; // Construct file path
+
+                // Remove active class from all buttons and add to the clicked one
+                $topicButtons.removeClass('active');
+                $(this).addClass('active');
+
+                // Show/hide disclaimer based on topic
+                if (selectedTopic === 'options_trading' || selectedTopic === 'advanced_quant_finance') {
+                    $optionsDisclaimer.addClass('w3-show');
+                } else {
+                    $optionsDisclaimer.removeClass('w3-show');
+                }
+
+
+                // Fetch the JSON data using AJAX (jQuery's getJSON is a shortcut)
+                $.getJSON(jsonFile)
+                    .done(function(data) {
+                        // Success: Store data and display the first lesson
+                        if (data && data.length > 0) {
+                             currentLessons = data;
+                             displayLesson(0); // Display the first lesson (index 0)
+                        } else {
+                            // Handle empty or invalid JSON data
+                             $lessonTitle.text("No Lessons Found");
+                             $lessonContent.html("<p class='instructions'>The selected topic '" + selectedTopic.replace(/_/g, ' ') + "' has no lessons or the file is empty/invalid.</p>");
+                             $progressBar.css('width', '0%');
+                             $lessonTitle.removeClass('clickable active-lesson');
+                             currentLessons = [];
+                             currentLessonIndex = 0;
+                             selectedTopic = null;
+                             $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer on empty
+                        }
+
+                    })
+                    .fail(function(jqXHR, textStatus, errorThrown) {
+                        // Error: Display an error message
+                        $lessonTitle.text("Error Loading Topic");
+                        let errorMessage = "Could not load lessons for '" + selectedTopic.replace(/_/g, ' ') + "'. Please check the topic file (" + jsonFile + ") and try again.<br>";
+                        if (textStatus === "parsererror") {
+                             errorMessage += "Error parsing JSON: " + errorThrown;
+                        } else if (textStatus === "timeout") {
+                             errorMessage += "Request timed out.";
+                        } else if (textStatus === "abort") {
+                             errorMessage += "Request was aborted.";
+                        } else {
+                             errorMessage += "Status: " + textStatus + (errorThrown ? " - " + errorThrown : "");
+                        }
+                         $lessonContent.html("<p class='instructions'>" + errorMessage + "</p>");
+                        $progressBar.css('width', '0%'); // Reset progress
+                         $lessonTitle.removeClass('clickable active-lesson'); // Not clickable on error
+                         currentLessons = []; // Clear lessons
+                         currentLessonIndex = 0; // Reset index
+                         selectedTopic = null; // Clear selected topic
+                         $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer on error
+                    });
+            });
+
+            // Handle click on the lesson title to advance to the NEXT lesson
+            $lessonTitle.on('click', function() {
+                 // Only advance if the title is marked as clickable
+                if ($(this).hasClass('clickable')) {
+                    displayLesson(currentLessonIndex + 1); // Display the next lesson
+                }
+            });
+
+            // *** NEW: Handle click on the progress bar container to jump to a specific lesson ***
+            $progressBarContainer.on('click', function(event) {
+                // Ensure lessons are loaded before allowing interaction
+                if (currentLessons.length > 0) {
+                    const $container = $(this);
+                    const containerWidth = $container.width(); // Get the width of the container
+                    const clickX = event.offsetX; // Get the horizontal click position relative to the container
+
+                    // Calculate the target lesson index based on the click position
+                    let targetIndex = Math.floor((clickX / containerWidth) * currentLessons.length);
+
+                    // Ensure the target index is within the valid range [0, currentLessons.length - 1]
+                    targetIndex = Math.max(0, Math.min(targetIndex, currentLessons.length - 1));
+
+                    // Display the calculated lesson
+                    displayLesson(targetIndex);
+                }
+                // If currentLessons is empty, the click on the bar does nothing
+            });
+
+            // Initial display (shows instructions)
+            displayLesson(-1); // Passing -1 or any invalid index shows the default state
+
+        }); // End of document.ready
+    </script>
 
 </body>
 </html>
