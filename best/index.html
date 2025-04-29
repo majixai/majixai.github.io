@@ -264,7 +264,38 @@
             height: 20vh; /*Even Smaller for small phones.*/
           }
         }
-    </style>
+
+        
+    @media (max-width: 768px) {
+        .iframe-container {
+            flex-direction: column;
+        }
+
+        .ifr {
+            width: 100%;
+            height: 30vh; /* Adjust height for stacked iframes */
+        }
+
+        #mainIframe2 {
+            display: none; /* Hide the second iframe for smaller screens */
+        }
+
+        .scrollable-list-container {
+            height: auto; /* Allow to take the space they require */
+        }
+
+        .lists-filters-container > div {
+            width: 100%;
+        }
+    }
+
+    /* Smaller Screens and Mobile */
+    @media (max-width: 480px) {
+        .ifr {
+            height: 20vh; /* Even Smaller for small phones */
+        }
+    }
+</style>
 </head>
 <body class="w3-light-grey">
     <div class="container">
