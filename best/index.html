@@ -22,8 +22,7 @@
         html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
 
         body {
-            /* Adjust overall body height */
-            min-height: 100vh; /* Ensure the body takes at least the full viewport height */
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
         }
@@ -32,7 +31,7 @@
             max-width: 1920px;
             margin: 2px auto;
             padding: 1px;
-            flex-grow: 1; /* Allow the container to grow and fill available space */
+            flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
@@ -46,31 +45,35 @@
         /* --- Iframe Styles --- */
         .iframe-container {
             display: flex;
-            justify-content: space-between;
-            margin-bottom: 1px; /* Reduced margin */
+            justify-content: space-between; /* Distributes space between iframes */
+            margin-bottom: 1px;
+            gap: 2px; /* Adds space between the flex items (iframes) */
         }
 
         .ifr {
-            height: 56vh;  /*  viewport height for iframes */
-            width: calc(50% - 2px);
+            /* Remove fixed height */
+            /* height: 56vh; */
+            width: calc(50% - 1px); /* Adjusted width calculation considering the gap */
+            aspect-ratio: 850 / 480; /* <<< Set the desired aspect ratio */
             border: none;
-            padding: 1px;
+            padding: 0; /* Padding can interfere with aspect ratio */
             margin: 0;
+            display: block; /* Ensure iframe behaves like a block element */
+            max-width: 100%; /* Ensure iframe does not overflow container */
+            overflow: hidden; /* Hide any potential overflow */
         }
 
         /* --- Scrollable List Styles --- */
-
         .scrollable-list-container {
-            /* Height is now controlled by parent, see below */
             overflow-y: auto;
             border: 1px solid #00539B;
             padding: 1px;
             margin-bottom: 1px;
-            height: 30vh; /*  viewport height */
+            height: 30vh;
         }
 
         .scrollable-list-container-2 {
-            height: 20vh; /*  viewport height */
+            height: 20vh;
         }
 
         .lists-filters-container {
@@ -81,15 +84,15 @@
 
         .lists-filters-container > div {
             width: 32%;
-            margin-bottom: 2px; /* Reduced margin */
-            /* No fixed height here - let content dictate height */
+            margin-bottom: 2px;
         }
         .highlight {
-           background-color: yellow; /* Highlight color */
+           background-color: yellow;
            font-weight: bold;
         }
 
         /* --- Other Styles (user-list, user-info, pagination, etc.) --- */
+        /* ... (Keep your other styles from .user-list down to .w3-center) ... */
         .user-list, .user-info, .user-details, .pagination, .pagination button,
         .filters, .filters .form-control, .search-filters input, .btn-container button,
         .recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
@@ -233,81 +236,57 @@
         /* Stack radio buttons and inputs vertically */
         .radio-group, .search-filters {
             display: flex;
-            flex-direction: row;
+            flex-direction: row; /* Keep these as row if that's desired */
+            flex-wrap: wrap; /* Allow wrapping if needed */
         }
        .radio-group label {
-            margin-bottom: 1px; /* Add some spacing between radio buttons */
-            display: inline-block;
+            margin-bottom: 1px;
+            margin-right: 10px; /* Add spacing between radio labels */
+            display: inline-block; /* Keep inline-block */
         }
 
         /* --- Responsive Adjustments --- */
         @media (max-width: 768px) {
             .iframe-container {
                 flex-direction: column;
+                gap: 1px; /* Adjust gap for stacked layout */
             }
 
             .ifr {
-                width: 100%;
-                height: 30vh; /* Adjust height for stacked iframes */
+                width: 100%; /* Full width when stacked */
+                /* Removed fixed height - aspect-ratio handles it */
             }
+
+            #mainIframe2 {
+                 /* Hide the second iframe for smaller screens as before */
+                display: none;
+            }
+
              .scrollable-list-container {
-                height: auto; /*Allow to take the space they require.*/
+                height: auto; /* Allow lists to grow */
             }
 
             .lists-filters-container > div {
-                width: 100%;
+                width: 100%; /* Stack list/filter sections */
             }
         }
-        /*Smaller Screens and Mobile*/
+
+        /* Smaller Screens and Mobile - No height override needed */
         @media (max-width: 480px) {
-          .ifr {
-            height: 20vh; /*Even Smaller for small phones.*/
-          }
+             /* Removed .ifr height setting - aspect-ratio handles it */
         }
 
-        
-    @media (max-width: 768px) {
-        .iframe-container {
-            flex-direction: column;
-        }
-
-        .ifr {
-            width: 100%;
-            height: 30vh; /* Adjust height for stacked iframes */
-        }
-
-        #mainIframe2 {
-            display: none; /* Hide the second iframe for smaller screens */
-        }
-
-        .scrollable-list-container {
-            height: auto; /* Allow to take the space they require */
-        }
-
-        .lists-filters-container > div {
-            width: 100%;
-        }
-    }
-
-    /* Smaller Screens and Mobile */
-    @media (max-width: 480px) {
-        .ifr {
-            height: 20vh; /* Even Smaller for small phones */
-        }
-    }
-</style>
+    </style>
 </head>
 <body class="w3-light-grey">
     <div class="container">
-        <!-- iframe src="../ticker/index.html" width="100%" height="200px" frameborder="0" allowtransparency="true"></iframe -->
-
         <div class="iframe-container">
             <iframe class="ifr" id="mainIframe" src="https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=default&tag=18&gender=f" frameborder="0"></iframe>
             <iframe class="ifr" id="mainIframe2" src="https://chaturbate.com/in/?tour=dU9X&campaign=9cg6A&track=default&tag=deepthroat&gender=f" frameborder="0"></iframe>
         </div>
 
         <div class="lists-filters-container">
-            <div>  
+            <div>
                 <div id="onlineUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">Loading online users...</p>
@@ -316,7 +295,7 @@
                 <div id="pagination" class="pagination"></div>
             </div>
 
-            <div>  
+            <div>
                 <div id="previousUsers" class="scrollable-list-container w3-card-4">
                     <div class="user-list">
                         <p class="text-muted w3-center">No previous users.</p>
@@ -324,15 +303,7 @@
                 </div>
             </div>
 
-            <!-- div>
-                <div id="newUsers" class="scrollable-list-container w3-card-4">
-                    <div class="user-list">
-                        <p class="text-muted w3-center">No new users.</p>
-                    </div>
-                </div>
-        </div -->
-
-            <div>  
+            <div>
                 <div class="radio-group">
                     <label>
                         <input type="radio" name="iframeChoice" value="mainIframe" checked> Main Iframe 1
@@ -343,55 +314,33 @@
                 </div>
 
                 <div class="search-filters">
+                     <select id="storageType">
+                      <option value="local">Local Storage</option>
+                      <option value="session">Session Storage</option>
+                      <option value="indexeddb">IndexedDB</option>
+                    </select>
+                    <div class="filter-buttons">
+                        <button id="filterAge18" class="btn btn-secondary">Age 18</button>
+                        <button id="filterTagAsian" class="btn btn-secondary">Asian</button>
+                        <button id="filterTagBlonde" class="btn btn-secondary">Blonde</button>
+                    </div>
 
+                    <select id="filterTags" multiple>
+                        </select>
 
-                    <!-- Storage Type Selector -->
-            <select id="storageType">
-              <option value="local">Local Storage</option>
-              <option value="session">Session Storage</option>
-              <option value="indexeddb">IndexedDB</option>
-            </select>
-<div class="filter-buttons">
-    <button id="filterAge18" class="btn btn-secondary">Age 18</button>
-    <button id="filterTagAsian" class="btn btn-secondary">Asian</button>
-    <button id="filterTagBlonde" class="btn btn-secondary">Blonde</button>
-    </div>
-
-<!-- Filter Tags Dropdown -->
-<select id="filterTags" multiple>
-    <!-- Options will be dynamically populated -->
-</select>
-
-<!-- Filter Age Dropdown -->
-<select id="filterAge" multiple>
-    <!-- Options will be dynamically populated -->
-</select>
-                    
-<!-- label for="storageType">Storage Type:</label>
-<select id="storageType">
-    <option value="local">Local Storage</option>
-    <option value="session">Session Storage</option>
-</select>                                            <label for="filterTags">Filter Tags (comma separated):</label>
-<input type="text" id="filterTags" placeholder="e.g. asian, 18, deepthroat">                                               <label for="filterAge">Filter Age (max age):</label>
-<input type="number" id="filterAge" placeholder="e.g. 25" -->
-                    
-                    <!-- input type="text" id="userSearch" placeholder="Search usernames...">
-                    <input type="text" id="tagSearch" placeholder="Search tags (comma-separated)" >
-                </div>
-                <div class="search-filters">
-                    <input type="number" id="ageFrom" placeholder="Age From">
-                    <input type="number" id="ageTo" placeholder="Age To" -->
-                </div>
-                <div id="secondIframeResults"></div>
-                <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/text" frameborder="0" scrolling="no"></iframe>
+                    <select id="filterAge" multiple>
+                        </select>
+                 </div>
+                 <div id="secondIframeResults"></div>
+                 <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/text" frameborder="0" scrolling="no"></iframe>
             </div>
         </div>
     </div>
 
    <script src="script.js"></script>
-    <script src="search.js"></script>
-    <script>
-    // Toggle controls (if needed)
+   <script src="search.js"></script>
+   <script>
+    // Your existing script for toggles and Ctrl+F remains the same
      document.querySelectorAll('.btn-container button').forEach(button => {
             button.addEventListener('click', function() {
                 let targetId = '';
@@ -467,6 +416,6 @@
             firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
     }
-    </script>
+   </script>
 </body>
 </html>
