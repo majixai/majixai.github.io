@@ -1,4 +1,4 @@
-Document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const onlineUsersDiv = document.getElementById("onlineUsers").querySelector('.user-list');
     const previousUsersDiv = document.getElementById("previousUsers").querySelector('.user-list');
     const mainIframe = document.getElementById("mainIframe");
@@ -7,12 +7,6 @@ Document.addEventListener('DOMContentLoaded', async function() {
     const storageTypeSelector = document.getElementById("storageType");
     const filterTagsSelect = document.getElementById("filterTags");
     const filterAgeSelect = document.getElementById("filterAge");
-
-    // Get the new filter buttons
-    const filterAge18Button = document.getElementById("filterAge18");
-    const filterTagAsianButton = document.getElementById("filterTagAsian");
-    const filterTagBlondeButton = document.getElementById("filterTagBlonde");
-    // Add more button variables here for other tags
 
     let storageType = storageTypeSelector.value;
     let previousUsers = await loadUsers("previousUsers");
@@ -27,38 +21,21 @@ Document.addEventListener('DOMContentLoaded', async function() {
         await displayPreviousUsers();
     });
 
-    // Add event listeners for the new filter buttons
-    filterAge18Button.addEventListener("click", function() {
-        displayOnlineUsers(allOnlineUsersData, { age: 18 });
-    });
-
-    filterTagAsianButton.addEventListener("click", function() {
-        displayOnlineUsers(allOnlineUsersData, { tag: 'asian' });
-    });
-
-    filterTagBlondeButton.addEventListener("click", function() {
-        displayOnlineUsers(allOnlineUsersData, { tag: 'blonde' });
-    });
-
-    // Add more event listeners for other tag buttons, calling displayOnlineUsers with the appropriate tag
-
     async function fetchData() {
         const limit = 500;
         let offset = 0;
         let continueFetching = true;
 
         while (continueFetching) {
-            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`;
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`; // &tag=18&tag=asian&tag=new&tag=bigboobs&tag=deepthroat`;
             try {
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                // The filtering for age <= 19 seems incorrect here if you want to filter specifically by 18 later.
-                // It's better to fetch all relevant data and then filter on the client side.
-                // Remove or adjust this line: let alt = data.results.age <= 19;
-                if (data.results && data.results.length > 0) { // && alt) { // Remove alt condition
+                // let alt = data.results.age <= 19
+                if (data.results && data.results.length > 0) { // && alt) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
                     if (data.results.length < limit) {
                         continueFetching = false;
@@ -77,32 +54,51 @@ Document.addEventListener('DOMContentLoaded', async function() {
 
         populateFilters(allOnlineUsersData);
         onlineUsersDiv.innerHTML = "";
-        displayOnlineUsers(allOnlineUsersData); // Initial display without button filters
+        displayOnlineUsers(allOnlineUsersData);
 
         if (typeof initializeAllUsers === 'function') {
             window.initializeAllUsers();
         }
     }
 
-    // Modify displayOnlineUsers to accept optional filter parameters
-    function displayOnlineUsers(users, buttonFilters = {}) {
-        const filterTags = buttonFilters.tag ? [buttonFilters.tag] : Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
-        const filterAges = buttonFilters.age ? [buttonFilters.age] : Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
+    function populateFilters(users) {
+        const tagFrequency = {};
+        const ages = new Set();
+
+        users.forEach(user => {
+            if (user.tags) {
+                user.tags.forEach(tag => {
+                    tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
+                });
+            }
+            if (user.age) {
+                ages.add(user.age);
+            }
+        });
+
+        const sortedTags = Object.entries(tagFrequency)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 20)
+            .map(entry => entry[0]);
+
+        filterTagsSelect.innerHTML = sortedTags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
+        filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
+    }
+
+    async function displayOnlineUsers(users) {
+        const filterTags = Array.from(filterTagsSelect.selectedOptions).map(option => option.value);
+        const filterAges = Array.from(filterAgeSelect.selectedOptions).map(option => parseInt(option.value));
 
         const filteredUsers = users.filter(user => {
             const isPublic = user.current_show === 'public';
             const hasTags = filterTags.length === 0 || filterTags.some(tag => user.tags.includes(tag));
             const isAgeMatch = filterAges.length === 0 || filterAges.includes(user.age);
-
-            // Apply the age <= 19 filter if needed, but it's more flexible to handle specific ages via buttons/selects
-            // const alt = user.age <= 19; // If you still need this condition
-
-            return isPublic && hasTags && isAgeMatch; // && alt; // Include alt if needed
+            return isPublic && hasTags && isAgeMatch;
         });
 
         onlineUsersDiv.innerHTML = "";
         if (filteredUsers.length === 0) {
-            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found with these filters.</p>';
+            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
             return;
         }
 
@@ -142,31 +138,6 @@ Document.addEventListener('DOMContentLoaded', async function() {
             onlineUsersDiv.appendChild(userElement);
         });
     }
-
-    function populateFilters(users) {
-        const tagFrequency = {};
-        const ages = new Set();
-
-        users.forEach(user => {
-            if (user.tags) {
-                user.tags.forEach(tag => {
-                    tagFrequency[tag] = (tagFrequency[tag] || 0) + 1;
-                });
-            }
-            if (user.age) {
-                ages.add(user.age);
-            }
-        });
-
-        const sortedTags = Object.entries(tagFrequency)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 20)
-            .map(entry => entry[0]);
-
-        filterTagsSelect.innerHTML = sortedTags.map(tag => `<option value="${tag}">${tag}</option>`).join('');
-        filterAgeSelect.innerHTML = Array.from(ages).map(age => `<option value="${age}">${age}</option>`).join('');
-    }
-
 
     async function addToPreviousUsers(user) {
         if (!previousUsers.some(u => u.username === user.username)) {
@@ -290,7 +261,7 @@ Document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-    async function loadFromIndexedDB(key) {
+    function loadFromIndexedDB(key) {
         return new Promise(async (resolve, reject) => {
             const db = await openIndexedDB();
             const transaction = db.transaction('users', 'readonly');
@@ -305,7 +276,6 @@ Document.addEventListener('DOMContentLoaded', async function() {
             };
         });
     }
-
 
     function saveToIndexedDB(key, users) {
         return new Promise(async (resolve, reject) => {
@@ -328,29 +298,29 @@ Document.addEventListener('DOMContentLoaded', async function() {
         const transaction = db.transaction('users', 'readonly');
         const store = transaction.objectStore('users');
         const request = store.getAllKeys();
+
         request.onsuccess = function(event) {
             const keys = event.target.result;
-            // Add options only if they don't exist to avoid duplicates on subsequent calls if any
-            keys.forEach(key => {
-                if (!storageTypeSelector.querySelector(`option[value="${key}"]`)) {
-                     storageTypeSelector.innerHTML += `<option value="${key}">${key}</option>`;
-                }
-            });
+            storageTypeSelector.innerHTML += keys.map(key => `<option value="${key}">${key}</option>`).join('');
         };
         request.onerror = function(event) {
             console.error("Error fetching keys from IndexedDB:", event.target.error);
         };
     }
+
     populateStorageOptions();
+
     if (typeof window.addToPreviousUsers !== 'undefined') {
         window.addToPreviousUsers = addToPreviousUsers;
     }
     if (typeof window.displayPreviousUsers !== 'undefined') {
         window.displayPreviousUsers = displayPreviousUsers;
     }
+
     window.initializeAllUsersFromScriptJS = function(callback) {
         callback();
     };
+
     await fetchData();
     setInterval(async () => {
         allOnlineUsersData = [];
