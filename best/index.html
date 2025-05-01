@@ -333,6 +333,21 @@
                  </div>
                  <div id="secondIframeResults"></div>
                  <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/text" frameborder="0" scrolling="no"></iframe>
+                <button id="sendReportButton">Send Online Users Report</button>
+<div id="reportLoadingIndicator" style="display: none; color: blue;">Sending...</div>
+<div id="reportStatusDisplay" style="display: none; padding: 5px; margin-top: 5px; border-radius: 3px;"></div>
+
+<!-- Add basic CSS for report status -->
+<style>
+    .report-status {
+        display: block;
+        font-size: 0.9em;
+    }
+    .report-status.success { color: green; background-color: #e9ffe9; border: 1px solid green; }
+    .report-status.error { color: red; background-color: #ffe9e9; border: 1px solid red; }
+    .report-status.warning { color: orange; background-color: #fffbe6; border: 1px solid orange; }
+    .report-status.info { color: gray; background-color: #f0f0f0; border: 1px solid #ccc; }
+</style>
             </div>
         </div>
     </div>
