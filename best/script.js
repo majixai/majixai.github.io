@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const filterTagsSelect = document.getElementById("filterTags");
     const filterAgeSelect = document.getElementById("filterAge");
 
+    const button18 = document.getElementById("filter18");
+    const buttonAsian = document.getElementById("filterAsian");
+    const buttonNew = document.getElementById("filterNew");
+
     let storageType = storageTypeSelector.value;
     let previousUsers = await loadUsers("previousUsers");
     let removedUsers = await loadUsers("removedUsers");
@@ -21,21 +25,32 @@ document.addEventListener('DOMContentLoaded', async function() {
         await displayPreviousUsers();
     });
 
+    button18.addEventListener("click", function() {
+        applyTagFilter("18");
+    });
+
+    buttonAsian.addEventListener("click", function() {
+        applyTagFilter("asian");
+    });
+
+    buttonNew.addEventListener("click", function() {
+        applyTagFilter("new");
+    });
+
     async function fetchData() {
         const limit = 500;
         let offset = 0;
         let continueFetching = true;
 
         while (continueFetching) {
-            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`; // &tag=18&tag=asian&tag=new&tag=bigboobs&tag=deepthroat`;
+            const apiUrl = `https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f&limit=${limit}&offset=${offset}`;
             try {
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                // let alt = data.results.age <= 19
-                if (data.results && data.results.length > 0) { // && alt) {
+                if (data.results && data.results.length > 0) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
                     if (data.results.length < limit) {
                         continueFetching = false;
@@ -139,53 +154,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-    async function addToPreviousUsers(user) {
-        if (!previousUsers.some(u => u.username === user.username)) {
-            previousUsers.unshift(user);
-            await saveUsers("previousUsers", previousUsers);
-
-            const userElement = document.createElement("div");
-            userElement.className = "user-info";
-            userElement.innerHTML = `
-                <img src="${user.image_url}" alt="${user.username}" data-iframe-url="${user.iframe_embed}" data-username="${user.username}">
-                <div class="user-details">
-                    <p>Age: ${user.age || 'N/A'}</p>
-                    <p>Username: ${user.username}</p>
-                    ${isBirthday(user.birthday) ? `<p>Happy Birthday!</p>` : ''}
-                </div>
-            `;
-
-            userElement.addEventListener("click", function(event) {
-                event.preventDefault();
-                const usr = userElement.querySelector("img").dataset.username;
-                const iframeChoice = document.querySelector('input[name="iframeChoice"]:checked').value;
-                let selectedIframe;
-
-                if (iframeChoice === 'mainIframe2') {
-                    selectedIframe = mainIframe2;
-                } else {
-                    selectedIframe = mainIframe;
-                }
-                selectedIframe.src = 'https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=' + usr;
-            });
-
-            previousUsersDiv.prepend(userElement);
-        }
-    }
-
     async function displayPreviousUsers() {
         previousUsersDiv.innerHTML = "";
 
         const storedUsers = await loadUsers("previousUsers");
-        if (storedUsers.length === 0) {
+        const onlinePublicUsers = await filterOnlineUsers(storedUsers);
+
+        if (onlinePublicUsers.length === 0) {
             previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users yet.</p>';
             return;
         }
 
-        storedUsers.forEach(user => {
-            if (user.current_show !== 'public') {
-                return;
-            }
+        onlinePublicUsers.forEach(user => {
             if (!user.image_url || !user.username) {
                 return;
             }
@@ -218,6 +198,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
+    async function filterOnlineUsers(users) {
+        const onlineUsernames = allOnlineUsersData.map(user => user.username);
+        return users.filter(user => onlineUsernames.includes(user.username) && user.current_show === 'public');
+    }
+
+    function applyTagFilter(tag) {
+        filterTagsSelect.value = tag;
+        displayOnlineUsers(allOnlineUsersData);
+    }
+
     function isBirthday(birthday) {
         if (!birthday) return false;
         const today = new Date();
@@ -234,92 +224,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             return storedUsers ? JSON.parse(storedUsers) : [];
         }
     }
-
-    async function saveUsers(key, users) {
-        if (storageType === "indexedClicked") {
-            await saveToIndexedDB(key, users);
-        } else {
-            const storage = storageType === "local" ? localStorage : sessionStorage;
-            storage.setItem(key, JSON.stringify(users));
-        }
-    }
-
-    function openIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open('UserDatabase', 1);
-            request.onupgradeneeded = function(event) {
-                const db = event.target.result;
-                const objectStore = db.createObjectStore('users', { keyPath: 'key' });
-                objectStore.createIndex('tags', 'tags', { unique: false });
-            };
-            request.onsuccess = function(event) {
-                resolve(event.target.result);
-            };
-            request.onerror = function(event) {
-                reject(event.target.error);
-            };
-        });
-    }
-
-    function loadFromIndexedDB(key) {
-        return new Promise(async (resolve, reject) => {
-            const db = await openIndexedDB();
-            const transaction = db.transaction('users', 'readonly');
-            const store = transaction.objectStore('users');
-            const request = store.get(key);
-
-            request.onsuccess = function(event) {
-                resolve(event.target.result ? event.target.result.value : []);
-            };
-            request.onerror = function(event) {
-                reject(event.target.error);
-            };
-        });
-    }
-
-    function saveToIndexedDB(key, users) {
-        return new Promise(async (resolve, reject) => {
-            const db = await openIndexedDB();
-            const transaction = db.transaction('users', 'readwrite');
-            const store = transaction.objectStore('users');
-            const request = store.put({ key: key, value: users });
-
-            request.onsuccess = function(event) {
-                resolve();
-            };
-            request.onerror = function(event) {
-                reject(event.target.error);
-            };
-        });
-    }
-
-    async function populateStorageOptions() {
-        const db = await openIndexedDB();
-        const transaction = db.transaction('users', 'readonly');
-        const store = transaction.objectStore('users');
-        const request = store.getAllKeys();
-
-        request.onsuccess = function(event) {
-            const keys = event.target.result;
-            storageTypeSelector.innerHTML += keys.map(key => `<option value="${key}">${key}</option>`).join('');
-        };
-        request.onerror = function(event) {
-            console.error("Error fetching keys from IndexedDB:", event.target.error);
-        };
-    }
-
-    populateStorageOptions();
-
-    if (typeof window.addToPreviousUsers !== 'undefined') {
-        window.addToPreviousUsers = addToPreviousUsers;
-    }
-    if (typeof window.displayPreviousUsers !== 'undefined') {
-        window.displayPreviousUsers = displayPreviousUsers;
-    }
-
-    window.initializeAllUsersFromScriptJS = function(callback) {
-        callback();
-    };
 
     await fetchData();
     setInterval(async () => {
