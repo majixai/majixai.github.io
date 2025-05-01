@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- Configuration ---
     // !! IMPORTANT !! Replace this with the actual URL of your server-side endpoint
-    // This endpoint MUST be configured to receive POST requests with JSON data
-    // and send emails from your server.
     const REPORT_SERVER_ENDPOINT = '/api/send-user-report'; // Example placeholder URL
 
     // --- DOM References ---
@@ -39,28 +37,23 @@ document.addEventListener('DOMContentLoaded', async function() {
     let fetchInterval = null; // To hold the interval ID
 
     // --- Configuration ---
+    // !! Verify this URL is correct and accessible from where your page is hosted !!
     const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f';
     const apiLimit = 500; // Limit per API page
     const fetchIntervalDuration = 120000; // 2 minutes (120 * 1000) as per your original interval
     const maxHistorySize = 100; // Example limit for previous users history
 
-    // --- Helper Functions (Moved/Updated) ---
+    // --- Helper Functions ---
 
     /**
      * Checks if a user's birthday is today.
-     * @param {string | Date | null} birthday - The user's birthday.
-     * @returns {boolean} - True if birthday is today, false otherwise.
      */
     function isBirthday(birthday) {
         if (!birthday) return false;
         try {
             const today = new Date();
             const birthDate = new Date(birthday);
-             // Check if the date is valid before comparing
-            if (isNaN(birthDate.getTime())) {
-                 // console.warn("Invalid birthday date string:", birthday); // Can be noisy
-                 return false;
-            }
+             if (isNaN(birthDate.getTime())) { return false; }
             return today.getDate() === birthDate.getDate() && today.getMonth() === birthDate.getMonth();
         } catch (e) {
              console.error("Error checking birthday:", e);
@@ -68,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // --- Storage Functions (Adapted from your original) ---
+    // --- Storage Functions (Adapted) ---
     // NOTE: The IndexedDB logic is kept separate as in your original code structure.
 
     /**
@@ -111,7 +104,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     /**
      * Loads data for a specific key from IndexedDB.
-     * @param {string} key - The key to load.
      * @returns {Promise<Array<Object>>} Resolves with the data array, or [] on error/not found.
      */
     async function loadFromIndexedDB(key) {
@@ -142,8 +134,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     /**
      * Saves data for a specific key to IndexedDB.
-     * @param {string} key - The key to save under.
-     * @param {Array<Object>} users - The data array.
      * @returns {Promise<void>} Resolves when save is complete, rejects on error.
      */
     async function saveToIndexedDB(key, users) {
@@ -188,7 +178,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Loads data from either Local Storage, Session Storage, or IndexedDB.
      * Uses the global `storageType` variable to decide.
-     * @param {string} key - The key to load.
      * @returns {Promise<Array<Object>>} Resolves with data array or [].
      */
     async function loadUsers(key) {
@@ -220,8 +209,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Saves data to either Local Storage, Session Storage, or IndexedDB.
      * Uses the global `storageType` variable to decide.
-     * @param {string} key - The key to save under.
-     * @param {Array<Object>} users - The data array.
      * @returns {Promise<void>}
      */
     async function saveUsers(key, users) {
@@ -282,11 +269,11 @@ document.addEventListener('DOMContentLoaded', async function() {
      }
 
 
-    // --- Core Application Logic Functions (Adapted from your original) ---
+    // --- Core Application Logic Functions (Adapted) ---
 
     /** Fetches online user data, populates filters, and displays users. */
     async function fetchData() {
-        console.log("Fetching online user data...");
+        console.log("Executing fetchData: Starting online user data fetch...");
         showOnlineLoadingIndicator("Loading online users...");
         clearOnlineErrorDisplay(); // Clear previous errors
 
@@ -299,58 +286,88 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         while (continueFetching && offset < maxOverallLimit) {
             const apiUrl = `${apiUrlBase}&limit=${limit}&offset=${offset}`;
-             console.log(`Fetching API page: ${offset / limit + 1} at offset ${offset}`);
+             console.log(`fetchData: Attempting fetch for page ${offset / limit + 1} at offset ${offset}. URL: ${apiUrl}`);
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+                const timeoutId = setTimeout(() => controller.abort(), 25000); // Increased timeout to 25s
 
                 const response = await fetch(apiUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
 
-                if (!response.ok) {
-                     const errorBody = await response.text().catch(() => `Status: ${response.status}`);
-                     throw new Error(`HTTP error! status: ${response.status}, details: ${errorBody}`);
-                }
-                const data = await response.json();
+                console.log(`fetchData: Received response status: ${response.status}`);
 
-                if (data.results && data.results.length > 0) {
-                     console.log(`Received ${data.results.length} results.`);
+                if (!response.ok) {
+                     const errorBody = await response.text().catch(() => `Status: ${response.statusText}`);
+                     console.error(`fetchData: HTTP error details: ${errorBody}`);
+                     throw new Error(`HTTP error! status: ${response.status}`); // Throw simplified error
+                }
+
+                const data = await response.json();
+                 console.log("fetchData: Successfully parsed JSON response.");
+
+                 // --- Add logging to check the structure of the data received ---
+                 if (data && data.results) {
+                     console.log(`fetchData: Data structure seems valid. Found data.results.`);
+                     console.log(`fetchData: Received ${data.results.length} results in this batch.`);
+                      // Log a sample user object to see its properties
+                     if (data.results.length > 0) {
+                          console.log("fetchData: Sample user object:", data.results[0]);
+                     }
+                 } else {
+                     console.warn("fetchData: Response JSON does not contain 'results' array or is empty:", data);
+                 }
+                 // --- End logging check ---
+
+
+                if (data.results && Array.isArray(data.results) && data.results.length > 0) {
                     allOnlineUsersData = allOnlineUsersData.concat(data.results);
                      showOnlineLoadingIndicator(`Fetched ${allOnlineUsersData.length} users...`);
 
                     if (data.results.length < limit) {
-                        continueFetching = false;
+                        continueFetching = false; // This was the last page
                     } else {
                         offset += limit;
+                        // continueFetching remains true
                     }
                 } else {
-                    continueFetching = false; // No more results
-                     console.log("No more results from API.");
+                    continueFetching = false; // No more results or empty results array
+                     console.log("fetchData: No more results in this batch or data.results is empty/invalid.");
                 }
+                 console.log(`fetchData: continueFetching=${continueFetching}, offset=${offset}, allOnlineUsersData.length=${allOnlineUsersData.length}`);
+
             } catch (error) {
-                console.error("Fetch error:", error);
+                console.error("fetchData: Error caught during fetch loop:", error);
                  if (error.name === 'AbortError') {
-                     console.error("API Fetch timed out.");
+                     console.error("fetchData: Fetch timed out.");
                  }
                 showOnlineErrorDisplay(`Failed to fetch data: ${error.message}`);
-                if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data.</p>'; // Clear and show error in list
-                continueFetching = false; // Stop fetching on error
+                if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data. Check console.</p>'; // Clear and show error in list
+                continueFetching = false; // Stop fetching loop on error
                 // Do NOT return here, let finally block execute
             }
-        }
+        } // End while loop
 
         if (offset >= maxOverallLimit) {
-            console.warn(`Fetch stopped after reaching max overall limit (${maxOverallLimit} users).`);
+            console.warn(`fetchData: Fetch stopped after reaching max overall limit (${maxOverallLimit} users).`);
             showOnlineErrorDisplay(`Load stopped at ${maxOverallLimit} users.`);
         }
 
-        console.log(`Finished fetching. Total users: ${allOnlineUsersData.length}`);
+        console.log(`fetchData: While loop finished. Total users fetched: ${allOnlineUsersData.length}`);
         // --- Post-fetch actions ---
-        populateFilters(allOnlineUsersData); // Populate filters based on all fetched data
-        applyFiltersAndDisplay(); // Apply filters and display online users
-        displayPreviousUsers(); // Refresh previous users display based on NEW online data
+        if (allOnlineUsersData.length > 0) {
+             console.log("fetchData: Populating filters and displaying users...");
+             populateFilters(allOnlineUsersData); // Populate filters based on all fetched data
+             applyFiltersAndDisplay(); // Apply filters and display online users
+             displayPreviousUsers(); // Refresh previous users display based on NEW online data
+        } else {
+             console.log("fetchData: No online users data fetched. Skipping filter population and display.");
+              if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>'; // Show empty state
+              displayPreviousUsers(); // Still try to display previous users if any were loaded initially
+        }
+
 
          hideOnlineLoadingIndicator();
+         console.log("fetchData execution finished.");
     }
 
     /** Populates the tag and age filter dropdowns. */
@@ -435,7 +452,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     /** Displays the given list of online users in the online users div. */
     function displayOnlineUsersList(usersToDisplay) { // Renamed function for clarity
          if (!onlineUsersDiv) { console.warn("Online users display div not found."); return; }
-        console.log(`Displaying ${usersToDisplay.length} filtered online users.`);
+        console.log(`displayOnlineUsersList: Displaying ${usersToDisplay.length} filtered online users.`);
         onlineUsersDiv.innerHTML = ""; // Clear previous list
 
         if (usersToDisplay.length === 0) {
@@ -456,34 +473,37 @@ document.addEventListener('DOMContentLoaded', async function() {
             const userElement = createUserElement(user, 'online'); // Use helper
             onlineUsersDiv.appendChild(userElement);
         });
-         console.log("Online users display complete.");
+         console.log("displayOnlineUsersList: Online users display complete.");
     }
 
 
     /** Displays the previous users list, checking their current online status. */
     async function displayPreviousUsers() { // Keep original name for external calls if needed
          if (!previousUsersDiv) { console.warn("Previous users display div not found."); return; }
-         console.log(`Attempting to display previous users (${previousUsers.length} saved).`);
-         previousUsersDiv.innerHTML = "";
+         console.log(`displayPreviousUsers: Attempting to display previous users (${previousUsers.length} saved).`);
+         previousUsersDiv.innerHTML = ""; // Clear previous list
 
          // Ensure previousUsers is loaded before displaying
          if (previousUsers.length === 0) {
+              console.log("displayPreviousUsers: previousUsers array is empty in state. Attempting to load from storage.");
              previousUsers = await loadUsers("previousUsers"); // Ensure previousUsers state is up-to-date
              if (previousUsers.length === 0) {
                 previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No previous users saved yet.</p>';
-                console.log("No previous users saved.");
+                console.log("displayPreviousUsers: No previous users loaded from storage.");
                 return;
+             } else {
+                  console.log(`displayPreviousUsers: Loaded ${previousUsers.length} previous users from storage.`);
              }
          }
 
 
          // If online data hasn't loaded yet, we can't check online status.
          if (allOnlineUsersData.length === 0) {
-              console.warn("Online user data not available yet. Cannot display previous users with online check.");
+              console.warn("displayPreviousUsers: Online user data (allOnlineUsersData) not available yet. Cannot filter previous users by online status.");
                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Fetching online data to display previous users...</p>';
               return;
          }
-          console.log(`Found ${allOnlineUsersData.length} currently online users.`);
+          console.log(`displayPreviousUsers: Found ${allOnlineUsersData.length} currently online users.`);
 
 
          // Filter previous users to show only those currently online and public
@@ -496,7 +516,7 @@ document.addEventListener('DOMContentLoaded', async function() {
              return isOnlineAndPublic;
          });
 
-         console.log(`Displaying ${currentlyOnlineAndPublicPreviousUsers.length} previous users (currently online & public).`);
+         console.log(`displayPreviousUsers: Displaying ${currentlyOnlineAndPublicPreviousUsers.length} previous users (currently online & public).`);
 
          if (currentlyOnlineAndPublicPreviousUsers.length === 0) {
               previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users are currently online & public.</p>';
@@ -513,15 +533,12 @@ document.addEventListener('DOMContentLoaded', async function() {
              const userElement = createUserElement(user, 'previous'); // Use helper, indicate type
              previousUsersDiv.appendChild(userElement);
          });
-          console.log("Previous users display complete.");
+          console.log("displayPreviousUsers: Previous users display complete.");
     }
 
 
     /**
      * Creates a DOM element for a single user with details and event listeners.
-     * @param {Object} user - The user object.
-     * @param {'online' | 'previous'} listType - The type of list this element is for.
-     * @returns {HTMLElement} - The created div element.
      */
     function createUserElement(user, listType) {
         const userElement = document.createElement("div");
@@ -561,7 +578,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 event.stopPropagation(); // Prevent click on remove button from triggering iframe load
                 console.log(`User clicked remove for: ${user.username}`);
                 await removeFromPreviousUsers(user.username);
-                displayPreviousUsers(); // Refresh the previous users list display
+                displayPreviousUsers(); // Refresh the display after removal
             });
         }
 
@@ -571,7 +588,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     /**
      * Handles user click event to load iframe and add to previous users.
-     * @param {Object} user - The user object that was clicked.
      */
     function handleUserClick(user) {
          if (!mainIframe || !mainIframe2) {
@@ -602,38 +618,44 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Adds a user to the previous users history, ensuring uniqueness and limit.
      * Moves user to front if already exists. Saves to storage.
-     * @param {Object} user - The user object to add.
      */
     async function addToPreviousUsers(user) {
-        // Remove user if already in the list to move them to the front
-        previousUsers = previousUsers.filter(u => u.username !== user.username);
+        console.log(`Attempting to add/move ${user.username} to history.`);
+        // Find index of user if already exists
+        const existingIndex = previousUsers.findIndex(u => u.username === user.username);
+
+        // If exists, remove them first
+        if (existingIndex !== -1) {
+            previousUsers.splice(existingIndex, 1);
+            console.log(`Removed existing entry for ${user.username} from history state.`);
+        }
 
         // Add the user to the beginning of the array
         previousUsers.unshift(user);
 
         // Trim the array if it exceeds the max size
         if (previousUsers.length > maxHistorySize) {
+            const removedCount = previousUsers.length - maxHistorySize;
             previousUsers = previousUsers.slice(0, maxHistorySize);
-            console.log(`Previous users history trimmed to max size ${maxHistorySize}.`);
+            console.log(`Previous users history trimmed, ${removedCount} users removed from end.`);
         }
 
-        console.log(`Added/Moved ${user.username} to previous users history state.`);
+        console.log(`Added ${user.username} to the front of previous users history state. Current size: ${previousUsers.length}`);
         await saveUsers("previousUsers", previousUsers); // Save the updated list
         // The display of previous users is updated by the main fetch/filter cycle or explicit calls
-        // We don't need to call displayPreviousUsers() here if it's already handled after fetch
-        // displayPreviousUsers(); // Might cause flicker if called too often
+        // We don't necessarily need to call displayPreviousUsers() here every time a user is clicked
+        // displayPreviousUsers(); // Calling here might cause flicker if not managed carefully
     }
 
      /**
       * Removes a user from the previous users history by username. Saves to storage.
-      * @param {string} username - The username to remove.
       */
      async function removeFromPreviousUsers(username) {
          console.log(`Attempting to remove ${username} from history.`);
          const initialCount = previousUsers.length;
          previousUsers = previousUsers.filter(u => u.username !== username);
          if (previousUsers.length < initialCount) {
-             console.log(`Successfully removed ${username} from history state.`);
+             console.log(`Successfully removed ${username} from history state. Current size: ${previousUsers.length}`);
              await saveUsers("previousUsers", previousUsers); // Save the updated list
          } else {
              console.warn(`Attempted to remove ${username}, but they were not found in the current history state.`);
@@ -653,9 +675,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                  db = await openIndexedDB();
                   // Delete both keys if they exist
                  const tx = db.transaction('users', 'readwrite');
-                 tx.objectStore('users').delete('previousUsers');
-                 tx.objectStore('users').delete('removedUsers');
-                 await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = reject; tx.onabort = reject; });
+                 const store = tx.objectStore('users');
+                 store.delete('previousUsers');
+                 store.delete('removedUsers');
+                 await new Promise((resolve, reject) => {
+                     tx.oncomplete = () => { console.log("IndexedDB clear transaction complete."); resolve(); };
+                     tx.onerror = (e) => { console.error("IndexedDB clear transaction error:", e); reject(e); };
+                     tx.onabort = (e) => { console.error("IndexedDB clear transaction aborted:", e); reject(e); };
+                 });
                  console.log("Previous and Removed users cleared from IndexedDB.");
              } catch (error) {
                  console.error("Error clearing history from IndexedDB:", error);
@@ -689,10 +716,11 @@ document.addEventListener('DOMContentLoaded', async function() {
          if (!existingValues.includes('local')) storageTypeSelector.add(new Option('Local Storage', 'local'));
          if (!existingValues.includes('session')) storageTypeSelector.add(new Option('Session Storage', 'session'));
          // Keep the "indexedClicked" value if it's already there from HTML, otherwise add "indexedDB"
-         if (!existingValues.includes('indexedClicked') && !existingValues.includes('indexedDB')) {
-             // Decide which to add based on your intended IndexedDB key logic
-             // For now, stick to your original 'indexedClicked' check in load/save
-              if (!existingValues.includes('indexedClicked')) storageTypeSelector.add(new Option('IndexedDB', 'indexedClicked'));
+         // Use 'indexeddb' as the value for consistency if not using 'indexedClicked' from HTML
+         const idbOptionValue = 'indexedClicked'; // Or 'indexedDB'
+         if (!existingValues.includes(idbOptionValue)) {
+             // Add the standard IndexedDB option text
+              storageTypeSelector.add(new Option('IndexedDB', idbOptionValue));
          }
 
 
@@ -701,14 +729,12 @@ document.addEventListener('DOMContentLoaded', async function() {
              const idbKeys = await getIndexedDBKeys();
               console.log("Found IndexedDB keys:", idbKeys);
              idbKeys.forEach(key => {
-                 // Check if key is already an option (case-sensitive check)
-                 if (!Array.from(storageTypeSelector.options).some(opt => opt.value === key)) {
-                      // Avoid adding default history keys again if they exist as separate options
-                      if (key !== 'previousUsers' && key !== 'removedUsers' && key !== 'indexedClicked') {
+                 // Check if key is already an option (case-sensitive check) or a standard key
+                 if (!Array.from(storageTypeSelector.options).some(opt => opt.value === key) &&
+                     key !== 'previousUsers' && key !== 'removedUsers' && key !== idbOptionValue) {
                          const option = new Option(`IndexedDB: ${key}`, key); // Show key name in option text
                          storageTypeSelector.add(option);
                          console.log(`Added custom IndexedDB key '${key}' to storage options.`);
-                      }
                  }
              });
          } catch (error) {
@@ -721,7 +747,7 @@ document.addEventListener('DOMContentLoaded', async function() {
               storageTypeSelector.value = storageType;
           } else {
               // If the saved/default storageType isn't available as an option, default to local
-              console.warn(`Current storageType ('${storageType}') not available as option. Defaulting to 'local'.`);
+              console.warn(`Current storageType ('${storageType}') not available as option in select. Defaulting to 'local'.`);
               storageType = 'local';
               storageTypeSelector.value = 'local';
           }
@@ -729,7 +755,7 @@ document.addEventListener('DOMContentLoaded', async function() {
      }
 
 
-    // --- Reporting Functions (NEW) ---
+    // --- Reporting Functions ---
 
     /**
      * Sends the currently filtered/displayed online users list as a report
@@ -776,6 +802,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log(`Sending report for ${reportData.length} users to ${REPORT_SERVER_ENDPOINT}...`);
 
         try {
+             // Use a more robust timeout approach if AbortController.timeout isn't fully supported
+             const controller = new AbortController();
+             const timeoutId = setTimeout(() => {
+                 console.error("Report fetch timed out!");
+                 controller.abort();
+             }, 45000); // 45 seconds timeout for the report
+
             const response = await fetch(REPORT_SERVER_ENDPOINT, {
                 method: 'POST',
                 headers: {
@@ -784,38 +817,36 @@ document.addEventListener('DOMContentLoaded', async function() {
                     // 'X-Api-Key': 'YOUR_SECRET_API_KEY'
                 },
                 body: JSON.stringify(reportData),
-                 // Add a timeout for the report request
-                 signal: AbortController.timeout(30000) // 30 seconds timeout (requires modern browser or polyfill)
-                 // Fallback for older browsers:
-                 // const controller = new AbortController();
-                 // const timeoutId = setTimeout(() => controller.abort(), 30000);
-                 // signal: controller.signal
+                 signal: controller.signal // Attach the abort signal
             });
 
-            // clearTimeout(timeoutId); // If using manual AbortController
+            clearTimeout(timeoutId); // Clear timeout if fetch completes/fails quickly
+
+            console.log(`Report fetch response status: ${response.status}`);
 
             if (!response.ok) {
                  // Try to get server error message if available
                  const errorBody = await response.text().catch(() => response.statusText);
-                 throw new Error(`Server responded with status ${response.status}: ${errorBody}`);
+                 console.error(`Report fetch HTTP error details: ${errorBody}`);
+                 throw new Error(`Server responded with status ${response.status}`);
             }
 
             // Assume server responds with JSON indicating success/failure
             const result = await response.json();
+            console.log("Report fetch: Received server response:", result);
 
-            if (result.status === 'success') {
+            if (result && result.status === 'success') {
                 console.log("Report sent successfully!", result.message);
                 showReportStatus(result.message || "Report sent successfully!", 'success');
             } else {
-                console.error("Server reported an error sending report:", result.message);
-                 showReportStatus(`Report failed: ${result.message || 'Unknown error from server'}`, 'error');
+                console.error("Server reported an error sending report:", result && result.message);
+                 showReportStatus(`Report failed: ${result && result.message || 'Unknown error from server'}`, 'error');
             }
 
         } catch (error) {
-            console.error("Error during report fetch:", error);
+            console.error("Error caught during report fetch:", error);
              if (error.name === 'AbortError') {
                  showReportStatus("Report request timed out.", 'error');
-                 console.error("Report request timed out.");
              } else {
                  showReportStatus(`Failed to send report: ${error.message}`, 'error');
              }
@@ -826,15 +857,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
 
-    // --- Loading and Error Display Helpers (Adapted) ---
+    // --- Loading and Error Display Helpers ---
 
     function showOnlineLoadingIndicator(message = 'Loading...') {
         console.log(`SHOW ONLINE LOADING: ${message}`);
         if (onlineLoadingIndicator) {
             onlineLoadingIndicator.textContent = message;
             onlineLoadingIndicator.style.display = 'block';
-             // Clear online list while loading to avoid showing stale data
-             if (onlineUsersDiv) onlineUsersDiv.innerHTML = '';
+             if (onlineUsersDiv) onlineUsersDiv.innerHTML = ''; // Clear online list while loading
         }
          // Optional: Hide online user list container if it takes up space
          // if (onlineUsersDiv) onlineUsersDiv.style.display = 'none';
@@ -875,7 +905,7 @@ document.addEventListener('DOMContentLoaded', async function() {
          clearReportStatus(); // Clear previous status when loading
      }
 
-     function hideReportLoading() {
+     hideReportLoading() {
           console.log("HIDE REPORT LOADING");
          if (reportLoadingIndicator) {
              reportLoadingIndicator.style.display = 'none';
