@@ -1,26 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Pornhub RSS Viewer</title>
+    <title>Pornhub Video Viewer</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Link to W3.CSS -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <!-- Link to your custom CSS file -->
-    <link rel="stylesheet" href="style.css">
+
+    <!-- Embedded CSS Styles -->
     <style>
-        /* Basic W3.CSS overrides or additions */
         body {
             background-color: #f1f1f1; /* Light gray background */
+            font-family: "Segoe UI", Arial, sans-serif; /* W3.CSS default font */
         }
+
+        /* W3.CSS overrides for Pornhub branding */
         .w3-teal, .w3-hover-teal:hover {
-            color: #fff!important;
-            background-color: #EE6123!important; /* Pornhub orange-ish */
+            color: #fff !important;
+            background-color: #EE6123 !important; /* Pornhub orange-ish */
         }
          .w3-container.header {
-             padding: 16px;
+             padding: 20px; /* More padding for the header */
          }
         h1, h2, h3, h4, h5, h6 {
             color: #444; /* Darker text for headings */
+            margin-top: 16px;
+            margin-bottom: 8px;
         }
 
         /* --- Video Card Styling --- */
@@ -29,6 +34,7 @@
             box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12); /* Subtle shadow */
             transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover effect */
             cursor: pointer;
+            background-color: #fff; /* White background for card */
         }
         .video-card:hover {
             transform: translateY(-5px); /* Lift effect */
@@ -41,9 +47,9 @@
             background-color: #eee; /* Placeholder while loading */
             object-fit: cover; /* Ensure image covers area without distortion */
         }
-         /* Optional: Fixed height for thumbnails */
+         /* Optional: Fixed height for thumbnails for a uniform look */
          .video-card img.thumbnail {
-             height: 180px; /* Example fixed height */
+             height: 180px; /* Example fixed height - Adjust as needed */
              object-fit: cover;
          }
 
@@ -55,9 +61,9 @@
              margin: 8px 0;
              font-size: 15px; /* Slightly smaller font size */
              font-weight: bold;
-             white-space: nowrap;
-             overflow: hidden;
-             text-overflow: ellipsis;
+             white-space: nowrap; /* Prevent wrapping */
+             overflow: hidden;     /* Hide overflow */
+             text-overflow: ellipsis; /* Show ellipsis for overflow */
              color: #444;
          }
         .video-details p {
@@ -65,8 +71,18 @@
             font-size: 12px;
             color: #777; /* Lighter grey for details */
         }
-        /* Hide details initially if you want to show only image */
-        /* .video-details { display: none; } */
+
+        /* Style for the 'New' badge */
+        .badge.new-badge {
+            background-color: #ff9800; /* Orange */
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 5px;
+            vertical-align: middle;
+            display: inline-block;
+        }
 
 
         /* --- Loading and Error Indicators --- */
@@ -75,6 +91,7 @@
             padding: 20px;
             font-size: 18px;
             margin-top: 20px;
+            display: none; /* Hidden by default */
         }
         #loading { color: #2196F3; } /* W3.CSS Blue */
         #error { color: #f44336; } /* W3.CSS Red */
@@ -89,7 +106,8 @@
              padding-bottom: 56.25%; /* 16:9 Aspect Ratio (height is 56.25% of width) */
              height: 0;
              overflow: hidden;
-             background-color: #000; /* Black background */
+             background-color: #000; /* Black background behind iframe */
+             display: none; /* Hidden by default */
          }
           #video-player-container iframe {
              position: absolute;
@@ -99,40 +117,313 @@
              height: 100%;
              border: none;
          }
-         /* Hidden state for player container */
-         #video-player-container:not(.visible) {
-             display: none;
+         /* Alternative to inline style: use a class to make it visible */
+         /* #video-player-container.visible { display: block; } */
+
+
+         /* --- W3.CSS Grid Adjustments for Mobile --- */
+         /* W3.CSS already handles s12 (1 column), m6 (2 columns), l3 (4 columns) */
+         /* You can override these if needed, e.g., smaller columns on large screens */
+         /*
+         @media (min-width: 993px) { // Large screens
+             .w3-col.l3 {
+                 width: 20%; // 5 columns
+             }
          }
+         */
+
     </style>
 </head>
 <body class="w3-light-grey">
 
 <div class="w3-container w3-teal header">
-  <h1>Pornhub RSS Feed Viewer</h1>
-  <p>Displaying videos parsed from an RSS feed via a server-side proxy.</p>
+  <h1>Pornhub Video Feed</h1>
+  <p>Displaying videos parsed from a feed via a server-side proxy.</p>
 </div>
 
 <div class="w3-container w3-margin-top">
 
   <!-- Loading and Error Indicators -->
-  <div id="loading" style="display: none;">Loading videos...</div>
-  <div id="error" style="display: none;"></div>
+  <div id="loading">Loading videos...</div>
+  <div id="error"></div>
 
   <!-- Container where videos will be displayed -->
-  <!-- Using W3.CSS grid classes -->
+  <!-- Using W3.CSS grid classes w3-row-padding adds padding between columns -->
   <div id="video-list" class="w3-row-padding">
     <!-- Video items will be dynamically added here by JavaScript -->
   </div>
 
   <!-- Video Player Container -->
    <div id="video-player-container">
+       <!-- `allow="autoplay; fullscreen"` is important for mobile and autoplay -->
        <iframe id="video-player" src="" allow="autoplay; fullscreen" allowfullscreen></iframe>
    </div>
 
 </div>
 
-<!-- Link to your JavaScript file -->
-<script src="script.js"></script>
+<!-- Embedded JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+
+        console.log("DOM fully loaded. Initializing video viewer...");
+
+        // --- Configuration ---
+        // !! IMPORTANT !! Replace this with the URL of YOUR server-side endpoint
+        // This endpoint should fetch the RSS feed, parse it, get video details (title, embed URL),
+        // and return a JSON array of video objects.
+        const VIDEO_PROXY_ENDPOINT = '/api/pornhub-rss'; // Example: '/api/pornhub-rss'
+
+        // --- DOM References ---
+        const videoListDiv = document.getElementById("video-list");
+        const loadingIndicator = document.getElementById("loading");
+        const errorDisplay = document.getElementById("error");
+        const videoPlayerContainer = document.getElementById("video-player-container");
+        const videoPlayerIframe = document.getElementById("video-player");
+
+
+        // --- Helper Functions ---
+
+        /**
+         * Formats duration in seconds into MM:SS.
+         * @param {number | string} totalSeconds - Duration in seconds (can be string from data).
+         * @returns {string} - Formatted string like "05:30" or "N/A".
+         */
+        function formatDuration(totalSeconds) {
+            const numSeconds = typeof totalSeconds === 'string' ? parseInt(totalSeconds, 10) : totalSeconds;
+            if (typeof numSeconds !== 'number' || isNaN(numSeconds) || numSeconds < 0) {
+                return 'N/A';
+            }
+            const minutes = Math.floor(numSeconds / 60);
+            const seconds = Math.floor(numSeconds % 60);
+            const paddedMinutes = String(minutes).padStart(2, '0');
+            const paddedSeconds = String(seconds).padStart(2, '0');
+            return `${paddedMinutes}:${paddedSeconds}`;
+        }
+
+        /**
+         * Basic function to format view counts for readability.
+         * @param {number | string} views - View count.
+         * @returns {string} - Formatted string like "1.2M" or "15,000".
+         */
+        function formatViews(views) {
+            // Attempt to parse string views like "1,234,567"
+            const numViews = typeof views === 'string' ? parseInt(views.replace(/,/g, ''), 10) : views;
+             if (typeof numViews !== 'number' || isNaN(numViews) || numViews < 0) {
+                return 'N/A';
+            }
+            if (numViews >= 1000000) {
+                return (numViews / 1000000).toFixed(1) + 'M';
+            }
+            if (numViews >= 1000) {
+                return (numViews / 1000).toFixed(1) + 'K';
+            }
+            return numViews.toLocaleString(); // Use locale for comma separation
+        }
+
+
+        // --- Core Application Logic Functions ---
+
+        /**
+         * Fetches video data from the server-side proxy endpoint.
+         */
+        async function fetchVideos() {
+            console.log(`Fetching videos from proxy: ${VIDEO_PROXY_ENDPOINT}`);
+            showLoading();
+            hideError(); // Clear previous errors
+
+            try {
+                // Add a timeout to the fetch request (requires AbortController.timeout or manual setup)
+                // AbortController.timeout is simpler but less supported in older browsers
+                // const response = await fetch(VIDEO_PROXY_ENDPOINT, { signal: AbortController.timeout(30000) }); // 30 seconds timeout
+
+                 // More compatible manual timeout setup:
+                 const controller = new AbortController();
+                 const timeoutId = setTimeout(() => {
+                     console.warn("Video fetch timed out!");
+                     controller.abort(); // Abort the fetch
+                 }, 30000); // 30 seconds timeout
+
+                const response = await fetch(VIDEO_PROXY_ENDPOINT, { signal: controller.signal });
+                clearTimeout(timeoutId); // Clear the timeout if fetch completes/fails within the time
+
+                console.log(`Fetch response status: ${response.status}`);
+
+                if (!response.ok) {
+                     const errorBody = await response.text().catch(() => response.statusText);
+                     console.error(`HTTP error details from proxy: ${errorBody}`);
+                     throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const videos = await response.json(); // Expecting JSON array from the proxy
+
+                if (!Array.isArray(videos)) {
+                    console.error("Proxy did not return a valid array:", videos);
+                    throw new Error("Invalid data received from video proxy.");
+                }
+
+                console.log(`Successfully fetched ${videos.length} videos.`);
+                displayVideos(videos); // Display the fetched videos
+
+            } catch (error) {
+                console.error("Error caught during video fetch:", error);
+                 if (error.name === 'AbortError') {
+                    showError(`Video load timed out.`);
+                    console.error("Video fetch timed out.");
+                } else {
+                    showError(`Failed to load videos: ${error.message}`);
+                }
+                if(videoListDiv) videoListDiv.innerHTML = '<p class="w3-center w3-text-red">Could not load videos. Check console and server proxy.</p>'; // Show error in list area
+            } finally {
+                 hideLoading(); // Always hide loading indicator
+                 console.log("fetchVideos execution finished.");
+            }
+        }
+
+        /**
+         * Displays the list of videos by creating and appending HTML elements.
+         * @param {Array<Object>} videos - An array of video objects from the proxy.
+         */
+        function displayVideos(videos) {
+             if (!videoListDiv) {
+                  console.warn("Video list div (#video-list) not found. Cannot display videos.");
+                  return;
+             }
+            console.log(`Displaying ${videos.length} videos.`);
+            videoListDiv.innerHTML = ""; // Clear current list
+
+            if (videos.length === 0) {
+                videoListDiv.innerHTML = '<p class="w3-center w3-text-grey">No videos found.</p>';
+                return;
+            }
+
+            // Use a document fragment for better performance when adding many elements
+            const fragment = document.createDocumentFragment();
+
+            videos.forEach(video => {
+                // Basic data validation based on expected JSON structure from proxy
+                // Ensure title, thumbnail_url_1, and embed_url exist
+                if (!video || !video.title || !video.thumbnail_url_1 || !video.embed_url) {
+                     console.warn("Skipping video with incomplete data:", video);
+                     return;
+                 }
+
+                // Create the W3.CSS grid column div: w3-col l3 m6 s12
+                const colDiv = document.createElement("div");
+                colDiv.className = "w3-col l3 m6 s12"; // 4 columns large, 2 medium, 1 small
+
+                // Create the W3.CSS card div
+                const cardDiv = document.createElement("div");
+                cardDiv.className = "w3-card w3-white video-card";
+                // Store the embed URL in a data attribute for easy access on click
+                cardDiv.dataset.embedUrl = video.embed_url;
+                // Store video URL (view page) if needed for other purposes
+                // cardDiv.dataset.viewUrl = video.view_url;
+
+                // Create the image element (thumbnail)
+                const img = document.createElement("img");
+                img.src = video.thumbnail_url_1; // Use the first thumbnail URL from your sample
+                img.alt = video.title; // Use video title as alt text
+                img.className = "thumbnail"; // Add class for potential fixed height styling
+                img.loading = "lazy"; // Improve performance for many images
+
+                // Create the details container
+                const detailsDiv = document.createElement("div");
+                detailsDiv.className = "w3-container video-details";
+
+                // Populate details using helper functions and checks
+                detailsDiv.innerHTML = `
+                    <h4><b>${video.title || 'Untitled Video'}</b></h4>
+                    <p>${video.duration_seconds ? `Duration: ${formatDuration(video.duration_seconds)}` : ''}</p>
+                    <!-- Assuming views and rating might be available from a more complete API, not just the RSS sample -->
+                    <p>${video.views ? `Views: ${formatViews(video.views)}` : ''}</p>
+                    <p>${video.rating ? `Rating: ${'★'.repeat(Math.round(video.rating || 0))} (${(video.rating || 0).toFixed(1)})` : ''}</p>
+                    <!-- Add other details like tags if available in your proxy's JSON response -->
+                `;
+
+                // Append image and details to the card
+                cardDiv.appendChild(img);
+                cardDiv.appendChild(detailsDiv);
+
+                // Add click event listener to the card
+                // The entire card will be clickable
+                cardDiv.addEventListener("click", function() {
+                    const embedUrl = this.dataset.embedUrl; // Get the embed URL from data attribute
+                    console.log("Video card clicked, loading embed:", embedUrl);
+                    loadVideoInPlayer(embedUrl); // Load the video in the player
+                });
+
+                // Append the column div containing the card to the fragment
+                colDiv.appendChild(cardDiv);
+                fragment.appendChild(colDiv);
+            });
+
+            // Append the fragment to the video list div (more efficient)
+            videoListDiv.appendChild(fragment);
+            console.log("Finished displaying videos.");
+        }
+
+        /**
+         * Loads a video embed URL into the iframe player.
+         * Shows the player container.
+         * @param {string} embedUrl - The URL of the video embed.
+         */
+        function loadVideoInPlayer(embedUrl) {
+             if (!videoPlayerContainer || !videoPlayerIframe) {
+                 console.warn("Video player elements not found. Cannot load video player.");
+                 return;
+             }
+             if (!embedUrl) {
+                  console.warn("No embed URL provided to load video in player.");
+                  return;
+             }
+             console.log("Loading video into player:", embedUrl);
+
+             // Set the iframe source. Adding autoplay=1 is common but depends on embed code support.
+             videoPlayerIframe.src = `${embedUrl}`; // Add ?autoplay=1 if the embed supports it and you want autoplay
+
+             // Show the player container (either by setting display style or adding a class)
+             videoPlayerContainer.style.display = 'block'; // Use inline style for simple toggle
+             // Or: videoPlayerContainer.classList.add('visible'); // If using CSS class to control display
+
+             // Optional: Scroll to the player so the user sees it
+             // videoPlayerContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+             console.log("Video player should now be visible.");
+        }
+
+
+        // --- Loading and Error Display Functions ---
+        function showLoading() {
+            if (loadingIndicator) loadingIndicator.style.display = 'block';
+        }
+
+        function hideLoading() {
+            if (loadingIndicator) loadingIndicator.style.display = 'none';
+        }
+
+        function showError(message) {
+            if (errorDisplay) {
+                errorDisplay.textContent = message;
+                errorDisplay.style.display = 'block';
+            }
+        }
+
+        function hideError() {
+            if (errorDisplay) errorDisplay.style.display = 'none';
+            if (errorDisplay) errorDisplay.textContent = ''; // Clear text
+        }
+
+         // --- Initialization ---
+
+        // Start fetching videos when the DOM is ready
+        fetchVideos(); // Initial load
+
+        // You could add periodic fetching like your Chaturbate example if desired
+        // setInterval(fetchVideos, 300000); // Example: Refresh every 5 minutes
+
+        console.log("Application initialization script finished.");
+
+    });
+</script>
 
 </body>
 </html>
