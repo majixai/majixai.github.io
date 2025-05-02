@@ -2,435 +2,120 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ChatHer</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Segoe+UI">
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@widgetbot/crate@3"></script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-64NCM5YMVB"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-64NCM5YMVB');
-    </script>
-    <style>
-        html, body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", sans-serif;}
-
-        body {
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .container {
-            max-width: 1920px;
-            margin: 2px auto;
-            padding: 1px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h1 {
-            text-align: center;
-            color: #8C1515;
-            margin-bottom: 2px;
-        }
-
-        /* --- Iframe Styles --- */
-        .iframe-container {
-            display: flex;
-            justify-content: space-between; /* Distributes space between iframes */
-            margin-bottom: 1px;
-            gap: 2px; /* Adds space between the flex items (iframes) */
-        }
-
-        .ifr {
-            /* Remove fixed height */
-            /* height: 56vh; */
-            width: calc(50% - 1px); /* Adjusted width calculation considering the gap */
-            aspect-ratio: 850 / 480; /* <<< Set the desired aspect ratio */
-            border: none;
-            padding: 0; /* Padding can interfere with aspect ratio */
-            margin: 0;
-            display: block; /* Ensure iframe behaves like a block element */
-            max-width: 100%; /* Ensure iframe does not overflow container */
-            overflow: hidden; /* Hide any potential overflow */
-        }
-
-        /* --- Scrollable List Styles --- */
-        .scrollable-list-container {
-            overflow-y: auto;
-            border: 1px solid #00539B;
-            padding: 1px;
-            margin-bottom: 1px;
-            height: 30vh;
-        }
-
-        .scrollable-list-container-2 {
-            height: 20vh;
-        }
-
-        .lists-filters-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-        }
-
-        .lists-filters-container > div {
-            width: 32%;
-            margin-bottom: 2px;
-        }
-        .highlight {
-           background-color: yellow;
-           font-weight: bold;
-        }
-
-        /* --- Other Styles (user-list, user-info, pagination, etc.) --- */
-        /* ... (Keep your other styles from .user-list down to .w3-center) ... */
-        .user-list, .user-info, .user-details, .pagination, .pagination button,
-        .filters, .filters .form-control, .search-filters input, .btn-container button,
-        .recordContainer, .recordButton button, .w3-card-4, .w3-button, .w3-button:hover,
-        .w3-theme-d2, .w3-bar .w3-button, .w3-bar-block .w3-button, .w3-bar-item, .w3-bar,
-        .w3-center
-        { /*Your other styles remain here */}
-
-        .user-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            padding-bottom: 2px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 2px;
-        }
-
-        .user-info:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .user-info img {
-            width: 80px;
-            height: 60px;
-            margin-right: 10px;
-            border-radius: 5px;
-        }
-
-        .user-details {
-            flex-grow: 1;
-        }
-
-        .user-details p {
-            margin: 0 0 5px 0;
-            font-size: 0.9em;
-            color: #00539B;
-        }
-
-        .user-details p:last-child {
-            margin-bottom: 0;
-        }
-        /* Pagination styles */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 1px;
-        }
-
-        .pagination button {
-            margin: 0 5px;
-            padding: 1px 2px;
-            border: 1px solid #ddd;
-            background-color: #fff;
-            color: #333;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .pagination button:hover {
-            background-color: #eee;
-        }
-
-        .pagination button.active {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        /* Filter styles */
-        .filters {
-            margin-bottom: 2px;
-            padding: 2px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-
-        .filters .form-control {
-            margin-bottom: 1px;
-        }
-         .search-filters input{
-            margin-bottom: 1px;
-        }
-
-        /* Button Styles */
-        .btn-container button {
-            margin-right: 8px;
-            margin-bottom: 1px;
-        }
-
-        /* Record Container */
-        .recordContainer {
-            margin-top: 5px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-
-        .recordButton button {
-            margin-right: 8px;
-        }
-
-
-        /* W3CSS modifications for better integration */
-        .w3-card-4 {
-            box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
-        }
-
-        .w3-button {
-            border: none;
-            display: inline-block;
-            padding: 1px 2px;
-            vertical-align: middle;
-            overflow: hidden;
-            text-decoration: none;
-            color: inherit;
-            background-color: inherit;
-            text-align: center;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .w3-button:hover {
-            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
-        }
-
-        .w3-theme-d2 {color:#fff !important; background-color:#007bff !important} /* Example primary color */
-        .w3-bar .w3-button {padding:1px 2px;}
-        .w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:1px;padding-top:1px;}
-        .w3-bar-item {padding:1px 2px;float:left;width:auto;border:none;display:block;outline:0}
-        .w3-bar {width:100%;overflow:hidden}
-        .w3-center {text-align:center !important}
-
-
-        /* Stack radio buttons and inputs vertically */
-        .radio-group, .search-filters {
-            display: flex;
-            flex-direction: row; /* Keep these as row if that's desired */
-            flex-wrap: wrap; /* Allow wrapping if needed */
-        }
-       .radio-group label {
-            margin-bottom: 1px;
-            margin-right: 10px; /* Add spacing between radio labels */
-            display: inline-block; /* Keep inline-block */
-        }
-
-        /* --- Responsive Adjustments --- */
-        @media (max-width: 768px) {
-            .iframe-container {
-                flex-direction: column;
-                gap: 1px; /* Adjust gap for stacked layout */
-            }
-
-            .ifr {
-                width: 100%; /* Full width when stacked */
-                /* Removed fixed height - aspect-ratio handles it */
-            }
-
-            #mainIframe2 {
-                 /* Hide the second iframe for smaller screens as before */
-                display: none;
-            }
-
-             .scrollable-list-container {
-                height: auto; /* Allow lists to grow */
-            }
-
-            .lists-filters-container > div {
-                width: 100%; /* Stack list/filter sections */
-            }
-        }
-
-        /* Smaller Screens and Mobile - No height override needed */
-        @media (max-width: 480px) {
-             /* Removed .ifr height setting - aspect-ratio handles it */
-        }
-
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Viewer</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Optional: Link W3.CSS or another framework if you prefer -->
+    <!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
 </head>
-<body class="w3-light-grey">
-    <div class="container">
-        <div class="iframe-container">
-            <iframe class="ifr" id="mainIframe" src="https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&tag=18&gender=f" frameborder="0"></iframe>
-            <iframe class="ifr" id="mainIframe2" src="https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&tag=new&gender=f" frameborder="0"></iframe>
-        </div>
+<body>
 
-        <div class="lists-filters-container">
-            <div>
-                <div id="onlineUsers" class="scrollable-list-container w3-card-4">
-                    <div class="user-list">
-                        <p class="text-muted w3-center">Loading online users...</p>
-                    </div>
-                </div>
-                <div id="pagination" class="pagination"></div>
-            </div>
+    <div class="app-container">
+        <h1>Room Viewer</h1>
 
-            <div>
-                <div id="previousUsers" class="scrollable-list-container w3-card-4">
-                    <div class="user-list">
-                        <p class="text-muted w3-center">No previous users.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="radio-group">
-                    <label>
-                        <input type="radio" name="iframeChoice" value="mainIframe" checked> Main Iframe 1
-                    </label>
-                    <label>
-                        <input type="radio" name="iframeChoice" value="mainIframe2"> Main Iframe 2
-                    </label>
-                </div>
-
-                <div class="search-filters">
-                     <select id="storageType">
-                      <option value="local">Local Storage</option>
-                      <option value="session">Session Storage</option>
-                      <option value="indexeddb">IndexedDB</option>
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <fieldset>
+                <legend>Filters & Settings</legend>
+                <div class="control-group">
+                    <label for="storageType">History Storage:</label>
+                    <select id="storageType">
+                        <option value="local">Local Storage</option>
+                        <option value="session">Session Storage</option>
+                        <option value="indexedClicked">IndexedDB (Default History)</option>
+                        <!-- Options for custom IDB keys will be added by JS -->
                     </select>
-                    <div class="filter-buttons">
-                        <button id="filterAge18" class="btn btn-secondary">Age 18</button>
-                        <button id="filterTagAsian" class="btn btn-secondary">Asian</button>
-                        <button id="filterTagBlonde" class="btn btn-secondary">Blonde</button>
-                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="filterTags">Filter by Tag(s):</label>
+                    <select id="filterTags" multiple size="3">
+                        <option value="">-- All Tags --</option>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                 <div class="control-group">
+                    <label for="filterAge">Filter by Age(s):</label>
+                    <select id="filterAge" multiple size="3">
+                        <option value="">-- All Ages --</option>
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+                <div class="control-group quick-filters">
+                    <span>Quick Filters:</span>
+                    <button id="filterAge18" class="quick-filter-btn">Age 18</button>
+                    <button id="filterTagAsian" class="quick-filter-btn">Asian</button>
+                    <button id="filterTagBlonde" class="quick-filter-btn">Blonde</button>
+                    <!-- Add more quick filter buttons as needed -->
+                </div>
+            </fieldset>
 
-                    <select id="filterTags" multiple>
-                        </select>
-
-                    <select id="filterAge" multiple>
-                        </select>
-                 </div>
-                 <div id="secondIframeResults"></div>
-                 <iframe class="scrollable-list-container-2 w3-card-4" id="secondIframe" data-jinx="Jinx" src="https://majixai.github.io/best/text" frameborder="0" scrolling="no"></iframe>
-                <button id="sendReportButton">Send Online Users Report</button>
-<div id="reportLoadingIndicator" style="display: none; color: blue;">Sending...</div>
-<div id="reportStatusDisplay" style="display: none; padding: 5px; margin-top: 5px; border-radius: 3px;"></div>
-
-<!-- Add basic CSS for report status -->
-<style>
-    .report-status {
-        display: block;
-        font-size: 0.9em;
-    }
-    .report-status.success { color: green; background-color: #e9ffe9; border: 1px solid green; }
-    .report-status.error { color: red; background-color: #ffe9e9; border: 1px solid red; }
-    .report-status.warning { color: orange; background-color: #fffbe6; border: 1px solid orange; }
-    .report-status.info { color: gray; background-color: #f0f0f0; border: 1px solid #ccc; }
-</style>
-            </div>
+            <fieldset>
+                <legend>Reporting</legend>
+                <div class="control-group report-controls">
+                    <button id="sendReportButton">Send Report of Online Users</button>
+                    <span id="reportLoadingIndicator" class="loading-indicator" style="display: none;">Sending...</span>
+                    <div id="reportStatusDisplay" class="report-status" style="display: none;"></div>
+                </div>
+            </fieldset>
         </div>
-    </div>
 
-   <script src="script.js"></script>
-   <script src="search.js"></script>
-   <script>
-    // Your existing script for toggles and Ctrl+F remains the same
-     document.querySelectorAll('.btn-container button').forEach(button => {
-            button.addEventListener('click', function() {
-                let targetId = '';
-                if (this.id === 'toggleButton') targetId = 'controlsFilter';
-                else if (this.id === 'toggleButton1') targetId = 'recordContainer';
-                else if (this.id === 'toggleButton2') targetId = 'BatWoman';
+        <!-- Main Content Area (Columns) -->
+        <div class="main-content">
 
-                if (targetId) {
-                    var controls = document.getElementById(targetId);
-                    if (controls.style.display === 'none') {
-                        controls.style.display = 'block';
-                    } else {
-                        controls.style.display = 'none';
-                    }
-                }
-            });
-        });
+            <!-- Online Users Column -->
+            <div class="user-column" id="onlineUsers">
+                <h2>Online Users</h2>
+                <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
+                <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
+                <div class="user-list">
+                    <!-- User cards will be added here by JS -->
+                </div>
+            </div>
 
-    // Custom Ctrl+F Search
-    document.addEventListener('keydown', function(event) {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'i') { // Works for both Ctrl and Cmd
-            event.preventDefault(); // Prevent the browser's default search
+            <!-- Main Viewing Column -->
+            <div class="iframe-column">
+                <h2>Viewer</h2>
+                <div class="iframe-selector">
+                    <label>
+                        <input type="radio" name="iframeChoice" value="mainIframe" checked> Viewport 1
+                    </label>
+                    <label>
+                        <input type="radio" name="iframeChoice" value="mainIframe2"> Viewport 2
+                    </label>
+                </div>
+                <div class="iframe-container">
+                    <iframe id="mainIframe"
+                            src="about:blank"
+                            title="Main Viewer"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            sandbox="allow-scripts allow-same-origin allow-presentation">
+                            <!-- Security Note: sandbox limits iframe capabilities. Adjust 'allow-*' as needed but be cautious. -->
+                    </iframe>
+                </div>
+                 <div class="iframe-container">
+                    <iframe id="mainIframe2"
+                            src="about:blank"
+                            title="Secondary Viewer"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            sandbox="allow-scripts allow-same-origin allow-presentation">
+                     </iframe>
+                </div>
+            </div>
 
-            const searchTerm = prompt("Search users:"); // Get search term from user
-            if (searchTerm) {
-                searchUsers(searchTerm);
-            }
-        }
-    });
+            <!-- Previous Users Column -->
+            <div class="user-column" id="previousUsers">
+                 <h2>History (Online Now)</h2>
+                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
+                 <div class="user-list">
+                     <!-- Previous user cards will be added here by JS -->
+                     <p class="text-muted w3-center">Loading history...</p> <!-- Initial placeholder -->
+                 </div>
+            </div>
 
-    function searchUsers(searchTerm) {
-      const onlineUsersContainer = document.getElementById('onlineUsers');
-      const previousUsersContainer = document.getElementById('previousUsers');
+        </div> <!-- End Main Content -->
 
-      // Clear previous highlights
-      clearHighlights(onlineUsersContainer);
-      clearHighlights(previousUsersContainer);
+    </div> <!-- End App Container -->
 
-      // Search and highlight in online users
-      searchAndHighlight(onlineUsersContainer, searchTerm);
-
-      // Search and highlight in previous users
-      searchAndHighlight(previousUsersContainer, searchTerm);
-
-      // Scroll to the first highlight in online users, if any.
-      scrollToFirstHighlight(onlineUsersContainer);
-
-    }
-     function searchAndHighlight(container, searchTerm) {
-        const userElements = container.querySelectorAll('.user-details p:first-child'); // Target usernames
-
-        userElements.forEach(element => {
-            const text = element.textContent;
-            const regex = new RegExp(searchTerm, 'gi'); // 'g' for global, 'i' for case-insensitive
-
-            if (regex.test(text)) {
-                const highlightedText = text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
-                element.innerHTML = highlightedText; // Replace with highlighted HTML
-            }
-        });
-    }
-      function clearHighlights(container) {
-        const highlightedElements = container.querySelectorAll('.highlight');
-        highlightedElements.forEach(element => {
-            // Replace the span with its inner text content
-            element.outerHTML = element.innerHTML;
-
-        });
-    }
-    function scrollToFirstHighlight(container) {
-        const firstHighlighted = container.querySelector('.highlight');
-        if (firstHighlighted) {
-            firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-    }
-   </script>
+    <script src="script.js"></script>
 </body>
 </html>
