@@ -1,529 +1,377 @@
-/* Global styles - Be cautious with global overrides like margin/padding */
-html, body, h1, h2, h3, h4, h5, h6 {
-    font-family: "Segoe UI", sans-serif;
-}
-
-/* Removing global !important overflow hidden which breaks scrolling */
+/* Basic Reset & Body */
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    /* overflow: hidden !important; - Removed */
 }
 
 body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    background-color: #f8f9fa; /* Light grey background for the whole page */
-    color: #00539B; /* Dark grey text for better readability */
+    font-family: sans-serif;
     line-height: 1.6;
-    /* Ensure body does not have overflow: hidden if you want page scrolling */
-    overflow-x: hidden; /* Hide horizontal overflow if necessary */
-    overflow-y: auto;   /* Allow vertical scrolling for the entire page if content exceeds viewport */
+    background-color: #f4f4f4;
+    color: #333;
+    padding: 15px;
 }
 
-.container {
-    max-width: 1920px; /* Wider container */
-    margin: 2px auto; /* Center container */
-    padding: 2px;
-    background-color: #fff; /* White background for content area */
+/* Main Application Container */
+.app-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
+h1, h2 {
+    color: #555;
+    margin-bottom: 15px;
     text-align: center;
-    color: #8C1515;
-    margin-bottom: 2px;
 }
 
-/* --- Iframe Styles --- */
-.iframe-container {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap; /* Allow wrapping */
-    margin-bottom: 5px; /* Spacing below */
+h2 {
+    font-size: 1.4em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
 }
 
-.ifr {
-    height: 56vh;
-    width: calc(50% - 2px);
-    border: none;
-    padding: 1px;
-    margin: 0;
-    border-radius: 5px; /* Rounded corners */
-    overflow: hidden; /* Ensure content within iframe is clipped */
-}
-
-/* --- Scrollable List Styles --- */
-.scrollable-list-container {
-    overflow-y: auto; /* Keep vertical scrolling */
-    overflow-x: hidden; /* Hide horizontal scrolling */
-    border: 1px solid #00539B;
-    padding: 1px;
-    margin-bottom: 1px;
-    height: 30vh;
-    /* Add flex properties if using user-info inline-block layout */
+/* Controls Bar */
+.controls-bar {
     display: flex;
     flex-wrap: wrap;
-    align-content: flex-start; /* Align rows to the start */
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #eaeaea;
+    border-radius: 5px;
 }
 
-
-.scrollable-list-container-2 {
-    height: 20vh;
+.controls-bar fieldset {
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    border-radius: 4px;
+    flex: 1; /* Allow fieldsets to grow */
+    min-width: 250px; /* Prevent excessive shrinking */
 }
 
-.lists-filters-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-}
-
-.lists-filters-container > div {
-    width: 32%;
-    margin-bottom: 2px;
-    /* Ensure flex children don't overflow */
-    min-width: 0; /* Allow flex items to shrink below content size */
-}
-
-.highlight {
-    background-color: yellow;
+.controls-bar legend {
     font-weight: bold;
+    padding: 0 5px;
+    color: #444;
 }
 
-/* --- User List Styles (Using the inline-block/hover layout) --- */
-
-.user-list {
-    list-style: none;
-    padding: 0;
-    /* Remove display: flex from here if the parent .scrollable-list-container is flex */
-    /* If .scrollable-list-container is NOT display: flex, uncomment below */
-    /* display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around; */
-    width: 100%; /* Take full width of parent scrollable container */
+.control-group {
+    margin-bottom: 10px;
 }
 
-.user-info {
-    position: relative;
-    width: calc(18% - 2px); /* Adjust width to fit roughly 5 per row with margin */
-    margin: 1px; /* Add spacing between items */
-    display: inline-block; /* Use inline-block for grid-like layout */
-    vertical-align: top;
-    text-align: center;
-    cursor: pointer; /* Indicate clickable */
-    overflow: hidden; /* Keep content within bounds, important for border-radius */
-    border-radius: 8px; /* Optional: Add rounded corners to the whole block */
-    box-sizing: border-box; /* Include padding/border in element's total width and height */
+.control-group label,
+.control-group span { /* For quick filter label */
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
 }
 
-.user-info img {
-    display: block; /* Prevent extra space below image */
+.control-group select,
+.control-group button {
     width: 100%;
-    height: auto; /* Maintain aspect ratio */
-    border-radius: 8px; /* Match block rounded corners */
-    object-fit: cover; /* Ensure image covers the area without stretching */
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.95em;
 }
 
-.user-info .user-details {
+.control-group select[multiple] {
+    min-height: 60px; /* Give multiple selects some height */
+}
+
+.quick-filters button {
+    width: auto; /* Allow quick filter buttons to size naturally */
+    margin-right: 5px;
+    margin-top: 5px; /* Space them out if they wrap */
+    background-color: #e0e0e0;
+    border: 1px solid #bbb;
+    cursor: pointer;
+}
+.quick-filters button:hover {
+    background-color: #d0d0d0;
+}
+
+.report-controls button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.report-controls button:hover {
+    background-color: #45a049;
+}
+
+/* Main Content Layout (Flexbox) */
+.main-content {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap; /* Allow columns to wrap on smaller screens */
+}
+
+/* Column Styling */
+.user-column, .iframe-column {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+}
+
+.user-column {
+    flex: 1; /* Share space equally */
+    min-width: 280px; /* Minimum width before wrapping */
+    max-height: 75vh; /* Limit height and make scrollable */
+    display: flex;
+    flex-direction: column; /* Stack title and list vertically */
+}
+
+.iframe-column {
+    flex: 2; /* Take more space */
+    min-width: 400px;
+}
+
+/* User List Styling */
+.user-list {
+    overflow-y: auto; /* Enable vertical scrolling */
+    flex-grow: 1; /* Allow list to fill remaining space in column */
+    padding-right: 5px; /* Space for scrollbar */
+}
+
+/* Individual User Card Styling */
+.user-info {
+    display: flex;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    padding: 8px;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease;
+    position: relative; /* Needed for absolute positioning of remove button */
+}
+
+.user-info:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.user-image-container {
+    flex-shrink: 0; /* Prevent image container from shrinking */
+    width: 80px; /* Fixed width for image container */
+    margin-right: 10px;
+    position: relative;
+}
+
+.user-image-container img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 3px;
+}
+
+.user-details {
+    flex-grow: 1; /* Allow details to take remaining space */
+    overflow: hidden; /* Prevent text overflow */
+}
+
+.user-details p {
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
+}
+
+.user-details .username {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #0056b3;
+    white-space: normal; /* Allow username to wrap if needed */
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.user-details .tags {
+    font-size: 0.8em;
+    color: #666;
+    white-space: normal; /* Allow tags to wrap */
+     overflow: visible;
+    text-overflow: clip;
+}
+
+.badge.new-badge {
+    display: inline-block;
+    background-color: #dc3545;
+    color: white;
+    padding: 2px 6px;
+    font-size: 0.75em;
+    border-radius: 10px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.birthday {
+    font-weight: bold;
+    color: #e67e22; /* Orange color */
+    text-align: center;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Remove Button (in History) */
+.remove-user-btn {
+    position: absolute;
+    top: -5px; /* Position slightly outside the image */
+    right: -5px;
+    background-color: rgba(220, 53, 69, 0.8); /* Red, slightly transparent */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Make it circular */
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    line-height: 18px; /* Center the 'x' */
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 0;
+    z-index: 10; /* Ensure it's above the image */
+}
+
+.remove-user-btn:hover {
+    background-color: rgba(220, 53, 69, 1); /* Solid red on hover */
+}
+
+/* Clear History Button */
+.clear-history-btn {
+    display: block;
+    width: calc(100% - 10px); /* Account for padding */
+    margin: 0 auto 10px auto; /* Center and add bottom margin */
+    padding: 8px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+.clear-history-btn:hover {
+    background-color: #c82333;
+}
+
+/* Iframe Styling */
+.iframe-selector {
+    margin-bottom: 10px;
+    text-align: center;
+}
+.iframe-selector label {
+    margin: 0 10px;
+    cursor: pointer;
+}
+
+.iframe-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+    height: 0;
+    overflow: hidden;
+    margin-bottom: 15px; /* Space between iframes */
+    background-color: #000; /* Black background while loading */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.iframe-container iframe {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7); /* Slightly darker overlay */
-    color: white;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    border-radius: 8px; /* Match the rounded corners */
-    padding: 5px; /* Add some padding inside the overlay */
-    box-sizing: border-box; /* Include padding in overlay size */
+    border: none; /* Remove default iframe border */
+}
+
+/* Loading / Error / Status Indicators */
+.loading-indicator,
+.error-message,
+.report-status {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
     text-align: center;
+    font-weight: bold;
 }
 
-.user-info:hover .user-details {
-    opacity: 1; /* Show overlay on hover */
+.loading-indicator {
+    background-color: #eef;
+    color: #33a;
+    border: 1px solid #aac;
 }
 
-.user-info .user-details p {
-    margin: 0; /* Remove margin on paragraphs inside overlay */
-    padding: 0; /* Remove padding */
-    font-size: 0.8em; /* Smaller font size for overlay text */
-    color: white; /* Ensure text color is white */
-    word-break: break-word; /* Break long words if necessary */
-    white-space: normal; /* Allow text to wrap */
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Add subtle text shadow */
+.error-message {
+    background-color: #fdd;
+    color: #a33;
+    border: 1px solid #fbb;
 }
 
-
-/* --- Pagination styles --- */
-.pagination {
-    display: flex;
-    justify-content: center;
-    margin-top: 1px;
-    padding: 5px 0; /* Add padding above/below pagination */
-}
-
-.pagination button {
-    margin: 0 3px; /* Slightly less margin for buttons */
-    padding: 3px 8px; /* Adjust padding */
-    border: 1px solid #007bff; /* Use primary color border */
-    background-color: #fff;
-    color: #007bff; /* Use primary color text */
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.pagination button:hover {
-    background-color: #e9ecef; /* Light grey hover */
-    border-color: #0056b3; /* Darker primary border on hover */
-    color: #0056b3;
-}
-
-.pagination button.active {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-/* --- Filter and Controls Styles --- */
-/* .filters class seems unused in HTML, applying styles to the container div instead */
-/* You have a div containing filters/controls/lists, let's refine that */
-
-.lists-filters-container > div {
-    /* Already defined width: 32% and margin-bottom: 2px */
-    /* Add padding and border to these sections */
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px; /* Add some padding inside filter/list containers */
-    background-color: #f9f9f9;
-    box-sizing: border-box; /* Include padding/border in width */
-    display: flex; /* Use flexbox for internal layout */
-    flex-direction: column;
-}
-
-/* Style the specific filter/control sections within the 32% divs */
-#onlineUsers, #previousUsers, .filters-controls-section { /* Assuming you add a class like this to the 3rd div */
-     /* Specific padding and border moved to the parent 32% div */
-     /* background-color also moved to the parent 32% div */
-     flex-grow: 1; /* Allow content sections to grow */
-     display: flex;
-     flex-direction: column;
-}
-
-/* Adjust height for scrollable containers inside the padded div */
-#onlineUsers.scrollable-list-container {
-     height: calc(30vh - 20px); /* Subtract padding from height */
-     margin-bottom: 0; /* Remove bottom margin if parent has padding */
-     border: none; /* Remove redundant border */
-     padding: 0; /* Remove redundant padding */
-}
-#previousUsers.scrollable-list-container {
-     height: calc(30vh - 20px); /* Adjust height similarly */
-     margin-bottom: 0;
-     border: none;
-     padding: 0;
-}
-.scrollable-list-container-2 {
-     height: calc(20vh - 20px); /* Adjust height */
-     margin-bottom: 0;
-     border: none;
-     padding: 0;
-}
-
-
-.radio-group, .search-filters, .filter-buttons { /* Apply padding/margin to groups */
-    padding: 5px;
-    margin-bottom: 5px; /* Spacing between groups */
-    border-bottom: 1px solid #eee; /* Separator */
-    display: flex;
-    flex-wrap: wrap; /* Allow items to wrap */
-    align-items: center; /* Vertically align items */
-}
-
-.radio-group label {
-    margin-right: 15px; /* Spacing between radio buttons */
-    margin-bottom: 0; /* Remove vertical margin within the flex container */
-    display: flex; /* Use flex to align checkbox/radio and text */
-    align-items: center;
-    cursor: pointer;
-}
-.radio-group input[type="radio"] {
-    margin-right: 5px; /* Spacing between radio and label text */
-    margin-bottom: 0;
-}
-
-.search-filters select,
-.search-filters input[type="text"],
-.search-filters input[type="number"] {
-    flex-grow: 1; /* Allow inputs/selects to grow */
-    margin-right: 10px; /* Spacing between filter inputs/selects */
-    margin-bottom: 0; /* Remove vertical margin within the flex container */
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.9em;
-}
-.search-filters input:last-child,
-.search-filters select:last-child {
-    margin-right: 0; /* Remove margin from the last item */
-}
-
-
-.filter-buttons button {
-    margin-right: 10px; /* Spacing between filter buttons */
-    margin-bottom: 5px; /* Spacing if buttons wrap */
-    padding: 5px 10px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background-color: #007bff; /* Primary button color */
-    color: white;
-    transition: background-color 0.2s ease;
-    font-size: 0.9em;
-}
-
-.filter-buttons button:hover {
-    background-color: #0056b3; /* Darker blue on hover */
-}
-
-.filter-buttons button:last-child {
-    margin-right: 0;
-}
-
-
-/* Storage Type Selector specific styling if needed */
-#storageType {
-    margin-right: 10px; /* Space before other filter elements */
-}
-
-
-/* Button Container (Assuming this wraps the toggle buttons) */
-.btn-container {
-    text-align: center;
-    margin-top: 10px; /* Spacing above toggle buttons */
-    margin-bottom: 20px; /* Spacing below toggle buttons */
-}
-
-.btn-container button {
-    margin: 5px 10px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    color: white;
-    background-color: #007bff; /* Bootstrap primary blue */
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.btn-container button:hover {
-    background-color: #0056b3; /* Darker shade of blue on hover */
-}
-
-.btn-container button:focus {
-    outline: none; /* Remove default focus outline */
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5); /* Add focus indication */
-}
-
-
-/* Record Container */
-.recordContainer {
+.report-status {
     margin-top: 5px;
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    padding: 5px 8px;
+    font-size: 0.9em;
+    text-align: left; /* Align within its container */
 }
 
-.recordButton button {
-    margin-right: 8px;
+.report-status.info {
+    background-color: #e0f2f7; color: #007bff; border: 1px solid #b8e3f7;
+}
+.report-status.success {
+    background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+}
+.report-status.warning {
+    background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+}
+.report-status.error {
+    background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
 }
 
-
-/* W3CSS modifications for better integration (ensure these come after W3CSS stylesheet) */
-.w3-card-4 {
-    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
+/* Utility Classes (like those maybe used by JS or for consistency) */
+.text-muted {
+    color: #6c757d;
+}
+.w3-center { /* Example mimicking W3.CSS */
+    text-align: center !important;
 }
 
-.w3-button {
-    border: none;
-    display: inline-block;
-    padding: 1px 2px;
-    vertical-align: middle;
-    overflow: hidden; /* Might conflict with content, check usage */
-    text-decoration: none;
-    color: inherit;
-    background-color: inherit;
-    text-align: center;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.w3-button:hover {
-    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
-}
-
-.w3-theme-d2 {color:#fff !important; background-color:#007bff !important} /* Example primary color */
-.w3-bar .w3-button {padding:1px 2px;}
-.w3-bar-block .w3-button {width:100%;text-align:left;padding-bottom:1px;padding-top:1px;}
-.w3-bar-item {padding:1px 2px;float:left;width:auto;border:none;display:block;outline:0}
-.w3-bar {width:100%;overflow:hidden} /* Might hide content, check usage */
-.w3-center {text-align:center !important}
-
-
-/* --- Responsive Adjustments --- */
-@media (max-width: 1200px) {
-     .user-info {
-         width: calc(23% - 2px); /* Adjust width to fit 4 per row */
-     }
-}
-
+/* Responsive Design */
 @media (max-width: 992px) {
-     .user-info {
-         width: calc(31.333% - 2px); /* Adjust width to fit 3 per row */
-     }
+    .iframe-column {
+        flex-basis: 100%; /* Make iframe column full width */
+        order: 1; /* Move iframe column first visually */
+    }
+    .user-column {
+        flex-basis: calc(50% - 10px); /* Two user columns side-by-side */
+        max-height: 50vh; /* Reduce height on smaller screens */
+        order: 2; /* Place user columns after iframe */
+    }
+    .controls-bar {
+        flex-direction: column; /* Stack controls vertically */
+    }
 }
 
 @media (max-width: 768px) {
-    .container {
-        padding: 10px; /* Reduced padding */
+    .user-column {
+        flex-basis: 100%; /* Stack user columns */
+         order: 2; /* Keep them below iframe */
     }
-
-    h1 {
-        font-size: 1.5rem; /* Adjusted font size */
-        margin-bottom: 5px;
+    .main-content {
+        flex-direction: column; /* Ensure stacking */
     }
-
-    .btn-container button {
-        padding: 8px 16px;
-        font-size: 0.9rem;
-    }
-
-    .iframe-container {
-        flex-direction: column;
-        margin-bottom: 10px;
-    }
-
-    .ifr {
-        width: 100%;
-        height: 30vh; /* Adjust height for stacked iframes */
-        margin-bottom: 5px; /* Space between stacked iframes */
-    }
-     .ifr:last-child {
-         margin-bottom: 0;
-     }
-
-
-    .lists-filters-container {
-        flex-direction: column; /* Stack lists and filters on smaller screens */
-    }
-
-    .lists-filters-container > div {
-        width: 100%; /* Full width for stacked sections */
-        margin-bottom: 10px; /* Space between stacked sections */
+     .app-container {
         padding: 10px;
     }
-     .lists-filters-container > div:last-child {
-         margin-bottom: 0;
-     }
-
-
-    .scrollable-list-container,
-    #onlineUsers.scrollable-list-container,
-    #previousUsers.scrollable-list-container {
-        height: 40vh; /* Give stacked lists more height */
-        border: none; /* Border is on the parent div now */
-        padding: 0;
-    }
-     .scrollable-list-container-2 {
-         height: 25vh; /* Adjusted height for the second iframe */
-         border: none;
-         padding: 0;
-     }
-
-
-    /* Adjust user info layout for smaller screens if needed */
-     .user-info {
-         width: calc(48% - 2px); /* Adjust width to fit 2 per row */
-     }
-
-
-    .radio-group, .search-filters, .filter-buttons {
-        padding: 5px; /* Keep padding */
-        margin-bottom: 5px;
-        flex-direction: column; /* Stack filter controls vertically */
-        align-items: flex-start; /* Align items to the start */
-    }
-
-    .radio-group label, .search-filters select, .search-filters input, .filter-buttons button {
-        width: 100%; /* Make filter controls take full width */
-        margin-right: 0; /* Remove horizontal margin */
-        margin-bottom: 5px; /* Add vertical spacing */
-    }
-     .radio-group label:last-child, .search-filters input:last-child,
-     .search-filters select:last-child, .filter-buttons button:last-child {
-         margin-bottom: 0;
-     }
-
-     .search-filters input[type="radio"], .search-filters input[type="checkbox"] {
-         width: auto; /* Don't force full width on radio/checkbox inputs themselves */
-         margin-right: 5px;
-     }
-
-}
-
-@media (max-width: 480px) {
-     .ifr {
-         height: 25vh; /* Slightly less height on very small screens */
-     }
-     .scrollable-list-container,
-     #onlineUsers.scrollable-list-container,
-     #previousUsers.scrollable-list-container {
-         height: 30vh; /* Less height for lists */
-     }
-      .scrollable-list-container-2 {
-          height: 20vh; /* Less height for second iframe */
-      }
-
-     .user-info {
-         width: calc(98% - 2px); /* One per row on very small screens */
-     }
-     .user-info .user-details p {
-         font-size: 0.7em; /* Even smaller font */
-     }
-}
-
-/* Ensure filter buttons and selects stack correctly if wrap is not enough */
-@media (max-width: 576px) { /* Bootstrap small breakpoint */
-     .filter-buttons {
-         flex-direction: column;
-         align-items: stretch; /* Stretch buttons to full width */
-     }
-     .filter-buttons button {
-         margin-right: 0;
-         margin-bottom: 5px;
-     }
-      .filter-buttons button:last-child {
-          margin-bottom: 0;
-      }
-      .search-filters {
-          flex-direction: column;
-          align-items: stretch;
-      }
-      .search-filters select, .search-filters input {
-           margin-right: 0;
-           margin-bottom: 5px;
-      }
-       .search-filters select:last-child, .search-filters input:last-child {
-           margin-bottom: 0;
-       }
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.2em; }
 }
