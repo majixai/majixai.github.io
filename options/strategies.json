@@ -1,0 +1,253 @@
+{
+  "oneLeg": [
+    {
+      "id": "long-call",
+      "name": "Long Call",
+      "outlook": "Bullish",
+      "description": "Simplest bullish strategy. Buys the right, but not the obligation, to purchase the underlying asset at the strike price before expiration. Used when expecting a significant rise in the underlying price.",
+      "construction": [
+        "Buy 1 Call Option"
+      ],
+      "maxProfit": "Unlimited",
+      "maxLoss": "Premium Paid",
+      "breakeven": "Strike Price + Premium Paid",
+      "example": "Buy 1 XYZ 100 Call for $2.50.",
+      "plotFunction": "plotBasicOption",
+      "plotlyDivId": "plotly-long-call",
+      "parameters": { "type": "call", "position": "long", "strike": 100, "premium": 2.50 }
+    },
+    {
+      "id": "short-put",
+      "name": "Short Put",
+      "outlook": "Bullish to Neutral",
+      "description": "Collects premium by selling the obligation to buy the underlying asset if it falls below the strike price. Profitable if the underlying stays above the strike price. High potential risk if the price drops significantly.",
+      "construction": [
+        "Sell 1 Put Option"
+      ],
+      "maxProfit": "Premium Received",
+      "maxLoss": "Strike Price - Premium Received (Substantial)",
+      "breakeven": "Strike Price - Premium Received",
+      "example": "Sell 1 XYZ 95 Put for $1.80.",
+      "plotFunction": "plotBasicOption",
+      "plotlyDivId": "plotly-short-put",
+      "parameters": { "type": "put", "position": "short", "strike": 95, "premium": 1.80 }
+    },
+    {
+        "id": "short-call",
+        "name": "Short Call (Naked)",
+        "outlook": "Bearish to Neutral",
+        "description": "Collects premium by selling the obligation to sell the underlying asset if it rises above the strike price. Profitable if the underlying stays below the strike price. High, theoretically unlimited risk if the price rises significantly.",
+        "construction": [
+          "Sell 1 Call Option"
+        ],
+        "maxProfit": "Premium Received",
+        "maxLoss": "Unlimited",
+        "breakeven": "Strike Price + Premium Received",
+        "example": "Sell 1 XYZ 105 Call for $1.50.",
+        "plotFunction": "plotBasicOption",
+        "plotlyDivId": "plotly-short-call",
+        "parameters": { "type": "call", "position": "short", "strike": 105, "premium": 1.50 }
+      },
+      {
+        "id": "long-put",
+        "name": "Long Put",
+        "outlook": "Bearish",
+        "description": "Simplest bearish strategy. Buys the right, but not the obligation, to sell the underlying asset at the strike price before expiration. Used when expecting a significant fall in the underlying price.",
+        "construction": [
+          "Buy 1 Put Option"
+        ],
+        "maxProfit": "Strike Price - Premium Paid (Substantial)",
+        "maxLoss": "Premium Paid",
+        "breakeven": "Strike Price - Premium Paid",
+        "example": "Buy 1 XYZ 100 Put for $2.80.",
+        "plotFunction": "plotBasicOption",
+        "plotlyDivId": "plotly-long-put",
+        "parameters": { "type": "put", "position": "long", "strike": 100, "premium": 2.80 }
+      }
+  ],
+  "twoLeg": [
+    {
+      "id": "bull-call-spread",
+      "name": "Bull Call Spread (Vertical Debit)",
+      "outlook": "Moderately Bullish",
+      "description": "A defined-risk bullish strategy. Buys a call at a lower strike and sells a call at a higher strike (same expiration). Cheaper than a long call, but profit potential is capped.",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1)",
+        "Sell 1 Call (Higher Strike K2)"
+      ],
+      "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower Strike (K1) + Net Debit Paid",
+      "example": "Buy 1 XYZ 100 Call, Sell 1 XYZ 105 Call for a net debit of $1.80.",
+      "plotFunction": "plotVerticalSpread",
+      "plotlyDivId": "plotly-bull-call-spread",
+      "parameters": { "type": "call", "position": "debit", "strike1": 100, "strike2": 105, "premium1": 3.00, "premium2": 1.20 }
+    },
+    {
+        "id": "bear-put-spread",
+        "name": "Bear Put Spread (Vertical Debit)",
+        "outlook": "Moderately Bearish",
+        "description": "A defined-risk bearish strategy. Buys a put at a higher strike and sells a put at a lower strike (same expiration). Cheaper than a long put, but profit potential is capped.",
+        "construction": [
+          "Buy 1 Put (Higher Strike K2)",
+          "Sell 1 Put (Lower Strike K1)"
+        ],
+        "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
+        "maxLoss": "Net Debit Paid",
+        "breakeven": "Higher Strike (K2) - Net Debit Paid",
+        "example": "Buy 1 XYZ 100 Put, Sell 1 XYZ 95 Put for a net debit of $1.70.",
+        "plotFunction": "plotVerticalSpread",
+        "plotlyDivId": "plotly-bear-put-spread",
+        "parameters": { "type": "put", "position": "debit", "strike1": 95, "strike2": 100, "premium1": 1.10, "premium2": 2.80 }
+      },
+      {
+        "id": "bear-call-spread",
+        "name": "Bear Call Spread (Vertical Credit)",
+        "outlook": "Moderately Bearish / Neutral",
+        "description": "A defined-risk strategy that profits if the underlying stays below the short call strike. Sells a call at a lower strike and buys a call at a higher strike (same expiration) for protection. Entered for a net credit.",
+        "construction": [
+          "Sell 1 Call (Lower Strike K1)",
+          "Buy 1 Call (Higher Strike K2)"
+        ],
+        "maxProfit": "Net Credit Received",
+        "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+        "breakeven": "Lower Strike (K1) + Net Credit Received",
+        "example": "Sell 1 XYZ 105 Call, Buy 1 XYZ 110 Call for a net credit of $1.10.",
+        "plotFunction": "plotVerticalSpread",
+        "plotlyDivId": "plotly-bear-call-spread",
+        "parameters": { "type": "call", "position": "credit", "strike1": 105, "strike2": 110, "premium1": 1.50, "premium2": 0.40 }
+      }
+  ],
+  "threeLeg": [
+     {
+      "id": "call-butterfly",
+      "name": "Long Call Butterfly",
+      "outlook": "Neutral (Low Volatility)",
+      "description": "A defined-risk strategy expecting the price to pin the middle strike at expiration. Profits from low volatility within a specific range. Typically involves a net debit.",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1)",
+        "Sell 2 Calls (Middle Strike K2)",
+        "Buy 1 Call (Higher Strike K3)"
+      ],
+      "notes": "Strikes K1, K2, K3 are typically equidistant.",
+      "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Debit Paid",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+      "example": "Buy 95C, Sell two 100C, Buy 105C for a net debit of $0.50.",
+      "plotFunction": "plotButterfly",
+      "plotlyDivId": "plotly-call-butterfly",
+      "parameters": { "type": "call", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 6.00, "premium2": 3.00, "premium3": 1.00 }
+    },
+    {
+        "id": "put-butterfly",
+        "name": "Long Put Butterfly",
+        "outlook": "Neutral (Low Volatility)",
+        "description": "Similar to the Call Butterfly but constructed with puts. Expects the price to pin the middle strike at expiration. Defined risk, typically entered for a net debit.",
+        "construction": [
+          "Buy 1 Put (Lower Strike K1)",
+          "Sell 2 Puts (Middle Strike K2)",
+          "Buy 1 Put (Higher Strike K3)"
+        ],
+        "notes": "Strikes K1, K2, K3 are typically equidistant.",
+        "maxProfit": "Higher Strike (K3) - Middle Strike (K2) - Net Debit Paid",
+        "maxLoss": "Net Debit Paid",
+        "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+        "example": "Buy 95P, Sell two 100P, Buy 105P for a net debit of $0.60.",
+        "plotFunction": "plotButterfly",
+        "plotlyDivId": "plotly-put-butterfly",
+        "parameters": { "type": "put", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 1.50, "premium2": 3.50, "premium3": 7.10 }
+    }
+  ],
+  "fourLeg": [
+    {
+      "id": "iron-condor",
+      "name": "Iron Condor",
+      "outlook": "Neutral (Low Volatility, Range Bound)",
+      "description": "A popular defined-risk, defined-profit strategy that benefits from time decay and low volatility. It involves selling an OTM Put Spread and an OTM Call Spread. The goal is for the underlying price to remain between the short strikes at expiration. Typically entered for a net credit.",
+      "construction": [
+        "Buy 1 OTM Put (Lower Wing - K1)",
+        "Sell 1 OTM Put (Lower Short Strike - K2)",
+        "Sell 1 OTM Call (Upper Short Strike - K3)",
+        "Buy 1 OTM Call (Upper Wing - K4)"
+      ],
+      "notes": "K1 < K2 < Current Price < K3 < K4. Wings (K2-K1 and K4-K3) are often equal width.",
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Width of Widest Spread - Net Credit Received",
+      "breakeven": "Lower: K2 - Net Credit Received; Upper: K3 + Net Credit Received",
+      "example": "Buy 90P, Sell 95P, Sell 105C, Buy 110C for a net credit of $1.20.",
+      "plotFunction": "plotIronCondor",
+      "plotlyDivId": "plotly-iron-condor",
+      "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+    },
+     {
+      "id": "iron-butterfly",
+      "name": "Iron Butterfly",
+      "outlook": "Neutral (Very Low Volatility, Price Pinning)",
+      "description": "A defined-risk, defined-profit strategy expecting minimal price movement and aiming for the underlying to expire exactly at the middle (short) strike. It combines a short ATM straddle (selling an ATM put and an ATM call) with protective OTM wings (buying a lower put and a higher call). Offers higher potential profit (credit) than an Iron Condor but requires a narrower price range. Typically entered for a net credit.",
+      "construction": [
+        "Buy 1 OTM Put (Lower Wing - K1)",
+        "Sell 1 ATM Put (Middle Strike - K2)",
+        "Sell 1 ATM Call (Middle Strike - K2)",
+        "Buy 1 OTM Call (Upper Wing - K3)"
+      ],
+       "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant.",
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Width of one Wing (e.g., K2 - K1) - Net Credit Received",
+      "breakeven": "Lower: K2 - Net Credit Received; Upper: K2 + Net Credit Received",
+      "example": "Buy 90P, Sell 100P, Sell 100C, Buy 110C for a net credit of $5.50.",
+      "plotFunction": "plotIronButterfly",
+      "plotlyDivId": "plotly-iron-butterfly",
+      "parameters": { "strikeP1": 90, "strikePC2": 100, "strikeC3": 110, "premiumP1": 0.50, "premiumP2": 4.00, "premiumC2": 3.80, "premiumC3": 0.40 }
+    },
+    {
+        "id": "reverse-iron-condor",
+        "name": "Reverse Iron Condor (Long Iron Condor)",
+        "outlook": "Volatile (Expecting Price Breakout)",
+        "description": "A defined-risk strategy that profits from a significant price move in either direction (increased volatility). It's the opposite of a standard Iron Condor, constructed by buying the OTM Put Spread and buying the OTM Call Spread. This results in a net debit.",
+        "construction": [
+          "Sell 1 OTM Put (Lower Wing - K1)",
+          "Buy 1 OTM Put (Lower Short Strike - K2)",
+          "Buy 1 OTM Call (Upper Short Strike - K3)",
+          "Sell 1 OTM Call (Upper Wing - K4)"
+        ],
+        "notes": "K1 < K2 < Current Price < K3 < K4. Opposite legs compared to standard Iron Condor.",
+        "maxProfit": "Width of Widest Spread - Net Debit Paid",
+        "maxLoss": "Net Debit Paid",
+        "breakeven": "Lower: K2 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+        "example": "Sell 90P, Buy 95P, Buy 105C, Sell 110C for a net debit of $1.80.",
+        "plotFunction": "plotReverseIronCondor",
+        "plotlyDivId": "plotly-reverse-iron-condor",
+        "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+      },
+     {
+      "id": "box-spread",
+      "name": "Box Spread (Long)",
+      "outlook": "Arbitrage / Synthetic Loan",
+      "description": "Not a directional or volatility play. Combines a Bull Call Spread and a Bear Put Spread using the same two strikes. Theoretically locks in a risk-free profit equal to the difference between strikes minus the net debit paid. In practice, arbitrage opportunities are rare due to commissions and bid-ask spreads. Often used for financing purposes (creating a synthetic loan or deposit).",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1)",
+        "Sell 1 Call (Higher Strike K2)",
+        "Buy 1 Put (Higher Strike K2)",
+        "Sell 1 Put (Lower Strike K1)"
+      ],
+       "notes": "All options must have the same expiration.",
+      "maxProfit": "(K2 - K1) - Net Debit Paid (if positive)",
+      "maxLoss": "Net Debit Paid - (K2 - K1) (if positive, usually near zero or small loss after costs)",
+      "breakeven": "N/A (Payoff is constant)",
+      "example": "Buy 100C, Sell 110C, Buy 110P, Sell 100P. Value at expiration = 10. Profit/Loss depends on Net Debit paid.",
+      "plotFunction": "plotBoxSpread",
+      "plotlyDivId": "plotly-box-spread",
+      "parameters": { "strike1": 100, "strike2": 110, "premC1": 6.00, "premC2": 1.50, "premP1": 4.00, "premP2": 1.20 }
+    }
+  ],
+   "about": {
+       "title": "About This Tool",
+       "content": [
+           "This page provides information and payoff diagrams for various option strategies, categorized by the number of 'legs' (individual option contracts) involved.",
+           "Use the menu on the left (or top on small screens) to navigate between strategy types (1-Leg, 2-Leg, 3-Leg, 4-Leg).",
+           "The payoff diagrams illustrate the theoretical profit or loss of each strategy *at expiration* based on the price of the underlying asset. They are generated using Plotly.js.",
+           "The examples use hypothetical strike prices and premiums for illustrative purposes only. Real-world premiums vary based on volatility, time to expiration, interest rates, and market conditions.",
+           "<strong>Disclaimer:</strong> This information is strictly for educational purposes and does not constitute financial advice. Option trading involves significant risk and is not suitable for all investors. Consult with a qualified financial professional before trading options."
+       ]
+   }
+}
