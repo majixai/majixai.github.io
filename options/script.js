@@ -17,48 +17,43 @@ function w3_close() {
     overlayBg.style.display = "none";
 }
 
-// --- Content Section Switching ---
+// --- Global Variables ---
+let strategyData = null; // To hold the loaded JSON data
 const strategySections = document.querySelectorAll('.strategy-section');
-const navLinks = document.querySelectorAll('.w3-sidebar .w3-button');
+const navLinks = document.querySelectorAll('.nav-link'); // Updated selector
 
+// --- Content Section Switching ---
 function showSection(sectionId) {
-    // Hide all sections
     strategySections.forEach(section => {
         section.style.display = 'none';
     });
-
-    // Remove active class from all links
     navLinks.forEach(link => {
         link.classList.remove('active');
     });
 
-    // Show the target section
     const targetSection = document.getElementById(sectionId);
     if (targetSection) {
         targetSection.style.display = 'block';
-        // Add active class to the clicked link (match href)
-        const activeLink = document.querySelector(`.w3-sidebar .w3-button[href="#${sectionId}"]`);
+        const activeLink = document.querySelector(`.nav-link[href="#${sectionId}"]`);
         if (activeLink) {
             activeLink.classList.add('active');
         }
-        // Trigger chart generation if needed (or do it on load)
-        // generateChartsForSection(sectionId); // Optional: generate charts on demand
+        // Charts are plotted on load, no need to replot here unless dynamic data changes
     } else {
-        // If target not found, show 'about' or default section
-         document.getElementById('about').style.display = 'block';
-         const aboutLink = document.querySelector(`.w3-sidebar .w3-button[href="#about"]`);
+        document.getElementById('about').style.display = 'block'; // Fallback
+        const aboutLink = document.querySelector(`.nav-link[href="#about"]`);
          if(aboutLink) aboutLink.classList.add('active');
     }
 }
 
+
 // --- Plotly Chart Generation ---
 
 // Helper function to create underlying price range
-function generatePriceRange(centerPrice, rangePercentage = 0.3) {
+function generatePriceRange(centerPrice, rangePercentage = 0.3, steps = 100) {
     const range = centerPrice * rangePercentage;
-    const minPrice = Math.max(0, centerPrice - range); // Ensure price doesn't go below 0
+    const minPrice = Math.max(0.01, centerPrice - range); // Avoid exactly 0 for some calcs
     const maxPrice = centerPrice + range;
-    const steps = 100;
     const stepSize = (maxPrice - minPrice) / steps;
     let prices = [];
     for (let i = 0; i <= steps; i++) {
@@ -70,197 +65,306 @@ function generatePriceRange(centerPrice, rangePercentage = 0.3) {
 // Helper function for Plotly layout
 function getPlotlyLayout(title) {
     return {
-        title: title,
+        title: { text: title, font: { size: 16 } },
         xaxis: {
             title: 'Underlying Price at Expiration',
             zeroline: true,
-            zerolinewidth: 2,
-            zerolinecolor: '#969696'
+            zerolinewidth: 1,
+            zerolinecolor: '#bdbdbd'
         },
         yaxis: {
             title: 'Profit / Loss',
             zeroline: true,
             zerolinewidth: 2,
-            zerolinecolor: '#969696'
+            zerolinecolor: '#969696',
+            tickformat: '$,.2f' // Format y-axis as currency
         },
-        showlegend: false, // Keep it simple for single trace diagrams
-        margin: { l: 50, r: 30, b: 50, t: 50, pad: 4 } // Adjust margins
+        showlegend: false,
+        margin: { l: 60, r: 30, b: 50, t: 50, pad: 4 }, // Adjusted margins
+        hovermode: 'x unified' // Improved hover experience
     };
 }
 
-// --- Individual Strategy Plotting Functions ---
+// --- Payoff Calculation Functions ---
 
-function plotLongCall(id = 'plotly-long-call') {
-    const strike = 100;
-    const premium = 2.50;
+// Calculates P/L for a single option leg at expiration
+function calculateLegPayoff(price, type, position, strike, premium) {
+    let intrinsicValue = 0;
+    if (type === 'call') {
+        intrinsicValue = Math.max(0, price - strike);
+    } else { // put
+        intrinsicValue = Math.max(0, strike - price);
+    }
+
+    if (position === 'long') {
+        return intrinsicValue - premium;
+    } else { // short
+        return -intrinsicValue + premium; // Premium received is positive initial cashflow
+    }
+}
+
+// --- Strategy Plotting Functions ---
+// These now accept parameters from the JSON
+
+function plotBasicOption(params, id) {
+    const { type, position, strike, premium } = params;
     const prices = generatePriceRange(strike);
-    const profits = prices.map(p => Math.max(0, p - strike) - premium);
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'green' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Long ${strike} Call (Premium: ${premium.toFixed(2)})`));
+    const profits = prices.map(p => calculateLegPayoff(p, type, position, strike, premium));
+    const trace = {
+        x: prices, y: profits, type: 'scatter', mode: 'lines',
+        line: { color: position === 'long' ? (type === 'call' ? 'green' : 'blue') : 'red' }
+     };
+     const posText = position.charAt(0).toUpperCase() + position.slice(1);
+     const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`${posText} ${strike} ${typeText} (Premium: ${premium.toFixed(2)})`));
 }
 
-function plotShortPut(id = 'plotly-short-put') {
-    const strike = 95;
-    const premium = 1.80;
-    const prices = generatePriceRange(strike);
-    const profits = prices.map(p => Math.min(0, strike - p) + premium);
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'red' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Short ${strike} Put (Premium: ${premium.toFixed(2)})`));
+function plotVerticalSpread(params, id) {
+    const { type, position, strike1, strike2, premium1, premium2 } = params;
+    // Ensure strikes are ordered correctly for calculation
+    const lowerStrike = Math.min(strike1, strike2);
+    const higherStrike = Math.max(strike1, strike2);
+    // Premiums correspond to the specific strikes provided in JSON
+    const lowerStrikePremium = (strike1 === lowerStrike) ? premium1 : premium2;
+    const higherStrikePremium = (strike1 === higherStrike) ? premium1 : premium2;
+
+    const centerPrice = (lowerStrike + higherStrike) / 2;
+    const prices = generatePriceRange(centerPrice);
+    let profits;
+    let netCost; // Can be debit (positive) or credit (negative)
+
+    if (position === 'debit') { // Buying the lower strike spread (Bull Call or Bear Put)
+        const longLegPos = (type === 'call') ? 'long' : 'long'; // Long lower call or higher put
+        const shortLegPos = (type === 'call') ? 'short' : 'short'; // Short higher call or lower put
+        const longStrike = (type === 'call') ? lowerStrike : higherStrike;
+        const shortStrike = (type === 'call') ? higherStrike : lowerStrike;
+        const longPremium = (type === 'call') ? lowerStrikePremium : higherStrikePremium;
+        const shortPremium = (type === 'call') ? higherStrikePremium : lowerStrikePremium;
+        netCost = longPremium - shortPremium; // Net Debit
+        profits = prices.map(p =>
+            calculateLegPayoff(p, type, longLegPos, longStrike, longPremium) +
+            calculateLegPayoff(p, type, shortLegPos, shortStrike, shortPremium)
+        );
+    } else { // 'credit' - Selling the lower strike spread (Bear Call or Bull Put)
+         const shortLegPos = (type === 'call') ? 'short' : 'short'; // Short lower call or higher put
+         const longLegPos = (type === 'call') ? 'long' : 'long'; // Long higher call or lower put
+         const shortStrike = (type === 'call') ? lowerStrike : higherStrike;
+         const longStrike = (type === 'call') ? higherStrike : lowerStrike;
+         const shortPremium = (type === 'call') ? lowerStrikePremium : higherStrikePremium;
+         const longPremium = (type === 'call') ? higherStrikePremium : lowerStrikePremium;
+         netCost = longPremium - shortPremium; // Net Credit (will be negative cost)
+         profits = prices.map(p =>
+             calculateLegPayoff(p, type, shortLegPos, shortStrike, shortPremium) +
+             calculateLegPayoff(p, type, longLegPos, longStrike, longPremium)
+         );
+    }
+
+    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'purple' } };
+    const costType = netCost >= 0 ? 'Debit' : 'Credit';
+    const costValue = Math.abs(netCost);
+    const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+    const posText = position.charAt(0).toUpperCase() + position.slice(1);
+
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`${posText} ${typeText} Spread ${lowerStrike}/${higherStrike} (${costType}: ${costValue.toFixed(2)})`));
 }
 
-function plotBullCallSpread(id = 'plotly-bull-call-spread') {
-    const longStrike = 100;
-    const shortStrike = 105;
-    const longPremium = 3.00;
-    const shortPremium = 1.20;
-    const netDebit = longPremium - shortPremium;
-    const prices = generatePriceRange(longStrike);
+function plotButterfly(params, id) {
+    const { type, strike1, strike2, strike3, premium1, premium2, premium3 } = params;
+    // Legs: Long K1, Short 2x K2, Long K3
+    const netDebit = premium1 - (2 * premium2) + premium3;
+    const centerPrice = strike2;
+    const prices = generatePriceRange(centerPrice);
+
     const profits = prices.map(p =>
-        (Math.max(0, p - longStrike) - longPremium) + // Long Call P/L
-        (Math.min(0, shortStrike - p) + shortPremium) // Short Call P/L - Treat premium as positive cash flow
-    );
-     // Alternative calc: clip profit/loss
-    // const profits = prices.map(p => {
-    //    let profit = (p <= longStrike) ? -netDebit : (p >= shortStrike ? (shortStrike - longStrike - netDebit) : (p - longStrike - netDebit));
-    //    return profit;
-    // });
-
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'blue' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Bull Call Spread ${longStrike}/${shortStrike} (Debit: ${netDebit.toFixed(2)})`));
-}
-
-
-function plotBearPutSpread(id = 'plotly-bear-put-spread') {
-    const longStrike = 100;
-    const shortStrike = 95;
-    const longPremium = 2.80;
-    const shortPremium = 1.10;
-    const netDebit = longPremium - shortPremium;
-    const prices = generatePriceRange(longStrike);
-    const profits = prices.map(p =>
-        (Math.max(0, longStrike - p) - longPremium) + // Long Put P/L
-        (Math.min(0, p - shortStrike) + shortPremium) // Short Put P/L
+        calculateLegPayoff(p, type, 'long', strike1, premium1) +
+        (2 * calculateLegPayoff(p, type, 'short', strike2, premium2)) + // Sell 2
+        calculateLegPayoff(p, type, 'long', strike3, premium3)
     );
 
     const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'orange' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Bear Put Spread ${longStrike}/${shortStrike} (Debit: ${netDebit.toFixed(2)})`));
+    const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`${typeText} Butterfly ${strike1}/${strike2}/${strike3} (Debit: ${netDebit.toFixed(2)})`));
 }
 
+function plotIronCondor(params, id) {
+    const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
+    // Legs: Long P1, Short P2, Short C3, Long C4 (Premiums already signed in calcLegPayoff)
+    // Premiums passed here are absolute values as typically quoted
+    const netCredit = premiumP2 + premiumC3 - premiumP1 - premiumC4;
+    const centerPrice = (strikeP2 + strikeC3) / 2;
+    const prices = generatePriceRange(centerPrice);
 
-function plotCallButterfly(id = 'plotly-call-butterfly') {
-    const lowStrike = 95;
-    const midStrike = 100;
-    const highStrike = 105;
-    const lowPremium = 6.00; // Buy
-    const midPremium = 3.00; // Sell x2
-    const highPremium = 1.00; // Buy
-    const netDebit = lowPremium - (2 * midPremium) + highPremium;
-
-    const prices = generatePriceRange(midStrike);
     const profits = prices.map(p =>
-        (Math.max(0, p - lowStrike) - lowPremium) +    // Long Call 1
-        (-2 * (Math.max(0, p - midStrike) - midPremium)) + // Short Calls 2 (opposite P/L)
-        (Math.max(0, p - highStrike) - highPremium)   // Long Call 3
+        calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) +
+        calculateLegPayoff(p, 'put', 'short', strikeP2, premiumP2) +
+        calculateLegPayoff(p, 'call', 'short', strikeC3, premiumC3) +
+        calculateLegPayoff(p, 'call', 'long', strikeC4, premiumC4)
     );
 
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'purple' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Call Butterfly ${lowStrike}/${midStrike}/${highStrike} (Debit: ${netDebit.toFixed(2)})`));
+    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#007bff' } }; // Blue
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`Iron Condor ${strikeP1}/${strikeP2}P ${strikeC3}/${strikeC4}C (Credit: ${netCredit.toFixed(2)})`));
+}
+
+function plotIronButterfly(params, id) {
+     const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
+    // Legs: Long P1, Short P2, Short C2, Long C3
+    const netCredit = premiumP2 + premiumC2 - premiumP1 - premiumC3;
+    const centerPrice = strikePC2;
+    const prices = generatePriceRange(centerPrice);
+
+    const profits = prices.map(p =>
+        calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) +
+        calculateLegPayoff(p, 'put', 'short', strikePC2, premiumP2) + // Short Put at K2
+        calculateLegPayoff(p, 'call', 'short', strikePC2, premiumC2) + // Short Call at K2
+        calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3)
+    );
+
+    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#ffc107' } }; // Gold
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`Iron Butterfly ${strikeP1}P / ${strikePC2}PC / ${strikeC3}C (Credit: ${netCredit.toFixed(2)})`));
+}
+
+function plotReverseIronCondor(params, id) {
+    const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
+    // Legs: Short P1, Long P2, Long C3, Short C4
+    const netDebit = premiumP2 + premiumC3 - premiumP1 - premiumC4; // Same premium values, but interpretation changes
+    const centerPrice = (strikeP2 + strikeC3) / 2;
+    const prices = generatePriceRange(centerPrice);
+
+    const profits = prices.map(p =>
+        calculateLegPayoff(p, 'put', 'short', strikeP1, premiumP1) +
+        calculateLegPayoff(p, 'put', 'long', strikeP2, premiumP2) +
+        calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3) +
+        calculateLegPayoff(p, 'call', 'short', strikeC4, premiumC4)
+    );
+
+    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#dc3545' } }; // Red
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`Reverse Iron Condor ${strikeP1}/${strikeP2}P ${strikeC3}/${strikeC4}C (Debit: ${netDebit.toFixed(2)})`));
 }
 
 
-function plotIronCondor(id = 'plotly-iron-condor') {
-    // Legs: Buy Put Wing, Sell Put, Sell Call, Buy Call Wing
-    const buyPutStrike = 90;
-    const sellPutStrike = 95;
-    const sellCallStrike = 105;
-    const buyCallStrike = 110;
-    // Premiums (example): positive for selling, negative for buying
-    const buyPutPrem = -0.50;
-    const sellPutPrem = 1.80;
-    const sellCallPrem = 1.50;
-    const buyCallPrem = -0.40;
-    const netCredit = sellPutPrem + sellCallPrem + buyPutPrem + buyCallPrem; // Summing premiums (signs matter)
-
-    const prices = generatePriceRange((sellPutStrike + sellCallStrike) / 2); // Center around middle
-
-    const profits = prices.map(p => {
-        const longPutProfit = Math.max(0, buyPutStrike - p) + buyPutPrem;
-        const shortPutProfit = -Math.max(0, sellPutStrike - p) + sellPutPrem; // P/L of short put = -(P/L of long put) + premium
-        const shortCallProfit = -Math.max(0, p - sellCallStrike) + sellCallPrem; // P/L of short call = -(P/L of long call) + premium
-        const longCallProfit = Math.max(0, p - buyCallStrike) + buyCallPrem;
-        return longPutProfit + shortPutProfit + shortCallProfit + longCallProfit;
-    });
-
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#007bff' } }; // A distinct blue
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Iron Condor ${buyPutStrike}/${sellPutStrike}P ${sellCallStrike}/${buyCallStrike}C (Credit: ${netCredit.toFixed(2)})`));
-}
-
-function plotIronButterfly(id = 'plotly-iron-butterfly') {
-    // Legs: Buy Put Wing, Sell ATM Put, Sell ATM Call, Buy Call Wing
-    const buyPutStrike = 90;
-    const sellStrike = 100; // Same strike for Put and Call
-    const buyCallStrike = 110;
-    // Premiums (example): positive for selling, negative for buying
-    const buyPutPrem = -0.50;
-    const sellPutPrem = 4.00; // Higher premium for ATM
-    const sellCallPrem = 3.80; // Higher premium for ATM
-    const buyCallPrem = -0.40;
-    const netCredit = sellPutPrem + sellCallPrem + buyPutPrem + buyCallPrem;
-
-    const prices = generatePriceRange(sellStrike); // Center around middle strike
-
-     const profits = prices.map(p => {
-        const longPutProfit = Math.max(0, buyPutStrike - p) + buyPutPrem;
-        const shortPutProfit = -Math.max(0, sellStrike - p) + sellPutPrem;
-        const shortCallProfit = -Math.max(0, p - sellStrike) + sellCallPrem;
-        const longCallProfit = Math.max(0, p - buyCallStrike) + buyCallPrem;
-        return longPutProfit + shortPutProfit + shortCallProfit + longCallProfit;
-    });
-
-    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#ffc107' } }; // A distinct yellow/gold
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Iron Butterfly ${buyPutStrike}P / ${sellStrike}PC / ${buyCallStrike}C (Credit: ${netCredit.toFixed(2)})`));
-}
-
-function plotBoxSpread(id = 'plotly-box-spread') {
+function plotBoxSpread(params, id) {
+    const { strike1, strike2, premC1, premC2, premP1, premP2 } = params;
     // Legs: Buy C1, Sell C2, Buy P2, Sell P1
-    const k1 = 100; // Lower Strike
-    const k2 = 110; // Higher Strike
-    // Example Premiums (signs matter: negative for buy, positive for sell)
-    const buyCallPrem = -6.00;
-    const sellCallPrem = 1.50;
-    const buyPutPrem = -1.20; // Buy K2 Put
-    const sellPutPrem = 4.00; // Sell K1 Put
-    const netDebit = -(buyCallPrem + sellCallPrem + buyPutPrem + sellPutPrem); // Net cost = negative of sum of premiums
-
-    const valueAtExpiry = k2 - k1;
+    // Premiums passed are absolute values
+    const netDebit = premC1 - premC2 + premP2 - premP1;
+    const valueAtExpiry = strike2 - strike1;
     const profit = valueAtExpiry - netDebit;
 
-    const prices = generatePriceRange(k1 + (k2-k1)/2, 0.4); // Wider range to show flatness
+    const centerPrice = strike1 + (strike2-strike1)/2;
+    const prices = generatePriceRange(centerPrice, 0.4); // Wider range
 
-    // Profit is constant regardless of price
-    const profits = prices.map(p => profit);
+    const profits = prices.map(p => profit); // Profit is constant
 
     const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'grey' } };
-    Plotly.newPlot(id, [trace], getPlotlyLayout(`Box Spread ${k1}/${k2} (Value: ${valueAtExpiry}, Debit: ${netDebit.toFixed(2)}, P/L: ${profit.toFixed(2)})`));
+    Plotly.newPlot(id, [trace], getPlotlyLayout(`Box Spread ${strike1}/${strike2} (Value: ${valueAtExpiry.toFixed(2)}, Debit: ${netDebit.toFixed(2)}, P/L: ${profit.toFixed(2)})`));
 }
 
+// Mapping strategy plot function names from JSON to actual JS functions
+const plotFunctionMap = {
+    plotBasicOption,
+    plotVerticalSpread,
+    plotButterfly,
+    plotIronCondor,
+    plotIronButterfly,
+    plotReverseIronCondor,
+    plotBoxSpread
+};
+
+// --- Data Loading and HTML Population ---
+
+function populateStrategyDetails(strategy, targetContainer) {
+    const panel = document.createElement('div');
+    panel.className = 'w3-panel w3-card-4 w3-padding strategy-panel';
+    panel.setAttribute('data-strategy-id', strategy.id); // Add ID for potential styling hooks
+
+    let constructionHTML = '';
+    if (strategy.construction && strategy.construction.length > 0) {
+        constructionHTML = `<ul>${strategy.construction.map(item => `<li>${item}</li>`).join('')}</ul>`;
+    }
+
+    let notesHTML = strategy.notes ? `<p class="strategy-notes">${strategy.notes}</p>` : '';
+    let exampleHTML = strategy.example ? `<p class="strategy-example"><em>Example: ${strategy.example}</em></p>` : '';
+
+
+    panel.innerHTML = `
+        <h3>${strategy.name}</h3>
+        <p><strong>Outlook:</strong> <span class="strategy-outlook">${strategy.outlook}</span></p>
+        <p class="strategy-description">${strategy.description}</p>
+        <div class="strategy-construction">
+            <strong>Construction:</strong>
+            ${constructionHTML}
+            ${notesHTML}
+        </div>
+        <p><strong>Max Profit:</strong> <span class="strategy-max-profit">${strategy.maxProfit}</span></p>
+        <p><strong>Max Loss:</strong> <span class="strategy-max-loss">${strategy.maxLoss}</span></p>
+        <p><strong>Breakeven:</strong> <span class="strategy-breakeven">${strategy.breakeven}</span></p>
+        <div id="${strategy.plotlyDivId}" class="plotly-chart"></div>
+        ${exampleHTML}
+    `;
+    targetContainer.appendChild(panel);
+}
+
+function populateAboutSection(aboutData) {
+     const aboutContainer = document.getElementById('about');
+     aboutContainer.innerHTML = `<h2>${aboutData.title}</h2>`;
+     aboutData.content.forEach(p_content => {
+         const p = document.createElement('p');
+         p.innerHTML = p_content; // Use innerHTML to render the <strong> tag
+         aboutContainer.appendChild(p);
+     });
+}
+
+
+async function loadAndDisplayStrategies() {
+    try {
+        const response = await fetch('strategies.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        strategyData = await response.json();
+
+        // Populate About section
+        if (strategyData.about) {
+            populateAboutSection(strategyData.about);
+        }
+
+        // Populate strategy sections
+        for (const legType in strategyData) {
+            if (legType !== 'about' && Array.isArray(strategyData[legType])) {
+                const containerId = legType.toLowerCase().replace('leg', '-leg'); // e.g., oneLeg -> one-leg
+                const container = document.getElementById(containerId);
+                if (container) {
+                    strategyData[legType].forEach(strategy => {
+                        populateStrategyDetails(strategy, container);
+                         // Call the corresponding plot function
+                         if (strategy.plotFunction && plotFunctionMap[strategy.plotFunction] && strategy.parameters && strategy.plotlyDivId) {
+                           plotFunctionMap[strategy.plotFunction](strategy.parameters, strategy.plotlyDivId);
+                       } else {
+                           console.warn(`Plot function or parameters missing for strategy: ${strategy.name}`);
+                       }
+                    });
+                } else {
+                     console.warn(`Container element not found for leg type: ${containerId}`);
+                }
+            }
+        }
+
+         // Set initial active section (e.g., 'about' or 'four-leg')
+         showSection('about'); // Or change to 'four-leg' to default there
+         // showSection('four-leg');
+
+
+    } catch (error) {
+        console.error("Failed to load or process strategies:", error);
+        // Display an error message to the user on the page
+        const mainContent = document.querySelector('.w3-main');
+        if (mainContent) {
+            mainContent.innerHTML = `<div class="w3-panel w3-red w3-padding"><h2>Error</h2><p>Could not load strategy data. Please try again later.</p><p><small>${error}</small></p></div>` + mainContent.innerHTML;
+        }
+    }
+}
 
 // --- Initial Setup ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Plot charts for the initially visible section (or all sections)
-    // Showing 'about' first, but let's plot all charts on load for simplicity.
-    // If performance becomes an issue with many charts, switch to plotting on demand
-    // inside showSection().
-    plotLongCall();
-    plotShortPut();
-    plotBullCallSpread();
-    plotBearPutSpread();
-    plotCallButterfly();
-    plotIronCondor();
-    plotIronButterfly();
-    plotBoxSpread();
-
-    // Set the initial active link/section if not 'about'
-    // showSection('four-leg'); // Example: Start on 4-leg section
-    showSection('about'); // Start on about section by default
+    loadAndDisplayStrategies(); // Load data, populate HTML, and plot charts
 });
