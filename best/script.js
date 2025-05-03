@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- API Configuration ---
     // !! Verify this URL is correct and accessible from where your page is hosted !!
-    const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&gender=f';
+    const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=dU9X&wm=9cg6A&client_ip=request_ip&gender=f';
     const apiLimit = 500; // Limit per API page request
     const fetchIntervalDuration = 120000; // 2 minutes (120 * 1000 milliseconds)
     const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
@@ -780,7 +780,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Construct the iframe URL (ensure parameters are correct)
         // Example URL structure - verify this matches Chaturbate's requirements
-        const iframeSrc = `https://chaturbate.com/?track=embed&room=${user.username}&tour=dU9X&campaign=9cg6A&disable_sound=0&bgcolor=black`;
+        const iframeSrc = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=0&bgcolor=black`;
         // Or use the fullvideo URL if preferred:
         // const iframeSrc = `https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=${user.username}`;
         // &
