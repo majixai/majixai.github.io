@@ -1,0 +1,49 @@
+body, h1, h2, h3, h4, h5, h6 {
+    font-family: "Arial", sans-serif;
+}
+
+/* Style for the main content area to accommodate sidebar */
+.w3-main {
+    margin-left: 250px;
+    transition: margin-left .4s; /* Smooth transition for sidebar */
+}
+
+/* Style for Plotly chart containers */
+.plotly-chart {
+    width: 100%;
+    min-height: 350px; /* Ensure charts have some height */
+    margin-top: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    background-color: #fdfdfd; /* Slightly off-white background */
+}
+
+/* Hide strategy sections by default */
+.strategy-section {
+    display: none;
+}
+
+/* Add some padding within panels */
+.w3-panel.w3-padding {
+    padding: 16px 24px !important;
+}
+
+/* Adjust sidebar width and main content margin on medium/large screens if needed */
+/* W3.CSS handles most responsiveness, but you can add overrides */
+@media (max-width: 992px) {
+    .w3-main {
+        margin-left: 0; /* No margin when sidebar is hidden */
+    }
+    .w3-sidebar.w3-collapse {
+        display: none; /* Ensure it's hidden by default on smaller screens */
+    }
+     .w3-main {
+        padding-top: 0; /* Remove extra padding when top bar is not visible */
+    }
+}
+
+/* Style for the active menu item (optional) */
+.w3-sidebar .w3-button.active {
+    background-color: #f1f1f1; /* Light grey background for active link */
+    color: #000;
+}
