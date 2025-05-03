@@ -266,7 +266,7 @@
                      let errorBody = response.statusText; // Default error
                      try {
                         // Try to get more specific error message from proxy response body
-                        errorBody = await response.text();
+                        // errorBody = await response.text();
                      } catch (e) {
                         console.warn("Could not read error response body:", e);
                      }
