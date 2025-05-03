@@ -1,6 +1,4 @@
-body, h1, h2, h3, h4, h5, h6 {
-    font-family: "Arial", sans-serif;
-}
+/* ... (previous styles remain the same) ... */
 
 /* Style for the main content area to accommodate sidebar */
 .w3-main {
@@ -28,8 +26,37 @@ body, h1, h2, h3, h4, h5, h6 {
     padding: 16px 24px !important;
 }
 
+/* Styles for dynamically added content */
+.strategy-panel {
+    margin-bottom: 24px; /* Space between strategy panels */
+}
+
+.strategy-construction ul {
+    list-style: disc;
+    margin-left: 20px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+.strategy-construction li {
+    margin-bottom: 4px;
+}
+
+.strategy-notes {
+    font-style: italic;
+    color: #555;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+.strategy-example {
+     font-style: italic;
+     color: #555;
+     margin-top: 10px;
+     font-size: 0.9em;
+}
+
+
 /* Adjust sidebar width and main content margin on medium/large screens if needed */
-/* W3.CSS handles most responsiveness, but you can add overrides */
 @media (max-width: 992px) {
     .w3-main {
         margin-left: 0; /* No margin when sidebar is hidden */
@@ -40,10 +67,29 @@ body, h1, h2, h3, h4, h5, h6 {
      .w3-main {
         padding-top: 0; /* Remove extra padding when top bar is not visible */
     }
+     /* Ensure top padding when main content is visible */
+    .w3-main > .w3-container {
+        padding-top: 32px !important;
+    }
 }
 
-/* Style for the active menu item (optional) */
-.w3-sidebar .w3-button.active {
-    background-color: #f1f1f1; /* Light grey background for active link */
-    color: #000;
+/* Style for the active menu item */
+.nav-link.active { /* Changed selector */
+    background-color: #f1f1f1 !important;
+    color: #000 !important;
+    font-weight: bold;
+}
+
+/* Add specific background colors for 4-leg strategies for emphasis */
+#four-leg .strategy-panel[data-strategy-id="iron-condor"] {
+    background-color: #e7f3fe; /* Light blue */
+}
+#four-leg .strategy-panel[data-strategy-id="iron-butterfly"] {
+     background-color: #fff9e6; /* Light yellow */
+}
+#four-leg .strategy-panel[data-strategy-id="reverse-iron-condor"] {
+     background-color: #ffebee; /* Light red */
+}
+#four-leg .strategy-panel[data-strategy-id="box-spread"] {
+     background-color: #f5f5f5; /* Light grey */
 }
