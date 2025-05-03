@@ -3,84 +3,1146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Option Strategy Visualizer</title>
+    <title>Comprehensive React CDN Option Visualizer (Fetch, IndexedDB, Cache)</title>
+
+    <!-- W3.CSS Framework -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <!-- Added for burger icon -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <!-- React via CDN (Development versions for easy debugging) -->
+    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel Standalone (Required for JSX transformation in the browser - NOT FOR PRODUCTION EFFICIENCY) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Plotly.js via CDN -->
     <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+
+    <!-- Google Analytics Snippet (Replace G-XXXXXXXXXX with your actual Measurement ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      // Initialize Google Analytics Data Layer and gtag function
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // Configure Google Analytics with your Measurement ID
+      gtag('config', 'G-XXXXXXXXXX'); // <-- REPLACE THIS ID
+      console.log("Google Analytics Snippet Initialized.");
+    </script>
+
+    <!-- Basic Inline Styles -->
+    <style>
+        /* General Typography & Layout */
+        body, h1, h2, h3, h4, h5, h6 { font-family: "Segoe UI", Arial, sans-serif; }
+        .main-content-area { transition: margin-left .4s; margin-left: 250px; /* Default margin for sidebar */ }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .main-content-area { margin-left: 0; /* Remove margin when sidebar collapses */ }
+            .main-content-area-padded-top { padding-top: 83px !important; /* Add padding for fixed top bar */}
+        }
+
+        /* Plotly Chart Container */
+        .plotly-chart-container {
+            width: 100%;
+            min-height: 360px; /* Slightly larger charts */
+            margin-top: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #d1d1d1;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Strategy Panel Styling */
+        .strategy-panel {
+            margin-bottom: 30px;
+            padding: 20px 28px !important;
+            border-left: 4px solid #4CAF50; /* Accent border */
+        }
+        .strategy-panel h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .strategy-construction ul { list-style: disc; margin-left: 25px; margin-top: 8px; margin-bottom: 12px; }
+        .strategy-construction li { margin-bottom: 5px; line-height: 1.5; }
+
+        /* Specific Detail Sections Styling */
+        .strategy-detail-section {
+            font-size: 0.95em;
+            color: #444;
+            margin-top: 12px;
+            padding-left: 15px;
+            border-left: 3px solid #e0e0e0;
+            background-color: #fafafa;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+        }
+        .strategy-detail-section strong { color: #222; }
+
+        .strategy-notes { font-style: italic; color: #555; }
+        .strategy-example { font-style: italic; color: #555; margin-top: 15px; font-size: 0.9em; }
+
+        /* Specific Backgrounds for 4-Leg Strategies */
+        .strategy-panel[data-strategy-id^="iron-condor"] { background-color: #e7f3fe; border-left-color: #2196F3; }
+        .strategy-panel[data-strategy-id^="iron-butterfly"] { background-color: #fff9e6; border-left-color: #FFC107; }
+        .strategy-panel[data-strategy-id^="reverse-iron-condor"] { background-color: #ffebee; border-left-color: #f44336; }
+         .strategy-panel[data-strategy-id^="reverse-iron-butterfly"] { background-color: #fff3e0; border-left-color: #ff9800; }
+        .strategy-panel[data-strategy-id^="box-spread"] { background-color: #f5f5f5; border-left-color: #9e9e9e; }
+
+        /* Loading / Status Messages */
+        .status-message { text-align: center; padding: 40px; font-size: 1.2em; border-radius: 4px; margin: 20px; }
+        .loading-message { background-color: #e3f2fd; color: #1e88e5; }
+        .error-message { background-color: #ffebee; color: #c62828; }
+        .offline-message { background-color: #fff9c4; color: #f57f17; }
+        .info-message { background-color: #e8f5e9; color: #2e7d32; font-size: 0.9em; padding: 10px; margin-top: 5px; }
+
+        /* Navigation Styling */
+        .nav-link.active { background-color: #e0e0e0 !important; color: #000 !important; font-weight: bold; border-left: 3px solid #4CAF50; }
+        .w3-sidebar .w3-button { transition: background-color 0.2s ease; }
+        .w3-sidebar .w3-button:hover { background-color: #f1f1f1 !important; }
+
+        /* Utility Buttons */
+        .action-button { margin-top: 15px; margin-right: 10px; }
+    </style>
 </head>
 <body>
+    <!-- Root element where the React application will be mounted -->
+    <div id="root"></div>
 
-<!-- Sidebar/Menu -->
-<nav class="w3-sidebar w3-bar-block w3-white w3-collapse w3-top w3-card" style="z-index:3;width:250px;" id="mySidebar">
-    <div class="w3-container w3-display-container w3-padding-16">
-        <i onclick="w3_close()" class="fa fa-remove w3-hide-large w3-button w3-display-topright"></i>
-        <h3 class="w3-wide"><b>OPTIONS</b></h3>
-    </div>
-    <div class="w3-padding-64 w3-large w3-text-grey" style="font-weight:bold">
-        <!-- Links will be dynamically generated if needed, or keep static -->
-        <a href="#one-leg" onclick="showSection('one-leg'); w3_close();" class="w3-bar-item w3-button nav-link">1-Leg Strategies</a>
-        <a href="#two-leg" onclick="showSection('two-leg'); w3_close();" class="w3-bar-item w3-button nav-link">2-Leg Strategies</a>
-        <a href="#three-leg" onclick="showSection('three-leg'); w3_close();" class="w3-bar-item w3-button nav-link">3-Leg Strategies</a>
-        <a href="#four-leg" onclick="showSection('four-leg'); w3_close();" class="w3-bar-item w3-button nav-link">4-Leg Strategies</a>
-        <a href="#about" onclick="showSection('about'); w3_close();" class="w3-bar-item w3-button nav-link">About</a>
-    </div>
-</nav>
+    <!--
+    ============================================================
+    React Application Script using Babel for in-browser JSX
+    ============================================================
+    IMPORTANT NOTE: Using Babel Standalone (`type="text/babel"`)
+    is suitable for demos or simple cases but has performance
+    implications in production compared to a pre-compiled build.
+    ============================================================
+    -->
+    <script type="text/babel">
 
-<!-- Top menu on small screens -->
-<header class="w3-bar w3-top w3-hide-large w3-black w3-xlarge">
-    <div class="w3-bar-item w3-padding-24 w3-wide">OPTIONS</div>
-    <a href="javascript:void(0)" class="w3-bar-item w3-button w3-padding-24 w3-right" onclick="w3_open()"><i class="fa fa-bars"></i></a>
-</header>
+        // Destructure commonly used React hooks for convenience
+        const { useState, useEffect, useRef, useCallback, memo } = React;
 
-<!-- Overlay effect when opening sidebar on small screens -->
-<div class="w3-overlay w3-hide-large" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+        // --- Application Constants ---
+        const DB_NAME = 'optionStrategyDB_v2'; // Database name
+        const DB_VERSION = 2; // Increment version if schema changes
+        const STORE_NAME = 'strategyStore'; // Name of the IndexedDB object store
+        const DATA_KEY = 'allStrategiesData'; // Key used to store the entire data blob in IndexedDB
+        const CACHE_NAME = 'option-strategy-cache-v2'; // Name for the Cache Storage API
+        const STRATEGIES_JSON_URL = 'strategies.json'; // Path to the strategy data file (relative to index.html)
 
-<!-- !PAGE CONTENT! -->
-<div class="w3-main" style="margin-left:250px;">
+        // --- Logging Helper ---
+        // Simple helper for consistent console logging levels
+        const logger = {
+            log: (...args) => console.log('[App Log]', ...args),
+            warn: (...args) => console.warn('[App Warn]', ...args),
+            error: (...args) => console.error('[App Error]', ...args),
+            info: (...args) => console.info('[App Info]', ...args)
+        };
 
-    <div class="w3-hide-large" style="margin-top:83px"></div>
+        // --- IndexedDB Utility Functions ---
+        // Provides Promise-based wrappers for IndexedDB operations.
 
-    <header class="w3-container w3-xlarge w3-padding-24">
-        <p class="w3-left">Option Strategy Visualizer</p>
-    </header>
+        /**
+         * Opens (and potentially upgrades) the IndexedDB database.
+         * @returns {Promise<IDBDatabase>} A promise that resolves with the database connection.
+         */
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                logger.log(`Opening IndexedDB: ${DB_NAME} (Version: ${DB_VERSION})`);
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    <!-- Content Sections - These will be populated by JS -->
-    <div class="w3-container w3-padding-32 strategy-section" id="about" style="display:block;">
-         <!-- About content will be loaded here -->
-    </div>
+                // Error handler for connection failures
+                request.onerror = (event) => {
+                    logger.error("IndexedDB connection error:", event.target.error);
+                    reject(`IndexedDB error: ${event.target.error?.message || 'Unknown error'}`);
+                };
 
-    <div class="w3-container w3-padding-32 strategy-section" id="one-leg" style="display:none;">
-        <h2>1-Leg Strategies</h2>
-        <p>These involve buying or selling a single call or put option contract.</p>
-        <!-- Strategy details will be loaded here -->
-    </div>
+                // Success handler for connection
+                request.onsuccess = (event) => {
+                    logger.log("IndexedDB connection successful.");
+                    resolve(event.target.result);
+                };
 
-    <div class="w3-container w3-padding-32 strategy-section" id="two-leg" style="display:none;">
-        <h2>2-Leg Strategies (Spreads)</h2>
-        <p>Combine two different option contracts on the same underlying asset, often to define risk or express a more nuanced market view.</p>
-        <!-- Strategy details will be loaded here -->
-    </div>
+                // Upgrade handler (runs if version increases or DB is new)
+                request.onupgradeneeded = (event) => {
+                    logger.info("IndexedDB upgrade needed.");
+                    const db = event.target.result;
+                    // Check if the object store already exists
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        logger.log(`Creating Object Store: ${STORE_NAME}`);
+                        // Create the object store. We use a single key 'DATA_KEY' to store the whole JSON blob,
+                        // so we don't need a keyPath on the store itself.
+                        db.createObjectStore(STORE_NAME);
+                    }
+                    // Example: If you were storing strategies individually, you might do:
+                    // if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    //    const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    //    store.createIndex('by_name', 'name', { unique: false }); // Example index
+                    // }
+                    logger.info("IndexedDB upgrade complete.");
+                };
+            });
+        }
 
-     <div class="w3-container w3-padding-32 strategy-section" id="three-leg" style="display:none;">
-        <h2>3-Leg Strategies</h2>
-        <p>Involve three option contracts, often used for specific price targets or volatility plays like butterflies.</p>
-        <!-- Strategy details will be loaded here -->
-    </div>
+        /**
+         * Saves the entire strategy data object to IndexedDB under a specific key.
+         * @param {IDBDatabase} db - The database connection.
+         * @param {object} data - The strategy data object to save.
+         * @returns {Promise<string>} A promise that resolves on successful save.
+         */
+        function saveDataToDB(db, data) {
+             return new Promise((resolve, reject) => {
+                // Basic validation
+                if (!db || !(db instanceof IDBDatabase)) {
+                    return reject("Invalid IndexedDB connection provided to saveDataToDB.");
+                }
+                if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+                    return reject("Invalid or empty data provided to saveDataToDB.");
+                }
 
-    <div class="w3-container w3-padding-32 strategy-section" id="four-leg" style="display:none;">
-        <h2>4-Leg Strategies</h2>
-        <p>Complex strategies using four option contracts, frequently employed for range-bound markets (like Condors, Butterflies) or volatility plays, typically offering defined risk.</p>
-        <!-- Strategy details will be loaded here -->
-    </div>
+                try {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    logger.log(`Attempting to save data under key: ${DATA_KEY}`);
+                    // Use 'put' which overwrites if the key exists, or adds if it doesn't.
+                    const request = store.put(data, DATA_KEY);
 
-    <footer class="w3-container w3-padding-16 w3-light-grey w3-center w3-opacity">
-        <p>Educational content only. Option trading involves significant risk.</p>
-    </footer>
+                    request.onsuccess = () => resolve(`Data successfully saved to IndexedDB under key ${DATA_KEY}.`);
+                    request.onerror = (event) => reject(`Failed to save data to IndexedDB: ${event.target.error}`);
 
-</div>
+                    transaction.oncomplete = () => logger.log('IndexedDB save transaction completed.');
+                    transaction.onerror = (event) => logger.error(`IndexedDB save transaction error: ${event.target.error}`);
 
-<script src="script.js"></script>
+                } catch (e) {
+                    logger.error("Error initiating IndexedDB save transaction:", e);
+                    reject(`IndexedDB transaction error: ${e.message}`);
+                }
+             });
+        }
+
+        /**
+         * Loads the strategy data object from IndexedDB using the specific key.
+         * @param {IDBDatabase} db - The database connection.
+         * @returns {Promise<object|null>} A promise resolving with the data object or null if not found.
+         */
+        function loadDataFromDB(db) {
+            return new Promise((resolve, reject) => {
+                 if (!db || !(db instanceof IDBDatabase)) {
+                     return reject("Invalid IndexedDB connection provided to loadDataFromDB.");
+                 }
+                try {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    logger.log(`Attempting to load data from IndexedDB using key: ${DATA_KEY}`);
+                    const request = store.get(DATA_KEY);
+
+                    request.onsuccess = (event) => {
+                        if (event.target.result) {
+                            logger.log("Data found in IndexedDB.");
+                            resolve(event.target.result); // Resolve with the entire data object
+                        } else {
+                            logger.log("No data found in IndexedDB for the specified key.");
+                            resolve(null); // Indicate no data found
+                        }
+                    };
+                    request.onerror = (event) => reject(`Failed to load data from IndexedDB: ${event.target.error}`);
+                } catch (e) {
+                     logger.error("Error initiating IndexedDB load transaction:", e);
+                     reject(`IndexedDB transaction error: ${e.message}`);
+                }
+            });
+        }
+
+         // --- Cache Storage API Utility Functions ---
+
+        /**
+         * Caches the fetched data using the Cache Storage API.
+         * @param {string} url - The URL used as the cache key (should match the fetch URL).
+         * @param {object} data - The JSON data object to cache.
+         * @returns {Promise<void>}
+         */
+         async function cacheDataResponse(url, data) {
+            if (!('caches' in window)) {
+                logger.warn("Cache Storage API not supported.");
+                return;
+            }
+            try {
+                const cache = await caches.open(CACHE_NAME);
+                // Create a Response object to store in the cache. This preserves headers.
+                const responseToCache = new Response(JSON.stringify(data), {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                await cache.put(url, responseToCache); // Use the fetch URL as the key
+                logger.log(`Data for ${url} successfully stored in Cache Storage API.`);
+            } catch (error) {
+                logger.error('Failed to cache data:', error);
+            }
+        }
+
+         /**
+          * Attempts to retrieve data from the Cache Storage API.
+          * @param {string} url - The URL key to look up in the cache.
+          * @returns {Promise<object|null>} The cached JSON data or null if not found/error.
+          */
+         async function loadDataFromCache(url) {
+             if (!('caches' in window)) {
+                 logger.warn("Cache Storage API not supported.");
+                 return null;
+             }
+             try {
+                 const cache = await caches.open(CACHE_NAME);
+                 const cachedResponse = await cache.match(url);
+                 if (cachedResponse) {
+                     logger.log(`Data found in Cache Storage for ${url}.`);
+                     const data = await cachedResponse.json(); // Parse the cached response
+                     return data;
+                 } else {
+                     logger.log(`No data found in Cache Storage for ${url}.`);
+                     return null;
+                 }
+             } catch (error) {
+                 logger.error(`Error loading data from Cache Storage for ${url}:`, error);
+                 return null;
+             }
+         }
+
+        // ============================================================
+        // React Components Start Here
+        // ============================================================
+
+        // --- PlotlyChart Component ---
+        // Responsible for rendering Plotly graphs for strategies.
+        const PlotlyChart = memo(({ plotId, plotFunction, parameters }) => {
+            // useRef provides a way to access the DOM node for Plotly
+            const chartRef = useRef(null);
+
+            // --- Internal Plotting Logic & Helpers ---
+            // (These could be moved to a separate utility file in a build environment)
+
+            /** Calculates Profit/Loss for a single option leg at expiration */
+            function calculateLegPayoff(price, type, position, strike, premium) {
+                let intrinsicValue = 0;
+                type = type.toLowerCase();
+                position = position.toLowerCase();
+                if (type === 'call') intrinsicValue = Math.max(0, price - strike);
+                else if (type === 'put') intrinsicValue = Math.max(0, strike - price);
+
+                if (position === 'long') return intrinsicValue - premium; // Cost deducted
+                else return -intrinsicValue + premium; // Premium received added
+             }
+
+            /** Generates an array of prices for the X-axis */
+            function generatePriceRange(center, rangePct = 0.3, steps = 100) {
+                const range = center * rangePct;
+                const minP = Math.max(0.01, center - range); // Avoid zero price issues
+                const maxP = center + range;
+                const step = (maxP - minP) / steps;
+                // Generate array using Array.from for conciseness
+                return Array.from({ length: steps + 1 }, (_, i) => minP + i * step);
+            }
+
+            /** Creates a standard Plotly layout object */
+            function getPlotlyLayout(title) {
+                 return {
+                    title: { text: title, font: { size: 16, family: 'Segoe UI, Arial, sans-serif' } },
+                    xaxis: { title: 'Underlying Price @ Expiration', zeroline: true, gridcolor: '#efefef' },
+                    yaxis: { title: 'Profit / Loss ($)', zeroline: true, gridcolor: '#efefef', tickformat: '$,.2f' },
+                    showlegend: false,
+                    margin: { l: 70, r: 30, b: 50, t: 60, pad: 4 }, // Adjusted margins for labels
+                    hovermode: 'x unified', // Show hover info for all traces at an x-value
+                    paper_bgcolor: '#f9f9f9', // Match container background
+                    plot_bgcolor: '#f9f9f9'
+                };
+            }
+
+            // --- Dictionary of Plotting Functions ---
+            // Maps the 'plotFunction' name from JSON to the actual implementation.
+            // Each function takes strategy 'parameters' and returns { trace, title }.
+            const plotFunctions = {
+                /** Plots a single long/short call/put */
+                plotBasicOption: (params) => {
+                    const { type, position, strike, premium } = params;
+                    const prices = generatePriceRange(strike);
+                    const profits = prices.map(price => calculateLegPayoff(price, type, position, strike, premium));
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines',
+                                    line: { color: position === 'long' ? (type === 'call' ? 'green' : 'blue') : 'red', width: 2.5 } };
+                    const posText = position.charAt(0).toUpperCase() + position.slice(1);
+                    const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+                    const title = `${posText} ${strike} ${typeText} (Premium: ${premium.toFixed(2)})`;
+                    return { trace, title };
+                },
+
+                /** Plots vertical debit/credit spreads (Bull Call, Bear Put, Bear Call, Bull Put) */
+                plotVerticalSpread: (params) => {
+                    const { type, position, strike1, strike2, premium1, premium2 } = params;
+                     const lowerK = Math.min(strike1, strike2), higherK = Math.max(strike1, strike2);
+                     const lowerP = (strike1 === lowerK) ? premium1 : premium2;
+                     const higherP = (strike1 === higherK) ? premium1 : premium2;
+                     const prices = generatePriceRange((lowerK + higherK) / 2);
+                     let profits, netCost, titlePrefix;
+
+                     if (position === 'debit') { // Bull Call or Bear Put
+                         const longK = (type === 'call') ? lowerK : higherK;
+                         const shortK = (type === 'call') ? higherK : lowerK;
+                         const longP = (type === 'call') ? lowerP : higherP;
+                         const shortP = (type === 'call') ? higherP : lowerP;
+                         netCost = longP - shortP; // Debit is positive cost
+                         profits = prices.map(price => calculateLegPayoff(price, type, 'long', longK, longP) + calculateLegPayoff(price, type, 'short', shortK, shortP));
+                         titlePrefix = (type === 'call' ? "Bull Call Spread" : "Bear Put Spread");
+                     } else { // Credit: Bear Call or Bull Put
+                         const shortK = (type === 'call') ? lowerK : higherK;
+                         const longK = (type === 'call') ? higherK : lowerK;
+                         const shortP = (type === 'call') ? lowerP : higherP;
+                         const longP = (type === 'call') ? higherP : lowerP;
+                         netCost = longP - shortP; // Credit is negative cost
+                         profits = prices.map(price => calculateLegPayoff(price, type, 'short', shortK, shortP) + calculateLegPayoff(price, type, 'long', longK, longP));
+                         titlePrefix = (type === 'call' ? "Bear Call Spread" : "Bull Put Spread");
+                     }
+
+                     const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'purple', width: 2.5 } };
+                     const costType = netCost >= 0 ? 'Debit' : 'Credit';
+                     const title = `${titlePrefix} ${lowerK}/${higherK} (${costType}: ${Math.abs(netCost).toFixed(2)})`;
+                     return { trace, title };
+                },
+
+                /** Plots Long Call/Put Butterfly */
+                plotButterfly: (params) => {
+                    const { type, strike1, strike2, strike3, premium1, premium2, premium3 } = params;
+                    // Assumes Long 1 K1, Short 2 K2, Long 1 K3
+                    const netDebit = premium1 - (2 * premium2) + premium3;
+                    const prices = generatePriceRange(strike2); // Center around middle strike
+                    const profits = prices.map(p =>
+                        calculateLegPayoff(p, type, 'long', strike1, premium1) +
+                        (2 * calculateLegPayoff(p, type, 'short', strike2, premium2)) + // Short 2x K2
+                        calculateLegPayoff(p, type, 'long', strike3, premium3)
+                    );
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'orange', width: 2.5 } };
+                    const typeText = type.charAt(0).toUpperCase() + type.slice(1);
+                    const title = `Long ${typeText} Butterfly ${strike1}/${strike2}/${strike3} (Debit: ${netDebit.toFixed(2)})`;
+                    return { trace, title };
+                },
+
+                 /** Plots Standard (Short) Iron Condor */
+                 plotIronCondor: (params) => {
+                     const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
+                     // Legs: Long P1, Short P2, Short C3, Long C4
+                     const netCredit = premiumP2 + premiumC3 - premiumP1 - premiumC4;
+                     const prices = generatePriceRange((strikeP2 + strikeC3) / 2); // Center between short strikes
+                     const profits = prices.map(p =>
+                         calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) +    // Buy Low Put Wing
+                         calculateLegPayoff(p, 'put', 'short', strikeP2, premiumP2) +   // Sell Put Spread
+                         calculateLegPayoff(p, 'call', 'short', strikeC3, premiumC3) +  // Sell Call Spread
+                         calculateLegPayoff(p, 'call', 'long', strikeC4, premiumC4)     // Buy High Call Wing
+                     );
+                     const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#007bff', width: 2.5 } };
+                     const title = `Iron Condor ${strikeP1}/${strikeP2}P ${strikeC3}/${strikeC4}C (Credit: ${netCredit.toFixed(2)})`;
+                     return { trace, title };
+                 },
+
+                 /** Plots Standard (Short) Iron Butterfly */
+                 plotIronButterfly: (params) => {
+                    const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
+                    // Legs: Long P1, Short P2(Put), Short C2(Call), Long C3
+                    const netCredit = premiumP2 + premiumC2 - premiumP1 - premiumC3;
+                    const prices = generatePriceRange(strikePC2); // Center on the middle strike
+                    const profits = prices.map(p =>
+                        calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) +      // Buy Put Wing
+                        calculateLegPayoff(p, 'put', 'short', strikePC2, premiumP2) +    // Sell ATM Put
+                        calculateLegPayoff(p, 'call', 'short', strikePC2, premiumC2) +   // Sell ATM Call
+                        calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3)       // Buy Call Wing
+                    );
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#ffc107', width: 2.5 } };
+                    const title = `Iron Butterfly ${strikeP1}P / ${strikePC2}PC / ${strikeC3}C (Credit: ${netCredit.toFixed(2)})`;
+                    return { trace, title };
+                 },
+
+                 /** Plots Reverse (Long) Iron Condor */
+                plotReverseIronCondor: (params) => {
+                    // Note: Uses same params as Iron Condor, but interprets legs differently
+                    const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
+                    // Legs: Short P1, Long P2, Long C3, Short C4 (Opposite of standard Iron Condor)
+                    const netDebit = premiumP2 + premiumC3 - premiumP1 - premiumC4; // Same premium math, but result is a debit
+                    const prices = generatePriceRange((strikeP2 + strikeC3) / 2);
+                    const profits = prices.map(p =>
+                        calculateLegPayoff(p, 'put', 'short', strikeP1, premiumP1) +    // Sell Low Put Wing
+                        calculateLegPayoff(p, 'put', 'long', strikeP2, premiumP2) +     // Buy Put Spread
+                        calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3) +    // Buy Call Spread
+                        calculateLegPayoff(p, 'call', 'short', strikeC4, premiumC4)     // Sell High Call Wing
+                    );
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#dc3545', width: 2.5 } }; // Red for volatility play
+                    const title = `Reverse Iron Condor ${strikeP1}/${strikeP2}P ${strikeC3}/${strikeC4}C (Debit: ${netDebit.toFixed(2)})`;
+                    return { trace, title };
+                },
+
+                 /** Plots Reverse (Long) Iron Butterfly */
+                 plotReverseIronButterfly: (params) => {
+                     const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
+                     // Legs: Short P1, Long P2(Put), Long C2(Call), Short C3
+                     const netDebit = premiumP2 + premiumC2 - premiumP1 - premiumC3;
+                     const prices = generatePriceRange(strikePC2);
+                     const profits = prices.map(p =>
+                         calculateLegPayoff(p, 'put', 'short', strikeP1, premiumP1) +   // Sell Put Wing
+                         calculateLegPayoff(p, 'put', 'long', strikePC2, premiumP2) +   // Buy ATM Put
+                         calculateLegPayoff(p, 'call', 'long', strikePC2, premiumC2) +  // Buy ATM Call
+                         calculateLegPayoff(p, 'call', 'short', strikeC3, premiumC3)    // Sell Call Wing
+                     );
+                     const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#fd7e14', width: 2.5 } }; // Orange/Red
+                     const title = `Reverse Iron Butterfly ${strikeP1}P / ${strikePC2}PC / ${strikeC3}C (Debit: ${netDebit.toFixed(2)})`;
+                     return { trace, title };
+                 },
+
+                /** Plots Long Straddle/Strangle */
+                plotStraddleStrangle: (params) => {
+                    const { type, strikeP, strikeC, premiumP, premiumC } = params; // type='straddle' or 'strangle'
+                    const centerPrice = (strikeP + strikeC) / 2; // Center point for price range
+                    const prices = generatePriceRange(centerPrice, 0.4); // Wider range for V-shape
+                    const netDebit = premiumP + premiumC;
+                    const profits = prices.map(p =>
+                        calculateLegPayoff(p, 'put', 'long', strikeP, premiumP) +
+                        calculateLegPayoff(p, 'call', 'long', strikeC, premiumC)
+                    );
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#6f42c1', width: 2.5 } }; // Violet
+                    const titlePrefix = type === 'straddle' ? "Long Straddle" : "Long Strangle";
+                    const strikeText = type === 'straddle' ? strikeP : `${strikeP}P / ${strikeC}C`;
+                    const title = `${titlePrefix} ${strikeText} (Debit: ${netDebit.toFixed(2)})`;
+                    return { trace, title };
+                },
+
+                 /** Plots Box Spread */
+                 plotBoxSpread: (params) => {
+                    const { strike1, strike2, premC1, premC2, premP1, premP2 } = params;
+                    // Legs: Buy C K1, Sell C K2, Buy P K2, Sell P K1
+                    const netDebit = premC1 - premC2 + premP2 - premP1;
+                    const valueAtExpiry = strike2 - strike1;
+                    const lockedInProfit = valueAtExpiry - netDebit;
+                    const prices = generatePriceRange(strike1 + (strike2-strike1)/2, 0.5); // Wide range
+                    // Profit is constant, independent of underlying price
+                    const profits = prices.map(p => lockedInProfit);
+                    const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'grey', width: 2.5, dash: 'dash' } };
+                    const title = `Box Spread ${strike1}/${strike2} (Profit/Loss: ${lockedInProfit.toFixed(2)})`;
+                    return { trace, title };
+                },
+            }; // End plotFunctions map
+
+            // useEffect hook to handle Plotly rendering and cleanup
+            useEffect(() => {
+                let plotObject = null; // To store result from plot function
+
+                // Ensure Plotly library is loaded and DOM element is ready
+                if (chartRef.current && typeof Plotly !== 'undefined' && plotFunction && parameters && plotFunctions[plotFunction]) {
+                    logger.log(`Plotting chart for: ${plotId}`);
+                    try {
+                        // Call the specific plotting function from the map
+                        plotObject = plotFunctions[plotFunction](parameters);
+
+                        // Check if the plot function returned valid data
+                        if (plotObject && plotObject.trace && plotObj<ctrl62>   </div>}
+
+                     {/* ----- Sidebar Navigation ----- */}
+                     <Sidebar
+                        strategyDataKeys={strategyDataKeys}
+                        selectedSection={selectedSection}
+                        onSectionSelect={handleSectionSelect}
+                        isOpen={isSidebarOpen}
+                        closeSidebar={closeSidebar}
+                    />
+
+                    {/* ----- Top Bar for Small Screens ----- */}
+                    <header className="w3-bar w3-top w3-hide-large w3-black w3-xlarge">
+                        <div className="w3-bar-item w3-padding-24 w3-wide">OPTIONS</div>
+                        {/* Burger icon to toggle sidebar */}
+                        <button onClick={toggleSidebar} className="w3-bar-item w3-button w3-padding-24 w3-right"><i className="fa fa-bars"></i></button>
+                    </header>
+
+                    {/* ----- Main Content Area ----- */}
+                    <div className={`main-content-area ${!isSidebarOpen && window.innerWidth < 993 ? 'main-content-area-padded-top': ''}`}>
+                        {/* Header within main content */}
+                        <header className="w3-container w3-xlarge w3-padding-24">
+                             <span className="w3-left">Option Strategy Visualizer</span>
+                             {/* Status Indicators */}
+                             <span className="w3-right w3-medium">
+                                 {dataSource && <span className={`w3-tag w3-round ${dataSource === 'Network' ? 'w3-green' : 'w3-blue'}`}>Data: {dataSource}</span>}
+                                 {isOffline && <span className="w3-tag w3-round w3-orange w3-margin-left">Offline</span>}
+                             </span>
+                        </header>
+
+                        {/* Loading and Error Messages */}
+                        {isLoading && <p className="status-message loading-message">Loading Strategy Data...</p>}
+                        {error && <p className="status-message error-message">Error: {error}</p>}
+                        {!isLoading && !error && !strategyData && <p className="status-message offline-message">No strategy data available. Try going online or refreshing.</p> }
+
+                        {/* Refresh Button */}
+                         <div className="w3-container">
+                            <button
+                                onClick={handleRefreshData}
+                                disabled={isLoading || isOffline} // Disable if loading or offline
+                                className="w3-button w3-blue w3-small action-button"
+                                title={isOffline ? "Cannot refresh while offline" : "Fetch fresh data"} >
+                                <i className="fa fa-refresh"></i> Refresh Data
+                            </button>
+                            {lastUpdated && <span className="w3-small w3-text-grey">Last fetch attempt: {lastUpdated.toLocaleTimeString()}</span>}
+                        </div>
+
+
+                        {/* Render the main content (About or Strategy Section) */}
+                        {!isLoading && !error && strategyData && (
+                            <MainContent
+                                selectedSection={selectedSection}
+                                strategyData={strategyData}
+                            />
+                        )}
+
+                        {/* Footer */}
+                        <footer className="w3-container w3-padding-16 w3-light-grey w3-center w3-opacity w3-margin-top">
+                            <p>Disclaimer: This information is for educational purposes only and does not constitute financial advice. Option trading involves significant risk.</p>
+                            <p>Data persistence via IndexedDB & Cache API. Analytics via Google Analytics (if configured).</p>
+                        </footer>
+                    </div> {/* End main-content-area */}
+                </div> // End App div
+            );
+        } // End App Component
+
+        // ============================================================
+        // Component: StrategyDetail
+        // Displays details for a single option strategy.
+        // ============================================================
+        const StrategyDetail = memo(({ strategy }) => {
+            // Ensure strategy data is provided
+            if (!strategy) {
+                logger.warn("StrategyDetail rendered without strategy data.");
+                return null;
+            }
+
+            // Helper to render lists (like construction steps)
+            const renderList = (items, title) => items && items.length > 0 ? (
+                <div className="strategy-detail-section">
+                    <strong>{title}:</strong>
+                    <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>
+                </div>
+            ) : null;
+
+            // Helper to render simple text sections
+             const renderDetailSection = (content, title) => content ? (
+                <div className="strategy-detail-section">
+                    <strong>{title}:</strong> {content}
+                </div>
+             ) : null;
+
+
+            // Placeholder handler for Google Calendar integration
+            const handleAddToCalendar = useCallback(() => {
+                // NOTE: Real integration requires OAuth2 and Google Calendar API.
+                // This is a simplified placeholder.
+                alert(`Google Calendar Integration Placeholder\n\nStrategy: ${strategy.name}\nThis button demonstrates where calendar integration could occur. Full implementation requires authentication and API calls.`);
+
+                // Send event to Google Analytics
+                if (typeof gtag === 'function') {
+                    gtag('event', 'add_to_calendar_click', {
+                        'event_category': 'Strategy Engagement',
+                        'event_label': strategy.name || 'Unknown Strategy', // Use strategy name if available
+                        'strategy_id': strategy.id || 'N/A'
+                    });
+                    logger.log(`GA event: add_to_calendar_click sent for ${strategy.name}`);
+                }
+            }, [strategy.name, strategy.id]); // Dependencies for useCallback
+
+            // Render the component
+            return (
+                <div className="w3-panel w3-card-4 strategy-panel" data-strategy-id={strategy.id}>
+                    {/* Strategy Name */}
+                    <h3>{strategy.name || 'Unnamed Strategy'}</h3>
+
+                    {/* Basic Details */}
+                    {renderDetailSection(strategy.outlook, "Market Outlook")}
+                    {renderDetailSection(strategy.description, "Description")}
+
+                    {/* Construction Details */}
+                    {strategy.construction && strategy.construction.length > 0 && (
+                        <div className="strategy-construction">
+                            {renderList(strategy.construction, "Construction")}
+                            {strategy.notes && <p className="strategy-notes"><em>Note: {strategy.notes}</em></p>}
+                        </div>
+                    )}
+
+                    {/* P/L and Breakeven */}
+                    {renderDetailSection(strategy.maxProfit, "Max Profit")}
+                    {renderDetailSection(strategy.maxLoss, "Max Loss")}
+                    {renderDetailSection(strategy.breakeven, "Breakeven Point(s)")}
+
+                    {/* Advanced Details (Greeks, Usage, Risks) */}
+                    {renderDetailSection(strategy.greeksOverview, "Greeks Overview")}
+                    {renderDetailSection(strategy.whenToUse, "When to Use")}
+                    {renderDetailSection(strategy.risks, "Potential Risks")}
+
+                    {/* Plotly Chart */}
+                    {strategy.plotlyDivId && strategy.plotFunction && strategy.parameters && (
+                        <PlotlyChart
+                            plotId={strategy.plotlyDivId}
+                            plotFunction={strategy.plotFunction}
+                            parameters={strategy.parameters}
+                        />
+                    )}
+
+                    {/* Example Usage */}
+                    {strategy.example && <p className="strategy-example"><em>Example: {strategy.example}</em></p>}
+
+                    {/* Action Buttons */}
+                    <button onClick={handleAddToCalendar} className="w3-button w3-light-grey w3-small action-button">
+                        <i className="fa fa-calendar-plus-o"></i> Add to Calendar (Placeholder)
+                    </button>
+                </div>
+            );
+        }); // End StrategyDetail Component
+
+
+        // ============================================================
+        // Component: StrategySection
+        // Renders a collection of StrategyDetail components for a category.
+        // ============================================================
+        const StrategySection = ({ title, description, strategies }) => {
+            logger.log(`Rendering StrategySection: ${title}`);
+            return (
+                <div>
+                    <h2>{title}</h2>
+                    {description && <p>{description}</p>}
+                    {/* Map over strategies and render a Detail component for each */}
+                    {(strategies && strategies.length > 0)
+                        ? strategies.map(strategy => <StrategyDetail key={strategy.id || strategy.name} strategy={strategy} />)
+                        : <p className="info-message">No specific strategies loaded for this section.</p>
+                    }
+                </div>
+            );
+        }; // End StrategySection Component
+
+
+        // ============================================================
+        // Component: Sidebar
+        // Renders the left-hand navigation menu.
+        // ============================================================
+        const Sidebar = ({ strategyDataKeys, selectedSection, onSectionSelect, isOpen, closeSidebar }) => {
+            // Map internal keys to user-friendly titles
+            const sectionTitles = {
+                about: 'About', oneLeg: '1-Leg', twoLeg: '2-Leg', threeLeg: '3-Leg', fourLeg: '4-Leg'
+            };
+
+            // Filter keys to include only those with titles and 'about'
+            const validKeys = ['about', ...strategyDataKeys.filter(key => key !== 'about' && sectionTitles[key])];
+
+            return (
+                <nav className="w3-sidebar w3-bar-block w3-white w3-collapse w3-top w3-card"
+                     style={{ zIndex: 3, width: '250px', display: isOpen ? 'block' : '' }} id="mySidebar">
+                    {/* Sidebar Header */}
+                    <div className="w3-container w3-display-container w3-padding-16">
+                        {/* Close button visible on small screens */}
+                        <i onClick={closeSidebar} className="fa fa-remove w3-hide-large w3-button w3-display-topright" title="Close Menu"></i>
+                        <h3 className="w3-wide"><b>OPTIONS</b></h3>
+                    </div>
+                    {/* Navigation Links */}
+                    <div className="w3-padding-64 w3-large w3-text-grey" style={{ fontWeight: 'bold' }}>
+                        {validKeys.map(key => sectionTitles[key] && ( // Ensure title exists
+                            <a key={key} href={`#${key}`} // Use key for anchor link (useful for accessibility)
+                               onClick={(e) => {
+                                   e.preventDefault(); // Prevent default anchor jump
+                                   logger.log(`Sidebar link clicked: ${key}`);
+                                   onSectionSelect(key); // Update selected section in App state
+                                   closeSidebar(); // Close sidebar after selection (esp. on mobile)
+                               }}
+                               className={`w3-bar-item w3-button nav-link ${selectedSection === key ? 'active' : ''}`} // Apply 'active' class if selected
+                               title={`Navigate to ${sectionTitles[key]} Strategies`} >
+                               {sectionTitles[key]} Strategies
+                            </a>
+                        ))}
+                    </div>
+                </nav>
+            );
+        }; // End Sidebar Component
+
+
+        // ============================================================
+        // Component: MainContent
+        // Renders the content based on the selected section.
+        // ============================================================
+        const MainContent = ({ selectedSection, strategyData }) => {
+             // Descriptions for each strategy section
+             const sectionDescriptions = {
+                 oneLeg: 'Strategies involving a single option contract (a single leg). These are the fundamental building blocks.',
+                 twoLeg: 'Strategies combining two different option contracts on the same underlying. Often used to define risk, reduce cost, or express a specific market view (e.g., spreads, straddles, strangles).',
+                 threeLeg: 'Strategies involving three option contracts, typically used for more complex market outlooks like neutral ranges with defined risk (e.g., butterflies).',
+                 fourLeg: 'Advanced strategies using four option contracts, commonly employed for range-bound (neutral) markets or volatility plays, often with defined risk and reward (e.g., condors, iron butterflies, box spreads).'
+             };
+             // Map internal keys to display titles
+             const titleMap = { oneLeg: '1-Leg', twoLeg: '2-Leg', threeLeg: '3-Leg', fourLeg: '4-Leg' };
+
+             // Conditional rendering based on selectedSection
+             if (selectedSection === 'about') {
+                 const aboutData = strategyData?.about; // Safely access about data
+                 return (
+                     <div className="w3-container w3-padding-32">
+                         <h2>{aboutData?.title || 'About This Visualizer'}</h2>
+                         {/* Render HTML content safely if source is trusted */}
+                         {aboutData?.content?.map((paragraph, index) =>
+                            <p key={index} dangerouslySetInnerHTML={{ __html: paragraph }}></p>)}
+                     </div>
+                 );
+             }
+
+             // Render a StrategySection for leg-based categories
+             const sectionTitle = `${titleMap[selectedSection] || 'Unknown'} Strategies`;
+             const sectionDescription = sectionDescriptions[selectedSection];
+             // Ensure strategies data is an array, default to empty if not found
+             const strategiesForSection = strategyData ? (Array.isArray(strategyData[selectedSection]) ? strategyData[selectedSection] : []) : [];
+
+             return (
+                 <div className="w3-container w3-padding-32">
+                    <StrategySection
+                        title={sectionTitle}
+                        description={sectionDescription}
+                        strategies={strategiesForSection}
+                    />
+                </div>
+             );
+        }; // End MainContent Component
+
+
+        // ============================================================
+        // Strategy Data (Embedded JSON - Move to strategies.json)
+        // ============================================================
+        // IMPORTANT: In a real app, load this from 'strategies.json' via fetch.
+        // Embedding it here only for demonstration purposes and to lengthen the file.
+        // Ensure each strategy object has a unique 'id' field.
+        const embeddedStrategyData = {
+          "oneLeg": [
+            {
+              "id": "long-call-100",
+              "name": "Long Call",
+              "outlook": "Strongly Bullish",
+              "description": "Buys the right (not obligation) to purchase the underlying at the strike price before expiration. Used when expecting a significant upward price move.",
+              "construction": [ "Buy 1 Call Option" ],
+              "maxProfit": "Unlimited (as price rises)",
+              "maxLoss": "Premium Paid",
+              "breakeven": "Strike Price + Premium Paid",
+              "greeksOverview": "Positive Delta (profits from price increase), Positive Gamma (delta increases as price rises), Positive Vega (profits from volatility increase), Negative Theta (loses value from time decay).",
+              "whenToUse": "Strong conviction of a sharp upward move in the underlying asset. Expecting increased implied volatility.",
+              "risks": "Loses entire premium if the underlying stays below the strike. Time decay erodes value daily. Sensitive to decreases in implied volatility.",
+              "example": "Buy 1 XYZ 100 Call for $2.50. Breakeven at $102.50.",
+              "plotFunction": "plotBasicOption",
+              "plotlyDivId": "plotly-long-call-100",
+              "parameters": { "type": "call", "position": "long", "strike": 100, "premium": 2.50 }
+            },
+            {
+              "id": "short-put-95",
+              "name": "Short Put (Naked)",
+              "outlook": "Bullish to Neutral",
+              "description": "Sells the obligation to buy the underlying at the strike if the price falls below it. Collects premium upfront. Profitable if the price stays above the strike.",
+              "construction": ["Sell 1 Put Option"],
+              "maxProfit": "Premium Received",
+              "maxLoss": "Strike Price - Premium Received (Substantial potential loss if stock goes to $0)",
+              "breakeven": "Strike Price - Premium Received",
+              "greeksOverview": "Positive Delta (profits if price increases or stays flat), Negative Gamma (risk accelerates on downside), Negative Vega (profits from volatility decrease), Positive Theta (profits from time decay).",
+              "whenToUse": "Expecting the underlying price to remain stable or rise moderately. High implied volatility environment (to collect higher premium). Willingness to potentially own the stock at the strike price.",
+              "risks": "Significant potential loss if the underlying price drops sharply below the breakeven point. Requires margin. Assignment risk if the option goes deep in-the-money.",
+              "example": "Sell 1 XYZ 95 Put for $1.80. Breakeven at $93.20. Max profit $180.",
+              "plotFunction": "plotBasicOption",
+              "plotlyDivId": "plotly-short-put-95",
+              "parameters": { "type": "put", "position": "short", "strike": 95, "premium": 1.80 }
+            },
+            {
+              "id": "short-call-105",
+              "name": "Short Call (Naked)",
+              "outlook": "Bearish to Neutral",
+              "description": "Sells the obligation to sell the underlying at the strike if the price rises above it. Collects premium upfront. Profitable if the price stays below the strike.",
+              "construction": ["Sell 1 Call Option"],
+              "maxProfit": "Premium Received",
+              "maxLoss": "Unlimited (as price can rise indefinitely)",
+              "breakeven": "Strike Price + Premium Received",
+              "greeksOverview": "Negative Delta (profits if price decreases or stays flat), Negative Gamma (risk accelerates on upside), Negative Vega (profits from volatility decrease), Positive Theta (profits from time decay).",
+              "whenToUse": "Expecting the underlying price to remain stable or fall moderately. High implied volatility environment.",
+              "risks": "Theoretically unlimited loss potential if the underlying price rises significantly. Very high risk strategy. Requires margin. Assignment risk.",
+              "example": "Sell 1 XYZ 105 Call for $1.50. Breakeven at $106.50. Max profit $150.",
+              "plotFunction": "plotBasicOption",
+              "plotlyDivId": "plotly-short-call-105",
+              "parameters": { "type": "call", "position": "short", "strike": 105, "premium": 1.50 }
+            },
+            {
+              "id": "long-put-100",
+              "name": "Long Put",
+              "outlook": "Strongly Bearish",
+              "description": "Buys the right (not obligation) to sell the underlying at the strike price before expiration. Used when expecting a significant downward price move.",
+              "construction": [ "Buy 1 Put Option" ],
+              "maxProfit": "Strike Price - Premium Paid (Achieved if stock goes to $0)",
+              "maxLoss": "Premium Paid",
+              "breakeven": "Strike Price - Premium Paid",
+              "greeksOverview": "Negative Delta (profits from price decrease), Positive Gamma (delta becomes more negative as price falls), Positive Vega (profits from volatility increase), Negative Theta (loses value from time decay).",
+              "whenToUse": "Strong conviction of a sharp downward move in the underlying asset. Expecting increased implied volatility. Hedging a long stock position.",
+              "risks": "Loses entire premium if the underlying stays above the strike. Time decay erodes value daily. Sensitive to decreases in implied volatility.",
+              "example": "Buy 1 XYZ 100 Put for $2.80. Breakeven at $97.20.",
+              "plotFunction": "plotBasicOption",
+              "plotlyDivId": "plotly-long-put-100",
+              "parameters": { "type": "put", "position": "long", "strike": 100, "premium": 2.80 }
+            }
+          ],
+          "twoLeg": [
+             {
+              "id": "bull-call-spread-100-105",
+              "name": "Bull Call Spread (Vertical Debit)",
+              "outlook": "Moderately Bullish",
+              "description": "A defined-risk, defined-profit bullish strategy. Buys a call at a lower strike and sells a call at a higher strike (same expiration). Cheaper than a long call, but profit potential is capped.",
+              "construction": [ "Buy 1 Call (Lower Strike K1)", "Sell 1 Call (Higher Strike K2)" ],
+              "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
+              "maxLoss": "Net Debit Paid",
+              "breakeven": "Lower Strike (K1) + Net Debit Paid",
+              "greeksOverview": "Net Positive Delta (less than long call), Gamma exposure varies (can be pos/neg), Net Negative Vega (generally prefers lower IV), Theta can be positive or negative depending on moneyness.",
+              "whenToUse": "Moderately bullish outlook with a specific price target (above the higher strike). Desire for defined risk and lower cost compared to long call. Lower implied volatility preferred.",
+              "risks": "Maximum loss is the net debit paid if the price stays below the lower strike. Profit is capped above the higher strike. Time decay can be harmful if OTM, helpful if ITM.",
+              "example": "Buy 1 XYZ 100 Call @ $3.00, Sell 1 XYZ 105 Call @ $1.20. Net Debit $1.80. Max Profit $3.20 ($5 - $1.80). Breakeven $101.80.",
+              "plotFunction": "plotVerticalSpread",
+              "plotlyDivId": "plotly-bull-call-spread",
+              "parameters": { "type": "call", "position": "debit", "strike1": 100, "strike2": 105, "premium1": 3.00, "premium2": 1.20 }
+            },
+            {
+              "id": "bear-put-spread-100-95",
+              "name": "Bear Put Spread (Vertical Debit)",
+              "outlook": "Moderately Bearish",
+              "description": "A defined-risk, defined-profit bearish strategy. Buys a put at a higher strike and sells a put at a lower strike (same expiration). Cheaper than a long put, profit is capped.",
+              "construction": [ "Buy 1 Put (Higher Strike K2)", "Sell 1 Put (Lower Strike K1)" ],
+              "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
+              "maxLoss": "Net Debit Paid",
+              "breakeven": "Higher Strike (K2) - Net Debit Paid",
+              "greeksOverview": "Net Negative Delta (less than long put), Gamma varies, Net Negative Vega, Theta varies.",
+              "whenToUse": "Moderately bearish outlook with a target price below the lower strike. Defined risk desired. Lower IV preferred.",
+              "risks": "Max loss is the net debit if price stays above the higher strike. Profit capped below lower strike.",
+              "example": "Buy 1 XYZ 100 Put @ $2.80, Sell 1 XYZ 95 Put @ $1.10. Net Debit $1.70. Max Profit $3.30 ($5 - $1.70). Breakeven $98.30.",
+              "plotFunction": "plotVerticalSpread",
+              "plotlyDivId": "plotly-bear-put-spread",
+              "parameters": { "type": "put", "position": "debit", "strike1": 95, "strike2": 100, "premium1": 1.10, "premium2": 2.80 }
+            },
+             {
+              "id": "bear-call-spread-105-110",
+              "name": "Bear Call Spread (Vertical Credit)",
+              "outlook": "Moderately Bearish / Neutral",
+              "description": "A defined-risk strategy that profits if the underlying stays below the short call strike, or falls. Sells a call at a lower strike and buys a higher strike call for protection. Entered for a net credit.",
+              "construction": [ "Sell 1 Call (Lower Strike K1)", "Buy 1 Call (Higher Strike K2)" ],
+              "maxProfit": "Net Credit Received",
+              "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+              "breakeven": "Lower Strike (K1) + Net Credit Received",
+              "greeksOverview": "Net Negative Delta, Net Negative Gamma (usually), Net Positive Vega (generally prefers higher IV), Positive Theta (benefits from time decay).",
+              "whenToUse": "Expecting price to stay below the lower (short) strike or fall. High implied volatility environment preferred (sell premium). Defined risk bearish/neutral view.",
+              "risks": "Maximum loss occurs if price rallies significantly above the higher strike. Early assignment risk on the short call if it goes deep ITM near expiration.",
+              "example": "Sell 1 XYZ 105 Call @ $1.50, Buy 1 XYZ 110 Call @ $0.40. Net Credit $1.10. Max Loss $3.90 ($5 - $1.10). Breakeven $106.10.",
+              "plotFunction": "plotVerticalSpread",
+              "plotlyDivId": "plotly-bear-call-spread",
+              "parameters": { "type": "call", "position": "credit", "strike1": 105, "strike2": 110, "premium1": 1.50, "premium2": 0.40 }
+            },
+             {
+              "id": "bull-put-spread-95-90",
+              "name": "Bull Put Spread (Vertical Credit)",
+              "outlook": "Moderately Bullish / Neutral",
+              "description": "A defined-risk strategy that profits if the underlying stays above the short put strike, or rises. Sells a put at a higher strike and buys a lower strike put for protection. Entered for a net credit.",
+              "construction": [ "Sell 1 Put (Higher Strike K2)", "Buy 1 Put (Lower Strike K1)" ],
+              "maxProfit": "Net Credit Received",
+              "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+              "breakeven": "Higher Strike (K2) - Net Credit Received",
+               "greeksOverview": "Net Positive Delta, Net Negative Gamma, Net Positive Vega, Positive Theta.",
+               "whenToUse": "Expecting price to stay above the higher (short) strike or rise. High IV preferred. Defined risk bullish/neutral view.",
+               "risks": "Max loss occurs if price falls significantly below the lower strike. Early assignment risk on short put.",
+              "example": "Sell 1 XYZ 95 Put @ $1.80, Buy 1 XYZ 90 Put @ $0.50. Net Credit $1.30. Max Loss $3.70 ($5 - $1.30). Breakeven $93.70.",
+              "plotFunction": "plotVerticalSpread",
+              "plotlyDivId": "plotly-bull-put-spread",
+              "parameters": { "type": "put", "position": "credit", "strike1": 90, "strike2": 95, "premium1": 0.50, "premium2": 1.80 }
+            },
+             {
+              "id": "long-straddle-100",
+              "name": "Long Straddle",
+              "outlook": "Volatile (Direction Unknown)",
+              "description": "Buys an At-the-Money (ATM) call and an ATM put with the same strike and expiration. Profits from a large price move in either direction, significantly exceeding the premium paid. Benefits from increased implied volatility.",
+              "construction": [ "Buy 1 ATM Call (Strike K)", "Buy 1 ATM Put (Strike K)" ],
+              "maxProfit": "Unlimited (upside), Substantial (downside: K - Net Debit)",
+              "maxLoss": "Net Debit Paid (if price pins strike at expiration)",
+              "breakeven": "Upper: Strike + Net Debit; Lower: Strike - Net Debit",
+              "greeksOverview": "Near-zero Delta (at inception), Positive Gamma (benefits from movement), Positive Vega (benefits strongly from IV increase), Negative Theta (significant time decay cost).",
+              "whenToUse": "Expecting a large price move but unsure of direction (e.g., earnings announcement, major news). Expecting a significant increase in implied volatility.",
+              "risks": "Loses maximum value (net debit) if the price stays near the strike at expiration. Highly sensitive to time decay (theta). Sensitive to decreases in implied volatility (Vega risk). Requires a substantial price move to become profitable.",
+              "example": "Stock at $100. Buy 100 Call @ $3.50, Buy 100 Put @ $3.20. Net Debit $6.70. Breakevens at $93.30 and $106.70.",
+              "plotFunction": "plotStraddleStrangle",
+              "plotlyDivId": "plotly-long-straddle-100",
+              "parameters": { "type": "straddle", "strikeP": 100, "strikeC": 100, "premiumP": 3.20, "premiumC": 3.50 }
+            },
+            {
+              "id": "long-strangle-95-105",
+              "name": "Long Strangle",
+              "outlook": "Volatile (Direction Unknown)",
+              "description": "Buys an Out-of-the-Money (OTM) call and an OTM put with different strikes but the same expiration. Cheaper than a straddle, but requires an even larger price move to profit. Benefits from increased implied volatility.",
+              "construction": [ "Buy 1 OTM Put (Lower Strike K1)", "Buy 1 OTM Call (Higher Strike K2)" ],
+              "maxProfit": "Unlimited (upside), Substantial (downside: K1 - Net Debit)",
+              "maxLoss": "Net Debit Paid",
+              "breakeven": "Upper: K2 + Net Debit; Lower: K1 - Net Debit",
+              "greeksOverview": "Near-zero Delta (at inception), Positive Gamma, Positive Vega, Negative Theta (less than straddle initially).",
+              "whenToUse": "Expecting a very large price move, unsure of direction. Cheaper alternative to straddle when IV is high. Expecting IV increase.",
+              "risks": "Requires a larger move than a straddle to reach breakeven. Maximum loss occurs if price stays between the strikes. Time decay and Vega risk still apply.",
+              "example": "Stock at $100. Buy 95 Put @ $1.80, Buy 105 Call @ $1.50. Net Debit $3.30. Breakevens at $91.70 and $108.30.",
+              "plotFunction": "plotStraddleStrangle",
+              "plotlyDivId": "plotly-long-strangle-95-105",
+              "parameters": { "type": "strangle", "strikeP": 95, "strikeC": 105, "premiumP": 1.80, "premiumC": 1.50 }
+            }
+            // Add Short Straddle/Strangle, Ratio Spreads etc. if desired
+          ],
+          "threeLeg": [
+             {
+              "id": "long-call-butterfly-95-100-105",
+              "name": "Long Call Butterfly",
+              "outlook": "Neutral (Price Pinning Middle Strike)",
+              "description": "A defined-risk strategy expecting very low volatility and the price to expire exactly at the middle strike. Constructed with calls, typically for a net debit.",
+              "construction": [ "Buy 1 Call (Lower Strike K1)", "Sell 2 Calls (Middle Strike K2)", "Buy 1 Call (Higher Strike K3)" ],
+              "notes": "Strikes K1, K2, K3 are typically equidistant.",
+              "maxProfit": "Width of one wing (K2 - K1) - Net Debit Paid (Achieved if price = K2 at expiry)",
+              "maxLoss": "Net Debit Paid (If price outside K1 or K3 at expiry)",
+              "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+              "greeksOverview": "Near-zero Delta at K2, Negative Gamma (loses if price moves away from K2), Negative Vega (profits from IV decrease), Positive Theta (profits from time decay if near K2).",
+              "whenToUse": "High conviction that the price will be very close to the middle strike (K2) at expiration. High implied volatility environment expected to decline.",
+              "risks": "Maximum loss (net debit) occurs if the price moves significantly away from the middle strike. Requires precise price prediction for maximum profit. Bid-ask spreads can significantly impact entry cost.",
+              "example": "Buy 95C @ $6.00, Sell two 100C @ $3.00 each, Buy 105C @ $1.00. Net Debit $1.00 ($6 - 2*$3 + $1). Max Profit $4.00 ($5 - $1). Breakevens $96, $104.",
+              "plotFunction": "plotButterfly",
+              "plotlyDivId": "plotly-call-butterfly-95-100-105",
+              "parameters": { "type": "call", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 6.00, "premium2": 3.00, "premium3": 1.00 }
+            },
+            {
+                "id": "long-put-butterfly-95-100-105",
+                "name": "Long Put Butterfly",
+                "outlook": "Neutral (Price Pinning Middle Strike)",
+                "description": "Similar profile to the Call Butterfly but constructed with puts. Expects price to expire at the middle strike.",
+                "construction": [ "Buy 1 Put (Lower Strike K1)", "Sell 2 Puts (Middle Strike K2)", "Buy 1 Put (Higher Strike K3)" ],
+                "notes": "Strikes K1, K2, K3 are typically equidistant.",
+                "maxProfit": "Width of one wing (K3 - K2) - Net Debit Paid",
+                "maxLoss": "Net Debit Paid",
+                "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+                "greeksOverview": "Similar to Call Butterfly: Near-zero Delta at K2, Negative Gamma, Negative Vega, Positive Theta.",
+                "whenToUse": "Same as Call Butterfly: High conviction price pins K2 at expiry. High IV expected to fall.",
+                "risks": "Same as Call Butterfly: Max loss if price moves significantly away. Precise prediction needed. Spread costs.",
+                "example": "Buy 95P @ $1.50, Sell two 100P @ $3.50 each, Buy 105P @ $7.10. Net Debit $1.60 ($1.50 - 2*$3.50 + $7.10). Max Profit $3.40 ($5 - $1.60). Breakevens $96.60, $103.40.",
+                "plotFunction": "plotButterfly",
+                "plotlyDivId": "plotly-put-butterfly-95-100-105",
+                "parameters": { "type": "put", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 1.50, "premium2": 3.50, "premium3": 7.10 }
+            }
+            // Add Call/Put Ratio Spreads, etc. if desired
+          ],
+          "fourLeg": [
+             {
+              "id": "iron-condor-90-95-105-110",
+              "name": "Iron Condor (Short Iron Condor)",
+              "outlook": "Neutral (Low Volatility, Range Bound)",
+              "description": "A defined-risk, defined-profit strategy profiting from time decay and low volatility. Constructed by selling an OTM put spread and selling an OTM call spread. Aims for the price to remain between the short strikes. Typically entered for a net credit.",
+              "construction": [ "Buy 1 OTM Put (Lower Wing K1)", "Sell 1 OTM Put (Short Put K2)", "Sell 1 OTM Call (Short Call K3)", "Buy 1 OTM Call (Upper Wing K4)" ],
+              "notes": "K1 < K2 < Current Price < K3 < K4. Wings (K2-K1 and K4-K3) often equal width.",
+              "maxProfit": "Net Credit Received (If price between K2 and K3 at expiry)",
+              "maxLoss": "Width of Widest Spread Wing (e.g., K2-K1) - Net Credit Received",
+              "breakeven": "Lower: K2 - Net Credit Received; Upper: K3 + Net Credit Received",
+              "greeksOverview": "Near-zero Delta when centered, Negative Gamma (loses if price moves significantly), Negative Vega (profits if IV drops), Positive Theta (profits from time decay).",
+              "whenToUse": "Expecting price to stay within a defined range (K2 to K3). High implied volatility environment where IV is expected to fall or remain stable. Generate income.",
+              "risks": "Maximum loss occurs if price moves significantly beyond either wing strike (K1 or K4). Assignment risk on short legs. Profit zone is relatively narrow.",
+              "example": "Buy 90P @ $0.50, Sell 95P @ $1.80, Sell 105C @ $1.50, Buy 110C @ $0.40. Net Credit $2.40 ($1.80 + $1.50 - $0.50 - $0.40). Max Loss $2.60 ($5 wing - $2.40 credit). Breakevens $92.60, $107.40.",
+              "plotFunction": "plotIronCondor",
+              "plotlyDivId": "plotly-iron-condor-90-95-105-110",
+              "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+            },
+             {
+              "id": "iron-butterfly-90-100-110",
+              "name": "Iron Butterfly (Short Iron Butterfly)",
+              "outlook": "Neutral (Very Low Volatility, Price Pinning Middle Strike)",
+              "description": "A defined-risk strategy expecting minimal price movement, aiming for expiration at the middle (short) strike. Combines a short ATM straddle with protective OTM wings. Higher potential profit than Iron Condor, but narrower profit range. Typically entered for a net credit.",
+              "construction": [ "Buy 1 OTM Put (Lower Wing K1)", "Sell 1 ATM Put (Middle Strike K2)", "Sell 1 ATM Call (Middle Strike K2)", "Buy 1 OTM Call (Upper Wing K3)" ],
+               "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant.",
+              "maxProfit": "Net Credit Received (If price = K2 at expiry)",
+              "maxLoss": "Width of one Wing (e.g., K2 - K1) - Net Credit Received",
+              "breakeven": "Lower: K2 - Net Credit Received; Upper: K2 + Net Credit Received",
+              "greeksOverview": "Near-zero Delta at center, Very Negative Gamma (large risk from moves away from K2), Negative Vega, Positive Theta (strong time decay profit potential near center).",
+              "whenToUse": "Very high conviction price will pin the middle strike (K2). Very high IV expected to collapse.",
+              "risks": "Profit zone is extremely narrow around the middle strike. Significant loss if price moves away from K2. Highly sensitive to gamma risk. Assignment risk on short legs.",
+              "example": "Buy 90P @ $0.50, Sell 100P @ $4.00, Sell 100C @ $3.80, Buy 110C @ $0.40. Net Credit $6.90 ($4.00 + $3.80 - $0.50 - $0.40). Max Loss $3.10 ($10 wing - $6.90 credit). Breakevens $93.10, $106.90.",
+              "plotFunction": "plotIronButterfly",
+              "plotlyDivId": "plotly-iron-butterfly-90-100-110",
+              "parameters": { "strikeP1": 90, "strikePC2": 100, "strikeC3": 110, "premiumP1": 0.50, "premiumP2": 4.00, "premiumC2": 3.80, "premiumC3": 0.40 }
+            },
+             {
+              "id": "reverse-iron-condor-90-95-105-110",
+              "name": "Reverse Iron Condor (Long Iron Condor)",
+              "outlook": "Volatile (Expecting Price Breakout)",
+              "description": "A defined-risk strategy profiting from a significant price move in either direction (increased volatility). Opposite of a standard Iron Condor, constructed by buying an OTM Put Spread and buying an OTM Call Spread. Entered for a net debit.",
+              "construction": [ "Sell 1 OTM Put (Lower Wing K1)", "Buy 1 OTM Put (Short Put K2)", "Buy 1 OTM Call (Short Call K3)", "Sell 1 OTM Call (Upper Wing K4)" ],
+              "notes": "Constructed with opposite legs compared to standard Iron Condor.",
+              "maxProfit": "Width of Widest Spread Wing - Net Debit Paid",
+              "maxLoss": "Net Debit Paid (If price between K2 and K3 at expiry)",
+              "breakeven": "Lower: K2 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+              "greeksOverview": "Near-zero Delta when centered, Positive Gamma (profits if price moves significantly), Positive Vega (profits if IV increases), Negative Theta (loses from time decay).",
+              "whenToUse": "Expecting a large price move out of the K2-K3 range, but unsure of direction. Low implied volatility environment where IV is expected to rise.",
+              "risks": "Maximum loss (net debit) occurs if price stays between the short strikes (K2, K3). Requires a significant price move beyond breakevens to profit. Time decay is detrimental.",
+              "example": "Sell 90P @ $0.50, Buy 95P @ $1.80, Buy 105C @ $1.50, Sell 110C @ $0.40. Net Debit $2.40 ($1.80 + $1.50 - $0.50 - $0.40). Max Profit $2.60 ($5 wing - $2.40 debit). Breakevens $92.60, $107.40.",
+              "plotFunction": "plotReverseIronCondor",
+              "plotlyDivId": "plotly-reverse-iron-condor-90-95-105-110",
+              "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+            },
+             {
+                "id": "reverse-iron-butterfly-90-100-110",
+                "name": "Reverse Iron Butterfly (Long Iron Butterfly)",
+                "outlook": "Volatile (Expecting Strong Price Breakout)",
+                "description": "Defined-risk strategy profiting from a very large move away from the center strike. Buys the ATM straddle and sells the wings for protection/cost reduction. Entered for net debit.",
+                "construction": [ "Sell 1 OTM Put (Lower Wing K1)", "Buy 1 ATM Put (Middle Strike K2)", "Buy 1 ATM Call (Middle Strike K2)", "Sell 1 OTM Call (Upper Wing K3)" ],
+                "notes": "Opposite legs of standard Iron Butterfly.",
+                "maxProfit": "Width of one Wing (e.g., K2-K1) - Net Debit Paid",
+                "maxLoss": "Net Debit Paid (If price = K2 at expiry)",
+                "breakeven": "Lower: K2 + Net Debit Paid; Upper: K2 - Net Debit Paid",
+                "greeksOverview": "Near-zero Delta, Positive Gamma, Positive Vega, Negative Theta (significant time decay cost).",
+                "whenToUse": "Expecting a very large move away from K2. Low IV expected to increase substantially.",
+                "risks": "Max loss (net debit) if price pins K2. Requires very large move to profit. Significant time decay cost.",
+                "example": "Sell 90P @ $0.50, Buy 100P @ $4.00, Buy 100C @ $3.80, Sell 110C @ $0.40. Net Debit $6.90 ($4.00 + $3.80 - $0.50 - $0.40). Max Profit $3.10 ($10 wing - $6.90 debit). Breakevens $93.10, $106.90.",
+                "plotFunction": "plotReverseIronButterfly",
+                "plotlyDivId": "plotly-reverse-iron-fly-90-100-110",
+                "parameters": { "strikeP1": 90, "strikePC2": 100, "strikeC3": 110, "premiumP1": 0.50, "premiumP2": 4.00, "premiumC2": 3.80, "premiumC3": 0.40 }
+            },
+             {
+              "id": "box-spread-100-110",
+              "name": "Box Spread (Long)",
+              "outlook": "Arbitrage / Synthetic Loan/Deposit",
+              "description": "Not a directional or volatility play. Combines a Bull Call Spread and a Bear Put Spread with the same strikes to create a synthetic risk-free position (in theory). Aims to lock in profit equal to strike difference minus net debit. Primarily used for financing or exploiting tiny mispricings.",
+              "construction": [ "Buy 1 Call (Lower Strike K1)", "Sell 1 Call (Higher Strike K2)", "Buy 1 Put (Higher Strike K2)", "Sell 1 Put (Lower Strike K1)" ],
+              "notes": "All options must have the same expiration. Payoff at expiration is constant (K2 - K1).",
+              "maxProfit": "(K2 - K1) - Net Debit Paid (if positive, typically very small or negative after costs)",
+              "maxLoss": "Net Debit Paid - (K2 - K1) (if positive, risk is usually related to early assignment/costs, not price movement)",
+              "breakeven": "N/A (Payoff is constant)",
+              "greeksOverview": "All Greeks (Delta, Gamma, Vega, Theta) should theoretically be zero once established, as the payoff is fixed.",
+              "whenToUse": "Rarely for retail due to commissions/slippage eating arbitrage. Used by institutions for financing (borrowing/lending) at implied rates or exploiting mispricings between puts/calls.",
+              "risks": "Execution risk (slippage, commissions making arbitrage impossible). Early assignment risk on short legs can disrupt the position and incur costs, especially with dividends. Interest rate risk if used for financing.",
+              "example": "Buy 100C @ $6.00, Sell 110C @ $1.50, Buy 110P @ $1.20, Sell 100P @ $4.00. Net Debit $1.70 ($6.00 - $1.50 + $1.20 - $4.00). Value at Expiry $10. Locked-in P/L $8.30 ($10 - $1.70) before costs.",
+              "plotFunction": "plotBoxSpread",
+              "plotlyDivId": "plotly-box-spread-100-110",
+              "parameters": { "strike1": 100, "strike2": 110, "premC1": 6.00, "premC2": 1.50, "premP1": 4.00, "premP2": 1.20 }
+            }
+          ],
+           "about": {
+               "title": "About This Options Strategy Visualizer",
+               "content": [
+                   "Welcome! This interactive tool, built using <strong>React (via CDN)</strong>, provides payoff diagrams and detailed information for various option strategies.",
+                   "It demonstrates client-side data handling including:",
+                   "<ul><li>Fetching data asynchronously using the browser's <strong>Fetch API</strong>.</li><li>Offline data persistence using <strong>IndexedDB</strong>.</li><li>Network response caching via the <strong>Cache Storage API</strong>.</li></ul>",
+                   "Payoff diagrams are rendered using <strong>Plotly.js</strong>, illustrating theoretical profit or loss at expiration.",
+                   "Navigation uses standard HTML anchors and React state management, styled with <strong>W3.CSS</strong> for responsiveness.",
+                   "Placeholders for <strong>Google Calendar</strong> integration and basic <strong>Google Analytics</strong> event tracking are included.",
+                   "<strong style='color: red;'>Disclaimer:</strong> All information and visualizations are for educational purposes ONLY. Option trading involves substantial risk and is not suitable for all investors. Premiums, volatility, and market conditions will differ in real trading. This tool does not provide financial advice. Consult a qualified professional before making any trading decisions."
+               ]
+           }
+        }; // End embeddedStrategyData
+
+        // --- Mount React App ---
+        // Renders the main App component into the 'root' div in the HTML body.
+        ReactDOM.render(
+            <App initialData={embeddedStrategyData} />, // Pass embedded data initially
+            document.getElementById('root')
+        );
+
+    </script>
 
 </body>
-</html>
+</html>\
