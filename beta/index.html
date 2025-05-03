@@ -21,6 +21,7 @@
         }
          .w3-container.header {
              padding: 20px; /* More padding for the header */
+             margin-bottom: 20px; /* Add space below header */
          }
         h1, h2, h3, h4, h5, h6 {
             color: #444; /* Darker text for headings */
@@ -45,8 +46,9 @@
             width: 100%;
             height: auto; /* Maintain aspect ratio by default */
             display: block;
-            background-color: #eee; /* Placeholder while loading */
+            background-color: #ddd; /* Slightly darker placeholder */
             object-fit: cover; /* Ensure image covers area without distortion */
+             min-height: 100px; /* Prevent collapsing if image fails */
         }
          /* Fixed height for thumbnails for a uniform look */
          .video-card img.thumbnail {
@@ -60,22 +62,22 @@
         }
          .video-details h4 {
              margin: 8px 0;
-             font-size: 15px; /* Slightly smaller font size */
+             font-size: 15px;
              font-weight: bold;
-             white-space: nowrap; /* Prevent wrapping */
-             overflow: hidden;     /* Hide overflow */
-             text-overflow: ellipsis; /* Show ellipsis for overflow */
+             white-space: nowrap;
+             overflow: hidden;
+             text-overflow: ellipsis;
              color: #444;
              line-height: 1.3; /* Ensure single line */
          }
         .video-details p {
             margin: 4px 0;
             font-size: 12px;
-            color: #777; /* Lighter grey for details */
-            line-height: 1.4; /* Improve readability */
-            white-space: nowrap; /* Prevent wrapping */
-            overflow: hidden;     /* Hide overflow */
-            text-overflow: ellipsis; /* Show ellipsis */
+            color: #777;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* Style for the 'New' badge (if needed later) */
@@ -94,27 +96,56 @@
         /* --- Loading and Error Indicators --- */
         #loading, #error {
             text-align: center;
-            padding: 20px;
+            padding: 25px 15px;
             font-size: 18px;
-            margin-top: 20px;
+            margin: 20px auto;
             display: none; /* Hidden by default */
+            max-width: 800px; /* Limit width */
+            border-radius: 4px;
         }
-        #loading { color: #2196F3; } /* W3.CSS Blue */
-        #error { color: #f44336; } /* W3.CSS Red */
+        #loading {
+            color: #1e88e5; /* W3.CSS Blue darker */
+            background-color: #e3f2fd; /* Light blue background */
+            border: 1px solid #bbdefb;
+         }
+        #error {
+            color: #d32f2f; /* W3.CSS Red darker */
+            background-color: #ffebee; /* Light red background */
+            border: 1px solid #ffcdd2;
+            font-weight: bold;
+            word-wrap: break-word; /* Wrap long error messages */
+        }
+        /* Basic spinner (optional) */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
 
         /* --- Video Player Section --- */
          #video-player-container {
-             margin-top: 30px;
-             margin-bottom: 30px;
+             margin: 30px auto; /* Center horizontally */
+             max-width: 960px; /* Limit player width */
              /* Aspect Ratio Box for responsive iframe */
              position: relative;
-             padding-bottom: 56.25%; /* 16:9 Aspect Ratio (height is 56.25% of width) */
+             padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
              height: 0;
              overflow: hidden;
              background-color: #000; /* Black background behind iframe */
              display: none; /* Hidden by default */
-             box-shadow: 0 4px 10px 0 rgba(0,0,0,0.2),0 4px 20px 0 rgba(0,0,0,0.19); /* Add shadow to player */
+             box-shadow: 0 4px 10px 0 rgba(0,0,0,0.2),0 4px 20px 0 rgba(0,0,0,0.19);
+             border-radius: 4px; /* Slightly rounded corners */
          }
           #video-player-container iframe {
              position: absolute;
@@ -130,10 +161,7 @@
 
          /* --- W3.CSS Grid Adjustments --- */
          /* w3-row-padding adds padding BETWEEN columns */
-         /* w3-col classes handle responsiveness:
-            - l3: Large screens (>=993px) - 4 columns (25% width)
-            - m6: Medium screens (>=601px) - 2 columns (50% width)
-            - s12: Small screens (<601px) - 1 column (100% width) */
+         /* Classes handle responsiveness: l3 (4/row), m6 (2/row), s12 (1/row) */
 
     </style>
 </head>
@@ -141,23 +169,28 @@
 
 <div class="w3-container w3-teal header">
   <h1>Pornhub Video Feed</h1>
-  <p>Displaying videos parsed from a feed via a server-side proxy.</p>
+  <p>Displaying videos parsed from a feed via a **server-side proxy**.</p>
 </div>
 
 <div class="w3-container w3-margin-top">
 
-  <!-- Video Player Container (Placed before list for potential scrollIntoView behavior) -->
+  <!-- Video Player Container (Placed before list for scrollIntoView) -->
    <div id="video-player-container">
-       <!-- `allowfullscreen` and potentially `allow="autoplay; fullscreen"` are important -->
+       <!-- `allowfullscreen` is standard, `allow="autoplay; fullscreen"` might be needed depending on embed -->
        <iframe id="video-player" src="" allowfullscreen title="Video Player"></iframe>
    </div>
 
-  <!-- Loading and Error Indicators -->
-  <div id="loading">Loading videos... <i class="fa fa-spinner w3-spin"></i></div> <!-- Optional: Add Font Awesome spinner if linked -->
-  <div id="error"></div>
+  <!-- Loading Indicator -->
+  <div id="loading">
+      <div class="spinner"></div>Loading videos...
+  </div>
+
+  <!-- Error Display Area -->
+  <div id="error">
+      <!-- Error message will be inserted here by JavaScript -->
+  </div>
 
   <!-- Container where videos will be displayed -->
-  <!-- Using W3.CSS grid classes. w3-row-padding adds padding between columns -->
   <div id="video-list" class="w3-row-padding">
     <!-- Video items will be dynamically added here by JavaScript -->
     <!-- Example structure generated by JS:
@@ -165,27 +198,33 @@
         <div class="w3-card w3-white video-card" data-embed-url="...">
             <img src="..." alt="..." class="thumbnail" loading="lazy">
             <div class="w3-container video-details">
-                <h4><b>Video Title</b></h4>
-                <p>Duration: MM:SS</p>
-                <p>Views: X.XM</p>
+                <h4><b>Video Title Here</b></h4>
+                <p>Duration: MM:SS | Views: X.XM</p>
             </div>
         </div>
     </div>
     -->
   </div>
 
-</div>
+</div><!-- End main container -->
 
 <!-- Embedded JavaScript -->
 <script>
     document.addEventListener('DOMContentLoaded', async function() {
 
-        console.log("DOM fully loaded. Initializing video viewer...");
+        console.log("DOM fully loaded. Initializing Pornhub Video Viewer...");
 
         // --- Configuration ---
-        // !! IMPORTANT !! Replace this with the **ABSOLUTE URL** of YOUR server-side proxy endpoint
-        // Example: 'https://your-server.com/api/pornhub-rss' or '/api/pornhub-rss' if on the same domain
-        const VIDEO_PROXY_ENDPOINT = 'https://www.pornhub.com/video/webmasterss';
+        // ####################################################################
+        // ## !! CRITICAL !! Replace this placeholder with the ACTUAL URL   ##
+        // ## of YOUR server-side proxy script.                            ##
+        // ## This script MUST fetch the Pornhub feed, parse it, and       ##
+        // ## return JSON data. The frontend CANNOT fetch directly from    ##
+        // ## Pornhub due to browser security (CORS / Same-Origin Policy). ##
+        // ####################################################################
+        // Example: const VIDEO_PROXY_ENDPOINT = 'https://your-server.com/api/get-ph-videos';
+        // Example: const VIDEO_PROXY_ENDPOINT = '/api/pornhub-rss'; // If proxy is on the same domain
+        const VIDEO_PROXY_ENDPOINT = '/api/pornhub-rss'; // <-- REPLACE THIS !!!
 
         // --- DOM References ---
         const videoListDiv = document.getElementById("video-list");
@@ -194,12 +233,19 @@
         const videoPlayerContainer = document.getElementById("video-player-container");
         const videoPlayerIframe = document.getElementById("video-player");
 
+        // --- Basic Check for Essential Elements ---
+        if (!videoListDiv || !loadingIndicator || !errorDisplay || !videoPlayerContainer || !videoPlayerIframe) {
+            console.error("Fatal Error: One or more essential DOM elements are missing. Check HTML structure.");
+            // Display error prominently if possible
+            document.body.innerHTML = '<div style="padding: 20px; background-color: #f44336; color: white; text-align: center; font-size: 1.2em;"><strong>Fatal Error:</strong> Essential page elements are missing. Cannot initialize application.</div>';
+            return; // Stop script execution
+        }
 
         // --- Helper Functions ---
 
         /**
          * Formats duration in seconds into MM:SS.
-         * @param {number | string} totalSeconds - Duration in seconds (can be string from data).
+         * @param {number | string | null | undefined} totalSeconds - Duration in seconds.
          * @returns {string} - Formatted string like "05:30" or "N/A".
          */
         function formatDuration(totalSeconds) {
@@ -215,136 +261,158 @@
         }
 
         /**
-         * Basic function to format view counts for readability.
-         * @param {number | string} views - View count.
-         * @returns {string} - Formatted string like "1.2M" or "15.5K" or "1,234".
+         * Formats view counts for readability (K for thousands, M for millions).
+         * @param {number | string | null | undefined} views - View count.
+         * @returns {string} - Formatted string like "1.2M", "15.5K", "987" or "N/A".
          */
         function formatViews(views) {
-            // Attempt to parse string views like "1,234,567"
             const numViews = typeof views === 'string' ? parseInt(views.replace(/,/g, ''), 10) : views;
              if (typeof numViews !== 'number' || isNaN(numViews) || numViews < 0) {
                 return 'N/A';
             }
             if (numViews >= 1000000) {
-                // Show one decimal place for millions
                 return (numViews / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
             }
             if (numViews >= 1000) {
-                 // Show one decimal place for thousands
                 return (numViews / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
             }
-            return numViews.toLocaleString(); // Use locale for comma separation for numbers < 1000
+            return numViews.toLocaleString(); // Use locale separation for < 1000
         }
 
 
         // --- Core Application Logic Functions ---
 
         /**
-         * Fetches video data from the server-side proxy endpoint.
+         * Fetches video data JSON from the server-side proxy endpoint.
          */
         async function fetchVideos() {
-            console.log(`Fetching videos from proxy: ${VIDEO_PROXY_ENDPOINT}`);
+            console.log(`Attempting to fetch videos from proxy: ${VIDEO_PROXY_ENDPOINT}`);
             showLoading();
-            hideError(); // Clear previous errors
-            // Optionally clear the list while loading
-            // if (videoListDiv) videoListDiv.innerHTML = "";
+            hideError();
+            hideVideoPlayer(); // Hide player if it was open from previous load
+            videoListDiv.innerHTML = ""; // Clear previous results while loading
 
             try {
-                 // Use AbortController for fetch timeout
+                 // Use AbortController for reliable fetch timeout
                  const controller = new AbortController();
+                 const timeoutDuration = 30000; // 30 seconds
                  const timeoutId = setTimeout(() => {
-                     console.warn("Fetch timed out!");
-                     controller.abort(); // Abort the fetch
-                 }, 30000); // 30 seconds timeout
+                     console.warn(`Fetch request to ${VIDEO_PROXY_ENDPOINT} timed out after ${timeoutDuration}ms.`);
+                     controller.abort();
+                 }, timeoutDuration);
 
-                const response = await fetch(VIDEO_PROXY_ENDPOINT, { signal: controller.signal });
-                clearTimeout(timeoutId); // Clear the timeout if fetch completes/fails within the time
+                const response = await fetch(VIDEO_PROXY_ENDPOINT, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json' // Explicitly ask for JSON
+                    }
+                 });
 
-                console.log(`Proxy response status: ${response.status}`);
+                clearTimeout(timeoutId); // Clear timeout if fetch completed/failed within time
 
+                console.log(`Proxy response status: ${response.status} (${response.statusText})`);
+
+                // Handle HTTP errors (4xx, 5xx)
                 if (!response.ok) {
-                     let errorBody = response.statusText; // Default error
+                     let errorBody = `Server responded with status ${response.status} (${response.statusText}).`;
                      try {
                         // Try to get more specific error message from proxy response body
-                        // errorBody = await response.text();
+                        const text = await response.text();
+                        // Avoid showing full HTML pages as error messages
+                        errorBody += text && !text.trim().startsWith('<') ? ` Details: ${text.substring(0, 200)}` : '';
                      } catch (e) {
                         console.warn("Could not read error response body:", e);
                      }
-                     console.error(`HTTP error details from proxy: ${errorBody}`);
-                     // Construct a more informative error message
-                     throw new Error(`HTTP error ${response.status}${errorBody ? `: ${errorBody.substring(0, 100)}` : ''}`); // Limit length
+                     console.error(`HTTP error details from proxy (${VIDEO_PROXY_ENDPOINT}): ${errorBody}`);
+                     throw new Error(errorBody);
                 }
 
-                const videos = await response.json(); // Expecting JSON array from the proxy
+                // Try to parse the response as JSON
+                let videos;
+                try {
+                    videos = await response.json();
+                } catch (parseError) {
+                    console.error("Failed to parse JSON response from proxy:", parseError);
+                    console.log("Raw response text (first 500 chars):", await response.text().then(t => t.substring(0,500)).catch(()=>"Could not read text"));
+                    throw new Error("Invalid JSON data received from proxy. Check proxy script output.");
+                }
 
-                // **Crucial Validation:** Ensure the proxy returns an array
+
+                // **Crucial Validation:** Ensure the proxy returned an array
                 if (!Array.isArray(videos)) {
-                    console.error("Proxy did not return a valid JSON array:", videos);
-                    throw new Error("Invalid data format received from video proxy. Expected an array.");
+                    console.error("Proxy did not return a valid JSON array. Received:", videos);
+                    throw new Error("Invalid data format received from proxy. Expected a JSON array.");
                 }
 
-                console.log(`Successfully fetched ${videos.length} videos.`);
+                console.log(`Successfully fetched and parsed ${videos.length} videos.`);
                 displayVideos(videos); // Display the fetched videos
 
             } catch (error) {
-                console.error("Error caught during video fetch:", error);
+                console.error("Error during video fetch/processing:", error);
+                let userMessage = `Failed to load videos. `;
+
                  if (error.name === 'AbortError') {
-                    showError(`Video load timed out. Please check the proxy server (${VIDEO_PROXY_ENDPOINT}) or try again later.`);
-                    console.error("Video fetch timed out.");
-                } else {
-                    showError(`Failed to load videos: ${error.message}. Check console and verify the proxy endpoint (${VIDEO_PROXY_ENDPOINT}) is correct and running.`);
+                    userMessage += `The request timed out. The proxy server (${VIDEO_PROXY_ENDPOINT}) might be slow or unavailable.`;
+                } else if (error instanceof TypeError && error.message.includes('fetch')) {
+                     // Network errors (DNS lookup failed, offline, CORS issues if proxy isn't configured correctly)
+                     userMessage += `A network error occurred. Check your connection and ensure the proxy address (${VIDEO_PROXY_ENDPOINT}) is correct and reachable.`;
+                     if (!VIDEO_PROXY_ENDPOINT.startsWith('http')) {
+                         userMessage += ` (Is the relative path correct?)`;
+                     }
+                 } else {
+                    // Use the specific error message thrown earlier
+                    userMessage += error.message;
                 }
-                // Optionally display error within the list area if needed
-                 if(videoListDiv) videoListDiv.innerHTML = `<p class="w3-center w3-text-red">Could not load videos. Check the proxy server status.</p>`;
+
+                showError(userMessage + " Please check the proxy server status and configuration, or try again later.");
+                videoListDiv.innerHTML = `<p class="w3-center w3-text-grey">Could not load videos at this time.</p>`; // User-friendly message in list area
             } finally {
                  hideLoading(); // Always hide loading indicator
-                 console.log("fetchVideos execution finished.");
+                 console.log("fetchVideos() execution finished.");
             }
         }
 
         /**
          * Displays the list of videos by creating and appending HTML elements.
          * @param {Array<Object>} videos - An array of video objects from the proxy.
-         *                                 Expected structure per object:
-         *                                 { title: string,
-         *                                   thumbnail_url_1: string, // Or similar key for thumb
-         *                                   embed_url: string,       // Crucial for playing
-         *                                   duration_seconds?: number|string,
-         *                                   views?: number|string,
-         *                                   rating?: number|string, // Optional fields
-         *                                   ... other fields
+         *                                 Expected structure per object (adjust keys as needed):
+         *                                 { title: string,           // REQUIRED
+         *                                   embed_url: string,       // REQUIRED (e.g., https://www.pornhub.com/embed/VIEWKEY)
+         *                                   thumbnail_url_1: string, // REQUIRED (or similar key for thumb)
+         *                                   duration_seconds?: number|string, // Optional
+         *                                   views?: number|string,            // Optional
+         *                                   // ... other fields like rating, tags, etc.
          *                                 }
          */
         function displayVideos(videos) {
-             if (!videoListDiv) {
-                  console.error("Fatal Error: Video list container (#video-list) not found in the DOM.");
-                  showError("Internal error: Cannot display videos (container missing).");
-                  return;
-             }
             console.log(`Attempting to display ${videos.length} videos.`);
-            videoListDiv.innerHTML = ""; // Clear previous list efficiently
+            videoListDiv.innerHTML = ""; // Clear previous list
 
             if (videos.length === 0) {
-                videoListDiv.innerHTML = '<p class="w3-center w3-text-grey">No videos found in the feed.</p>';
-                console.log("No videos to display.");
+                videoListDiv.innerHTML = '<p class="w3-center w3-text-grey">No videos were found in the feed.</p>';
+                console.log("No videos received from proxy to display.");
                 return;
             }
 
-            // Use a document fragment for optimal performance when adding many elements
+            // Use a document fragment for optimal performance
             const fragment = document.createDocumentFragment();
+            let validVideosDisplayed = 0;
 
             videos.forEach((video, index) => {
-                // **Data Validation per Video:** Ensure essential fields exist.
-                // Adjust field names ('thumbnail_url_1', 'duration_seconds', 'views')
-                // based on the ACTUAL JSON structure returned by YOUR proxy.
-                if (!video || typeof video.title !== 'string' || !video.title.trim() ||
-                    typeof video.thumbnail_url_1 !== 'string' || !video.thumbnail_url_1.trim() || // Adjust key if needed
-                    typeof video.embed_url !== 'string' || !video.embed_url.trim()) {
+                // **Data Validation per Video:** Ensure essential fields exist and are reasonable.
+                // !! Adjust field names ('thumbnail_url_1', 'duration_seconds', 'views', 'embed_url')
+                // !! based on the ACTUAL JSON structure returned by YOUR proxy.
+                const thumbnailUrlKey = 'thumbnail_url_1'; // CHANGE IF YOUR PROXY USES A DIFFERENT KEY
+                const embedUrlKey = 'embed_url';           // CHANGE IF YOUR PROXY USES A DIFFERENT KEY
+                const durationKey = 'duration_seconds';    // CHANGE IF YOUR PROXY USES A DIFFERENT KEY
+                const viewsKey = 'views';                  // CHANGE IF YOUR PROXY USES A DIFFERENT KEY
 
-                     console.warn(`Skipping video at index ${index} due to incomplete data:`, video);
+                if (!video || typeof video.title !== 'string' || !video.title.trim() ||
+                    typeof video[thumbnailUrlKey] !== 'string' || !video[thumbnailUrlKey].trim() ||
+                    typeof video[embedUrlKey] !== 'string' || !video[embedUrlKey].trim() || !video[embedUrlKey].includes('/embed/')) { // Basic check for embed URL format
+
+                     console.warn(`Skipping video at index ${index} due to incomplete or invalid essential data (title, thumbnail, embed_url):`, video);
                      // Optionally, create a placeholder card indicating an error for this item
-                     // const errorCard = createErrorCard(`Video data missing (index ${index})`);
-                     // fragment.appendChild(errorCard);
                      return; // Skip this video
                  }
 
@@ -355,32 +423,34 @@
                 // Create the W3.CSS card div
                 const cardDiv = document.createElement("div");
                 cardDiv.className = "w3-card w3-white video-card";
-                // Store the embed URL in a data attribute for easy access on click
-                cardDiv.dataset.embedUrl = video.embed_url;
-                // Maybe store title too for quick access later if needed
-                // cardDiv.dataset.title = video.title;
+                cardDiv.dataset.embedUrl = video[embedUrlKey]; // Store the validated embed URL
 
                 // Create the image element (thumbnail)
                 const img = document.createElement("img");
-                img.src = video.thumbnail_url_1; // Use the first thumbnail URL from your proxy's JSON
+                img.src = video[thumbnailUrlKey];
                 img.alt = video.title; // Use video title as alt text
                 img.className = "thumbnail"; // Apply class for fixed height styling
-                img.loading = "lazy"; // Improve performance for many images
+                img.loading = "lazy"; // Defer loading of off-screen images
+
                 // Basic error handling for broken image links
                 img.onerror = function() {
                     console.warn(`Failed to load thumbnail for: ${video.title} (${this.src})`);
                     this.alt = `${video.title} (Thumbnail unavailable)`;
-                    // Optional: Replace with a placeholder image or style
-                    // this.src = 'path/to/placeholder-image.png';
-                    this.style.backgroundColor = '#ccc'; // Simple visual fallback
-                    this.style.height = '180px'; // Maintain height even if image breaks
+                    // Simple visual fallback
+                    this.style.backgroundColor = '#ccc';
+                    this.style.height = '180px'; // Maintain layout consistency
                     this.style.display = 'flex';
                     this.style.alignItems = 'center';
                     this.style.justifyContent = 'center';
                     this.style.color = '#666';
-                    this.insertAdjacentHTML('afterend', '<p style="position:absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 3px; font-size: 10px;">No thumb</p>');
+                    this.style.fontSize = '12px';
+                    this.parentNode.style.position = 'relative'; // Needed for absolute positioning of text
+                    // Add text overlay indicating missing thumb - create element for safety
+                    const errorText = document.createElement('span');
+                    errorText.textContent = 'Thumb N/A';
+                    errorText.style.cssText = 'position:absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; background: rgba(0,0,0,0.6); padding: 3px 6px; border-radius: 3px; font-size: 10px; pointer-events: none;';
+                    this.parentNode.appendChild(errorText);
                  };
-
 
                 // Create the details container
                 const detailsDiv = document.createElement("div");
@@ -388,21 +458,30 @@
 
                 // Build details HTML dynamically, checking for optional fields
                 let detailsHtml = `<h4><b>${video.title}</b></h4>`;
-                let infoLine = [];
-                if (video.duration_seconds) { // Adjust key if needed
-                    infoLine.push(`Duration: ${formatDuration(video.duration_seconds)}`);
+                let infoParts = [];
+
+                // Check for duration (using the defined key)
+                if (video[durationKey] !== undefined && video[durationKey] !== null) {
+                    const formattedDuration = formatDuration(video[durationKey]);
+                    if (formattedDuration !== 'N/A') {
+                        infoParts.push(`Duration: ${formattedDuration}`);
+                    }
                 }
-                if (video.views) { // Adjust key if needed
-                     infoLine.push(`Views: ${formatViews(video.views)}`);
+                // Check for views (using the defined key)
+                if (video[viewsKey] !== undefined && video[viewsKey] !== null) {
+                     const formattedViews = formatViews(video[viewsKey]);
+                     if (formattedViews !== 'N/A') {
+                        infoParts.push(`Views: ${formattedViews}`);
+                     }
                 }
-                 // Add more fields if available from your proxy (e.g., rating, tags)
-                // if (video.rating) {
-                //     infoLine.push(`Rating: ${video.rating}%`); // Example
-                // }
-                if (infoLine.length > 0) {
-                    detailsHtml += `<p>${infoLine.join(' | ')}</p>`; // Join details on one line if desired
+                // Add more optional fields here if available from your proxy
+                // if (video.rating) { infoParts.push(`Rating: ${video.rating}%`); }
+
+                // Combine info parts or add a placeholder if none exist
+                if (infoParts.length > 0) {
+                    detailsHtml += `<p>${infoParts.join(' | ')}</p>`; // Join details with a separator
                 } else {
-                    detailsHtml += `<p> </p>`; // Add empty paragraph to maintain spacing if no details
+                    detailsHtml += `<p> </p>`; // Keep space consistent if no details
                 }
 
                 detailsDiv.innerHTML = detailsHtml;
@@ -415,98 +494,100 @@
                 cardDiv.addEventListener("click", function() {
                     const embedUrl = this.dataset.embedUrl;
                     if (!embedUrl) {
-                        console.error("Clicked card is missing the embed URL in data attribute.");
-                        showError("Cannot play video: Embed URL missing.");
+                        console.error("Clicked card is missing the embed URL in data attribute.", this);
+                        showError("Cannot play video: Embed URL is missing for this item.");
                         return;
                     }
-                    console.log("Video card clicked, loading embed:", embedUrl);
+                    console.log("Video card clicked, requesting player load for:", embedUrl);
                     loadVideoInPlayer(embedUrl);
                 });
 
                 // Append the column div containing the card to the fragment
                 colDiv.appendChild(cardDiv);
                 fragment.appendChild(colDiv);
+                validVideosDisplayed++;
             });
 
-            // Append the fragment containing all cards to the video list div
+            // Append the fragment containing all valid cards to the video list div
             videoListDiv.appendChild(fragment);
-            console.log("Finished displaying videos.");
+            console.log(`Finished displaying ${validVideosDisplayed} valid videos.`);
+            if (validVideosDisplayed === 0 && videos.length > 0) {
+                 showError("Loaded video data, but none contained the required information (title, thumbnail, embed URL) to be displayed. Check proxy output and data validation in the script.");
+                 videoListDiv.innerHTML = `<p class="w3-center w3-text-grey">No valid video data could be displayed.</p>`;
+             }
         }
 
         /**
-         * Loads a video embed URL into the iframe player.
-         * Shows the player container and scrolls it into view.
-         * @param {string} embedUrl - The URL of the video embed (MUST be the embed URL, not the video page URL).
+         * Loads a video embed URL into the iframe player, shows it, and scrolls to it.
+         * @param {string} embedUrl - The validated URL of the video embed (e.g., https://www.pornhub.com/embed/VIEWKEY).
          */
         function loadVideoInPlayer(embedUrl) {
-             if (!videoPlayerContainer || !videoPlayerIframe) {
-                 console.error("Fatal Error: Video player elements not found. Cannot load video player.");
-                 showError("Internal error: Cannot load video player (elements missing).");
-                 return;
-             }
-             if (!embedUrl || typeof embedUrl !== 'string') {
-                  console.warn("Invalid or missing embed URL provided:", embedUrl);
-                  showError("Cannot load video: Invalid embed URL.");
-                  return;
-             }
              console.log("Loading video into player:", embedUrl);
 
              // Set the iframe source.
-             // Consider adding ?autoplay=1 but be aware of browser autoplay policies (often blocked unless muted or user interacted).
-             // Example: videoPlayerIframe.src = `${embedUrl}?autoplay=1`;
-             videoPlayerIframe.src = embedUrl;
+             // Autoplay is often blocked by browsers unless muted or user interaction occurred.
+             // Add `?autoplay=1` cautiously if needed, but don't rely on it working.
+             videoPlayerIframe.src = embedUrl; // Example: `${embedUrl}?autoplay=1`
 
              // Make the player container visible
              videoPlayerContainer.style.display = 'block';
-             // Or use class: videoPlayerContainer.classList.add('visible');
 
-             // Scroll the player into view smoothly
-             videoPlayerContainer.scrollIntoView({ behavior: 'smooth', block: 'center' }); // 'start', 'center', 'end'
+             // Scroll the player into view smoothly, centered if possible
+             console.log("Scrolling player into view...");
+             videoPlayerContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
              console.log("Video player is now visible and loading content.");
+        }
+
+        /** Hides the video player container and clears its source */
+        function hideVideoPlayer() {
+            if (videoPlayerContainer) {
+                videoPlayerContainer.style.display = 'none';
+            }
+            if (videoPlayerIframe) {
+                videoPlayerIframe.src = ''; // Clear src to stop playback
+            }
+            console.log("Video player hidden.");
         }
 
 
         // --- Loading and Error Display Functions ---
         function showLoading() {
-            if (loadingIndicator) loadingIndicator.style.display = 'block';
+            loadingIndicator.style.display = 'block';
+            hideError(); // Hide any previous errors when loading starts
         }
 
         function hideLoading() {
-            if (loadingIndicator) loadingIndicator.style.display = 'none';
+            loadingIndicator.style.display = 'none';
         }
 
         function showError(message) {
-            if (errorDisplay) {
-                // Sanitize message slightly to prevent potential basic HTML injection if error message comes from external source
-                const cleanMessage = message.replace(/</g, "<").replace(/>/g, ">");
-                errorDisplay.innerHTML = `<strong>Error:</strong> ${cleanMessage}`; // Use innerHTML to allow <strong>
-                errorDisplay.style.display = 'block';
-                // Optional: Scroll to error message
-                // errorDisplay.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                console.error("Error display element not found. Message:", message);
-            }
+             // Sanitize message slightly to prevent basic HTML interpretation
+             const cleanMessage = message.replace(/</g, "<").replace(/>/g, ">");
+             errorDisplay.innerHTML = `<strong>Error:</strong> ${cleanMessage}`; // Use innerHTML for <strong> tag
+             errorDisplay.style.display = 'block';
+             hideLoading(); // Hide loading indicator if an error occurs
+             console.error("Error displayed to user:", message);
+              // Optional: Scroll to error message if it's potentially off-screen
+              // errorDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function hideError() {
-            if (errorDisplay) {
-                 errorDisplay.style.display = 'none';
-                 errorDisplay.textContent = ''; // Clear text
-            }
+            errorDisplay.style.display = 'none';
+            errorDisplay.textContent = ''; // Clear text
         }
 
          // --- Initialization ---
 
-        // Perform initial fetch when the DOM is ready
+        // Start the process by fetching videos
         fetchVideos();
 
-        // Optional: Set up periodic refresh if needed (e.g., every 5 minutes)
-        // const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+        // Optional: Add periodic refresh (e.g., every 10 minutes)
+        // const REFRESH_INTERVAL_MS = 10 * 60 * 1000;
         // setInterval(fetchVideos, REFRESH_INTERVAL_MS);
-        // console.log(`Set up automatic refresh every ${REFRESH_INTERVAL_MS / 1000} seconds.`);
+        // console.log(`Automatic refresh configured every ${REFRESH_INTERVAL_MS / 1000 / 60} minutes.`);
 
-        console.log("Pornhub Video Viewer application initialized.");
+        console.log("Pornhub Video Viewer application initialization complete.");
 
     });
 </script>
