@@ -1,0 +1,473 @@
+{
+  "_comment": "Option Strategy Definitions for Vanilla JS Visualizer - Structure Only. Premiums/Greeks calculated by script.js using Black-Scholes or Binomial models based on user inputs. Assumes /ES context where appropriate.",
+  "oneLeg": [
+    {
+      "_comment": "Simplest bullish strategy: Long Call. Buys the right to buy.",
+      "id": "long-call-5150",
+      "name": "Long Call (/ES)",
+      "outlook": "Strongly Bullish",
+      "description": "Purchases the right, but not the obligation, to buy the underlying (/ES futures contract) at the specified strike price on or before the expiration date. This strategy is employed when anticipating a significant increase in the underlying futures price above the breakeven point.",
+      "construction": [
+        "Buy 1 Call Option"
+      ],
+      "maxProfit": "Unlimited (theoretically, as the underlying price can rise indefinitely)",
+      "maxLoss": "Premium Paid (Calculated)",
+      "breakeven": "Strike Price + Premium Paid (Calculated)",
+      "parameters": {
+        "_comment": "Defines the single leg for calculation.",
+        "type": "call",
+        "position": "long",
+        "strike": 5150,
+        "quantity": 1
+      },
+      "greeksProfile": "Positive Delta (profits from price increase), Positive Gamma (delta increases as price rises), Positive Vega (profits from volatility increase), Negative Theta (loses value from time decay).",
+      "timeDecayImpact": "Negative. Time decay (theta) works against the long option holder, eroding its value daily, especially as expiration approaches.",
+      "volatilityImpact": "Positive. An increase in implied volatility (vega) generally increases the option's price.",
+      "targetVolatility": "Low IV at entry, expecting a rise; or entering regardless if directional conviction is high.",
+      "assignmentNotes": "Not applicable for long options (holder decides exercise).",
+      "whenToUse": "Strong directional conviction upwards; Anticipating increased market volatility; Hedging a short futures position.",
+      "risks": "Losing the entire premium paid if the futures price is at or below the strike at expiration. Rapid time decay near expiration. Decreases in implied volatility hurt the position.",
+      "example": "Buy 1 /ES 5150 Call. If premium is $30.00, breakeven is 5180.00 at expiration.",
+      "plotlyDivId": "plotly-lc-5150",
+      "plotFunction": "plotBasicOption"
+    },
+    {
+      "_comment": "Bullish to neutral strategy: Short Put. Sells the obligation to buy.",
+      "id": "short-put-5050",
+      "name": "Short Put (/ES)",
+      "outlook": "Bullish to Neutral",
+      "description": "Sells (writes) the obligation to buy the underlying (/ES futures contract) at the specified strike price if the option is assigned. Collects premium upfront. Profitable if the futures price stays above the strike price at expiration.",
+      "construction": [
+        "Sell 1 Put Option"
+      ],
+      "maxProfit": "Premium Received (Calculated)",
+      "maxLoss": "Strike Price - Premium Received (Calculated) (Occurs if futures price drops to zero, substantial risk)",
+      "breakeven": "Strike Price - Premium Received (Calculated)",
+      "parameters": {
+        "type": "put",
+        "position": "short",
+        "strike": 5050,
+        "quantity": 1
+      },
+       "greeksProfile": "Positive Delta (benefits from price up/stable), Negative Gamma (risk accelerates if price drops), Negative Vega (benefits from IV decrease), Positive Theta (benefits from time decay).",
+       "timeDecayImpact": "Positive. Time decay helps the option seller as the option value decreases over time, assuming other factors remain constant.",
+       "volatilityImpact": "Negative. A decrease in implied volatility generally benefits the short option position.",
+       "targetVolatility": "High IV at entry, expecting a drop or stability.",
+       "assignmentNotes": "Can be assigned the underlying futures contract if the put finishes in-the-money. Must have sufficient capital/margin.",
+       "whenToUse": "Expecting the underlying price to remain stable or rise moderately; Seeking to generate income from premium; High implied volatility environment; Willingness to potentially acquire the underlying at the strike.",
+       "risks": "Substantial loss potential if the price drops significantly below the breakeven point. Margin requirements. Assignment risk if ITM.",
+       "example": "Sell 1 /ES 5050 Put. If premium is $25.00, breakeven is 5025.00 at expiration. Max profit is $25.00 (x $50 multiplier = $1250).",
+      "plotlyDivId": "plotly-sp-5050",
+      "plotFunction": "plotBasicOption"
+    },
+    {
+      "_comment": "Bearish to neutral strategy: Short Call. Sells the obligation to sell.",
+      "id": "short-call-5200",
+      "name": "Short Call (/ES)",
+      "outlook": "Bearish to Neutral",
+      "description": "Sells (writes) the obligation to sell the underlying (/ES futures contract) at the specified strike price if assigned. Collects premium. Profitable if the futures price stays below the strike at expiration.",
+      "construction": [
+        "Sell 1 Call Option"
+      ],
+      "maxProfit": "Premium Received (Calculated)",
+      "maxLoss": "Unlimited (as the underlying price can rise indefinitely)",
+      "breakeven": "Strike Price + Premium Received (Calculated)",
+      "parameters": {
+        "type": "call",
+        "position": "short",
+        "strike": 5200,
+        "quantity": 1
+      },
+      "greeksProfile": "Negative Delta (benefits from price down/stable), Negative Gamma (risk accelerates if price rises), Negative Vega (benefits from IV decrease), Positive Theta (benefits from time decay).",
+      "timeDecayImpact": "Positive. Time decay helps the seller.",
+      "volatilityImpact": "Negative. Benefits from decreasing IV.",
+      "targetVolatility": "High IV at entry, expecting a drop or stability.",
+      "assignmentNotes": "Can be assigned (required to sell the underlying) if the call finishes in-the-money. Often requires holding the underlying or significant margin.",
+      "whenToUse": "Expecting the underlying price to remain stable or fall moderately; Generate income; High IV environment.",
+      "risks": "Unlimited loss potential if the price rises significantly. Very high-risk strategy if done 'naked' (without owning the underlying). Margin requirements. Assignment risk.",
+      "example": "Sell 1 /ES 5200 Call. If premium is $28.00, breakeven is 5228.00 at expiration.",
+      "plotlyDivId": "plotly-sc-5200",
+      "plotFunction": "plotBasicOption"
+    },
+    {
+      "_comment": "Simplest bearish strategy: Long Put. Buys the right to sell.",
+      "id": "long-put-5000",
+      "name": "Long Put (/ES)",
+      "outlook": "Strongly Bearish",
+      "description": "Purchases the right, but not the obligation, to sell the underlying (/ES futures contract) at the specified strike price on or before expiration. Used when expecting a significant decrease in the underlying price below the breakeven point.",
+      "construction": [
+        "Buy 1 Put Option"
+      ],
+      "maxProfit": "Strike Price - Premium Paid (Calculated) (Achieved if underlying goes to zero)",
+      "maxLoss": "Premium Paid (Calculated)",
+      "breakeven": "Strike Price - Premium Paid (Calculated)",
+      "parameters": {
+        "type": "put",
+        "position": "long",
+        "strike": 5000,
+        "quantity": 1
+      },
+      "greeksProfile": "Negative Delta (profits from price decrease), Positive Gamma (delta becomes more negative as price falls), Positive Vega (profits from IV increase), Negative Theta (loses value from time decay).",
+      "timeDecayImpact": "Negative. Time decay works against the long put holder.",
+      "volatilityImpact": "Positive. Benefits from increasing IV.",
+      "targetVolatility": "Low IV at entry, expecting a rise; or high directional conviction.",
+      "assignmentNotes": "Not applicable for long options (holder decides exercise/sale).",
+      "whenToUse": "Strong directional conviction downwards; Anticipating increased market volatility; Hedging a long futures position.",
+      "risks": "Losing the entire premium paid if the futures price is at or above the strike at expiration. Time decay. Decreases in implied volatility.",
+      "example": "Buy 1 /ES 5000 Put. If premium is $35.00, breakeven is 4965.00 at expiration.",
+      "plotlyDivId": "plotly-lp-5000",
+      "plotFunction": "plotBasicOption"
+    }
+  ],
+  "twoLeg": [
+    {
+      "_comment": "Defined-risk bullish vertical spread.",
+      "id": "bull-call-spread-5100-5150",
+      "name": "Bull Call Spread (/ES)",
+      "outlook": "Moderately Bullish",
+      "description": "Buys a call at a lower strike (K1) and sells a call at a higher strike (K2), same expiration. A debit spread with defined risk and profit.",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1)",
+        "Sell 1 Call (Higher Strike K2)"
+      ],
+      "maxProfit": "Difference between strikes (K2 - K1) - Net Debit (Calculated)",
+      "maxLoss": "Net Debit (Calculated)",
+      "breakeven": "Lower Strike (K1) + Net Debit (Calculated)",
+      "parameters": {
+        "type": "call", "position": "debit", "quantity": 1,
+        "legs": [
+          { "_comment": "Long lower strike leg", "type": "call", "position": "long", "strike": 5100 },
+          { "_comment": "Short higher strike leg", "type": "call", "position": "short", "strike": 5150 }
+        ]
+      },
+      "greeksProfile": "Net Positive Delta (less than long call), Gamma varies (can be pos/neg), Net Negative Vega (generally prefers lower IV), Theta varies.",
+      "timeDecayImpact": "Variable. Can help if ITM, hurt if OTM.",
+      "volatilityImpact": "Generally negative (lower IV helps), less sensitive than single options.",
+      "targetVolatility": "Lower or stable IV preferred.",
+      "assignmentNotes": "Risk of assignment on the short K2 call near expiration if ITM. Usually closed as a spread.",
+      "whenToUse": "Moderately bullish up to K2; Limit risk vs long call; Reduce cost.",
+      "risks": "Losing the net debit if price expires below K1. Profit capped above K2.",
+      "example": "Buy 5100 Call, Sell 5150 Call. If Net Debit is $15.00, Max Loss is $15.00, Max Profit is $35.00 (50 - 15). Breakeven 5115.00.",
+      "plotlyDivId": "plotly-bull-call-spread",
+      "plotFunction": "plotVerticalSpread"
+    },
+    {
+      "_comment": "Defined-risk bearish vertical spread.",
+      "id": "bear-put-spread-5100-5050",
+      "name": "Bear Put Spread (/ES)",
+      "outlook": "Moderately Bearish",
+      "description": "Buys a put at a higher strike (K2) and sells a put at a lower strike (K1), same expiration. Debit spread, defined risk/profit.",
+      "construction": [
+        "Buy 1 Put (Higher Strike K2)",
+        "Sell 1 Put (Lower Strike K1)"
+      ],
+      "maxProfit": "Difference between strikes (K2 - K1) - Net Debit (Calculated)",
+      "maxLoss": "Net Debit (Calculated)",
+      "breakeven": "Higher Strike (K2) - Net Debit (Calculated)",
+      "parameters": {
+        "type": "put", "position": "debit", "quantity": 1,
+        "legs": [
+          { "_comment": "Sell lower strike leg", "type": "put", "position": "short", "strike": 5050 },
+          { "_comment": "Buy higher strike leg", "type": "put", "position": "long", "strike": 5100 }
+        ]
+      },
+      "greeksProfile": "Net Negative Delta (less than long put), Gamma varies, Net Negative Vega, Theta varies.",
+      "whenToUse": "Moderately bearish down to K1; Limit risk vs long put; Reduce cost.",
+      "risks": "Losing net debit if price expires above K2. Profit capped below K1.",
+      "example": "Buy 5100 Put, Sell 5050 Put. If Net Debit is $18.00, Max Loss is $18.00, Max Profit is $32.00 (50 - 18). Breakeven 5082.00.",
+      "plotlyDivId": "plotly-bear-put-spread",
+      "plotFunction": "plotVerticalSpread"
+    },
+    {
+      "_comment": "Defined-risk bearish/neutral credit spread.",
+      "id": "bear-call-spread-5150-5200",
+      "name": "Bear Call Spread (/ES)",
+      "outlook": "Moderately Bearish / Neutral",
+      "description": "Sells a call at a lower strike (K1) and buys a call at a higher strike (K2) for protection. Profits if price stays below K1. Entered for a net credit.",
+      "construction": [
+        "Sell 1 Call (Lower Strike K1)",
+        "Buy 1 Call (Higher Strike K2)"
+      ],
+      "maxProfit": "Net Credit Received (Calculated)",
+      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit (Calculated)",
+      "breakeven": "Lower Strike (K1) + Net Credit (Calculated)",
+      "parameters": {
+        "type": "call", "position": "credit", "quantity": 1,
+        "legs": [
+          { "_comment": "Short lower strike leg", "type": "call", "position": "short", "strike": 5150 },
+          { "_comment": "Long higher strike leg", "type": "call", "position": "long", "strike": 5200 }
+        ]
+      },
+      "greeksProfile": "Net Negative Delta, Gamma profile varies (often net negative), Net Positive Vega (benefits from higher IV, though often small effect), Positive Theta (benefits from time decay).",
+      "timeDecayImpact": "Positive. Time decay helps the credit spread seller.",
+      "volatilityImpact": "Generally positive (higher IV increases credit received), but complex interaction.",
+      "targetVolatility": "High IV preferred at entry.",
+      "assignmentNotes": "Risk of assignment on the short K1 call.",
+      "whenToUse": "Expecting price below K1 or falling; Generate income; High IV environment; Defined risk.",
+      "risks": "Max loss if price rallies strongly above K2. Assignment risk on short leg.",
+      "example": "Sell 5150 Call, Buy 5200 Call. If Net Credit is $12.00, Max Profit is $12.00, Max Loss $38.00 (50 - 12). Breakeven 5162.00.",
+      "plotlyDivId": "plotly-bear-call-spread",
+      "plotFunction": "plotVerticalSpread"
+    },
+    {
+      "_comment": "Defined-risk bullish/neutral credit spread.",
+      "id": "bull-put-spread-5050-5000",
+      "name": "Bull Put Spread (/ES)",
+      "outlook": "Moderately Bullish / Neutral",
+      "description": "Sells a put at a higher strike (K2) and buys a put at a lower strike (K1) for protection. Profits if price stays above K2. Entered for a net credit.",
+      "construction": [
+        "Buy 1 Put (Lower Strike K1)",
+        "Sell 1 Put (Higher Strike K2)"
+      ],
+      "maxProfit": "Net Credit Received (Calculated)",
+      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit (Calculated)",
+      "breakeven": "Higher Strike (K2) - Net Credit (Calculated)",
+      "parameters": {
+        "type": "put", "position": "credit", "quantity": 1,
+        "legs": [
+          { "_comment": "Long lower strike leg", "type": "put", "position": "long", "strike": 5000 },
+          { "_comment": "Short higher strike leg", "type": "put", "position": "short", "strike": 5050 }
+        ]
+      },
+      "greeksProfile": "Net Positive Delta, Gamma varies (often net negative), Net Positive Vega, Positive Theta.",
+      "whenToUse": "Expecting price above K2 or rising; Generate income; High IV preferred; Defined risk.",
+      "risks": "Max loss if price falls strongly below K1. Assignment risk on short leg.",
+      "example": "Sell 5050 Put, Buy 5000 Put. If Net Credit is $14.00, Max Profit is $14.00, Max Loss $36.00 (50 - 14). Breakeven 5036.00.",
+      "plotlyDivId": "plotly-bull-put-spread",
+      "plotFunction": "plotVerticalSpread"
+    },
+    {
+      "_comment": "Volatility strategy: Long Straddle. Buy ATM Call & Put.",
+      "id": "long-straddle-5100",
+      "name": "Long Straddle (/ES)",
+      "outlook": "Volatile (Direction Unknown)",
+      "description": "Buys an At-the-Money (ATM) call and an ATM put with the same strike and expiration. Profits from a large price move in either direction, significantly exceeding the premium paid. Benefits from increased implied volatility.",
+      "construction": [
+        "Buy 1 ATM Call (Strike K)",
+        "Buy 1 ATM Put (Strike K)"
+      ],
+      "maxProfit": "Unlimited (upside), Substantial (downside: K - Net Debit)",
+      "maxLoss": "Net Debit Paid (Calculated) (if price pins strike at expiration)",
+      "breakeven": "Upper: Strike + Net Debit (Calculated); Lower: Strike - Net Debit (Calculated)",
+      "parameters": {
+        "type": "straddle", "strikeP": 5100, "strikeC": 5100, "quantity": 1,
+        "legs": [
+          { "_comment": "ATM Put", "type": "put", "position": "long", "strike": 5100 },
+          { "_comment": "ATM Call", "type": "call", "position": "long", "strike": 5100 }
+        ]
+      },
+      "greeksProfile": "Near-zero Delta (at inception), Positive Gamma (benefits from movement), Strongly Positive Vega (benefits strongly from IV increase), Strongly Negative Theta (significant time decay cost).",
+      "timeDecayImpact": "Very negative. Theta decay is the primary cost.",
+      "volatilityImpact": "Strongly positive. Vega exposure is high.",
+      "targetVolatility": "Low IV expected to rise significantly.",
+      "assignmentNotes": "Not applicable (long options).",
+      "whenToUse": "Expecting a large price move but unsure of direction (e.g., major economic report, geopolitical event). Expecting a significant increase in implied volatility.",
+      "risks": "Losing the entire net debit if the price stays near the strike at expiration. Highly sensitive to time decay. Sensitive to decreases in implied volatility (Vega risk). Requires a substantial price move to become profitable.",
+      "example": "Stock@$5100. Buy 5100 Call, Buy 5100 Put. If Net Debit is $60.00, Breakevens are 5040.00 and 5160.00.",
+      "plotlyDivId": "plotly-long-straddle",
+      "plotFunction": "plotStraddleStrangle"
+    },
+    {
+      "_comment": "Volatility strategy: Long Strangle. Buy OTM Call & Put.",
+      "id": "long-strangle-5050-5150",
+      "name": "Long Strangle (/ES)",
+      "outlook": "Very Volatile (Direction Unknown)",
+      "description": "Buys an Out-of-the-Money (OTM) call and an OTM put with different strikes but the same expiration. Cheaper than a straddle, but requires an even larger price move to profit. Benefits from increased implied volatility.",
+      "construction": [
+        "Buy 1 OTM Put (Lower Strike K1)",
+        "Buy 1 OTM Call (Higher Strike K2)"
+      ],
+      "maxProfit": "Unlimited (upside), Substantial (downside: K1 - Net Debit)",
+      "maxLoss": "Net Debit Paid (Calculated)",
+      "breakeven": "Upper: K2 + Net Debit (Calculated); Lower: K1 - Net Debit (Calculated)",
+      "parameters": {
+        "type": "strangle", "strikeP": 5050, "strikeC": 5150, "quantity": 1,
+        "legs": [
+          { "_comment": "OTM Put", "type": "put", "position": "long", "strike": 5050 },
+          { "_comment": "OTM Call", "type": "call", "position": "long", "strike": 5150 }
+        ]
+      },
+      "greeksProfile": "Near-zero Delta (at inception), Positive Gamma, Positive Vega, Negative Theta (less theta decay than straddle initially, but still significant).",
+      "timeDecayImpact": "Negative, but generally less severe than ATM straddle initially.",
+      "volatilityImpact": "Positive. Benefits from IV increase.",
+      "targetVolatility": "Low IV expected to rise significantly.",
+      "assignmentNotes": "Not applicable.",
+      "whenToUse": "Expecting a very large price move, unsure of direction. Cheaper alternative to straddle when IV is already somewhat high. Expecting IV increase.",
+      "risks": "Requires a larger move than a straddle to reach breakeven. Maximum loss occurs if price stays between the strikes. Time decay and Vega risk still apply.",
+      "example": "Stock@$5100. Buy 5050 Put, Buy 5150 Call. If Net Debit is $40.00, Breakevens are 5010.00 and 5190.00.",
+      "plotlyDivId": "plotly-long-strangle",
+      "plotFunction": "plotStraddleStrangle"
+    }
+  ],
+  "threeLeg": [
+    {
+       "id": "long-call-butterfly-5050-5100-5150",
+       "name": "Long Call Butterfly (/ES)",
+       "outlook": "Neutral (Expecting Price at Middle Strike)",
+       "description": "Defined-risk strategy expecting price at K2. Buy K1 Call, Sell 2 K2 Calls, Buy K3 Call. Net debit.",
+       "construction": [ "Buy 1 Call (K1)", "Sell 2 Calls (K2)", "Buy 1 Call (K3)" ],
+       "notes": "Strikes usually equidistant.",
+       "maxProfit": "Wing Width (K2 - K1) - Net Debit (Calculated)",
+       "maxLoss": "Net Debit (Calculated)",
+       "breakeven": "Lower: K1 + Net Debit (Calc); Upper: K3 - Net Debit (Calc)",
+       "parameters": {
+         "type": "call", "quantity": 1,
+         "legs": [
+           { "type": "call", "position": "long", "strike": 5050 },
+           { "type": "call", "position": "short", "strike": 5100 },
+           { "type": "call", "position": "short", "strike": 5100 },
+           { "type": "call", "position": "long", "strike": 5150 }
+         ]
+       },
+       "greeksProfile": "~0 Delta at K2, -Gamma, -Vega, +Theta (near K2).",
+       "whenToUse": "High conviction price pins K2; High IV expected to fall.",
+       "risks": "Max loss if price moves significantly. Needs precise prediction. Wide spreads.",
+       "example": "Buy 5050C, Sell 2x 5100C, Buy 5105C. If Debit is $5.00, Max Profit is $45.00 (50 - 5). BEs depend on calculated debit.",
+       "plotlyDivId": "plotly-call-butterfly",
+       "plotFunction": "plotButterfly"
+     },
+     {
+       "id": "long-put-butterfly-5050-5100-5150",
+       "name": "Long Put Butterfly (/ES)",
+       "outlook": "Neutral (Expecting Price at Middle Strike)",
+       "description": "Similar profile to Call Butterfly, constructed with puts.",
+       "construction": [ "Buy 1 Put (K1)", "Sell 2 Puts (K2)", "Buy 1 Put (K3)" ],
+       "notes": "Equidistant strikes common.",
+       "maxProfit": "Wing Width (K3 - K2) - Net Debit (Calculated)",
+       "maxLoss": "Net Debit (Calculated)",
+       "breakeven": "Lower: K1 + Net Debit (Calc); Upper: K3 - Net Debit (Calc)",
+       "parameters": {
+         "type": "put", "quantity": 1,
+         "legs": [
+           { "type": "put", "position": "long", "strike": 5050 },
+           { "type": "put", "position": "short", "strike": 5100 },
+           { "type": "put", "position": "short", "strike": 5100 },
+           { "type": "put", "position": "long", "strike": 5150 }
+         ]
+       },
+       "greeksProfile": "Similar to Call Butterfly.",
+       "whenToUse": "Same as Call Butterfly.",
+       "risks": "Same as Call Butterfly.",
+       "example": "Buy 5050P, Sell 2x 5100P, Buy 5150P. Debit/Profit/BE depend on calculation.",
+       "plotlyDivId": "plotly-put-butterfly",
+       "plotFunction": "plotButterfly"
+     }
+  ],
+  "fourLeg": [
+    {
+      "id": "iron-condor-5000-5050-5150-5200",
+      "name": "Iron Condor (Short) (/ES)",
+      "outlook": "Neutral (Low Volatility, Range Bound)",
+      "description": "Defined-risk strategy profiting from low volatility & time decay. Sell OTM Put spread & OTM Call spread. Net credit.",
+      "construction": [ "Buy 1 OTM Put (K1)", "Sell 1 OTM Put (K2)", "Sell 1 OTM Call (K3)", "Buy 1 OTM Call (K4)" ],
+      "notes": "K1 < K2 < Price < K3 < K4.",
+      "maxProfit": "Net Credit Received (Calculated)",
+      "maxLoss": "Wing Width - Net Credit (Calculated)",
+      "breakeven": "Lower: K2 - Credit (Calc); Upper: K3 + Credit (Calc)",
+      "parameters": {
+        "quantity": 1,
+        "legs": [
+          { "type": "put", "position": "long", "strike": 5000 },
+          { "type": "put", "position": "short", "strike": 5050 },
+          { "type": "call", "position": "short", "strike": 5150 },
+          { "type": "call", "position": "long", "strike": 5200 }
+        ]
+      },
+      "greeksProfile": "~0 Delta, -Gamma, -Vega, +Theta.",
+      "whenToUse": "Expecting price in K2-K3 range; High IV expected to fall/stabilize.",
+      "risks": "Max loss if price moves beyond wings. Assignment risk.",
+      "example": "Buy 5000P, Sell 5050P, Sell 5150C, Buy 5200C. If Credit $10.00, Max Profit $10.00, Max Loss $40.00 (50-10). BE 5040.00, 5160.00.",
+      "plotlyDivId": "plotly-iron-condor",
+      "plotFunction": "plotIronCondor"
+    },
+    {
+      "id": "iron-butterfly-5050-5100-5150",
+      "name": "Iron Butterfly (Short) (/ES)",
+      "outlook": "Neutral (Price Pinning Middle Strike)",
+      "description": "Defined-risk strategy expecting price at K2. Short ATM straddle + OTM wings. Net credit.",
+      "construction": [ "Buy 1 OTM Put (K1)", "Sell 1 ATM Put (K2)", "Sell 1 ATM Call (K2)", "Buy 1 OTM Call (K3)" ],
+      "notes": "K1 < K2 < K3.",
+      "maxProfit": "Net Credit Received (Calculated)",
+      "maxLoss": "Wing Width - Net Credit (Calculated)",
+      "breakeven": "K2 +/- Net Credit (Calculated)",
+      "parameters": {
+         "quantity": 1,
+         "legs": [
+           { "type": "put", "position": "long", "strike": 5050 },
+           { "type": "put", "position": "short", "strike": 5100 },
+           { "type": "call", "position": "short", "strike": 5100 },
+           { "type": "call", "position": "long", "strike": 5150 }
+         ]
+       },
+       "greeksProfile": "~0 Delta, --Gamma, -Vega, ++Theta.",
+       "whenToUse": "High conviction price pins K2; Very high IV expected to collapse.",
+       "risks": "Narrow profit zone. High gamma risk. Assignment risk.",
+       "example": "Buy 5050P, Sell 5100P, Sell 5100C, Buy 5150C. If Credit $30.00, Max Profit $30.00, Max Loss $20.00 (50-30). BE 5070.00, 5130.00.",
+      "plotlyDivId": "plotly-iron-butterfly",
+      "plotFunction": "plotIronButterfly"
+    },
+     {
+      "id": "reverse-iron-condor-5000-5050-5150-5200",
+      "name": "Reverse Iron Condor (Long) (/ES)",
+      "outlook": "Volatile (Expecting Breakout)",
+      "description": "Defined-risk strategy profiting from large move. Buy OTM Put spread & OTM Call spread. Net debit.",
+      "construction": [ "Sell 1 OTM Put (K1)", "Buy 1 OTM Put (K2)", "Buy 1 OTM Call (K3)", "Sell 1 OTM Call (K4)" ],
+      "notes": "Opposite legs of short condor.",
+      "maxProfit": "Wing Width - Net Debit (Calculated)",
+      "maxLoss": "Net Debit Paid (Calculated)",
+      "breakeven": "Lower: K2 - Debit (Calc); Upper: K3 + Debit (Calc)", // Check this, BEs move OUTWARD for long vol
+      "parameters": {
+        "quantity": 1,
+        "legs": [
+          { "type": "put", "position": "short", "strike": 5000 },
+          { "type": "put", "position": "long", "strike": 5050 },
+          { "type": "call", "position": "long", "strike": 5150 },
+          { "type": "call", "position": "short", "strike": 5200 }
+        ]
+      },
+      "greeksProfile": "~0 Delta, +Gamma, +Vega, -Theta.",
+      "whenToUse": "Expecting large move out of K2-K3 range; Low IV expected to rise.",
+      "risks": "Max loss if price between K2-K3. Needs significant move. Theta decay hurts.",
+      "example": "Sell 5000P, Buy 5050P, Buy 5150C, Sell 5200C. If Debit $10.00, Max Loss $10.00, Max Profit $40.00 (50-10). BEs move outwards based on debit.",
+      "plotlyDivId": "plotly-reverse-iron-condor",
+      "plotFunction": "plotReverseIronCondor"
+    },
+    {
+      "id": "box-spread-5050-5150",
+      "name": "Box Spread (Long) (/ES)",
+      "outlook": "Arbitrage / Synthetic Financing",
+      "description": "Combines Bull Call Spread & Bear Put Spread. Locks in theoretical risk-free profit (strike diff - debit). Mainly institutional.",
+      "construction": [ "Buy 1 Call (K1)", "Sell 1 Call (K2)", "Buy 1 Put (K2)", "Sell 1 Put (K1)" ],
+      "notes": "Same expiry. Payoff = K2-K1.",
+      "maxProfit": "(K2 - K1) - Net Debit (Calculated)",
+      "maxLoss": "Net Debit - (K2 - K1) (Calculated) (Risk mainly costs/assignment)",
+      "breakeven": "N/A (Constant Payoff)",
+      "parameters": {
+         "quantity": 1,
+         "legs": [
+           { "type": "call", "position": "long", "strike": 5050 },
+           { "type": "call", "position": "short", "strike": 5150 },
+           { "type": "put", "position": "long", "strike": 5150 },
+           { "type": "put", "position": "short", "strike": 5050 }
+         ]
+       },
+       "greeksProfile": "All Greeks theoretically zero once established.",
+       "whenToUse": "Financing; Exploiting put/call parity mispricings (rare for retail).",
+       "risks": "Execution costs (commissions, slippage); Early assignment risk (esp. with dividends if underlying were stock).",
+       "example": "Buy 5050C, Sell 5150C, Buy 5150P, Sell 5050P. Value at Expiry = 100 points. P/L depends on calculated net debit vs 100.",
+      "plotlyDivId": "plotly-box-spread",
+      "plotFunction": "plotBoxSpread"
+    }
+  ],
+  "about": {
+    "_comment": "About section content.",
+    "title": "About This Advanced Options Visualizer (/ES)",
+    "content": [
+      "Welcome! This interactive tool analyzes options strategies, focusing on S&P 500 E-mini (/ES) futures options, using **Vanilla JavaScript**.",
+      "It demonstrates advanced client-side features including Black-Scholes & Binomial pricing, Net Greeks, numerical break-evens, per-leg IV overrides, user parameter saving (localStorage), detailed Plotly charting with annotations/shading, offline support via IndexedDB/Cache API, and asynchronous operations.",
+      "<strong>Key Features:</strong><ul><li>Dynamic BS/Binomial Pricing & Greeks</li><li>Net Strategy Greeks</li><li>Numerical Break-even Calculation</li><li>User-Modifiable Parameters (Strikes, Qty, Per-Leg IV)</li><li>Save/Load User Modifications (localStorage)</li><li>Enhanced Plotly Charts (Legs, Shading, Lines)</li><li>Offline Definition Storage (IndexedDB/Cache)</li><li>Responsive Layout (W3.CSS)</li><li>Asynchronous Operations (Fetch, Storage)</li></ul>",
+      "<strong>/ES Context:</strong> Remember the <strong>$50 point multiplier</strong> for real-world P/L assessment.",
+      "<strong style='color: red;'>Disclaimer:</strong> Educational tool only. Theoretical models differ from real markets. Not financial advice. Consult a professional before trading options, which involves substantial risk."
+    ]
+  }
+}
