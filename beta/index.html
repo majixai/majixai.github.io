@@ -1,220 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Pornhub Viewer (Direct Fetch - EXPECTED TO FAIL)</title> {/* Changed title */}
+    <title>Pornhub Viewer - Sticky Player</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
-        /* CSS styles remain the same */
-        body { background-color: #f1f1f1; font-family: "Segoe UI", Arial, sans-serif; }
-        .w3-teal, .w3-hover-teal:hover { color: #fff !important; background-color: #EE6123 !important; }
-        .w3-container.header { padding: 20px; margin-bottom: 20px; }
-        h1, h2, h3, h4, h5, h6 { color: #444; margin-top: 16px; margin-bottom: 8px; }
-        .video-card { margin-bottom: 16px; box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; background-color: #fff; overflow: hidden; }
-        .video-card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); }
-        .video-card img { width: 100%; height: auto; display: block; background-color: #ddd; object-fit: cover; min-height: 100px; }
-        .video-card img.thumbnail { height: 180px; object-fit: cover; }
-        .video-details { padding: 8px 12px; text-align: left; }
-        .video-details h4 { margin: 8px 0; font-size: 15px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #444; line-height: 1.3; }
-        .video-details p { margin: 4px 0; font-size: 12px; color: #777; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #loading, #error { text-align: center; padding: 25px 15px; font-size: 18px; margin: 20px auto; display: none; max-width: 800px; border-radius: 4px; }
-        #loading { color: #1e88e5; background-color: #e3f2fd; border: 1px solid #bbdefb; }
-        #error { color: #d32f2f; background-color: #ffebee; border: 1px solid #ffcdd2; font-weight: bold; word-wrap: break-word; }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #video-player-container { margin: 30px auto; max-width: 960px; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background-color: #000; display: none; box-shadow: 0 4px 10px 0 rgba(0,0,0,0.2),0 4px 20px 0 rgba(0,0,0,0.19); border-radius: 4px; }
-        #video-player-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-        /* Style to display raw HTML if fetch succeeds (unlikely) */
-        #raw-html-output {
-            display: none; /* Hide by default */
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #eee;
-            border: 1px solid #ccc;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap; /* Allow wrapping */
-            word-break: break-all; /* Break long strings */
-            font-family: monospace;
-            font-size: 12px;
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow: hidden; /* Prevent body scroll, manage scrolling internally */
+            font-family: "Segoe UI", Arial, sans-serif;
         }
+
+        .viewer-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Full viewport height */
+            background-color: #f1f1f1;
+        }
+
+        /* --- Sticky Video Player Area --- */
+        .video-player-section {
+            /* Stick to the top when scrolling within .viewer-container */
+            position: -webkit-sticky; /* Safari */
+            position: sticky;
+            top: 0;
+            z-index: 10; /* Keep it above the scrolling list */
+            background-color: #000; /* Background for the player area */
+             width: 100%; /* Ensure it takes full width */
+        }
+
+        .video-player-wrapper {
+            /* Aspect Ratio Box for responsive iframe */
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+            height: 0;
+            overflow: hidden;
+            background-color: #000; /* Black background behind iframe */
+             max-width: 1200px; /* Optional: Limit max player width */
+             margin: 0 auto; /* Center if max-width is applied */
+        }
+
+        .video-player-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* --- Scrollable Thumbnail Gallery --- */
+        .thumbnail-gallery {
+            flex-grow: 1; /* Take remaining vertical space */
+            overflow-y: auto; /* Enable vertical scrolling ONLY for this section */
+            padding: 15px;
+            background-color: #f1f1f1;
+            /* Crucial for flex item to allow shrinking and overflow */
+            min-height: 0;
+        }
+
+        /* --- Thumbnail Item Styling --- */
+        .thumbnail-item {
+            display: flex; /* Align image and text */
+            align-items: center;
+            background-color: #fff;
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .thumbnail-item:hover {
+            background-color: #eee;
+            transform: translateY(-2px); /* Slight lift effect */
+        }
+
+         .thumbnail-item.active { /* Style for the currently playing video's thumb */
+             background-color: #ffebcc; /* Light orange highlight */
+             border-left: 4px solid #EE6123;
+             padding-left: 4px;
+         }
+
+        .thumbnail-item img {
+            width: 120px; /* Fixed width */
+            height: 75px; /* Fixed height for uniform look (adjust ratio if needed) */
+            object-fit: cover; /* Crop image nicely */
+            margin-right: 10px;
+            border-radius: 3px;
+             background-color: #ccc; /* Placeholder bg */
+        }
+
+        .thumbnail-item .thumb-details {
+            flex-grow: 1; /* Allow text to take remaining space */
+            overflow: hidden; /* Prevent text overflow issues */
+        }
+
+        .thumbnail-item h4 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+         .thumbnail-item p {
+             margin: 0;
+             font-size: 12px;
+             color: #777;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+         }
+
+        /* --- Loading/Error States --- */
+        #loading, #error { text-align: center; padding: 30px; font-size: 1.1em; display: none; }
+        #loading { color: #1e88e5; }
+        #error { color: #d32f2f; font-weight: bold; }
+        .spinner { /* Simple CSS spinner */ border: 4px solid rgba(0,0,0,0.1); width: 24px; height: 24px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; display: inline-block; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     </style>
 </head>
-<body class="w3-light-grey">
+<body>
 
-<div class="w3-container w3-teal header">
-  <h1>Pornhub Viewer</h1>
-  {/* Removed proxy mention */}
-  <p>Attempting to display videos by directly fetching specified URL.</p>
-</div>
+<div class="viewer-container">
 
-<div class="w3-container w3-margin-top">
+    <!-- 1. Sticky Video Player Section -->
+    <div class="video-player-section">
+        <div class="video-player-wrapper">
+            <iframe id="main-video-player" src="" allow="autoplay; fullscreen" allowfullscreen title="Main Video Player"></iframe>
+        </div>
+    </div>
 
-  <!-- Video Player Container -->
-   <div id="video-player-container">
-       <iframe id="video-player" src="" allowfullscreen title="Video Player"></iframe>
-   </div>
+    <!-- 2. Scrollable Thumbnail Gallery Section -->
+    <div class="thumbnail-gallery" id="thumbnail-list">
+        <!-- Thumbnails will be loaded here by JavaScript -->
+        <div id="loading"><div class="spinner"></div>Loading videos...</div>
+        <div id="error"></div>
+        <!-- Example Thumbnail Structure (Generated by JS):
+        <div class="thumbnail-item" data-embed-url="...">
+            <img src="..." alt="...">
+            <div class="thumb-details">
+                <h4>Video Title</h4>
+                <p>Duration: MM:SS | Views: X.XM</p>
+            </div>
+        </div>
+        -->
+    </div>
 
-  <!-- Loading Indicator -->
-  <div id="loading">
-      <div class="spinner"></div>Attempting to fetch data...
-  </div>
+</div><!-- End viewer-container -->
 
-  <!-- Error Display Area -->
-  <div id="error">
-      <!-- Error message will be inserted here -->
-  </div>
-
-   <!-- Area to potentially display raw HTML (if fetch succeeds, unlikely) -->
-   <pre id="raw-html-output"></pre>
-
-  <!-- Container where videos *would* be displayed -->
-  <div id="video-list" class="w3-row-padding">
-      <p class="w3-center w3-text-grey" id="initial-message">Attempting direct fetch. Expecting failure due to CORS...</p>
-  </div>
-
-</div><!-- End main container -->
-
-<!-- Embedded JavaScript -->
 <script>
-    document.addEventListener('DOMContentLoaded', async function() {
-
-        console.log("DOM loaded. Initializing Viewer (Direct Fetch Mode).");
-
-        // --- Configuration ---
-        // ####################################################################
-        // ## !! Direct Fetch Attempt - EXPECTED TO FAIL DUE TO CORS !!     ##
-        // ## Fetching directly from a different domain like pornhub.com   ##
-        // ## from browser JS is blocked by browser security policies.     ##
-        // ## The target URL serves HTML, not the needed JSON/structured data.##
-        // ####################################################################
-        const TARGET_URL = 'https://www.pornhub.com/video/webmasterss'; // The URL you requested
+    document.addEventListener('DOMContentLoaded', function() {
 
         // --- DOM References ---
-        const videoListDiv = document.getElementById("video-list");
-        const loadingIndicator = document.getElementById("loading");
-        const errorDisplay = document.getElementById("error");
-        const videoPlayerContainer = document.getElementById("video-player-container");
-        const videoPlayerIframe = document.getElementById("video-player");
-        const initialMessage = document.getElementById("initial-message");
-        const rawHtmlOutput = document.getElementById("raw-html-output"); // Added reference
+        const mainPlayerIframe = document.getElementById('main-video-player');
+        const thumbnailListDiv = document.getElementById('thumbnail-list');
+        const loadingIndicator = document.getElementById('loading');
+        const errorDisplay = document.getElementById('error');
 
-        // Check essential elements exist
-        if (!videoListDiv || !loadingIndicator || !errorDisplay || !videoPlayerContainer || !videoPlayerIframe || !rawHtmlOutput) {
-             console.error("Fatal Error: Essential DOM elements missing.");
-             document.body.innerHTML = '<div style="padding:20px;background-color:#f44336;color:white;text-align:center;"><strong>Fatal Error:</strong> Page structure incomplete.</div>';
-             return;
+        // --- State ---
+        let currentActiveThumbnail = null;
+
+        // ####################################################################
+        // ## !! IMPORTANT !! USING DUMMY DATA                             ##
+        // ## Replace this with your `fetch` call to your working proxy    ##
+        // ## endpoint and process the JSON response.                      ##
+        // ## The structure below assumes your proxy returns JSON like this.##
+        // ####################################################################
+        const dummyVideoData = [
+            { id: 'ph63d4bd402db90', title: "Gorgeous Blonde Teen Stepsister Skye Blue", embed_url: "https://www.pornhub.com/embed/63d4bd402db90", thumbnail_url: "https://ei.phncdn.com/videos/202301/28/424279881/thumbs_30/(m=eaf8Ggaaaa)(mh=vfgRPOMQxYhvG0Vs)2.jpg", duration: 584, views: 1234567 },
+            { id: 'ph67eed08f1224c', title: "Big Ass Milf Step Mom Violet Starr", embed_url: "https://www.pornhub.com/embed/67eed08f1224c", thumbnail_url: "https://ei.phncdn.com/videos/202504/03/466751505/original/(m=q15OO-Zbeaf8Ggaaaa)(mh=C9BmVcvMiWZl_0Lz)0.jpg", duration: 1911, views: 987654 },
+            { id: 'ph65a295f53de52', title: "Horny Teen Stepdaughter Aidra Fox", embed_url: "https://www.pornhub.com/embed/65a295f53de52", thumbnail_url: "https://ei.phncdn.com/videos/202401/13/446445181/thumbs_10/(m=eaf8Ggaaaa)(mh=bJ8nvPxT7rWtwv5O)6.jpg", duration: 281, views: 234567 },
+            { id: 'ph650330115c4b9', title: "Hot Blonde MILF Cory Chase", embed_url: "https://www.pornhub.com/embed/650330115c4b9", thumbnail_url: "https://ei.phncdn.com/videos/202309/14/439405041/original/(m=q9U5MWYbeaf8Ggaaaa)(mh=Qdbb9BXzfDBlOHGd)0.jpg", duration: 807, views: 876543 },
+            { id: 'ph663a100e981e0', title: "Sexy Lexi Luna Secrets Revealed", embed_url: "https://www.pornhub.com/embed/663a100e981e0", thumbnail_url: "https://ei.phncdn.com/videos/202405/07/452135051/thumbs_15/(m=eaf8Ggaaaa)(mh=JAd3gTAFMk4790wu)13.jpg", duration: 608, views: 345678 },
+            { id: 'ph67f71e935770b', title: "Teen Step Daughter Eva Elfie", embed_url: "https://www.pornhub.com/embed/67f71e935770b", thumbnail_url: "https://ei.phncdn.com/videos/202504/10/467045965/original/(m=q_5YW-Zbeaf8Ggaaaa)(mh=l2bBToSO6l8Gq1uq)0.jpg", duration: 901, views: 123456 },
+            { id: 'ph6714ed9798d79', title: "Curvy MILF Teacher Eva Notty", embed_url: "https://www.pornhub.com/embed/6714ed9798d79", thumbnail_url: "https://ei.phncdn.com/videos/202410/20/459392461/original/(m=eaf8Ggaaaa)(mh=O_wIJ-VxJ6PjXVY6)15.jpg", duration: 321, views: 456789 },
+            { id: 'ph67a3b90f0954b', title: "Busty British MILF Christy Marks", embed_url: "https://www.pornhub.com/embed/67a3b90f0954b", thumbnail_url: "https://ei.phncdn.com/videos/202502/05/464173235/original/(m=qJSIT6Zbeaf8Ggaaaa)(mh=WQnONR6c94XBga_O)0.jpg", duration: 1007, views: 987123 },
+            { id: 'ph67fff3830b651', title: "Horny Slut Wife Angela White", embed_url: "https://www.pornhub.com/embed/67fff3830b651", thumbnail_url: "https://ei.phncdn.com/videos/202504/16/467360805/original/(m=q-_5HG0beaf8Ggaaaa)(mh=CWotQoVkXMJBCXwp)0.jpg", duration: 910, views: 654321 },
+            // ... Add more dummy videos as needed
+        ];
+        // --- End Dummy Data ---
+
+        // --- Helper Functions ---
+        function formatDuration(totalSeconds) {
+             const numSeconds = typeof totalSeconds === 'string' ? parseInt(totalSeconds, 10) : totalSeconds;
+             if (typeof numSeconds !== 'number' || isNaN(numSeconds) || numSeconds < 0) { return ''; } // Return empty if invalid
+             const minutes = Math.floor(numSeconds / 60);
+             const seconds = Math.floor(numSeconds % 60);
+             return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
          }
-
-        // --- Helper Functions (UNUSED in this version as parsing HTML is too complex/unreliable) ---
-        // function formatDuration(s) { ... }
-        // function formatViews(v) { ... }
-
-        // --- Core Logic ---
-        async function attemptDirectFetch() {
-            console.log(`Attempting DIRECT fetch from: ${TARGET_URL}`);
-            if (initialMessage) initialMessage.style.display = 'none';
-            showLoading();
-            hideError();
-            hideVideoPlayer();
-            videoListDiv.innerHTML = ""; // Clear video list area
-            rawHtmlOutput.style.display = 'none'; // Hide raw output area
-            rawHtmlOutput.textContent = ''; // Clear previous raw output
-
-            try {
-                 // No AbortController needed for this example as failure is expected quickly
-                console.log("Making fetch request...");
-                // Attempt the fetch - THIS IS THE STEP EXPECTED TO BE BLOCKED BY CORS
-                const response = await fetch(TARGET_URL, {
-                    mode: 'cors', // Explicitly asking for CORS mode (but server must allow it)
-                    redirect: 'follow' // Follow redirects if any
-                 });
-
-                console.log(`Fetch response status: ${response.status} (${response.statusText})`);
-
-                // Check if the response was successful (status 200-299)
-                // Even if status is OK, CORS might have made the response "opaque",
-                // meaning we can't access its content. However, a direct CORS block
-                // usually throws a TypeError before this point.
-                if (!response.ok) {
-                    throw new Error(`Server responded with status ${response.status} (${response.statusText}).`);
-                }
-
-                // If fetch somehow succeeded (EXTREMELY UNLIKELY due to CORS), get the HTML text
-                console.log("Fetch response received, attempting to read HTML text...");
-                const htmlText = await response.text();
-                console.log("Successfully fetched HTML text (CORS likely not enforced or bypassed - highly unusual).");
-
-                // **PROBLEM:** Now we have raw HTML. Parsing this reliably to find
-                // video titles, *embed* URLs (not just view URLs), thumbnails, etc.
-                // in the frontend is very difficult and breaks easily if Pornhub changes layout.
-                // The previous code expected structured JSON data.
-                // Displaying the raw HTML instead of processing it:
-                showRawHtml(htmlText);
-                showError("Fetch succeeded (unexpectedly!), but received HTML page, not structured video data. Cannot display video cards. Raw HTML shown below.");
-
-
-            } catch (error) {
-                console.error("Fetch failed:", error);
-                let userMsg;
-
-                // Check for the typical CORS error (often a TypeError)
-                if (error instanceof TypeError) { // Network errors, including CORS failures
-                    userMsg = `Direct fetch failed. This is expected due to browser CORS security policy blocking requests to '${TARGET_URL}'. Check the browser console (F12) for CORS errors.`;
-                 } else {
-                    userMsg = `An unexpected error occurred: ${error.message}`;
-                }
-
-                showError(userMsg + " A server-side proxy is required to bypass these browser restrictions.");
-                // Keep the initial message area showing the failure context
-                videoListDiv.innerHTML = `<p class="w3-center w3-text-red"><strong>Direct Fetch Failed (Expected):</strong> ${userMsg}</p>`;
-
-            } finally {
-                 hideLoading();
-                 console.log("attemptDirectFetch finished.");
-            }
+        function formatViews(views) {
+            const numViews = typeof views === 'string' ? parseInt(views.replace(/,/g, ''), 10) : views;
+            if (typeof numViews !== 'number' || isNaN(numViews) || numViews < 0) { return ''; } // Return empty if invalid
+            if (numViews >= 1000000) { return (numViews / 1000000).toFixed(1).replace(/\.0$/, '') + 'M views'; }
+            if (numViews >= 1000) { return (numViews / 1000).toFixed(1).replace(/\.0$/, '') + 'K views'; }
+            return numViews.toLocaleString() + ' views';
         }
 
-        // Function to display videos - WILL NOT BE CALLED in this version
-        // function displayVideos(videos) { ... }
+        // --- Core Functions ---
+        function loadInitialVideo(videoData) {
+            if (!videoData || videoData.length === 0) {
+                showError("No video data available to display.");
+                return;
+            }
+            // Load the first video into the main player
+            const firstVideo = videoData[0];
+            if (mainPlayerIframe && firstVideo.embed_url) {
+                 console.log("Loading initial video:", firstVideo.embed_url);
+                 mainPlayerIframe.src = firstVideo.embed_url;
+            } else {
+                 console.error("Cannot load initial video: Player iframe or embed URL missing.");
+                 showError("Could not load the initial video player.");
+            }
+            // Populate the thumbnail list
+            populateThumbnails(videoData);
 
-        // Function to load video in player - Unlikely to be called
-        function loadVideoInPlayer(embedUrl) {
-             if (!embedUrl) { showError("Cannot play: Embed URL missing."); return; }
-             console.log("Loading player:", embedUrl);
-             videoPlayerIframe.src = embedUrl;
-             videoPlayerContainer.style.display = 'block';
-             videoPlayerContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             // Highlight the first thumbnail initially
+             const firstThumbnailElement = thumbnailListDiv.querySelector('.thumbnail-item');
+             if (firstThumbnailElement) {
+                 setActiveThumbnail(firstThumbnailElement);
+             }
+        }
+
+        function populateThumbnails(videoData) {
+             if (!thumbnailListDiv) return;
+             // Clear previous content (except loading/error)
+             thumbnailListDiv.querySelectorAll('.thumbnail-item').forEach(el => el.remove());
+
+            if (videoData.length === 0) {
+                thumbnailListDiv.innerHTML += '<p class="w3-center w3-text-grey">No thumbnails to display.</p>'; // Use += if loading/error might be visible
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            videoData.forEach(video => {
+                 // Basic validation for essential data
+                 if (!video.embed_url || !video.thumbnail_url || !video.title) {
+                     console.warn("Skipping thumbnail - missing data:", video);
+                     return;
+                 }
+
+                const item = document.createElement('div');
+                item.className = 'thumbnail-item';
+                item.dataset.embedUrl = video.embed_url; // Store embed URL for click handler
+
+                const img = document.createElement('img');
+                img.src = video.thumbnail_url;
+                img.alt = video.title;
+                 img.loading = 'lazy'; // Lazy load images further down
+                 img.onerror = function() { this.alt='Thumb error'; this.src=''; this.style.backgroundColor='#f00'; } // Basic img error
+
+                const details = document.createElement('div');
+                details.className = 'thumb-details';
+
+                const title = document.createElement('h4');
+                title.textContent = video.title;
+
+                const info = document.createElement('p');
+                let infoText = [];
+                const duration = formatDuration(video.duration);
+                const views = formatViews(video.views);
+                if (duration) infoText.push(`Duration: ${duration}`);
+                if (views) infoText.push(views);
+                info.textContent = infoText.join(' | '); // Combine duration and views
+
+                details.appendChild(title);
+                details.appendChild(info);
+                item.appendChild(img);
+                item.appendChild(details);
+
+                // Add click listener to change the main video
+                item.addEventListener('click', handleThumbnailClick);
+
+                fragment.appendChild(item);
+            });
+
+            thumbnailListDiv.appendChild(fragment);
+            console.log("Thumbnails populated.");
+        }
+
+         function handleThumbnailClick(event) {
+             // Use event.currentTarget to ensure we get the element the listener was attached to
+             const thumbnailElement = event.currentTarget;
+             const embedUrl = thumbnailElement.dataset.embedUrl;
+
+             if (mainPlayerIframe && embedUrl) {
+                 console.log("Thumbnail clicked, loading:", embedUrl);
+                 mainPlayerIframe.src = embedUrl;
+                 setActiveThumbnail(thumbnailElement); // Highlight the clicked thumbnail
+             } else {
+                 console.error("Could not load video: Player or embed URL missing from clicked thumbnail.", thumbnailElement);
+                 showError("Could not load selected video.");
+             }
          }
 
-        // Function to hide player
-        function hideVideoPlayer() {
-             if (videoPlayerContainer) videoPlayerContainer.style.display = 'none';
-             if (videoPlayerIframe) videoPlayerIframe.src = '';
+         function setActiveThumbnail(thumbnailElement) {
+              // Remove active class from previously active thumbnail
+              if (currentActiveThumbnail) {
+                  currentActiveThumbnail.classList.remove('active');
+              }
+              // Add active class to the new one
+              if (thumbnailElement) {
+                  thumbnailElement.classList.add('active');
+                  currentActiveThumbnail = thumbnailElement; // Store reference
+              }
          }
 
-         // Function to display raw HTML
-         function showRawHtml(htmlContent) {
-             rawHtmlOutput.textContent = htmlContent;
-             rawHtmlOutput.style.display = 'block';
-         }
 
         // --- UI Update Functions ---
         function showLoading() { loadingIndicator.style.display = 'block'; hideError(); }
         function hideLoading() { loadingIndicator.style.display = 'none'; }
         function showError(message) {
-            const cleanMessage = message.replace(/</g, "<").replace(/>/g, ">");
-            errorDisplay.innerHTML = `<strong>Error:</strong> ${cleanMessage}`;
-            errorDisplay.style.display = 'block';
-            hideLoading();
-            console.error("User Error Displayed:", message);
+             errorDisplay.textContent = `Error: ${message}`;
+             errorDisplay.style.display = 'block';
+             hideLoading();
+             console.error("User Error Displayed:", message);
          }
         function hideError() { errorDisplay.style.display = 'none'; errorDisplay.textContent = ''; }
 
-         // --- Initialization ---
-        attemptDirectFetch(); // Start the direct fetch attempt
-        console.log("Viewer Initialized (Direct Fetch Mode). Waiting for fetch attempt.");
+        // --- Initialization ---
+        function initialize() {
+            console.log("Initializing viewer...");
+            showLoading(); // Show loading initially
+
+            // Simulate data loading (Replace with actual fetch if using proxy)
+            setTimeout(() => {
+                try {
+                    hideLoading();
+                    loadInitialVideo(dummyVideoData); // Load using the dummy data
+                } catch (err) {
+                    showError("Failed to initialize video player or thumbnails.");
+                    console.error("Initialization error:", err);
+                }
+            }, 500); // Simulate a small delay
+        }
+
+        initialize();
 
     });
 </script>
