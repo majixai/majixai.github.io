@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
     const apiFetchTimeout = 25000; // Timeout for each API fetch request (milliseconds)
     const reportSendTimeout = 45000; // Timeout for sending the report (milliseconds)
-    const maxApiFetchLimit = 5000; // Safety limit for total users fetched in one cycle
+    const maxApiFetchLimit = 20000; // Safety limit for total users fetched in one cycle
 
     // --- Helper Functions ---
 
@@ -780,9 +780,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Construct the iframe URL (ensure parameters are correct)
         // Example URL structure - verify this matches Chaturbate's requirements
-        const iframeSrc = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=0&bgcolor=black`;
+        const iframeSrc = `https://chaturbate.com/?track=embed&room=${user.username}&tour=dU9X&campaign=9cg6A&disable_sound=0&bgcolor=black`;
         // Or use the fullvideo URL if preferred:
         // const iframeSrc = `https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=${user.username}`;
+        // &
 
         console.log(`Loading ${user.username} into ${iframeChoice} with src: ${iframeSrc}`);
         selectedIframe.src = iframeSrc;
