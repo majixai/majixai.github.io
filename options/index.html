@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option Strategy Visualizer</title>
+    <!-- W3.CSS Framework -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Plotly.js Library -->
+    <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+</head>
+<body>
+
+<!-- Sidebar/Menu -->
+<nav class="w3-sidebar w3-bar-block w3-white w3-collapse w3-top w3-card" style="z-index:3;width:250px;" id="mySidebar">
+    <div class="w3-container w3-display-container w3-padding-16">
+        <i onclick="w3_close()" class="fa fa-remove w3-hide-large w3-button w3-display-topright"></i>
+        <h3 class="w3-wide"><b>OPTIONS</b></h3>
+    </div>
+    <div class="w3-padding-64 w3-large w3-text-grey" style="font-weight:bold">
+        <a href="#one-leg" onclick="showSection('one-leg'); w3_close();" class="w3-bar-item w3-button">1-Leg Strategies</a>
+        <a href="#two-leg" onclick="showSection('two-leg'); w3_close();" class="w3-bar-item w3-button">2-Leg Strategies</a>
+        <a href="#three-leg" onclick="showSection('three-leg'); w3_close();" class="w3-bar-item w3-button">3-Leg Strategies</a>
+        <a href="#four-leg" onclick="showSection('four-leg'); w3_close();" class="w3-bar-item w3-button">4-Leg Strategies</a>
+        <a href="#about" onclick="showSection('about'); w3_close();" class="w3-bar-item w3-button">About</a>
+    </div>
+</nav>
+
+<!-- Top menu on small screens -->
+<header class="w3-bar w3-top w3-hide-large w3-black w3-xlarge">
+    <div class="w3-bar-item w3-padding-24 w3-wide">OPTIONS</div>
+    <a href="javascript:void(0)" class="w3-bar-item w3-button w3-padding-24 w3-right" onclick="w3_open()"><i class="fa fa-bars"></i>☰</a>
+</header>
+
+<!-- Overlay effect when opening sidebar on small screens -->
+<div class="w3-overlay w3-hide-large" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:250px;">
+
+    <!-- Push down content on small screens -->
+    <div class="w3-hide-large" style="margin-top:83px"></div>
+
+    <!-- Top header -->
+    <header class="w3-container w3-xlarge w3-padding-24">
+        <p class="w3-left">Option Strategy Visualizer</p>
+    </header>
+
+    <!-- Content Sections -->
+    <div class="w3-container w3-padding-32 strategy-section" id="about" style="display:block;">
+         <h2>About This Tool</h2>
+         <p>This page provides information and payoff diagrams for various option strategies, categorized by the number of "legs" (individual option contracts) involved. Use the menu on the left to navigate between strategy types.</p>
+         <p>The payoff diagrams are generated using Plotly.js and show the theoretical profit or loss of the strategy at expiration based on the underlying asset's price. The examples use hypothetical strike prices and premiums.</p>
+         <p><strong>Disclaimer:</strong> This information is for educational purposes only and does not constitute financial advice. Option trading involves significant risk.</p>
+    </div>
+
+    <!-- 1-Leg Strategies Section -->
+    <div class="w3-container w3-padding-32 strategy-section" id="one-leg" style="display:none;">
+        <h2>1-Leg Strategies</h2>
+        <p>These are the simplest strategies, involving buying or selling a single call or put option.</p>
+
+        <div class="w3-panel w3-card-4 w3-light-grey w3-padding">
+            <h3>Long Call</h3>
+            <p><strong>Outlook:</strong> Bullish on the underlying asset.</p>
+            <p><strong>Construction:</strong> Buy one call option.</p>
+            <p><strong>Max Profit:</strong> Unlimited.</p>
+            <p><strong>Max Loss:</strong> Premium paid.</p>
+            <p><strong>Breakeven:</strong> Strike Price + Premium Paid.</p>
+            <div id="plotly-long-call" class="plotly-chart"></div>
+        </div>
+
+         <div class="w3-panel w3-card-4 w3-light-grey w3-padding w3-margin-top">
+            <h3>Short Put</h3>
+            <p><strong>Outlook:</strong> Bullish to Neutral on the underlying asset (expecting it to stay above the strike).</p>
+            <p><strong>Construction:</strong> Sell (write) one put option.</p>
+            <p><strong>Max Profit:</strong> Premium received.</p>
+            <p><strong>Max Loss:</strong> Strike Price - Premium Received (potentially large if stock goes to 0).</p>
+            <p><strong>Breakeven:</strong> Strike Price - Premium Received.</p>
+            <div id="plotly-short-put" class="plotly-chart"></div>
+        </div>
+        <!-- Add more 1-leg examples (Short Call, Long Put) if desired -->
+    </div>
+
+    <!-- 2-Leg Strategies Section -->
+    <div class="w3-container w3-padding-32 strategy-section" id="two-leg" style="display:none;">
+        <h2>2-Leg Strategies (Spreads)</h2>
+        <p>These strategies involve simultaneously buying and selling options of the same type (calls or puts) or different types on the same underlying asset. They are often used to reduce risk or cost compared to single-leg strategies.</p>
+
+        <div class="w3-panel w3-card-4 w3-light-grey w3-padding">
+            <h3>Bull Call Spread (Debit Spread)</h3>
+            <p><strong>Outlook:</strong> Moderately Bullish.</p>
+            <p><strong>Construction:</strong> Buy a call with a lower strike, Sell a call with a higher strike (same expiration).</p>
+            <p><strong>Max Profit:</strong> Difference between strikes - Net Premium Paid.</p>
+            <p><strong>Max Loss:</strong> Net Premium Paid.</p>
+            <p><strong>Breakeven:</strong> Lower Strike Price + Net Premium Paid.</p>
+            <div id="plotly-bull-call-spread" class="plotly-chart"></div>
+        </div>
+
+         <div class="w3-panel w3-card-4 w3-light-grey w3-padding w3-margin-top">
+            <h3>Bear Put Spread (Debit Spread)</h3>
+            <p><strong>Outlook:</strong> Moderately Bearish.</p>
+            <p><strong>Construction:</strong> Buy a put with a higher strike, Sell a put with a lower strike (same expiration).</p>
+            <p><strong>Max Profit:</strong> Difference between strikes - Net Premium Paid.</p>
+            <p><strong>Max Loss:</strong> Net Premium Paid.</p>
+            <p><strong>Breakeven:</strong> Higher Strike Price - Net Premium Paid.</p>
+            <div id="plotly-bear-put-spread" class="plotly-chart"></div>
+        </div>
+        <!-- Add more 2-leg examples (Credit Spreads, Straddles, Strangles) if desired -->
+    </div>
+
+     <!-- 3-Leg Strategies Section -->
+    <div class="w3-container w3-padding-32 strategy-section" id="three-leg" style="display:none;">
+        <h2>3-Leg Strategies</h2>
+        <p>These strategies typically involve three different option contracts and often aim to profit from a specific price movement or volatility scenario, often with defined risk.</p>
+
+        <div class="w3-panel w3-card-4 w3-light-grey w3-padding">
+            <h3>Call Butterfly Spread</h3>
+            <p><strong>Outlook:</strong> Neutral (expecting low volatility and price near the middle strike).</p>
+            <p><strong>Construction:</strong> Buy 1 lower strike call, Sell 2 middle strike calls, Buy 1 higher strike call. Strikes are equidistant.</p>
+            <p><strong>Max Profit:</strong> Middle Strike - Lower Strike - Net Premium Paid (achieved if price = middle strike at expiration).</p>
+            <p><strong>Max Loss:</strong> Net Premium Paid.</p>
+            <p><strong>Breakeven(s):</strong> Lower Strike + Net Premium Paid; Higher Strike - Net Premium Paid.</p>
+            <div id="plotly-call-butterfly" class="plotly-chart"></div>
+        </div>
+         <!-- Add more 3-leg examples (Put Butterfly, Call Ratio Backspread etc.) if desired -->
+    </div>
+
+    <!-- 4-Leg Strategies Section -->
+    <div class="w3-container w3-padding-32 strategy-section" id="four-leg" style="display:none;">
+        <h2>4-Leg Strategies</h2>
+        <p>Four-leg strategies involve four different option contracts on the same underlying asset. These are often complex and used for specific market outlooks, frequently focusing on volatility or range-bound scenarios with defined risk and reward.</p>
+
+        <div class="w3-panel w3-card-4 w3-pale-blue w3-padding">
+            <h3>Iron Condor</h3>
+            <p><strong>Outlook:</strong> Neutral (expecting low volatility and the price to stay within a defined range).</p>
+            <p><strong>Construction:</strong> Combine a Bear Call Spread (Sell higher strike call, Buy even higher strike call) and a Bull Put Spread (Sell lower strike put, Buy even lower strike put). Typically entered for a net credit.</p>
+            <ul>
+                <li>Buy 1 Out-of-the-Money (OTM) Put (Lower Wing)</li>
+                <li>Sell 1 OTM Put (Lower Middle Strike)</li>
+                <li>Sell 1 OTM Call (Upper Middle Strike)</li>
+                <li>Buy 1 OTM Call (Upper Wing)</li>
+            </ul>
+             <p>(All options have the same expiration date. Put strikes are below the current price, Call strikes are above.)</p>
+            <p><strong>Max Profit:</strong> Net Premium Received (achieved if underlying price is between the short put and short call strikes at expiration).</p>
+            <p><strong>Max Loss:</strong> Width of Put Spread - Net Premium Received OR Width of Call Spread - Net Premium Received (whichever spread is wider, usually they are equal) - Net Premium Received. Limited risk.</p>
+            <p><strong>Breakeven(s):</strong> Lower Breakeven = Short Put Strike - Net Premium Received; Upper Breakeven = Short Call Strike + Net Premium Received.</p>
+            <div id="plotly-iron-condor" class="plotly-chart"></div>
+            <p class="w3-small w3-text-grey"><em>Example: Buy 90P, Sell 95P, Sell 105C, Buy 110C for a net credit.</em></p>
+        </div>
+
+        <div class="w3-panel w3-card-4 w3-pale-yellow w3-padding w3-margin-top">
+            <h3>Iron Butterfly</h3>
+            <p><strong>Outlook:</strong> Neutral (expecting very low volatility and the price to pin the middle strike).</p>
+            <p><strong>Construction:</strong> Combine a Short Straddle (Sell At-the-Money Put, Sell At-the-Money Call) with protection (Buy OTM Put, Buy OTM Call). Typically entered for a net credit.</p>
+             <ul>
+                <li>Buy 1 Out-of-the-Money (OTM) Put</li>
+                <li>Sell 1 At-the-Money (ATM) Put</li>
+                <li>Sell 1 At-the-Money (ATM) Call</li>
+                <li>Buy 1 Out-of-the-Money (OTM) Call</li>
+            </ul>
+            <p>(All options have the same expiration. The short put and short call share the same middle strike. The long put strike is lower, the long call strike is higher. Wings are typically equidistant from the middle strike.)</p>
+            <p><strong>Max Profit:</strong> Net Premium Received (achieved if underlying price equals the middle strike at expiration).</p>
+            <p><strong>Max Loss:</strong> Width between middle strike and wing strike - Net Premium Received. Limited risk.</p>
+            <p><strong>Breakeven(s):</strong> Lower Breakeven = Middle Strike - Net Premium Received; Upper Breakeven = Middle Strike + Net Premium Received.</p>
+            <div id="plotly-iron-butterfly" class="plotly-chart"></div>
+             <p class="w3-small w3-text-grey"><em>Example: Buy 90P, Sell 100P, Sell 100C, Buy 110C for a net credit.</em></p>
+        </div>
+
+         <div class="w3-panel w3-card-4 w3-light-grey w3-padding w3-margin-top">
+            <h3>Long Box Spread</h3>
+            <p><strong>Outlook:</strong> Arbitrage/Synthetic Loan (Not a directional or volatility play). Aims to lock in a risk-free profit, though usually very small after commissions and bid-ask spreads in efficient markets. Often used for financing purposes.</p>
+            <p><strong>Construction:</strong> Combine a Bull Call Spread and a Bear Put Spread using the same two strike prices.</p>
+             <ul>
+                <li>Buy 1 Call (Lower Strike K1)</li>
+                <li>Sell 1 Call (Higher Strike K2)</li>
+                <li>Buy 1 Put (Higher Strike K2)</li>
+                <li>Sell 1 Put (Lower Strike K1)</li>
+            </ul>
+             <p>(All options have the same expiration).</p>
+            <p><strong>Value at Expiration:</strong> Difference between the strike prices (K2 - K1). This is constant regardless of the underlying price.</p>
+            <p><strong>Profit/Loss:</strong> Value at Expiration - Net Debit Paid. If the net debit paid is less than (K2 - K1), there's a theoretical risk-free profit (arbitrage). If the net debit is more, it's a loss.</p>
+            <p><strong>Note:</strong> The payoff diagram is a flat horizontal line at the profit/loss level. While technically 4 legs, its practical use differs significantly from Condors/Butterflies.</p>
+            <div id="plotly-box-spread" class="plotly-chart"></div>
+            <p class="w3-small w3-text-grey"><em>Example: Buy 100C, Sell 110C, Buy 110P, Sell 100P. Value at expiration = 10. Profit depends on Net Debit paid.</em></p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w3-container w3-padding-16 w3-light-grey w3-center w3-opacity">
+        <p>Educational content only. Option trading involves risk.</p>
+    </footer>
+
+<!-- End page content -->
+</div>
+
+<!-- Custom JavaScript -->
+<script src="script.js"></script>
+
+</body>
+</html>
