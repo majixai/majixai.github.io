@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Vanilla JS Options Visualizer (/ES)</title>
+
+    <!-- CSS Files -->
+    <!-- W3.CSS Framework -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- Link to your custom CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Plotly.js Library (Load before main script if needed for direct calls, though usually fine at end) -->
+    <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+
+    <!-- Google Analytics Snippet (Replace G-XXXXXXXXXX with your actual Measurement ID) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      // Initialize Google Analytics Data Layer and gtag function
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // Configure Google Analytics with your Measurement ID
+      gtag('config', 'G-XXXXXXXXXX'); // <-- REPLACE THIS ID
+      // console.log("[Analytics] Google Analytics Snippet Initialized."); // Optional: for debugging
+    </script>
+
+</head>
+<body>
+
+    <!-- Main Page Container -->
+    <div id="page-container">
+
+        <!-- Sidebar/Menu -->
+        <nav class="w3-sidebar w3-bar-block w3-white w3-collapse w3-top w3-card" style="z-index:3;width:260px;" id="mySidebar"> <!-- Slightly wider sidebar -->
+            <div class="w3-container w3-display-container w3-padding-16">
+                <i id="closeMenuButton" class="fa fa-remove w3-hide-large w3-button w3-display-topright w3-hover-red" title="Close Menu"></i>
+                <h3 class="w3-wide"><b>/ES OPTIONS</b></h3>
+            </div>
+            <!-- Sidebar links will be populated by script.js -->
+            <div id="sidebarLinks" class="w3-padding-64 w3-large w3-text-grey" style="font-weight:bold">
+                <div class="w3-container w3-center">
+                    <p><i class="fa fa-spinner w3-spin" style="font-size:24px"></i></p>
+                    <p><small>Loading Navigation...</small></p>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Top menu on small screens -->
+        <header class="w3-bar w3-top w3-hide-large w3-black w3-xlarge">
+            <div class="w3-bar-item w3-padding-24 w3-wide">/ES OPTIONS</div>
+            <a href="javascript:void(0)" class="w3-bar-item w3-button w3-padding-24 w3-right w3-hover-grey" id="openMenuButton"><i class="fa fa-bars"></i></a>
+        </header>
+
+        <!-- Overlay effect when opening sidebar on small screens -->
+        <div class="w3-overlay w3-hide-large" style="cursor:pointer; background-color: rgba(0,0,0,0.5);" title="close side menu" id="myOverlay"></div>
+
+        <!-- Page Content Wrapper -->
+        <div id="main-content-wrapper" class="main-content-area">
+            <!-- Responsive top margin for small screens -->
+            <div class="w3-hide-large" style="margin-top:83px"></div>
+
+            <!-- Main Header -->
+            <header class="w3-container w3-xlarge w3-padding-24">
+                <span class="w3-left">Advanced /ES Options Visualizer</span>
+                <!-- Status Indicators (Online/Offline, Data Source) -->
+                <span id="statusIndicators" class="w3-right w3-medium">
+                    <!-- Status tags injected by script.js -->
+                </span>
+            </header>
+
+            <!-- Content Area -->
+            <div class="w3-container">
+
+                <!-- Pricing Model & Global Parameters -->
+                <div class="pricing-params-container">
+                    <h4>Pricing Parameters</h4>
+                    <!-- Pricing Model Selection -->
+                    <div class="model-selector">
+                        <label for="pricingModelSelector">Pricing Model:</label>
+                        <select id="pricingModelSelector" title="Select the option pricing model (Black-Scholes or Binomial Tree)">
+                            <option value="BS" selected>Black-Scholes</option>
+                            <option value="Binomial">Binomial Tree (European)</option>
+                        </select>
+                    </div>
+                    <hr style="border-top: 1px solid #eee; margin: 15px 0;">
+                    <!-- Input Rows -->
+                    <div class="bs-inputs-row">
+                        <div class="bs-input-group">
+                            <label for="globalInputUnderlying" class="bs-label">/ES Futures Price (S):</label>
+                            <input type="number" id="globalInputUnderlying" class="bs-input" value="5100" step="0.25" required title="Current price of the underlying /ES futures contract">
+                        </div>
+                         <div class="bs-input-group">
+                            <label for="globalInputDTE" class="bs-label">Days to Expiration (DTE):</label>
+                            <input type="number" id="globalInputDTE" class="bs-input" value="30" min="0" step="1" required title="Number of calendar days remaining until option expiration (0 for expiration analysis)">
+                        </div>
+                    </div>
+                     <div class="bs-inputs-row">
+                         <div class="bs-input-group">
+                            <label for="globalInputRate" class="bs-label">Risk-Free Rate (%):</label>
+                            <input type="number" id="globalInputRate" class="bs-input" value="5.0" min="0" step="0.1" required title="Annualized risk-free interest rate (e.g., T-bill rate) as a percentage">
+                         </div>
+                        <div class="bs-input-group">
+                            <label for="globalInputVol" class="bs-label">Implied Volatility (%):</label>
+                            <input type="number" id="globalInputVol" class="bs-input" value="15.0" min="0.1" step="0.1" required title="Annualized implied volatility as a percentage (main driver of option premium)">
+                        </div>
+                    </div>
+                    <div class="bs-inputs-row">
+                        <div class="bs-input-group">
+                            <label for="globalInputDividend" class="bs-label">Dividend Yield (% 'q'):</label>
+                            <input type="number" id="globalInputDividend" class="bs-input" value="0.0" min="0" step="0.1" required title="Annualized continuous dividend yield (typically 0% for futures options priced using the futures price)">
+                        </div>
+                         <div class="bs-input-group binomial-steps-group">
+                            <label for="globalInputBinomialSteps" class="bs-label">Binomial Steps:</label>
+                            <input type="number" id="globalInputBinomialSteps" class="bs-input" value="100" min="10" max="500" step="10" required title="Number of steps for the Binomial Tree model (higher is more accurate but slower)">
+                        </div>
+                    </div>
+                    <small>These global inputs affect all calculations unless overridden per leg.</small>
+                </div>
+
+                <!-- Controls & Status -->
+                <div class="w3-margin-bottom">
+                    <button id="refreshDataButton" class="w3-button w3-blue w3-small action-button" title="Reload the base strategy definitions file (strategies.json)">
+                        <i class="fa fa-cloud-download"></i> Reload Definitions
+                    </button>
+                    <span id="lastUpdated" class="w3-small w3-text-grey"></span>
+                </div>
+
+                <!-- Status Message Area (for loading, errors, info) -->
+                <div id="statusMessageArea">
+                     <p class="status-message loading-message">Initializing Application...</p>
+                </div>
+
+                <!-- User Modifications Save/Load Controls -->
+                 <div class="user-mods-container">
+                     <button id="saveUserModsButton" class="w3-button w3-small action-button save-button" title="Save current parameter changes (strikes, quantity, per-leg IVs) to browser storage">
+                         <i class="fa fa-save"></i> Save Custom Parameters
+                     </button>
+                      <button id="loadUserModsButton" class="w3-button w3-small action-button load-button" title="Load previously saved parameters from browser storage">
+                         <i class="fa fa-folder-open"></i> Load Custom Parameters
+                     </button>
+                     <button id="clearUserModsButton" class="w3-button w3-small action-button clear-button" title="Remove all saved parameters from browser storage and revert to defaults">
+                         <i class="fa fa-trash"></i> Clear Custom Parameters
+                     </button>
+                     <small>Uses browser localStorage to persist your modifications.</small>
+                 </div>
+
+                 <!-- Optional Chart Settings Placeholder (Uncomment and add controls if implementing) -->
+                 <!--
+                 <div class="chart-settings-container w3-padding w3-light-grey w3-margin-bottom w3-card">
+                     <h4>Chart Display Options</h4>
+                     <input type="checkbox" id="chartShowLegsToggle" data-setting="showLegs">
+                     <label for="chartShowLegsToggle"> Show Individual Legs</label>
+                     <input type="checkbox" id="chartShadeToggle" data-setting="shadeProfitLoss" checked style="margin-left: 20px;">
+                     <label for="chartShadeToggle"> Shade Profit/Loss Zones</label>
+                 </div>
+                 -->
+
+                 <!-- Main Dynamic Content Container (Strategies injected here) -->
+                <div id="contentContainer" class="w3-container w3-padding-top-16">
+                    <!-- Content (About section, Strategy sections) will be injected here by script.js -->
+                    <p class="info-message w3-center">Loading content...</p>
+                </div>
+            </div> <!-- End w3-container -->
+
+        </div> <!-- End main-content-wrapper -->
+
+        <!-- Footer -->
+        <footer id="app-footer">
+             <p>Disclaimer: Educational tool only. Uses Black-Scholes/Binomial models. Option trading involves significant risk and is not suitable for all investors. Consult a qualified professional.</p>
+             <p>Persistence via IndexedDB/Cache/localStorage. Analytics via GA (if configured). /ES Multiplier: $50 per point.</p>
+        </footer>
+
+    </div> <!-- End page-container -->
+
+    <!-- Link to your main JavaScript file -->
+    <!-- IMPORTANT: Load script AFTER the body content it needs to interact with -->
+    <script src="script.js"></script>
+
+</body>
+</html>
