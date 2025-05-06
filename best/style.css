@@ -1,15 +1,13 @@
 body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 .w3-row-padding, .w3-row { margin-left:-8px; margin-right:-8px; }
-.w3-col { padding: 0 8px; } /* Ensure consistent padding between columns */
-
+.w3-col { padding: 0 8px; }
 
 .app-container {
-    max-width: 1600px; /* Increased max-width */
+    max-width: 1600px;
     margin: auto;
     padding: 0 16px;
 }
 
-/* Controls Bar Styling */
 .controls-bar .w3-card {
      margin-bottom: 16px !important;
 }
@@ -42,23 +40,20 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
      resize: vertical;
 }
 
-/* Main content area - use flexbox or W3.CSS grid */
 .main-content > .w3-col {
      padding: 8px;
      box-sizing: border-box;
 }
-/* Add transition to the main columns */
 .user-column, .iframe-column {
      transition: flex-basis 0.3s ease, max-width 0.3s ease;
 }
 
 
-/* User List Containers (Online and History) */
 #onlineUsers .user-list,
 #previousUsers .user-list {
     max-height: 600px;
     overflow-y: auto;
-    padding-right: 15px; /* Space for scrollbar */
+    padding-right: 15px;
     box-sizing: border-box;
     scrollbar-width: thin;
     scrollbar-color: #888 #f1f1f1;
@@ -72,22 +67,24 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
     background-color: #f9f9f9;
 }
 
-/* Shared scrollbar styling */
 #onlineUsers .user-list::-webkit-scrollbar,
 #previousUsers .user-list::-webkit-scrollbar,
-#messageList::-webkit-scrollbar { width: 8px; }
+#messageList::-webkit-scrollbar,
+#logDisplayArea .log-list::-webkit-scrollbar { width: 8px; height: 8px; }
 #onlineUsers .user-list::-webkit-scrollbar-track,
 #previousUsers .user-list::-webkit-scrollbar-track,
-#messageList::-webkit-scrollbar-track { background: #f1f1f1; }
+#messageList::-webkit-scrollbar-track,
+#logDisplayArea .log-list::-webkit-scrollbar-track { background: #f1f1f1; }
 #onlineUsers .user-list::-webkit-scrollbar-thumb,
 #previousUsers .user-list::-webkit-scrollbar-thumb,
-#messageList::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+#messageList::-webkit-scrollbar-thumb,
+#logDisplayArea .log-list::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
 #onlineUsers .user-list::-webkit-scrollbar-thumb:hover,
 #previousUsers .user-list::-webkit-scrollbar-thumb:hover,
-#messageList::-webkit-scrollbar-thumb:hover { background: #555; }
+#messageList::-webkit-scrollbar-thumb:hover,
+#logDisplayArea .log-list::-webkit-scrollbar-thumb:hover { background: #555; }
 
 
-/* --- User Item Styling (Shared for online/previous) --- */
 .user-info {
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -137,27 +134,25 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 }
 
 .user-info .badge {
-    margin-left: 5px; /* Space next to username */
+    margin-left: 5px;
     vertical-align: top;
 }
 
-/* Styles specific to IMAGE display mode in lists */
 .user-list.image-mode .user-info {
-     flex-basis: calc(33.33% - 10px); /* Default 3 items per row */
+     flex-basis: calc(33.33% - 10px);
      min-width: 150px;
      display: flex;
      flex-direction: row;
      align-items: flex-start;
 }
-/* Responsive adjustments for image mode */
 @media (max-width: 1200px) {
      .user-list.image-mode .user-info {
-          flex-basis: calc(50% - 10px); /* 2 items per row */
+          flex-basis: calc(50% - 10px);
      }
 }
 @media (max-width: 600px) {
     .user-list.image-mode .user-info {
-        flex-basis: 100%; /* 1 item per row */
+        flex-basis: 100%;
     }
 }
 
@@ -180,17 +175,13 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 }
 
 
-/* Styles specific to IFRAME display mode in lists */
-/* Note: Keeping aspect ratio here, not fixed 850x480, due to list layout constraints. */
-/* The 'scrolling="no"' attribute is added to the HTML iframe tag for this. */
 .user-list.iframe-mode .user-info {
-    flex-basis: calc(50% - 10px); /* Default 2 items per row */
+    flex-basis: calc(50% - 10px);
     min-width: 200px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
 }
-/* Responsive adjustments for iframe mode */
 @media (max-width: 1200px) {
      .user-list.iframe-mode .user-info {
           flex-basis: calc(50% - 10px);
@@ -206,7 +197,7 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 .user-list.iframe-mode .iframe-container {
     position: relative;
     width: 100%;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio for list preview */
+    padding-bottom: 56.25%;
     height: 0;
     overflow: hidden;
     background-color: black;
@@ -221,7 +212,6 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
     background: transparent; cursor: pointer;
 }
 
-/* Image Recognition Results Styling */
 .recognition-results {
     margin-top: 5px;
     font-size: 0.75em;
@@ -243,7 +233,6 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 }
 
 
-/* Remove button positioning */
 .remove-user-btn {
      position: absolute;
      z-index: 15;
@@ -254,87 +243,63 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 .remove-user-btn:hover { opacity: 1; }
 
 
-/* --- Main Viewer Iframe Grid (FIXED SIZE 850x480 per iframe) --- */
-/* Each iframe wrapper will be 850px wide and 480px tall. */
-/* The grid will arrange these fixed-size items. */
-/* The container itself will size to fit the grid, potentially causing overflow if parent column is too small. */
 #mainViewerContainer {
     display: grid;
     gap: 8px;
     padding: 5px;
     background-color: #e0e0e0;
     border-radius: 8px;
-    overflow: hidden; /* Hide content that overflows the container */
-    /* Removed aspect-ratio */
-    /* Add scrolling only if needed on the container, not the iframes themselves */
-     overflow-x: auto; /* Allow horizontal scroll if 4 iframes don't fit */
-     overflow-y: auto; /* Allow vertical scroll if 4 iframes don't fit/stack */
-     scrollbar-width: thin; /* Apply scrollbar style */
+     overflow: auto;
+     scrollbar-width: thin;
      scrollbar-color: #888 #f1f1f1;
+     min-height: 200px;
 }
-/* Custom scrollbar for main viewer */
-#mainViewerContainer::-webkit-scrollbar { height: 8px; width: 8px; } /* Height for horizontal, width for vertical */
+
+#mainViewerContainer::-webkit-scrollbar { width: 8px; height: 8px; }
 #mainViewerContainer::-webkit-scrollbar-track { background: #f1f1f1; }
 #mainViewerContainer::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
 #mainViewerContainer::-webkit-scrollbar-thumb:hover { background: #555; }
 
 
-/* Define size for each iframe wrapper */
 .iframe-grid-container .iframe-wrapper {
     position: relative;
-    width: 850px; /* Enforce fixed width */
-    height: 480px; /* Enforce fixed height */
+    width: 850px;
+    height: 480px;
     background-color: black;
-    overflow: hidden; /* Ensure anything trying to overflow the wrapper is clipped */
+    overflow: hidden;
     border-radius: 4px;
-     flex-shrink: 0; /* Prevent shrinking in grid/flex contexts */
+     flex-shrink: 0;
 }
-/* The iframe itself should fill its fixed-size wrapper */
 .iframe-grid-container .iframe-wrapper iframe {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
-    /* The scrolling="no" attribute is used in HTML */
 }
 
-
-/* Grid layout based on iframe count */
 .iframe-grid-container.iframe-count-2 {
-    /* Arrange 2 iframes */
-    /* Option 1: Stack vertically */
     grid-template-columns: 850px;
     grid-template-rows: 480px 480px;
-    /* Option 2: Side by side (requires very wide container) */
-    /* grid-template-columns: 850px 850px; grid-template-rows: 480px; */
-    /* Using Option 1 (stacked) as it's more likely to fit initially */
+    justify-content: center;
 }
 .iframe-grid-container.iframe-count-4 {
-    /* Arrange 4 iframes in a 2x2 grid */
     grid-template-columns: 850px 850px;
     grid-template-rows: 480px 480px;
+     justify-content: center;
 }
 
-
-/* Optional: Responsive adjustments for the main viewer grid */
-/* On smaller screens, stacking the 850px iframes is the only way they might fit */
-/* If the parent column is less than 850px, they will still overflow horizontally */
-@media (max-width: 992px) { /* Adjusted breakpoint */
-     /* Allow iframe column to take full width on smaller screens */
+@media (max-width: 992px) {
     .iframe-column {
         flex-basis: 100% !important;
         max-width: 100% !important;
     }
-     /* Stack iframes if column width is limited */
-     /* This might still overflow if 850px is > screen width */
      .iframe-grid-container.iframe-count-4 {
-         grid-template-columns: 850px; /* Single column */
-         grid-template-rows: repeat(4, 480px); /* Stack 4 */
-         overflow-x: auto; /* Enable horizontal scrolling if 850px doesn't fit */
+         grid-template-columns: 850px;
+         grid-template-rows: repeat(4, 480px);
+         overflow-x: auto;
      }
      .iframe-grid-container.iframe-count-2 {
-         grid-template-columns: 850px; /* Single column */
-         grid-template-rows: repeat(2, 480px); /* Stack 2 */
-          overflow-x: auto; /* Enable horizontal scrolling if 850px doesn't fit */
+         grid-template-columns: 850px;
+         grid-template-rows: repeat(2, 480px);
+          overflow-x: auto;
      }
-     /* User columns will stack below the iframe column on smaller screens */
      .user-column {
           flex-basis: 100% !important;
           max-width: 100% !important;
@@ -342,9 +307,8 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 }
 
 
-/* --- Message List Styling --- */
 #messageList {
-    max-height: 300px; /* Adjust height */
+    max-height: 300px;
     overflow-y: auto;
     padding-right: 15px;
     box-sizing: border-box;
@@ -352,12 +316,11 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
     padding: 5px;
     border-radius: 4px;
     background-color: #f9f9f9;
-    display: block; /* Stack items normally */
+    display: block;
     scrollbar-width: thin;
     scrollbar-color: #888 #f1f1f1;
 }
 
-/* Style for individual message elements */
 .message-item {
     background-color: #e9e9eb;
     border: 1px solid #ddd;
@@ -375,7 +338,6 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 }
 
 
-/* --- Autocomplete Styling --- */
 .ui-autocomplete {
     max-height: 300px;
     overflow-y: auto; overflow-x: hidden;
@@ -387,20 +349,28 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 .ui-autocomplete .ui-menu-item:last-child { border-bottom: none; }
 .ui-autocomplete .ui-menu-item:hover,
 .ui-autocomplete .ui-menu-item.ui-state-focus { background-color: #f1f1f1; }
+.ui-menu-item .ui-menu-item-wrapper {
+    padding: 5px 10px;
+}
+.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active {
+    border: 1px solid #003eff;
+    background: #e9e9eb;
+    color: #000;
+    font-weight: normal;
+}
 
 
-/* --- Button Styling --- */
 #toggleAutoScroll.w3-green { background-color: #4CAF50 !important; color: white !important; }
 #toggleAutoScroll.w3-red { background-color: #f44336 !important; color: white !important; }
 #toggleAutoScroll:disabled { opacity: 0.6; cursor: not-allowed; }
 
-#toggleDisplayMode, #toggleIframeCount,
+#toggleDisplayMode, #toggleIframeCount, #showLogsButton, #clearLogsButton,
 .quick-filter-btn {
     background-color: #f1f1f1; color: #000; border: 1px solid #ccc;
 }
-#toggleDisplayMode:hover, #toggleIframeCount:hover,
+#toggleDisplayMode:hover, #toggleIframeCount:hover, #showLogsButton:hover, #clearLogsButton:hover,
 .quick-filter-btn:hover { background-color: #ddd; }
-#toggleDisplayMode:disabled, #toggleIframeCount:disabled,
+#toggleDisplayMode:disabled, #toggleIframeCount:disabled, #showLogsButton:disabled, #clearLogsButton:disabled,
 .quick-filter-btn:disabled {
     opacity: 0.6; cursor: not-allowed; background-color: #f1f1f1 !important; color: #000 !important;
 }
@@ -409,26 +379,24 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 #saveMessageButton:disabled { opacity: 0.6; cursor: not-allowed; }
 
 
-/* Status and Loading Indicators */
-.report-status, .message-status { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; font-size: 0.9em; }
-.report-status.info, .message-status.info { color: inherit; background-color: transparent; border: none;} /* Neutral */
-.report-status.success, .message-status.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;} /* Green */
-.report-status.warning, .message-status.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;} /* Orange */
-.report-status.error, .message-status.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;} /* Red */
-.report-status.loading, .message-status.loading { color: #555; font-style: italic; display: inline-block !important; }
+.status-message { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; font-size: 0.9em; word-break: break-word; }
+.status-message.info { color: inherit; background-color: transparent; border: none;}
+.status-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
+.status-message.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;}
+.status-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
+.status-message.loading { color: #555; font-style: italic; display: inline-block !important; border: none; background-color: transparent;}
 
 
 #reportLoadingIndicator, #onlineLoadingIndicator, #recognitionStatus {
     font-style: italic; color: #555;
 }
-#reportLoadingIndicator { margin-left: 10px; }
-#onlineLoadingIndicator { text-align: center; padding: 10px; }
+#reportLoadingIndicator { margin-left: 10px; display: none; }
+#onlineLoadingIndicator { text-align: center; padding: 10px; display: none; }
 #recognitionStatus { display: inline-block; margin-left: 5px;}
 
-/* Error Messages */
-#onlineErrorDisplay { text-align: center; padding: 10px; border: 1px solid red; background-color: #ffe6e6; margin-bottom: 10px; }
+#onlineErrorDisplay { text-align: center; padding: 10px; border: 1px solid red; background-color: #ffe6e6; margin-bottom: 10px; display: none; }
 
-/* Ensure placeholders/messages are centered */
+
 #onlineUsers .user-list > p.text-muted,
 #previousUsers .user-list > p.text-muted,
 #messageList > p.text-muted {
@@ -438,13 +406,50 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
     box-sizing: border-box;
 }
 
-/* Style for jQuery UI Autocomplete */
-.ui-menu-item .ui-menu-item-wrapper {
-    padding: 5px 10px;
+
+#logDisplayArea {
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+    background-color: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
 }
-.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active {
-    border: 1px solid #003eff;
-    background: #007fff url("images/ui-bg_glass_65_007fff_1x400.png") 50% 50% repeat-x;
-    font-weight: normal;
-    color: #ffffff;
+#logDisplayArea h4 { margin-top: 0; margin-bottom: 10px;}
+
+#logDisplayArea .log-list {
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 0.8em;
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    background-color: #fff;
+    padding: 5px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.log-entry {
+    border-bottom: 1px dashed #eee;
+    padding: 3px 0;
+    word-break: break-word;
+    white-space: pre-wrap;
+     display: flex;
+     align-items: baseline;
+}
+.log-entry:last-child { border-bottom: none; }
+
+.log-info { color: #333; }
+.log-log { color: #333; }
+.log-warn { color: #ff9800; font-weight: bold;}
+.log-error { color: #f44336; font-weight: bold;}
+.log-debug { color: #999; }
+
+.log-timestamp {
+    color: #666;
+    margin-right: 8px;
+    font-size: 0.9em;
+     flex-shrink: 0;
+}
+
+.log-entry .log-message {
+     flex-grow: 1;
 }
