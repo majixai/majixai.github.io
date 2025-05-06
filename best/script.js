@@ -3,12 +3,20 @@
  * Handles fetching, filtering, displaying online users (as images or iframes)
  * with image recognition results, managing viewing history (previous users),
  * storing and managing text messages with search/autocomplete, sending reports,
- * adding auto-scrolling for the online user list, and dynamic main iframe layout/sizing.
+ * adding auto-scrolling for the online user list, and dynamic main iframe layout (2/4).
  * Uses W3.CSS, jQuery, jQuery UI, and TensorFlow.js via CDNs.
  */
 document.addEventListener('DOMContentLoaded', async function() {
 
     console.log("DOM fully loaded. Initializing application...");
+
+    // --- API Configuration ---
+    // NOTE: Replace with your actual API endpoints, limits, and intervals
+    const apiUrlBase = 'https://api.example.com/users/online'; // <-- CONFIGURE THIS
+    const apiLimit = 50; // Number of users per API request
+    const maxApiFetchLimit = 500; // Safety limit for total users fetched per cycle
+    const fetchIntervalDuration = 60000; // Fetch interval in milliseconds (e.g., 60000 = 1 minute)
+    const apiFetchTimeout = 15000; // Timeout for individual API requests
 
     // --- Configuration ---
     // !! IMPORTANT !! Configure your report sending method !!
@@ -28,15 +36,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     const AUTO_SCROLL_DELAY_AT_END = 1000; // Milliseconds to pause at the end before restarting (optional)
 
     // --- Config for Iframe Display Mode (in online list) ---
+    // NOTE: These are for the SMALL preview iframes in the list, NOT the main viewer.
+    // The main viewer iframes are styled with fixed 850x480 dimensions via CSS.
     const LIST_IFRAME_BASE_URL = 'https://chaturbate.com/embed/';
-    const LIST_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black&aspect=0.5625';
+    const LIST_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black&aspect=0.5625'; // Aspect 0.5625 is 9/16
 
     // --- Config for Main Viewer Iframes ---
+    // NOTE: The size (850x480) is enforced by CSS rules for .iframe-wrapper
     const MAIN_IFRAME_BASE_URL = 'https://chaturbate.com/embed/'; // Or 'fullvideo'
     const MAIN_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black';
 
-    // Define possible size classes for the main iframe column (corresponds to w3-col l classes)
-    const IFRAME_SIZE_CLASSES = ['l6', 'l8', 'l9']; // 50%, 66.66%, 75% of parent row
 
     // --- Config for Search/Autocomplete ---
     const AUTOCOMPLETE_MIN_LENGTH = 2; // Minimum characters before showing suggestions
@@ -52,67 +61,70 @@ document.addEventListener('DOMContentLoaded', async function() {
     const ANALYSIS_DELAY = 50; // Delay between analyzing images (ms) to avoid blocking UI
 
 
-    // --- DOM References ---
-    const onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
-    const previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
+    // --- DOM References (Declare here, validate in initializeApp) ---
+    let onlineUsersDiv = null;
+    let previousUsersDiv = null;
 
     // Main Viewer DOM Refs
-    const mainViewerContainer = document.getElementById("mainViewerContainer");
-    const iframeWrapper1 = document.getElementById("iframeWrapper1");
-    const mainIframe = document.getElementById("mainIframe"); // Viewport 1
-    const iframeWrapper2 = document.getElementById("iframeWrapper2");
-    const mainIframe2 = document.getElementById("mainIframe2"); // Viewport 2
-    const iframeWrapper3 = document.getElementById("iframeWrapper3");
-    const mainIframe3 = document.getElementById("mainIframe3"); // Viewport 3
-    const iframeWrapper4 = document.getElementById("iframeWrapper4");
-    const mainIframe4 = document.getElementById("mainIframe4"); // Viewport 4
-    const mainIframes = [mainIframe, mainIframe2, mainIframe3, mainIframe4]; // Array for easy access
-    const iframeWrappers = [iframeWrapper1, iframeWrapper2, iframeWrapper3, iframeWrapper4]; // Array for easy access
-    const mainIframeColumn = document.querySelector('.iframe-column'); // The parent column
+    let mainViewerContainer = null;
+    let iframeWrapper1 = null;
+    let mainIframe1 = null; // Renamed for clarity
+    let iframeWrapper2 = null;
+    let mainIframe2 = null;
+    let iframeWrapper3 = null;
+    let mainIframe3 = null;
+    let iframeWrapper4 = null;
+    let mainIframe4 = null;
+    let mainIframes = []; // Array for easy access
+    let iframeWrappers = []; // Array for easy access
+    let mainIframeColumn = null; // The parent column
 
     // Filter DOM Refs
-    const storageTypeSelector = document.getElementById("storageType");
-    const filterTagsSelect = document.getElementById("filterTags");
-    const filterAgeSelect = document.getElementById("filterAge");
+    let storageTypeSelector = null;
+    let filterTagsSelect = null;
+    let filterAgeSelect = null;
+    let clearPreviousUsersButton = null; // Added ref
 
     // Reporting DOM Refs
-    const sendReportButton = document.getElementById("sendReportButton");
-    const reportLoadingIndicator = document.getElementById("reportLoadingIndicator");
-    const reportStatusDisplay = document.getElementById("reportStatusDisplay");
+    let sendReportButton = null;
+    let reportLoadingIndicator = null;
+    let reportStatusDisplay = null;
 
     // Online List Loading/Error DOM Refs
-    const onlineLoadingIndicator = document.getElementById("onlineLoadingIndicator");
-    const onlineErrorDisplay = document.getElementById("onlineErrorDisplay");
-    const recognitionStatusDisplay = document.getElementById("recognitionStatus"); // NEW
+    let onlineLoadingIndicator = null;
+    let onlineErrorDisplay = null;
+    let recognitionStatusDisplay = null;
 
     // Buttons
-    const toggleAutoScrollButton = document.getElementById("toggleAutoScroll");
-    const toggleDisplayModeButton = document.getElementById("toggleDisplayMode");
-    const toggleIframeCountButton = document.getElementById("toggleIframeCount");
-    const increaseIframeSizeButton = document.getElementById("increaseIframeSize");
-    const decreaseIframeSizeButton = document.getElementById("decreaseIframeSize");
+    let toggleAutoScrollButton = null;
+    let toggleDisplayModeButton = null;
+    let toggleIframeCountButton = null;
+    // Removed iframe size buttons: let increaseIframeSizeButton = null; let decreaseIframeSizeButton = null;
 
     // Search DOM Refs
-    const userSearchInput = document.getElementById("userSearchInput"); // User search
-    const messageSearchInput = document.getElementById("messageSearchInput"); // NEW Message search
+    let userSearchInput = null;
+    let messageSearchInput = null;
 
     // Messaging DOM Refs
-    const messageInput = document.getElementById("messageInput"); // NEW
-    const saveMessageButton = document.getElementById("saveMessageButton"); // NEW
-    const messageListDiv = document.getElementById("messageList"); // NEW
-    const messageStatusDisplay = document.getElementById("messageStatusDisplay"); // NEW
+    let messageInput = null;
+    let saveMessageButton = null;
+    let messageListDiv = null;
+    let messageStatusDisplay = null;
 
-    // Collapsible Section Headers (for toggling)
-    const filterSectionHeader = document.querySelector('h4[onclick="toggleSection(\'filters\')"]');
-    const displaySectionHeader = document.querySelector('h4[onclick="toggleSection(\'display\')"]');
-    const viewerSectionHeader = document.querySelector('h4[onclick="toggleSection(\'viewer\')"]');
-    const messagingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'messaging\')"]'); // NEW
-    const reportingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'reporting\')"]');
+    // Collapsible Section Headers
+    let filterSectionHeader = null;
+    let displaySectionHeader = null;
+    let viewerSectionHeader = null;
+    let messagingSectionHeader = null;
+    let reportingSectionHeader = null;
 
 
     // --- State Variables ---
-    let storageType = storageTypeSelector?.value || 'local';
-    let previousUsers = [];
+    let storageType = 'indexedDB'; // Default storage type
+    const historyStorageKey = 'previousUsers'; // Key for storing history in Local/Session/IndexedDB
+    const maxHistorySize = 200; // Maximum number of users to keep in history
+
+    let previousUsers = []; // Array of { username, timestamp, ...other data needed for display }
     let allOnlineUsersData = []; // The full list fetched from the API
     let lastFilteredUsers = []; // The list currently displayed in the online section (after all filtering/search)
     let fetchInterval = null;
@@ -127,40 +139,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Main Viewer Iframe State
     let iframeCount = 2; // Currently active iframes (2 or 4)
-    let iframeSizeIndex = 0; // Index into IFRAME_SIZE_CLASSES (0=l6, 1=l8, 2=l9)
+    // Removed iframeSizeIndex and related state
 
     // Search State
     let currentUserSearchTerm = ''; // For online user search
-    let currentMessageSearchTerm = ''; // NEW For message search
+    let currentMessageSearchTerm = ''; // For message search
 
     // Messaging State
-    let savedMessages = []; // NEW Array to hold loaded messages
+    let savedMessages = []; // Array to hold loaded messages
 
 
     // --- Helper Functions ---
-
-    /**
-     * Checks if a user's birthday string (e.g., "YYYY-MM-DD") corresponds to today's date.
-     * @param {string | null | undefined} birthday - The birthday string.
-     * @returns {boolean} True if it's the user's birthday today, false otherwise.
-     */
-    function isBirthday(birthday) {
-        if (!birthday || typeof birthday !== 'string') return false;
-        try {
-            const today = new Date();
-            const parts = birthday.split('-');
-            if (parts.length !== 3) return false;
-            const birthDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-            if (isNaN(birthDate.getTime())) {
-                 console.warn("Invalid date encountered in isBirthday:", birthday);
-                 return false;
-            }
-            return today.getUTCDate() === birthDate.getUTCDate() && today.getUTCMonth() === birthDate.getUTCMonth();
-        } catch (e) {
-             console.error("Error checking birthday for:", birthday, e);
-             return false;
-        }
-    }
 
     /**
      * Calculates the number of days between two dates (UTC).
@@ -174,111 +163,94 @@ document.addEventListener('DOMContentLoaded', async function() {
         return Math.round(diffMs / oneDay);
     }
 
+    /**
+     * Checks if a user's birthday string (e.g., "YYYY-MM-DD") corresponds to today's date.
+     * @param {string | null | undefined} birthday - The birthday string.
+     * @returns {boolean} True if it's the user's birthday today, false otherwise.
+     */
+    function isBirthday(birthday) {
+        if (!birthday || typeof birthday !== 'string') return false;
+        try {
+            const today = new Date();
+            const parts = birthday.split('-');
+            if (parts.length !== 3) return false;
+             // Use UTC date parts for consistency
+            const birthDate = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+            if (isNaN(birthDate.getTime())) {
+                 console.warn("Invalid date encountered in isBirthday:", birthday);
+                 return false;
+            }
+             // Compare month and day using UTC methods
+            return today.getUTCMonth() === birthDate.getUTCMonth() && today.getUTCDate() === birthDate.getUTCDate();
+        } catch (e) {
+             console.error("Error checking birthday for:", birthday, e);
+             return false;
+        }
+    }
 
     /**
-     * Calculates the number of days from their previous birthday if the user's age is exactly 18.
-     * Attempts to handle leap years/date differences.
+     * Calculates the number of days since the user's 18th birthday, assuming API age 18 is correct.
+     * This is complex due to potential API age calculation differences vs standard date math.
+     * This function attempts to calculate days since the *specific date* they turned 18.
      * @param {string | null | undefined} birthdayString - The birthday string (YYYY-MM-DD).
-     * @param {number | null | undefined} age - The user's current age as reported by API.
-     * @returns {number | null} Number of days since the most recent birthday that resulted in age 18, or null.
+     * @param {number | null | undefined} apiAge - The user's current age as reported by API.
+     * @returns {number | null} Number of days since the 18th birthday, or null if not age 18 or calculation fails/inconsistent.
      */
-    function getDaysSinceLastBirthday(birthdayString, age) {
-        if (!birthdayString || typeof birthdayString !== 'string' || age !== 18) {
+    function getDaysSince18thBirthday(birthdayString, apiAge) {
+        if (!birthdayString || typeof birthdayString !== 'string' || apiAge !== 18) {
             return null;
         }
 
         try {
-            const today = new Date();
+            const today = new Date(); // Use local time for comparison
             const parts = birthdayString.split('-');
              if (parts.length !== 3) return null;
 
-            const birthMonth = parseInt(parts[1]) - 1; // 0-indexed month
-            const birthDay = parseInt(parts[2]);
+            const birthYear = parseInt(parts[0], 10);
+            const birthMonth = parseInt(parts[1], 10) - 1; // 0-indexed month
+            const birthDay = parseInt(parts[2], 10);
 
-             // Get the user's birthday date *this year*
-             const thisYearBday = new Date(Date.UTC(today.getUTCFullYear(), birthMonth, birthDay));
+            // Calculate the date of their 18th birthday
+            const eighteenthBirthday = new Date(birthYear + 18, birthMonth, birthDay);
 
-             let relevantBirthday;
-             // If today's date (UTC) is on or after their birthday date this year (UTC)
-             if (today.getUTCMonth() > thisYearBday.getUTCMonth() || (today.getUTCMonth() === thisYearBday.getUTCMonth() && today.getUTCDate() >= thisYearBday.getUTCDate())) {
-                 relevantBirthday = thisYearBday; // The most recent birthday was this year
-             } else {
-                 relevantBirthday = new Date(Date.UTC(today.getUTCFullYear() - 1, birthMonth, birthDay)); // The most recent birthday was last year
-             }
+            // Check if the 18th birthday has happened yet (compare dates directly)
+            if (eighteenthBirthday > today) {
+                 // API reports age 18, but 18th birthday is in the future.
+                 // This is inconsistent with a standard age calculation.
+                 // Log a warning, cannot calculate days *since* 18th birthday.
+                 console.warn(`User (Birth: ${birthdayString}, API Age: ${apiAge}) 18th birthday (${eighteenthBirthday.toISOString().split('T')[0]}) is in the future.`);
+                return null;
+            }
 
-             // Sanity check: Verify that the year of the relevant birthday aligns with age 18 today.
-             // A simple check: did they turn 18 on this relevant birthday?
-             const ageAtRelevantBdayYear = today.getUTCFullYear() - relevantBirthday.getUTCFullYear();
+            // Calculate the date of their 19th birthday
+             const nineteenthBirthday = new Date(birthYear + 19, birthMonth, birthDay);
 
-             // The API age (18) might be calculated slightly differently (e.g. based on local time, or just year diff)
-             // Trust the API age (18) and calculate days since the *most recent* birthday date, assuming that's their 18th one.
-             // If the API reports 18, the most recent birthday was either their 18th (if it already passed this year)
-             // or their 17th (if it hasn't passed this year, but they will turn 18 this year).
-             // We want days *since they turned 18*. So we need the date of their 18th birthday.
+            // Check if the 19th birthday has already happened
+            if (nineteenthBirthday <= today) {
+                 // API reports age 18, but 19th birthday has passed.
+                 // This is inconsistent with a standard age calculation.
+                 console.warn(`User (Birth: ${birthdayString}, API Age: ${apiAge}) 19th birthday (${nineteenthBirthday.toISOString().split('T')[0]}) has passed.`);
+                return null;
+            }
 
-             const ageOnDate = (date) => {
-                 const bday = new Date(Date.UTC(parseInt(parts[0]), birthMonth, birthDay));
-                 let age = date.getUTCFullYear() - bday.getUTCFullYear();
-                 // Adjust age if the birthday hasn't happened yet this year
-                 if (date.getUTCMonth() < bday.getUTCMonth() || (date.getUTCMonth() === bday.getUTCMonth() && date.getUTCDate() < bday.getUTCDate())) {
-                     age--;
-                 }
-                 return age;
-             };
+            // If 18th birthday has passed, and 19th has not, API age 18 is consistent.
+            // Calculate days difference between today and the 18th birthday date.
+             // Use UTC dates for calculation to avoid timezone issues affecting the diff logic.
+             const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+             const eighteenthBirthdayUtc = Date.UTC(eighteenthBirthday.getUTCFullYear(), eighteenthBirthday.getUTCMonth(), eighteenthBirthday.getUTCDate());
+             const diffMs = todayUtc - eighteenthBirthdayUtc;
+             const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-             let eighteenthBirthdayYear = today.getUTCFullYear() - 18;
-             let eighteenthBirthday = new Date(Date.UTC(eighteenthBirthdayYear, birthMonth, birthDay));
-
-             // Check if they were 18 *on* today's date according to the API.
-             // This is the tricky part without knowing the API's exact age calculation.
-             // Assuming the API age is based on a simple year difference or similar,
-             // and we want days since their *literal* 18th birthday:
-
-             // Method: Find the date they turned 18.
-             let dateOf18thBirthday = new Date(Date.UTC(today.getUTCFullYear() - 18, birthMonth, birthDay));
-
-             // If their 18th birthday hasn't happened *this year* yet,
-             // and the API says they are 18, this is likely an edge case or their age calculation is year-based.
-             // Let's trust the API age (18) and calculate days since the *most recent* birthday date.
-             // If API says 18 and today is *before* this year's birthday, they turned 17 last birthday.
-             // If API says 18 and today is *on or after* this year's birthday, they turned 18 this birthday.
-             // This seems wrong. The API age should correspond to their *current* age.
-             // If the API says AGE is 18, it means they are between their 18th and 19th birthday.
-
-             // Correct approach given API gives AGE=18:
-             // Find their 18th birthday date: original year + 18 years.
-             const actualBirthYear = parseInt(parts[0]);
-             const dateOf18thBday = new Date(Date.UTC(actualBirthYear + 18, birthMonth, birthDay));
-
-             // If their 18th birthday is *in the future* relative to today,
-             // then the API reporting their age as 18 is inconsistent with standard age calculation.
-             // We cannot calculate days *since* their 18th birthday if it hasn't happened yet.
-             if (dateOf18thBday > today) {
-                  console.warn(`User ${user.username} (Birth: ${birthdayString}, API Age: ${age}) 18th birthday is in the future (${dateOf18thBday.toISOString().split('T')[0]}). Cannot calculate days since 18th birthday.`);
-                 return null; // 18th birthday hasn't happened yet
-             }
-
-             // If their 19th birthday has *already happened* relative to today,
-             // then the API reporting their age as 18 is inconsistent.
-             const dateOf19thBday = new Date(Date.UTC(actualBirthYear + 19, birthMonth, birthDay));
-             if (dateOf19thBday <= today) {
-                  console.warn(`User ${user.username} (Birth: ${birthdayString}, API Age: ${age}) 19th birthday has passed (${dateOf19thBday.toISOString().split('T')[0]}). API age 18 is inconsistent.`);
-                 return null; // They are already 19 or older
-             }
-
-             // If their 18th birthday has happened, and their 19th birthday has not,
-             // they are indeed 18. Calculate days since their 18th birthday.
-             return dateDifferenceInDays(today, dateOf18thBday);
-
+            return days >= 0 ? days : null; // Should be non-negative if 18th birthday has passed
 
         } catch (e) {
-             console.error("Error calculating days since last birthday for:", birthdayString, e);
+             console.error("Error calculating days since 18th birthday for:", birthdayString, e);
              return null;
         }
     }
 
 
-    // --- Storage Functions (Modified for Messages) ---
+    // --- Storage Functions ---
 
     /**
      * Opens the IndexedDB database. Creates/upgrades the object stores if needed.
@@ -333,93 +305,187 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     /**
-     * Loads data for a specific key from the IndexedDB 'users' store.
+     * Loads data from the selected storage type.
      * @param {string} key - The key to retrieve (e.g., 'previousUsers').
      * @returns {Promise<Array<Object>>} Resolves with the data array, or an empty array if not found or on error.
      */
-    async function loadFromIndexedDB(key) {
-        let db;
-        try {
-            db = await openIndexedDB();
-        } catch (error) {
-            console.error(`Failed to open IndexedDB for loading key '${key}':`, error);
-            return [];
-        }
+     async function loadUsers(key = historyStorageKey) {
+         console.log(`Attempting to load history from: ${storageType} with key '${key}'`);
+         try {
+             if (storageType === 'local') {
+                 const data = localStorage.getItem(key);
+                 return data ? JSON.parse(data) : [];
+             } else if (storageType === 'session') {
+                 const data = sessionStorage.getItem(key);
+                 return data ? JSON.parse(data) : [];
+             } else if (storageType === 'indexedDB' || storageType.startsWith('indexedDB:')) {
+                 // Use the key directly for IndexedDB load
+                 const idbKey = storageType.startsWith('indexedDB:') ? storageType.substring('indexedDB:'.length) : key;
+                  return await loadFromIndexedDB(idbKey);
+             }
+         } catch (e) {
+             console.error(`Error loading from ${storageType} with key '${key}':`, e);
+         }
+         return [];
+     }
 
-        return new Promise((resolve) => {
-            const transaction = db.transaction('users', 'readonly');
-            const store = transaction.objectStore('users');
-            const request = store.get(key);
+     /**
+      * Saves data to the selected storage type.
+      * @param {Array<Object>} users - The array of user objects to save.
+      * @param {string} key - The key to save under (e.g., 'previousUsers').
+      * @returns {Promise<void>} Resolves when the save is complete, rejects on error.
+      */
+     async function saveUsers(users, key = historyStorageKey) {
+         if (!Array.isArray(users)) {
+             console.error(`Attempted to save non-array data to ${storageType} for key '${key}'. Aborting. Data:`, users);
+             return Promise.reject(new Error("Invalid data type: Expected an array."));
+         }
+         console.log(`Attempting to save ${users.length} users to: ${storageType} with key '${key}'`);
+         try {
+             const data = JSON.stringify(users);
+             if (storageType === 'local') {
+                 localStorage.setItem(key, data);
+             } else if (storageType === 'session') {
+                 sessionStorage.setItem(key, data);
+             } else if (storageType === 'indexedDB' || storageType.startsWith('indexedDB:')) {
+                 // Use the key directly for IndexedDB save
+                  const idbKey = storageType.startsWith('indexedDB:') ? storageType.substring('indexedDB:'.length) : key;
+                 await saveToIndexedDB(idbKey, users); // saveToIndexedDB expects the value directly
+             }
+             console.log("Save successful.");
+             return Promise.resolve();
+         } catch (e) {
+             console.error(`Error saving to ${storageType} with key '${key}':`, e);
+             // Handle potential quota exceeded errors for localStorage/sessionStorage
+             if (e instanceof DOMException && (e.code === 22 || e.code === 1014 || e.name === 'QuotaExceededError')) {
+                  console.error("Storage quota exceeded.");
+                  showOnlineErrorDisplay("Storage quota exceeded. Cannot save history.");
+                  return Promise.reject(new Error("Storage quota exceeded."));
+             }
+             showOnlineErrorDisplay(`Error saving history: ${e.message}`);
+             return Promise.reject(e);
+         }
+     }
 
-            request.onsuccess = function(event) {
-                const result = event.target.result;
-                resolve(result ? result.value : []);
-            };
-            request.onerror = function(event) {
-                console.error(`IndexedDB Load Error for key '${key}':`, event.target.error);
-                resolve([]);
-            };
-             transaction.oncomplete = () => { db.close(); };
-             transaction.onerror = (event) => console.error(`IDB load transaction error for ${key}:`, event.target.error);
-        });
-    }
+     /**
+      * Loads data for a specific key from the IndexedDB 'users' store.
+      * @param {string} key - The key to retrieve.
+      * @returns {Promise<Array<Object>>} Resolves with the data array, or an empty array if not found or on error.
+      */
+     async function loadFromIndexedDB(key) {
+         let db;
+         try {
+             db = await openIndexedDB();
+         } catch (error) {
+             console.error(`Failed to open IndexedDB for loading key '${key}':`, error);
+             return [];
+         }
 
-    /**
-     * Saves data (an array of users) for a specific key to the IndexedDB 'users' store.
-     * @param {string} key - The key to save under (e.g., 'previousUsers').
-     * @param {Array<Object>} users - The array of user objects to save.
-     * @returns {Promise<void>} Resolves when the save is complete, rejects on error.
-     */
-    async function saveToIndexedDB(key, users) {
-        if (!Array.isArray(users)) {
-            console.error(`Attempted to save non-array data to IndexedDB for key '${key}'. Aborting. Data:`, users);
-            return Promise.reject(new Error("Invalid data type: Expected an array."));
-        }
+         return new Promise((resolve) => {
+             const transaction = db.transaction('users', 'readonly');
+             const store = transaction.objectStore('users');
+             const request = store.get(key);
 
-        let db;
-        try {
-            db = await openIndexedDB();
-        } catch (error) {
-             console.error(`Failed to open IndexedDB for saving key '${key}':`, error);
-            throw error;
-        }
-
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction('users', 'readwrite');
-            const store = transaction.objectStore('users');
-            const request = store.put({ key: key, value: users });
-
-            request.onsuccess = function() {
-                // Let transaction.oncomplete handle final resolution
-            };
-            request.onerror = function(event) {
-                 console.error(`IndexedDB Put Error for key '${key}':`, event.target.error);
-                 reject(event.target.error);
-            };
-
-             transaction.oncomplete = () => {
-                 db.close();
-                 resolve();
+             request.onsuccess = function(event) {
+                 const result = event.target.result;
+                 resolve(result ? result.value : []);
              };
-             transaction.onabort = (event) => {
-                 console.error(`IndexedDB transaction for key '${key}' aborted.`, event.target.error || 'Unknown abort reason');
-                 db.close();
-                 reject(event.target.error || new Error('Transaction aborted'));
+             request.onerror = function(event) {
+                 console.error(`IndexedDB Load Error for key '${key}':`, event.target.error);
+                 resolve([]);
              };
-              transaction.onerror = (event) => {
-                 console.error(`IndexedDB transaction error for key '${key}'.`, event.target.error);
-                 db.close();
-                 reject(event.target.error);
-             };
-        });
-    }
+              transaction.oncomplete = () => { db.close(); };
+              transaction.onerror = (event) => { console.error(`IDB load transaction error for ${key}:`, event.target.error); db.close(); };
+              transaction.onabort = (event) => { console.error(`IDB load transaction aborted for ${key}:`, event.target.error); db.close(); };
+         });
+     }
 
-    /**
-     * Gets all keys currently stored in the IndexedDB 'users' object store.
-     * Useful for populating storage type options with custom saved lists.
-     * @returns {Promise<string[]>} A promise resolving with an array of keys, or empty array on error.
-     */
-     async function getIndexedDBKeys() { /* ... */ }
+     /**
+      * Saves data (an array of users) for a specific key to the IndexedDB 'users' store.
+      * @param {string} key - The key to save under.
+      * @param {Array<Object>} users - The array of user objects to save.
+      * @returns {Promise<void>} Resolves when the save is complete, rejects on error.
+      */
+     async function saveToIndexedDB(key, users) {
+         if (!Array.isArray(users)) {
+             console.error(`Attempted to save non-array data to IndexedDB for key '${key}'. Aborting. Data:`, users);
+             return Promise.reject(new Error("Invalid data type: Expected an array."));
+         }
+
+         let db;
+         try {
+             db = await openIndexedDB();
+         } catch (error) {
+              console.error(`Failed to open IndexedDB for saving key '${key}':`, error);
+             throw error;
+         }
+
+         return new Promise((resolve, reject) => {
+             const transaction = db.transaction('users', 'readwrite');
+             const store = transaction.objectStore('users');
+             const request = store.put({ key: key, value: users }); // 'put' will add or update based on key
+
+             request.onsuccess = function() {
+                 // Let transaction.oncomplete handle final resolution
+             };
+             request.onerror = function(event) {
+                  console.error(`IndexedDB Put Error for key '${key}':`, event.target.error);
+                  reject(event.target.error);
+             };
+
+              transaction.oncomplete = () => {
+                  db.close();
+                  resolve();
+              };
+              transaction.onabort = (event) => {
+                  console.error(`IndexedDB transaction for key '${key}' aborted.`, event.target.error || 'Unknown abort reason');
+                  db.close();
+                  reject(event.target.error || new Error('Transaction aborted'));
+              };
+               transaction.onerror = (event) => {
+                  console.error(`IndexedDB transaction error for key '${key}'.`, event.target.error);
+                  db.close();
+                  reject(event.target.error);
+              };
+         });
+     }
+
+
+     /**
+      * Gets all keys currently stored in the IndexedDB 'users' object store.
+      * Useful for populating storage type options with custom saved lists.
+      * @returns {Promise<string[]>} A promise resolving with an array of keys, or empty array on error.
+      */
+      async function getIndexedDBKeys() {
+          let db;
+          try {
+              db = await openIndexedDB();
+          } catch (error) {
+              console.error("Failed to open IndexedDB for getting keys:", error);
+              return [];
+          }
+
+          return new Promise((resolve) => {
+              const transaction = db.transaction('users', 'readonly');
+              const store = transaction.objectStore('users');
+              const request = store.getAllKeys();
+
+              request.onsuccess = function(event) {
+                  // Filter out the default key if needed, or include all user list keys
+                  const keys = event.target.result || [];
+                  // Optionally filter keys, e.g., remove internal keys if any are added later
+                  resolve(keys.filter(key => key !== 'someInternalKey')); // Example filter
+              };
+              request.onerror = function(event) {
+                  console.error("IndexedDB GetAllKeys Error:", event.target.error);
+                  resolve([]);
+              };
+              transaction.oncomplete = () => { db.close(); };
+              transaction.onerror = (event) => { console.error("IDB getAllKeys transaction error:", event.target.error); db.close(); };
+               transaction.onabort = (event) => { console.error("IDB getAllKeys transaction aborted:", event.target.error); db.close(); };
+          });
+      }
+
 
     // --- NEW Message Storage Functions ---
 
@@ -500,7 +566,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
 
              transaction.oncomplete = () => { db.close(); console.log("IDB load all messages transaction complete."); };
-             transaction.onerror = (event) => console.error("IDB load all messages transaction error:", event.target.error);
+             transaction.onerror = (event) => { console.error("IDB load all messages transaction error:", event.target.error); db.close(); };
+              transaction.onabort = (event) => { console.error("IDB load all messages transaction aborted:", event.target.error); db.close(); };
         });
     }
 
@@ -523,7 +590,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         let totalFetchedCount = 0;
 
         while (continueFetching && totalFetchedCount < maxApiFetchLimit) {
-            const apiUrl = `${apiUrlBase}&limit=${apiLimit}&offset=${offset}`;
+            const apiUrl = `${apiUrlBase}?limit=${apiLimit}&offset=${offset}`; // Use query params
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => {
@@ -556,11 +623,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                              offset += apiLimit;
                          }
                      } else {
-                         continueFetching = false;
+                         continueFetching = false; // No results means no more pages
                      }
                  } else {
                      console.warn(`fetchData: Response JSON does not contain a valid 'results' array from offset ${offset}:`, data);
-                     continueFetching = false;
+                      showOnlineErrorDisplay(`API response format error from offset ${offset}. Check console.`);
+                     continueFetching = false; // Stop fetching if data format is unexpected
                  }
 
             } catch (error) {
@@ -570,7 +638,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                  } else {
                     showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
                  }
-                continueFetching = false;
+                continueFetching = false; // Stop fetching on any error
             }
         }
 
@@ -586,7 +654,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         lastFilteredUsers = []; // Reset filtered list until filters are applied
 
         if (allOnlineUsersData.length > 0) {
-             console.log("fetchData: Populating filters and displaying users...");
+             console.log("fetchData: Populating filters, displaying users, and previous users.");
              populateFilters(allOnlineUsersData);
              // Update User Autocomplete source
              if (userSearchInput && typeof $.fn.autocomplete === 'function') {
@@ -597,13 +665,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         } else {
              console.log("fetchData: No online users data fetched in this cycle. Clearing online display.");
               if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
-              populateFilters([]);
+              populateFilters([]); // Clear filters
              // Clear User Autocomplete source
               if (userSearchInput && typeof $.fn.autocomplete === 'function') {
                   $(userSearchInput).autocomplete('option', 'source', []);
              }
               applyFiltersAndDisplay(); // Ensure display reflects empty state
-              await displayPreviousUsers();
+              await displayPreviousUsers(); // Display previous users based on potentially stale data
         }
 
         hideOnlineLoadingIndicator();
@@ -628,7 +696,61 @@ document.addEventListener('DOMContentLoaded', async function() {
      * Preserves currently selected values if possible.
      * @param {Array<Object>} users - The array of user objects (usually `allOnlineUsersData`).
      */
-    function populateFilters(users) { /* ... (same code) ... */ }
+    function populateFilters(users) {
+         if (!filterTagsSelect || !filterAgeSelect) {
+              console.warn("Filter select elements not found. Cannot populate filters.");
+              return;
+         }
+        console.log("Populating filters...");
+
+        const uniqueTags = new Set();
+        const uniqueAges = new Set();
+
+        users.forEach(user => {
+            if (user.tags && Array.isArray(user.tags)) {
+                user.tags.forEach(tag => {
+                    if (typeof tag === 'string' && tag.trim() !== '') {
+                        uniqueTags.add(tag.trim());
+                    }
+                });
+            }
+            if (user.age && typeof user.age === 'number' && user.age > 0) {
+                uniqueAges.add(user.age);
+            }
+        });
+
+        const sortedTags = Array.from(uniqueTags).sort();
+        const sortedAges = Array.from(uniqueAges).sort((a, b) => a - b);
+
+        // Save current selections
+        const currentSelectedTags = Array.from(filterTagsSelect.selectedOptions).map(opt => opt.value);
+        const currentSelectedAges = Array.from(filterAgeSelect.selectedOptions).map(opt => parseInt(opt.value));
+
+        // Populate Tags
+        filterTagsSelect.innerHTML = '<option value="">-- All Tags --</option>';
+        sortedTags.forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            option.textContent = tag;
+             if (currentSelectedTags.includes(tag)) {
+                 option.selected = true;
+             }
+            filterTagsSelect.appendChild(option);
+        });
+
+        // Populate Ages
+        filterAgeSelect.innerHTML = '<option value="">-- All Ages --</option>';
+        sortedAges.forEach(age => {
+            const option = document.createElement('option');
+            option.value = age;
+            option.textContent = age;
+             if (currentSelectedAges.includes(age)) {
+                 option.selected = true;
+             }
+            filterAgeSelect.appendChild(option);
+        });
+        console.log("Filters populated.");
+    }
 
 
      /**
@@ -642,7 +764,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         let filterTags = [];
         if (buttonFilters.tag) {
             filterTags = [buttonFilters.tag.toLowerCase()];
-            if (filterTagsSelect) filterTagsSelect.value = buttonFilters.tag.toLowerCase();
+            // Note: Setting select value programmatically might not work for multiple select easily
+            // You might need to iterate options or use a library
+            // For quick filter buttons, we'll just apply the filter, not update the multi-select UI
+             console.log(`Quick filter applied: Tag = ${buttonFilters.tag}`);
+             // Optional: Reset multi-selects if a quick filter is used? User preference.
+             // if (filterTagsSelect) Array.from(filterTagsSelect.options).forEach(opt => opt.selected = false);
+             // if (filterAgeSelect) Array.from(filterAgeSelect.options).forEach(opt => opt.selected = false);
+
         } else if (filterTagsSelect) {
             filterTags = Array.from(filterTagsSelect.selectedOptions)
                 .map(option => option.value.toLowerCase())
@@ -652,22 +781,34 @@ document.addEventListener('DOMContentLoaded', async function() {
         let filterAges = [];
         if (buttonFilters.age) {
             filterAges = [parseInt(buttonFilters.age)];
-             if (filterAgeSelect) filterAgeSelect.value = String(buttonFilters.age);
+             console.log(`Quick filter applied: Age = ${buttonFilters.age}`);
+             // Optional: Reset multi-selects
+             // if (filterTagsSelect) Array.from(filterTagsSelect.options).forEach(opt => opt.selected = false);
+             // if (filterAgeSelect) Array.from(filterAgeSelect.options).forEach(opt => opt.selected = false);
         } else if (filterAgeSelect) {
             filterAges = Array.from(filterAgeSelect.selectedOptions)
                 .map(option => parseInt(option.value))
                 .filter(age => !isNaN(age) && age > 0);
         }
 
-         // Get the current search term from the user search input
-         currentUserSearchTerm = userSearchInput ? userSearchInput.value.trim().toLowerCase() : '';
+         // Get the current search term from the user search input if not explicitly filtered by button
+         // We still want the user search to combine with dropdowns, but quick buttons *override* dropdowns temporarily.
+         if (Object.keys(buttonFilters).length === 0) {
+              currentUserSearchTerm = userSearchInput ? userSearchInput.value.trim().toLowerCase() : '';
+         } else {
+             // If a quick filter button was used, clear the search input? User preference.
+             // if (userSearchInput) userSearchInput.value = '';
+             currentUserSearchTerm = ''; // Ignore search input if a quick filter is active
+         }
+
 
         console.log("Active filters:", { filterTags, filterAges, userSearchTerm: currentUserSearchTerm });
 
         const filteredUsers = allOnlineUsersData.filter(user => {
-            if (!user || !user.username) return false;
-
-            const isPublic = user.current_show === 'public';
+            if (!user || !user.username || user.current_show !== 'public') {
+                 // Must be public and have basic info
+                return false;
+            }
 
              let hasTags = true;
              if (filterTags.length > 0) {
@@ -690,7 +831,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                   isUserSearchMatch = user.username.toLowerCase().includes(currentUserSearchTerm);
              }
 
-            return isPublic && hasTags && isAgeMatch && isUserSearchMatch;
+            return hasTags && isAgeMatch && isUserSearchMatch;
         });
 
         console.log(`Filtered ${allOnlineUsersData.length} users down to ${filteredUsers.length}.`);
@@ -714,18 +855,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         stopAutoScroll();
 
-        onlineUsersDiv.innerHTML = "";
+        onlineUsersDiv.innerHTML = ""; // Clear current list
 
         if (usersToDisplay.length === 0) {
             onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match the current filters.</p>';
+            // Disable auto-scroll if list is empty
             if (toggleAutoScrollButton) {
                 toggleAutoScrollButton.disabled = true;
                 toggleAutoScrollButton.textContent = 'Not Scrollable';
                  toggleAutoScrollButton.classList.remove('w3-red');
                  toggleAutoScrollButton.classList.add('w3-green');
             }
-             // Clear the analysis queue if the list is empty
+             // Clear the analysis queue if the list is empty/hidden
              analysisQueue = [];
+             isAnalyzing = false;
              showRecognitionStatus(''); // Hide status
             return;
         }
@@ -735,11 +878,23 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
         const fragment = document.createDocumentFragment();
-        // Clear previous analysis results and queue for these users
-        // This is simple; a more robust solution would cache results per user object
-        analysisQueue = []; // Clear the queue
-         isAnalyzing = false; // Reset analysis state
-         showRecognitionStatus(''); // Hide previous status
+
+        // Clear previous analysis results and queue for these users if switching modes
+        // or if fetching new data invalidates old results.
+         if (displayMode === 'image' && mobilenetModel) {
+              // If switching TO image mode or refreshing image list, clear queue and start fresh
+             analysisQueue = [];
+             isAnalyzing = false; // Reset analysis state
+              showRecognitionStatus('Queuing images for analysis...'); // Indicate process will start
+              console.log("Image mode active, clearing analysis queue.");
+         } else {
+              // If switching TO iframe mode or model not ready, clear queue and hide status
+               analysisQueue = [];
+               isAnalyzing = false;
+               showRecognitionStatus('');
+               console.log("Not in image mode or model not ready, analysis queue cleared.");
+         }
+
 
         usersToDisplay.forEach(user => {
             if (!user || !user.image_url || !user.username) {
@@ -747,36 +902,45 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return;
             }
              // Add recognition results property to the user object if it doesn't exist or is stale
-             if (!user.recognition_results || user.recognition_timestamp < Date.now() - fetchIntervalDuration) {
-                  user.recognition_results = null; // Reset results
-                  user.recognition_timestamp = 0; // Reset timestamp
+             // A simple timestamp check isn't perfect, a version or fetch time might be better.
+             // For simplicity, we'll clear results/queue whenever the list is refreshed/filters change.
+             // User object in allOnlineUsersData might retain results, but we rebuild display elements.
+             // Let's ensure the user object *in allOnlineUsersData* has a place for results.
+             const userInState = allOnlineUsersData.find(u => u.username === user.username);
+             if (userInState && displayMode === 'image' && !userInState.recognition_results) {
+                 // This user needs analysis, add to queue if in image mode and no results yet
+                 analysisQueue.push({
+                     username: user.username,
+                     imageUrl: user.image_url,
+                     // Will find the element by username later, as elements are created now
+                 });
+                  // Add placeholder recognition state
+                   user.recognition_results = null; // Indicates analysis is needed/pending
+             } else if (userInState && displayMode === 'image' && userInState.recognition_results) {
+                 // User in state has results, use them directly
+             } else if (userInState && displayMode === 'iframe') {
+                  // Clear results if switching to iframe mode? Or keep them?
+                  // Let's keep them on the user object but don't display them.
+                  userInState.recognition_results = userInState.recognition_results || null;
              }
 
-            const userElement = createUserElement(user, 'online', displayMode);
+
+            const userElement = createUserElement(user, 'online', displayMode); // Pass the user object with potential results
             fragment.appendChild(userElement);
 
-             // Add the user's image URL to the analysis queue if we are in image mode
-             // and the user hasn't been analyzed recently (or ever)
-             if (displayMode === 'image' && !user.recognition_results) {
-                  analysisQueue.push({
-                      username: user.username,
-                      imageUrl: user.image_url,
-                      element: userElement // Pass the DOM element to update later
-                  });
-             }
         });
         onlineUsersDiv.appendChild(fragment);
 
-         // Start processing the analysis queue if there are items
-         if (analysisQueue.length > 0 && mobilenetModel) { // Ensure model is loaded
+         // Start processing the analysis queue if there are items and the model is loaded
+         if (analysisQueue.length > 0 && mobilenetModel && displayMode === 'image') {
               console.log(`Queued ${analysisQueue.length} images for recognition.`);
               processAnalysisQueue(); // Start the analysis process
          } else if (displayMode === 'image' && mobilenetModel && usersToDisplay.length > 0) {
-              // If in image mode, model is loaded, list is not empty, but no images queued,
-              // it means all currently displayed images might have results already.
-              // Or maybe the image_url was missing on some?
-              console.log("Image mode active, but no new images queued for recognition.");
-              showRecognitionStatus("Recognition results shown below users."); // Indicate where results are
+              // If in image mode, model is loaded, list has users, but queue is empty
+              // means all displayed images either have results or their URL was bad.
+              console.log("Image mode active, but no new images queued for recognition (already analyzed?).");
+               showRecognitionStatus("Recognition results shown below users.", 'info');
+               setTimeout(() => showRecognitionStatus(''), 3000); // Hide info status
          } else if (!mobilenetModel && displayMode === 'image' && usersToDisplay.length > 0) {
                console.warn("MobileNet model not loaded. Cannot perform image recognition.");
                showRecognitionStatus("Image recognition not available (model loading failed?).", 'warning');
@@ -785,7 +949,9 @@ document.addEventListener('DOMContentLoaded', async function() {
          }
 
 
+         // Update auto-scroll button state
          if (toggleAutoScrollButton) {
+             // Check if scrollHeight is greater than clientHeight (content overflows)
              if (onlineUsersDiv.scrollHeight > onlineUsersDiv.clientHeight) {
                   toggleAutoScrollButton.disabled = false;
                   toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
@@ -812,26 +978,35 @@ document.addEventListener('DOMContentLoaded', async function() {
              console.warn("Previous users display div (#previousUsers .user-list) not found.");
              return;
          }
-         console.log(`displayPreviousUsers: Refreshing display. History has ${previousUsers.length} users.`);
-         previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Loading history...</p>';
+         console.log(`displayPreviousUsers: Refreshing display. History has ${previousUsers.length} users loaded in state.`);
+         // Show a temporary message while filtering/rendering
+         previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Updating history display...</p>';
+
+         // If previousUsers state is empty, try loading from storage
+         if (previousUsers.length === 0) {
+             previousUsers = await loadUsers(historyStorageKey);
+              console.log(`displayPreviousUsers: Loaded ${previousUsers.length} users from storage.`);
+         }
 
          if (previousUsers.length === 0) {
-             previousUsers = await loadUsers("previousUsers");
-             if (previousUsers.length === 0) {
-                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history saved.</p>';
-                console.log("displayPreviousUsers: No previous users found in storage.");
-                return;
-             } else {
-                  console.log(`displayPreviousUsers: Loaded ${previousUsers.length} previous users from storage.`);
-             }
+            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history saved.</p>';
+            console.log("displayPreviousUsers: No previous users found in state or storage.");
+            return;
          }
 
+
+         // If online user data isn't available yet, we can't filter by online status
+         // In this case, display the saved history, but note that online status is unknown.
          if (allOnlineUsersData.length === 0) {
-              console.warn("displayPreviousUsers: Online user data (allOnlineUsersData) not available. Displaying saved history without online status check.");
-              previousUsersDiv.innerHTML = '<p class="text-muted w3-center">History loaded. Fetching online status...</p>';
-              return;
+             console.warn("displayPreviousUsers: Online user data not available. Displaying saved history without online status check.");
+              previousUsersDiv.innerHTML = '<p class="text-muted w3-center">History loaded. Online status check pending fetch.</p>';
+              // Display saved users without online check (optional, could also wait)
+              // For now, let's just return and wait for fetchData to trigger display again.
+              // This prevents showing potentially offline users in the "Online Now" history list.
+             return;
          }
 
+         // Filter previous users to show only those currently in the fetched online list and are public
          const onlineUserMap = new Map(allOnlineUsersData.map(user => [user.username, user]));
 
          const currentlyOnlineAndPublicPreviousUsers = previousUsers.filter(prevUser => {
@@ -841,13 +1016,14 @@ document.addEventListener('DOMContentLoaded', async function() {
 
          console.log(`displayPreviousUsers: Found ${currentlyOnlineAndPublicPreviousUsers.length} saved users currently online & public.`);
 
-         previousUsersDiv.innerHTML = "";
+         previousUsersDiv.innerHTML = ""; // Clear the "Updating..." message
 
          if (currentlyOnlineAndPublicPreviousUsers.length === 0) {
               previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users are online & public right now.</p>';
               return;
          }
 
+         // Ensure the history list uses image mode classes
          previousUsersDiv.classList.remove('iframe-mode');
          previousUsersDiv.classList.add('image-mode'); // Always image mode
 
@@ -857,7 +1033,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.warn("Skipping previous user display due to incomplete data:", user);
                 return;
             }
-             const userElement = createUserElement(user, 'previous', 'image'); // Always use 'image' mode
+             // For history, use the potentially older data stored in the previousUsers array state
+             // or merge with current online data if available and desired (e.g., get current viewers count)
+             // Let's merge with current online data for freshness where available
+              const onlineUserData = onlineUserMap.get(user.username);
+              const userForDisplay = onlineUserData || user; // Use online data if available, else historical
+
+             const userElement = createUserElement(userForDisplay, 'previous', 'image'); // Always use 'image' mode for history
              fragment.appendChild(userElement);
          });
          previousUsersDiv.appendChild(fragment);
@@ -877,35 +1059,39 @@ document.addEventListener('DOMContentLoaded', async function() {
         const userElement = document.createElement("div");
         userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item ${mode}-display-mode`;
         userElement.dataset.username = user.username;
-        // Add a data attribute to store recognition state
-        userElement.dataset.recognized = user.recognition_results ? 'true' : 'false';
+        // Add a data attribute to store recognition state (useful for debugging/targeting)
+        userElement.dataset.recognized = user.recognition_results ? 'true' : (mode === 'image' && !user.recognition_results ? 'pending' : 'N/A');
 
         const tagsDisplay = (user.tags && Array.isArray(user.tags) && user.tags.length > 0)
                             ? user.tags.join(', ')
                             : 'N/A';
-        const ageDisplay = (user.age && typeof user.age === 'number') ? user.age : 'N/A';
+        const ageDisplay = (user.age && typeof user.age === 'number' && user.age > 0) ? user.age : 'N/A';
 
         let ageDetails = `Age: ${ageDisplay}`;
+         // Calculate days since 18th birthday only if age is 18 and birthday is available
         if (user.age === 18 && user.birthday) {
-            const daysSinceBday = getDaysSinceLastBirthday(user.birthday, user.age);
+            const daysSinceBday = getDaysSince18thBirthday(user.birthday, user.age);
             if (daysSinceBday !== null) {
                 ageDetails = `Age: 18 <span class="age-days">(${daysSinceBday} days)</span>`;
             } else {
-                 ageDetails = `Age: 18`; // Fallback if calculation fails
+                 ageDetails = `Age: 18`; // Fallback if calculation fails or is inconsistent
             }
         }
+
 
         const newBadge = user.is_new ? '<span class="badge new-badge w3-tag w3-small w3-red w3-round">New</span>' : '';
         const birthdayBanner = isBirthday(user.birthday) ? `<p class="birthday w3-text-amber w3-center">🎂 Happy Birthday! 🎂</p>` : '';
         const removeButton = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
 
         let mediaContent = '';
+        // Use the specific list iframe parameters for list previews
         if (mode === 'iframe') {
+             // Append the user's username to the base embed URL
              const iframeSrc = `${LIST_IFRAME_BASE_URL}${user.username}/${LIST_IFRAME_PARAMS}`;
             mediaContent = `
                 <div class="iframe-container">
                      <iframe src="${iframeSrc}" frameborder="0" scrolling="no" allowfullscreen loading="lazy"></iframe>
-                     <div class="click-overlay"></div>
+                     <div class="click-overlay"></div> <!-- Overlay to make clicking easier -->
                 </div>
             `;
         } else { // mode === 'image'
@@ -916,14 +1102,17 @@ document.addEventListener('DOMContentLoaded', async function() {
             `;
         }
 
-        // Add placeholder for recognition results if in image mode and not yet recognized
+        // Add placeholder/results for recognition if in image mode
         let recognitionHtml = '';
         if (mode === 'image') {
              if (user.recognition_results) {
                   recognitionHtml = buildRecognitionResultsHtml(user.recognition_results);
+             } else if (user.recognition_results === null) {
+                  // null indicates analysis is pending/failed previously, add loading placeholder
+                  recognitionHtml = `<div class="recognition-results loading-indicator w3-text-grey w3-small">Analyzing...</div>`;
              } else {
-                  // Add a placeholder element that can be updated later
-                  recognitionHtml = `<div class="recognition-results loading-indicator">Analyzing...</div>`;
+                 // undefined indicates it hasn't been queued, but display mode is image, queue it later
+                 // No recognitionHtml placeholder needed yet, it will be added when analysis is complete
              }
         }
 
@@ -942,6 +1131,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // --- Add Event Listeners ---
         userElement.addEventListener("click", function(event) {
+             // Prevent click handler if clicking the remove button or overlay
              if (event.target.closest('.remove-user-btn') || event.target.closest('.click-overlay')) {
                  return;
              }
@@ -952,23 +1142,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         const removeBtn = userElement.querySelector('.remove-user-btn');
         if (removeBtn) {
             removeBtn.addEventListener("click", async function(event) {
-                event.stopPropagation();
+                event.stopPropagation(); // Prevent triggering parent click
                 console.log(`User clicked remove for: ${user.username}`);
-                showOnlineLoadingIndicator("Removing from history...");
+                 showOnlineLoadingIndicator(`Removing ${user.username} from history...`); // Use online loading for history actions
                 await removeFromPreviousUsers(user.username);
-                await displayPreviousUsers();
+                await displayPreviousUsers(); // Refresh history display
                 hideOnlineLoadingIndicator();
             });
         }
 
          const overlay = userElement.querySelector('.click-overlay');
          if (overlay) {
+             // Attach the click listener to the overlay instead of the parent element
+             // This prevents the overlay interfering with potential interactions inside the iframe if scrolling was enabled
+             // and ensures clicking anywhere on the overlay triggers the user click.
              overlay.addEventListener('click', function(event) {
-                 event.stopPropagation();
-                  console.log(`Overlay clicked for: ${user.username}. Triggering parent click.`);
-                  userElement.click(); // Simulate click on the parent element
+                 event.stopPropagation(); // Stop propagation from the overlay
+                  console.log(`Overlay clicked for: ${user.username}. Triggering handleUserClick.`);
+                  handleUserClick(user); // Call handleUserClick directly
              });
          }
+
 
         return userElement;
     }
@@ -999,9 +1193,10 @@ document.addEventListener('DOMContentLoaded', async function() {
      * @param {Object} user - The user object that was clicked.
      */
     function handleUserClick(user) {
-         if (!mainIframe || !mainIframe2) { // Ensure at least the first two exist
-              console.error("Initial main iframe elements not found. Cannot load user stream.");
-              showReportStatus("Viewer iframes not found.", 'error');
+         // Ensure main viewer iframes are available
+         if (mainIframes.length === 0 || mainIframes.every(i => !i)) {
+              console.error("Main viewer iframe elements not found. Cannot load user stream.");
+              showReportStatus("Viewer iframes not initialized correctly.", 'error');
               return;
          }
          if (!user || !user.username) {
@@ -1012,7 +1207,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Determine which iframe to use based on radio button selection
         const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
-        const selectedIframeId = iframeChoiceRadio ? iframeChoiceRadio.value : 'mainIframe';
+        // Default to the first iframe if no radio is checked or found
+        const selectedIframeId = iframeChoiceRadio ? iframeChoiceRadio.value : 'mainIframe1';
+
 
         const selectedIframe = document.getElementById(selectedIframeId);
 
@@ -1022,13 +1219,17 @@ document.addEventListener('DOMContentLoaded', async function() {
               return;
          }
 
+         // Construct the main viewer iframe source URL
         const iframeSrc = `${MAIN_IFRAME_BASE_URL}${user.username}/${MAIN_IFRAME_PARAMS}`;
 
         console.log(`Loading ${user.username} into ${selectedIframeId} with src: ${iframeSrc}`);
         selectedIframe.src = iframeSrc;
 
+        // Add the user to history
         addToPreviousUsers(user).catch(err => {
             console.error(`Error adding ${user.username} to previous users:`, err);
+             // Optional: Show error message
+             // showReportStatus(`Failed to update history for ${user.username}.`, 'error');
         });
     }
 
@@ -1040,7 +1241,48 @@ document.addEventListener('DOMContentLoaded', async function() {
      * @param {Object} user - The user object to add/move.
      * @returns {Promise<void>}
      */
-    async function addToPreviousUsers(user) { /* ... (same logic) ... */ }
+    async function addToPreviousUsers(user) {
+         // Find the user in the current previousUsers array
+         const existingIndex = previousUsers.findIndex(u => u.username === user.username);
+
+         // Create a history entry with minimal data, plus a timestamp
+         const userEntry = {
+             username: user.username,
+             image_url: user.image_url, // Save image URL for display
+             timestamp: Date.now(), // Add/update timestamp
+             // Optionally save other static data like age, tags if needed for display when offline
+             age: user.age,
+             tags: user.tags,
+             is_new: user.is_new,
+             birthday: user.birthday,
+             // Do NOT save recognition_results here as it changes and inflates storage
+         };
+
+         if (existingIndex !== -1) {
+             // User exists, remove them from their current position
+             const existingUser = previousUsers.splice(existingIndex, 1)[0];
+              // Merge any potentially needed fields from the existing entry?
+              // For simplicity, just update the timestamp in the new entry
+             userEntry.timestamp = Date.now();
+         }
+
+         // Add the user entry to the front of the array
+         previousUsers.unshift(userEntry);
+
+         // Enforce max history size
+         if (previousUsers.length > maxHistorySize) {
+             previousUsers = previousUsers.slice(0, maxHistorySize);
+             console.log(`History size limited to ${maxHistorySize}.`);
+         }
+
+         console.log(`Added/Moved ${user.username} to history. History size: ${previousUsers.length}`);
+
+         // Save the updated history to storage
+         await saveUsers(previousUsers, historyStorageKey);
+
+         // Refresh the history display
+         await displayPreviousUsers(); // This will filter by online status
+    }
 
      /**
       * Removes a user from the `previousUsers` history state by username.
@@ -1048,13 +1290,77 @@ document.addEventListener('DOMContentLoaded', async function() {
       * @param {string} username - The username to remove.
       * @returns {Promise<void>}
       */
-     async function removeFromPreviousUsers(username) { /* ... (same logic) ... */ }
+     async function removeFromPreviousUsers(username) {
+          const initialLength = previousUsers.length;
+          previousUsers = previousUsers.filter(user => user.username !== username);
+
+          if (previousUsers.length < initialLength) {
+               console.log(`Removed ${username} from history.`);
+               // Save the updated list only if a user was actually removed
+               await saveUsers(previousUsers, historyStorageKey);
+          } else {
+               console.warn(`Attempted to remove ${username} from history, but user not found.`);
+          }
+     }
 
      /**
       * Clears the previous users history from both state and the selected storage.
       * @returns {Promise<void>}
       */
-     async function clearPreviousUsers() { /* ... (same logic) ... */ }
+     async function clearPreviousUsers() {
+         console.log("Attempting to clear history...");
+         const confirmClear = confirm("Are you sure you want to clear your viewing history?");
+         if (!confirmClear) {
+             console.log("History clear cancelled.");
+             return;
+         }
+
+         // Clear from state
+         previousUsers = [];
+         console.log("History cleared from state.");
+
+         // Clear from storage
+         try {
+             if (storageType === 'local') {
+                 localStorage.removeItem(historyStorageKey);
+             } else if (storageType === 'session') {
+                 sessionStorage.removeItem(historyStorageKey);
+             } else if (storageType === 'indexedDB' || storageType.startsWith('indexedDB:')) {
+                  const idbKey = storageType.startsWith('indexedDB:') ? storageType.substring('indexedDB:'.length) : historyStorageKey;
+                  let db;
+                  try {
+                      db = await openIndexedDB();
+                      const transaction = db.transaction('users', 'readwrite');
+                      const store = transaction.objectStore('users');
+                      const request = store.delete(idbKey); // Delete the specific key
+
+                      await new Promise((resolve, reject) => {
+                           request.onsuccess = () => resolve();
+                           request.onerror = (event) => reject(event.target.error);
+                           transaction.oncomplete = () => { db.close(); resolve(); }; // Ensure close on complete
+                           transaction.onerror = (event) => { db.close(); reject(event.target.error); };
+                           transaction.onabort = (event) => { db.close(); reject(event.target.error || new Error('Transaction aborted')); };
+                      });
+                       console.log(`History key '${idbKey}' cleared from IndexedDB.`);
+
+                  } catch (error) {
+                       console.error(`Failed to open/clear IndexedDB for key '${idbKey}':`, error);
+                      throw error; // Re-throw to be caught below
+                  }
+             }
+             console.log(`History cleared from ${storageType}.`);
+             showReportStatus("Viewing history cleared.", 'success'); // Use report status for this action
+
+         } catch (e) {
+             console.error(`Error clearing history from ${storageType}:`, e);
+              showReportStatus(`Failed to clear history: ${e.message}`, 'error');
+         } finally {
+             // Always refresh the display after attempting to clear
+              await displayPreviousUsers();
+              // Re-enable the button if it was disabled during confirmation
+              if (clearPreviousUsersButton) clearPreviousUsersButton.disabled = false; // Not needed if confirm is modal
+         }
+     }
 
 
      /**
@@ -1062,7 +1368,49 @@ document.addEventListener('DOMContentLoaded', async function() {
       * Includes standard options (Local, Session, IndexedDB) and any custom keys found in IndexedDB.
       * @returns {Promise<void>}
       */
-     async function populateStorageOptions() { /* ... (same logic) ... */ }
+     async function populateStorageOptions() {
+         if (!storageTypeSelector) {
+              console.warn("Storage type selector not found. Cannot populate options.");
+              return;
+         }
+          console.log("Populating storage options...");
+          const currentSelectedValue = storageTypeSelector.value; // Preserve current selection
+
+         // Clear existing options except the default ones
+         storageTypeSelector.innerHTML = `
+             <option value="local">Local Storage</option>
+             <option value="session">Session Storage</option>
+             <option value="indexedDB">IndexedDB (Default History)</option>
+         `;
+
+         try {
+             const idbKeys = await getIndexedDBKeys();
+              console.log("Found IndexedDB keys:", idbKeys);
+             idbKeys.forEach(key => {
+                  // Add options for other saved IndexedDB keys, except the default history key
+                  if (key !== historyStorageKey) {
+                      const option = document.createElement('option');
+                      option.value = `indexedDB:${key}`; // Prefix to distinguish custom IDB keys
+                      option.textContent = `IndexedDB: ${key}`;
+                      storageTypeSelector.appendChild(option);
+                  }
+             });
+         } catch (e) {
+             console.error("Error getting IndexedDB keys:", e);
+             // Continue without adding custom IDB options
+         }
+
+          // Restore previous selection if it still exists
+          if (currentSelectedValue && storageTypeSelector.querySelector(`option[value="${currentSelectedValue}"]`)) {
+               storageTypeSelector.value = currentSelectedValue;
+          } else {
+               // Default to 'indexedDB' if previous selection is invalid or not found
+               storageTypeSelector.value = 'indexedDB';
+          }
+          storageType = storageTypeSelector.value; // Update state based on final value
+          console.log(`Storage options populated. Current type: ${storageType}`);
+
+     }
 
 
     // --- NEW Message Functions ---
@@ -1071,9 +1419,9 @@ document.addEventListener('DOMContentLoaded', async function() {
      * Reads input, saves message to DB, clears input, and refreshes message list.
      */
     async function saveMessage() {
-         if (!messageInput || !messageStatusDisplay) {
-              console.warn("Message input or status display not found.");
-              showReportStatus("Messaging elements missing.", 'error'); // Use report status for broader visibility
+         if (!messageInput || !messageStatusDisplay || !saveMessageButton) {
+              console.warn("Messaging DOM elements missing. Cannot save message.");
+              showReportStatus("Messaging feature elements missing.", 'error');
               return;
          }
 
@@ -1084,8 +1432,8 @@ document.addEventListener('DOMContentLoaded', async function() {
          }
 
          showStatusMessage(messageStatusDisplay, "Saving...", 'loading');
-         if (saveMessageButton) saveMessageButton.disabled = true;
-         if (messageInput) messageInput.disabled = true;
+         saveMessageButton.disabled = true;
+         messageInput.disabled = true;
 
          try {
               await saveMessageToIndexedDB({ text: text });
@@ -1093,16 +1441,14 @@ document.addEventListener('DOMContentLoaded', async function() {
               messageInput.value = ''; // Clear input
               await loadAndDisplayMessages(); // Reload and display messages
               showStatusMessage(messageStatusDisplay, "Message saved!", 'success');
+              // Clear success/warning message after a delay
+               setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 3000);
          } catch (error) {
               console.error("Failed to save message:", error);
               showStatusMessage(messageStatusDisplay, `Error saving message: ${error.message}`, 'error');
          } finally {
-             if (saveMessageButton) saveMessageButton.disabled = false;
-             if (messageInput) messageInput.disabled = false;
-              // Clear status after a delay for success/warning
-              if (messageStatusDisplay.classList.contains('success') || messageStatusDisplay.classList.contains('warning')) {
-                  setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 3000); // Hide after 3s
-              }
+             saveMessageButton.disabled = false;
+             messageInput.disabled = false;
          }
     }
 
@@ -1122,10 +1468,14 @@ document.addEventListener('DOMContentLoaded', async function() {
               savedMessages = await loadMessagesFromIndexedDB();
               console.log(`Loaded ${savedMessages.length} messages from DB.`);
 
-             // Update Message Autocomplete source
-              if (messageSearchInput && typeof $.fn.autocomplete === 'function') {
+             // Update Message Autocomplete source (using jQuery UI)
+              if (typeof $.fn.autocomplete === 'function') {
                    $(messageSearchInput).autocomplete('option', 'source', getAllMessageTexts());
+              } else {
+                  console.warn("jQuery UI Autocomplete not available for message search.");
+                   if(messageSearchInput) messageSearchInput.disabled = true;
               }
+
 
              // Get current search term
               currentMessageSearchTerm = messageSearchInput.value.trim().toLowerCase();
@@ -1144,15 +1494,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     /**
-     * Gets a list of all unique message texts.
-     * Used for message autocomplete source.
+     * Gets a list of all message texts.
+     * Used for message autocomplete source and filtering.
      * @returns {string[]} Array of message texts.
      */
      function getAllMessageTexts() {
          if (!savedMessages || savedMessages.length === 0) {
              return [];
          }
-         // Return only the text from the loaded messages
          return savedMessages.map(msg => msg.text);
      }
 
@@ -1189,19 +1538,21 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     /**
      * Creates a DOM element for a single message.
-     * @param {Object} message - The message object.
+     * @param {Object} message - The message object ({ id, text, timestamp }).
      * @returns {HTMLElement} The created message div element.
      */
     function createMessageElement(message) {
         const messageElement = document.createElement("div");
         messageElement.className = "message-item";
-        messageElement.textContent = message.text; // Set text content
+        // Set text content directly to prevent HTML injection if message text contains HTML
+        messageElement.textContent = message.text;
+        messageElement.dataset.messageId = message.id; // Store ID if needed for delete
 
         // Add click listener to copy text to clipboard
         messageElement.addEventListener("click", function() {
             copyToClipboard(message.text);
         });
-        // Optional: Add delete button listener here
+        // Optional: Add delete button/listener here
 
         return messageElement;
     }
@@ -1213,45 +1564,22 @@ document.addEventListener('DOMContentLoaded', async function() {
      */
     function copyToClipboard(text) {
          if (!messageStatusDisplay) {
-              console.warn("Message status display not found.");
-               // Fallback to alert if status element is missing?
-              if (navigator.clipboard && navigator.clipboard.writeText) {
-                   navigator.clipboard.writeText(text).then(() => console.log("Text copied to clipboard (no status UI).")).catch(err => console.error("Failed to copy text:", err));
-              } else {
-                   console.warn("Clipboard API not available.");
-              }
-              return;
+              console.warn("Message status display not found. Cannot provide copy feedback.");
          }
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text).then(() => {
                 console.log("Text copied to clipboard:", text);
-                 showStatusMessage(messageStatusDisplay, "Copied to clipboard!", 'success');
-                 setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 2000); // Hide after 2s
+                 if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, "Copied to clipboard!", 'success');
+                 if(messageStatusDisplay) setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 2000); // Hide after 2s
             }).catch(err => {
                 console.error("Failed to copy text:", err);
-                 showStatusMessage(messageStatusDisplay, `Failed to copy: ${err.message}`, 'error');
+                 if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, `Failed to copy: ${err.message}`, 'error');
             });
         } else {
              console.warn("Clipboard API not available.");
-             showStatusMessage(messageStatusDisplay, "Copy failed: Clipboard not supported.", 'error');
-            // Fallback for older browsers (execCommand is deprecated/less reliable)
-            /*
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                console.log('Text copied using execCommand');
-                 showStatusMessage(messageStatusDisplay, "Copied to clipboard (fallback)!", 'success');
-                 setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 2000);
-            } catch (err) {
-                console.error('Fallback copy failed', err);
-                showStatusMessage(messageStatusDisplay, "Failed to copy (fallback).", 'error');
-            }
-            document.body.removeChild(textarea);
-            */
+             if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, "Copy failed: Clipboard not supported.", 'error');
+            // Fallback for older browsers if needed, but less reliable
         }
     }
 
@@ -1265,28 +1593,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     function showStatusMessage(element, message, type = 'info', show = true) {
          if (!element) return;
          element.textContent = message;
-         element.className = `message-status ${type}`; // Use a base class
-         element.style.display = show ? (type === 'loading' ? 'inline-block' : 'block') : 'none'; // Show/hide and adjust display type for loading
+         // Remove all type classes before adding the new one
+         element.classList.remove('success', 'error', 'warning', 'info', 'loading');
+         element.classList.add(type);
 
-         // Add W3.CSS classes based on type
-         element.classList.remove('w3-text-grey', 'w3-text-green', 'w3-text-red', 'w3-text-amber', 'w3-text-blue'); // Remove previous
-         element.classList.remove('w3-panel', 'w3-pale-green', 'w3-pale-red', 'w3-pale-yellow', 'w3-pale-blue'); // Remove previous panel classes
-         element.style.borderLeft = ''; // Remove border style
-
-         if (type === 'loading') {
-              element.classList.add('w3-text-grey');
-         } else if (type === 'success') {
-              element.classList.add('w3-panel', 'w3-pale-green');
-              element.style.borderLeft = '6px solid #4CAF50';
-         } else if (type === 'error') {
-              element.classList.add('w3-panel', 'w3-pale-red');
-              element.style.borderLeft = '6px solid #f44336';
-         } else if (type === 'warning') {
-               element.classList.add('w3-panel', 'w3-pale-yellow');
-               element.style.borderLeft = '6px solid #ff9800';
-         } else { // info
-              element.classList.add('w3-panel', 'w3-pale-blue');
-              element.style.borderLeft = '6px solid #2196F3';
+         if (show) {
+             // Use inline-block for loading, block for others
+             element.style.display = (type === 'loading' || element.classList.contains('loading-indicator')) ? 'inline-block' : 'block';
+         } else {
+             element.style.display = 'none'; // Hide the element
          }
     }
 
@@ -1308,6 +1623,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             showReportStatus(warnMsg, 'warning');
             return;
         }
+         if (!reportLoadingIndicator || !reportStatusDisplay) {
+              console.warn("Reporting status elements missing. Cannot send report.");
+              alert("Reporting feature elements missing. Check console.");
+              return;
+         }
+
 
         const reportData = lastFilteredUsers.map(user => ({
             username: user.username,
@@ -1329,6 +1650,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showReportStatus("Report sending via client service (placeholder). Requires service setup (e.g. EmailJS).", 'info');
 
                 // --- Example using EmailJS (requires their CDN and initialization) ---
+                // Check if emailjs is available and configured
                 // if (typeof emailjs !== 'undefined' && EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID) {
                 //      const templateParams = {
                 //          report_json: JSON.stringify(reportData, null, 2), // Send formatted JSON
@@ -1339,33 +1661,36 @@ document.addEventListener('DOMContentLoaded', async function() {
                 //      if (result.status === 200) {
                 //           showReportStatus('Report sent successfully via EmailJS!', 'success');
                 //      } else {
+                //           console.error('EmailJS send failed:', result);
                 //           showReportStatus(`EmailJS send failed (Status: ${result.status}). See console.`, 'error');
                 //      }
                 // } else {
                 //      console.error("EmailJS SDK not loaded or configuration missing.");
                 //      showReportStatus("Report feature not configured. EmailJS SDK missing or keys not set.", 'error');
+                //      throw new Error("EmailJS not configured."); // Throw to fall into catch
                 // }
                  // Fallback if placeholder method isn't actually implemented/configured
-                 throw new Error("Client-side report service not actually implemented/configured.");
+                 throw new Error("Client-side report service not actually implemented/configured in JS.");
 
 
             } else if (REPORT_SEND_METHOD === 'mailto') {
                 console.log("Using mailto link for report.");
-                const subject = encodeURIComponent("Room Viewer Online User Report");
+                const subject = encodeURIComponent(`Room Viewer Online User Report (${reportData.length} users)`);
                 // Format data for the mailto body (simple text)
                 const bodyText = reportData.map(user =>
-                    `Username: ${user.username}\nAge: ${user.age}\nTags: ${user.tags.join(', ')}\nViewers: ${user.num_viewers}\nBirthday: ${user.birthday || 'N/A'}\nRecognition: ${user.recognition_results || 'N/A'}\n---\n`
+                    `Username: ${user.username}\nAge: ${user.age}\nTags: ${user.tags ? user.tags.join(', ') : 'N/A'}\nViewers: ${user.num_viewers || 'N/A'}\nBirthday: ${user.birthday || 'N/A'}\nRecognition: ${user.recognition_results || 'N/A'}\n---\n`
                 ).join('\n');
                 const body = encodeURIComponent("Online Users Report:\n\n" + bodyText);
+
+                const mailtoLink = `mailto:your.email@example.com?subject=${subject}&body=${body}`; // !! REPLACE your.email@example.com !!
+
                  // Check URL length limit (rough estimate)
-                 if ((mailtoLink.length + body.length) > 2000) { // Mailto limits vary, 2000 is a common safe upper bound
-                      const errorMsg = "Report data too large for mailto link. Reduce filters or use a different report method.";
+                 if (mailtoLink.length > 2000) { // Mailto limits vary, 2000 is a common safe upper bound
+                      const errorMsg = `Report data (${mailtoLink.length} chars) too large for mailto link. Reduce filters or use a different report method.`;
                       console.warn(errorMsg);
                       showReportStatus(errorMsg, 'warning');
                       throw new Error(errorMsg); // Stop process
                  }
-
-                const mailtoLink = `mailto:your.email@example.com?subject=${subject}&body=${body}`; // !! REPLACE your.email@example.com !!
 
                 window.location.href = mailtoLink;
                 showReportStatus("Attempted to open email client with report data.", 'info');
@@ -1373,6 +1698,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } else {
                 console.error(`Unknown REPORT_SEND_METHOD configured: ${REPORT_SEND_METHOD}`);
                 showReportStatus(`Report feature misconfigured: Unknown method '${REPORT_SEND_METHOD}'.`, 'error');
+                 throw new Error(`Unknown report method: ${REPORT_SEND_METHOD}`); // Throw to fall into catch
             }
 
         } catch (error) {
@@ -1385,16 +1711,57 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
     // --- UI Loading and Error/Status Display Helpers ---
-    // (Extended for message status)
-    function showOnlineLoadingIndicator(message = 'Loading...') { /* ... */ }
-    function hideOnlineLoadingIndicator() { /* ... */ }
-    function showOnlineErrorDisplay(message) { /* ... */ }
-    function clearOnlineErrorDisplay() { /* ... */ }
-    function showReportLoading(message = 'Processing...') { /* ... */ }
-    function hideReportLoading() { /* ... */ }
-    function showReportStatus(message, type = 'info') { /* ... */ }
-    function clearReportStatus() { /* ... */ }
-    // showStatusMessage helper implemented earlier for messages
+    // Using the showStatusMessage helper for consistency
+
+    function showOnlineLoadingIndicator(message = 'Loading...') {
+        if (onlineLoadingIndicator) {
+            onlineLoadingIndicator.textContent = message;
+            onlineLoadingIndicator.style.display = 'block';
+        }
+    }
+    function hideOnlineLoadingIndicator() {
+        if (onlineLoadingIndicator) {
+            onlineLoadingIndicator.style.display = 'none';
+        }
+    }
+    function showOnlineErrorDisplay(message) {
+         if (onlineErrorDisplay) {
+            onlineErrorDisplay.textContent = message;
+            onlineErrorDisplay.style.display = 'block';
+         }
+    }
+    function clearOnlineErrorDisplay() {
+        if (onlineErrorDisplay) {
+            onlineErrorDisplay.textContent = '';
+            onlineErrorDisplay.style.display = 'none';
+        }
+    }
+
+    function showReportLoading(message = 'Processing...') {
+         if (reportLoadingIndicator) {
+              reportLoadingIndicator.textContent = message;
+              showStatusMessage(reportLoadingIndicator, message, 'loading', true);
+         }
+    }
+    function hideReportLoading() {
+         if (reportLoadingIndicator) {
+            showStatusMessage(reportLoadingIndicator, '', 'info', false);
+         }
+    }
+    function showReportStatus(message, type = 'info') {
+        if (reportStatusDisplay) {
+             showStatusMessage(reportStatusDisplay, message, type, true);
+              // Hide non-error/warning messages after a delay
+              if (type === 'success' || type === 'info') {
+                   setTimeout(() => clearReportStatus(), 5000); // Hide after 5 seconds
+              }
+        }
+    }
+    function clearReportStatus() {
+         if (reportStatusDisplay) {
+             showStatusMessage(reportStatusDisplay, '', 'info', false);
+         }
+    }
 
     /**
      * Displays or hides the image recognition status message.
@@ -1404,7 +1771,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     function showRecognitionStatus(message, type = 'info') {
          if (!recognitionStatusDisplay) return;
          recognitionStatusDisplay.textContent = message;
-         recognitionStatusDisplay.className = `w3-small w3-text-grey w3-margin-bottom`; // Reset base classes
+
+         recognitionStatusDisplay.classList.remove('w3-text-grey', 'w3-text-amber', 'w3-text-red'); // Reset text color
+         recognitionStatusDisplay.classList.remove('loading-indicator'); // Reset loading indicator class
+
          if (message) {
               recognitionStatusDisplay.style.display = 'inline-block'; // Show
 
@@ -1426,67 +1796,182 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
      // --- Auto-Scrolling Functions ---
-     // (Remain the same as previous update)
-     function scrollStep() { /* ... */ }
-     function startAutoScroll() { /* ... */ }
-     function stopAutoScroll() { /* ... */ }
-     function handleManualScroll() { /* ... */ }
+     let scrollDirection = 1; // 1 for down, -1 for up
+     let isAtEnd = false; // Flag to indicate if at the start or end
+
+     function scrollStep() {
+         if (!onlineUsersDiv || !isAutoScrolling) {
+             isAutoScrolling = false;
+             return;
+         }
+
+         const maxScroll = onlineUsersDiv.scrollHeight - onlineUsersDiv.clientHeight;
+
+         if (maxScroll <= 0) {
+             // Not enough content to scroll
+             stopAutoScroll();
+             if (toggleAutoScrollButton) {
+                 toggleAutoScrollButton.disabled = true;
+                 toggleAutoScrollButton.textContent = 'Not Scrollable';
+                  toggleAutoScrollButton.classList.remove('w3-red');
+                  toggleAutoScrollButton.classList.add('w3-green');
+             }
+             return;
+         }
+
+         onlineUsersDiv.scrollTop += scrollDirection * AUTO_SCROLL_SPEED;
+
+         // Check if we've reached the end (or start)
+         if (scrollDirection === 1 && onlineUsersDiv.scrollTop >= maxScroll) {
+             onlineUsersDiv.scrollTop = maxScroll; // Ensure it's exactly at the end
+             isAtEnd = true;
+             // Pause at the end before changing direction
+             if (AUTO_SCROLL_DELAY_AT_END > 0) {
+                 stopAutoScroll(); // Stop animation frame
+                 autoScrollTimeoutId = setTimeout(() => {
+                     scrollDirection = -1; // Change direction
+                      isAtEnd = false;
+                      startAutoScroll(); // Restart animation frame
+                 }, AUTO_SCROLL_DELAY_AT_END);
+                 return; // Stop this frame, wait for timeout
+             } else {
+                  scrollDirection = -1; // Change direction immediately
+                  isAtEnd = false;
+             }
+         } else if (scrollDirection === -1 && onlineUsersDiv.scrollTop <= 0) {
+              onlineUsersDiv.scrollTop = 0; // Ensure it's exactly at the start
+              isAtEnd = true;
+              // Pause at the start before changing direction
+              if (AUTO_SCROLL_DELAY_AT_END > 0) {
+                 stopAutoScroll(); // Stop animation frame
+                 autoScrollTimeoutId = setTimeout(() => {
+                     scrollDirection = 1; // Change direction
+                      isAtEnd = false;
+                      startAutoScroll(); // Restart animation frame
+                 }, AUTO_SCROLL_DELAY_AT_END);
+                  return; // Stop this frame, wait for timeout
+             } else {
+                  scrollDirection = 1; // Change direction immediately
+                  isAtEnd = false;
+             }
+         }
+
+         // Continue animation loop
+         autoScrollAnimationFrameId = requestAnimationFrame(scrollStep);
+     }
+
+     function startAutoScroll() {
+         if (!onlineUsersDiv || onlineUsersDiv.scrollHeight <= onlineUsersDiv.clientHeight) {
+              console.warn("Cannot start auto-scroll: Online list not found or not scrollable.");
+               if (toggleAutoScrollButton) {
+                   toggleAutoScrollButton.disabled = true;
+                   toggleAutoScrollButton.textContent = 'Not Scrollable';
+                    toggleAutoScrollButton.classList.remove('w3-red');
+                    toggleAutoScrollButton.classList.add('w3-green');
+               }
+              return;
+         }
+
+         if (!isAutoScrolling) {
+             console.log("Starting auto-scroll.");
+             isAutoScrolling = true;
+             scrollDirection = 1; // Always start scrolling down
+             isAtEnd = false;
+              if (toggleAutoScrollButton) {
+                  toggleAutoScrollButton.textContent = 'Stop Auto-Scroll Online';
+                   toggleAutoScrollButton.classList.remove('w3-green');
+                   toggleAutoScrollButton.classList.add('w3-red');
+              }
+             autoScrollAnimationFrameId = requestAnimationFrame(scrollStep);
+         }
+     }
+
+     function stopAutoScroll() {
+         if (isAutoScrolling) {
+             console.log("Stopping auto-scroll.");
+             isAutoScrolling = false;
+             if (autoScrollAnimationFrameId !== null) {
+                 cancelAnimationFrame(autoScrollAnimationFrameId);
+                 autoScrollAnimationFrameId = null;
+             }
+              if (autoScrollTimeoutId !== null) {
+                 clearTimeout(autoScrollTimeoutId);
+                 autoScrollTimeoutId = null;
+              }
+             if (toggleAutoScrollButton) {
+                 toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
+                  toggleAutoScrollButton.classList.remove('w3-red');
+                  toggleAutoScrollButton.classList.add('w3-green');
+             }
+         }
+     }
+
+     function handleManualScroll() {
+         // If the user manually scrolls, stop auto-scrolling
+         if (isAutoScrolling) {
+             stopAutoScroll();
+             console.log("Manual scroll detected, auto-scroll stopped.");
+         }
+     }
 
 
-     // --- Iframe Layout & Sizing Functions ---
+     // --- Iframe Layout Functions (Simplified for Fixed Size) ---
 
      /**
       * Updates the main viewer container and iframe visibility
-      * based on the current `iframeCount` state.
+      * based on the current `iframeCount` state. Relies on CSS for fixed sizing.
       */
      function updateIframeLayout() {
-         if (!mainViewerContainer || mainIframes.some(i => !i) || iframeWrappers.some(w => !w) || !mainIframeColumn) {
-              console.error("Cannot update iframe layout: Missing main viewer elements.");
+         // Ensure main viewer elements are validated before calling this
+         if (!mainViewerContainer || iframeWrappers.length === 0 || mainIframes.length === 0) {
+              console.error("Cannot update iframe layout: Main viewer elements not found.");
               return;
          }
          console.log(`Updating iframe layout to show ${iframeCount} viewports.`);
 
+         // Update the container class to trigger CSS grid layout
          mainViewerContainer.classList.remove('iframe-count-2', 'iframe-count-4');
          mainViewerContainer.classList.add(`iframe-count-${iframeCount}`);
 
+         // Update wrapper visibility and radio button states
          for (let i = 0; i < iframeWrappers.length; i++) {
              const wrapper = iframeWrappers[i];
              const iframe = mainIframes[i];
              const radio = document.querySelector(`input[name="iframeChoice"][value="mainIframe${i + 1}"]`);
 
-             if (!wrapper || !iframe || !radio) continue; // Skip if element not found
+             if (!wrapper || !iframe || !radio) {
+                  console.warn(`Missing element for viewport ${i+1}. Skipping layout update for this one.`);
+                  continue;
+             }
 
              if (i < iframeCount) {
-                 wrapper.style.display = ''; // Show the wrapper
+                 wrapper.style.display = ''; // Show the wrapper (grid handles layout)
                  radio.disabled = false;
              } else {
                  wrapper.style.display = 'none'; // Hide the wrapper
-                 // Optionally reset iframe src when hiding
-                  if (iframe.src && iframe.src !== 'about:blank' && !iframe.src.startsWith('https://cbxyz.com/in/')) { // Don't clear default placeholders
-                      // Reset to placeholder or blank
-                      iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never'; // Placeholder
-                      console.log(`Resetting iframe src for hidden viewport ${i + 1}`);
-                  } else if (!iframe.src) {
-                      // If src was already empty/null, ensure it's the placeholder
-                       iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
-                  }
-
                  radio.disabled = true;
                  // If the hidden radio was checked, switch to the first visible one
                  if (radio.checked) {
                       const firstRadio = document.querySelector('input[name="iframeChoice"][value="mainIframe1"]');
                       if (firstRadio) firstRadio.checked = true;
                  }
+                  // Reset iframe src when hiding to stop potential stream
+                  // Only reset if it's currently showing a user stream, not the placeholder
+                  if (iframe.src && !iframe.src.startsWith('https://cbxyz.com/in/?tour=') && iframe.src !== 'about:blank') {
+                      iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never'; // Reset to placeholder
+                      console.log(`Resetting iframe src for hidden viewport ${i + 1}`);
+                  } else if (!iframe.src) {
+                      // If src was empty/null, ensure it's the placeholder
+                       iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
+                  }
              }
          }
 
           // Ensure the button text is correct after toggling count
           if (toggleIframeCountButton) {
-              toggleIframeCountButton.textContent = `Toggle ${iframeCount}/${iframeCount === 2 ? 4 : 2} Viewports`;
+              toggleIframeCountButton.textContent = `Toggle ${iframeCount === 2 ? '4' : '2'} Viewports`;
           }
-
-         // Update the size class on the parent iframe-column
-          updateIframeSize(); // Apply current size index
+          console.log("Iframe layout updated.");
      }
 
      /**
@@ -1494,64 +1979,16 @@ document.addEventListener('DOMContentLoaded', async function() {
       */
      function toggleIframeCount() {
          console.log("Toggling iframe count.");
+          // Ensure the button exists before toggling
+         if (!toggleIframeCountButton || toggleIframeCountButton.disabled) {
+             console.warn("Toggle iframe count button is not available or disabled.");
+             return;
+         }
          iframeCount = (iframeCount === 2) ? 4 : 2;
          updateIframeLayout();
      }
 
-     /**
-      * Updates the size class on the iframe column based on `iframeSizeIndex`.
-      */
-     function updateIframeSize() {
-         if (!mainIframeColumn || IFRAME_SIZE_CLASSES.length === 0) {
-              console.warn("Cannot update iframe size: iframe-column element or size classes not found.");
-              return;
-         }
-         console.log(`Updating iframe column size to index ${iframeSizeIndex}.`);
-
-         IFRAME_SIZE_CLASSES.forEach(cls => {
-              // Remove only the 'lX' classes we manage, preserve other W3.CSS classes like w3-col, mX, sX
-              if (cls.startsWith('l')) {
-                   mainIframeColumn.classList.remove(cls);
-              }
-         });
-
-         const currentSizeClass = IFRAME_SIZE_CLASSES[iframeSizeIndex];
-         if (currentSizeClass) {
-             mainIframeColumn.classList.add(currentSizeClass);
-         } else {
-              console.warn(`Invalid iframeSizeIndex: ${iframeSizeIndex}`);
-         }
-
-         // Update button states
-         if (increaseIframeSizeButton) {
-              increaseIframeSizeButton.disabled = iframeSizeIndex >= IFRAME_SIZE_CLASSES.length - 1;
-         }
-          if (decreaseIframeSizeButton) {
-               decreaseIframeSizeButton.disabled = iframeSizeIndex <= 0;
-          }
-     }
-
-     /**
-      * Increases the size index for main viewer iframes.
-      */
-     function increaseIframeSize() {
-          if (iframeSizeIndex < IFRAME_SIZE_CLASSES.length - 1) {
-              iframeSizeIndex++;
-              updateIframeSize();
-              console.log(`Increased iframe size to index ${iframeSizeIndex}`);
-          }
-     }
-
-     /**
-      * Decreases the size index for main viewer iframes.
-      */
-     function decreaseIframeSize() {
-          if (iframeSizeIndex > 0) {
-              iframeSizeIndex--;
-              updateIframeSize();
-              console.log(`Decreased iframe size to index ${iframeSizeIndex}`);
-          }
-     }
+     // Removed updateIframeSize, increaseIframeSize, decreaseIframeSize
 
 
      // --- Autocomplete Search Functions ---
@@ -1572,35 +2009,50 @@ document.addEventListener('DOMContentLoaded', async function() {
              delay: AUTOCOMPLETE_DELAY,
              source: function(request, response) {
                  const term = request.term.toLowerCase();
-                 const availableUsernames = getAllUsernames();
+                 const availableUsernames = getAllUsernames(); // Get usernames from fetched data
                  const filteredSuggestions = availableUsernames.filter(username =>
                      username.toLowerCase().includes(term)
                  );
                   response(filteredSuggestions.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS));
              },
              select: function(event, ui) {
-                 event.preventDefault();
-                 userSearchInput.value = ui.item.value; // Set input value
+                 event.preventDefault(); // Prevent input from being replaced by label if label/value are different
+                 userSearchInput.value = ui.item.value; // Set input value to selected username
                   // Trigger filtering based on selected username
-                  applyFiltersAndDisplay();
-                 console.log(`User autocomplete selected: ${ui.item.value}`);
+                  currentUserSearchTerm = ui.item.value.trim().toLowerCase(); // Update state
+                  applyFiltersAndDisplay(); // Apply filters including the selected name
+                 console.log(`User autocomplete selected: ${ui.item.value}. Applying filters.`);
              },
-             focus: function(event, ui) {
-                 event.preventDefault();
-             }
+              // Use 'change' event to handle typing and losing focus without selecting
+              change: function(event, ui) {
+                  // ui.item is null if no item was selected, value is the input value
+                   const currentValue = userSearchInput.value.trim().toLowerCase();
+                   // Only re-filter if the value has actually changed since the last filter application
+                   // or if the value is empty (user cleared search)
+                   if (currentValue !== currentUserSearchTerm) {
+                       currentUserSearchTerm = currentValue; // Update state
+                       applyFiltersAndDisplay(); // Re-apply filters with the new search term
+                       console.log(`User search input changed. Re-applying filters with term: "${currentUserSearchTerm}".`);
+                   }
+              }
+              // Removed 'focus' handler as it's not typically needed for filtering
          });
 
-          // Add a change listener to the input to re-apply filters if the user types
-          // and doesn't select from autocomplete, or clears the input.
-          $(userSearchInput).on('input propertychange change', function() {
+          // Add a fallback input listener in case 'change' isn't sufficient or for immediate feedback
+          // This might cause redundant calls if autocomplete 'change' also fires, but ensures updates happen.
+           $(userSearchInput).on('input', function() {
                const currentValue = userSearchInput.value.trim().toLowerCase();
-               // Only apply filters if the value *changed* or autocomplete isn't open
-               // The 'change' event also catches when focus is lost after typing
-               if (currentValue !== currentUserSearchTerm || !$(userSearchInput).autocomplete("widget").is(":visible")) {
+               if (currentValue !== currentUserSearchTerm) {
                     currentUserSearchTerm = currentValue;
-                    applyFiltersAndDisplay();
+                    // Delay filtering slightly to avoid filtering on every single keypress
+                    // (Autocomplete's 'delay' helps for suggestions, but this is for list filtering)
+                    // Alternatively, rely *only* on the autocomplete 'change' event.
+                    // Let's stick to the 'change' event triggered by autocomplete for now for consistency.
+                    // If immediate feedback is desired, the 'input' listener should call applyFiltersAndDisplay directly.
+                    // For now, trusting the 'change' event which fires on blur or selection.
                }
           });
+
 
          console.log("User autocomplete setup complete.");
      }
@@ -1626,22 +2078,22 @@ document.addEventListener('DOMContentLoaded', async function() {
                      .map(msg => msg.text) // Use message text as the source items
                      .filter(text => text.toLowerCase().includes(term));
 
-                 // We typically don't select a message *from* the autocomplete for copying
-                 // We just use autocomplete to filter the *list below*
-                 // So, we'll filter the displayed list in the 'close' or 'change' event instead of 'select'.
-                 response(filteredSuggestions.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS)); // Provide suggestions but they won't be 'selected' in the standard way
+                 // Provide suggestions. The filtering of the main message list happens in 'change' or 'input'.
+                 response(filteredSuggestions.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS));
             },
              select: function(event, ui) {
                  // Prevent the default select behavior that modifies the input value
                  event.preventDefault();
-                 // Manually set the input value if needed, but the main goal is just to filter the list
+                 // Setting the input value here might not be the primary goal;
+                 // the main goal is filtering the list below based on the text.
+                 // Let's update the input value and trigger the list filter.
                  messageSearchInput.value = ui.item.value;
                   // Trigger the list filtering based on the selected text
                   currentMessageSearchTerm = ui.item.value.trim().toLowerCase();
                   displayMessagesList(savedMessages.filter(msg => msg.text.toLowerCase().includes(currentMessageSearchTerm)));
-                 console.log(`Message autocomplete selected: ${ui.item.value}`);
+                 console.log(`Message autocomplete selected: "${ui.item.value}". Filtering list.`);
              },
-             // Use the 'change' or 'close' event to trigger list filtering
+             // Use the 'change' or 'input' event to trigger list filtering
               change: function(event, ui) {
                   // This fires when the input value changes AND autocomplete is closed or no item selected
                    const currentValue = messageSearchInput.value.trim().toLowerCase();
@@ -1649,26 +2101,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                    if (currentValue !== currentMessageSearchTerm) {
                        currentMessageSearchTerm = currentValue;
                        displayMessagesList(savedMessages.filter(msg => msg.text.toLowerCase().includes(currentMessageSearchTerm)));
-                        console.log(`Message autocomplete changed/lost focus. Filtering list by: ${currentMessageSearchTerm}`);
+                        console.log(`Message autocomplete changed/lost focus. Filtering list by: "${currentMessageSearchTerm}".`);
                    }
-              },
-               // Optional: Filter on 'input' for more immediate feedback as user types
-               // Be careful with performance on very large message lists
-               open: function() { /* Optional: Style the list when open */ },
-               close: function() {
-                    // Ensure filtering happens when the autocomplete dropdown is closed,
-                    // in case the user didn't select an item but changed the text
-                   const currentValue = messageSearchInput.value.trim().toLowerCase();
-                   if (currentValue !== currentMessageSearchTerm) {
-                       currentMessageSearchTerm = currentValue;
-                       displayMessagesList(savedMessages.filter(msg => msg.text.toLowerCase().includes(currentMessageSearchTerm)));
-                       console.log(`Message autocomplete closed. Filtering list by: ${currentMessageSearchTerm}`);
-                   }
-               }
+              }
         })
          // Add an input listener to re-filter the *displayed list* as the user types,
-         // even before autocomplete selects or closes.
-         .on('input propertychange', function() {
+         // even before autocomplete selects or closes. This provides more immediate feedback.
+         .on('input', function() {
              const currentValue = messageSearchInput.value.trim().toLowerCase();
               // Only filter if the value actually changed
              if (currentValue !== currentMessageSearchTerm) {
@@ -1678,7 +2117,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                      currentMessageSearchTerm === '' || msg.text.toLowerCase().includes(currentMessageSearchTerm)
                  );
                  displayMessagesList(filteredMessages);
-                  console.log(`Message input changed. Filtering list by: ${currentMessageSearchTerm}`);
+                  console.log(`Message input changed. Filtering list by: "${currentMessageSearchTerm}".`);
              }
          });
 
@@ -1687,33 +2126,52 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
 
-     // --- NEW Image Recognition Functions ---
+     // --- Image Recognition Functions ---
 
      /**
       * Loads the MobileNet model. Needs TensorFlow.js to be loaded first.
       * @returns {Promise<void>}
       */
      async function loadMobileNetModel() {
+         // Check if TensorFlow.js and MobileNet scripts are available globally
+          if (typeof tf === 'undefined') {
+              console.error("TensorFlow.js script not loaded. Cannot load ML model.");
+               showRecognitionStatus("Recognition unavailable: TensorFlow.js missing.", 'error');
+              return;
+          }
+         if (typeof mobilenet === 'undefined') {
+              console.error("MobileNet script not loaded. Cannot load ML model.");
+               showRecognitionStatus("Recognition unavailable: MobileNet script missing.", 'error');
+              return;
+          }
          if (mobilenetModel) {
               console.log("MobileNet model already loaded.");
               return; // Already loaded
          }
-         if (typeof tf === 'undefined' || typeof mobilenet === 'undefined') {
-              console.error("TensorFlow.js or MobileNet script not loaded. Cannot load model.");
-              showRecognitionStatus("Recognition failed: TensorFlow.js or MobileNet missing.", 'error');
-              return; // Scripts not available
-         }
+
          console.log("Loading MobileNet model...");
           showRecognitionStatus("Loading recognition model...", 'loading');
          try {
              mobilenetModel = await mobilenet.load();
              console.log("MobileNet model loaded successfully.");
-             showRecognitionStatus("Recognition model loaded.", 'info');
+             showRecognitionStatus("Recognition model loaded.", 'success');
              // Clear status after a brief moment
               setTimeout(() => showRecognitionStatus(''), 3000);
+
+              // If there are users displayed and in image mode, queue them for analysis
+              // This handles cases where the model loads *after* the initial user list is displayed
+              if (displayMode === 'image' && lastFilteredUsers.length > 0) {
+                  console.log("Model loaded after users displayed. Queuing displayed images for analysis.");
+                  analysisQueue = lastFilteredUsers.filter(user => user.image_url && !user.recognition_results)
+                                                   .map(user => ({ username: user.username, imageUrl: user.image_url }));
+                  processAnalysisQueue(); // Start processing the newly populated queue
+              }
+
+
          } catch (error) {
              console.error("Failed to load MobileNet model:", error);
               showRecognitionStatus(`Recognition failed: Model load error - ${error.message}`, 'error');
+              // Disable image recognition features or provide clear error state
          }
      }
 
@@ -1721,10 +2179,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       * Processes the analysis queue sequentially.
       */
      async function processAnalysisQueue() {
-         if (isAnalyzing || analysisQueue.length === 0 || !mobilenetModel) {
-             // Stop if already running, nothing to process, or model not loaded
-             isAnalyzing = false; // Ensure flag is false if queue is empty
-             if (analysisQueue.length === 0) showRecognitionStatus(''); // Hide status if done
+         if (isAnalyzing || analysisQueue.length === 0 || !mobilenetModel || displayMode !== 'image') {
+             // Stop if already running, nothing to process, model not loaded, or mode changed
+             isAnalyzing = false; // Ensure flag is false if queue is empty or conditions fail
+             if (analysisQueue.length === 0 || displayMode !== 'image') showRecognitionStatus(''); // Hide status if done or mode changed
              return;
          }
 
@@ -1733,17 +2191,50 @@ document.addEventListener('DOMContentLoaded', async function() {
           showRecognitionStatus(`Analyzing ${analysisQueue.length} images...`, 'loading');
 
          while (analysisQueue.length > 0 && mobilenetModel && displayMode === 'image') {
-             const { username, imageUrl, element } = analysisQueue.shift(); // Get the next item
+             const queueItem = analysisQueue.shift(); // Get the next item
+             const { username, imageUrl } = queueItem; // Element reference might be stale, find it live
 
              // Find the user object in the main data array to store results
              const user = allOnlineUsersData.find(u => u.username === username);
+             // Find the current DOM element for this user in the online list
+             const userElement = onlineUsersDiv?.querySelector(`.user-info[data-username="${username}"]`);
 
-             if (user && displayMode === 'image') { // Double-check mode and user exists
+             if (user && userElement && displayMode === 'image' && user.image_url === imageUrl) {
+                  // Double-check mode, user exists in data, element exists, and image URL hasn't changed (unlikely in this flow)
                   try {
-                      // Check if element is still in the DOM and visible
-                      const imageElement = element.querySelector('img');
-                      if (imageElement && imageElement.isConnected && isElementInViewport(element)) {
+                      // Find the image element within the current userElement
+                      const imageElement = userElement.querySelector('img');
+
+                      // Ensure the image element exists and is loaded/visible before analyzing
+                      // Checking isConnected is good. Checking visibility is complex without IntersectionObserver.
+                      // We'll assume if the element exists in the onlineUsersDiv, its image can be processed.
+                      if (imageElement && imageElement.isConnected) {
+
+                           // Check if image is fully loaded, wait if necessary (optional but robust)
+                           if (!imageElement.complete || imageElement.naturalHeight === 0) {
+                                console.log(`Waiting for image for ${username} to load before analysis.`);
+                                await new Promise(resolve => {
+                                     imageElement.onload = resolve;
+                                     imageElement.onerror = resolve; // Resolve even on error to not block queue
+                                });
+                                // Re-check if the element is *still* in the DOM after waiting
+                                if (!imageElement.isConnected) {
+                                     console.log(`Image for ${username} removed from DOM during load wait. Skipping analysis.`);
+                                     continue; // Skip this item
+                                }
+                                 if (!imageElement.complete || imageElement.naturalHeight === 0) {
+                                     console.warn(`Image for ${username} failed to load or is empty. Skipping analysis.`);
+                                      const detailsDiv = userElement.querySelector('.user-details');
+                                       if (detailsDiv) detailsDiv.insertAdjacentHTML('beforeend', `<div class="recognition-results w3-text-red w3-small">Image load failed.</div>`);
+                                      user.recognition_results = []; // Mark as failed analysis
+                                      userElement.dataset.recognized = 'error';
+                                     continue; // Skip this item
+                                 }
+                           }
+
+
                            console.log(`Analyzing image for ${username}...`);
+                            // Use tf.browser.fromPixels or tf.image.decode* if needed, but mobilenet.classify usually handles img element
                            const predictions = await mobilenetModel.classify(imageElement);
                            console.log(`Analysis results for ${username}:`, predictions);
 
@@ -1751,41 +2242,65 @@ document.addEventListener('DOMContentLoaded', async function() {
                            const filteredPredictions = predictions.filter(p => p.probability >= IMAGE_RECOGNITION_CONFIDENCE_THRESHOLD)
                                                                 .slice(0, IMAGE_RECOGNITION_MAX_RESULTS);
 
-                           // Store results on the user object state
-                           user.recognition_results = filteredPredictions;
-                           user.recognition_timestamp = Date.now();
-                            // Update the dataset flag
-                            element.dataset.recognized = 'true';
+                           // Store results on the user object state (`allOnlineUsersData`)
+                           const userStateIndex = allOnlineUsersData.findIndex(u => u.username === username);
+                           if (userStateIndex !== -1) {
+                               allOnlineUsersData[userStateIndex].recognition_results = filteredPredictions;
+                               // No need for timestamp check if we clear queue on list refresh
+                           } else {
+                               // This shouldn't happen if user was in allOnlineUsersData when queued
+                               console.warn(`User ${username} not found in allOnlineUsersData during analysis result storage.`);
+                           }
 
 
                            // Update the specific user element in the DOM with results
-                           const detailsDiv = element.querySelector('.user-details');
+                           const detailsDiv = userElement.querySelector('.user-details');
                            const existingResultsDiv = detailsDiv.querySelector('.recognition-results');
 
                            if (detailsDiv) {
                                 const resultsHtml = buildRecognitionResultsHtml(filteredPredictions);
                                 if (existingResultsDiv) {
-                                    existingResultsDiv.outerHTML = resultsHtml; // Replace placeholder/old results
-                                } else {
-                                     // Insert results before the end of details
+                                     // Replace the loading placeholder or old results
+                                     existingResultsDiv.outerHTML = resultsHtml || `<div class="recognition-results w3-text-grey w3-small">No results above threshold.</div>`;
+                                } else if (resultsHtml) {
+                                     // Insert results before the end of details if no placeholder existed
                                      detailsDiv.insertAdjacentHTML('beforeend', resultsHtml);
+                                } else {
+                                     // Add a message if no results met the threshold
+                                     detailsDiv.insertAdjacentHTML('beforeend', `<div class="recognition-results w3-text-grey w3-small">No results above threshold.</div>`);
                                 }
                            }
+                            // Update the dataset flag
+                            userElement.dataset.recognized = filteredPredictions.length > 0 ? 'true' : 'none';
 
-                           showRecognitionStatus(`Analyzing... (${analysisQueue.length} remaining)`);
+                           // Update status display
+                           const remaining = analysisQueue.length;
+                           if (remaining > 0) {
+                                showRecognitionStatus(`Analyzing... (${remaining} remaining)`);
+                           } else {
+                                showRecognitionStatus("Analysis complete.", 'success');
+                                setTimeout(() => showRecognitionStatus(''), 3000); // Hide success status
+                           }
+
 
                       } else {
-                           // Element not visible or removed, skip analysis for this image in this pass
-                           console.log(`Skipping analysis for ${username} (element not visible or removed).`);
-                            // If the element is gone, maybe mark user as needing re-analysis next time?
-                            // For now, just drop from queue.
+                           // Image element not found or not connected
+                           console.log(`Skipping analysis for ${username}: Image element not found or not in DOM.`);
+                            const detailsDiv = userElement.querySelector('.user-details');
+                             if (detailsDiv) detailsDiv.insertAdjacentHTML('beforeend', `<div class="recognition-results w3-text-red w3-small">Image element missing.</div>`);
+                            userElement.dataset.recognized = 'error';
                       }
 
                   } catch (error) {
                       console.error(`Error analyzing image for ${username}:`, error);
+                       // Find the user object again in case state changed somehow
+                      const userStateIndex = allOnlineUsersData.findIndex(u => u.username === username);
+                      if (userStateIndex !== -1) {
+                           allOnlineUsersData[userStateIndex].recognition_results = []; // Mark as failed analysis
+                      }
                       // Update the specific user element in the DOM with an error message
-                      const detailsDiv = element.querySelector('.user-details');
-                      const existingResultsDiv = detailsDiv.querySelector('.recognition-results');
+                      const detailsDiv = userElement?.querySelector('.user-details');
+                      const existingResultsDiv = detailsDiv?.querySelector('.recognition-results');
                        if (detailsDiv) {
                             const errorHtml = `<div class="recognition-results w3-text-red w3-small">Analysis failed.</div>`;
                             if (existingResultsDiv) {
@@ -1794,14 +2309,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 detailsDiv.insertAdjacentHTML('beforeend', errorHtml);
                             }
                        }
-                       // Mark user state to indicate failure/needs retry?
-                       user.recognition_results = null;
-                       user.recognition_timestamp = 0;
-                       element.dataset.recognized = 'error'; // Indicate error state
-
+                       if (userElement) userElement.dataset.recognized = 'error'; // Indicate error state
                   }
              } else {
-                  console.log(`Skipping analysis for ${username} (user not found or mode changed).`);
+                  console.log(`Skipping analysis for ${username} (user/element not found, mode changed, or already analyzed).`);
              }
 
              // Add a small delay between processing images
@@ -1810,29 +2321,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 
          isAnalyzing = false;
          console.log("Analysis queue processing finished.");
-          if (analysisQueue.length === 0) {
-               showRecognitionStatus("Image recognition complete.", 'info');
-               setTimeout(() => showRecognitionStatus(''), 3000); // Hide success status
-          } else {
-               // If loop stopped because mode changed, indicate remaining queue
+          if (analysisQueue.length === 0 && displayMode === 'image') {
+               // Final status update if queue is truly empty and we are still in image mode
+               showRecognitionStatus("Image recognition complete.", 'success');
+               setTimeout(() => showRecognitionStatus(''), 3000);
+          } else if (displayMode !== 'image') {
+               // Status update if the loop stopped because the mode changed
                showRecognitionStatus(`Analysis paused (${analysisQueue.length} remaining). Switch to Image mode to resume.`, 'warning');
+          } else if (analysisQueue.length > 0 && !mobilenetModel) {
+               // Status update if the loop stopped because the model became unavailable
+               showRecognitionStatus(`Analysis stopped (${analysisQueue.length} remaining): Model unavailable.`, 'error');
           }
-     }
-
-     /**
-      * Helper to check if an element is currently visible in the viewport.
-      * Simplified check - does not use IntersectionObserver.
-      * @param {HTMLElement} el - The element to check.
-      * @returns {boolean} True if in viewport, false otherwise.
-      */
-     function isElementInViewport(el) {
-         const rect = el.getBoundingClientRect();
-         return (
-             rect.top >= 0 &&
-             rect.left >= 0 &&
-             rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-             rect.right <= (window.innerWidth || document.documentElement.clientWidth)
-         );
      }
 
 
@@ -1840,7 +2339,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     /**
      * Toggles the visibility of a control section and updates the icon.
      * Exposes this function globally so HTML onclick works.
-     * @param {string} sectionId - The ID of the section div ('filters', 'display', etc.).
+     * @param {string} sectionId - The ID prefix of the section div ('filters', 'display', etc.).
      */
     function toggleSection(sectionId) {
         const section = document.getElementById(`${sectionId}Section`);
@@ -1854,93 +2353,173 @@ document.addEventListener('DOMContentLoaded', async function() {
                 icon.textContent = '▼'; // Down arrow
             }
         } else {
-             console.warn(`Toggle section not found for ID: ${sectionId}`);
+             console.warn(`Toggle section element not found for ID: ${sectionId}Section or ${sectionId}ToggleIcon`);
         }
     }
 
 
     // --- Initial Setup and Event Listeners ---
 
-    /** Checks if all essential DOM elements are present. Logs errors or warnings. */
-    function validateDOMReferences() {
-        const criticalMissing = [];
-        if (!onlineUsersDiv) criticalMissing.push("#onlineUsers .user-list");
-        if (!previousUsersDiv) criticalMissing.push("#previousUsers .user-list");
+    /** Collects and validates all essential DOM references. Logs errors/warnings. */
+    function collectAndValidateDOMReferences() {
+         const missingCritical = [];
+         const missingOptional = [];
 
-        // Check core main viewer elements
-        if (!mainViewerContainer) criticalMissing.push("#mainViewerContainer");
-        if (!iframeWrapper1 || !mainIframe) criticalMissing.push("#iframeWrapper1 / #mainIframe");
-        if (!iframeWrapper2 || !mainIframe2) criticalMissing.push("#iframeWrapper2 / #mainIframe2");
-        if (!mainIframeColumn) criticalMissing.push(".iframe-column");
+         // --- Critical Elements ---
+         onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
+         if (!onlineUsersDiv) missingCritical.push("#onlineUsers .user-list");
 
+         previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
+         if (!previousUsersDiv) missingCritical.push("#previousUsers .user-list");
 
-        if (!storageTypeSelector) criticalMissing.push("#storageType");
-        if (!filterTagsSelect) criticalMissing.push("#filterTags");
-        if (!filterAgeSelect) criticalMissing.push("#filterAge");
+         mainViewerContainer = document.getElementById("mainViewerContainer");
+         if (!mainViewerContainer) missingCritical.push("#mainViewerContainer");
 
-        // Check control buttons
-        if (!toggleAutoScrollButton) criticalMissing.push("#toggleAutoScroll");
-        if (!toggleDisplayModeButton) criticalMissing.push("#toggleDisplayMode");
-        if (!toggleIframeCountButton) criticalMissing.push("#toggleIframeCount");
-        if (!increaseIframeSizeButton) criticalMissing.push("#increaseIframeSize");
-        if (!decreaseIframeSizeButton) criticalMissing.push("#decreaseIframeSize");
+         mainIframeColumn = document.querySelector('.iframe-column');
+         if (!mainIframeColumn) missingCritical.push(".iframe-column");
 
-        // Check search inputs
-        if (!userSearchInput) criticalMissing.push("#userSearchInput");
-        if (!messageSearchInput) criticalMissing.push("#messageSearchInput"); // NEW
+         // Collect all potential main iframes and their wrappers
+         iframeWrapper1 = document.getElementById("iframeWrapper1");
+         mainIframe1 = document.getElementById("mainIframe");
+         iframeWrapper2 = document.getElementById("iframeWrapper2");
+         mainIframe2 = document.getElementById("mainIframe2");
+         iframeWrapper3 = document.getElementById("iframeWrapper3");
+         mainIframe3 = document.getElementById("mainIframe3");
+         iframeWrapper4 = document.getElementById("iframeWrapper4");
+         mainIframe4 = document.getElementById("mainIframe4");
 
-        // Check messaging elements
-        if (!messageInput) criticalMissing.push("#messageInput"); // NEW
-        if (!saveMessageButton) criticalMissing.push("#saveMessageButton"); // NEW
-        if (!messageListDiv) criticalMissing.push("#messageList"); // NEW
+          mainIframes = [mainIframe1, mainIframe2, mainIframe3, mainIframe4];
+          iframeWrappers = [iframeWrapper1, iframeWrapper2, iframeWrapper3, iframeWrapper4];
 
-        // Check optional reporting elements (log warnings)
-        if (!sendReportButton) console.warn("Optional element missing: #sendReportButton. Reporting functionality disabled.");
-        if (!reportLoadingIndicator) console.warn("Optional element missing: #reportLoadingIndicator. Reporting loading feedback unavailable.");
-        if (!reportStatusDisplay) console.warn("Optional element missing: #reportStatusDisplay. Reporting status feedback unavailable.");
-
-        // Check optional online list loading/error/recognition elements (log warnings)
-        if (!onlineLoadingIndicator) console.warn("Optional element missing: #onlineLoadingIndicator. Online user loading feedback unavailable.");
-        if (!onlineErrorDisplay) console.warn("Optional element missing: #onlineErrorDisplay. Online user error feedback unavailable.");
-        if (!recognitionStatusDisplay) console.warn("Optional element missing: #recognitionStatus. Image recognition status unavailable.");
-
-         // Check messaging status display (log warning)
-         if (!messageStatusDisplay) console.warn("Optional element missing: #messageStatusDisplay. Message saving status feedback unavailable.");
-
-        // Check control section headers (log warnings)
-         if (!filterSectionHeader) console.warn("Optional element missing: Filter section header. Toggling disabled.");
-         if (!displaySectionHeader) console.warn("Optional element missing: Display section header. Toggling disabled.");
-         if (!viewerSectionHeader) console.warn("Optional element missing: Viewer section header. Toggling disabled.");
-         if (!messagingSectionHeader) console.warn("Optional element missing: Messaging section header. Toggling disabled."); // NEW
-         if (!reportingSectionHeader) console.warn("Optional element missing: Reporting section header. Toggling disabled.");
+         // Check if at least the first two critical iframes/wrappers exist
+         if (!iframeWrapper1 || !mainIframe1) missingCritical.push("#iframeWrapper1 / #mainIframe");
+         if (!iframeWrapper2 || !mainIframe2) missingCritical.push("#iframeWrapper2 / #mainIframe2");
 
 
-        if (criticalMissing.length > 0) {
-            const errorMsg = `CRITICAL ERROR: Missing essential DOM elements: ${criticalMissing.join(', ')}. Application might not function correctly.`;
+         storageTypeSelector = document.getElementById("storageType");
+         if (!storageTypeSelector) missingCritical.push("#storageType");
+
+         filterTagsSelect = document.getElementById("filterTags");
+         if (!filterTagsSelect) missingCritical.push("#filterTags");
+
+         filterAgeSelect = document.getElementById("filterAge");
+         if (!filterAgeSelect) missingCritical.push("#filterAge");
+
+         toggleAutoScrollButton = document.getElementById("toggleAutoScroll");
+         if (!toggleAutoScrollButton) missingCritical.push("#toggleAutoScroll");
+
+         toggleDisplayModeButton = document.getElementById("toggleDisplayMode");
+         if (!toggleDisplayModeButton) missingCritical.push("#toggleDisplayMode");
+
+         toggleIframeCountButton = document.getElementById("toggleIframeCount");
+         if (!toggleIframeCountButton) missingCritical.push("#toggleIframeCount");
+
+         userSearchInput = document.getElementById("userSearchInput");
+         if (!userSearchInput) missingCritical.push("#userSearchInput");
+
+         messageSearchInput = document.getElementById("messageSearchInput");
+         if (!messageSearchInput) missingCritical.push("#messageSearchInput");
+
+         messageInput = document.getElementById("messageInput");
+         if (!messageInput) missingCritical.push("#messageInput");
+
+         saveMessageButton = document.getElementById("saveMessageButton");
+         if (!saveMessageButton) missingCritical.push("#saveMessageButton");
+
+         messageListDiv = document.getElementById("messageList");
+         if (!messageListDiv) missingCritical.push("#messageList");
+
+
+         // --- Optional Elements (Log as warnings) ---
+         clearPreviousUsersButton = document.getElementById("clearPreviousUsers");
+          if (!clearPreviousUsersButton) missingOptional.push("#clearPreviousUsers");
+
+         sendReportButton = document.getElementById("sendReportButton");
+          if (!sendReportButton) missingOptional.push("#sendReportButton. Reporting functionality disabled.");
+
+         reportLoadingIndicator = document.getElementById("reportLoadingIndicator");
+          if (!reportLoadingIndicator) missingOptional.push("#reportLoadingIndicator. Reporting loading feedback unavailable.");
+
+         reportStatusDisplay = document.getElementById("reportStatusDisplay");
+          if (!reportStatusDisplay) missingOptional.push("#reportStatusDisplay. Reporting status feedback unavailable.");
+
+         onlineLoadingIndicator = document.getElementById("onlineLoadingIndicator");
+          if (!onlineLoadingIndicator) missingOptional.push("#onlineLoadingIndicator. Online user loading feedback unavailable.");
+
+         onlineErrorDisplay = document.getElementById("onlineErrorDisplay");
+          if (!onlineErrorDisplay) missingOptional.push("#onlineErrorDisplay. Online user error feedback unavailable.");
+
+         recognitionStatusDisplay = document.getElementById("recognitionStatus");
+          if (!recognitionStatusDisplay) missingOptional.push("#recognitionStatus. Image recognition status unavailable.");
+
+         messageStatusDisplay = document.getElementById("messageStatusDisplay");
+          if (!messageStatusDisplay) missingOptional.push("#messageStatusDisplay. Message saving status feedback unavailable.");
+
+         filterSectionHeader = document.querySelector('h4[onclick="toggleSection(\'filters\')"]');
+          if (!filterSectionHeader) missingOptional.push("Filter section header. Toggling disabled.");
+         displaySectionHeader = document.querySelector('h4[onclick="toggleSection(\'display\')"]');
+          if (!displaySectionHeader) missingOptional.push("Display section header. Toggling disabled.");
+         viewerSectionHeader = document.querySelector('h4[onclick="toggleSection(\'viewer\')"]');
+          if (!viewerSectionHeader) missingOptional.push("Viewer section header. Toggling disabled.");
+         messagingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'messaging\')"]');
+          if (!messagingSectionHeader) missingOptional.push("Messaging section header. Toggling disabled.");
+         reportingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'reporting\')"]');
+          if (!reportingSectionHeader) missingOptional.push("Reporting section header. Toggling disabled.");
+
+         // Quick filter buttons
+         const quickFilterButtons = document.querySelectorAll('.quick-filters button');
+          if (quickFilterButtons.length === 0) missingOptional.push("Quick filter buttons. Feature disabled.");
+          quickFilterButtons.forEach(btn => {
+              // Attach placeholder listeners or just note their optional status
+          });
+
+
+        if (missingCritical.length > 0) {
+            const errorMsg = `CRITICAL ERROR: Missing essential DOM elements: ${missingCritical.join(', ')}. Application cannot start.`;
             console.error(errorMsg);
-            showOnlineErrorDisplay(`Initialization failed: Missing required page elements (${criticalMissing[0]}...). Check HTML.`);
-            // Attempt to disable buttons if critical elements are missing
+            // Attempt to show error on page if possible
+            if (onlineErrorDisplay) {
+                 onlineErrorDisplay.textContent = `Initialization failed: Missing required elements (${missingCritical[0]}...). Check console & HTML.`;
+                 onlineErrorDisplay.style.display = 'block';
+            } else {
+                alert(errorMsg); // Fallback alert
+            }
+
+            // Disable all possibly found critical buttons/inputs on fatal error
              [
+                storageTypeSelector, filterTagsSelect, filterAgeSelect,
                 toggleAutoScrollButton, toggleDisplayModeButton, toggleIframeCountButton,
-                increaseIframeSizeButton, decreaseIframeSizeButton, userSearchInput,
-                messageSearchInput, saveMessageButton, sendReportButton
-            ].forEach(btn => {
-                if (btn) {
-                    btn.disabled = true;
-                    if (btn.tagName === 'BUTTON') btn.textContent = 'Error';
-                    if (btn.tagName === 'INPUT') btn.placeholder = 'Error';
-                    if (btn.tagName === 'TEXTAREA') btn.placeholder = 'Error';
+                userSearchInput, messageSearchInput, messageInput, saveMessageButton,
+                clearPreviousUsersButton, sendReportButton
+            ].forEach(el => {
+                if (el) {
+                    el.disabled = true;
+                     if (el.tagName === 'BUTTON') el.textContent = 'Error';
+                     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = 'Error: Init Failed';
+                     if (el.tagName === 'SELECT') {
+                          el.innerHTML = '<option>Error</option>';
+                          el.value = 'Error';
+                     }
                 }
             });
-             // Hide status elements that depend on critical DOM
+            // Hide critical status elements if their parent container might be missing
              if (recognitionStatusDisplay) recognitionStatusDisplay.style.display = 'none';
              if (messageStatusDisplay) messageStatusDisplay.style.display = 'none';
+             if (onlineLoadingIndicator) onlineLoadingIndicator.style.display = 'none';
+             if (reportLoadingIndicator) reportLoadingIndicator.style.display = 'none';
+
 
             return false; // Indicate failure
         }
 
-        console.log("DOM references validated. Essential elements found.");
-        return true;
+         if (missingOptional.length > 0) {
+             console.warn("Missing optional DOM elements. Some features may be disabled:", missingOptional.join(', '));
+              // Note: Don't disable critical elements if only optional ones are missing
+         }
+
+
+        console.log("DOM references collected and validated. Essential elements found.");
+        return true; // Indicate success
     }
 
 
@@ -1954,9 +2533,10 @@ document.addEventListener('DOMContentLoaded', async function() {
              console.log(`Storage type changed to: ${newStorageType}`);
              if (newStorageType !== storageType) {
                 storageType = newStorageType;
+                 // When storage type changes, reload history from the new source
                 showOnlineLoadingIndicator("Loading history from new source...");
-                previousUsers = await loadUsers("previousUsers");
-                displayPreviousUsers(); // Refresh display (always image mode)
+                previousUsers = await loadUsers(historyStorageKey); // Load using the standard history key
+                await displayPreviousUsers(); // Refresh display (will filter by online status)
                 hideOnlineLoadingIndicator();
              }
         });
@@ -1965,13 +2545,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         filterTagsSelect?.addEventListener("change", () => applyFiltersAndDisplay());
         filterAgeSelect?.addEventListener("change", () => applyFiltersAndDisplay());
 
-         // --- Specific Filter Buttons ---
+         // --- Specific Quick Filter Buttons ---
          document.getElementById("filterAge18")?.addEventListener("click", () => applyFiltersAndDisplay({ age: 18 }));
          document.getElementById("filterTagAsian")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'asian' }));
          document.getElementById("filterTagBlonde")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'blonde' }));
 
          // --- Clear History Button ---
-         document.getElementById("clearPreviousUsers")?.addEventListener("click", clearPreviousUsers);
+         clearPreviousUsersButton?.addEventListener("click", clearPreviousUsers);
 
          // --- Send Report Button ---
          if (sendReportButton) {
@@ -1999,24 +2579,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                  console.log(`Display mode switched to: ${displayMode}`);
                  toggleDisplayModeButton.textContent = displayMode === 'image' ? 'Show Iframes' : 'Show Images';
                  displayOnlineUsersList(lastFilteredUsers); // Re-display with new mode (triggers analysis queue reset/start)
-                 if (onlineUsersDiv) onlineUsersDiv.scrollTop = 0; // Reset scroll
+                 if (onlineUsersDiv) onlineUsersDiv.scrollTop = 0; // Reset scroll position when mode changes
              });
              console.log("Display mode toggle button event listener added.");
          }
 
-         // --- Iframe Count/Size Button Listeners ---
+         // --- Iframe Count Button Listener ---
          if (toggleIframeCountButton) {
               toggleIframeCountButton.addEventListener("click", toggleIframeCount);
               console.log("Toggle iframe count button listener added.");
          }
-         if (increaseIframeSizeButton) {
-              increaseIframeSizeButton.addEventListener("click", increaseIframeSize);
-               console.log("Increase iframe size button listener added.");
-         }
-          if (decreaseIframeSizeButton) {
-               decreaseIframeSizeButton.addEventListener("click", decreaseIframeSize);
-                console.log("Decrease iframe size button listener added.");
-          }
+         // Removed increase/decrease size button listeners
 
         // --- NEW Messaging Button Listener ---
         if (saveMessageButton) {
@@ -2031,6 +2604,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                       saveMessage();
                   }
              });
+              console.log("Message input keypress listener added.");
          }
 
 
@@ -2041,15 +2615,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
          // --- Autocomplete Search Setups ---
-         // User search (already handled in previous update, just ensure it's called)
-         if (userSearchInput) setupUserAutocomplete();
-         // Message search (NEW)
-         if (messageSearchInput) setupMessageAutocomplete();
+         // User search
+         setupUserAutocomplete();
+         // Message search
+         setupMessageAutocomplete();
 
-         // --- Set up collapsible section toggling ---
-         // The onclicks in HTML call the global window.toggleSection function
-         // Ensure this function is exposed globally in initializeApp or here if preferred
-         // window.toggleSection = toggleSection; // Already added this in initializeApp
 
         console.log("Event listeners setup complete.");
     }
@@ -2060,74 +2630,82 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function initializeApp() {
         console.log("Initializing application...");
 
-        // Validate critical DOM elements first
-        if (!validateDOMReferences()) {
+        // 1. Collect and validate critical DOM elements first
+        if (!collectAndValidateDOMReferences()) {
              console.error("Initialization aborted due to missing critical DOM elements.");
-             return;
+             return; // Stop initialization if critical elements are missing
         }
 
-         // Expose toggleSection function globally so HTML onclick works
+         // 2. Expose toggleSection function globally so HTML onclick works
          window.toggleSection = toggleSection;
 
-         // Set initial states for controls
-         displayMode = 'image'; // Start online list in image mode
-         if (toggleDisplayModeButton) toggleDisplayModeButton.textContent = 'Show Iframes';
-         iframeCount = 2; // Start with 2 viewports
-         iframeSizeIndex = 0; // Start with default size (l6)
-         currentUserSearchTerm = ''; // Clear any default search input value
-         currentMessageSearchTerm = ''; // Clear any default message search input value
 
-
-        // 1. Load MobileNet model (async, but doesn't block other init)
-         // Need to ensure jQuery UI is loaded if using autocomplete
+         // 3. Check for essential library dependencies (jQuery/UI, TF/MobileNet)
+         let depsOk = true;
          if (typeof $ === 'undefined' || typeof $.fn.autocomplete === 'undefined') {
-             console.error("jQuery or jQuery UI not loaded. Autocomplete and other jQuery-based features disabled.");
-              // Disable relevant buttons/inputs if jQuery/UI are missing
-              [userSearchInput, messageSearchInput].forEach(input => {
-                  if(input) {
-                       input.disabled = true;
-                       input.placeholder = 'jQuery UI Missing';
-                   }
-               });
-              // Don't disable all buttons, some are pure JS (like scroll/display toggle if no list/viewer is critical)
+             console.error("Dependency Error: jQuery or jQuery UI not loaded. Autocomplete and some UI features disabled.");
+             if (userSearchInput) { userSearchInput.disabled = true; userSearchInput.placeholder = 'jQuery UI Missing'; }
+             if (messageSearchInput) { messageSearchInput.disabled = true; messageSearchInput.placeholder = 'jQuery UI Missing'; }
+              depsOk = false;
          } else {
-             // Load the ML model only if jQuery is present (as it's used in the processAnalysisQueue example)
-             // Or ensure processAnalysisQueue doesn't rely directly on jQuery DOM manipulation
-              loadMobileNetModel(); // Start model loading
+             console.log("jQuery and jQuery UI detected.");
          }
 
+          if (typeof tf === 'undefined' || typeof mobilenet === 'undefined') {
+              console.warn("Dependency Warning: TensorFlow.js or MobileNet not loaded. Image recognition disabled.");
+               showRecognitionStatus("Recognition unavailable: Dependencies missing.", 'warning');
+              // No need to set depsOk = false here if the app can run without ML
+          } else {
+              console.log("TensorFlow.js and MobileNet detected.");
+               // 4. Load MobileNet model (async, doesn't block other init)
+               loadMobileNetModel();
+          }
 
-        // 2. Populate storage options dropdown
-        await populateStorageOptions(); // Sets initial `storageType` based on selector
 
-        // 3. Setup event listeners for UI elements (including new buttons, search, messaging)
+         // 5. Set initial states for controls
+         displayMode = 'image'; // Start online list in image mode
+         if (toggleDisplayModeButton) toggleDisplayModeButton.textContent = 'Show Iframes';
+         iframeCount = 2; // Start with 2 main viewports
+         currentUserSearchTerm = userSearchInput ? userSearchInput.value.trim().toLowerCase() : ''; // Get initial search input value
+         currentMessageSearchTerm = messageSearchInput ? messageSearchInput.value.trim().toLowerCase() : ''; // Get initial message search input value
+
+
+        // 6. Populate storage options dropdown and set initial storageType state
+        await populateStorageOptions();
+
+
+        // 7. Setup event listeners for UI elements (including new buttons, search, messaging)
         setupEventListeners();
 
-        // 4. Load initial user history from the selected storage
+        // 8. Load initial user history from the selected storage
         showOnlineLoadingIndicator("Loading initial history...");
-        previousUsers = await loadUsers("previousUsers");
-        console.log(`Initial load: Found ${previousUsers.length} users in history.`);
-        // History display will be updated by fetchData()
+        previousUsers = await loadUsers(historyStorageKey);
+        console.log(`Initial load: Found ${previousUsers.length} users in history state.`);
+        // History display will be updated by fetchData() once online data is available for filtering
 
 
-         // 5. Set up initial main iframe layout and size
-         updateIframeLayout(); // This also calls updateIframeSize
+         // 9. Set up initial main iframe layout (fixed size handled by CSS)
+         updateIframeLayout(); // Sets the 2-viewport layout
 
 
-        // 6. Load and display initial saved messages from DB
+        // 10. Load and display initial saved messages from DB
          await loadAndDisplayMessages(); // This populates savedMessages and sets up message autocomplete source
 
 
-        // 7. Perform the initial fetch of online user data
-        // `fetchData` will handle displaying online users (in image mode initially) and the *filtered* previous users
-        // It also updates the user autocomplete source.
+        // 11. Perform the initial fetch of online user data
+        // `fetchData` will handle:
+        // - Fetching data into `allOnlineUsersData`
+        // - Populating filter dropdowns
+        // - Updating user autocomplete source
+        // - Applying filters and displaying online users (`displayOnlineUsersList`)
+        // - Updating the previous users display (`displayPreviousUsers`) by filtering history based on newly fetched online data.
         await fetchData();
 
 
-        // 8. Start the periodic fetch interval *after* the first fetch completes
+        // 12. Start the periodic fetch interval *after* the first fetch completes
         startFetchInterval();
 
-        // --- Optional: Compatibility Placeholders ---
+        // --- Optional: Compatibility Placeholders (keep these if needed for external calls) ---
         if (typeof window.initializeAllUsers === 'function') {
             console.warn("Executing legacy compatibility function: window.initializeAllUsers()");
             window.initializeAllUsers();
@@ -2141,53 +2719,52 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log("Application initialization complete and periodic fetching started.");
         hideOnlineLoadingIndicator(); // Ensure loading indicator is hidden
 
-        // Initial checks for button states after first render
-         if (onlineUsersDiv && toggleAutoScrollButton) {
-             if (onlineUsersDiv.scrollHeight > onlineUsersDiv.clientHeight) {
-                 toggleAutoScrollButton.disabled = false;
-                 toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
-                 toggleAutoScrollButton.classList.remove('w3-red');
-                 toggleAutoScrollButton.classList.add('w3-green');
-             } else {
-                 toggleAutoScrollButton.disabled = true;
-                 toggleAutoScrollButton.textContent = 'Not Scrollable';
-                  toggleAutoScrollButton.classList.remove('w3-red');
-                  toggleAutoScrollButton.classList.add('w3-green');
-             }
-         } else if (toggleAutoScrollButton) {
-              toggleAutoScrollButton.disabled = true;
-              toggleAutoScrollButton.textContent = 'List Element Missing';
-              toggleAutoScrollButton.classList.remove('w3-red');
-              toggleAutoScrollButton.classList.add('w3-green');
-         }
-          // Disable display mode button if online list element is missing
-          if (!onlineUsersDiv && toggleDisplayModeButton) {
-               toggleDisplayModeButton.disabled = true;
-               toggleDisplayModeButton.textContent = 'List Element Missing';
-          }
-           // Disable iframe count/size buttons if main viewer container is missing
-           if (!mainViewerContainer || !mainIframeColumn) {
-               if (toggleIframeCountButton) { toggleIframeCountButton.disabled = true; toggleIframeCountButton.textContent = 'Viewer Missing'; }
-               if (increaseIframeSizeButton) { increaseIframeSizeButton.disabled = true; }
-               if (decreaseIframeSizeButton) { decreaseIframeSizeButton.disabled = true; }
+
+           // Check and set initial disabled states for buttons based on scrollability etc.
+           // This was moved here from fetchData for initial setup
+           if (onlineUsersDiv && toggleAutoScrollButton) {
+               if (onlineUsersDiv.scrollHeight > onlineUsersDiv.clientHeight) {
+                   toggleAutoScrollButton.disabled = false;
+                   toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
+                   toggleAutoScrollButton.classList.remove('w3-red');
+                   toggleAutoScrollButton.classList.add('w3-green');
+               } else {
+                   toggleAutoScrollButton.disabled = true;
+                   toggleAutoScrollButton.textContent = 'Not Scrollable';
+                    toggleAutoScrollButton.classList.remove('w3-red');
+                    toggleAutoScrollButton.classList.add('w3-green');
+               }
+           } else if (toggleAutoScrollButton) {
+                toggleAutoScrollButton.disabled = true;
+                toggleAutoScrollButton.textContent = 'List Missing';
+                toggleAutoScrollButton.classList.remove('w3-red');
+                toggleAutoScrollButton.classList.add('w3-green');
            }
-           // Disable messaging buttons/inputs if elements are missing
-            if (!messageInput || !saveMessageButton || !messageListDiv) {
-                 if (messageInput) { messageInput.disabled = true; messageInput.placeholder = 'Messaging elements missing'; }
-                 if (saveMessageButton) { saveMessageButton.disabled = true; saveMessageButton.textContent = 'Messaging Error'; }
-                 if (messageListDiv) { messageListDiv.innerHTML = '<p class="text-muted w3-center w3-text-red">Messaging elements missing.</p>'; }
+            // Disable display mode button if online list element is missing
+            if (!onlineUsersDiv && toggleDisplayModeButton) {
+                 toggleDisplayModeButton.disabled = true;
+                 toggleDisplayModeButton.textContent = 'List Missing';
             }
-             // Disable search inputs if elements are missing (already handled in setup functions, but double check)
-            if (!userSearchInput) { if(userSearchInput) { userSearchInput.disabled = true; userSearchInput.placeholder = 'Search missing'; } }
-            if (!messageSearchInput) { if(messageSearchInput) { messageSearchInput.disabled = true; messageSearchInput.placeholder = 'Search missing'; } }
+             // Disable iframe count button if main viewer container is missing
+             if (!mainViewerContainer) {
+                 if (toggleIframeCountButton) { toggleIframeCountButton.disabled = true; toggleIframeCountButton.textContent = 'Viewer Missing'; }
+             }
+             // Disable messaging buttons/inputs if elements are missing (handled in validate)
+              if (!messageInput || !saveMessageButton || !messageListDiv) {
+                   // These should already be disabled by validateDOMReferences
+              }
+               // Disable search inputs if elements are missing (handled in validate & setup)
+              if (!userSearchInput) { /* already handled */ }
+              if (!messageSearchInput) { /* already handled */ }
 
 
-           // Open default sections on load
-           // toggleSection('filters'); // Example: keep filters closed initially
-           toggleSection('display');
-           toggleSection('viewer');
-           toggleSection('messaging'); // Open messaging by default?
-           // toggleSection('reporting'); // Example: reporting closed initially
+           // Open default sections on load (optional, depends on desired initial view)
+           // toggleSection('filters');
+           // toggleSection('display'); // Often useful to show controls initially
+           // toggleSection('viewer'); // Often useful to show controls initially
+           // toggleSection('messaging');
+           // toggleSection('reporting');
+
     }
 
     // --- Fetch Interval Control ---
@@ -2206,29 +2783,42 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 
     // --- Start the application ---
+    // Use a self-invoking async function or just call initializeApp and catch errors
     initializeApp().catch(error => {
         console.error("Unhandled error during application initialization:", error);
-        showOnlineErrorDisplay(`Fatal initialization error: ${error.message}. Please refresh or check console.`);
+         // Attempt to display a visible error message
+        const fatalErrorMsg = `Fatal initialization error: ${error.message}. Check browser console for details.`;
+        showOnlineErrorDisplay(fatalErrorMsg); // Use online error display
+         showReportStatus(fatalErrorMsg, 'error'); // Use report status display if available
+         if (messageStatusDisplay) showStatusMessage(messageStatusDisplay, 'Fatal Init Error', 'error');
+
+        // Ensure all loading/status indicators are hidden
         hideOnlineLoadingIndicator();
         hideReportLoading();
-         // Ensure all relevant buttons/inputs are disabled on fatal error
-        [
-            toggleAutoScrollButton, toggleDisplayModeButton, toggleIframeCountButton,
-            increaseIframeSizeButton, decreaseIframeSizeButton, userSearchInput,
-            messageSearchInput, saveMessageButton, sendReportButton
-        ].forEach(btn => {
-            if (btn) {
-                btn.disabled = true;
-                 if (btn.tagName === 'BUTTON') btn.textContent = 'Error';
-                 if (btn.tagName === 'INPUT') btn.placeholder = 'Error';
-                 if (btn.tagName === 'TEXTAREA') btn.placeholder = 'Error';
-            }
-        });
-        if (recognitionStatusDisplay) showRecognitionStatus('Initialization Error', 'error');
-         if (messageStatusDisplay) showStatusMessage(messageStatusDisplay, 'Initialization Error', 'error');
-         if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-muted w3-center w3-text-red">Fatal initialization error.</p>';
-         if (messageListDiv) messageListDiv.innerHTML = '<p class="text-muted w3-center w3-text-red">Fatal initialization error.</p>';
+        showRecognitionStatus('', false); // Hide recognition status
 
+         // Disable all interactive elements on fatal error
+        [
+             storageTypeSelector, filterTagsSelect, filterAgeSelect,
+             toggleAutoScrollButton, toggleDisplayModeButton, toggleIframeCountButton,
+             userSearchInput, messageSearchInput, messageInput, saveMessageButton,
+             clearPreviousUsersButton, sendReportButton
+        ].forEach(el => {
+             if (el) {
+                 el.disabled = true;
+                 if (el.tagName === 'BUTTON') el.textContent = 'Error';
+                 if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = 'Error: Init Failed';
+                 if (el.tagName === 'SELECT') {
+                      el.innerHTML = '<option>Error</option>';
+                      el.value = 'Error';
+                 }
+             }
+         });
+
+         // Clear content areas if possible
+         if (onlineUsersDiv) onlineUsersDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">${fatalErrorMsg}</p>`;
+         if (previousUsersDiv) previousUsersDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">History Unavailable due to error.</p>`;
+         if (messageListDiv) messageListDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">Messaging Unavailable due to error.</p>`;
     });
 
 }); // End DOMContentLoaded
