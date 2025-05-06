@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // --- API Configuration ---
     // NOTE: Replace with your actual API endpoints, limits, and intervals
-    const apiUrlBase = 'https://api.example.com/users/online'; // <-- CONFIGURE THIS
+    const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip'; // <-- CONFIGURE THIS
     const apiLimit = 50; // Number of users per API request
     const maxApiFetchLimit = 500; // Safety limit for total users fetched per cycle
     const fetchIntervalDuration = 60000; // Fetch interval in milliseconds (e.g., 60000 = 1 minute)
