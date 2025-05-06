@@ -4,23 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room Viewer</title>
-    <!-- W3.CSS CDN for general styling -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <!-- jQuery UI CSS for Autocomplete styling -->
     <link rel="stylesheet" href="//code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <link rel="stylesheet" href="style.css">
-    <!-- TensorFlow.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <!-- MobileNet model CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
 </head>
 <body>
 
-    <div class="w3-container app-container"> <!-- Added app-container class -->
+    <div class="w3-container app-container">
         <h1 class="w3-center">Room Viewer</h1>
 
-        <!-- Controls Bar (Streamlined/Togglable) -->
-        <div class="w3-card w3-margin w3-padding controls-bar"> <!-- Added controls-bar class -->
+        <div class="w3-card w3-margin w3-padding controls-bar">
             <div class="w3-row">
                  <div class="w3-col s12 m6 l4">
                      <h4 onclick="toggleSection('filters')" style="cursor:pointer;" class="w3-hover-light-grey w3-padding-small">
@@ -32,30 +27,26 @@
                              <select id="storageType" class="w3-select w3-border">
                                  <option value="local">Local Storage</option>
                                  <option value="session">Session Storage</option>
-                                 <option value="indexedDB">IndexedDB (Default History)</option> <!-- Corrected value -->
-                                 <!-- Options for custom IDB keys added by JS -->
+                                 <option value="indexedDB">IndexedDB (Default History)</option>
                              </select>
                          </div>
                          <div class="w3-section">
                              <label for="filterTags">Filter by Tag(s):</label>
                              <select id="filterTags" multiple size="3" class="w3-select w3-border">
                                  <option value="">-- All Tags --</option>
-                                 <!-- Options populated by JS -->
                              </select>
                          </div>
                           <div class="w3-section">
                              <label for="filterAge">Filter by Age(s):</label>
                              <select id="filterAge" multiple size="3" class="w3-select w3-border">
                                  <option value="">-- All Ages --</option>
-                                 <!-- Options populated by JS -->
                              </select>
                          </div>
-                         <div class="w3-section quick-filters"> <!-- Added quick-filters class -->
+                         <div class="w3-section quick-filters">
                              <h5>Quick Filters:</h5>
                              <button id="filterAge18" class="w3-button w3-light-grey w3-small w3-margin-bottom quick-filter-btn">Age 18</button>
                              <button id="filterTagAsian" class="w3-button w3-light-grey w3-small w3-margin-bottom quick-filter-btn">Asian</button>
                              <button id="filterTagBlonde" class="w3-button w3-light-grey w3-small w3-margin-bottom quick-filter-btn">Blonde</button>
-                             <!-- Add more quick filter buttons as needed -->
                          </div>
                           <button id="clearPreviousUsers" class="w3-button w3-block w3-red w3-margin-bottom">Clear History</button>
                      </div>
@@ -77,7 +68,10 @@
                          <div class="w3-section">
                              <h5>Search Online Users:</h5>
                               <input type="text" id="userSearchInput" class="w3-input w3-border" placeholder="Search usernames...">
-                              <!-- Autocomplete suggestions will appear here -->
+                           </div>
+                           <div class="w3-section">
+                                <h5>Debugging:</h5>
+                                <button id="showLogsButton" class="w3-button w3-block w3-light-grey">Show Logs</button>
                            </div>
                      </div>
                  </div>
@@ -88,22 +82,15 @@
                      </h4>
                      <div id="viewerSection" class="w3-container w3-hide">
                          <div class="w3-section">
-                            <h5>Main Viewer (Iframes):</h5>
+                            <h5>Main Viewer (Iframes - 850w x 480h):</h5>
                              <div class="w3-row-padding w3-margin-bottom">
-                                 <div class="w3-full"> <!-- Changed from w3-half, removed size buttons -->
+                                 <div class="w3-full">
                                       <button id="toggleIframeCount" class="w3-button w3-block w3-light-grey" title="Toggle between 2 and 4 main viewer iframes">Toggle 2/4 Viewports</button>
                                  </div>
-                                 <!-- Removed Increase/Decrease buttons -->
-                                 <!--
-                                 <div class="w3-half">
-                                      <button id="increaseIframeSize" class="w3-button w3-light-grey" title="Increase size">Bigger</button>
-                                      <button id="decreaseIframeSize" class="w3-button w3-light-grey" title="Decrease size">Smaller</button>
-                                 </div>
-                                 -->
                              </div>
                              <div class="w3-section">
                                  <label>Select Primary Viewport:</label><br>
-                                 <input type="radio" name="iframeChoice" value="mainIframe1" checked> Viewport 1 <!-- Changed value to match wrapper ID -->
+                                 <input type="radio" name="iframeChoice" value="mainIframe1" checked> Viewport 1
                                  <input type="radio" name="iframeChoice" value="mainIframe2"> Viewport 2
                                  <input type="radio" name="iframeChoice" value="mainIframe3" disabled> Viewport 3
                                  <input type="radio" name="iframeChoice" value="mainIframe4" disabled> Viewport 4
@@ -111,7 +98,7 @@
                          </div>
                      </div>
                  </div>
-            </div> <!-- End w3-row -->
+            </div>
 
              <div class="w3-row w3-margin-top">
                   <div class="w3-col s12 m6">
@@ -128,8 +115,7 @@
                            <div class="w3-section">
                                <h5>Saved Messages:</h5>
                                <input type="text" id="messageSearchInput" class="w3-input w3-border" placeholder="Search saved messages...">
-                               <div id="messageList" class="user-list"> <!-- Reused user-list class for basic styling -->
-                                   <!-- Saved messages will be loaded here -->
+                               <div id="messageList" class="user-list">
                                    <p class="text-muted w3-center">Loading messages...</p>
                                </div>
                            </div>
@@ -148,35 +134,38 @@
                           </div>
                       </div>
                   </div>
-             </div> <!-- End w3-row -->
+             </div>
 
-        </div> <!-- End Controls Card -->
+        </div>
 
-        <!-- Main Content Area (Columns) -->
-        <div class="w3-row w3-margin-top main-content"> <!-- Added main-content class -->
-             <!-- Online Users Column -->
+        <div id="logDisplayArea" class="w3-card w3-margin w3-padding w3-hide">
+            <h4>Application Logs <button id="clearLogsButton" class="w3-button w3-tiny w3-red w3-round-large w3-right">Clear Logs</button></h4>
+            <div id="logEntries" class="log-list">
+            </div>
+        </div>
+
+
+        <div class="w3-row w3-margin-top main-content">
             <div class="w3-col l3 m4 s12 w3-container user-column" id="onlineUsers">
                 <h3>Online Users</h3>
                  <span id="recognitionStatus" class="w3-small w3-text-grey w3-margin-bottom" style="display: none;">Analyzing images...</span>
                 <div id="onlineLoadingIndicator" class="loading-indicator w3-text-grey w3-center" style="display: none;">Loading...</div>
                 <div id="onlineErrorDisplay" class="error-message w3-panel w3-pale-red w3-border w3-padding-small" style="display: none;"></div>
                 <div class="user-list">
-                    <!-- User cards will be added here by JS -->
+                     <p class="text-muted w3-center">Loading online users...</p>
                 </div>
             </div>
 
-            <!-- Main Viewing Column -->
             <div class="w3-col l6 m8 s12 w3-container iframe-column">
                 <h3>Viewer</h3>
-                 <div id="mainViewerContainer" class="iframe-grid-container iframe-count-2"> <!-- iframe-size-1 handled by JS -->
-                     <!-- The individual iframe wrappers -->
+                 <div id="mainViewerContainer" class="iframe-grid-container iframe-count-2">
                      <div class="iframe-wrapper" id="iframeWrapper1">
                          <iframe id="mainIframe"
                                  src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
                                  title="Viewer 1"
                                  allow="autoplay; encrypted-media; picture-in-picture"
                                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                                 scrolling="no"> <!-- Added scrolling="no" -->
+                                 scrolling="no">
                          </iframe>
                      </div>
                      <div class="iframe-wrapper" id="iframeWrapper2">
@@ -185,17 +174,16 @@
                                  title="Viewer 2"
                                  allow="autoplay; encrypted-media; picture-in-picture"
                                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                                  scrolling="no"> <!-- Added scrolling="no" -->
+                                  scrolling="no">
                           </iframe>
                      </div>
-                     <!-- Added placeholders for 3 and 4 -->
                      <div class="iframe-wrapper" id="iframeWrapper3" style="display: none;">
                           <iframe id="mainIframe3"
                                  src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
                                  title="Viewer 3"
                                  allow="autoplay; encrypted-media; picture-in-picture"
                                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                                  scrolling="no"> <!-- Added scrolling="no" -->
+                                  scrolling="no">
                           </iframe>
                      </div>
                      <div class="iframe-wrapper" id="iframeWrapper4" style="display: none;">
@@ -204,38 +192,25 @@
                                  title="Viewer 4"
                                  allow="autoplay; encrypted-media; picture-in-picture"
                                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                                  scrolling="no"> <!-- Added scrolling="no" -->
+                                  scrolling="no">
                           </iframe>
                      </div>
                  </div>
             </div>
 
-            <!-- Previous Users Column -->
             <div class="w3-col l3 m12 s12 w3-container user-column" id="previousUsers">
                  <h3>History (Online Now)</h3>
                  <div class="user-list">
-                     <!-- Previous user cards will be added here by JS -->
-                     <p class="text-muted w3-center">Loading history...</p> <!-- Initial placeholder -->
+                     <p class="text-muted w3-center">Loading history...</p>
                  </div>
             </div>
 
-        </div> <!-- End w3-row / Main Content -->
+        </div>
 
-    </div> <!-- End App Container -->
+    </div>
 
-    <!-- jQuery CDN -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- jQuery UI CDN -->
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-
-    <!-- Placeholder/Example for Client-Side Email Sending (Requires setup with service like EmailJS) -->
-    <!-- Replace with actual CDN link if using a specific service -->
-    <!-- Example for EmailJS (Need to sign up and get your key/IDs) -->
-    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script> -->
-    <!-- <script type="text/javascript">
-       // Initialize EmailJS with your public key (replace 'YOUR_PUBLIC_KEY')
-       // emailjs.init('YOUR_PUBLIC_KEY');
-    </script> -->
 
     <script src="script.js"></script>
 </body>
