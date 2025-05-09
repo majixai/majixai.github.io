@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     const AUTO_SCROLL_DELAY_AT_END = 1000;
 
     const LIST_IFRAME_BASE_URL = 'https://chaturbate.com/embed/';
-    const LIST_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black&aspect=0.5625'; // Keep these for potentially loading users via history/search
+    const LIST_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1'; // Keep these for potentially loading users via history/search
 
     const MAIN_IFRAME_BASE_URL = 'https://chaturbate.com/embed/';
-    const MAIN_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black'; // Keep these for loading users into main viewer
+    const MAIN_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1'; // Keep these for loading users into main viewer
 
     const AUTOCOMPLETE_MIN_LENGTH = 2;
     const AUTOCOMPLETE_DELAY = 300;
