@@ -149,36 +149,39 @@ document.addEventListener('DOMContentLoaded', async function() {
         }).join(' ');
     }
 
-     function captureConsole() {
-         const levels = ['log', 'warn', 'error', 'info', 'debug'];
+function captureConsole() {
+    const levels = ['log', 'warn', 'error', 'info', 'debug'];
 
-         levels.forEach(level => {
-             originalConsole[level] = console[level];
+    levels.forEach(level => {
+        originalConsole[level] = console[level];
 
-             console[level] = function(...args) {
-                 originalConsole[level].apply(console, args);
+        console[level] = function(...args) {
+            originalConsole[level].apply(console, args);
 
-                 const message = formatLogArguments(args);
-                 const timestamp = new Date();
-                 const logEntry = {
-                     timestamp: timestamp.toISOString(),
-                     timeFormatted: formatLogTime(timestamp),
-                     level: level,
-                     message: message
-                 };
+            const stack = new Error().stack.split('\n')[2] || ''; // Get caller info
+            const callerInfo = stack.replace(/^\s+at\s+/g, ''); // Format caller info
 
-                 capturedLogs.push(logEntry);
-                 if (capturedLogs.length > LOG_MAX_ENTRIES) {
-                     capturedLogs.shift();
-                 }
+            const message = formatLogArguments(args);
+            const timestamp = new Date();
+            const logEntry = {
+                timestamp: timestamp.toISOString(),
+                timeFormatted: formatLogTime(timestamp),
+                level: level,
+                message: `${message} (Caller: ${callerInfo})`
+            };
 
-                 if (logDisplayArea && !logDisplayArea.classList.contains('w3-hide') && logEntriesDiv) {
-                      appendLogToDisplay(logEntry);
-                 }
-             };
-         });
-         originalConsole.log("Console capture initialized.");
-     }
+            capturedLogs.push(logEntry);
+            if (capturedLogs.length > LOG_MAX_ENTRIES) {
+                capturedLogs.shift();
+            }
+
+            if (logDisplayArea && !logDisplayArea.classList.contains('w3-hide') && logEntriesDiv) {
+                 appendLogToDisplay(logEntry);
+            }
+        };
+    });
+    originalConsole.log("Console capture initialized with enhanced logging.");
+}
 
      function displayLogs() {
           if (!logEntriesDiv) {
