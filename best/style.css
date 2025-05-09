@@ -453,3 +453,286 @@ body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
 .log-entry .log-message {
      flex-grow: 1;
 }
+
+/* Basic layout adjustments for W3.CSS grid */
+.app-container {
+    max-width: 1600px; /* Or a suitable max width */
+    margin: auto; /* Center the container */
+}
+
+.main-content {
+     /* Ensure columns within main-content use flexbox for layout */
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping for smaller screens */
+    gap: 16px; /* Add some spacing between columns */
+}
+
+.user-column {
+    /* Override default W3.CSS padding/margin if needed, or rely on gap */
+     padding: 0;
+     margin: 0;
+     /* Use W3.CSS col classes for width */
+}
+
+.iframe-column {
+    /* Override default W3.CSS padding/margin if needed, or rely on gap */
+     padding: 0;
+     margin: 0;
+    /* Use W3.CSS col classes for width */
+    flex-grow: 1; /* Allow viewer column to take available space */
+    min-width: 300px; /* Ensure viewer column doesn't collapse too much */
+}
+
+
+/* Styles for the user lists */
+.user-list {
+    max-height: 600px; /* Limit height and make scrollable */
+    overflow-y: auto;
+    padding-right: 8px; /* Add padding for scrollbar */
+     margin-top: 8px;
+}
+
+/* Optional: Style for scrollbar */
+.user-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.user-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.user-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.user-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+
+.user-info {
+    cursor: pointer;
+    position: relative; /* Needed for absolute positioning of remove button/overlay */
+    overflow: hidden; /* Hide anything outside the border radius or container */
+     transition: background-color 0.2s ease;
+}
+
+.user-info:hover {
+    background-color: #f1f1f1; /* Light highlight on hover */
+}
+
+/* Image Mode for User List Items */
+.image-display-mode .user-image-container {
+     width: 100%;
+     overflow: hidden;
+}
+
+.image-display-mode .user-image-container img {
+    display: block;
+    width: 100%;
+    height: auto; /* Maintain aspect ratio */
+}
+
+.image-display-mode .user-details {
+    padding-top: 4px; /* Reduce padding slightly in image mode */
+}
+
+/* Iframe Mode for User List Items */
+.iframe-display-mode .iframe-container {
+    position: relative;
+    width: 100%;
+    /* Calculate height based on aspect ratio 16:9, 0.5625 = 9/16 */
+    padding-top: 56.25%; /* This creates a 16:9 aspect ratio container */
+    overflow: hidden; /* Hide anything that overflows */
+}
+
+.iframe-display-mode .iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.iframe-display-mode .user-details {
+    display: none; /* Hide details block in iframe list mode */
+}
+
+/* Click overlay for iframes in lists */
+.iframe-container .click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10; /* Make sure it's above the iframe */
+    cursor: pointer;
+}
+
+
+/* Remove button for history items */
+.remove-user-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 5; /* Make sure it's above the image/iframe */
+     padding: 2px 6px; /* Adjust padding */
+     line-height: 1; /* Vertically center the 'x' */
+     opacity: 0.8; /* Slightly transparent */
+     transition: opacity 0.2s ease;
+}
+
+.remove-user-btn:hover {
+    opacity: 1;
+}
+
+
+/* Image recognition results */
+.recognition-results {
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dashed #ccc; /* Separator */
+    font-size: 0.8em; /* Smaller font */
+}
+
+.recognition-results ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.recognition-results li {
+    margin: 0;
+    padding: 2px 0;
+}
+
+/* Loading indicator styles */
+.loading-indicator, .status-message.loading {
+    font-style: italic;
+    opacity: 0.7;
+}
+/* Specific status message colors */
+.status-message.success { color: green; }
+.status-message.warning { color: orange; }
+.status-message.error { color: red; }
+.status-message.info { color: grey; }
+
+
+/* Log Display Area */
+.log-list {
+    max-height: 300px; /* Limit height */
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+    font-family: monospace;
+    font-size: 0.9em;
+    white-space: pre-wrap; /* Respect line breaks */
+    word-break: break-word; /* Break long words */
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #eee;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.log-timestamp {
+    color: #888;
+    margin-right: 5px;
+}
+
+.log-entry.log-warn {
+    color: #c09853; /* Orange/Yellow */
+}
+
+.log-entry.log-error {
+    color: #b94a48; /* Red */
+    font-weight: bold;
+}
+
+/* Main Viewer Styles */
+.iframe-grid-container {
+    width: 100%;
+    height: auto; /* Height will be determined by content/grid rows */
+    display: grid; /* Use CSS Grid for layout */
+    gap: 10px; /* Gap between iframes */
+}
+
+/* Layout for 2 iframes */
+.iframe-count-2 {
+    /* On large screens (l6), this container is typically ~50% width. */
+    /* Arrange into 2 columns, 1 row */
+     grid-template-columns: repeat(2, 1fr);
+     grid-template-rows: 1fr; /* Single row */
+     height: 480px; /* Fixed height for 2-up mode based on original HTML comment */
+}
+
+/* Layout for 4 iframes (2x2 grid) */
+.iframe-count-4 {
+     /* Arrange into 2 columns, 2 rows */
+     grid-template-columns: repeat(2, 1fr);
+     grid-template-rows: repeat(2, 1fr);
+     /* Adjust height calculation: 2 rows, each approximately half of the 2-up height + gap */
+     /* (480px - gap) / 2 * 2 + gap => 480 */
+     /* A simple auto height might stretch, or calculate based on desired aspect ratio within cells */
+     /* Let's rely on the iframes filling their cells within the grid */
+     height: 480px; /* Keeping fixed height for consistency, grid handles internal sizing */
+}
+
+.iframe-wrapper {
+    width: 100%;
+    height: 100%; /* Fill the grid cell */
+    overflow: hidden; /* Hide overflow */
+    border: 1px solid #ccc; /* Optional border */
+    box-sizing: border-box; /* Include border in sizing */
+}
+
+.iframe-wrapper iframe {
+    width: 100%;
+    height: 100%; /* Make iframe fill its wrapper */
+    border: none; /* Remove iframe's default border */
+}
+
+/* Adjust radio button layout */
+.iframe-choice-radios {
+    margin-top: 10px;
+}
+.iframe-choice-radios input {
+    margin-right: 5px;
+}
+
+/* Style for age days span */
+.age-days {
+    font-weight: bold;
+    color: green; /* Or another highlight color */
+}
+
+/* Style for new badge */
+.badge.new-badge {
+    vertical-align: middle; /* Align badge with text */
+    margin-left: 5px;
+}
+
+/* Responsive adjustments (optional - W3.CSS handles much of this) */
+@media (max-width: 992px) { /* Medium screens (m8 for viewer) */
+     .main-content {
+          flex-direction: column; /* Stack columns */
+     }
+     .user-column, .iframe-column {
+          width: 100%; /* Take full width when stacked */
+     }
+}
+
+@media (max-width: 600px) { /* Small screens (s12) */
+      /* Already handled by W3.CSS s12 */
+}
