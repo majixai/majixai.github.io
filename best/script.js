@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async function() {
 
     // Restored API configuration (replace with your actual working API base URL if different)
-    const apiUrlBase = 'https://cbxyz.com/users/online'; // Using a plausible base, verify if correct/functional
+    const apiUrlBase = 'https://chaturbate.com/embed/?tour=dU9X&campaign=9cg6A&disable_sound=1'; // Using a plausible base, verify if correct/functional
     const apiLimit = 50;
     const maxApiFetchLimit = 500; // Safety limit to prevent infinite fetching on huge lists
     const fetchIntervalDuration = 60000; // Fetch every 60 seconds
