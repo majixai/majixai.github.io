@@ -11,10 +11,10 @@
       "maxProfit": "Unlimited",
       "maxLoss": "Premium Paid",
       "breakeven": "Strike Price + Premium Paid",
-      "example": "Buy 1 XYZ 100 Call for $2.50.",
+      "example": "Buy 1 MES JUN13 5980 Call for 83.00 (Ask).",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-long-call",
-      "parameters": { "type": "call", "position": "long", "strike": 100, "premium": 2.50 }
+      "parameters": { "type": "call", "position": "long", "strike": 5980, "premium": 83.00 }
     },
     {
       "id": "short-put",
@@ -27,43 +27,77 @@
       "maxProfit": "Premium Received",
       "maxLoss": "Strike Price - Premium Received (Substantial)",
       "breakeven": "Strike Price - Premium Received",
-      "example": "Sell 1 XYZ 95 Put for $1.80.",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid).",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-short-put",
-      "parameters": { "type": "put", "position": "short", "strike": 95, "premium": 1.80 }
+      "parameters": { "type": "put", "position": "short", "strike": 5970, "premium": 104.50 }
     },
     {
-        "id": "short-call",
-        "name": "Short Call (Naked)",
-        "outlook": "Bearish to Neutral",
-        "description": "Collects premium by selling the obligation to sell the underlying asset if it rises above the strike price. Profitable if the underlying stays below the strike price. High, theoretically unlimited risk if the price rises significantly.",
-        "construction": [
-          "Sell 1 Call Option"
-        ],
-        "maxProfit": "Premium Received",
-        "maxLoss": "Unlimited",
-        "breakeven": "Strike Price + Premium Received",
-        "example": "Sell 1 XYZ 105 Call for $1.50.",
-        "plotFunction": "plotBasicOption",
-        "plotlyDivId": "plotly-short-call",
-        "parameters": { "type": "call", "position": "short", "strike": 105, "premium": 1.50 }
-      },
-      {
-        "id": "long-put",
-        "name": "Long Put",
-        "outlook": "Bearish",
-        "description": "Simplest bearish strategy. Buys the right, but not the obligation, to sell the underlying asset at the strike price before expiration. Used when expecting a significant fall in the underlying price.",
-        "construction": [
-          "Buy 1 Put Option"
-        ],
-        "maxProfit": "Strike Price - Premium Paid (Substantial)",
-        "maxLoss": "Premium Paid",
-        "breakeven": "Strike Price - Premium Paid",
-        "example": "Buy 1 XYZ 100 Put for $2.80.",
-        "plotFunction": "plotBasicOption",
-        "plotlyDivId": "plotly-long-put",
-        "parameters": { "type": "put", "position": "long", "strike": 100, "premium": 2.80 }
-      }
+      "id": "short-call",
+      "name": "Short Call (Naked)",
+      "outlook": "Bearish to Neutral",
+      "description": "Collects premium by selling the obligation to sell the underlying asset if it rises above the strike price. Profitable if the underlying stays below the strike price. High, theoretically unlimited risk if the price rises significantly.",
+      "construction": [
+        "Sell 1 Call Option"
+      ],
+      "maxProfit": "Premium Received",
+      "maxLoss": "Unlimited",
+      "breakeven": "Strike Price + Premium Received",
+      "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid).",
+      "plotFunction": "plotBasicOption",
+      "plotlyDivId": "plotly-short-call",
+      "parameters": { "type": "call", "position": "short", "strike": 5970, "premium": 83.25 }
+    },
+    {
+      "id": "long-put",
+      "name": "Long Put",
+      "outlook": "Bearish",
+      "description": "Simplest bearish strategy. Buys the right, but not the obligation, to sell the underlying asset at the strike price before expiration. Used when expecting a significant fall in the underlying price.",
+      "construction": [
+        "Buy 1 Put Option"
+      ],
+      "maxProfit": "Strike Price - Premium Paid (Substantial)",
+      "maxLoss": "Premium Paid",
+      "breakeven": "Strike Price - Premium Paid",
+      "example": "Buy 1 MES JUN13 5970 Put for 109.50 (Ask).",
+      "plotFunction": "plotBasicOption",
+      "plotlyDivId": "plotly-long-put",
+      "parameters": { "type": "put", "position": "long", "strike": 5970, "premium": 109.50 }
+    },
+    {
+      "id": "covered-call",
+      "name": "Covered Call",
+      "outlook": "Neutral to Moderately Bullish",
+      "description": "Selling a call option against shares of the underlying stock already owned. Generates income (premium) and provides limited protection against a price decline. Limits upside profit potential. Note: This strategy is typically used with stocks, not futures like MES, and requires owning the underlying asset.",
+      "construction": [
+        "Own 100 shares of Underlying",
+        "Sell 1 Call Option"
+      ],
+      "maxProfit": "Strike Price + Premium Received - Stock Purchase Price",
+      "maxLoss": "Stock Purchase Price - Premium Received",
+      "breakeven": "Stock Purchase Price - Premium Received",
+      "example": "Own 100 shares of XYZ bought at $100. Sell 1 XYZ 105 Call for $1.50.",
+      "plotFunction": "plotCoveredCall",
+      "plotlyDivId": "plotly-covered-call",
+      "parameters": { "stockPrice": 100.00, "callStrike": 105, "callPremium": 1.50 }
+    },
+    {
+      "id": "cash-secured-put",
+      "name": "Cash-Secured Put",
+      "outlook": "Neutral to Moderately Bullish",
+      "description": "Selling a put option and setting aside enough cash to buy the underlying shares if assigned. A way to potentially buy shares at a discount (the strike price) while collecting premium. Similar profit/loss to a Covered Call, but doesn't require owning stock upfront.",
+      "construction": [
+        "Sell 1 Put Option",
+        "Hold cash equivalent to Strike Price * 100 (notional value)"
+      ],
+      "maxProfit": "Premium Received",
+      "maxLoss": "Strike Price - Premium Received",
+      "breakeven": "Strike Price - Premium Received",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), holding cash/margin equivalent.",
+      "plotFunction": "plotBasicOption",
+      "plotlyDivId": "plotly-cash-secured-put",
+      "parameters": { "type": "put", "position": "short", "strike": 5970, "premium": 104.50 }
+    }
   ],
   "twoLeg": [
     {
@@ -78,48 +112,135 @@
       "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
       "maxLoss": "Net Debit Paid",
       "breakeven": "Lower Strike (K1) + Net Debit Paid",
-      "example": "Buy 1 XYZ 100 Call, Sell 1 XYZ 105 Call for a net debit of $1.80.",
+      "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 1 MES JUN13 5980 Call for 78.00 (Bid). Net Debit: 93.75 - 78.00 = 15.75.",
       "plotFunction": "plotVerticalSpread",
       "plotlyDivId": "plotly-bull-call-spread",
-      "parameters": { "type": "call", "position": "debit", "strike1": 100, "strike2": 105, "premium1": 3.00, "premium2": 1.20 }
+      "parameters": { "type": "call", "position": "debit", "strike1": 5960, "strike2": 5980, "premium1": 93.75, "premium2": 78.00 }
     },
     {
-        "id": "bear-put-spread",
-        "name": "Bear Put Spread (Vertical Debit)",
-        "outlook": "Moderately Bearish",
-        "description": "A defined-risk bearish strategy. Buys a put at a higher strike and sells a put at a lower strike (same expiration). Cheaper than a long put, but profit potential is capped.",
-        "construction": [
-          "Buy 1 Put (Higher Strike K2)",
-          "Sell 1 Put (Lower Strike K1)"
-        ],
-        "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
-        "maxLoss": "Net Debit Paid",
-        "breakeven": "Higher Strike (K2) - Net Debit Paid",
-        "example": "Buy 1 XYZ 100 Put, Sell 1 XYZ 95 Put for a net debit of $1.70.",
-        "plotFunction": "plotVerticalSpread",
-        "plotlyDivId": "plotly-bear-put-spread",
-        "parameters": { "type": "put", "position": "debit", "strike1": 95, "strike2": 100, "premium1": 1.10, "premium2": 2.80 }
-      },
-      {
-        "id": "bear-call-spread",
-        "name": "Bear Call Spread (Vertical Credit)",
-        "outlook": "Moderately Bearish / Neutral",
-        "description": "A defined-risk strategy that profits if the underlying stays below the short call strike. Sells a call at a lower strike and buys a call at a higher strike (same expiration) for protection. Entered for a net credit.",
-        "construction": [
-          "Sell 1 Call (Lower Strike K1)",
-          "Buy 1 Call (Higher Strike K2)"
-        ],
-        "maxProfit": "Net Credit Received",
-        "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
-        "breakeven": "Lower Strike (K1) + Net Credit Received",
-        "example": "Sell 1 XYZ 105 Call, Buy 1 XYZ 110 Call for a net credit of $1.10.",
-        "plotFunction": "plotVerticalSpread",
-        "plotlyDivId": "plotly-bear-call-spread",
-        "parameters": { "type": "call", "position": "credit", "strike1": 105, "strike2": 110, "premium1": 1.50, "premium2": 0.40 }
-      }
+      "id": "bear-put-spread",
+      "name": "Bear Put Spread (Vertical Debit)",
+      "outlook": "Moderately Bearish",
+      "description": "A defined-risk bearish strategy. Buys a put at a higher strike and sells a put at a lower strike (same expiration). Cheaper than a long put, but profit potential is capped.",
+      "construction": [
+        "Buy 1 Put (Higher Strike K2)",
+        "Sell 1 Put (Lower Strike K1)"
+      ],
+      "maxProfit": "Difference between strikes (K2 - K1) - Net Debit Paid",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Higher Strike (K2) - Net Debit Paid",
+      "example": "Buy 1 MES JUN13 5970 Put for 109.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid). Net Debit: 109.50 - 100.00 = 9.50.",
+      "plotFunction": "plotVerticalSpread",
+      "plotlyDivId": "plotly-bear-put-spread",
+      "parameters": { "type": "put", "position": "debit", "strike1": 5960, "strike2": 5970, "premium1": 100.00, "premium2": 109.50 }
+    },
+    {
+      "id": "bear-call-spread",
+      "name": "Bear Call Spread (Vertical Credit)",
+      "outlook": "Moderately Bearish / Neutral",
+      "description": "A defined-risk strategy that profits if the underlying stays below the short call strike. Sells a call at a lower strike and buys a call at a higher strike (same expiration) for protection. Entered for a net credit.",
+      "construction": [
+        "Sell 1 Call (Lower Strike K1)",
+        "Buy 1 Call (Higher Strike K2)"
+      ],
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+      "breakeven": "Lower Strike (K1) + Net Credit Received",
+      "example": "Sell 1 MES JUN13 5990 Call for 73.00 (Bid), Buy 1 MES JUN13 6010 Call for 68.50 (Ask). Net Credit: 73.00 - 68.50 = 4.50.",
+      "plotFunction": "plotVerticalSpread",
+      "plotlyDivId": "plotly-bear-call-spread",
+      "parameters": { "type": "call", "position": "credit", "strike1": 5990, "strike2": 6010, "premium1": 73.00, "premium2": 68.50 }
+    },
+    {
+      "id": "bull-put-spread",
+      "name": "Bull Put Spread (Vertical Credit)",
+      "outlook": "Moderately Bullish / Neutral",
+      "description": "A defined-risk strategy that profits if the underlying stays above the long put strike. Sells a put at a higher strike and buys a put at a lower strike (same expiration) for protection. Entered for a net credit.",
+      "construction": [
+        "Sell 1 Put (Higher Strike K2)",
+        "Buy 1 Put (Lower Strike K1)"
+      ],
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+      "breakeven": "Higher Strike (K2) - Net Credit Received",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 1 MES JUN13 5950 Put for 100.75 (Ask). Net Credit: 104.50 - 100.75 = 3.75.",
+      "plotFunction": "plotVerticalSpread",
+      "plotlyDivId": "plotly-bull-put-spread",
+      "parameters": { "type": "put", "position": "credit", "strike1": 5950, "strike2": 5970, "premium1": 100.75, "premium2": 104.50 }
+    },
+    {
+      "id": "long-straddle",
+      "name": "Long Straddle",
+      "outlook": "Volatile (Direction Indifferent)",
+      "description": "Buying a call and a put with the same strike price and expiration date. Profits from a significant price move in either direction. Max loss is the total premium paid. Used when expecting a large move but uncertain of the direction.",
+      "construction": [
+        "Buy 1 Call (Strike K)",
+        "Buy 1 Put (Strike K)"
+      ],
+      "maxProfit": "Unlimited (Up); Strike Price - Net Debit Paid (Down)",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: Strike K - Net Debit Paid; Upper: Strike K + Net Debit Paid",
+      "example": "Buy 1 MES JUN13 5970 Call for 88.25 (Ask), Buy 1 MES JUN13 5970 Put for 109.50 (Ask). Net Debit: 88.25 + 109.50 = 197.75.",
+      "plotFunction": "plotStraddleStrangle",
+      "plotlyDivId": "plotly-long-straddle",
+      "parameters": { "type": "straddle", "position": "long", "strike": 5970, "callPremium": 88.25, "putPremium": 109.50 }
+    },
+    {
+      "id": "short-straddle",
+      "name": "Short Straddle",
+      "outlook": "Neutral (Low Volatility)",
+      "description": "Selling a call and a put with the same strike price and expiration date. Profits from time decay and low volatility. Max profit is the total premium received. Risk is potentially unlimited.",
+      "construction": [
+        "Sell 1 Call (Strike K)",
+        "Sell 1 Put (Strike K)"
+      ],
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Unlimited (Up); Strike Price - Net Credit Received (Down)",
+      "breakeven": "Lower: Strike K - Net Credit Received; Upper: Strike K + Net Credit Received",
+      "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Sell 1 MES JUN13 5970 Put for 104.50 (Bid). Net Credit: 83.25 + 104.50 = 187.75.",
+      "plotFunction": "plotStraddleStrangle",
+      "plotlyDivId": "plotly-short-straddle",
+      "parameters": { "type": "straddle", "position": "short", "strike": 5970, "callPremium": 83.25, "putPremium": 104.50 }
+    },
+    {
+      "id": "long-strangle",
+      "name": "Long Strangle",
+      "outlook": "Volatile (Direction Indifferent)",
+      "description": "Buying an OTM call and an OTM put with the same expiration date. Cheaper than a straddle but requires a larger price move to break even. Profits from significant volatility.",
+      "construction": [
+        "Buy 1 OTM Put (Lower Strike K1)",
+        "Buy 1 OTM Call (Higher Strike K2)"
+      ],
+      "notes": "K1 < K2. Both strikes are typically OTM relative to the current price.",
+      "maxProfit": "Unlimited (Up); Lower Strike K1 - Net Debit Paid (Down)",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: K1 - Net Debit Paid; Upper: K2 + Net Debit Paid",
+      "example": "Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5990 Call for 78.00 (Ask). Net Debit: 105.00 + 78.00 = 183.00.",
+      "plotFunction": "plotStraddleStrangle",
+      "plotlyDivId": "plotly-long-strangle",
+      "parameters": { "type": "strangle", "position": "long", "putStrike": 5960, "callStrike": 5990, "putPremium": 105.00, "callPremium": 78.00 }
+    },
+    {
+      "id": "short-strangle",
+      "name": "Short Strangle",
+      "outlook": "Neutral (Low Volatility, Range Bound)",
+      "description": "Selling an OTM call and an OTM put with the same expiration date. Profits from time decay and the underlying staying between the two strikes. Offers more room for the price to move than a short straddle but receives less premium. Risk is potentially unlimited.",
+      "construction": [
+        "Sell 1 OTM Put (Lower Strike K1)",
+        "Sell 1 OTM Call (Higher Strike K2)"
+      ],
+      "notes": "K1 < K2. Both strikes are typically OTM relative to the current price.",
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Unlimited (Up); Lower Strike K1 - Net Credit Received (Down)",
+      "breakeven": "Lower: K1 - Net Credit Received; Upper: K2 + Net Credit Received",
+      "example": "Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Sell 1 MES JUN13 5990 Call for 73.00 (Bid). Net Credit: 100.00 + 73.00 = 173.00.",
+      "plotFunction": "plotStraddleStrangle",
+      "plotlyDivId": "plotly-short-strangle",
+      "parameters": { "type": "strangle", "position": "short", "putStrike": 5960, "callStrike": 5990, "putPremium": 100.00, "callPremium": 73.00 }
+    }
   ],
   "threeLeg": [
-     {
+    {
       "id": "call-butterfly",
       "name": "Long Call Butterfly",
       "outlook": "Neutral (Low Volatility)",
@@ -133,29 +254,47 @@
       "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Debit Paid",
       "maxLoss": "Net Debit Paid",
       "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
-      "example": "Buy 95C, Sell two 100C, Buy 105C for a net debit of $0.50.",
+      "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 2 MES JUN13 5980 Calls for 78.00 (Bid) each, Buy 1 MES JUN13 6000 Call for 73.25 (Ask). Net Debit: (93.75 + 73.25) - (2 * 78.00) = 167.00 - 156.00 = 11.00.",
       "plotFunction": "plotButterfly",
       "plotlyDivId": "plotly-call-butterfly",
-      "parameters": { "type": "call", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 6.00, "premium2": 3.00, "premium3": 1.00 }
+      "parameters": { "type": "call", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 93.75, "premium2": 78.00, "premium3": 73.25 }
     },
     {
-        "id": "put-butterfly",
-        "name": "Long Put Butterfly",
-        "outlook": "Neutral (Low Volatility)",
-        "description": "Similar to the Call Butterfly but constructed with puts. Expects the price to pin the middle strike at expiration. Defined risk, typically entered for a net debit.",
-        "construction": [
-          "Buy 1 Put (Lower Strike K1)",
-          "Sell 2 Puts (Middle Strike K2)",
-          "Buy 1 Put (Higher Strike K3)"
-        ],
-        "notes": "Strikes K1, K2, K3 are typically equidistant.",
-        "maxProfit": "Higher Strike (K3) - Middle Strike (K2) - Net Debit Paid",
-        "maxLoss": "Net Debit Paid",
-        "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
-        "example": "Buy 95P, Sell two 100P, Buy 105P for a net debit of $0.60.",
-        "plotFunction": "plotButterfly",
-        "plotlyDivId": "plotly-put-butterfly",
-        "parameters": { "type": "put", "strike1": 95, "strike2": 100, "strike3": 105, "premium1": 1.50, "premium2": 3.50, "premium3": 7.10 }
+      "id": "put-butterfly",
+      "name": "Long Put Butterfly",
+      "outlook": "Neutral (Low Volatility)",
+      "description": "Similar to the Call Butterfly but constructed with puts. Expects the price to pin the middle strike at expiration. Defined risk, typically entered for a net debit.",
+      "construction": [
+        "Buy 1 Put (Lower Strike K1)",
+        "Sell 2 Puts (Middle Strike K2)",
+        "Buy 1 Put (Higher Strike K3)"
+      ],
+      "notes": "Strikes K1, K2, K3 are typically equidistant.",
+      "maxProfit": "Higher Strike (K3) - Middle Strike (K2) - Net Debit Paid",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+      "example": "Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Sell 2 MES JUN13 5980 Puts for 114.25 (Bid) each, Buy 1 MES JUN13 6000 Put for 129.75 (Ask). Net Debit: (105.00 + 129.75) - (2 * 114.25) = 234.75 - 228.50 = 6.25.",
+      "plotFunction": "plotButterfly",
+      "plotlyDivId": "plotly-put-butterfly",
+      "parameters": { "type": "put", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 105.00, "premium2": 114.25, "premium3": 129.75 }
+    },
+    {
+      "id": "call-ratio-spread",
+      "name": "Call Ratio Spread (Debit)",
+      "outlook": "Moderately Bullish",
+      "description": "Buying a call option at a lower strike and selling a greater number of call options at a higher strike (same expiration). Profits from a moderate move up, but faces significant risk if the price moves sharply above the higher strike. Can be entered for a net debit or credit.",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1)",
+        "Sell 2 Calls (Higher Strike K2)"
+      ],
+      "notes": "K1 < K2. Common ratio is 1:2, but can vary.",
+      "maxProfit": "(K2 - K1) + Net Credit (if credit) or (K2 - K1) - Net Debit (if debit, achieved at K2)",
+      "maxLoss": "Potentially Unlimited above Upper Breakeven",
+      "breakeven": "Calculated based on specific strikes, ratio, and net cost (see definition).",
+      "example": "Buy 1 MES JUN13 5970 Call for 88.25 (Ask), Sell 2 MES JUN13 5990 Calls for 73.00 (Bid) each. Net Credit: (2 * 73.00) - 88.25 = 146.00 - 88.25 = 57.75.",
+      "plotFunction": "plotRatioSpread",
+      "plotlyDivId": "plotly-call-ratio-spread",
+      "parameters": { "type": "call", "position": "ratio", "ratio1": 1, "ratio2": -2, "strike1": 5970, "strike2": 5990, "premium1": 88.25, "premium2": 73.00 }
     }
   ],
   "fourLeg": [
@@ -174,12 +313,12 @@
       "maxProfit": "Net Credit Received",
       "maxLoss": "Width of Widest Spread - Net Credit Received",
       "breakeven": "Lower: K2 - Net Credit Received; Upper: K3 + Net Credit Received",
-      "example": "Buy 90P, Sell 95P, Sell 105C, Buy 110C for a net credit of $1.20.",
+      "example": "Buy 1 MES JUN13 5940 Put for 96.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Sell 1 MES JUN13 5990 Call for 73.00 (Bid), Buy 1 MES JUN13 6010 Call for 68.50 (Ask). Net Credit: (100.00 + 73.00) - (96.50 + 68.50) = 173.00 - 165.00 = 8.00.",
       "plotFunction": "plotIronCondor",
       "plotlyDivId": "plotly-iron-condor",
-      "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+      "parameters": { "strikeP1": 5940, "strikeP2": 5960, "strikeC3": 5990, "strikeC4": 6010, "premiumP1": 96.50, "premiumP2": 100.00, "premiumC3": 73.00, "premiumC4": 68.50 }
     },
-     {
+    {
       "id": "iron-butterfly",
       "name": "Iron Butterfly",
       "outlook": "Neutral (Very Low Volatility, Price Pinning)",
@@ -190,14 +329,14 @@
         "Sell 1 ATM Call (Middle Strike - K2)",
         "Buy 1 OTM Call (Upper Wing - K3)"
       ],
-       "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant.",
+       "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant. K2 is typically ATM.",
       "maxProfit": "Net Credit Received",
       "maxLoss": "Width of one Wing (e.g., K2 - K1) - Net Credit Received",
       "breakeven": "Lower: K2 - Net Credit Received; Upper: K2 + Net Credit Received",
-      "example": "Buy 90P, Sell 100P, Sell 100C, Buy 110C for a net credit of $5.50.",
+      "example": "Buy 1 MES JUN13 5950 Put for 100.75 (Ask), Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 1 MES JUN13 5990 Call for 78.00 (Ask). Net Credit: (104.50 + 83.25) - (100.75 + 78.00) = 187.75 - 178.75 = 9.00.",
       "plotFunction": "plotIronButterfly",
       "plotlyDivId": "plotly-iron-butterfly",
-      "parameters": { "strikeP1": 90, "strikePC2": 100, "strikeC3": 110, "premiumP1": 0.50, "premiumP2": 4.00, "premiumC2": 3.80, "premiumC3": 0.40 }
+      "parameters": { "strikeP1": 5950, "strikePC2": 5970, "strikeC3": 5990, "premiumP1": 100.75, "premiumP2": 104.50, "premiumC2": 83.25, "premiumC3": 78.00 }
     },
     {
         "id": "reverse-iron-condor",
@@ -211,13 +350,13 @@
           "Sell 1 OTM Call (Upper Wing - K4)"
         ],
         "notes": "K1 < K2 < Current Price < K3 < K4. Opposite legs compared to standard Iron Condor.",
-        "maxProfit": "Width of Widest Spread - Net Debit Paid",
+        "maxProfit": "Width of Widest Spread - Net Debit Paid (Reflects theoretical max payoff minus cost, actual max profit occurs outside wings)",
         "maxLoss": "Net Debit Paid",
-        "breakeven": "Lower: K2 + Net Debit Paid; Upper: K3 - Net Debit Paid",
-        "example": "Sell 90P, Buy 95P, Buy 105C, Sell 110C for a net debit of $1.80.",
+        "breakeven": "Lower: K1 + Net Debit Paid; Upper: K4 - Net Debit Paid",
+        "example": "Sell 1 MES JUN13 5940 Put for 91.50 (Bid), Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5990 Call for 78.00 (Ask), Sell 1 MES JUN13 6010 Call for 63.75 (Bid). Net Debit: (105.00 + 78.00) - (91.50 + 63.75) = 183.00 - 155.25 = 27.75.",
         "plotFunction": "plotReverseIronCondor",
         "plotlyDivId": "plotly-reverse-iron-condor",
-        "parameters": { "strikeP1": 90, "strikeP2": 95, "strikeC3": 105, "strikeC4": 110, "premiumP1": 0.50, "premiumP2": 1.80, "premiumC3": 1.50, "premiumC4": 0.40 }
+        "parameters": { "strikeP1": 5940, "strikeP2": 5960, "strikeC3": 5990, "strikeC4": 6010, "premiumP1": 91.50, "premiumP2": 105.00, "premiumC3": 78.00, "premiumC4": 63.75 }
       },
      {
       "id": "box-spread",
@@ -233,20 +372,40 @@
        "notes": "All options must have the same expiration.",
       "maxProfit": "(K2 - K1) - Net Debit Paid (if positive)",
       "maxLoss": "Net Debit Paid - (K2 - K1) (if positive, usually near zero or small loss after costs)",
-      "breakeven": "N/A (Payoff is constant)",
-      "example": "Buy 100C, Sell 110C, Buy 110P, Sell 100P. Value at expiration = 10. Profit/Loss depends on Net Debit paid.",
+      "breakeven": "N/A (Payoff is constant at K2 - K1)",
+      "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 1 MES JUN13 5970 Put for 109.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid). Net Debit: (93.75 + 109.50) - (83.25 + 100.00) = 203.25 - 183.25 = 20.00. Value at Expiration = 5970 - 5960 = 10. Profit = 10 - 20.00 = -10.00.",
       "plotFunction": "plotBoxSpread",
       "plotlyDivId": "plotly-box-spread",
-      "parameters": { "strike1": 100, "strike2": 110, "premC1": 6.00, "premC2": 1.50, "premP1": 4.00, "premP2": 1.20 }
+      "parameters": { "strike1": 5960, "strike2": 5970, "premC1": 93.75, "premC2": 83.25, "premP1": 100.00, "premP2": 109.50 }
+    },
+    {
+      "id": "short-call-condor",
+      "name": "Short Call Condor (Credit)",
+      "outlook": "Neutral (Low Volatility, Range Bound)",
+      "description": "Defined-risk, defined-profit strategy selling two inner calls and buying two outer calls (same expiration, equidistant strikes K1<K2<K3<K4). Profits if the underlying price stays between K2 and K3 at expiration. Similar to a Short Strangle but with defined risk. Typically entered for a net credit.",
+      "construction": [
+        "Buy 1 Call (Lowest Strike K1)",
+        "Sell 1 Call (Inner Strike K2)",
+        "Sell 1 Call (Inner Strike K3)",
+        "Buy 1 Call (Highest Strike K4)"
+      ],
+      "notes": "K1 < K2 < K3 < K4, often equidistant strikes. K2 and K3 are typically near current price.",
+      "maxProfit": "Net Credit Received",
+      "maxLoss": "Width of Inner Spread (K2 - K1 or K4 - K3) - Net Credit Received",
+      "breakeven": "Lower: K2 - Net Credit Received; Upper: K3 + Net Credit Received",
+      "example": "Buy 1 MES JUN13 5950 Call for 99.25 (Ask), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Sell 1 MES JUN13 5980 Call for 78.00 (Bid), Buy 1 MES JUN13 6000 Call for 73.25 (Ask). Net Debit: (99.25 + 73.25) - (83.25 + 78.00) = 172.50 - 161.25 = 11.25. (Note: This example results in a Net Debit based on MES data).",
+      "plotFunction": "plotCondor",
+      "plotlyDivId": "plotly-short-call-condor",
+      "parameters": { "type": "call", "position": "short", "strike1": 5950, "strike2": 5970, "strike3": 5980, "strike4": 6000, "premium1": 99.25, "premium2": 83.25, "premium3": 78.00, "premium4": 73.25 }
     }
   ],
    "about": {
        "title": "About This Tool",
        "content": [
            "This page provides information and payoff diagrams for various option strategies, categorized by the number of 'legs' (individual option contracts) involved.",
-           "Use the menu on the left (or top on small screens) to navigate between strategy types (1-Leg, 2-Leg, 3-Leg, 4-Leg).",
+           "The examples use MES (Micro E-mini S&P 500) option prices from the provided screenshot (June 13 expiration data) for illustration.",
            "The payoff diagrams illustrate the theoretical profit or loss of each strategy *at expiration* based on the price of the underlying asset. They are generated using Plotly.js.",
-           "The examples use hypothetical strike prices and premiums for illustrative purposes only. Real-world premiums vary based on volatility, time to expiration, interest rates, and market conditions.",
+           "Please note that real-world premiums vary based on volatility, time to expiration, interest rates, and market conditions. The bid/ask spread can significantly impact the actual cost or credit received, as seen in some examples resulting in a debit where the strategy description typically implies a credit.",
            "<strong>Disclaimer:</strong> This information is strictly for educational purposes and does not constitute financial advice. Option trading involves significant risk and is not suitable for all investors. Consult with a qualified financial professional before trading options."
        ]
    }
