@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Strategy Visualizer (IndexedDB)</title>
+    <!-- Bootstrap CDN (CSS) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome CDN (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="tv-app-container">
+        <!-- Left Sidebar -->
+        <aside class="tv-left-sidebar">
+            <div class="sidebar-header">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" placeholder="Q ESTI">
+                </div>
+                <ul class="nav nav-pills nav-fill mb-2 small-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Strategy builder</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Chain</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Volatility</a>
+                    </li>
+                </ul>
+                <div class="btn-group btn-group-sm w-100 mb-3 filter-buttons" role="group">
+                    <input type="radio" class="btn-check" name="strategyFilter" id="filterAll" autocomplete="off" value="all" checked>
+                    <label class="btn btn-outline-secondary" for="filterAll">All</label>
+                    <input type="radio" class="btn-check" name="strategyFilter" id="filterBullish" value="bullish" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="filterBullish">Bullish</label>
+                    <input type="radio" class="btn-check" name="strategyFilter" id="filterNeutral" value="neutral" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="filterNeutral">Neutral</label>
+                    <input type="radio" class="btn-check" name="strategyFilter" id="filterBearish" value="bearish" autocomplete="off">
+                    <label class="btn btn-outline-secondary" for="filterBearish">Bearish</label>
+                </div>
+                <button id="load-data-btn" class="btn btn-primary btn-sm w-100 mb-2">Load/Refresh Options Data</button>
+            </div>
+            <ul class="list-group strategy-list" id="strategyList">
+                <!-- Strategies will be populated by JS -->
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="tv-main-content">
+            <div class="tv-chart-controls">
+                <div class="row gx-2 gy-2 align-items-center">
+                    <div class="col-auto">
+                        <label for="expiration" class="form-label">Expiration</label>
+                        <select class="form-select form-select-sm" id="expiration" disabled>
+                            <option selected>Loading data...</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <label for="strikeInput" class="form-label">Target Strike (for new strategy)</label>
+                        <input type="number" class="form-control form-control-sm" id="strikeInput" value="5975" style="width: 100px;">
+                    </div>
+                    <div class="col-auto">
+                        <label for="size" class="form-label">Size</label>
+                        <input type="number" class="form-control form-control-sm" id="size" value="1" style="width: 70px;">
+                    </div>
+                     <div class="col-auto">
+                        <label for="riskFreeRateInput" class="form-label">Risk-Free (%)</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" id="riskFreeRateInput" value="5.2" style="width: 80px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tv-chart-area">
+                <canvas id="payoffChart"></canvas>
+                 <div id="plotlyChartArea" style="width:100%;height:100%; display:none;"></div>
+            </div>
+
+            <div class="tv-metrics-bar">
+                <div class="metric-item"><span class="label">Underlying price</span> <span class="value" id="metricUnderlying">N/A</span></div>
+                <div class="metric-item"><span class="label">Max profit</span> <span class="value" id="metricMaxProfit">N/A</span></div>
+                <div class="metric-item"><span class="label">Max loss</span> <span class="value" id="metricMaxLoss">N/A</span></div>
+                <div class="metric-item"><span class="label">Win rate <i class="fas fa-info-circle"></i></span> <span class="value" id="metricWinRate">N/A</span></div>
+                <div class="metric-item"><span class="label">Breakeven <i class="fas fa-info-circle"></i></span> <span class="value" id="metricBreakeven">N/A</span></div>
+                <div class="metric-item"><span class="label">Delta <i class="fas fa-info-circle"></i></span> <span class="value" id="metricDelta">N/A</span></div>
+                <div class="metric-item"><span class="label">Gamma <i class="fas fa-info-circle"></i></span> <span class="value" id="metricGamma">N/A</span></div>
+                <div class="metric-item"><span class="label">Theta <i class="fas fa-info-circle"></i></span> <span class="value" id="metricTheta">N/A</span></div>
+                <div class="metric-item"><span class="label">Vega <i class="fas fa-info-circle"></i></span> <span class="value" id="metricVega">N/A</span></div>
+                <div class="metric-item"><span class="label">Rho <i class="fas fa-info-circle"></i></span> <span class="value" id="metricRho">N/A</span></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+    <!-- Bootstrap JS Bundle CDN (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+</body>
+</html>
