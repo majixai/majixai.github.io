@@ -1,12 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM Elements
+    // DOM Elements (same as before)
     const strategyListElement = document.getElementById('strategyList');
     const payoffChartCanvas = document.getElementById('payoffChart');
-    const plotlyChartArea = document.getElementById('plotlyChartArea'); // For Plotly
-    let payoffChart = null; // For Chart.js
+    const plotlyChartArea = document.getElementById('plotlyChartArea');
+    let payoffChart = null;
 
     const metricUnderlyingEl = document.getElementById('metricUnderlying');
-    // ... (all other metric elements)
     const metricMaxProfitEl = document.getElementById('metricMaxProfit');
     const metricMaxLossEl = document.getElementById('metricMaxLoss');
     const metricWinRateEl = document.getElementById('metricWinRate');
@@ -21,22 +20,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const riskFreeRateInput = document.getElementById('riskFreeRateInput');
     const loadDataBtn = document.getElementById('load-data-btn');
 
-    let currentOptionData = null; // Holds the structured options chain data
-    let db = null; // IndexedDB database instance
+    let currentOptionData = null;
+    let db = null;
 
-    const DB_NAME = 'OptionsDataDB';
-    const DB_VERSION = 1;
-    const OS_NAME_CHAIN = 'optionsChain'; // Object store for the full chain data
+    const DB_NAME = 'OptionsDataDB_JSON'; // Slightly different name to avoid old schema conflicts
+    const DB_VERSION = 1; // Can increment if schema changes
+    const OS_NAME_CHAIN = 'optionsChainJSON'; // Object store for JSON data
 
-    // --- IndexedDB Helper Functions ---
+    // --- IndexedDB Helper Functions (same as before) ---
     async function initDB() {
+        console.log(`Initializing IndexedDB: ${DB_NAME}, Version: ${DB_VERSION}`);
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
 
             request.onupgradeneeded = (event) => {
+                console.log('IndexedDB upgrade needed.');
                 const dbInstance = event.target.result;
                 if (!dbInstance.objectStoreNames.contains(OS_NAME_CHAIN)) {
-                    // Using 'key' as the key path, assuming we store one main chain object
+                    console.log(`Creating object store: ${OS_NAME_CHAIN}`);
                     dbInstance.createObjectStore(OS_NAME_CHAIN, { keyPath: 'id' });
                 }
             };
@@ -48,277 +49,151 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             request.onerror = (event) => {
-                console.error('IndexedDB error:', event.target.errorCode);
-                reject(event.target.errorCode);
-            };
-        });
-    }
-
-    async function storeDataInDB(objectStoreName, data, key = 'fullChainData') {
-        if (!db) {
-            console.error('DB not initialized.');
-            return;
-        }
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([objectStoreName], 'readwrite');
-            const store = transaction.objectStore(objectStoreName);
-            const dataToStore = { id: key, ...data }; // Add an 'id' property for the keyPath
-            const request = store.put(dataToStore);
-
-            request.onsuccess = () => {
-                console.log(`Data stored in ${objectStoreName} with key ${key}`);
-                resolve();
-            };
-            request.onerror = (event) => {
-                console.error(`Error storing data in ${objectStoreName}:`, event.target.error);
+                console.error('IndexedDB error:', event.target.errorCode, event.target.error);
                 reject(event.target.error);
             };
         });
     }
 
-    async function getDataFromDB(objectStoreName, key = 'fullChainData') {
+    async function storeDataInDB(objectStoreName, data, key = 'optionsChainData') {
         if (!db) {
-            console.error('DB not initialized.');
-            return null;
+            console.error('DB not initialized. Cannot store data.');
+            return Promise.reject('DB not initialized');
         }
+        console.log(`Attempting to store data in ${objectStoreName} with key ${key}`);
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction([objectStoreName], 'readonly');
-            const store = transaction.objectStore(objectStoreName);
-            const request = store.get(key);
+            try {
+                const transaction = db.transaction([objectStoreName], 'readwrite');
+                const store = transaction.objectStore(objectStoreName);
+                // The data from JSON is an object, we add an 'id' for IndexedDB keyPath
+                const dataToStore = { id: key, ...data };
+                const request = store.put(dataToStore);
 
-            request.onsuccess = (event) => {
-                resolve(event.target.result ? event.target.result : null);
-            };
-            request.onerror = (event) => {
-                console.error(`Error getting data from ${objectStoreName}:`, event.target.error);
-                reject(event.target.error);
-            };
+                request.onsuccess = () => {
+                    console.log(`Data stored successfully in ${objectStoreName} with key ${key}`);
+                    resolve();
+                };
+                request.onerror = (event) => {
+                    console.error(`Error storing data in ${objectStoreName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            } catch (e) {
+                console.error(`Exception during DB transaction for storing data:`, e);
+                reject(e);
+            }
         });
     }
 
-
-    // --- Text Data Parser ---
-    // This is a SIMPLIFIED parser. A robust one for TradingView's complex HTML/text output
-    // would be significantly more complex and require careful handling of its structure.
-    function parseTradingViewTextData(textData) {
-        const lines = textData.split('\n').map(line => line.trim()).filter(line => line);
-        let parsedData = {
-            underlyingSymbol: "MES1!", // Default
-            underlyingPrice: 0,
-            riskFreeRate: parseFloat(riskFreeRateInput.value) / 100 || 0.052, // From input or default
-            expirationDate: "2025-06-20", // Placeholder, needs to be parsed or set
-            options: []
-        };
-
-        // Attempt to find underlying price (very naive)
-        // Example: "MES1! 5,975.50 USD"
-        const underlyingPriceRegex1 = /(\w+!)\s*([\d,]+\.\d{2})\s*USD/;
-        const underlyingPriceRegex2 = /^([\d,]+\.\d{2})$/; // If just the price is on a line
-
-        for (let i = 0; i < lines.length; i++) {
-            let match = lines[i].match(underlyingPriceRegex1);
-            if (match) {
-                parsedData.underlyingSymbol = match[1];
-                parsedData.underlyingPrice = parseFloat(match[2].replace(/,/g, ''));
-                // Try to find the "+42.25 +0.71%" part on the next lines
-                if (lines[i+1] && lines[i+1].startsWith("+") || lines[i+1].startsWith("-")) {
-                    // Could parse change and %change here
-                }
-                break; // Found main underlying info
-            }
-            match = lines[i].match(underlyingPriceRegex2);
-             // Check a few lines before and after for "MES1!" to confirm it's the main price
-            if (match && (lines[i-1]?.includes("MES1!") || lines[i-2]?.includes("MES1!") || lines[i+1]?.includes("MES1!"))) {
-                 parsedData.underlyingPrice = parseFloat(match[0].replace(/,/g, ''));
-                 break;
-            }
+    async function getDataFromDB(objectStoreName, key = 'optionsChainData') {
+        if (!db) {
+            console.error('DB not initialized. Cannot get data.');
+            return Promise.resolve(null); // Resolve with null if DB isn't ready
         }
-         if(parsedData.underlyingPrice === 0) { // Fallback if not found above
-            const firstPriceMatch = textData.match(/([\d,]+\.\d{2})\s*USD/);
-            if(firstPriceMatch) parsedData.underlyingPrice = parseFloat(firstPriceMatch[1].replace(/,/g, ''));
-            else parsedData.underlyingPrice = 5975.50; // Hardcoded fallback
-            console.warn("Could not reliably parse underlying price, using: " + parsedData.underlyingPrice);
-        }
+        console.log(`Attempting to get data from ${objectStoreName} with key ${key}`);
+        return new Promise((resolve, reject) => {
+            try {
+                const transaction = db.transaction([objectStoreName], 'readonly');
+                const store = transaction.objectStore(objectStoreName);
+                const request = store.get(key);
 
-
-        // Find the start of the options chain table
-        // "Rho	Vega	Theta	Gamma	Delta	Price	Ask	Bid Strike IV, %	Bid	Ask	Price	Delta	Gamma	Theta	Vega	Rho"
-        let tableHeaderIndex = -1;
-        const headerPattern = /Rho\s+Vega\s+Theta\s+Gamma\s+Delta\s+Price\s+Ask\s+Bid\s+Strike\s+IV, %\s+Bid\s+Ask\s+Price\s+Delta\s+Gamma\s+Theta\s+Vega\s+Rho/i;
-
-        for (let i = 0; i < lines.length; i++) {
-            if (headerPattern.test(lines[i])) {
-                tableHeaderIndex = i;
-                break;
-            }
-        }
-
-        if (tableHeaderIndex === -1) {
-            console.error("Could not find options chain table header in the text data.");
-            alert("Parser Error: Options chain table header not found. Data might be incomplete.");
-            return parsedData; // Return what we have
-        }
-
-        // Parse table rows
-        for (let i = tableHeaderIndex + 1; i < lines.length; i++) {
-            const line = lines[i];
-            // A line looks roughly like:
-            // Call_Rho Call_Vega Call_Theta Call_Gamma Call_Delta Call_Price Call_Ask Call_Bid STRIKE Put_IV Put_Bid Put_Ask Put_Price Put_Delta Put_Gamma Put_Theta Put_Vega Put_Rho
-            // Example numbers:
-            // 2.01	6.51	−1.69	0.0017	0.46	80.52	83.00	78.00	 5,980 14.1	109.25	114.25	112.00	−0.54	0.0017	−1.69	6.51	−2.56
-            // This regex is highly dependent on the exact spacing and number of columns.
-            // It assumes tab or multiple spaces as delimiters.
-            // It also tries to handle '–' as NaN or 0.
-            const parts = line.split(/\s+/).map(p => p === '–' ? 'NaN' : p.replace(/,/g, ''));
-
-            if (parts.length >= 17 && !isNaN(parseFloat(parts[8]))) { // Check for at least 17 parts and if strike is a number
-                try {
-                    const optionRow = {
-                        strike: parseFloat(parts[8]),
-                        call: {
-                            rho: parseFloat(parts[0]),
-                            vega: parseFloat(parts[1]),
-                            theta: parseFloat(parts[2]),
-                            gamma: parseFloat(parts[3]),
-                            delta: parseFloat(parts[4]),
-                            last: parseFloat(parts[5]), // Using "Price" as "last"
-                            ask: parseFloat(parts[6]),
-                            bid: parseFloat(parts[7]),
-                            // IV is for the Put side in this column order, we need to find call IV if it exists
-                            // TradingView text output doesn't typically list Call IV in this main table view directly.
-                            // We will use the Put IV for the call if no other IV is available, or assume a default.
-                            // For a proper solution, the text data needs to be clearer or a different source used.
-                            iv: parseFloat(parts[9])/100 || 0.15 // Using Put's IV / 100 or default. THIS IS A GUESS.
-                        },
-                        put: {
-                            iv: parseFloat(parts[9]) / 100, // IV, % column
-                            bid: parseFloat(parts[10]),
-                            ask: parseFloat(parts[11]),
-                            last: parseFloat(parts[12]), // Using "Price" as "last"
-                            delta: parseFloat(parts[13]),
-                            gamma: parseFloat(parts[14]),
-                            theta: parseFloat(parts[15]),
-                            vega: parseFloat(parts[16]),
-                            rho: parseFloat(parts[17] || 'NaN') // Rho might be the 18th element or missing
-                        }
-                    };
-                     // A more robust parser would look for "MESM2025 5,975.5" line to determine expiration more reliably
-                    // For now, we assume one expiration from the text.
-
-                    // If call IV is listed separately or can be inferred, update here.
-                    // The provided text has "IV, %" between STRIKE and Put_Bid. This is typically Put IV.
-                    // Call IV is not explicitly in each row of *this specific text dump's main table*.
-                    // We'll use the put's IV for the call's IV as a placeholder for calculation.
-                    // If the text format were different, this would need adjustment.
-                    if (isNaN(optionRow.call.iv) && !isNaN(optionRow.put.iv)) {
-                        optionRow.call.iv = optionRow.put.iv; // Use put's IV if call's is not found
-                    } else if (isNaN(optionRow.call.iv)) {
-                        optionRow.call.iv = 0.15; // Default if none found
+                request.onsuccess = (event) => {
+                    const result = event.target.result;
+                    if (result) {
+                        console.log(`Data retrieved successfully from ${objectStoreName} for key ${key}:`, result);
+                        // Remove the 'id' field before returning, as the app expects the pure data object
+                        const { id, ...actualData } = result;
+                        resolve(actualData);
+                    } else {
+                        console.log(`No data found in ${objectStoreName} for key ${key}`);
+                        resolve(null);
                     }
-
-
-                    parsedData.options.push(optionRow);
-                } catch (e) {
-                    console.warn(`Skipping line, could not parse: "${line}"`, e);
-                }
-            } else if (line.includes("Implied Volatility") || line.includes("Select market data")) {
-                // End of relevant table data
-                break;
+                };
+                request.onerror = (event) => {
+                    console.error(`Error getting data from ${objectStoreName}:`, event.target.error);
+                    reject(event.target.error); // Keep as reject for errors
+                };
+            } catch (e) {
+                console.error(`Exception during DB transaction for getting data:`, e);
+                reject(e);
             }
-        }
-        // Placeholder for expiration date logic.
-        // The text "MESM2025 5,975.5" suggests an expiration.
-        // M is June. So "MESM2025" implies June 2025 expiration.
-        // Standard options usually expire on the 3rd Friday. June 20, 2025 is the 3rd Friday.
-        const expMatch = textData.match(/MES([FGHJKMNQUVXZ])(\d{4})/i);
-        if (expMatch) {
-            const monthChar = expMatch[1].toUpperCase();
-            const year = parseInt(expMatch[2]);
-            const monthMap = {F:0,G:1,H:2,J:3,K:4,M:5,N:6,Q:7,U:8,V:9,X:10,Z:11}; // 0-indexed months
-            if (monthMap[monthChar] !== undefined && year) {
-                // Find 3rd Friday of that month
-                let date = new Date(year, monthMap[monthChar], 1);
-                let fridays = 0;
-                while(fridays < 3){
-                    if(date.getDay() === 5) fridays++; // 5 is Friday
-                    if(fridays < 3) date.setDate(date.getDate() + 1);
-                }
-                parsedData.expirationDate = date.toISOString().split('T')[0];
-            }
-        } else {
-             console.warn("Could not parse expiration from text, using default.");
-             // Use a default or try another method to find it.
-        }
-
-
-        if (parsedData.options.length === 0) {
-            alert("Parser Error: No option rows were successfully parsed. Check console and raw data.");
-        } else {
-            console.log(`Parsed ${parsedData.options.length} option rows.`);
-        }
-
-        return parsedData;
+        });
     }
 
-
-    // --- Fetch, Parse, and Store Data from Text File ---
-    async function loadAndProcessRawData() {
+    // --- Fetch, Process, and Store Data from JSON File ---
+    async function loadAndProcessJsonData() {
         loadDataBtn.disabled = true;
         loadDataBtn.textContent = 'Loading...';
         expirationSelect.innerHTML = '<option>Loading data...</option>';
         expirationSelect.disabled = true;
+        console.log('Starting loadAndProcessJsonData...');
 
         try {
-            const response = await fetch('raw_tradingview_data.txt');
+            console.log('Fetching mock_options_chain.json...');
+            const response = await fetch('mock_options_chain.json');
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status} when fetching JSON.`);
             }
-            const rawText = await response.text();
-            const parsedData = parseTradingViewTextData(rawText);
+            const jsonData = await response.json();
+            console.log('JSON data fetched successfully:', jsonData);
 
-            // Calculate DTE (Days To Expiration)
-            const mockCurrentDate = new Date(); // Use today's date
-            const expirationDateObj = new Date(parsedData.expirationDate + "T00:00:00"); // Ensure it's treated as local midnight
-            const daysToExpiration = Math.max(1, Math.round((expirationDateObj - mockCurrentDate) / (1000 * 60 * 60 * 24)));
-            parsedData.daysToExpiration = daysToExpiration;
-            parsedData.riskFreeRate = parseFloat(riskFreeRateInput.value) / 100;
+            // Calculate DTE (Days To Expiration) dynamically
+            const currentDate = new Date(); // Use today's actual date
+            const expirationDateObj = new Date(jsonData.expirationDate + "T00:00:00Z"); // Ensure UTC for consistency
+            const daysToExpiration = Math.max(1, Math.round((expirationDateObj.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)));
+            
+            const processedData = {
+                ...jsonData,
+                daysToExpiration: daysToExpiration,
+                // Ensure riskFreeRate from JSON is used, or fallback to input if JSON doesn't have it
+                riskFreeRate: typeof jsonData.riskFreeRate === 'number' ? jsonData.riskFreeRate : (parseFloat(riskFreeRateInput.value) / 100 || 0.052)
+            };
+            console.log('Data processed with DTE and risk-free rate:', processedData);
 
-
-            await storeDataInDB(OS_NAME_CHAIN, parsedData);
-            currentOptionData = parsedData;
-            console.log('Raw data fetched, parsed, and stored in IndexedDB.');
-            alert('Options data loaded and processed successfully!');
-            populateExpirationDropdown(); // Update dropdown
-            initializeAppUIWithData(); // Refresh UI
+            await storeDataInDB(OS_NAME_CHAIN, processedData);
+            currentOptionData = processedData;
+            console.log('JSON data processed and stored in IndexedDB.');
+            alert('Options data loaded from JSON and processed successfully!');
+            populateUIData();
         } catch (error) {
-            console.error('Error loading or processing raw data:', error);
-            alert(`Error loading data: ${error.message}. Check console.`);
-            // Optionally, try to load from DB as a fallback if parsing fresh file fails
-            const existingData = await getDataFromDB(OS_NAME_CHAIN);
-            if (existingData) {
-                currentOptionData = existingData;
-                 alert('Using previously stored data due to load error.');
-                populateExpirationDropdown();
-                initializeAppUIWithData();
-            } else {
-                currentOptionData = null; // Ensure it's null if everything fails
+            console.error('Error loading or processing JSON data:', error);
+            alert(`Error loading data: ${error.message}. Check console. Trying to use stored data if available.`);
+            try {
+                const existingData = await getDataFromDB(OS_NAME_CHAIN);
+                if (existingData) {
+                    currentOptionData = existingData;
+                    console.log('Using previously stored data due to JSON load error.');
+                    alert('Using previously stored data.');
+                    populateUIData();
+                } else {
+                    currentOptionData = null; // Ensure it's null if everything fails
+                    console.log('No previously stored data available after JSON load error.');
+                }
+            } catch (dbError) {
+                console.error('Error trying to load from DB after JSON fetch error:', dbError);
+                currentOptionData = null;
             }
         } finally {
             loadDataBtn.disabled = false;
             loadDataBtn.textContent = 'Load/Refresh Options Data';
+            console.log('loadAndProcessJsonData finished.');
         }
     }
 
-    function populateExpirationDropdown() {
-        if (currentOptionData && currentOptionData.expirationDate) {
+    function populateUIData() {
+        if (currentOptionData) {
+            console.log('Populating UI with currentOptionData:', currentOptionData);
             expirationSelect.innerHTML = `<option value="${currentOptionData.expirationDate}">${currentOptionData.expirationDate} (DTE: ${currentOptionData.daysToExpiration})</option>`;
             expirationSelect.disabled = false;
+            metricUnderlyingEl.textContent = `${currentOptionData.underlyingPrice.toFixed(2)} USD`;
+            riskFreeRateInput.value = (currentOptionData.riskFreeRate * 100).toFixed(2);
+            initializeAppUIWithData(); // This will populate strategies and select the first one
         } else {
-            expirationSelect.innerHTML = '<option>No data</option>';
+            console.log('No currentOptionData to populate UI.');
+            expirationSelect.innerHTML = '<option>No data loaded</option>';
             expirationSelect.disabled = true;
+            metricUnderlyingEl.textContent = 'N/A';
         }
     }
-
 
     // --- Black-Scholes and Greeks (Keep these from previous version) ---
     function norm_cdf(x) { /* ... */ 
@@ -385,16 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return { delta, gamma, vega, theta };
     }
 
+
     // --- Sample Strategies Definitions ---
-    // Update these to use strikes that are LIKELY to be in the parsed data
+    // Ensure these strategies use strikes present in mock_options_chain.json
     const strategies = [
         {
-            id: 'longCall_ATM', name: 'Long Call (ATM-ish)', type: 'bullish',
-            legs: [{ type: 'call', position: 'long', strike: 5970, ratio: 1 }], // Adjust strike
+            id: 'longCall_ATM', name: 'Long Call (ATM)', type: 'bullish',
+            legs: [{ type: 'call', position: 'long', strike: 5975, ratio: 1 }],
         },
         {
             id: 'shortPut_OTM', name: 'Short Put (OTM)', type: 'bullish',
-            legs: [{ type: 'put', position: 'short', strike: 5900, ratio: 1 }], // Adjust strike
+            legs: [{ type: 'put', position: 'short', strike: 5900, ratio: 1 }],
         },
         {
             id: 'shortStrangle', name: 'Short Strangle', type: 'neutral',
@@ -403,13 +279,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 { type: 'call', position: 'short', strike: 6050, ratio: 1 }
             ],
         },
-        // Add more if needed
+        {
+            id: 'ironCondor', name: 'Short Iron Condor', type: 'neutral',
+            legs: [
+                { type: 'put',  position: 'long',  strike: 5850, ratio: 1 },
+                { type: 'put',  position: 'short', strike: 5900, ratio: 1 },
+                { type: 'call', position: 'short', strike: 6050, ratio: 1 },
+                { type: 'call', position: 'long',  strike: 6100, ratio: 1 }
+            ],
+        }
     ];
 
-
     // --- P&L and Charting Logic (adjust to use `currentOptionData` correctly) ---
+    // Make sure calculateExpirationPL, drawPayoffChart, updateMetricsDisplay
+    // correctly access `currentOptionData.options[...].call.last` or `.put.last` for premium
+    // and `.call.iv` or `.put.iv` for implied volatility.
+
     function calculateExpirationPL(S_expiration, strategyLegs) {
-        if (!currentOptionData || !currentOptionData.options) return 0;
+        // ... (same as previous version that uses .last for premium)
+        if (!currentOptionData || !currentOptionData.options) {
+            console.warn("calculateExpirationPL: No option data available.");
+            return 0;
+        }
         let totalPL = 0;
         strategyLegs.forEach(leg => {
             const optionContractData = currentOptionData.options.find(opt => opt.strike === leg.strike);
@@ -433,17 +324,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return totalPL;
     }
 
-
     async function drawPayoffChart(strategyId) {
-        // Use Chart.js for now. Plotly switch can be added later if desired.
+        // ... (largely same as previous version, ensuring data access is correct)
+        // Using Chart.js
         payoffChartCanvas.style.display = 'block';
         plotlyChartArea.style.display = 'none';
 
-
         if (!currentOptionData || !currentOptionData.options || currentOptionData.options.length === 0) {
             console.warn("Cannot draw chart: Option data not available or empty.");
-            alert("Please load options data first by clicking the 'Load/Refresh' button.");
-             // Clear chart if it exists
             if (payoffChart) { payoffChart.destroy(); payoffChart = null; }
             return;
         }
@@ -453,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn(`Strategy ${strategyId} not found.`);
             return;
         }
+        console.log(`Drawing chart for strategy: ${strategy.name}`);
 
         const S_current = currentOptionData.underlyingPrice;
         const r = currentOptionData.riskFreeRate;
@@ -463,16 +352,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const t0_PL_values = [];
 
         let allStrikesInStrategy = strategy.legs.map(l => l.strike);
-        const minStrikeInStrategy = Math.min(...allStrikesInStrategy);
-        const maxStrikeInStrategy = Math.max(...allStrikesInStrategy);
+        const minStrikeInStrategy = Math.min(...allStrikesInStrategy, S_current);
+        const maxStrikeInStrategy = Math.max(...allStrikesInStrategy, S_current);
         
-        const chartRangeFactor = 0.05; // 5% around the strategy's effective range / current price
-        const midPointStrategy = (minStrikeInStrategy + maxStrikeInStrategy) / 2 || S_current;
-        const rangeHalfWidth = Math.max((maxStrikeInStrategy - minStrikeInStrategy) / 2 * 1.5, S_current * chartRangeFactor * 2);
-
-
-        const minPrice = Math.min(S_current * (1-chartRangeFactor*2), midPointStrategy - rangeHalfWidth);
-        const maxPrice = Math.max(S_current * (1+chartRangeFactor*2), midPointStrategy + rangeHalfWidth);
+        const chartRangeFactor = 0.07; // 7% around the strikes/current price
+        const minPrice = minStrikeInStrategy * (1 - chartRangeFactor);
+        const maxPrice = maxStrikeInStrategy * (1 + chartRangeFactor);
         const step = (maxPrice - minPrice) / 100;
 
         let portfolioGreeks = { delta: 0, gamma: 0, vega: 0, theta: 0, rho: 0 };
@@ -480,14 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
         strategy.legs.forEach(leg => {
             const optionChainEntry = currentOptionData.options.find(opt => opt.strike === leg.strike);
             if (!optionChainEntry) {
-                 console.warn(`Greeks Calc: Data for strike ${leg.strike} not found.`);
-                 return; // Skip this leg if no data
+                 console.warn(`Greeks Calc: No data for strike ${leg.strike} in currentOptionData.options.`);
+                 return; 
             }
             const legData = leg.type === 'call' ? optionChainEntry.call : optionChainEntry.put;
-            if (!legData || typeof legData.iv === 'undefined' || isNaN(legData.iv)) {
-                console.warn(`Greeks Calc: IV not found or NaN for ${leg.type} at ${leg.strike}. Using default for this leg.`);
-                // Don't calculate greeks for this leg if IV is missing, or use a default IV if appropriate.
-                // For simplicity, we'll skip greek contribution if IV is bad.
+            if (!legData || typeof legData.iv !== 'number' || isNaN(legData.iv)) {
+                console.warn(`Greeks Calc: IV invalid for ${leg.type} at ${leg.strike}. Skipping greeks for this leg.`);
                 return;
             }
             const iv = legData.iv;
@@ -498,9 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             portfolioGreeks.gamma += (greeks.gamma || 0) * multiplier;
             portfolioGreeks.vega += (greeks.vega || 0) * multiplier;
             portfolioGreeks.theta += (greeks.theta || 0) * multiplier;
-            // Rho calculation can be added to getGreeks if needed
         });
-
 
         for (let S_axis = minPrice; S_axis <= maxPrice; S_axis += step) {
             pricePoints.push(S_axis.toFixed(2));
@@ -509,10 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let currentPortfolioValue_T0 = 0;
             strategy.legs.forEach(leg => {
                 const optionChainEntry = currentOptionData.options.find(opt => opt.strike === leg.strike);
-                 if (!optionChainEntry) {  /* console.warn for missing strike */ return; }
+                if (!optionChainEntry) return;
                 const legData = leg.type === 'call' ? optionChainEntry.call : optionChainEntry.put;
-                if (!legData || typeof legData.iv === 'undefined' || isNaN(legData.iv) || typeof legData.last === 'undefined' || isNaN(legData.last)) {
-                    /* console.warn for missing iv/last */ return;
+                 if (!legData || typeof legData.iv !== 'number' || isNaN(legData.iv) || typeof legData.last !== 'number' || isNaN(legData.last)) {
+                    console.warn(`T+0 Calc: IV or Last invalid for ${leg.type} at ${leg.strike}.`); return;
                 }
                 const iv = legData.iv;
                 const initialOptionPremium = legData.last;
@@ -527,38 +408,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (payoffChart) payoffChart.destroy();
         
-        // Chart.js rendering (similar to before, ensure colors and annotations are correct)
-        const chartConfig = { /* ... your Chart.js config ... */ 
+        const chartConfig = { /* ... your Chart.js config (same as previous) ... */ 
             type: 'line',
-            data: { /* ... datasets for expirationPL and t0_PL ... */ 
+            data: { 
                 labels: pricePoints,
                 datasets: [
                     {
-                        label: 'P&L at Expiration',
-                        data: expirationPL_values,
-                        borderColor: (ctx) => { /* ... */ return parseFloat(ctx.p0?.parsed?.y || ctx.p1?.parsed?.y || 0) >= 0 ? 'green' : 'red'; },
+                        label: 'P&L at Expiration', data: expirationPL_values,
+                        borderColor: (ctx) => parseFloat(ctx.p0?.parsed?.y || ctx.p1?.parsed?.y || 0) >= 0 ? getComputedStyle(document.documentElement).getPropertyValue('--tv-profit-green-border') : getComputedStyle(document.documentElement).getPropertyValue('--tv-loss-red-border'),
                         borderWidth: 2,
-                        fill: { target: 'origin', above: 'rgba(0,255,0,0.1)', below: 'rgba(255,0,0,0.1)'},
+                        fill: { target: 'origin', above: getComputedStyle(document.documentElement).getPropertyValue('--tv-profit-green'), below: getComputedStyle(document.documentElement).getPropertyValue('--tv-loss-red')},
                         tension: 0.1, pointRadius: 0,
                     },
                     {
                         label: 'T+0 P&L (Est.)', data: t0_PL_values,
-                        borderColor: 'orange', borderWidth: 2, borderDash: [5, 5],
-                        fill: false, tension: 0.2, pointRadius: 0,
+                        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--tv-t0-line-color'),
+                        borderWidth: 2, borderDash: [5, 5], fill: false, tension: 0.2, pointRadius: 0,
                     }
                 ]
             },
-            options: { /* ... scales, plugins, annotation for S_current ... */
+            options: { 
                 responsive: true, maintainAspectRatio: false,
-                scales: { x: { title: { display: true, text: 'Underlying Price'}}, y: { title: { display: true, text: 'Profit / Loss'}}},
+                scales: { x: { title: { display: true, text: 'Underlying Price'}, ticks: {color: getComputedStyle(document.documentElement).getPropertyValue('--tv-text-secondary')}, grid:{color: getComputedStyle(document.documentElement).getPropertyValue('--tv-border-color')}}, 
+                          y: { title: { display: true, text: 'Profit / Loss'}, ticks: {color: getComputedStyle(document.documentElement).getPropertyValue('--tv-text-secondary')}, grid:{color: getComputedStyle(document.documentElement).getPropertyValue('--tv-border-color')}}},
                 plugins: {
-                    legend: { display: true },
+                    legend: { display: true, labels: {color: getComputedStyle(document.documentElement).getPropertyValue('--tv-text-primary')} },
+                    tooltip: {mode: 'index', intersect: false},
                     annotation: {
                         annotations: {
                             currentPriceLine: {
                                 type: 'line', xMin: S_current, xMax: S_current,
-                                borderColor: 'blue', borderWidth: 2, borderDash: [6, 6],
-                                label: { content: `Current: ${S_current.toFixed(2)}`, enabled: true, position: 'start'}
+                                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--tv-current-price-line'),
+                                borderWidth: 2, borderDash: [6, 6],
+                                label: { content: `Current: ${S_current.toFixed(2)}`, enabled: true, position: 'start', backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', font:{size:10}}
                             }
                         }
                     }
@@ -566,59 +448,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         payoffChart = new Chart(payoffChartCanvas, chartConfig);
-
         updateMetricsDisplay(strategy, expirationPL_values, pricePoints, portfolioGreeks);
     }
 
-
     function updateMetricsDisplay(strategy, expirationPLs, pricePointsArr, greeks) {
-        if(!currentOptionData) { /* clear metrics or show N/A */ return; }
+        // ... (same as previous version, ensures currentOptionData is checked)
+        if(!currentOptionData) { 
+            Object.values(metricElements).forEach(el => el.textContent = 'N/A'); // Example clear
+            return;
+        }
         metricUnderlyingEl.textContent = `${currentOptionData.underlyingPrice.toFixed(2)} USD`;
 
         let maxProfit = -Infinity, maxLoss = Infinity;
-        expirationPLs.forEach(plStr => { /* ... calculate maxP/maxL ... */ 
+        expirationPLs.forEach(plStr => { 
             const pl = parseFloat(plStr);
             if (pl > maxProfit) maxProfit = pl;
             if (pl < maxLoss) maxLoss = pl;
         });
-        // Simplified unlimited check (can be more robust by checking strategy structure)
-        if (strategy.legs.some(l => l.position === 'short' && (l.type==='call' || l.type ==='put'))) { // Naked short implies large/unlimited risk
-            if (!strategy.legs.some(prot => prot.position === 'long' && prot.type === (strategy.legs.find(l=>l.position ==='short').type) && (prot.type === 'call' ? prot.strike > strategy.legs.find(l=>l.position ==='short').strike : prot.strike < strategy.legs.find(l=>l.position ==='short').strike))) {
-                 maxLoss = -Infinity; // More specific check needed for true unlimited
-            }
-        }
-        if (strategy.legs.some(l => l.position === 'long' && l.type==='call')) {
-             if (!strategy.legs.some(prot => prot.position === 'short' && prot.type === 'call' && prot.strike > strategy.legs.find(l=>l.position ==='long' && l.type==='call').strike)) {
-                 maxProfit = Infinity;
-             }
-        }
+       
+        // Simplified unlimited check
+        let hasNakedShortCall = false, hasNakedShortPut = false;
+        let hasNakedLongCall = false;
+
+        strategy.legs.forEach(leg => {
+            if (leg.position === 'short' && leg.type === 'call' && !strategy.legs.find(p => p.type === 'call' && p.position === 'long' && p.strike > leg.strike)) hasNakedShortCall = true;
+            if (leg.position === 'short' && leg.type === 'put' && !strategy.legs.find(p => p.type === 'put' && p.position === 'long' && p.strike < leg.strike)) hasNakedShortPut = true;
+            if (leg.position === 'long' && leg.type === 'call' && !strategy.legs.find(p => p.type === 'call' && p.position === 'short' && p.strike > leg.strike)) hasNakedLongCall = true;
+        });
+
+        if (hasNakedShortCall || hasNakedShortPut) maxLoss = -Infinity; // Simplified to "Unlimited"
+        if (hasNakedLongCall) maxProfit = Infinity;
+
 
         metricMaxProfitEl.textContent = isFinite(maxProfit) ? maxProfit.toFixed(2) : 'Unlimited';
         metricMaxLossEl.textContent = isFinite(maxLoss) ? maxLoss.toFixed(2) : 'Unlimited';
         
-        const breakevens = []; /* ... calculate breakevens ... */
+        const breakevens = []; 
         for (let i = 0; i < expirationPLs.length - 1; i++) {
             const pl1 = parseFloat(expirationPLs[i]), pl2 = parseFloat(expirationPLs[i+1]);
-            if ((pl1 < 0 && pl2 >=0) || (pl1 > 0 && pl2 <=0) || (pl1 === 0 && i > 0)) {
+            if ((pl1 < 0 && pl2 >=0) || (pl1 > 0 && pl2 <=0) || (pl1 === 0 && i > 0 && parseFloat(expirationPLs[i-1]) !==0) ) { // Check previous to avoid multiple 0s
                 if (pl1 === 0) breakevens.push(parseFloat(pricePointsArr[i]).toFixed(2));
-                else if (pl2 !== pl1) {
+                else if (pl2 !== pl1) { // Interpolate
                     const p1 = parseFloat(pricePointsArr[i]), p2 = parseFloat(pricePointsArr[i+1]);
                     breakevens.push((p1 - pl1 * (p2 - p1) / (pl2 - pl1)).toFixed(2));
                 }
             }
         }
-        metricBreakevenEl.textContent = breakevens.length > 0 ? breakevens.join(', ') : 'N/A';
+        metricBreakevenEl.textContent = breakevens.length > 0 ? breakevens.filter((v,i,a)=>a.indexOf(v)===i).join(', ') : 'N/A'; // Unique breakevens
         
         metricDeltaEl.textContent = greeks.delta.toFixed(3);
         metricGammaEl.textContent = greeks.gamma.toFixed(4);
         metricThetaEl.textContent = greeks.theta.toFixed(3);
         metricVegaEl.textContent = greeks.vega.toFixed(3);
-        metricRhoEl.textContent = 'N/A'; // Rho not fully implemented here
+        metricRhoEl.textContent = 'N/A';
     }
 
     function populateStrategyList() {
+        // ... (same as previous version)
         strategyListElement.innerHTML = '';
-        // Filter logic can be re-added here if desired
         strategies.forEach(strategy => {
             const listItem = document.createElement('li');
             listItem.className = 'list-group-item';
@@ -627,6 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
             listItem.addEventListener('click', async () => {
                 document.querySelectorAll('#strategyList .list-group-item.active').forEach(el => el.classList.remove('active'));
                 listItem.classList.add('active');
+                console.log(`Strategy list item clicked: ${strategy.name}`);
                 await drawPayoffChart(strategy.id);
             });
             strategyListElement.appendChild(listItem);
@@ -634,57 +522,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function initializeAppUIWithData() {
+        // ... (same as previous version - populates strategies, selects first one)
         if (!currentOptionData) {
             console.log("No current option data to initialize UI.");
-            metricUnderlyingEl.textContent = 'N/A (Load Data)';
             return;
         }
-        metricUnderlyingEl.textContent = `${currentOptionData.underlyingPrice.toFixed(2)} USD`;
-        riskFreeRateInput.value = (currentOptionData.riskFreeRate * 100).toFixed(2);
+        console.log("Initializing app UI with data...");
         populateStrategyList();
 
-        // Select first strategy by default if data is available
         if (strategies.length > 0 && currentOptionData.options && currentOptionData.options.length > 0) {
             const firstStrategyItem = strategyListElement.querySelector('.list-group-item');
             if (firstStrategyItem) {
-                firstStrategyItem.click(); // Trigger click to draw chart
+                console.log("Automatically selecting first strategy.");
+                firstStrategyItem.click();
             }
-        } else if (currentOptionData.options && currentOptionData.options.length === 0){
-            alert("Warning: Options chain is empty after parsing. Check parser logic and raw data.");
+        } else {
+            console.warn("No strategies or no option data to select first strategy.");
         }
     }
 
     // --- App Initialization ---
     async function main() {
-        await initDB();
-        loadDataBtn.addEventListener('click', loadAndProcessRawData);
+        console.log('Application main() started.');
+        try {
+            await initDB();
+        } catch (dbInitError) {
+            console.error("CRITICAL: Failed to initialize IndexedDB. App might not work correctly.", dbInitError);
+            alert("Error: Could not initialize the local database. Some features might be unavailable.");
+            // Proceed without DB if necessary, or show a more prominent error.
+        }
+
+        loadDataBtn.addEventListener('click', loadAndProcessJsonData);
         riskFreeRateInput.addEventListener('change', () => {
             if (currentOptionData) {
-                currentOptionData.riskFreeRate = parseFloat(riskFreeRateInput.value) / 100;
-                // Re-trigger chart draw if a strategy is selected
-                const activeStrategy = strategyListElement.querySelector('.list-group-item.active');
-                if (activeStrategy) {
-                    drawPayoffChart(activeStrategy.dataset.strategyId);
+                const newRate = parseFloat(riskFreeRateInput.value) / 100;
+                if (!isNaN(newRate)) {
+                    currentOptionData.riskFreeRate = newRate;
+                    console.log(`Risk-free rate changed to: ${currentOptionData.riskFreeRate}`);
+                    // Re-trigger chart draw if a strategy is selected
+                    const activeStrategy = strategyListElement.querySelector('.list-group-item.active');
+                    if (activeStrategy) {
+                        console.log(`Re-drawing chart for active strategy due to RFR change.`);
+                        drawPayoffChart(activeStrategy.dataset.strategyId);
+                    }
+                    // Optionally re-store in DB if RFR is part of the main stored object
+                    // await storeDataInDB(OS_NAME_CHAIN, currentOptionData); 
                 }
             }
         });
 
-
         // Try to load data from DB on startup
-        const storedData = await getDataFromDB(OS_NAME_CHAIN);
-        if (storedData) {
-            currentOptionData = storedData;
-            console.log('Loaded data from IndexedDB on startup.');
-            populateExpirationDropdown();
-            initializeAppUIWithData();
-        } else {
-            console.log('No data in IndexedDB, click "Load/Refresh" to parse from text file.');
-            expirationSelect.innerHTML = '<option>Click Load Data</option>';
+        try {
+            const storedData = await getDataFromDB(OS_NAME_CHAIN);
+            if (storedData) {
+                currentOptionData = storedData;
+                console.log('Loaded data from IndexedDB on startup.');
+                populateUIData();
+            } else {
+                console.log('No data in IndexedDB, click "Load/Refresh" to fetch from JSON file.');
+                expirationSelect.innerHTML = '<option>Click Load Data</option>';
+                expirationSelect.disabled = true;
+                populateStrategyList(); // Show strategies even if no data
+            }
+        } catch (dbError) {
+            console.error('Error loading data from DB on startup:', dbError);
+            expirationSelect.innerHTML = '<option>DB Error</option>';
             expirationSelect.disabled = true;
-            // Still populate strategy list so user can see them
             populateStrategyList();
         }
+        console.log('Application main() finished.');
     }
 
-    main(); // Start the application
+    main();
 });
