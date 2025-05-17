@@ -435,10 +435,10 @@
         ],
         "notes": "Strikes K1, K2, K3 are typically equidistant. The spread is often centered near the current underlying price.",
          "greeksImpact": {
-          "delta": "Near zero at initiation (neutral). Moves towards -1 above K3, +1 between K1 and K3, and back to zero below K1.",
-          "gamma": "Initially negative, becomes strongly positive as price approaches K2, then strongly negative below K2. High positive gamma at K2 leads to rapid delta changes if the price is near the peak profit zone.",
+          "delta": "Near zero at initiation (neutral). Moves towards +1 above K3, -1 between K1 and K3, and back to zero below K1. (Opposite of Long Butterfly Delta)",
+          "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive below K2. High positive gamma at K2 means rapid delta changes if the price is near the peak profit zone.",
           "theta": "Positive (benefits from time decay) when the underlying price is near the middle strike (K2). Becomes negative when the price is outside the profitable range, especially towards the outer strikes.",
-          "vega": "Negative. Loses value with increased implied volatility. This strategy is best suited for environments where volatility is expected to decrease or remain low."
+          "vega": "Positive. Benefits from increased implied volatility. This strategy is best suited for environments where volatility is expected to increase."
         },
         "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Debit Paid",
         "maxLoss": "Net Debit Paid",
@@ -541,7 +541,7 @@
       "maxProfit": "(K2 - K1) + Net Credit (if credit) or (K2 - K1) - Net Debit (if debit). Max profit is achieved exactly at strike K1.",
       "maxLoss": "Potentially Unlimited below Lower Break-even",
       "breakeven": "Lower: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K1 - K2) + Net Credit (or - Net Debit). Upper: K2 - Net Debit (if debit) or K2 + Net Credit (if credit).",
-      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Profit (at 5950): (5970 - 5950) - 105.50 = 20 - 105.50 = -85.50 (This example results in a max loss at the peak profit point due to the debit paid - highlights the impact of bid/ask). Max Loss: Unlimited below 5824.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = (11900 - 5970) - 105.50 = 5930 - 105.50 = 5824.50. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Profit (at 5950): (5970 - 5950) - 105.50 = 20 - 105.50 = -85.50 (This example results in a max loss at the peak profit point due to the debit paid - highlights the impact of bid/ask). Max Loss: Unlimited below 5824.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = (11900 - 5970) - 105.50 = 5930 - 105.50 = 5824.50.",
       "plotFunction": "plotRatioSpread",
       "plotlyDivId": "plotly-put-ratio-spread",
       "parameters": { "type": "put", "position": "ratio", "ratio1": -1, "ratio2": 2, "strike1": 5950, "strike2": 5970, "premium1": 104.50, "premium2": 105.00 }
@@ -828,7 +828,7 @@
       "maxProfit": "Unlimited above K5",
       "maxLoss": "Limited (occurs at various points between strikes)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5950C@99.25 (Ask), Sell 1 MES JUN13 5960C@88.75 (Bid), Buy 1 MES JUN13 5970C@88.25 (Ask), Sell 1 MES JUN13 5980C@78.00 (Bid), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: 99.25 - 88.75 + 88.25 - 78.00 + 78.00 = 98.75. Max Loss occurs near K2 and K4.",
+      "example": "Buy 1 MES JUN13 5950C@99.25 (Ask), Sell 1 MES JUN13 5960C@88.75 (Bid), Buy 1 MES JUN13 5970C@88.25 (Ask), Sell 1 MES JUN13 5980C@78.00 (Bid), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: 99.25 - 88.75 + 88.25 - 78.00 + 78.00 = 98.75.",
       "plotFunction": "plotComplexStrategy",
       "plotlyDivId": "plotly-5-leg-call-alternate-spread",
       "parameters": {
@@ -863,7 +863,7 @@
       "maxProfit": "Unlimited below K1",
       "maxLoss": "Limited (occurs at various points between strikes)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Buy 1 MES JUN13 5970P@109.50 (Ask), Sell 1 MES JUN13 5980P@109.25 (Bid), Buy 1 MES JUN13 5990P@119.25 (Ask). Net Debit: 100.75 - 100.00 + 109.50 - 109.25 + 119.25 = 120.25. Max Loss occurs near K2 and K4.",
+      "example": "Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Buy 1 MES JUN13 5970P@109.50 (Ask), Sell 1 MES JUN13 5980P@109.25 (Bid), Buy 1 MES JUN13 5990P@119.25 (Ask). Net Debit: 100.75 - 100.00 + 109.50 - 109.25 + 119.25 = 120.25.",
       "plotFunction": "plotComplexStrategy",
       "plotlyDivId": "plotly-5-leg-put-alternate-spread",
       "parameters": {
@@ -889,7 +889,7 @@
         "Buy 1 Call (K5)",
         "Buy 1 Call (K6)"
       ],
-      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Symmetric strikes around the current price create a neutral outlook. Max profit is limited to the initial credit.",
+      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Symmetric strikes around the current price create a neutral outlook.",
       "greeksImpact": {
         "delta": "Near zero (neutral).",
         "gamma": "Strongly negative around K3/K4, positive near K1/K6.",
@@ -897,7 +897,7 @@
         "vega": "Strongly negative (loses value if volatility increases)."
       },
       "maxProfit": "Net Credit Received",
-      "maxLoss": "Limited (Difference between strike widths minus Net Credit)",
+      "maxLoss": "Limited (occurs at various points outside the central body)",
       "breakeven": "Multiple points (complex calculation)",
       "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Sell 1 MES JUN13 5950P@100.00 (Bid), Sell 1 MES JUN13 5960P@104.50 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50 + 83.00 + 78.00) - (100.00 + 104.50 + 83.25) = 257.50 - 287.75 = -30.25 (Net Credit). Max Profit: 30.25.",
       "plotFunction": "plotComplexStrategy",
@@ -936,7 +936,7 @@
       "maxProfit": "Unlimited/Substantial beyond outer wings",
       "maxLoss": "Limited (Net Debit Paid)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50+100.75+83.00+78.00) - (100.00+83.25) = 358.25 - 183.25 = 175.00. Max Loss: 175.00.",
+      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50+100.75+83.00+78.00) - (100.00+83.25) = 358.25 - 183.25 = 175.00.",
       "plotFunction": "plotComplexStrategy",
       "plotlyDivId": "plotly-6-leg-long-condor-plus",
       "parameters": {
@@ -964,7 +964,14 @@
            "Each strategy description includes its typical outlook, construction, maximum profit, maximum loss, break-even points, and the general impact on key Greeks.",
            "Please note that the calculations for break-even points, especially for multi-leg and multi-expiry strategies, can be complex and may require specialized software or pricing models for precise real-time values. The formulas provided are for expiration calculation.",
            "Trading options involves understanding complex concepts, risks, and potential outcomes. It is crucial to fully understand any strategy before implementation.",
-           "<strong>Disclaimer:</strong> This information is strictly for educational purposes and does not constitute financial advice. Option trading involves significant risk and is not suitable for all investors. Consult with a qualified financial professional before trading options. Do not trade with money you cannot afford to lose."
+           "<h2>⚠️ Limitations and Future Work</h2>",
+           "<ul><li><b>Theoretical Model:</b> Uses simplified pricing models (like Black-Scholes for theoretical payoff at expiry), which assume constant volatility/rates, no transaction costs, European exercise (though often applied to American-style /ES options as an approximation), etc. Real-world pricing and intra-day values differ significantly.</li><li><b>Data Source:</b> Relies on a static <code>strategies.json</code> for definitions and initial parameter values. There is no real-time market data feed or live options chain integration.</li><li><b>Premium Calculation:</b> Premiums displayed are static from the source data. Theoretical premiums for user-input parameters are not calculated; only the payoff profile is shown based on the input strike/premium values.</li><li><b>Breakevens:</b> Calculated breakevens are theoretical based on the initial parameters and a simplified payoff-at-expiry model.</li><li><b>Greeks Display:</b> Greek impacts described are general directional tendencies. Net Greeks for multi-leg strategies are not explicitly calculated/displayed in real-time based on parameters.</li><li><b>Dividends & Carry:</b> Assumes zero dividends (<code>q=0</code>) and simple cost-of-carry, which is generally appropriate when using the futures price (/ES) as the underlying input (S), but not a full bond-price model.</li><li><b>Performance:</b> Extensive DOM manipulation in Vanilla JS might become less performant than optimized framework approaches if the number of strategies displayed simultaneously becomes extremely large or on very old devices.</li><li><b>Placeholders:</b> Google Calendar integration and full Google Analytics functionality require further implementation (OAuth, more detailed event tracking).</li><li><b>No Saved State:</b> User modifications to strategy parameters (strikes, premiums) are lost on page reload unless manually saved/persisted (potential future feature using <code>localStorage</code> or extending IndexedDB).</li><li><b>Error Handling:</b> While basic error handling is included for data loading, it could be made more robust for edge cases in calculations or storage operations (e.g., malformed input values).</li></ul>",
+           "<h3>Potential Future Enhancements</h3>",
+           "<ul><li>Implement calculation and display of Net Greeks for multi-leg strategies based on current inputs.</li><li>Add volatility skew/smile modeling for more realistic pricing and Greek behavior.</li><li>Integrate a simple way to save/load user-modified strategy configurations using local storage.</li><li>Allow comparison of multiple strategy payoffs on a single chart.</li><li>Add options pricing models beyond Black-Scholes (e.g., Binomial) for different exercise styles or features.</li><li>Improve UI/UX for parameter input and display, including validation.</li><li>Integrate with a real-time or historical data feed API (requires a data provider).</li></ul>",
+           "<h2>📜 Disclaimer</h2>",
+           "<p>This application is intended for <strong>educational and illustrative purposes only</strong>. It does <strong>not</strong> constitute financial advice.</p>",
+           "<p>Option trading involves substantial risk of loss and is not suitable for all investors. The theoretical calculations and diagrams provided here are simplifications and may differ significantly from actual market prices and outcomes due to factors like implied volatility changes, interest rates, time decay acceleration, liquidity, commissions, and slippage.</p>",
+           "<p>Always conduct your own thorough research and analysis, and consult with a qualified financial professional before making any trading decisions. Do not trade with money you cannot afford to lose.</p>"
        ]
    }
 }
