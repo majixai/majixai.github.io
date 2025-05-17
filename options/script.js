@@ -2,8 +2,6 @@
  * ========================================================================
  * Application State Variables
  * ========================================================================
- * These variables hold the current state of the application, similar to
- * what React's state hooks would manage.
  */
 let appState = {
     currentSection: 'about',        // ID of the currently displayed section ('about', 'oneLeg', etc.)
@@ -12,7 +10,7 @@ let appState = {
     error: null,                    // Holds any error message string to display
     isOffline: !navigator.onLine,   // Tracks the current network connection status
     dbConnection: null,             // Holds the active IndexedDB database connection
-    dataSource: null,               // Tracks where the data was loaded from ('Network', 'IndexedDB', 'Cache', 'Embedded', 'Error')
+    dataSource: null,               // Tracks where the data was loaded from ('Network', 'IndexedDB', 'Cache', 'Error')
     lastFetchTimestamp: null        // Timestamp of the last successful fetch attempt
 };
 
@@ -20,7 +18,6 @@ let appState = {
  * ========================================================================
  * DOM Element References
  * ========================================================================
- * Caching references to frequently accessed DOM elements for performance.
  */
 const DOM = {
     sidebar: document.getElementById('mySidebar'),
@@ -56,7 +53,8 @@ const STORE_NAME = 'strategyStore_v1';         // Object store name
 const DATA_KEY = 'allStrategiesDataBlob';      // Key for storing the entire data blob in IDB
 const CACHE_NAME = 'option-strategy-cache-vanilla-v1'; // Cache Storage name
 const STRATEGIES_JSON_URL = 'strategies.json'; // URL to fetch strategy data
-const CURRENT_UNDERLYING_PRICE = 5975.50; // Fixed price based on the MES data image for plotting ranges
+// Used as a fallback center price for plotting ranges and for calendar/diagonal calcs
+const CURRENT_UNDERLYING_PRICE = 5975.50;
 
 
 /**
@@ -224,32 +222,58 @@ function loadDataFromDB() {
  * ========================================================================
  * These functions prepare data for Plotly based on strategy parameters.
  * They take (params, plotlyDivId, strategyObject) and call Plotly.newPlot.
+ * IMPORTANT: These functions MUST be registered in the plotFunctions map below.
  */
 
-/** Calculates Profit/Loss for a single option leg */
+/** Calculates Profit/Loss for a single option leg at expiration */
 function calculateLegPayoff(price, type, position, strike, premium) {
     // Ensure inputs are numbers
     const numericStrike = parseFloat(strike);
     const numericPremium = parseFloat(premium);
-    if (isNaN(numericStrike) || isNaN(numericPremium)) return 0;
+    if (isNaN(numericStrike) || isNaN(numericPremium)) {
+         logger.warn(`calculateLegPayoff received NaN: Strike=${strike}, Premium=${premium}`);
+        return 0;
+    }
 
     let intrinsicValue = 0;
     type = type.toLowerCase(); position = position.toLowerCase();
     if (type === 'call') intrinsicValue = Math.max(0, price - numericStrike);
     else if (type === 'put') intrinsicValue = Math.max(0, numericStrike - price);
+    else {
+         logger.warn(`calculateLegPayoff received invalid type: ${type}`);
+         return 0; // Handle invalid type
+    }
+
     if (position === 'long') return intrinsicValue - numericPremium;
-    else return -intrinsicValue + numericPremium;
+    else if (position === 'short') return -intrinsicValue + numericPremium;
+    else {
+         logger.warn(`calculateLegPayoff received invalid position: ${position}`);
+         return 0; // Handle invalid position
+    }
 }
 
 /** Generates an array of prices for the X-axis */
 function generatePriceRange(center, rangePct = 0.15, steps = 200) {
      const numericCenter = parseFloat(center);
-     if (isNaN(numericCenter) || numericCenter <= 0) numericCenter = CURRENT_UNDERLYING_PRICE; // Fallback if center is invalid
+     if (isNaN(numericCenter) || numericCenter <= 0) {
+         logger.warn(`generatePriceRange received invalid center: ${center}. Using fallback.`);
+         numericCenter = CURRENT_UNDERLYING_PRICE; // Fallback if center is invalid
+         rangePct = 0.05; // Use a smaller range for the fallback center
+     }
 
     const range = numericCenter * rangePct;
-    const minP = Math.max(0.01, numericCenter - range);
+    const minP = Math.max(0.01, numericCenter - range); // Avoid exactly 0 for some calcs
     const maxP = numericCenter + range;
     const step = (maxP - minP) / steps;
+     // Ensure minP < maxP to avoid infinite loops or errors
+     if (minP >= maxP) {
+         logger.error(`generatePriceRange calculated invalid range: min=${minP}, max=${maxP}. Adjusting.`);
+         // Simple adjustment if min >= max (e.g., if center is very small)
+         const adjustedCenter = numericCenter > 1 ? numericCenter : 100; // Use 100 if center was too small
+         const adjustedRange = adjustedCenter * 0.1;
+         return Array.from({ length: steps + 1 }, (_, i) => Math.max(0.01, adjustedCenter - adjustedRange + (i / steps) * (2 * adjustedRange)));
+     }
+
     return Array.from({ length: steps + 1 }, (_, i) => minP + i * step);
 }
 
@@ -270,6 +294,7 @@ function getPlotlyLayout(title) {
 // --- Dictionary mapping JSON function names to JS implementations ---
 // Each function takes (params, plotlyDivId, strategyObject)
 const plotFunctions = {
+    /** Plots a single long/short call/put */
     plotBasicOption: (params, id) => { // strategyObject not strictly needed here
         const { type, position, strike, premium } = params;
         const prices = generatePriceRange(strike);
@@ -309,9 +334,12 @@ const plotFunctions = {
     plotVerticalSpread: (params, id, strategy) => {
         const { type, position, strike1, strike2, premium1, premium2 } = params;
         const lowerK = Math.min(strike1, strike2), higherK = Math.max(strike1, strike2);
+        // Ensure strikes are valid numbers before using them for range
+        const center = (typeof lowerK === 'number' && !isNaN(lowerK) && typeof higherK === 'number' && !isNaN(higherK)) ? (lowerK + higherK) / 2 : CURRENT_UNDERLYING_PRICE;
+
         const lowerP = (strike1 === lowerK) ? premium1 : premium2;
         const higherP = (strike1 === higherK) ? premium1 : premium2;
-        const prices = generatePriceRange((lowerK + higherK) / 2);
+        const prices = generatePriceRange(center);
         let profits, netCost, titlePrefix, color;
 
         if (type === 'call') {
@@ -340,20 +368,22 @@ const plotFunctions = {
     plotButterfly: (params, id) => {
         const { type, strike1, strike2, strike3, premium1, premium2, premium3 } = params;
          // Assume strikes are ordered K1 < K2 < K3
-        const netDebit = premium1 - (2 * premium2) + premium3;
-        const prices = generatePriceRange(strike2, 0.1); // Narrower range
+        const netCost = premium1 - (2 * premium2) + premium3; // Debit is positive cost
+         const center = (typeof strike2 === 'number' && !isNaN(strike2)) ? strike2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.1); // Narrower range
         const profits = prices.map(p => calculateLegPayoff(p, type, 'long', strike1, premium1) + (2 * calculateLegPayoff(p, type, 'short', strike2, premium2)) + calculateLegPayoff(p, type, 'long', strike3, premium3));
         const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'orange', width: 2.5 } };
         const typeText = type.charAt(0).toUpperCase() + type.slice(1);
-        const costType = netDebit >= 0 ? 'Net Debit' : 'Net Credit';
-        const title = `Long ${typeText} Butterfly ${strike1.toFixed(2)}/${strike2.toFixed(2)}/${strike3.toFixed(2)} (${costType}: ${Math.abs(netDebit).toFixed(2)})`;
+        const costType = netCost >= 0 ? 'Net Debit' : 'Net Credit';
+        const title = `Long ${typeText} Butterfly ${strike1.toFixed(2)}/${strike2.toFixed(2)}/${strike3.toFixed(2)} (${costType}: ${Math.abs(netCost).toFixed(2)})`;
         Plotly.newPlot(id, [trace], getPlotlyLayout(title));
     },
      plotIronCondor: (params, id) => {
          const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
          // Assume K1 < K2 < K3 < K4
-         const netCredit = premiumP2 + premiumC3 - premiumP1 - premiumC4;
-         const prices = generatePriceRange((strikeP2 + strikeC3) / 2, 0.2);
+         const netCredit = premiumP2 + premiumC3 - premiumP1 - premiumC4; // Credit is positive
+         const center = (typeof strikeP2 === 'number' && !isNaN(strikeP2) && typeof strikeC3 === 'number' && !isNaN(strikeC3)) ? (strikeP2 + strikeC3) / 2 : CURRENT_UNDERLYING_PRICE;
+         const prices = generatePriceRange(center, 0.2);
          const profits = prices.map(p =>
              calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) + calculateLegPayoff(p, 'put', 'short', strikeP2, premiumP2) +
              calculateLegPayoff(p, 'call', 'short', strikeC3, premiumC3) + calculateLegPayoff(p, 'call', 'long', strikeC4, premiumC4)
@@ -366,8 +396,9 @@ const plotFunctions = {
      plotIronButterfly: (params, id) => {
         const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
         // Assume K1 < K2 < K3, K2 is ATM Short Call/Put
-        const netCredit = premiumP2 + premiumC2 - premiumP1 - premiumC3;
-        const prices = generatePriceRange(strikePC2, 0.1); // Narrower range for butterfly
+         const netCredit = premiumP2 + premiumC2 - premiumP1 - premiumC3; // Credit is positive
+         const center = (typeof strikePC2 === 'number' && !isNaN(strikePC2)) ? strikePC2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.1); // Narrower range for butterfly
         const profits = prices.map(p =>
             calculateLegPayoff(p, 'put', 'long', strikeP1, premiumP1) + calculateLegPayoff(p, 'put', 'short', strikePC2, premiumP2) +
             calculateLegPayoff(p, 'call', 'short', strikePC2, premiumC2) + calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3)
@@ -380,8 +411,9 @@ const plotFunctions = {
      plotReverseIronCondor: (params, id) => {
         const { strikeP1, strikeP2, strikeC3, strikeC4, premiumP1, premiumP2, premiumC3, premiumC4 } = params;
          // Assume K1 < K2 < K3 < K4
-        const netDebit = premiumP2 + premiumC3 - premiumP1 - premiumC4;
-        const prices = generatePriceRange((strikeP2 + strikeC3) / 2, 0.2);
+        const netDebit = premiumP2 + premiumC3 - premiumP1 - premiumC4; // Debit is positive
+        const center = (typeof strikeP2 === 'number' && !isNaN(strikeP2) && typeof strikeC3 === 'number' && !isNaN(strikeC3)) ? (strikeP2 + strikeC3) / 2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.2);
         const profits = prices.map(p =>
             calculateLegPayoff(p, 'put', 'short', strikeP1, premiumP1) + calculateLegPayoff(p, 'put', 'long', strikeP2, premiumP2) +
             calculateLegPayoff(p, 'call', 'long', strikeC3, premiumC3) + calculateLegPayoff(p, 'call', 'short', strikeC4, premiumC4)
@@ -394,8 +426,9 @@ const plotFunctions = {
     plotReverseIronButterfly: (params, id) => {
         const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
          // Assume K1 < K2 < K3, K2 is ATM Long Call/Put
-        const netDebit = premiumP2 + premiumC2 - premiumP1 - premiumC3;
-        const prices = generatePriceRange(strikePC2, 0.1); // Narrower range
+        const netDebit = premiumP2 + premiumC2 - premiumP1 - premiumC3; // Debit is positive
+         const center = (typeof strikePC2 === 'number' && !isNaN(strikePC2)) ? strikePC2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.1); // Narrower range
         const profits = prices.map(p =>
             calculateLegPayoff(p, 'put', 'short', strikeP1, premiumP1) + calculateLegPayoff(p, 'put', 'long', strikePC2, premiumP2) +
             calculateLegPayoff(p, 'call', 'long', strikePC2, premiumC2) + calculateLegPayoff(p, 'call', 'short', strikeC3, premiumC3)
@@ -406,17 +439,17 @@ const plotFunctions = {
         Plotly.newPlot(id, [trace], getPlotlyLayout(title));
     },
     plotStraddleStrangle: (params, id, strategy) => {
-        const { type, strikeP, strikeC, premiumP, premiumC } = params;
+        const { type, position, strikeP, strikeC, premiumP, premiumC } = params; // Added position param
          // Assume strikeP <= strikeC
-        const centerPrice = (strikeP + strikeC) / 2;
-        const prices = generatePriceRange(centerPrice, 0.4);
-        const netCost = premiumP + premiumC; // For long straddle/strangle, this is debit
-        const profits = prices.map(p => calculateLegPayoff(p, 'put', strategy.position, strikeP, premiumP) + calculateLegPayoff(p, 'call', strategy.position, strikeC, premiumC));
-        const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#6f42c1', width: 2.5 } };
+        const center = (typeof strikeP === 'number' && !isNaN(strikeP) && typeof strikeC === 'number' && !isNaN(strikeC)) ? (strikeP + strikeC) / 2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.4); // Wider range
+        const netCost = premiumP + premiumC; // Total premium paid (for long) or received (for short)
+        const profits = prices.map(p => calculateLegPayoff(p, 'put', position, strikeP, premiumP) + calculateLegPayoff(p, 'call', position, strikeC, premiumC)); // Use position param
+        const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: position === 'long' ? '#6f42c1' : '#dc3545', width: 2.5 } }; // Purple for long, Red for short
         const titlePrefix = strategy.name.replace(/\s*\(.*\)/, ''); // Use base name
-        const costType = strategy.position === 'long' ? 'Debit' : 'Credit';
+        const costType = position === 'long' ? 'Debit' : 'Credit';
         const strikeText = type === 'straddle' ? strikeP.toFixed(2) : `${strikeP.toFixed(2)}P / ${strikeC.toFixed(2)}C`;
-        const title = `${titlePrefix} ${strikeText} (${costType}: ${Math.abs(netCost).toFixed(2)})`;
+        const title = `${position.charAt(0).toUpperCase() + position.slice(1)} ${titlePrefix.replace('Long ', '').replace('Short ', '')} ${strikeText} (${costType}: ${Math.abs(netCost).toFixed(2)})`; // Adjust title for short straddle/strangle
         Plotly.newPlot(id, [trace], getPlotlyLayout(title));
     },
     plotBoxSpread: (params, id) => {
@@ -430,12 +463,12 @@ const plotFunctions = {
         const lowerPremP = strike1 === lowerK ? premP1 : premP2;
         const higherPremP = strike1 === higherK ? premP1 : premP2;
 
-        const netDebit = (lowerPremC - higherPremC) + (higherPremP - lowerPremP);
+        const netDebit = (lowerPremC - higherPremC) + (higherPremP - lowerPremP); // (Buy K1 Call - Sell K2 Call) + (Buy K2 Put - Sell K1 Put)
         const valueAtExpiryIntrinsicDiff = higherK - lowerK; // The constant payoff amount
         const lockedInProfit = valueAtExpiryIntrinsicDiff - netDebit; // P/L = Payoff - Cost
 
-        const centerPrice = (lowerK + higherK) / 2;
-        const prices = generatePriceRange(centerPrice, 0.5); // Wider range
+         const center = (typeof lowerK === 'number' && !isNaN(lowerK) && typeof higherK === 'number' && !isNaN(higherK)) ? (lowerK + higherK) / 2 : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.5); // Wider range
 
         // The payoff at expiration is always K2-K1, regardless of price (ignoring initial cost).
         // The plot should show this constant payoff relative to the initial cost.
@@ -449,11 +482,13 @@ const plotFunctions = {
      plotCalendarSpread: (params, id) => {
         const { type, strike, nearPremium, furtherPremium } = params; // strike is the same for both legs
         const netDebit = furtherPremium - nearPremium;
-        const prices = generatePriceRange(strike, 0.2); // Range centered on strike
+         const center = (typeof strike === 'number' && !isNaN(strike)) ? strike : CURRENT_UNDERLYING_PRICE;
+        const prices = generatePriceRange(center, 0.2); // Range centered on strike
 
          // --- Simplified Time Value Proxy for the Further option AT NEAR expiry ---
-         // Calculate initial time value for the further leg at the CURRENT_UNDERLYING_PRICE
+         // Calculate initial intrinsic value at the CURRENT_UNDERLYING_PRICE for the further leg
          const initialIntrinsicFurther = type === 'call' ? Math.max(0, CURRENT_UNDERLYING_PRICE - strike) : Math.max(0, strike - CURRENT_UNDERLYING_PRICE);
+         // Calculate initial time value for the further leg
          const initialTimeValueFurther = Math.max(0, furtherPremium - initialIntrinsicFurther);
 
          // Decay the initial time value based on distance from the strike for the plot
@@ -484,12 +519,13 @@ const plotFunctions = {
 
         const netDebit = furtherP - nearP; // Usually a debit
 
-         const centerPrice = (furtherK + nearK) / 2;
-         const prices = generatePriceRange(centerPrice, 0.25); // Slightly wider range
+         const center = (typeof furtherK === 'number' && !isNaN(furtherK) && typeof nearK === 'number' && !isNaN(nearK)) ? (furtherK + nearK) / 2 : CURRENT_UNDERLYING_PRICE;
+         const prices = generatePriceRange(center, 0.25); // Slightly wider range
 
          // --- Simplified Time Value Proxy for the Further option AT NEAR expiry ---
-         // Calculate initial time value for the further leg at the CURRENT_UNDERLYING_PRICE
+         // Calculate initial intrinsic value at the CURRENT_UNDERLYING_PRICE for the further leg
          const initialIntrinsicFurther = type === 'call' ? Math.max(0, CURRENT_UNDERLYING_PRICE - furtherK) : Math.max(0, furtherK - CURRENT_UNDERLYING_PRICE);
+         // Calculate initial time value for the further leg
          const initialTimeValueFurther = Math.max(0, furtherP - initialIntrinsicFurther);
 
          // Decay the initial time value based on distance from the further strike for the plot
@@ -502,6 +538,7 @@ const plotFunctions = {
              // Estimated Value of Long Further Leg (at near expiry)
              const furtherIntrinsic = type === 'call' ? Math.max(0, p - furtherK) : Math.max(0, furtherK - p);
              const furtherValue = furtherIntrinsic + timeValueProxy(p);
+
 
              // Total P/L at Near Expiry = Near Leg Payoff + Further Leg Value - Initial Debit
              return nearPayoff + furtherValue - furtherP; // Subtract premium paid for *this* leg initially
@@ -524,21 +561,23 @@ const plotFunctions = {
          const higherRatio = (strike1 === higherK) ? Math.abs(ratio1) : Math.abs(ratio2);
 
          let netCost;
-         let profits;
          let primaryPosition, secondaryPosition;
+         let color = 'teal';
 
          // Determine positions and ratios based on the strategy name (Ratio vs Backspread)
          if (strategy.id.includes('ratio-spread')) { // Example: Call Ratio (Buy 1 Lower, Sell 2 Higher)
              primaryPosition = 'long'; secondaryPosition = 'short';
              netCost = (lowerRatio * lowerP) - (higherRatio * higherP);
+             color = (type === 'call') ? 'purple' : 'teal'; // Call Ratio (Credit) or Put Ratio (Debit) colors
+
          } else if (strategy.id.includes('backspread')) { // Example: Call Backspread (Sell 1 Lower, Buy 2 Higher)
              primaryPosition = 'short'; secondaryPosition = 'long';
-             netCost = (higherRatio * higherP) - (lowerRatio * lowerP); // Debit usually
+             netCost = (higherRatio * higherP) - (lowerRatio * lowerP); // Usually a debit
+             color = (type === 'call') ? 'teal' : 'darkorange'; // Call Back (Debit) or Put Back (Debit) colors
          } else {
              console.error(`Unknown ratio/backspread type for plotting: ${strategy.id}`);
              return;
          }
-
 
          const prices = generatePriceRange((lowerK + higherK) / 2, 0.25); // Wider range
 
@@ -547,7 +586,7 @@ const plotFunctions = {
              (higherRatio * calculateLegPayoff(p, type, secondaryPosition, higherK, higherP))
          );
 
-         const trace = { x: prices, y: profitsArray, type: 'scatter', mode: 'lines', line: { color: 'teal', width: 2.5 } };
+         const trace = { x: prices, y: profitsArray, type: 'scatter', mode: 'lines', line: { color: color, width: 2.5 } };
          const costType = netCost >= 0 ? 'Debit' : 'Credit';
          const title = `${strategy.name.replace(/\s*\(.*\)/, '')} ${lowerK.toFixed(2)}/${higherK.toFixed(2)} (${lowerRatio}:${higherRatio}) (Net ${costType}: ${Math.abs(netCost).toFixed(2)})`;
          Plotly.newPlot(id, [trace], getPlotlyLayout(title));
@@ -557,7 +596,7 @@ const plotFunctions = {
              // Assume K1 < K2 < K3 < K4
              let netCost;
              let profits;
-             let color = '#17a2b8'; // Default color
+             let color;
 
              if (position === 'short') { // Short Condor (Buy K1/K4, Sell K2/K3)
                  netCost = (premium2 + premium3) - (premium1 + premium4); // Credit is positive
@@ -587,17 +626,23 @@ const plotFunctions = {
          },
          // Plotting function for strategies with >= 5 legs (requires 'legs' array in parameters)
          plotComplexStrategy: (params, id, strategy) => {
-             const { legs } = params;
+             const { legs } = params; // Expects the parameters to contain a 'legs' array
              if (!Array.isArray(legs) || legs.length < 5) {
-                 console.error(`Invalid or insufficient legs (${legs ? legs.length : 0}) for complex strategy plotting.`);
+                 logger.error(`Invalid or insufficient legs (${legs ? legs.length : 0}) for complex strategy plotting: ${strategy.name}`);
+                 // Display an error message in the plot div
+                 const plotContainer = document.getElementById(id);
+                 if (plotContainer) {
+                      plotContainer.innerHTML = `<p class="error-message">Cannot plot: Invalid parameters for strategy.</p>`;
+                 }
                  return;
              }
 
-             // Determine price range - find min/max strike for centering
+             // Determine price range - find min/max strike from all legs
              const strikes = legs.map(leg => leg.strike);
              const minStrike = Math.min(...strikes);
              const maxStrike = Math.max(...strikes);
-             const centerPrice = (minStrike + maxStrike) / 2;
+             const centerPrice = (typeof minStrike === 'number' && !isNaN(minStrike) && typeof maxStrike === 'number' && !isNaN(maxStrike)) ? (minStrike + maxStrike) / 2 : CURRENT_UNDERLYING_PRICE;
+
 
              // Generate price range, potentially wider for complex strategies
              const prices = generatePriceRange(centerPrice, 0.3);
@@ -610,11 +655,17 @@ const plotFunctions = {
                  return totalPayoff;
              });
 
-              // Calculate net cost
+              // Calculate net cost from the leg premiums
              let netCost = 0;
              legs.forEach(leg => {
-                  netCost += (leg.position === 'long' ? leg.premium : -leg.premium);
+                  const numericPremium = parseFloat(leg.premium);
+                  if (!isNaN(numericPremium)) {
+                      netCost += (leg.position === 'long' ? numericPremium : -numericPremium);
+                  } else {
+                       logger.warn(`Complex strategy leg has invalid premium: ${leg.premium}`);
+                  }
              });
+
 
              const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'darkred', width: 2.5 } }; // Unique color for multi-leg
               const costType = netCost >= 0 ? 'Debit' : 'Credit';
@@ -696,11 +747,12 @@ const plotFunctions = {
     function renderSidebarLinks() {
         DOM.sidebarLinks.innerHTML = ''; // Clear existing links
         const sectionTitles = { about: 'About', oneLeg: '1-Leg', twoLeg: '2-Leg', threeLeg: '3-Leg', fourLeg: '4-Leg', multiLeg: '5+ Legs' }; // Added multiLeg title
-        // Ensure 'about' is always first, then others if data exists
+        // Ensure 'about' is always first, then others if data exists and section is present in HTML
         const validKeys = ['about'];
          if (appState.strategyData) {
              Object.keys(appState.strategyData).forEach(key => {
-                 if (key !== 'about' && sectionTitles[key] && Array.isArray(appState.strategyData[key]) && appState.strategyData[key].length > 0) {
+                 // Check if data exists for the key AND the corresponding HTML container exists
+                 if (key !== 'about' && sectionTitles[key] && DOM.sectionContainers[key] && Array.isArray(appState.strategyData[key]) && appState.strategyData[key].length > 0) {
                       validKeys.push(key);
                  }
              });
@@ -793,10 +845,12 @@ const plotFunctions = {
                 sectionContainer.appendChild(detailPanel);
 
                 // --- Setup Input Listeners and Initial Plot ---
-                const inputElements = detailPanel.querySelectorAll('.strategy-inputs input');
-                inputElements.forEach(input => {
-                     // Use an anonymous function to correctly pass the strategy object
-                    input.addEventListener('input', () => replotStrategy(strategy));
+                // Use event delegation on the panel for efficiency
+                detailPanel.addEventListener('input', (event) => {
+                     // Check if the input is inside the strategy-inputs section
+                     if (event.target.closest('.strategy-inputs')) {
+                         replotStrategy(strategy);
+                     }
                 });
 
                 // Plot the chart initially after it's in the DOM
@@ -842,19 +896,20 @@ const plotFunctions = {
         if (strategy.parameters && strategy.parameters.legs && Array.isArray(strategy.parameters.legs)) {
              inputFieldsHTML += '<p><i>Adjust parameters for each leg below:</i></p>';
              strategy.parameters.legs.forEach((leg, index) => {
-                 inputFieldsHTML += `<h4>Leg ${index + 1}</h4>`;
+                 inputFieldsHTML += `<h4 class="w3-border-bottom w3-padding-small w3-margin-top w3-margin-bottom">Leg ${index + 1} (${leg.position.charAt(0).toUpperCase() + leg.position.slice(1)} ${leg.type.charAt(0).toUpperCase() + leg.type.slice(1)})</h4>`;
                  for (const paramName in leg) {
                      const paramValue = leg[paramName];
+                     // Only create inputs for 'strike' and 'premium' for complex legs
+                     if (paramName !== 'strike' && paramName !== 'premium') continue;
+
                      const paramType = typeof paramValue === 'number' ? 'number' : 'text';
                      const stepAttribute = paramType === 'number' ? 'step="any"' : '';
                      const valueAttribute = paramType === 'number' ? `value="${paramValue.toFixed(2)}"` : `value="${paramValue}"`;
-                     // Unique ID for complex legs
+                     // Unique ID for complex legs input
                      const inputId = `${strategy.id}-leg${index}-${paramName}-input`;
 
-                      const labelText = paramName
-                          .replace(/([A-Z])/g, ' $1').trim()
-                          .replace('P', ' Put').replace('C', ' Call')
-                          .replace('Prem', ' Premium'); // Basic formatting
+                      const labelText = paramName.charAt(0).toUpperCase() + paramName.slice(1);
+
 
                      inputFieldsHTML += `
                          <div class="w3-col s6 m4 l3 w3-padding-small">
@@ -865,9 +920,13 @@ const plotFunctions = {
                  }
              });
 
-        } else if (strategy.parameters) { // Handle standard parameters
+        } else if (strategy.parameters) { // Handle standard parameters (1-4 legs)
              for (const paramName in strategy.parameters) {
                  const paramValue = strategy.parameters[paramName];
+                 // Skip plotting internal type/position flags for simple strategies
+                 if (paramName === 'type' || paramName === 'position') continue;
+
+
                  const paramType = typeof paramValue === 'number' ? 'number' : 'text';
                  const stepAttribute = paramType === 'number' ? 'step="any"' : '';
                  const valueAttribute = paramType === 'number' ? `value="${paramValue.toFixed(2)}"` : `value="${paramValue}"`;
@@ -883,7 +942,8 @@ const plotFunctions = {
                      .replace('Strike1', 'Strike 1').replace('Strike2', 'Strike 2').replace('Strike3', 'Strike 3').replace('Strike4', 'Strike 4')
                      .replace('PutStrike', 'Put Strike').replace('CallStrike', 'Call Strike')
                      .replace('NearPremium', 'Near Premium').replace('FurtherPremium', 'Further Premium')
-                     .replace('Ratio1', 'Ratio 1').replace('Ratio2', 'Ratio 2');
+                     .replace('Ratio1', 'Ratio 1').replace('Ratio2', 'Ratio 2')
+                     .replace('StockPrice', 'Stock Price');
 
 
                  inputFieldsHTML += `
@@ -1317,5 +1377,3 @@ const plotFunctions = {
      * The application relies on fetching data from strategies.json,
      * or loading from cache/IndexedDB if offline/fetch fails.
      */
-
-</script>
