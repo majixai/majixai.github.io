@@ -1,0 +1,239 @@
+:root {
+    --tv-bg-dark: #131722;
+    --tv-bg-medium: #1e222d;
+    --tv-bg-light: #2a2e39;
+    --tv-text-primary: #d1d4dc;
+    --tv-text-secondary: #b2b5be;
+    --tv-border-color: #434651;
+    --tv-accent-blue: #2962FF;
+    --tv-profit-green: rgba(0, 150, 136, 0.25); /* Chart fill */
+    --tv-profit-green-border: #009688;      /* Chart border */
+    --tv-loss-red: rgba(255, 82, 82, 0.25);   /* Chart fill */
+    --tv-loss-red-border: #FF5252;          /* Chart border */
+    --tv-t0-line-color: #FF9800; /* Orange for T+0 line */
+    --tv-current-price-line: #87CEFA; /* Light blue for current price annotation */
+}
+
+body {
+    background-color: var(--tv-bg-dark);
+    color: var(--tv-text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+.tv-app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Left Sidebar */
+.tv-left-sidebar {
+    width: 280px;
+    min-width: 250px; /* Prevent from getting too small */
+    background-color: var(--tv-bg-medium);
+    padding: 15px;
+    border-right: 1px solid var(--tv-border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.tv-left-sidebar .input-group-text,
+.tv-left-sidebar .form-control {
+    background-color: var(--tv-bg-light);
+    border-color: var(--tv-border-color);
+    color: var(--tv-text-primary);
+    font-size: 0.85rem;
+}
+.tv-left-sidebar .form-control::placeholder {
+    color: var(--tv-text-secondary);
+}
+.tv-left-sidebar .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(41, 98, 255, 0.25);
+    background-color: var(--tv-bg-light);
+    color: var(--tv-text-primary);
+}
+
+.small-tabs .nav-link {
+    font-size: 0.8rem;
+    color: var(--tv-text-secondary);
+    padding: 0.3rem 0.5rem;
+}
+.small-tabs .nav-link.active {
+    background-color: var(--tv-accent-blue);
+    color: white;
+}
+.small-tabs .nav-link:hover {
+    color: var(--tv-text-primary);
+}
+
+.filter-buttons .btn-outline-secondary {
+    color: var(--tv-text-secondary);
+    border-color: var(--tv-border-color);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+.filter-buttons .btn-check:checked + .btn-outline-secondary {
+    background-color: var(--tv-accent-blue);
+    border-color: var(--tv-accent-blue);
+    color: white;
+}
+.filter-buttons .btn-outline-secondary:hover {
+    background-color: var(--tv-bg-light);
+    color: var(--tv-text-primary);
+}
+
+#load-data-btn {
+    font-size: 0.85rem;
+}
+
+
+.strategy-list {
+    flex-grow: 1; /* Allows list to take remaining space */
+    margin-top: 10px;
+    overflow-y: auto; /* Scroll if strategies exceed sidebar height */
+}
+
+.strategy-list .list-group-item {
+    background-color: transparent;
+    border: none; /* Remove default bootstrap borders */
+    color: var(--tv-text-primary);
+    padding: 8px 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--tv-border-color); /* Custom border */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.strategy-list .list-group-item:last-child {
+    border-bottom: none;
+}
+
+.strategy-list .list-group-item:hover,
+.strategy-list .list-group-item.active {
+    background-color: var(--tv-bg-light);
+}
+
+.strategy-tag {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--tv-text-primary);
+    margin-left: 5px;
+}
+.tag-neutral { background-color: #424242; }
+.tag-bullish { background-color: #2E7D32; }
+.tag-bearish { background-color: #C62828; }
+
+
+/* Main Content */
+.tv-main-content {
+    flex-grow: 1;
+    padding: 15px;
+    background-color: var(--tv-bg-dark);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Important for chart canvas responsiveness */
+}
+
+.tv-chart-controls {
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--tv-border-color);
+    margin-bottom: 15px;
+    flex-shrink: 0; /* Prevent controls from shrinking */
+}
+.tv-chart-controls .form-label {
+    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+    color: var(--tv-text-secondary);
+}
+.tv-chart-controls .form-select-sm,
+.tv-chart-controls .form-control-sm {
+    background-color: var(--tv-bg-light);
+    border-color: var(--tv-border-color);
+    color: var(--tv-text-primary);
+    font-size: 0.85rem;
+}
+.tv-chart-controls .form-select-sm:focus,
+.tv-chart-controls .form-control-sm:focus {
+     box-shadow: 0 0 0 0.2rem rgba(41, 98, 255, 0.25);
+     background-color: var(--tv-bg-light);
+     color: var(--tv-text-primary);
+}
+.tv-chart-controls .form-select-sm:disabled {
+    background-color: var(--tv-bg-medium);
+    opacity: 0.7;
+}
+
+
+.tv-chart-area {
+    flex-grow: 1; /* Chart area takes up available vertical space */
+    position: relative; /* For Chart.js/Plotly responsiveness */
+    background-color: var(--tv-bg-medium);
+    border-radius: 4px;
+    padding: 10px;
+    min-height: 300px; /* Ensure chart has some minimum height */
+}
+
+#payoffChart, #plotlyChartArea {
+    /* Chart.js and Plotly will manage their own canvas/svg sizes within this container */
+}
+
+.tv-metrics-bar {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap on smaller screens */
+    justify-content: space-around;
+    padding: 10px 0;
+    border-top: 1px solid var(--tv-border-color);
+    margin-top: 15px;
+    background-color: var(--tv-bg-medium);
+    font-size: 0.8rem;
+    flex-shrink: 0; /* Prevent metrics bar from shrinking */
+}
+.metric-item {
+    padding: 5px 10px;
+    text-align: center;
+    min-width: 80px; /* Give items some base width */
+}
+.metric-item .label {
+    display: block;
+    color: var(--tv-text-secondary);
+    font-size: 0.75rem;
+}
+.metric-item .value {
+    color: var(--tv-text-primary);
+    font-weight: 500;
+}
+.metric-item .fa-info-circle {
+    color: var(--tv-text-secondary);
+    font-size: 0.7rem;
+    margin-left: 3px;
+}
+
+/* Scrollbar styling for webkit browsers */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--tv-bg-medium);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--tv-bg-light);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--tv-border-color);
+}
+
+/* Ensure Chart.js tooltips are styled for dark theme if needed */
+.chartjs-tooltip {
+    background: rgba(0, 0, 0, 0.7) !important;
+    color: white !important;
+    border-radius: 3px !important;
+    padding: 6px !important;
+}
