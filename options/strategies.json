@@ -195,7 +195,7 @@
         "Sell 1 Put (Lower Strike K1)"
       ],
        "greeksImpact": {
-        "delta": "Negative. Starts negative and becomes less negative as the price falls past the sold strike (K1), reflecting the capped profit.",
+        "delta": "Negative (net). Starts negative and becomes less negative as the price falls past the sold strike (K1), reflecting the capped profit.",
         "gamma": "Generally positive above the midpoint of the strikes, becomes negative as price moves below the midpoint and towards the short put (K1).",
         "theta": "Generally negative (loses value with time), especially if the spread is centered ATM. Time decay is a cost.",
         "vega": "Generally negative (loses value with increased volatility), especially if the strikes are close together. The long put's positive Vega is partially offset by the short put's negative Vega."
@@ -218,13 +218,13 @@
         "Buy 1 Call (Higher Strike K2)"
       ],
        "greeksImpact": {
-        "delta": "Negative. Starts negative and approaches zero as price falls away from the strikes. Becomes less negative as price approaches the short strike (K1).",
+        "delta": "Negative (net). Starts negative and approaches zero as price falls away from the strikes. Becomes less negative as price approaches the short strike (K1).",
         "gamma": "Generally negative below the midpoint of the strikes, becomes positive as price moves above the midpoint and towards the long call (K2).",
         "theta": "Positive. Benefits from time decay, especially as expiration nears and price is below the short strike (K1).",
         "vega": "Negative. Loses value with increased volatility."
       },
       "maxProfit": "Net Credit Received",
-      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received",
+      "maxLoss": "Difference between strikes - Net Credit Received",
       "breakeven": "Lower Strike (K1) + Net Credit Received",
       "example": "Sell 1 MES JUN13 5990 Call for 73.00 (Bid), Buy 1 MES JUN13 6010 Call for 68.50 (Ask). Net Credit: 73.00 - 68.50 = 4.50. Max Profit: 4.50. Max Loss: (6010 - 5990) - 4.50 = 20 - 4.50 = 15.50. Break-even: 5990 + 4.50 = 5994.50.",
       "plotFunction": "plotVerticalSpread",
@@ -336,7 +336,7 @@
       "notes": "K1 < K2. Both strikes are typically OTM relative to the current price.",
        "greeksImpact": {
         "delta": "Near zero at initiation (slightly negative if the put is closer/less OTM, slightly positive if the call is closer/less OTM). Delta becomes increasingly directional against the position as price moves away from the center.",
-        "gamma": "Negative. Most negative between the two strikes. Causes the position's delta to move rapidly against the position as the underlying moves away from the center range.",
+        "gamma": "Negative. Most negative between the two strikes. Causes the position's delta to move rapidly against the position as the underlying moves, leading to accelerating losses.",
         "theta": "Positive. Benefits significantly from time decay, especially as expiration approaches, if the price stays between the strikes.",
         "vega": "Negative. Loses value significantly as implied volatility increases and gains value as it decreases. This strategy is typically employed when volatility is expected to decrease or remain low."
       },
@@ -357,7 +357,7 @@
         "Sell 1 Call (Near Expiry, Strike K)",
         "Buy 1 Call (Further Expiry, Strike K)"
       ],
-      "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option.",
+      "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option. Example uses hypothetical price for further expiry as only one expiry shown in image.",
        "greeksImpact": {
         "delta": "Near zero (neutral) if the strike (K) is ATM relative to the *current* price. If K is OTM bullish, delta is slightly positive. If K is OTM bearish, delta is slightly negative.",
         "gamma": "Typically negative for the spread as a whole until very close to the front month expiry, where the short call's gamma becomes significantly positive. This can cause large delta shifts as expiration nears. The long call's gamma is lower due to its longer term.",
@@ -381,7 +381,7 @@
         "Sell 1 Put (Near Expiry, Strike K)",
         "Buy 1 Put (Further Expiry, Strike K)"
       ],
-      "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option.",
+      "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option. Example uses hypothetical price for further expiry as only one expiry shown in image.",
        "greeksImpact": {
         "delta": "Near zero (neutral) if the strike (K) is ATM relative to the *current* price. If K is OTM bullish, delta is slightly positive. If K is OTM bearish, delta is slightly negative.",
         "gamma": "Typically negative for the spread as a whole until very close to the front month expiry, where the short put's gamma becomes significantly positive. This can cause large delta shifts as expiration nears. The long put's gamma is lower due to its longer term.",
@@ -399,7 +399,7 @@
   ],
   "threeLeg": [
      {
-      "id": "call-butterfly",
+      "id": "long-call-butterfly",
       "name": "Long Call Butterfly",
       "outlook": "Neutral (Low Volatility)",
       "description": "A defined-risk strategy expecting the price to pin the middle strike (K2) at expiration. Profits from low volatility within a specific range around K2. Constructed with three calls (K1 < K2 < K3) where K2 is typically equidistant from K1 and K3. Entered for a net debit. Maximum profit is achieved if the underlying expires exactly at the middle strike (K2).",
@@ -526,7 +526,7 @@
       "id": "put-ratio-spread",
       "name": "Put Ratio Spread (Debit/Credit)",
       "outlook": "Moderately Bearish",
-      "description": "Selling fewer puts at a higher strike (K2) than puts bought at a lower strike (K1) with the same expiration (K1 < K2). Profits from a moderate move down towards K1. Faces significant, potentially unlimited risk if the price moves sharply below the lower strike (K1). Can be entered for a net debit or credit.",
+      "description": "Selling fewer puts at a higher strike (K2) than puts bought at a lower strike (K1) with the same expiration (K1 < K2). Profits from a moderate move down towards K1. Faces significant, potentially unlimited risk if the price moves sharply below the lower strike (K1). Can be entered for a net debit or credit depending on strikes and premiums.",
       "construction": [
         "Sell 1 Put (Higher Strike K2)",
         "Buy 2 Puts (Lower Strike K1)"
@@ -813,7 +813,7 @@
         "Sell 1 Call (Near Expiry, Higher Strike K2)",
         "Buy 1 Call (Further Expiry, Lower Strike K1)"
       ],
-      "notes": "Requires options in the same underlying with different expiration dates and different strike prices (K1 < K2). Usually entered for a net debit.",
+      "notes": "Requires options in the same underlying with different expiration dates and different strike prices (K1 < K2). Usually entered for a net debit. Example uses hypothetical price for further expiry as only one expiry shown in image.",
       "greeksImpact": {
         "delta": "Positive (less than a simple long call at K1). Starts positive and decreases as price rises significantly past K2.",
         "gamma": "Typically positive, but less than a simple long call. Gamma peaks near the K1 strike.",
@@ -837,7 +837,7 @@
         "Sell 1 Put (Near Expiry, Lower Strike K1)",
         "Buy 1 Put (Further Expiry, Higher Strike K2)"
       ],
-      "notes": "Requires options in the same underlying with different expiration dates and different strike prices (K1 < K2). Usually entered for a net debit.",
+      "notes": "Requires options in the same underlying with different expiration dates and different strike prices (K1 < K2). Usually entered for a net debit. Example uses hypothetical price for further expiry as only one expiry shown in image.",
       "greeksImpact": {
         "delta": "Negative (less negative than a simple long put at K2). Starts negative and approaches zero as price falls significantly past K1.",
         "gamma": "Typically positive, but less than a simple long put. Gamma peaks near the K2 strike.",
