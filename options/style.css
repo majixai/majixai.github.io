@@ -1,95 +1,182 @@
-/* ... (previous styles remain the same) ... */
+/* General Typography & Layout */
+body, h1, h2, h3, h4, h5, h6 { font-family: "Segoe UI", Arial, sans-serif; }
+.main-content-area { transition: margin-left .4s; margin-left: 250px; /* Default margin for sidebar */ }
+#page-container { min-height: 100vh; display: flex; flex-direction: column; }
+#main-content-wrapper { flex: 1; } /* Ensure content pushes footer down */
 
-/* Style for the main content area to accommodate sidebar */
-.w3-main {
-    margin-left: 250px;
-    transition: margin-left .4s; /* Smooth transition for sidebar */
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .main-content-area { margin-left: 0; /* Remove margin when sidebar collapses */ }
+    /* Adjust content padding when sidebar is hidden on smaller screens */
+    .w3-sidebar + #main-content-wrapper .w3-hide-large {
+        margin-top: 83px !important; /* Padding for fixed top bar when sidebar hidden */
+    }
 }
 
-/* Style for Plotly chart containers */
-.plotly-chart {
+/* Main Content Area Padding */
+.w3-container.main-content-padding {
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+}
+
+
+/* Plotly Chart Container */
+/* Give Plotly containers a minimum height and border for structure */
+.plotly-chart-container {
     width: 100%;
-    min-height: 350px; /* Ensure charts have some height */
-    margin-top: 15px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    background-color: #fdfdfd; /* Slightly off-white background */
+    min-height: 360px; /* Adjust as needed */
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #d1d1d1;
+    background-color: #ffffff; /* Ensure white background */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    /* Plotly itself will handle internal padding/margins */
 }
 
-/* Hide strategy sections by default */
-.strategy-section {
-    display: none;
-}
-
-/* Add some padding within panels */
-.w3-panel.w3-padding {
-    padding: 16px 24px !important;
-}
-
-/* Styles for dynamically added content */
+/* Strategy Panel Styling */
 .strategy-panel {
-    margin-bottom: 24px; /* Space between strategy panels */
+    margin-bottom: 30px;
+    padding: 20px !important; /* Use !important to override w3-padding */
+    border-left: 4px solid #4CAF50; /* Accent border - Green */
+    background-color: #ffffff; /* Ensure white background */
+    box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12); /* W3.CSS card shadow */
 }
-
-.strategy-construction ul {
-    list-style: disc;
-    margin-left: 20px;
-    margin-top: 5px;
-    margin-bottom: 10px;
+.strategy-panel h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
 }
-.strategy-construction li {
-    margin-bottom: 4px;
-}
-
-.strategy-notes {
-    font-style: italic;
-    color: #555;
-    margin-top: 5px;
+.strategy-panel .strategy-outlook .w3-tag {
+    /* Style for the outlook tag */
+    background-color: #f1f1f1;
+    color: #000;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: normal;
     font-size: 0.9em;
 }
+.strategy-panel .strategy-outlook .w3-tag.Bullish { background-color: #d4edda; color: #155724; }
+.strategy-panel .strategy-outlook .w3-tag.Bearish { background-color: #f8d7da; color: #721c24; }
+.strategy-panel .strategy-outlook .w3-tag.Neutral { background-color: #fff3cd; color: #856404; }
+.strategy-panel .strategy-outlook .w3-tag.Volatile { background-color: #cfe2ff; color: #084298; }
+.strategy-panel .strategy-outlook .w3-tag.Arbitrage { background-color: #e2e3e5; color: #495057; }
 
-.strategy-example {
-     font-style: italic;
-     color: #555;
-     margin-top: 10px;
-     font-size: 0.9em;
+
+.strategy-construction ul { list-style: disc; margin-left: 25px; margin-top: 8px; margin-bottom: 12px; padding-left: 0; } /* Reset padding */
+.strategy-construction li { margin-bottom: 5px; line-height: 1.5; }
+
+/* Specific Detail Sections Styling (e.g., Construction, Greeks, Risks) */
+.strategy-detail-section {
+    font-size: 0.9em; /* Smaller font for details */
+    color: #444;
+    margin-top: 12px;
+    padding-left: 15px;
+    border-left: 3px solid #e0e0e0;
+    background-color: #fafafa;
+    padding: 8px 15px;
+    margin-bottom: 10px;
 }
-
-
-/* Adjust sidebar width and main content margin on medium/large screens if needed */
-@media (max-width: 992px) {
-    .w3-main {
-        margin-left: 0; /* No margin when sidebar is hidden */
-    }
-    .w3-sidebar.w3-collapse {
-        display: none; /* Ensure it's hidden by default on smaller screens */
-    }
-     .w3-main {
-        padding-top: 0; /* Remove extra padding when top bar is not visible */
-    }
-     /* Ensure top padding when main content is visible */
-    .w3-main > .w3-container {
-        padding-top: 32px !important;
-    }
+.strategy-detail-section strong { color: #222; }
+.strategy-detail-section ul {
+     margin-top: 5px;
+     margin-bottom: 5px;
+     margin-left: 20px; /* Adjust list indentation */
+     list-style: square; /* Different bullet style */
 }
+.strategy-detail-section li { margin-bottom: 3px; line-height: 1.4; }
 
-/* Style for the active menu item */
-.nav-link.active { /* Changed selector */
-    background-color: #f1f1f1 !important;
-    color: #000 !important;
+
+.strategy-notes { font-style: italic; color: #555; margin-top: 10px; font-size: 0.9em; }
+.strategy-example { font-style: italic; color: #555; margin-top: 15px; font-size: 0.9em; }
+
+/* Input Fields Styling */
+.strategy-inputs {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f0f0f0; /* Light grey background for the input area */
+    border: 1px dashed #ccc;
+    border-radius: 5px;
+}
+.strategy-inputs strong {
+    display: block; /* Title on its own line */
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #333;
+}
+.strategy-inputs label {
+    display: block; /* Label above input */
     font-weight: bold;
+    margin-bottom: 3px;
+    font-size: 0.85em; /* Smaller label text */
+    color: #555;
+}
+.strategy-inputs .w3-input {
+    padding: 8px !important; /* Adjust input padding */
+    font-size: 0.9em; /* Smaller input text */
+    box-sizing: border-box; /* Include padding in width */
+}
+.strategy-inputs .w3-col {
+    padding-left: 8px !important; /* Adjust column padding */
+    padding-right: 8px !important;
+    margin-bottom: 10px; /* Space between rows of inputs */
+}
+.strategy-inputs .w3-row {
+    margin-left: -8px !important; /* Offset row padding */
+    margin-right: -8px !important;
 }
 
-/* Add specific background colors for 4-leg strategies for emphasis */
-#four-leg .strategy-panel[data-strategy-id="iron-condor"] {
-    background-color: #e7f3fe; /* Light blue */
+
+/* Specific Backgrounds for 4-Leg Strategies panels */
+.strategy-panel[data-section-key="fourLeg"] {
+     /* You can add specific background colors here if desired, but note it might make the accent border less visible */
+     /* background-color: #f8f8f8; */
+     /* border-left-color: #343a40; */ /* Darker border for 4-leg section */
 }
-#four-leg .strategy-panel[data-strategy-id="iron-butterfly"] {
-     background-color: #fff9e6; /* Light yellow */
+
+/* Specific Backgrounds for Multi-Leg Strategies panels */
+.strategy-panel[data-section-key="multiLeg"] {
+     /* Example styling for 5+ legs */
+    border-left-color: #800080; /* Purple accent */
+    background-color: #f3e5f5; /* Lighter purple background */
 }
-#four-leg .strategy-panel[data-strategy-id="reverse-iron-condor"] {
-     background-color: #ffebee; /* Light red */
+
+
+/* Loading / Status Messages */
+.status-message { text-align: center; padding: 20px; font-size: 1.1em; border-radius: 4px; margin: 20px; }
+.loading-message { background-color: #e3f2fd; color: #1e88e5; border: 1px solid #bbdefb; }
+.error-message { background-color: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.offline-message { background-color: #fff9c4; color: #f57f17; border: 1px solid #fff59d; }
+.info-message { background-color: #e8f5e9; color: #2e7d32; font-size: 0.9em; padding: 10px; margin-top: 5px; border: 1px solid #c8e6c9; }
+
+
+/* Navigation Styling */
+.nav-link.active { background-color: #e0e0e0 !important; color: #000 !important; font-weight: bold; border-left: 3px solid #4CAF50; }
+.w3-sidebar .w3-button { transition: background-color 0.2s ease; width: 100%; text-align: left; padding: 12px 16px; } /* Ensure full width and padding */
+.w3-sidebar .w3-button:hover:not(.active) { background-color: #f1f1f1 !important; }
+
+/* Utility Buttons */
+.action-button { margin-top: 15px; margin-right: 10px; }
+/* Style for the main content container heading */
+.content-container > h2:first-child {
+    margin-top: 0 !important; /* Ensure the first heading doesn't have excessive top margin */
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 20px;
 }
-#four-leg .strategy-panel[data-strategy-id="box-spread"] {
-     background-color: #f5f5f5; /* Light grey */
+
+
+/* Footer Styling */
+#app-footer {
+    padding: 16px;
+    margin-top: 32px; /* Ensure space above footer */
+    background-color: #f1f1f1; /* W3.CSS default light grey */
+    text-align: center;
+    opacity: 0.9;
+    font-size: 0.9em;
+    border-top: 1px solid #ddd;
+    color: #555;
 }
+#app-footer a { color: #555; text-decoration: none; }
+#app-footer a:hover { text-decoration: underline; }
