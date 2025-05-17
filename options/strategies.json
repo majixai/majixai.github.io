@@ -541,7 +541,7 @@
       "maxProfit": "(K2 - K1) + Net Credit (if credit) or (K2 - K1) - Net Debit (if debit). Max profit is achieved exactly at strike K1.",
       "maxLoss": "Potentially Unlimited below Lower Break-even",
       "breakeven": "Lower: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K1 - K2) + Net Credit (or - Net Debit). Upper: K2 - Net Debit (if debit) or K2 + Net Credit (if credit).",
-      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Profit (at 5950): (5970 - 5950) - 105.50 = 20 - 105.50 = -85.50 (This example results in a max loss at the peak profit point due to the debit paid - highlights the impact of bid/ask). Max Loss: Unlimited below 5824.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = (11900 - 5970) - 105.50 = 5930 - 105.50 = 5824.50.",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Profit (at 5950): (5970 - 5950) - 105.50 = 20 - 105.50 = -85.50 (This example results in a max loss at the peak profit point due to the debit paid - highlights the impact of bid/ask). Max Loss: Unlimited below 5824.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = (11900 - 5970) - 105.50 = 5930 - 105.50 = 5824.50. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
       "plotFunction": "plotRatioSpread",
       "plotlyDivId": "plotly-put-ratio-spread",
       "parameters": { "type": "put", "position": "ratio", "ratio1": -1, "ratio2": 2, "strike1": 5950, "strike2": 5970, "premium1": 104.50, "premium2": 105.00 }
@@ -807,10 +807,10 @@
   ],
   "multiLeg": [
     {
-      "id": "long-call-alternate-spread-5950-5960-5970-5980-5990",
+      "id": "long-call-alternate-spread-5leg",
       "name": "Long Call Alternate Spread (5-Leg)",
       "outlook": "Volatile (Upward Bias)",
-      "description": "A defined-risk bullish strategy combining multiple vertical spreads. Buys calls at strikes K1, K3, K5 and sells calls at strikes K2, K4 (K1 < K2 < K3 < K4 < K5). Profits from a strong move to the upside, particularly beyond the highest strike (K5). Has multiple peaks and valleys in the profit/loss profile.",
+      "description": "A defined-risk bullish strategy combining multiple vertical spreads with alternating long and short positions. Buys calls at strikes K1, K3, K5 and sells calls at strikes K2, K4 (K1 < K2 < K3 < K4 < K5). Profits from a strong move to the upside, particularly beyond the highest strike (K5). Has multiple peaks and valleys in the profit/loss profile.",
       "construction": [
         "Buy 1 Call (K1)",
         "Sell 1 Call (K2)",
@@ -818,19 +818,19 @@
         "Sell 1 Call (K4)",
         "Buy 1 Call (K5)"
       ],
-      "notes": "Requires 5 equidistant strikes.",
+      "notes": "Requires 5 distinct strikes. The payoff profile is complex and oscillatory, with potential profit at the highest strike and beyond.",
       "greeksImpact": {
-        "delta": "Generally positive, but varies significantly between strikes. Increases sharply above the highest strike.",
-        "gamma": "Positive/Negative oscillations across the price range. Gamma is positive near the long strikes and negative near the short strikes.",
-        "theta": "Generally negative (cost of holding multiple long legs). Loses value due to time decay.",
-        "vega": "Generally positive (benefits from increased volatility). The positive vega of the long calls usually outweighs the negative vega of the short calls."
+        "delta": "Generally positive, but varies significantly between strikes.",
+        "gamma": "Positive/Negative oscillations across the price range.",
+        "theta": "Generally negative (cost of holding multiple long legs).",
+        "vega": "Generally positive (benefits from increased volatility)."
       },
       "maxProfit": "Unlimited above K5",
-      "maxLoss": "Limited (occurs at various points between strikes - specifically, the max loss is the initial debit plus the width of K4-K5, occurring between K4 and K5)",
-      "breakeven": "Multiple points (complex calculation), typically occurs near K1 and K5.",
-      "example": "Buy 1 MES JUN13 5950C@99.25 (Ask), Sell 1 MES JUN13 5960C@88.75 (Bid), Buy 1 MES JUN13 5970C@88.25 (Ask), Sell 1 MES JUN13 5980C@78.00 (Bid), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: 99.25 - 88.75 + 88.25 - 78.00 + 78.00 = 98.75.",
+      "maxLoss": "Limited (occurs at various points between strikes)",
+      "breakeven": "Multiple points (complex calculation)",
+      "example": "Buy 1 MES JUN13 5950C@99.25 (Ask), Sell 1 MES JUN13 5960C@88.75 (Bid), Buy 1 MES JUN13 5970C@88.25 (Ask), Sell 1 MES JUN13 5980C@78.00 (Bid), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: 99.25 - 88.75 + 88.25 - 78.00 + 78.00 = 98.75. Max Loss occurs near K2 and K4.",
       "plotFunction": "plotComplexStrategy",
-      "plotlyDivId": "plotly-5-leg-call-spread",
+      "plotlyDivId": "plotly-5-leg-call-alternate-spread",
       "parameters": {
         "legs": [
           { "type": "call", "position": "long", "strike": 5950, "premium": 99.25 },
@@ -842,10 +842,10 @@
       }
     },
      {
-      "id": "long-put-alternate-spread-5950-5960-5970-5980-5990",
+      "id": "long-put-alternate-spread-5leg",
       "name": "Long Put Alternate Spread (5-Leg)",
       "outlook": "Volatile (Downward Bias)",
-      "description": "A defined-risk bearish strategy combining multiple vertical spreads. Buys puts at strikes K1, K3, K5 and sells puts at strikes K2, K4 (K1 < K2 < K3 < K4 < K5). Profits from a strong move to the downside, particularly below the lowest strike (K1). Has multiple peaks and valleys in the profit/loss profile.",
+      "description": "A defined-risk bearish strategy combining multiple vertical spreads with alternating long and short positions. Buys puts at strikes K1, K3, K5 and sells puts at strikes K2, K4 (K1 < K2 < K3 < K4 < K5). Profits from a strong move to the downside, particularly below the lowest strike (K1). Has multiple peaks and valleys in the profit/loss profile.",
       "construction": [
         "Buy 1 Put (K1)",
         "Sell 1 Put (K2)",
@@ -853,19 +853,19 @@
         "Sell 1 Put (K4)",
         "Buy 1 Put (K5)"
       ],
-      "notes": "Requires 5 equidistant strikes.",
+      "notes": "Requires 5 distinct strikes. Payoff profile is complex and oscillatory.",
       "greeksImpact": {
-        "delta": "Generally negative, but varies significantly between strikes. Becomes sharply negative below the lowest strike.",
-        "gamma": "Positive/Negative oscillations across the price range. Gamma is positive near the long strikes and negative near the short strikes.",
-        "theta": "Generally negative (cost of holding multiple long legs). Loses value due to time decay.",
-        "vega": "Generally positive (benefits from increased volatility). The positive vega of the long puts usually outweighs the negative vega of the short puts."
+        "delta": "Generally negative, but varies significantly between strikes.",
+        "gamma": "Positive/Negative oscillations across the price range.",
+        "theta": "Generally negative (cost of holding multiple long legs).",
+        "vega": "Generally positive (benefits from increased volatility)."
       },
       "maxProfit": "Unlimited below K1",
-      "maxLoss": "Limited (occurs at various points between strikes - specifically, the max loss is the initial debit plus the width of K1-K2, occurring between K1 and K2)",
+      "maxLoss": "Limited (occurs at various points between strikes)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Buy 1 MES JUN13 5970P@109.50 (Ask), Sell 1 MES JUN13 5980P@109.25 (Bid), Buy 1 MES JUN13 5990P@119.25 (Ask). Net Debit: 100.75 - 100.00 + 109.50 - 109.25 + 119.25 = 120.25.",
+      "example": "Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Buy 1 MES JUN13 5970P@109.50 (Ask), Sell 1 MES JUN13 5980P@109.25 (Bid), Buy 1 MES JUN13 5990P@119.25 (Ask). Net Debit: 100.75 - 100.00 + 109.50 - 109.25 + 119.25 = 120.25. Max Loss occurs near K2 and K4.",
       "plotFunction": "plotComplexStrategy",
-      "plotlyDivId": "plotly-5-leg-put-spread",
+      "plotlyDivId": "plotly-5-leg-put-alternate-spread",
       "parameters": {
         "legs": [
           { "type": "put", "position": "long", "strike": 5950, "premium": 100.75 },
@@ -889,17 +889,17 @@
         "Buy 1 Call (K5)",
         "Buy 1 Call (K6)"
       ],
-      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Symmetric strikes around the current price create a neutral outlook. Payoff profile has two small peaks and a larger central valley.",
+      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Symmetric strikes around the current price create a neutral outlook. Max profit is limited to the initial credit.",
       "greeksImpact": {
-        "delta": "Near zero (neutral) in the center.",
+        "delta": "Near zero (neutral).",
         "gamma": "Strongly negative around K3/K4, positive near K1/K6.",
-        "theta": "Strongly positive (significant time decay) in the central range.",
+        "theta": "Strongly positive (significant time decay).",
         "vega": "Strongly negative (loses value if volatility increases)."
       },
       "maxProfit": "Net Credit Received",
-      "maxLoss": "Limited (occurs at various points outside the central body)",
+      "maxLoss": "Limited (Difference between strike widths minus Net Credit)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Sell 1 MES JUN13 5950P@100.00 (Bid), Sell 1 MES JUN13 5960P@104.50 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50 + 83.00 + 78.00) - (100.00 + 104.50 + 83.25) = 257.50 - 287.75 = -30.25 (Net Credit).",
+      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Sell 1 MES JUN13 5950P@100.00 (Bid), Sell 1 MES JUN13 5960P@104.50 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50 + 83.00 + 78.00) - (100.00 + 104.50 + 83.25) = 257.50 - 287.75 = -30.25 (Net Credit). Max Profit: 30.25.",
       "plotFunction": "plotComplexStrategy",
       "plotlyDivId": "plotly-6-leg-iron-albatross",
       "parameters": {
@@ -917,7 +917,7 @@
       "id": "long-condor-plus-6leg",
       "name": "Long Condor Plus (6-Leg)",
       "outlook": "Volatile (Wide Range Breakout)",
-      "description": "A complex long volatility strategy using 6 strikes. Buys a wide put spread (K1/K2), buys a wide call spread (K5/K6), and sells inner options (K3 Put, K4 Call). Profits from very large moves beyond the outer wings (K1 or K6). Suffers max loss if the price stays in the central range (K3-K4).",
+      "description": "A complex long volatility strategy using 6 strikes. Buys a wide put spread (K1/K2), buys a wide call spread (K5/K6), and sells inner options (K3 Put, K4 Call). Profits from very large moves beyond the outer wings. Suffers max loss if the price stays in the central range (K3-K4).",
       "construction": [
         "Buy 1 Put (K1)",
         "Buy 1 Put (K2)",
@@ -926,17 +926,17 @@
         "Buy 1 Call (K5)",
         "Buy 1 Call (K6)"
       ],
-      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Designed for extreme volatility.",
+      "notes": "Requires 6 strikes (K1 < K2 < K3 < K4 < K5 < K6). Designed for extreme volatility. Risk is limited to the initial debit.",
       "greeksImpact": {
-        "delta": "Near zero (neutral) in the center, becomes strongly directional outside the inner legs.",
-        "gamma": "Positive near outer wings and in the central valley, negative near inner legs.",
+        "delta": "Near zero (neutral).",
+        "gamma": "Positive near outer wings, negative in the center.",
         "theta": "Negative (cost of long options).",
         "vega": "Positive (benefits significantly from increased volatility)."
       },
       "maxProfit": "Unlimited/Substantial beyond outer wings",
       "maxLoss": "Limited (Net Debit Paid)",
       "breakeven": "Multiple points (complex calculation)",
-      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50+100.75+83.00+78.00) - (100.00+83.25) = 358.25 - 183.25 = 175.00.",
+      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Buy 1 MES JUN13 5950P@100.75 (Ask), Sell 1 MES JUN13 5960P@100.00 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: (96.50+100.75+83.00+78.00) - (100.00+83.25) = 358.25 - 183.25 = 175.00. Max Loss: 175.00.",
       "plotFunction": "plotComplexStrategy",
       "plotlyDivId": "plotly-6-leg-long-condor-plus",
       "parameters": {
@@ -949,88 +949,11 @@
           { "type": "call", "position": "long", "strike": 5990, "premium": 78.00 }
         ]
       }
-    },
-     {
-      "id": "long-guts-7leg",
-      "name": "Long Guts (7-Leg)",
-      "outlook": "Volatile (Extreme Breakout)",
-      "description": "An extremely wide, long volatility strategy. Buys 3 OTM Puts and 3 OTM Calls, plus a central ATM Put/Call. Designed for massive moves in either direction. High cost due to multiple long options. Example shown uses 7 equidistant strikes around ATM.",
-      "construction": [
-        "Buy 1 Put (K1)",
-        "Buy 1 Put (K2)",
-        "Buy 1 Put (K3)",
-        "Buy 1 ATM Put (K4)",
-        "Buy 1 ATM Call (K4)",
-        "Buy 1 Call (K5)",
-        "Buy 1 Call (K6)"
-      ],
-      "notes": "Requires 7 strikes (K1 < K2 < K3 < K4 < K5 < K6 < K7, assuming K4 is center/ATM). Very high theta, very high vega.",
-      "greeksImpact": {
-        "delta": "Near zero (neutral) in the center, becomes very strongly directional outside inner strikes.",
-        "gamma": "Very strongly positive.",
-        "theta": "Very strongly negative (extremely high cost of time decay).",
-        "vega": "Very strongly positive (benefits immensely from increased volatility)."
-      },
-      "maxProfit": "Unlimited/Substantial beyond outer strikes",
-      "maxLoss": "Limited (Net Debit Paid)",
-      "breakeven": "Multiple points far from center (complex calculation)",
-      "example": "Buy 1 MES JUN13 5940P@96.50 (Ask), Buy 1 MES JUN13 5950P@100.75 (Ask), Buy 1 MES JUN13 5960P@105.00 (Ask), Buy 1 MES JUN13 5970P@109.50 (Ask), Buy 1 MES JUN13 5970C@88.25 (Ask), Buy 1 MES JUN13 5980C@83.00 (Ask), Buy 1 MES JUN13 5990C@78.00 (Ask). Net Debit: 96.50 + 100.75 + 105.00 + 109.50 + 88.25 + 83.00 + 78.00 = 661.00.",
-      "plotFunction": "plotComplexStrategy",
-      "plotlyDivId": "plotly-7-leg-long-guts",
-      "parameters": {
-        "legs": [
-          { "type": "put", "position": "long", "strike": 5940, "premium": 96.50 },
-          { "type": "put", "position": "long", "strike": 5950, "premium": 100.75 },
-          { "type": "put", "position": "long", "strike": 5960, "premium": 105.00 },
-          { "type": "put", "position": "long", "strike": 5970, "premium": 109.50 },
-          { "type": "call", "position": "long", "strike": 5970, "premium": 88.25 },
-          { "type": "call", "position": "long", "strike": 5980, "premium": 83.00 },
-          { "type": "call", "position": "long", "strike": 5990, "premium": 78.00 }
-        ]
-      }
-    },
-     {
-      "id": "short-guts-7leg",
-      "name": "Short Guts (7-Leg)",
-      "outlook": "Neutral (Very Low Volatility, Tight Range)",
-      "description": "An extremely tight, short volatility strategy. Sells 3 OTM Puts and 3 OTM Calls, plus a central ATM Put/Call. Profits maximally if the price stays very close to the center. Collects significant premium but has immense risk if the price moves sharply. Example shown uses 7 equidistant strikes around ATM.",
-      "construction": [
-        "Sell 1 Put (K1)",
-        "Sell 1 Put (K2)",
-        "Sell 1 Put (K3)",
-        "Sell 1 ATM Put (K4)",
-        "Sell 1 ATM Call (K4)",
-        "Sell 1 Call (K5)",
-        "Sell 1 Call (K6)"
-      ],
-      "notes": "Requires 7 strikes (K1 < K2 < K3 < K4 < K5 < K6 < K7, assuming K4 is center/ATM). Very high theta, very high negative vega.",
-      "greeksImpact": {
-        "delta": "Near zero (neutral) in the center, becomes very strongly directional against the position outside inner strikes.",
-        "gamma": "Very strongly negative.",
-        "theta": "Very strongly positive (extremely high benefit from time decay).",
-        "vega": "Very strongly negative (loses value immensely if volatility increases)."
-      },
-      "maxProfit": "Limited (Net Credit Received)",
-      "maxLoss": "Unlimited/Substantial beyond outer strikes",
-      "breakeven": "Multiple points very close to center (complex calculation)",
-      "example": "Sell 1 MES JUN13 5940P@91.50 (Bid), Sell 1 MES JUN13 5950P@95.75 (Bid), Sell 1 MES JUN13 5960P@100.00 (Bid), Sell 1 MES JUN13 5970P@104.50 (Bid), Sell 1 MES JUN13 5970C@83.25 (Bid), Sell 1 MES JUN13 5980C@78.00 (Bid), Sell 1 MES JUN13 5990C@73.00 (Bid). Net Credit: 91.50 + 95.75 + 100.00 + 104.50 + 83.25 + 78.00 + 73.00 = 626.00.",
-      "plotFunction": "plotComplexStrategy",
-      "plotlyDivId": "plotly-7-leg-short-guts",
-      "parameters": {
-        "legs": [
-          { "type": "put", "position": "short", "strike": 5940, "premium": 91.50 },
-          { "type": "put", "position": "short", "strike": 5950, "premium": 95.75 },
-          { "type": "put", "position": "short", "strike": 5960, "premium": 100.00 },
-          { "type": "put", "position": "short", "strike": 5970, "premium": 104.50 },
-          { "type": "call", "position": "short", "strike": 5970, "premium": 83.25 },
-          { "type": "call", "position": "short", "strike": 5980, "premium": 78.00 },
-          { "type": "call", "position": "short", "strike": 5990, "premium": 73.00 }
-        ]
-      }
     }
   ],
    "about": {
        "title": "About This Tool",
+       "dataDate": "June 13, 2025 (from screenshot)",
        "content": [
            "This page provides information and payoff diagrams for various option strategies, categorized by the number of 'legs' (individual option contracts) involved.",
            "The examples use MES (Micro E-mini S&P 500) option prices from the provided screenshot (June 13, 2025 expiration data) for illustration where possible.",
