@@ -1,738 +1,391 @@
-body, h1, h2, h3, h4, h5, h6 {font-family: "Segoe UI", Arial, sans-serif}
-.w3-row-padding, .w3-row { margin-left:-8px; margin-right:-8px; }
-.w3-col { padding: 0 8px; }
+/* Basic Reset & Body */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+    color: #333;
+    padding: 15px;
+}
+
+/* Main Application Container */
 .app-container {
     max-width: 1600px;
-    margin: auto;
-    padding: 0 16px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.controls-bar .w3-card {
-     margin-bottom: 16px !important;
-}
-.controls-bar h4 {
-     margin-top: 0;
-     margin-bottom: 0;
-     cursor:pointer;
+h1, h2 {
+    color: #555;
+    margin-bottom: 15px;
+    text-align: center;
 }
 
-.controls-bar .w3-container.w3-hide {
-     padding-top: 0 !important;
-     padding-bottom: 0 !important;
-}
-.controls-bar .w3-section {
-    margin-top: 8px !important;
-    margin-bottom: 8px !important;
-}
-.controls-bar label {
-     display: block;
-     margin-bottom: 4px;
-     font-weight: bold;
-}
-.controls-bar .w3-button {
-     margin-bottom: 4px;
-}
-.controls-bar .quick-filters button {
-     margin-right: 5px;
-}
-.controls-bar textarea {
-     resize: vertical;
+h2 {
+    font-size: 1.4em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
 }
 
-.main-content > .w3-col {
-     padding: 8px;
-     box-sizing: border-box;
-}
-.user-column, .iframe-column {
-     transition: flex-basis 0.3s ease, max-width 0.3s ease;
-}
-
-
-#onlineUsers .user-list,
-#previousUsers .user-list {
-    max-height: 600px;
-    overflow-y: auto;
-    padding-right: 15px;
-    box-sizing: border-box;
-    scrollbar-width: thin;
-    scrollbar-color: #888 #f1f1f1;
+/* Controls Bar */
+.controls-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #eaeaea;
+    border-radius: 5px;
+}
+
+.controls-bar fieldset {
     border: 1px solid #ccc;
-    padding: 10px;
+    padding: 10px 15px;
     border-radius: 4px;
-    background-color: #f9f9f9;
+    flex: 1; /* Allow fieldsets to grow */
+    min-width: 250px; /* Prevent excessive shrinking */
 }
 
-#onlineUsers .user-list::-webkit-scrollbar,
-#previousUsers .user-list::-webkit-scrollbar,
-#messageList::-webkit-scrollbar,
-#logDisplayArea .log-list::-webkit-scrollbar { width: 8px; height: 8px; }
-#onlineUsers .user-list::-webkit-scrollbar-track,
-#previousUsers .user-list::-webkit-scrollbar-track,
-#messageList::-webkit-scrollbar-track,
-#logDisplayArea .log-list::-webkit-scrollbar-track { background: #f1f1f1; }
-#onlineUsers .user-list::-webkit-scrollbar-thumb,
-#previousUsers .user-list::-webkit-scrollbar-thumb,
-#messageList::-webkit-scrollbar-thumb,
-#logDisplayArea .log-list::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-#onlineUsers .user-list::-webkit-scrollbar-thumb:hover,
-#previousUsers .user-list::-webkit-scrollbar-thumb:hover,
-#messageList::-webkit-scrollbar-thumb:hover,
-#logDisplayArea .log-list::-webkit-scrollbar-thumb:hover { background: #555; }
-
-
-.user-info {
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    position: relative;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: transform 0.2s ease-in-out;
-}
-.user-info:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.user-info .user-details {
-    padding: 8px;
-    flex-grow: 1;
-}
-
-.user-info .username {
+.controls-bar legend {
     font-weight: bold;
-    margin: 0 0 5px 0;
-    font-size: 1.1em;
+    padding: 0 5px;
+    color: #444;
 }
 
-.user-info .tags,
-.user-info .user-details p small {
-     color: #555;
-     display: block;
-     margin-bottom: 3px;
-     font-size: 0.8em;
-}
-.user-info .tags {
-    word-break: break-word;
+.control-group {
+    margin-bottom: 10px;
 }
 
-.user-info .birthday {
-     font-size: 0.9em;
-     margin-top: 5px;
-     font-weight: bold;
-     color: #ff9800;
-}
-.user-info .age-days {
-     font-weight: normal;
-     font-style: italic;
-}
-
-.user-info .badge {
-    margin-left: 5px;
-    vertical-align: top;
-}
-
-.user-list.image-mode .user-info {
-     flex-basis: calc(33.33% - 10px);
-     min-width: 150px;
-     display: flex;
-     flex-direction: row;
-     align-items: flex-start;
-}
-@media (max-width: 1200px) {
-     .user-list.image-mode .user-info {
-          flex-basis: calc(50% - 10px);
-     }
-}
-@media (max-width: 600px) {
-    .user-list.image-mode .user-info {
-        flex-basis: 100%;
-    }
-}
-
-.user-list.image-mode .user-image-container {
-    flex-shrink: 0;
-    width: 80px;
-    height: 80px;
-    overflow: hidden;
-    position: relative;
-}
-.user-list.image-mode .user-image-container img {
+.control-group label,
+.control-group span { /* For quick filter label */
     display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.user-list.image-mode .user-details {
-    padding-left: 8px;
-    padding-top: 8px !important;
-}
-
-
-.user-list.iframe-mode .user-info {
-    flex-basis: calc(50% - 10px);
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-}
-@media (max-width: 1200px) {
-     .user-list.iframe-mode .user-info {
-          flex-basis: calc(50% - 10px);
-     }
-}
-@media (max-width: 600px) {
-    .user-list.iframe-mode .user-info {
-        flex-basis: 100%;
-    }
-}
-
-
-.user-list.iframe-mode .iframe-container {
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%;
-    height: 0;
-    overflow: hidden;
-    background-color: black;
-     margin-bottom: 5px;
-}
-.user-list.iframe-mode .iframe-container iframe {
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%; border: none;
-}
-.user-list.iframe-mode .click-overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
-    background: transparent; cursor: pointer;
-}
-
-.recognition-results {
-    margin-top: 5px;
-    font-size: 0.75em;
-    color: #007bff;
-     word-break: break-word;
-}
-.recognition-results strong {
-    font-weight: bold;
-    color: #333;
-     display: block;
-}
-.recognition-results ul {
-    padding-left: 15px;
-    margin: 0;
-    list-style: disc;
-}
-.recognition-results li {
-    margin-bottom: 2px;
-}
-
-
-.remove-user-btn {
-     position: absolute;
-     z-index: 15;
-     top: 5px; right: 5px;
-     opacity: 0.8;
-     transition: opacity 0.2s ease-in-out;
-}
-.remove-user-btn:hover { opacity: 1; }
-
-
-#mainViewerContainer {
-    display: grid;
-    gap: 8px;
-    padding: 5px;
-    background-color: #e0e0e0;
-    border-radius: 8px;
-     overflow: auto;
-     scrollbar-width: thin;
-     scrollbar-color: #888 #f1f1f1;
-     min-height: 200px;
-}
-
-#mainViewerContainer::-webkit-scrollbar { width: 8px; height: 8px; }
-#mainViewerContainer::-webkit-scrollbar-track { background: #f1f1f1; }
-#mainViewerContainer::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
-#mainViewerContainer::-webkit-scrollbar-thumb:hover { background: #555; }
-
-
-.iframe-grid-container .iframe-wrapper {
-    position: relative;
-    width: 850px;
-    height: 480px;
-    background-color: black;
-    overflow: hidden;
-    border-radius: 4px;
-     flex-shrink: 0;
-}
-.iframe-grid-container .iframe-wrapper iframe {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
-}
-
-.iframe-grid-container.iframe-count-2 {
-    grid-template-columns: 850px;
-    grid-template-rows: 480px 480px;
-    justify-content: center;
-}
-.iframe-grid-container.iframe-count-4 {
-    grid-template-columns: 850px 850px;
-    grid-template-rows: 480px 480px;
-     justify-content: center;
-}
-
-@media (max-width: 992px) {
-    .iframe-column {
-        flex-basis: 100% !important;
-        max-width: 100% !important;
-    }
-     .iframe-grid-container.iframe-count-4 {
-         grid-template-columns: 850px;
-         grid-template-rows: repeat(4, 480px);
-         overflow-x: auto;
-     }
-     .iframe-grid-container.iframe-count-2 {
-         grid-template-columns: 850px;
-         grid-template-rows: repeat(2, 480px);
-          overflow-x: auto;
-     }
-     .user-column {
-          flex-basis: 100% !important;
-          max-width: 100% !important;
-     }
-}
-
-
-#messageList {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: 15px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    padding: 5px;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-    display: block;
-    scrollbar-width: thin;
-    scrollbar-color: #888 #f1f1f1;
-}
-
-.message-item {
-    background-color: #e9e9eb;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px 12px;
     margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.control-group select,
+.control-group button {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.control-group select[multiple] {
+    min-height: 60px; /* Give multiple selects some height */
+}
+
+.quick-filters button {
+    width: auto; /* Allow quick filter buttons to size naturally */
+    margin-right: 5px;
+    margin-top: 5px; /* Space them out if they wrap */
+    background-color: #e0e0e0;
+    border: 1px solid #bbb;
     cursor: pointer;
-    white-space: pre-wrap;
-    word-break: break-word;
-     font-size: 0.9em;
+}
+.quick-filters button:hover {
+    background-color: #d0d0d0;
+}
+
+.report-controls button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
     transition: background-color 0.2s ease;
 }
-.message-item:hover {
-    background-color: #dcdcdc;
+.report-controls button:hover {
+    background-color: #45a049;
 }
 
-
-.ui-autocomplete {
-    max-height: 300px;
-    overflow-y: auto; overflow-x: hidden;
-    background-color: #fff; border: 1px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    z-index: 1000;
-    list-style: none; padding: 0; margin: 0;
-}
-.ui-autocomplete .ui-menu-item { padding: 5px 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-.ui-autocomplete .ui-menu-item:last-child { border-bottom: none; }
-.ui-autocomplete .ui-menu-item:hover,
-.ui-autocomplete .ui-menu-item.ui-state-focus { background-color: #f1f1f1; }
-.ui-menu-item .ui-menu-item-wrapper {
-    padding: 5px 10px;
-}
-.ui-state-active, .ui-widget-content .ui-state-active, .ui-widget-header .ui-state-active {
-    border: 1px solid #003eff;
-    background: #e9e9eb;
-    color: #000;
-    font-weight: normal;
-}
-
-
-#toggleAutoScroll.w3-green { background-color: #4CAF50 !important; color: white !important; }
-#toggleAutoScroll.w3-red { background-color: #f44336 !important; color: white !important; }
-#toggleAutoScroll:disabled { opacity: 0.6; cursor: not-allowed; }
-
-#toggleDisplayMode, #toggleIframeCount, #showLogsButton, #clearLogsButton,
-.quick-filter-btn {
-    background-color: #f1f1f1; color: #000; border: 1px solid #ccc;
-}
-#toggleDisplayMode:hover, #toggleIframeCount:hover, #showLogsButton:hover, #clearLogsButton:hover,
-.quick-filter-btn:hover { background-color: #ddd; }
-#toggleDisplayMode:disabled, #toggleIframeCount:disabled, #showLogsButton:disabled, #clearLogsButton:disabled,
-.quick-filter-btn:disabled {
-    opacity: 0.6; cursor: not-allowed; background-color: #f1f1f1 !important; color: #000 !important;
-}
-
-#saveMessageButton { background-color: #007bff !important; color: white !important; }
-#saveMessageButton:disabled { opacity: 0.6; cursor: not-allowed; }
-
-
-.status-message { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; font-size: 0.9em; word-break: break-word; }
-.status-message.info { color: inherit; background-color: transparent; border: none;}
-.status-message.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;}
-.status-message.warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;}
-.status-message.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;}
-.status-message.loading { color: #555; font-style: italic; display: inline-block !important; border: none; background-color: transparent;}
-
-
-#reportLoadingIndicator, #onlineLoadingIndicator, #recognitionStatus {
-    font-style: italic; color: #555;
-}
-#reportLoadingIndicator { margin-left: 10px; display: none; }
-#onlineLoadingIndicator { text-align: center; padding: 10px; display: none; }
-#recognitionStatus { display: inline-block; margin-left: 5px;}
-
-#onlineErrorDisplay { text-align: center; padding: 10px; border: 1px solid red; background-color: #ffe6e6; margin-bottom: 10px; display: none; }
-
-
-#onlineUsers .user-list > p.text-muted,
-#previousUsers .user-list > p.text-muted,
-#messageList > p.text-muted {
-    text-align: center;
-    padding: 20px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-
-#logDisplayArea {
-    margin-top: 20px !important;
-    margin-bottom: 20px !important;
-    background-color: #f8f8f8;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-#logDisplayArea h4 { margin-top: 0; margin-bottom: 10px;}
-
-#logDisplayArea .log-list {
-    max-height: 300px;
-    overflow-y: auto;
-    font-size: 0.8em;
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    background-color: #fff;
-    padding: 5px;
-    border: 1px solid #eee;
-    border-radius: 4px;
-}
-
-.log-entry {
-    border-bottom: 1px dashed #eee;
-    padding: 3px 0;
-    word-break: break-word;
-    white-space: pre-wrap;
-     display: flex;
-     align-items: baseline;
-}
-.log-entry:last-child { border-bottom: none; }
-
-.log-info { color: #333; }
-.log-log { color: #333; }
-.log-warn { color: #ff9800; font-weight: bold;}
-.log-error { color: #f44336; font-weight: bold;}
-.log-debug { color: #999; }
-
-.log-timestamp {
-    color: #666;
-    margin-right: 8px;
-    font-size: 0.9em;
-     flex-shrink: 0;
-}
-
-.log-entry .log-message {
-     flex-grow: 1;
-}
-
-/* Basic layout adjustments for W3.CSS grid */
-.app-container {
-    max-width: 1600px; /* Or a suitable max width */
-    margin: auto; /* Center the container */
-}
-
+/* Main Content Layout (Flexbox) */
 .main-content {
-     /* Ensure columns within main-content use flexbox for layout */
     display: flex;
-    flex-wrap: wrap; /* Allow wrapping for smaller screens */
-    gap: 16px; /* Add some spacing between columns */
+    gap: 20px;
+    flex-wrap: wrap; /* Allow columns to wrap on smaller screens */
+}
+
+/* Column Styling */
+.user-column, .iframe-column {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
 }
 
 .user-column {
-    /* Override default W3.CSS padding/margin if needed, or rely on gap */
-     padding: 0;
-     margin: 0;
-     /* Use W3.CSS col classes for width */
+    flex: 1; /* Share space equally */
+    min-width: 280px; /* Minimum width before wrapping */
+    max-height: 75vh; /* Limit height and make scrollable */
+    display: flex;
+    flex-direction: column; /* Stack title and list vertically */
 }
 
 .iframe-column {
-    /* Override default W3.CSS padding/margin if needed, or rely on gap */
-     padding: 0;
-     margin: 0;
-    /* Use W3.CSS col classes for width */
-    flex-grow: 1; /* Allow viewer column to take available space */
-    min-width: 300px; /* Ensure viewer column doesn't collapse too much */
+    flex: 2; /* Take more space */
+    min-width: 400px;
 }
 
-
-/* Styles for the user lists */
+/* User List Styling */
 .user-list {
-    max-height: 600px; /* Limit height and make scrollable */
-    overflow-y: auto;
-    padding-right: 8px; /* Add padding for scrollbar */
-     margin-top: 8px;
+    overflow-y: auto; /* Enable vertical scrolling */
+    flex-grow: 1; /* Allow list to fill remaining space in column */
+    padding-right: 5px; /* Space for scrollbar */
 }
 
-/* Optional: Style for scrollbar */
-.user-list::-webkit-scrollbar {
-    width: 8px;
-}
-
-.user-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 10px;
-}
-
-.user-list::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 10px;
-}
-
-.user-list::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-
+/* Individual User Card Styling */
 .user-info {
+    display: flex;
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    padding: 8px;
     cursor: pointer;
-    position: relative; /* Needed for absolute positioning of remove button/overlay */
-    overflow: hidden; /* Hide anything outside the border radius or container */
-     transition: background-color 0.2s ease;
+    transition: box-shadow 0.2s ease;
+    position: relative; /* Needed for absolute positioning of remove button */
 }
 
 .user-info:hover {
-    background-color: #f1f1f1; /* Light highlight on hover */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* Image Mode for User List Items */
-.image-display-mode .user-image-container {
-     width: 100%;
-     overflow: hidden;
-}
-
-.image-display-mode .user-image-container img {
-    display: block;
-    width: 100%;
-    height: auto; /* Maintain aspect ratio */
-}
-
-.image-display-mode .user-details {
-    padding-top: 4px; /* Reduce padding slightly in image mode */
-}
-
-/* Iframe Mode for User List Items */
-.iframe-display-mode .iframe-container {
+.user-image-container {
+    flex-shrink: 0; /* Prevent image container from shrinking */
+    width: 80px; /* Fixed width for image container */
+    margin-right: 10px;
     position: relative;
+}
+
+.user-image-container img {
     width: 100%;
-    /* Calculate height based on aspect ratio 16:9, 0.5625 = 9/16 */
-    padding-top: 56.25%; /* This creates a 16:9 aspect ratio container */
-    overflow: hidden; /* Hide anything that overflows */
+    height: auto;
+    display: block;
+    border-radius: 3px;
 }
 
-.iframe-display-mode .iframe-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
+.user-details {
+    flex-grow: 1; /* Allow details to take remaining space */
+    overflow: hidden; /* Prevent text overflow */
 }
 
-.iframe-display-mode .user-details {
-    display: none; /* Hide details block in iframe list mode */
+.user-details p {
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
 }
 
-/* Click overlay for iframes in lists */
-.iframe-container .click-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 10; /* Make sure it's above the iframe */
-    cursor: pointer;
+.user-details .username {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #0056b3;
+    white-space: normal; /* Allow username to wrap if needed */
+    overflow: visible;
+    text-overflow: clip;
 }
 
+.user-details .tags {
+    font-size: 0.8em;
+    color: #666;
+    white-space: normal; /* Allow tags to wrap */
+     overflow: visible;
+    text-overflow: clip;
+}
 
-/* Remove button for history items */
+.badge.new-badge {
+    display: inline-block;
+    background-color: #dc3545;
+    color: white;
+    padding: 2px 6px;
+    font-size: 0.75em;
+    border-radius: 10px;
+    margin-left: 5px;
+    vertical-align: middle;
+}
+
+.birthday {
+    font-weight: bold;
+    color: #e67e22; /* Orange color */
+    text-align: center;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Remove Button (in History) */
 .remove-user-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    z-index: 5; /* Make sure it's above the image/iframe */
-     padding: 2px 6px; /* Adjust padding */
-     line-height: 1; /* Vertically center the 'x' */
-     opacity: 0.8; /* Slightly transparent */
-     transition: opacity 0.2s ease;
+    top: -5px; /* Position slightly outside the image */
+    right: -5px;
+    background-color: rgba(220, 53, 69, 0.8); /* Red, slightly transparent */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Make it circular */
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    line-height: 18px; /* Center the 'x' */
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 0;
+    z-index: 10; /* Ensure it's above the image */
 }
 
 .remove-user-btn:hover {
-    opacity: 1;
+    background-color: rgba(220, 53, 69, 1); /* Solid red on hover */
 }
 
-
-/* Image recognition results */
-.recognition-results {
-    margin-top: 5px;
-    padding-top: 5px;
-    border-top: 1px dashed #ccc; /* Separator */
-    font-size: 0.8em; /* Smaller font */
-}
-
-.recognition-results ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.recognition-results li {
-    margin: 0;
-    padding: 2px 0;
-}
-
-/* Loading indicator styles */
-.loading-indicator, .status-message.loading {
-    font-style: italic;
-    opacity: 0.7;
-}
-/* Specific status message colors */
-.status-message.success { color: green; }
-.status-message.warning { color: orange; }
-.status-message.error { color: red; }
-.status-message.info { color: grey; }
-
-
-/* Log Display Area */
-.log-list {
-    max-height: 300px; /* Limit height */
-    overflow-y: auto;
-    border: 1px solid #ccc;
-    padding: 10px;
-    background-color: #f9f9f9;
-    font-family: monospace;
+/* Clear History Button */
+.clear-history-btn {
+    display: block;
+    width: calc(100% - 10px); /* Account for padding */
+    margin: 0 auto 10px auto; /* Center and add bottom margin */
+    padding: 8px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
     font-size: 0.9em;
-    white-space: pre-wrap; /* Respect line breaks */
-    word-break: break-word; /* Break long words */
+}
+.clear-history-btn:hover {
+    background-color: #c82333;
 }
 
-.log-entry {
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-    border-bottom: 1px dashed #eee;
+/* Iframe Styling */
+.iframe-selector {
+    margin-bottom: 10px;
+    text-align: center;
+}
+.iframe-selector label {
+    margin: 0 10px;
+    cursor: pointer;
 }
 
-.log-entry:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
+.iframe-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+    height: 0;
+    overflow: hidden;
+    margin-bottom: 15px; /* Space between iframes */
+    background-color: #000; /* Black background while loading */
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
-.log-timestamp {
-    color: #888;
-    margin-right: 5px;
+.iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none; /* Remove default iframe border */
 }
 
-.log-entry.log-warn {
-    color: #c09853; /* Orange/Yellow */
-}
-
-.log-entry.log-error {
-    color: #b94a48; /* Red */
+/* Loading / Error / Status Indicators */
+.loading-indicator,
+.error-message,
+.report-status {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    text-align: center;
     font-weight: bold;
 }
 
-/* Main Viewer Styles */
-.iframe-grid-container {
-    width: 100%;
-    height: auto; /* Height will be determined by content/grid rows */
-    display: grid; /* Use CSS Grid for layout */
-    gap: 10px; /* Gap between iframes */
+.loading-indicator {
+    background-color: #eef;
+    color: #33a;
+    border: 1px solid #aac;
 }
 
-/* Layout for 2 iframes */
-.iframe-count-2 {
-    /* On large screens (l6), this container is typically ~50% width. */
-    /* Arrange into 2 columns, 1 row */
-     grid-template-columns: repeat(2, 1fr);
-     grid-template-rows: 1fr; /* Single row */
-     height: 480px; /* Fixed height for 2-up mode based on original HTML comment */
+.error-message {
+    background-color: #fdd;
+    color: #a33;
+    border: 1px solid #fbb;
 }
 
-/* Layout for 4 iframes (2x2 grid) */
-.iframe-count-4 {
-     /* Arrange into 2 columns, 2 rows */
-     grid-template-columns: repeat(2, 1fr);
-     grid-template-rows: repeat(2, 1fr);
-     /* Adjust height calculation: 2 rows, each approximately half of the 2-up height + gap */
-     /* (480px - gap) / 2 * 2 + gap => 480 */
-     /* A simple auto height might stretch, or calculate based on desired aspect ratio within cells */
-     /* Let's rely on the iframes filling their cells within the grid */
-     height: 480px; /* Keeping fixed height for consistency, grid handles internal sizing */
+.report-status {
+    margin-top: 5px;
+    padding: 5px 8px;
+    font-size: 0.9em;
+    text-align: left; /* Align within its container */
 }
 
-.iframe-wrapper {
-    width: 100%;
-    height: 100%; /* Fill the grid cell */
-    overflow: hidden; /* Hide overflow */
-    border: 1px solid #ccc; /* Optional border */
-    box-sizing: border-box; /* Include border in sizing */
+.report-status.info {
+    background-color: #e0f2f7; color: #007bff; border: 1px solid #b8e3f7;
+}
+.report-status.success {
+    background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb;
+}
+.report-status.warning {
+    background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba;
+}
+.report-status.error {
+    background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;
 }
 
-.iframe-wrapper iframe {
-    width: 100%;
-    height: 100%; /* Make iframe fill its wrapper */
-    border: none; /* Remove iframe's default border */
+/* Utility Classes (like those maybe used by JS or for consistency) */
+.text-muted {
+    color: #6c757d;
+}
+.w3-center { /* Example mimicking W3.CSS */
+    text-align: center !important;
 }
 
-/* Adjust radio button layout */
-.iframe-choice-radios {
-    margin-top: 10px;
-}
-.iframe-choice-radios input {
-    margin-right: 5px;
-}
-
-/* Style for age days span */
-.age-days {
-    font-weight: bold;
-    color: green; /* Or another highlight color */
-}
-
-/* Style for new badge */
-.badge.new-badge {
-    vertical-align: middle; /* Align badge with text */
-    margin-left: 5px;
+/* Responsive Design */
+@media (max-width: 992px) {
+    .iframe-column {
+        flex-basis: 100%; /* Make iframe column full width */
+        order: 1; /* Move iframe column first visually */
+    }
+    .user-column {
+        flex-basis: calc(50% - 10px); /* Two user columns side-by-side */
+        max-height: 50vh; /* Reduce height on smaller screens */
+        order: 2; /* Place user columns after iframe */
+    }
+    .controls-bar {
+        flex-direction: column; /* Stack controls vertically */
+    }
 }
 
-/* Responsive adjustments (optional - W3.CSS handles much of this) */
-@media (max-width: 992px) { /* Medium screens (m8 for viewer) */
-     .main-content {
-          flex-direction: column; /* Stack columns */
-     }
-     .user-column, .iframe-column {
-          width: 100%; /* Take full width when stacked */
-     }
+@media (max-width: 768px) {
+    .user-column {
+        flex-basis: 100%; /* Stack user columns */
+         order: 2; /* Keep them below iframe */
+    }
+    .main-content {
+        flex-direction: column; /* Ensure stacking */
+    }
+     .app-container {
+        padding: 10px;
+    }
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.2em; }
 }
 
-@media (max-width: 600px) { /* Small screens (s12) */
-      /* Already handled by W3.CSS s12 */
+/* style.css */
+
+/* ... other styles ... */
+
+.user-details .time-since-bday {
+    font-size: 0.8em; /* Make it smaller */
+    color: #555;      /* Slightly muted color */
+    margin-top: -2px; /* Adjust spacing if needed */
+    margin-bottom: 4px;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
