@@ -1,345 +1,121 @@
+/**
+ * Room Viewer Application Script
+ * Handles fetching, filtering, displaying online users,
+ * managing viewing history (previous users), and sending reports
+ * via a server-side endpoint.
+ */
 document.addEventListener('DOMContentLoaded', async function() {
 
-    // Restored API configuration (replace with your actual working API base URL if different)
-    const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip'; // Using a plausible base, verify if correct/functional
-    const apiLimit = 50;
-    const maxApiFetchLimit = 500; // Safety limit to prevent infinite fetching on huge lists
-    const fetchIntervalDuration = 60000; // Fetch every 60 seconds
-    const apiFetchTimeout = 15000; // Timeout for each API request
+    console.log("DOM fully loaded. Initializing application...");
 
-    const REPORT_SEND_METHOD = 'mailto'; // Changed to mailto for a basic client-side demo
+    // --- Configuration ---
+    // !! IMPORTANT !! Replace this with the actual URL of your server-side endpoint
+    // Make sure this endpoint is accessible from where this script runs (CORS headers might be needed on the server)
+    // Example: const REPORT_SERVER_ENDPOINT = 'https://yourserver.com/api/send-user-report';
+    const REPORT_SERVER_ENDPOINT = '/api/send-user-report'; // Placeholder URL - NEEDS REPLACEMENT
 
-    const AUTO_SCROLL_SPEED = 1;
-    const AUTO_SCROLL_DELAY_AT_END = 1000;
+    // --- DOM References ---
+    // Use optional chaining (?) for elements that might not exist in the HTML
+    const onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
+    const previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
+    const mainIframe = document.getElementById("mainIframe");
+    const mainIframe2 = document.getElementById("mainIframe2");
 
-    const LIST_IFRAME_BASE_URL = 'https://chaturbate.com/embed/';
-    const LIST_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black&aspect=0.5625';
+    const storageTypeSelector = document.getElementById("storageType");
+    const filterTagsSelect = document.getElementById("filterTags");
+    const filterAgeSelect = document.getElementById("filterAge");
 
-    const MAIN_IFRAME_BASE_URL = 'https://chaturbate.com/embed/';
-    const MAIN_IFRAME_PARAMS = '?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black';
+    // --- New DOM References for Reporting and Status ---
+    const sendReportButton = document.getElementById("sendReportButton"); // Button to trigger report
+    const reportLoadingIndicator = document.getElementById("reportLoadingIndicator"); // Optional loading indicator for report
+    const reportStatusDisplay = document.getElementById("reportStatusDisplay"); // Optional element to show report success/error status
 
-    const AUTOCOMPLETE_MIN_LENGTH = 2;
-    const AUTOCOMPLETE_DELAY = 300;
-    const AUTOCOMPLETE_MAX_SUGGESTIONS = 10;
+    // --- References for Online Loading/Error Display ---
+    // Add these elements to your HTML if you want visual feedback during fetch
+    const onlineLoadingIndicator = document.getElementById("onlineLoadingIndicator");
+    const onlineErrorDisplay = document.getElementById("onlineErrorDisplay");
 
-    let mobilenetModel = null;
-    const IMAGE_RECOGNITION_CONFIDENCE_THRESHOLD = 0.2;
-    const IMAGE_RECOGNITION_MAX_RESULTS = 3;
-    let analysisQueue = [];
-    let isAnalyzing = false;
-    const ANALYSIS_DELAY = 50; // Small delay between image analyses
+    // --- State Variables ---
+    let storageType = storageTypeSelector?.value || 'local'; // Default to 'local' if selector missing
+    let previousUsers = []; // Array to hold the history list
+    // let removedUsers = []; // Array to hold removed users (Not fully implemented in logic, but structure exists)
+    let allOnlineUsersData = []; // Array to hold ALL fetched online user data before filtering
+    let lastFilteredUsers = []; // Array to hold the list currently displayed in the online section (used for reporting)
+    let fetchInterval = null; // To hold the interval ID
 
-    const LOG_MAX_ENTRIES = 1000;
+    // --- API Configuration ---
+    // !! Verify this URL is correct and accessible from where your page is hosted !!
+    const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=dU9X&wm=9cg6A&disable_sound=1&client_ip=request_ip&gender=f';
+    const apiLimit = 500; // Limit per API page request
+    const fetchIntervalDuration = 120000; // 2 minutes (120 * 1000 milliseconds)
+    const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
+    const apiFetchTimeout = 25000; // Timeout for each API fetch request (milliseconds)
+    const reportSendTimeout = 45000; // Timeout for sending the report (milliseconds)
+    const maxApiFetchLimit = 20000; // Safety limit for total users fetched in one cycle
 
-    // Keep all DOM references
-    let onlineUsersDiv = null;
-    let previousUsersDiv = null;
+    // --- Helper Functions ---
 
-    let mainViewerContainer = null;
-    let iframeWrapper1 = null;
-    let mainIframe1 = null;
-    let iframeWrapper2 = null;
-    let mainIframe2 = null;
-    let iframeWrapper3 = null;
-    let mainIframe3 = null;
-    let iframeWrapper4 = null;
-    let mainIframe4 = null;
-    let mainIframes = [];
-    let iframeWrappers = [];
-    let mainIframeColumn = null;
-
-    let storageTypeSelector = null;
-    let filterTagsSelect = null;
-    let filterAgeSelect = null;
-    let clearPreviousUsersButton = null;
-
-    let sendReportButton = null;
-    let reportLoadingIndicator = null;
-    let reportStatusDisplay = null;
-
-    let onlineLoadingIndicator = null;
-    let onlineErrorDisplay = null;
-    let recognitionStatusDisplay = null;
-
-    let toggleAutoScrollButton = null;
-    let toggleDisplayModeButton = null;
-    let toggleIframeCountButton = null;
-
-    let userSearchInput = null;
-    let messageSearchInput = null;
-
-    let messageInput = null;
-    let saveMessageButton = null;
-    let messageListDiv = null;
-    let messageStatusDisplay = null;
-
-    let logDisplayArea = null;
-    let logEntriesDiv = null;
-    let showLogsButton = null;
-    let clearLogsButton = null;
-
-    // Section headers for toggling
-    let filtersSectionHeader = null;
-    let displaySectionHeader = null;
-    let viewerSectionHeader = null;
-    let messagingSectionHeader = null;
-    let reportingSectionHeader = null;
-
-
-    let storageType = 'indexedDB';
-    const historyStorageKey = 'previousUsers';
-    const maxHistorySize = 200;
-
-    let previousUsers = [];
-    let allOnlineUsersData = []; // This will now be populated by fetchData
-    let lastFilteredUsers = [];
-    let fetchInterval = null;
-    let fetchFailed = false;
-
-    let isAutoScrolling = false;
-    let autoScrollAnimationFrameId = null;
-    let autoScrollTimeoutId = null;
-
-    let displayMode = 'image';
-
-    let iframeCount = 2; // Default viewer count
-
-    let currentUserSearchTerm = '';
-    let currentMessageSearchTerm = '';
-
-    let savedMessages = [];
-
-    let capturedLogs = [];
-    const originalConsole = {};
-    let seen = new Set();
-
-
-    // --- Log Functionality ---
-    function formatLogTime(date) {
-        const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = date.getMinutes().toString().padStart(2, '0');
-        const seconds = date.getSeconds().toString().padStart(2, '0');
-        const milliseconds = date.getMilliseconds().toString().padStart(3, '0');
-        return `${hours}:${minutes}:${seconds}.${milliseconds}`;
-    }
-
-    function formatLogArguments(args) {
-        return args.map(arg => {
-            if (arg instanceof Error) {
-                return arg.stack || arg.message;
-            } else if (typeof arg === 'object' && arg !== null) {
-                try {
-                    seen = new Set();
-                    return JSON.stringify(arg, (key, value) => {
-                        if (typeof value === 'object' && value !== null) {
-                            if (seen.has(value)) return '[Circular]';
-                            seen.add(value);
-                        }
-                        return value;
-                    }, 2);
-                } catch (e) {
-                    originalConsole.error("Error stringifying log argument:", e); // Log stringify error using original console
-                    return String(arg);
-                } finally {
-                     seen = new Set();
-                 }
-            } else {
-                return String(arg);
-            }
-        }).join(' ');
-    }
-
-function captureConsole() {
-    const levels = ['log', 'warn', 'error', 'info', 'debug'];
-
-    levels.forEach(level => {
-        originalConsole[level] = console[level];
-
-        console[level] = function(...args) {
-            originalConsole[level].apply(console, args);
-
-            const stack = new Error().stack.split('\n')[2] || ''; // Get caller info
-            const callerInfo = stack.replace(/^\s+at\s+/g, ''); // Format caller info
-
-            const message = formatLogArguments(args);
-            const timestamp = new Date();
-            const logEntry = {
-                timestamp: timestamp.toISOString(),
-                timeFormatted: formatLogTime(timestamp),
-                level: level,
-                message: `${message} (Caller: ${callerInfo})`
-            };
-
-            capturedLogs.push(logEntry);
-            if (capturedLogs.length > LOG_MAX_ENTRIES) {
-                capturedLogs.shift();
-            }
-
-            if (logDisplayArea && !logDisplayArea.classList.contains('w3-hide') && logEntriesDiv) {
-                 appendLogToDisplay(logEntry);
-            }
-        };
-    });
-    originalConsole.log("Console capture initialized with enhanced logging.");
-}
-
-     function displayLogs() {
-          if (!logEntriesDiv) {
-              originalConsole.warn("Log entries display div (#logEntries) not found. Cannot display logs.");
-              return;
-          }
-          logEntriesDiv.innerHTML = '';
-
-          const fragment = document.createDocumentFragment();
-          capturedLogs.forEach(logEntry => {
-              const logElement = createLogElement(logEntry);
-              fragment.appendChild(logElement);
-          });
-          logEntriesDiv.appendChild(fragment);
-
-          logEntriesDiv.scrollTop = logEntriesDiv.scrollHeight;
-     }
-
-     function appendLogToDisplay(logEntry) {
-         if (!logEntriesDiv) return;
-
-         while (logEntriesDiv.childElementCount >= LOG_MAX_ENTRIES) {
-              logEntriesDiv.firstChild?.remove();
-         }
-
-         const logElement = createLogElement(logEntry);
-         logEntriesDiv.appendChild(logElement);
-
-         const isNearBottom = logEntriesDiv.scrollHeight - logEntriesDiv.clientHeight <= logEntriesDiv.scrollTop + 20;
-         if (isNearBottom) {
-             logEntriesDiv.scrollTop = logEntriesDiv.scrollHeight;
-         }
-     }
-
-     function createLogElement(logEntry) {
-         const logElement = document.createElement('div');
-         logElement.className = `log-entry log-${logEntry.level}`;
-         logElement.innerHTML = `<span class="log-timestamp">[${logEntry.timeFormatted}]</span> <span class="log-message">${escapeHTML(logEntry.message)}</span>`;
-         return logElement;
-     }
-
-     function escapeHTML(str) {
-         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-     }
-
-     function clearLogs() {
-          const confirmClear = confirm("Are you sure you want to clear all logs?");
-          if (!confirmClear) {
-              console.log("Log clear cancelled.");
-              return;
-          }
-          capturedLogs = [];
-          if (logEntriesDiv) {
-              logEntriesDiv.innerHTML = '';
-          }
-          console.log("Logs cleared.");
-     }
-
-
-    // --- Helper Functions (Date/Age) ---
-    function dateDifferenceInDays(date1, date2) {
-        const oneDay = 24 * 60 * 60 * 1000;
-        const diffMs = Math.abs(date1.getTime() - date2.getTime());
-        return Math.round(diffMs / oneDay);
-    }
-
+    /**
+     * Checks if a user's birthday string (e.g., "YYYY-MM-DD") corresponds to today's date.
+     * @param {string | null | undefined} birthday - The birthday string.
+     * @returns {boolean} True if it's the user's birthday today, false otherwise.
+     */
     function isBirthday(birthday) {
         if (!birthday || typeof birthday !== 'string') return false;
         try {
             const today = new Date();
+            // Assuming birthday format is YYYY-MM-DD. Adjust if needed.
+            // Split and create date carefully to avoid timezone issues if possible.
+            // Using UTC methods can help standardize if the source format is consistent.
             const parts = birthday.split('-');
-            if (parts.length !== 3) return false;
-            const birthDate = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
+            if (parts.length !== 3) return false; // Basic format check
+
+            // Note: new Date(year, monthIndex, day) uses 0-based month
+            const birthDate = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
 
             if (isNaN(birthDate.getTime())) {
                  console.warn("Invalid date encountered in isBirthday:", birthday);
                  return false;
             }
-
-            return today.getUTCMonth() === birthDate.getUTCMonth() && today.getUTCDate() === birthDate.getUTCDate();
+            // Compare UTC day and month
+            return today.getUTCDate() === birthDate.getUTCDate() && today.getUTCMonth() === birthDate.getUTCMonth();
         } catch (e) {
              console.error("Error checking birthday for:", birthday, e);
              return false;
         }
     }
 
-    function getDaysSince18thBirthday(birthdayString, apiAge) {
-        if (!birthdayString || typeof birthdayString !== 'string' || apiAge !== 18) {
-            return null;
-        }
+    // --- Storage Functions ---
 
-        try {
-            const today = new Date();
-             const parts = birthdayString.split('-');
-             if (parts.length !== 3) return null;
-
-            const birthYear = parseInt(parts[0], 10);
-            const birthMonth = parseInt(parts[1], 10) - 1;
-            const birthDay = parseInt(parts[2], 10);
-
-            const eighteenthBirthday = new Date(birthYear + 18, birthMonth, birthDay);
-
-            if (eighteenthBirthday > today) {
-                 console.warn(`User (Birth: ${birthdayString}, API Age: ${apiAge}) 18th birthday (${eighteenthBirthday.toISOString().split('T')[0]}) is in the future. Data inconsistency?`);
-                return null;
-            }
-
-             const nineteenthBirthday = new Date(birthYear + 19, birthMonth, birthDay);
-
-            if (nineteenthBirthday <= today) {
-                 console.warn(`User (Birth: ${birthdayString}, API Age: ${apiAge}) 19th birthday (${nineteenthBirthday.toISOString().split('T')[0]}) has passed. Data inconsistency?`);
-                return null;
-            }
-
-             const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-             const eighteenthBirthdayUtc = Date.UTC(eighteenthBirthday.getUTCFullYear(), eighteenthBirthday.getUTCMonth(), eighteenthBirthday.getUTCDate());
-             const diffMs = todayUtc - eighteenthBirthdayUtc;
-             const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-            return days >= 0 ? days : null;
-
-        } catch (e) {
-             console.error("Error calculating days since 18th birthday for:", birthdayString, e);
-             return null;
-        }
-    }
-
-
-    // --- IndexedDB Storage Functions ---
+    /**
+     * Opens the IndexedDB database. Creates/upgrades the object store if needed.
+     * @returns {Promise<IDBDatabase>} A promise that resolves with the database instance or rejects on error.
+     */
     function openIndexedDB() {
         return new Promise((resolve, reject) => {
              if (!('indexedDB' in window)) {
-                 console.error("IndexedDB not supported by this browser.");
+                 console.warn("IndexedDB not supported by this browser.");
                  reject(new Error("IndexedDB not supported."));
                  return;
              }
-            const request = indexedDB.open('UserDatabase', 2);
+            const request = indexedDB.open('UserDatabase', 1); // DB name and version
 
             request.onupgradeneeded = function(event) {
                 const db = event.target.result;
-                 console.log("IndexedDB upgrade needed or creating database. Old version:", event.oldVersion, "New version:", event.newVersion);
-
-                 if (!db.objectStoreNames.contains('users')) {
-                      db.createObjectStore('users', { keyPath: 'key' });
+                 console.log("IndexedDB upgrade needed or creating database.");
+                 if (!db.objectStoreNames.contains('users')) { // Use a consistent object store name
+                      const objectStore = db.createObjectStore('users', { keyPath: 'key' }); // Store key-value pairs
                      console.log("Created object store: 'users'");
-                 }
-
-                 if (!db.objectStoreNames.contains('messages')) {
-                      const messageStore = db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-                     messageStore.createIndex('text', 'text', { unique: false });
-                     console.log("Created object store: 'messages' with 'text' index.");
+                     // Example: Add index if needed for querying later
+                     // objectStore.createIndex('username', 'value.username', { unique: false });
                  } else {
-                     console.log("Object store 'messages' already exists.");
+                     console.log("Object store 'users' already exists.");
                  }
             };
 
             request.onsuccess = function(event) {
                 const db = event.target.result;
+                 // Generic DB error handler for errors not caught by specific requests
                  db.onerror = (errEvent) => console.error("IndexedDB Database Error:", errEvent.target.error);
                 resolve(db);
             };
@@ -351,313 +127,293 @@ function captureConsole() {
         });
     }
 
-     async function loadUsers(key = historyStorageKey) {
-         console.log(`Attempting to load history from: ${storageType} with key '${key}'`);
-         try {
-             if (storageType === 'local') {
-                 const data = localStorage.getItem(key);
-                 return data ? JSON.parse(data) : [];
-             } else if (storageType === 'session') {
-                 const data = sessionStorage.getItem(key);
-                 return data ? JSON.parse(data) : [];
-             } else if (storageType.startsWith('indexedDB')) {
-                 const idbKey = storageType.split(':')[1] || key;
-                  return await loadFromIndexedDB(idbKey);
-             } else {
-                  console.error(`Unknown storage type: ${storageType}`);
-                  return [];
-             }
-         } catch (e) {
-             console.error(`Error loading from ${storageType} with key '${key}':`, e);
-         }
-         return [];
-     }
+    /**
+     * Loads data for a specific key from the IndexedDB 'users' store.
+     * @param {string} key - The key to retrieve (e.g., 'previousUsers').
+     * @returns {Promise<Array<Object>>} Resolves with the data array, or an empty array if not found or on error.
+     */
+    async function loadFromIndexedDB(key) {
+        let db;
+        try {
+            db = await openIndexedDB();
+        } catch (error) {
+            console.error(`Failed to open IndexedDB for loading key '${key}':`, error);
+            return []; // Return empty array if DB fails to open
+        }
 
-     async function saveUsers(users, key = historyStorageKey) {
-         if (!Array.isArray(users)) {
-             console.error(`Attempted to save non-array data to ${storageType} for key '${key}'. Aborting. Data:`, users);
-             return Promise.reject(new Error("Invalid data type: Expected an array."));
-         }
-         console.log(`Attempting to save ${users.length} users to: ${storageType} with key '${key}'`);
-         try {
-             const data = JSON.stringify(users);
-             if (storageType === 'local') {
-                 localStorage.setItem(key, data);
-             } else if (storageType === 'session') {
-                 sessionStorage.setItem(key, data);
-             } else if (storageType.startsWith('indexedDB')) {
-                  const idbKey = storageType.split(':')[1] || key;
-                 await saveToIndexedDB(idbKey, users);
-             } else {
-                  console.error(`Unknown storage type: ${storageType}`);
-                  return Promise.reject(new Error(`Unknown storage type: ${storageType}`));
-             }
-             console.log("Save successful.");
-             return Promise.resolve();
-         } catch (e) {
-             console.error(`Error saving to ${storageType} with key '${key}':`, e);
-             if ((storageType === 'local' || storageType === 'session') && e instanceof DOMException && (e.code === 22 || e.code === 1014 || e.name === 'QuotaExceededError')) {
-                  console.error("Storage quota exceeded for Web Storage.");
-                  showOnlineErrorDisplay("Storage quota exceeded. Cannot save history.");
-                  return Promise.reject(new Error("Storage quota exceeded."));
-             }
-              if (storageType.startsWith('indexedDB')) {
-                   showOnlineErrorDisplay(`Error saving history to IndexedDB: ${e.message}`);
-                   return Promise.reject(e);
-              }
-             showOnlineErrorDisplay(`Error saving history: ${e.message}`);
-             return Promise.reject(e);
-         }
-     }
+        return new Promise((resolve) => { // No reject needed, resolve with [] on error
+            const transaction = db.transaction('users', 'readonly');
+            const store = transaction.objectStore('users');
+            const request = store.get(key);
 
-     async function loadFromIndexedDB(key) {
-         let db;
-         try {
-             db = await openIndexedDB();
-         } catch (error) {
-             console.error(`Failed to open IndexedDB for loading key '${key}':`, error);
-             return [];
-         }
+            request.onsuccess = function(event) {
+                 // Data is stored in the 'value' property of the object { key: 'keyName', value: [...] }
+                const result = event.target.result;
+                resolve(result ? result.value : []);
+            };
+            request.onerror = function(event) {
+                console.error(`IndexedDB Load Error for key '${key}':`, event.target.error);
+                // Resolve with empty array on load error to allow the app to continue
+                resolve([]);
+            };
+             transaction.oncomplete = () => { db.close(); /* console.log(`IDB load transaction for ${key} complete.`); */ };
+             transaction.onerror = (event) => console.error(`IDB load transaction error for ${key}:`, event.target.error); // Should not happen if request errors handled
+        });
+    }
 
-         return new Promise((resolve) => {
-             const transaction = db.transaction('users', 'readonly');
-             const store = transaction.objectStore('users');
-             const request = store.get(key);
-
-             request.onsuccess = function(event) {
-                 const result = event.target.result;
-                 resolve(result ? result.value : []);
-             };
-             request.onerror = function(event) {
-                 console.error(`IndexedDB Load Error for key '${key}':`, event.target.error);
-                 resolve([]);
-             };
-              transaction.oncomplete = () => { db.close(); };
-              transaction.onerror = (event) => { console.error(`IDB load transaction error for ${key}:`, event.target.error); db.close(); resolve([]); };
-              transaction.onabort = (event) => { console.error(`IDB load transaction aborted for ${key}:`, event.target.error); db.close(); resolve([]); };
-         });
-     }
-
-     async function saveToIndexedDB(key, users) {
-         if (!Array.isArray(users)) {
-             console.error(`Attempted to save non-array data to IndexedDB for key '${key}'. Aborting. Data:`, users);
-             return Promise.reject(new Error("Invalid data type: Expected an array."));
-         }
-
-         let db;
-         try {
-             db = await openIndexedDB();
-         } catch (error) {
-              console.error(`Failed to open IndexedDB for saving key '${key}':`, error);
-             throw error;
-         }
-
-         return new Promise((resolve, reject) => {
-             const transaction = db.transaction('users', 'readwrite');
-             const store = transaction.objectStore('users');
-             const request = store.put({ key: key, value: users });
-
-             request.onsuccess = function() {
-             };
-             request.onerror = function(event) {
-                  console.error(`IndexedDB Put Error for key '${key}':`, event.target.error);
-                  reject(event.target.error);
-             };
-
-              transaction.oncomplete = () => {
-                  db.close();
-                  resolve();
-              };
-              transaction.onabort = (event) => {
-                  console.error(`IndexedDB transaction for key '${key}' aborted.`, event.target.error || 'Unknown abort reason');
-                  db.close();
-                  reject(event.target.error || new Error('Transaction aborted'));
-              };
-               transaction.onerror = (event) => {
-                  console.error(`IndexedDB transaction error for key '${key}'.`, event.target.error);
-                  db.close();
-                  reject(event.target.error);
-              };
-         });
-     }
-
-      async function getIndexedDBKeys() {
-          let db;
-          try {
-              db = await openIndexedDB();
-          } catch (error) {
-              console.error("Failed to open IndexedDB for getting keys:", error);
-              return [];
-          }
-
-          return new Promise((resolve) => {
-              const transaction = db.transaction('users', 'readonly');
-              const store = transaction.objectStore('users');
-              const request = store.getAllKeys();
-
-              request.onsuccess = function(event) {
-                  const keys = event.target.result || [];
-                   resolve(keys);
-              };
-              request.onerror = function(event) {
-                  console.error("IndexedDB GetAllKeys Error:", event.target.error);
-                  resolve([]);
-              };
-              transaction.oncomplete = () => { db.close(); };
-              transaction.onerror = (event) => { console.error("IDB getAllKeys transaction error:", event.target.error); db.close(); resolve([]); };
-               transaction.onabort = (event) => { console.error("IDB getAllKeys transaction aborted:", event.target.error); db.close(); resolve([]); };
-          });
-      }
-
-
-    async function saveMessageToIndexedDB(message) {
-         if (!message || typeof message.text !== 'string' || message.text.trim() === '') {
-              console.warn("Attempted to save empty or invalid message:", message);
-              return Promise.reject(new Error("Invalid message data."));
-         }
+    /**
+     * Saves data (an array of users) for a specific key to the IndexedDB 'users' store.
+     * @param {string} key - The key to save under (e.g., 'previousUsers').
+     * @param {Array<Object>} users - The array of user objects to save.
+     * @returns {Promise<void>} Resolves when the save is complete, rejects on error.
+     */
+    async function saveToIndexedDB(key, users) {
+        if (!Array.isArray(users)) {
+            console.error(`Attempted to save non-array data to IndexedDB for key '${key}'. Aborting. Data:`, users);
+            return Promise.reject(new Error("Invalid data type: Expected an array.")); // Reject promise for clarity
+        }
 
         let db;
         try {
             db = await openIndexedDB();
         } catch (error) {
-             console.error("Failed to open IndexedDB for saving message:", error);
-            throw error;
+             console.error(`Failed to open IndexedDB for saving key '${key}':`, error);
+            throw error; // Propagate the error
         }
 
         return new Promise((resolve, reject) => {
-            const transaction = db.transaction('messages', 'readwrite');
-            const store = transaction.objectStore('messages');
+            const transaction = db.transaction('users', 'readwrite');
+            const store = transaction.objectStore('users');
+            // Store the data as an object: { key: 'yourKey', value: yourArray }
+            const request = store.put({ key: key, value: users });
 
-             const messageToSave = {
-                 text: message.text.trim(),
-                 timestamp: new Date().toISOString(),
+            request.onsuccess = function() {
+                // Let transaction.oncomplete handle final resolution
+            };
+            request.onerror = function(event) {
+                 console.error(`IndexedDB Put Error for key '${key}':`, event.target.error);
+                 // Don't close DB here, let transaction error handler do it potentially
+                 reject(event.target.error); // Reject the promise on request error
+            };
+
+             // Transaction level events are more reliable for completion/failure
+             transaction.oncomplete = () => {
+                 /* console.log(`IndexedDB transaction for key '${key}' complete.`); */
+                 db.close();
+                 resolve();
+             };
+             transaction.onabort = (event) => {
+                 console.error(`IndexedDB transaction for key '${key}' aborted.`, event.target.error || 'Unknown abort reason');
+                 db.close();
+                 reject(event.target.error || new Error('Transaction aborted'));
+             };
+              transaction.onerror = (event) => {
+                 console.error(`IndexedDB transaction error for key '${key}'.`, event.target.error);
+                 db.close(); // Close DB even on transaction error
+                 reject(event.target.error);
+             };
+        });
+    }
+
+    /**
+     * Loads user data (expected to be an array) from the currently selected storage type.
+     * Uses the global `storageType` variable.
+     * @param {string} key - The storage key (e.g., 'previousUsers').
+     * @returns {Promise<Array<Object>>} Resolves with the loaded data array or an empty array on error/not found.
+     */
+    async function loadUsers(key) {
+        console.log(`Loading data for key '${key}' using storage type: ${storageType}`);
+        if (storageType === "indexedClicked" || storageType.startsWith('IndexedDB:')) { // Handle both the default value and potential custom keys
+            try {
+                 // If using custom keys, extract the actual key name
+                 const idbKey = storageType.startsWith('IndexedDB:') ? storageType.substring(11) : key;
+                 console.log(`Using IndexedDB key: ${idbKey}`);
+                 const data = await loadFromIndexedDB(idbKey);
+                 console.log(`Loaded ${data.length} items from IndexedDB for key '${idbKey}'.`);
+                 return Array.isArray(data) ? data : []; // Ensure it returns an array
+            } catch (error) {
+                 console.error(`Failed to load from IndexedDB for key '${key}' (storage type: ${storageType}).`, error);
+                 return []; // Fallback to empty array on IDB load error
+            }
+        } else {
+            const storage = storageType === "local" ? localStorage : sessionStorage;
+            try {
+                const storedUsers = storage.getItem(key);
+                 const data = storedUsers ? JSON.parse(storedUsers) : [];
+                 // Validate that the parsed data is an array
+                 if (!Array.isArray(data)) {
+                     console.warn(`Data loaded from ${storageType} storage for key '${key}' is not an array. Returning []. Data:`, data);
+                     storage.removeItem(key); // Optionally remove invalid data
+                     return [];
+                 }
+                 console.log(`Loaded ${data.length} items from ${storageType} storage for key '${key}'.`);
+                return data;
+            } catch (error) {
+                 console.error(`Error loading or parsing from ${storageType} storage key '${key}':`, error);
+                 // Optionally try to remove corrupted data
+                 try { storage.removeItem(key); } catch (e) { /* ignore remove error */ }
+                 return []; // Return empty array on error
+            }
+        }
+    }
+
+    /**
+     * Saves user data (an array) to the currently selected storage type.
+     * Uses the global `storageType` variable.
+     * @param {string} key - The storage key (e.g., 'previousUsers').
+     * @param {Array<Object>} users - The array of user objects to save.
+     * @returns {Promise<void>} Resolves when saved, rejects on IndexedDB errors.
+     */
+    async function saveUsers(key, users) {
+        if (!Array.isArray(users)) {
+            console.error(`Attempted to save non-array data for key '${key}'. Aborting save. Data:`, users);
+            return; // Don't save invalid data
+        }
+         console.log(`Saving ${users.length} items for key '${key}' using storage type: ${storageType}`);
+
+        if (storageType === "indexedClicked" || storageType.startsWith('IndexedDB:')) { // Handle default and custom keys
+             try {
+                  // If using custom keys, extract the actual key name
+                 const idbKey = storageType.startsWith('IndexedDB:') ? storageType.substring(11) : key;
+                 console.log(`Saving to IndexedDB key: ${idbKey}`);
+                 await saveToIndexedDB(idbKey, users);
+                 console.log(`Saved to IndexedDB for key '${idbKey}'.`);
+            } catch (error) {
+                 console.error(`Failed to save to IndexedDB for key '${key}' (storage type: ${storageType}).`, error);
+                 // Optionally notify the user about the save failure
+                 // showUserMessage("Failed to save history to IndexedDB.", 'error');
+                 throw error; // Re-throw IDB errors so caller knows it failed
+            }
+        } else {
+            const storage = storageType === "local" ? localStorage : sessionStorage;
+            try {
+                storage.setItem(key, JSON.stringify(users));
+                 console.log(`Saved to ${storageType} storage for key '${key}'.`);
+            } catch (error) {
+                 console.error(`Error saving to ${storageType} storage key '${key}':`, error);
+                 // Notify the user about the save failure (e.g., quota exceeded)
+                 // showUserMessage(`Failed to save history to ${storageType} storage. Storage might be full.`, 'error');
+                 // Don't re-throw, as localStorage/sessionStorage errors are less critical than IDB usually
+            }
+        }
+    }
+
+    /**
+     * Gets all keys currently stored in the IndexedDB 'users' object store.
+     * Useful for populating storage type options with custom saved lists.
+     * @returns {Promise<string[]>} A promise resolving with an array of keys, or empty array on error.
+     */
+     async function getIndexedDBKeys() {
+         let db;
+         try {
+             db = await openIndexedDB();
+         } catch (error) {
+             console.warn("Failed to open IndexedDB to get keys:", error);
+             return []; // Return empty array if DB fails to open
+         }
+
+         return new Promise((resolve) => { // Resolve with [] on error
+             const transaction = db.transaction('users', 'readonly');
+             const store = transaction.objectStore('users');
+             const request = store.getAllKeys(); // Get all keys from the store
+
+             request.onsuccess = function(event) {
+                 resolve(event.target.result || []);
              };
 
-            const request = store.add(messageToSave);
+             request.onerror = function(event) {
+                 console.error("IndexedDB getAllKeys Error:", event.target.error);
+                 resolve([]); // Resolve with empty array on error
+             };
 
-            request.onsuccess = function(event) {
-                resolve(event.target.result);
-            };
-
-            request.onerror = function(event) {
-                console.error("IndexedDB Message Save Error:", event.target.error);
-                reject(event.target.error);
-            };
-
-             transaction.oncomplete = () => { db.close(); };
-             transaction.onabort = (event) => { console.error("IDB message save transaction aborted.", event.target.error); db.close(); reject(event.target.error || new Error('Transaction aborted')); };
-             transaction.onerror = (event) => { console.error("IDB message save transaction error.", event.target.error); db.close(); reject(event.target.error); };
-        });
-    }
-
-    async function loadMessagesFromIndexedDB() {
-        let db;
-        try {
-            db = await openIndexedDB();
-        } catch (error) {
-            console.error("Failed to open IndexedDB for loading messages:", error);
-            return [];
-        }
-
-        return new Promise((resolve) => {
-            const transaction = db.transaction('messages', 'readonly');
-            const store = transaction.objectStore('messages');
-
-            const request = store.getAll();
-
-            request.onsuccess = function(event) {
-                resolve(event.target.result || []);
-            };
-
-            request.onerror = function(event) {
-                console.error("IndexedDB Load All Messages Error:", event.target.error);
-                resolve([]);
-            };
-
-             transaction.oncomplete = () => { db.close(); };
-             transaction.onerror = (event) => { console.error("IDB load all messages transaction error:", event.target.error); db.close(); resolve([]); };
-              transaction.onabort = (event) => { console.error("IDB load all messages transaction aborted:", event.target.error); db.close(); resolve([]); };
-        });
-    }
+             transaction.oncomplete = () => { db.close(); /* console.log("IDB getAllKeys transaction complete."); */ };
+             transaction.onerror = (event) => console.error("IDB getAllKeys transaction error:", event.target.error);
+         });
+     }
 
 
-    // --- Data Fetching and Processing (Restored) ---
+    // --- Core Application Logic Functions ---
+
+    /**
+     * Fetches online user data from the API using pagination.
+     * Updates `allOnlineUsersData`, then calls functions to populate filters and display users.
+     */
     async function fetchData() {
         console.log("Executing fetchData: Starting online user data fetch...");
-        stopAutoScroll(); // Stop scroll while fetching/re-rendering
         showOnlineLoadingIndicator("Loading online users...");
-        clearOnlineErrorDisplay();
-         fetchFailed = false;
+        clearOnlineErrorDisplay(); // Clear previous errors
 
-        let fetchedUsers = [];
+        let fetchedUsers = []; // Use a temporary array for this fetch cycle
         let offset = 0;
         let continueFetching = true;
         let totalFetchedCount = 0;
 
-         // Loop to fetch data in chunks until no more data or max limit is reached
         while (continueFetching && totalFetchedCount < maxApiFetchLimit) {
-            const apiUrl = `${apiUrlBase}?limit=${apiLimit}&offset=${offset}`;
-            console.log(`fetchData: Fetching ${apiUrl}...`);
+            const apiUrl = `${apiUrlBase}&limit=${apiLimit}&offset=${offset}`;
+             console.log(`fetchData: Fetching page (limit ${apiLimit}, offset ${offset}). URL: ${apiUrl}`);
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => {
                      console.warn(`fetchData: Aborting fetch for offset ${offset} due to timeout (${apiFetchTimeout}ms).`);
-                     controller.abort(); // Abort the fetch request
+                     controller.abort();
                      }, apiFetchTimeout);
 
                 const response = await fetch(apiUrl, { signal: controller.signal });
-                clearTimeout(timeoutId); // Clear the timeout if fetch completes before it
+                clearTimeout(timeoutId); // Clear the timeout if fetch completes/fails normally
 
                 console.log(`fetchData: Response status for offset ${offset}: ${response.status}`);
 
                 if (!response.ok) {
-                     // Read response body for more details if available
                      const errorBody = await response.text().catch(() => `Status: ${response.statusText}`);
                      console.error(`fetchData: HTTP error fetching offset ${offset}. Status: ${response.status}, Body: ${errorBody}`);
+                     // Decide if a single page failure should stop the whole process
+                     // For now, we'll stop fetching on error.
                      throw new Error(`HTTP error ${response.status}`);
                 }
 
                 const data = await response.json();
+                 // console.log("fetchData: Successfully parsed JSON response for offset", offset);
 
-                 // Check if the response data has the expected structure and results array
+                 // Validate the received data structure
                  if (data && data.results && Array.isArray(data.results)) {
+                     console.log(`fetchData: Received ${data.results.length} results in batch from offset ${offset}.`);
                       if (data.results.length > 0) {
+                         // Log a sample user object to verify properties occasionally
+                         // if (offset === 0) console.log("fetchData: Sample user object:", data.results[0]);
                          fetchedUsers = fetchedUsers.concat(data.results);
                          totalFetchedCount = fetchedUsers.length;
-                         showOnlineLoadingIndicator(`Fetched ${totalFetchedCount} users...`); // Update loading count
+                         showOnlineLoadingIndicator(`Fetched ${totalFetchedCount} users...`);
 
-                         // If we received fewer results than the limit, assume it's the last page
                          if (data.results.length < apiLimit) {
-                             continueFetching = false;
+                             console.log("fetchData: Last page reached (results < limit). Stopping fetch.");
+                             continueFetching = false; // This was the last page
                          } else {
-                             // Otherwise, increment offset for the next page
-                             offset += apiLimit;
+                             offset += apiLimit; // Prepare for the next page
+                             // continueFetching remains true
                          }
                      } else {
-                         // If results array is empty, stop fetching
-                         continueFetching = false;
+                         console.log("fetchData: Received 0 results in batch from offset ${offset}. Stopping fetch.");
+                         continueFetching = false; // No more results on this page, stop.
                      }
                  } else {
-                     // If response format is unexpected, log warning and stop fetching
-                     console.warn(`fetchData: Response JSON does not contain a valid 'results' array from offset ${offset}:`, data);
-                      showOnlineErrorDisplay(`API response format error from offset ${offset}. Check console.`);
-                     continueFetching = false;
+                     console.warn("fetchData: Response JSON does not contain a valid 'results' array from offset ${offset}:", data);
+                     continueFetching = false; // Invalid data structure, stop.
                  }
+                 // console.log(`fetchData: Loop check: continueFetching=${continueFetching}, offset=${offset}, totalFetchedCount=${totalFetchedCount}`);
 
             } catch (error) {
-                // Handle fetch errors (network, timeout, http errors, JSON parsing errors)
                 console.error(`fetchData: Error during fetch for offset ${offset}:`, error);
-                 fetchFailed = true; // Set flag to indicate failure
                  if (error.name === 'AbortError') {
                      showOnlineErrorDisplay(`Failed to fetch data (timeout). Check network or API status.`);
                  } else {
                     showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
                  }
-                continueFetching = false; // Stop fetching on any error
+                 // Optional: Display error directly in the list area
+                 // if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-danger w3-center">Error fetching data. See console.</p>';
+                continueFetching = false; // Stop fetching loop on any error
             }
-        }
+        } // End while loop
 
-        // Warning if max fetch limit was reached
         if (totalFetchedCount >= maxApiFetchLimit) {
             console.warn(`fetchData: Fetch stopped after reaching safety limit (${maxApiFetchLimit} users).`);
             showOnlineErrorDisplay(`Load stopped at ${maxApiFetchLimit} users. Data might be incomplete.`);
@@ -665,350 +421,254 @@ function captureConsole() {
 
         console.log(`fetchData: Fetch cycle finished. Total users fetched in this cycle: ${totalFetchedCount}`);
 
-        // Update the main state variable with the newly fetched data
+        // --- Post-fetch actions ---
+        // Replace the old data with the newly fetched data
         allOnlineUsersData = fetchedUsers;
-        lastFilteredUsers = []; // Reset filtered list, it will be populated by applyFiltersAndDisplay
+        lastFilteredUsers = []; // Reset filtered list until filters are applied
 
-        // Proceed with UI updates based on the fetched data (even if empty or failed)
         if (allOnlineUsersData.length > 0) {
-             console.log("fetchData: Populating filters, displaying users, and previous users.");
-             populateFilters(allOnlineUsersData); // Populate filters from the fetched data
-             if (userSearchInput && typeof $.fn.autocomplete === 'function') {
-                  // Update autocomplete source with new usernames
-                  $(userSearchInput).autocomplete('option', 'source', getAllUsernames());
-             }
-             applyFiltersAndDisplay(); // Apply current filters and display the list
-             await displayPreviousUsers(); // Refresh history list based on who is online now
+             console.log("fetchData: Populating filters and displaying users...");
+             populateFilters(allOnlineUsersData); // Populate filters based on the *new* full dataset
+             applyFiltersAndDisplay(); // Apply current filters and display the new online users
+             await displayPreviousUsers(); // Refresh previous users display (needs await as it might load)
         } else {
-             // Handle the case where no users were fetched
-             console.log("fetchData: No online users data fetched in this cycle.");
-              if (onlineUsersDiv) {
-                  if (fetchFailed) {
-                      // If fetch failed, keep the error message shown by showOnlineErrorDisplay
-                  } else {
-                      // If fetch succeeded but returned no data
-                      onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-                  }
-              }
-
-              // Clear filters and autocomplete if no data
-              populateFilters([]);
-              if (userSearchInput && typeof $.fn.autocomplete === 'function') {
-                  $(userSearchInput).autocomplete('option', 'source', []);
-             }
-              lastFilteredUsers = []; // Ensure filtered list is empty
-              displayOnlineUsersList(lastFilteredUsers); // Display the empty list
-              await displayPreviousUsers(); // History display will show "none online"
+             console.log("fetchData: No online users data fetched in this cycle. Clearing online display.");
+              if (onlineUsersDiv) onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
+              populateFilters([]); // Clear filters or show default state
+              applyFiltersAndDisplay(); // Ensure display reflects empty state
+              await displayPreviousUsers(); // Still try to display previous users (they might be offline now)
         }
 
-        hideOnlineLoadingIndicator(); // Hide loading indicator
+        hideOnlineLoadingIndicator();
         console.log("fetchData execution finished.");
     }
 
-
-     function getAllUsernames() {
-         if (!allOnlineUsersData || allOnlineUsersData.length === 0) {
-             return [];
-         }
-         return allOnlineUsersData.map(user => user.username).filter(Boolean); // Filter out any null/undefined usernames
-     }
-
-
-    // --- Filtering and Display ---
+    /**
+     * Populates the tag and age filter dropdowns based on the provided user data.
+     * Preserves currently selected values if possible.
+     * @param {Array<Object>} users - The array of user objects (usually `allOnlineUsersData`).
+     */
     function populateFilters(users) {
          if (!filterTagsSelect || !filterAgeSelect) {
               console.warn("Filter select elements not found. Cannot populate filters.");
               return;
          }
-        console.log(`Populating filters with data from ${users.length} users...`);
-
-        const uniqueTags = new Set();
-        const uniqueAges = new Set();
+        console.log("Populating filters...");
+        const tagFrequency = {};
+        const ages = new Set();
 
         users.forEach(user => {
+            // Ensure tags is an array and tags are strings
             if (user.tags && Array.isArray(user.tags)) {
                 user.tags.forEach(tag => {
-                    if (typeof tag === 'string' && tag.trim() !== '') {
-                        uniqueTags.add(tag.trim());
-                    }
+                     if (typeof tag === 'string' && tag.trim() !== '') {
+                        const lowerTag = tag.trim().toLowerCase();
+                        tagFrequency[lowerTag] = (tagFrequency[lowerTag] || 0) + 1;
+                     }
                 });
             }
+            // Ensure age is a valid positive number
             if (user.age && typeof user.age === 'number' && user.age > 0) {
-                uniqueAges.add(user.age);
+                ages.add(user.age);
             }
         });
 
-        const sortedTags = Array.from(uniqueTags).sort();
-        const sortedAges = Array.from(uniqueAges).sort((a, b) => a - b);
+        // --- Populate Tags ---
+        // Sort tags: first by frequency (desc), then alphabetically for ties
+        const sortedTags = Object.entries(tagFrequency)
+            .sort(([tagA, countA], [tagB, countB]) => countB - countA || tagA.localeCompare(tagB))
+            .slice(0, 75) // Limit number of tags shown in dropdown (e.g., top 75)
+            .map(([tag]) => tag); // Get only the tag name
 
-        const currentSelectedTags = Array.from(filterTagsSelect.selectedOptions).map(opt => opt.value);
-        const currentSelectedAges = Array.from(filterAgeSelect.selectedOptions).map(opt => parseInt(opt.value)).filter(age => !isNaN(age)); // Filter out NaN
+         // Preserve current selections before clearing
+         const selectedTagValues = Array.from(filterTagsSelect.selectedOptions).map(opt => opt.value);
+         filterTagsSelect.innerHTML = '<option value="">-- All Tags --</option>'; // Default option
+         sortedTags.forEach(tag => {
+              const isSelected = selectedTagValues.includes(tag);
+              // Capitalize first letter for display (optional)
+              const displayText = tag.charAt(0).toUpperCase() + tag.slice(1);
+             filterTagsSelect.add(new Option(`${displayText} (${tagFrequency[tag]})`, tag, false, isSelected));
+         });
 
-        filterTagsSelect.innerHTML = '<option value="">-- All Tags --</option>';
-        sortedTags.forEach(tag => {
-            const option = document.createElement('option');
-            option.value = tag;
-            option.textContent = tag;
-             if (currentSelectedTags.includes(tag)) {
-                 option.selected = true;
-             }
-            filterTagsSelect.appendChild(option);
-        });
 
-        filterAgeSelect.innerHTML = '<option value="">-- All Ages --</option>';
-        sortedAges.forEach(age => {
-            const option = document.createElement('option');
-            option.value = age;
-            option.textContent = age;
-             if (currentSelectedAges.includes(age)) {
-                 option.selected = true;
-             }
-            filterAgeSelect.appendChild(option);
-        });
-        console.log("Filters populated.");
+        // --- Populate Ages ---
+        // Sort ages numerically
+        const sortedAges = Array.from(ages).sort((a, b) => a - b);
+         // Preserve current selections
+         const selectedAgeValues = Array.from(filterAgeSelect.selectedOptions).map(opt => opt.value);
+        filterAgeSelect.innerHTML = '<option value="">-- All Ages --</option>'; // Default option
+         sortedAges.forEach(age => {
+              const isSelected = selectedAgeValues.includes(String(age)); // Compare as strings
+             filterAgeSelect.add(new Option(String(age), String(age), false, isSelected));
+         });
+
+         console.log("Filter population complete.");
+
+         // Update storage options (in case new IndexedDB keys were created externally, though unlikely)
+         // Run this less frequently if it causes issues or isn't needed after init
+         // await populateStorageOptions();
     }
 
+     /**
+      * Applies filters based on dropdown selections or button overrides.
+      * Updates `lastFilteredUsers` state and calls `displayOnlineUsersList`.
+      * @param {Object} [buttonFilters={}] - Optional filters from specific buttons like { tag: 'tagName' } or { age: 18 }.
+      */
+    function applyFiltersAndDisplay(buttonFilters = {}) {
+        console.log("Applying filters...", { buttonFilters });
 
-     function applyFiltersAndDisplay(buttonFilters = {}) {
-        console.log("Applying filters...", { buttonFilters, currentUserSearchTerm });
-
-        // Apply filters only if there's online user data
-        if (allOnlineUsersData.length === 0) {
-            console.warn("Applying filters skipped: No online user data available.");
-             // Ensure the list is empty and display the appropriate message (already set by fetchData)
-            lastFilteredUsers = [];
-            displayOnlineUsersList(lastFilteredUsers); // This will handle showing the "No users" message
-            return;
-        }
-
-
+        // Determine filter criteria: Use button filter if provided, otherwise use select elements
         let filterTags = [];
         if (buttonFilters.tag) {
             filterTags = [buttonFilters.tag.toLowerCase()];
-             console.log(`Quick filter applied: Tag = ${buttonFilters.tag}`);
+            // Optionally update the dropdown to reflect the button click
+            if (filterTagsSelect) filterTagsSelect.value = buttonFilters.tag.toLowerCase();
         } else if (filterTagsSelect) {
             filterTags = Array.from(filterTagsSelect.selectedOptions)
                 .map(option => option.value.toLowerCase())
-                .filter(tag => tag !== '');
+                .filter(tag => tag !== ''); // Exclude the "-- All Tags --" option
         }
 
         let filterAges = [];
         if (buttonFilters.age) {
             filterAges = [parseInt(buttonFilters.age)];
-             console.log(`Quick filter applied: Age = ${buttonFilters.age}`);
+             if (filterAgeSelect) filterAgeSelect.value = String(buttonFilters.age);
         } else if (filterAgeSelect) {
             filterAges = Array.from(filterAgeSelect.selectedOptions)
                 .map(option => parseInt(option.value))
-                .filter(age => !isNaN(age) && age > 0);
+                .filter(age => !isNaN(age) && age > 0); // Exclude "-- All Ages --" and ensure valid numbers
         }
 
-         if (Object.keys(buttonFilters).length === 0) {
-              currentUserSearchTerm = userSearchInput ? userSearchInput.value.trim().toLowerCase() : '';
-         } else {
-             currentUserSearchTerm = '';
-              if (userSearchInput) userSearchInput.value = '';
-         }
+        console.log("Active filters:", { filterTags, filterAges });
 
-        console.log("Active filters:", { filterTags, filterAges, userSearchTerm: currentUserSearchTerm });
-
+        // Filter the main data source (`allOnlineUsersData`)
         const filteredUsers = allOnlineUsersData.filter(user => {
-            // Basic checks for valid user data and public status
-            if (!user || !user.username || user.current_show !== 'public') {
-                return false;
-            }
+            // Basic check for user validity
+            if (!user || !user.username) return false;
 
-             let hasTags = true;
+            // Filter condition 1: Must be public show (adjust if other types are needed)
+            const isPublic = user.current_show === 'public';
+
+            // Filter condition 2: Tag match (must match ALL selected tags if multiple are selected)
+            // OR use .some() if ANY selected tag should match
+             let hasTags = true; // Default to true if no tags are selected
              if (filterTags.length > 0) {
+                 // Ensure user.tags exists and is an array
                  const userTagsLower = (user.tags && Array.isArray(user.tags))
                      ? user.tags.map(t => typeof t === 'string' ? t.toLowerCase() : '')
                      : [];
+                 // Use .some() - user must have at least one of the selected tags
                  hasTags = filterTags.some(filterTag => userTagsLower.includes(filterTag));
+                 // OR Use .every() - user must have ALL selected tags (less common use case)
+                 // hasTags = filterTags.every(filterTag => userTagsLower.includes(filterTag));
              }
 
-            let isAgeMatch = true;
+
+            // Filter condition 3: Age match (must match ANY selected age if multiple selected)
+            let isAgeMatch = true; // Default to true if no ages are selected
             if (filterAges.length > 0) {
+                // Ensure user.age exists and is a number
                 isAgeMatch = (user.age && typeof user.age === 'number')
                     ? filterAges.includes(user.age)
                     : false;
             }
 
-             let isUserSearchMatch = true;
-             if (currentUserSearchTerm !== '') {
-                  isUserSearchMatch = user.username.toLowerCase().includes(currentUserSearchTerm);
-             }
-
-            return hasTags && isAgeMatch && isUserSearchMatch;
+            // Return true only if all conditions pass
+            return isPublic && hasTags && isAgeMatch;
         });
 
         console.log(`Filtered ${allOnlineUsersData.length} users down to ${filteredUsers.length}.`);
-        lastFilteredUsers = filteredUsers;
-        displayOnlineUsersList(filteredUsers);
+        lastFilteredUsers = filteredUsers; // --- Store the filtered list for reporting ---
+        displayOnlineUsersList(filteredUsers); // Display the result
     }
 
 
+    /**
+     * Displays the provided list of users in the online users container.
+     * @param {Array<Object>} usersToDisplay - The array of user objects to display.
+     */
     function displayOnlineUsersList(usersToDisplay) {
          if (!onlineUsersDiv) {
              console.warn("Online users display div (#onlineUsers .user-list) not found. Cannot display users.");
              return;
          }
-        console.log(`displayOnlineUsersList: Displaying ${usersToDisplay.length} filtered online users in ${displayMode} mode.`);
-
-        stopAutoScroll();
-
-        onlineUsersDiv.innerHTML = "";
+        // console.log(`displayOnlineUsersList: Displaying ${usersToDisplay.length} filtered online users.`);
+        onlineUsersDiv.innerHTML = ""; // Clear previous list
 
         if (usersToDisplay.length === 0) {
-            if (fetchFailed) {
-                 onlineUsersDiv.innerHTML = '<p class="text-muted w3-center w3-text-red">Failed to load online users (API unavailable).</p>';
-            } else if (allOnlineUsersData.length > 0) { // Users fetched, but none match filters
-                 onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match the current filters.</p>';
-            } else { // No users fetched at all
-                 onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found.</p>';
-            }
-
-            if (toggleAutoScrollButton) {
-                toggleAutoScrollButton.disabled = true;
-                toggleAutoScrollButton.textContent = 'Not Scrollable';
-                 toggleAutoScrollButton.classList.remove('w3-red');
-                 toggleAutoScrollButton.classList.add('w3-green');
-            }
-             analysisQueue = []; // Clear queue if list is empty
-             isAnalyzing = false;
-             showRecognitionStatus(''); // Clear recognition status
+            onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match the current filters.</p>';
             return;
         }
 
-        onlineUsersDiv.classList.toggle('image-mode', displayMode === 'image');
-        onlineUsersDiv.classList.toggle('iframe-mode', displayMode === 'iframe');
+         // Optional: Sort the displayed users (e.g., by tokens, viewers, age, alphabetical)
+         // usersToDisplay.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0)); // Example: Sort by viewers descending
 
-
-        const fragment = document.createDocumentFragment();
-
-         // Queue images for analysis if in image mode and model is loaded
-         if (displayMode === 'image' && mobilenetModel) {
-             analysisQueue = [];
-             isAnalyzing = false;
-              showRecognitionStatus('Queuing images for analysis...');
-              // Add users to the queue only if they have an image URL and haven't been analyzed yet
-              usersToDisplay.forEach(user => {
-                  if (user.image_url && user.recognition_results === undefined) { // Check for undefined to indicate not processed
-                      analysisQueue.push({
-                          username: user.username,
-                          imageUrl: user.image_url,
-                      });
-                      // Mark user as pending analysis in the main data array
-                       const userState = allOnlineUsersData.find(u => u.username === user.username);
-                       if(userState) userState.recognition_results = null; // Use null to indicate queued/pending
-                  }
-              });
-              console.log(`Queued ${analysisQueue.length} images for recognition.`);
-              // Start processing the queue if there are items
-              if (analysisQueue.length > 0 && !isAnalyzing) {
-                   processAnalysisQueue();
-              } else if (analysisQueue.length === 0 && usersToDisplay.length > 0) {
-                  showRecognitionStatus("Recognition results shown below users or no images to analyze.", 'info');
-                  setTimeout(() => showRecognitionStatus(''), 3000);
-              } else {
-                  showRecognitionStatus('');
-              }
-         } else {
-               // Clear queue and status if not in image mode or model not available
-               analysisQueue = [];
-               isAnalyzing = false;
-               showRecognitionStatus('');
-         }
-
-
+        const fragment = document.createDocumentFragment(); // Use fragment for better performance
         usersToDisplay.forEach(user => {
-            if (!user || !user.image_url || !user.username) {
+            // Basic data validation before creating element
+            if (!user || !user.image_url || !user.username) { // iframe_embed might not always be needed directly here
                 console.warn("Skipping online user display due to incomplete data:", user);
                 return;
             }
-             // Get the user data from the main state array to include recognition results if available
-             const userInState = allOnlineUsersData.find(u => u.username === user.username);
-             const userForDisplay = userInState || user; // Use state data if found, otherwise fallback to data passed in
-
-
-            const userElement = createUserElement(userForDisplay, 'online', displayMode); // Pass data with potential recognition results
+            const userElement = createUserElement(user, 'online'); // Use helper, specify list type
             fragment.appendChild(userElement);
         });
-        onlineUsersDiv.appendChild(fragment);
-
-
-         // Re-evaluate auto-scroll button state
-         if (toggleAutoScrollButton) {
-             if (onlineUsersDiv.scrollHeight > onlineUsersDiv.clientHeight) {
-                  toggleAutoScrollButton.disabled = false;
-                  toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
-                   toggleAutoScrollButton.classList.remove('w3-red');
-                   toggleAutoScrollButton.classList.add('w3-green');
-             } else {
-                 toggleAutoScrollButton.disabled = true;
-                 toggleAutoScrollButton.textContent = 'Not Scrollable';
-                  toggleAutoScrollButton.classList.remove('w3-red');
-                  toggleAutoScrollButton.classList.add('w3-green');
-             }
-         }
-         console.log("displayOnlineUsersList complete.");
+        onlineUsersDiv.appendChild(fragment); // Append fragment once
+         // console.log("displayOnlineUsersList: Online users display complete.");
     }
 
 
+    /**
+     * Displays the previous users list, filtering to show only those currently online & public.
+     * Ensures `previousUsers` state is loaded before displaying.
+     * @returns {Promise<void>}
+     */
     async function displayPreviousUsers() {
          if (!previousUsersDiv) {
              console.warn("Previous users display div (#previousUsers .user-list) not found.");
              return;
          }
-         console.log(`displayPreviousUsers: Refreshing display. History has ${previousUsers.length} users loaded in state.`);
-         previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Updating history display...</p>';
+         console.log(`displayPreviousUsers: Refreshing display. History has ${previousUsers.length} users.`);
+         previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Loading history...</p>'; // Initial loading state
 
+         // Ensure previousUsers state is loaded. If it's empty, try loading from storage.
          if (previousUsers.length === 0) {
-             previousUsers = await loadUsers(historyStorageKey);
-              console.log(`displayPreviousUsers: Loaded ${previousUsers.length} users from storage.`);
+             console.log("displayPreviousUsers: State empty, attempting load from storage...");
+             previousUsers = await loadUsers("previousUsers"); // Load based on current storageType
+             if (previousUsers.length === 0) {
+                previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history saved.</p>';
+                console.log("displayPreviousUsers: No previous users found in storage.");
+                return;
+             } else {
+                  console.log(`displayPreviousUsers: Loaded ${previousUsers.length} previous users from storage.`);
+             }
          }
 
-         if (previousUsers.length === 0) {
-            previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history saved.</p>';
-            console.log("displayPreviousUsers: No previous users found in state or storage.");
-            return;
-         }
-
-
+         // Check if we have current online data to compare against.
          if (allOnlineUsersData.length === 0) {
-             console.warn("displayPreviousUsers: Online user data not available. Displaying saved history without online status check.");
-              // Display saved history users, but add a note they might not be online
-             previousUsersDiv.innerHTML = "";
-              previousUsersDiv.classList.remove('iframe-mode');
-              previousUsersDiv.classList.add('image-mode'); // History list always uses image mode
-
-              const fragment = document.createDocumentFragment();
-              previousUsers.forEach(user => {
-                  if (!user || !user.image_url || !user.username) {
-                     console.warn("Skipping previous user display due to incomplete data:", user);
-                     return;
-                 }
-                  // Create element using saved data, indicating potentially offline
-                 const userElement = createUserElement(user, 'previous', 'image');
-                 // Optionally add an "Offline?" indicator
-                 const detailsDiv = userElement.querySelector('.user-details');
-                 if(detailsDiv) detailsDiv.insertAdjacentHTML('beforeend', '<p class="w3-text-red w3-small">Status: Unknown/Offline?</p>');
-
-                 fragment.appendChild(userElement);
-              });
-             previousUsersDiv.appendChild(fragment);
-              console.log("displayPreviousUsers: Displayed history users without online check.");
-              return;
+              console.warn("displayPreviousUsers: Online user data (allOnlineUsersData) not available. Displaying saved history without online status check.");
+              // Option 1: Show all saved users without filtering (might be confusing)
+               // const usersToDisplay = previousUsers;
+              // Option 2: Show a message indicating online status can't be checked
+              previousUsersDiv.innerHTML = '<p class="text-muted w3-center">History loaded. Fetching online status...</p>';
+              return; // Wait for next fetchData cycle to get online status
          }
+          // console.log(`displayPreviousUsers: Comparing against ${allOnlineUsersData.length} currently online users.`);
 
+
+         // Filter previous users: Show only those who are *currently* in `allOnlineUsersData` and are 'public'.
+         // Create a Map for faster lookup of online users by username
          const onlineUserMap = new Map(allOnlineUsersData.map(user => [user.username, user]));
 
          const currentlyOnlineAndPublicPreviousUsers = previousUsers.filter(prevUser => {
              const onlineUser = onlineUserMap.get(prevUser.username);
-             // Check if user is online *and* in a public show
+             // Must be found in the current online list AND have current_show == 'public'
              return onlineUser && onlineUser.current_show === 'public';
          });
 
          console.log(`displayPreviousUsers: Found ${currentlyOnlineAndPublicPreviousUsers.length} saved users currently online & public.`);
 
+         // Clear the loading message
          previousUsersDiv.innerHTML = "";
 
          if (currentlyOnlineAndPublicPreviousUsers.length === 0) {
@@ -1016,20 +676,15 @@ function captureConsole() {
               return;
          }
 
-         previousUsersDiv.classList.remove('iframe-mode');
-         previousUsersDiv.classList.add('image-mode');
-
+         // Display the filtered list
          const fragment = document.createDocumentFragment();
          currentlyOnlineAndPublicPreviousUsers.forEach(user => {
+             // Re-validate data just in case, though it should be fine if saved correctly
              if (!user || !user.image_url || !user.username) {
                 console.warn("Skipping previous user display due to incomplete data:", user);
                 return;
             }
-              // Use the online user data for display, which has the most current info
-              const onlineUserData = onlineUserMap.get(user.username);
-              const userForDisplay = onlineUserData || user; // Fallback to saved data if somehow online data is missing (shouldn't happen here)
-
-             const userElement = createUserElement(userForDisplay, 'previous', 'image');
+             const userElement = createUserElement(user, 'previous'); // Use helper, indicate type 'previous'
              fragment.appendChild(userElement);
          });
          previousUsersDiv.appendChild(fragment);
@@ -1037,137 +692,79 @@ function captureConsole() {
     }
 
 
-    function createUserElement(user, listType, mode) {
-        if (!user || !user.username) {
-             console.warn("createUserElement: Invalid user data:", user);
-             return null;
-         }
-
+    /**
+     * Creates and returns a DOM element for a single user.
+     * Includes image, details, badges, and event listeners.
+     * @param {Object} user - The user data object.
+     * @param {'online' | 'previous'} listType - Indicates which list the element is for (affects styling/buttons).
+     * @returns {HTMLElement} The created user div element.
+     */
+    function createUserElement(user, listType) {
         const userElement = document.createElement("div");
-        userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item ${mode}-display-mode`;
-        userElement.dataset.username = user.username;
-         // Set data-recognized based on the presence/state of recognition_results
-        userElement.dataset.recognized = user.recognition_results ? 'true' : (mode === 'image' && user.recognition_results === null ? 'pending' : (mode === 'image' && user.recognition_results !== undefined ? 'none' : 'N/A'));
+        // Add classes for styling based on list type
+        userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`; // Example using W3.CSS card style
+        userElement.dataset.username = user.username; // Store username for potential later use
 
-
+        // Determine content using template literal for readability
         const tagsDisplay = (user.tags && Array.isArray(user.tags) && user.tags.length > 0)
                             ? user.tags.join(', ')
                             : 'N/A';
-        const ageDisplay = (user.age && typeof user.age === 'number' && user.age > 0) ? user.age : 'N/A';
-
-        let ageDetails = `Age: ${ageDisplay}`;
-        if (user.age === 18 && user.birthday) {
-            const daysSinceBday = getDaysSince18thBirthday(user.birthday, user.age);
-            if (daysSinceBday !== null) {
-                ageDetails = `Age: 18 <span class="age-days">(${daysSinceBday} days)</span>`;
-            } else {
-                 ageDetails = `Age: 18`;
-            }
-        }
-
-
+        const ageDisplay = (user.age && typeof user.age === 'number') ? user.age : 'N/A';
         const newBadge = user.is_new ? '<span class="badge new-badge w3-tag w3-small w3-red w3-round">New</span>' : '';
         const birthdayBanner = isBirthday(user.birthday) ? `<p class="birthday w3-text-amber w3-center">🎂 Happy Birthday! 🎂</p>` : '';
         const removeButton = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
 
-        let mediaContent = '';
-        if (mode === 'iframe') {
-             // Use LIST_IFRAME_BASE_URL and LIST_IFRAME_PARAMS for the list view iframes
-             const iframeSrc = `${LIST_IFRAME_BASE_URL}${user.username}/${LIST_IFRAME_PARAMS}`;
-            mediaContent = `
-                <div class="iframe-container">
-                     <iframe src="${iframeSrc}" title="Live stream of ${user.username}" frameborder="0" scrolling="no" allowfullscreen loading="lazy"></iframe>
-                     <div class="click-overlay"></div>
-                </div>
-            `;
-        } else {
-             const imageUrl = user.image_url || 'https://via.placeholder.com/150?text=No+Image';
-            mediaContent = `
-                <div class="user-image-container">
-                    <img src="${imageUrl}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
-                </div>
-            `;
-        }
-
-        let recognitionHtml = '';
-        if (mode === 'image') {
-             if (user.recognition_results && user.recognition_results.length > 0) {
-                  recognitionHtml = buildRecognitionResultsHtml(user.recognition_results);
-             } else if (user.recognition_results === null) { // Explicitly null means it's been queued/is pending
-                  recognitionHtml = `<div class="recognition-results loading-indicator w3-text-grey w3-small">Analyzing...</div>`;
-             } else if (user.recognition_results !== undefined && user.recognition_results.length === 0) { // Empty array means analysis attempted, found nothing
-                  recognitionHtml = `<div class="recognition-results w3-text-grey w3-small">No results above threshold.</div>`;
-             } else {
-                  // recognition_results is undefined - means it hasn't been processed or queued yet
-                  // The queuing logic should handle setting it to null, so this state might be brief or occur if queuing fails.
-                  // For robustness, show pending state.
-                   recognitionHtml = `<div class="recognition-results w3-text-grey w3-small">Pending Analysis...</div>`;
-             }
-        }
-
-
         userElement.innerHTML = `
-            ${mediaContent}
-            ${removeButton}
+            <div class="user-image-container">
+                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
+                ${removeButton} <!-- Position remove button relative to container -->
+            </div>
             <div class="user-details w3-container w3-padding-small">
                 <p class="username w3-large">${user.username} ${newBadge}</p>
-                <p><small>${ageDetails} | Viewers: ${user.num_viewers || 'N/A'}</small></p>
+                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'}</small></p> <!-- Example: Added viewers -->
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
                 ${birthdayBanner}
-                ${recognitionHtml}
             </div>
         `;
 
+        // --- Add Event Listeners ---
+
+        // Add click listener to the main element (excluding the remove button) to load iframe
         userElement.addEventListener("click", function(event) {
-             if (event.target.closest('.remove-user-btn') || event.target.closest('.click-overlay')) {
+             // Prevent triggering if the remove button itself was clicked
+             if (event.target.closest('.remove-user-btn')) {
                  return;
              }
-             event.preventDefault();
-             handleUserClick(user);
+             event.preventDefault(); // Prevent potential default behaviors
+             handleUserClick(user); // Use the full user object passed in
         });
 
+        // Add listener specifically for the remove button if it exists
         const removeBtn = userElement.querySelector('.remove-user-btn');
         if (removeBtn) {
             removeBtn.addEventListener("click", async function(event) {
-                event.stopPropagation();
+                event.stopPropagation(); // VERY IMPORTANT: Prevent click from bubbling up to the userElement listener
                 console.log(`User clicked remove for: ${user.username}`);
-                 showOnlineLoadingIndicator(`Removing ${user.username} from history...`);
+                showOnlineLoadingIndicator("Removing from history..."); // Provide feedback
                 await removeFromPreviousUsers(user.username);
-                await displayPreviousUsers();
+                await displayPreviousUsers(); // Refresh the display after removal (needs await)
                 hideOnlineLoadingIndicator();
             });
         }
 
-         const overlay = userElement.querySelector('.click-overlay');
-         if (overlay) {
-             overlay.addEventListener('click', function(event) {
-                 event.stopPropagation();
-                  console.log(`Overlay clicked for: ${user.username}. Triggering handleUserClick.`);
-                  handleUserClick(user);
-             });
-         }
-
         return userElement;
     }
 
-    function buildRecognitionResultsHtml(results) {
-        if (!results || results.length === 0) {
-            return '';
-        }
-        let html = '<div class="recognition-results"><strong>Recognized:</strong><ul>';
-        results.forEach(result => {
-            const confidence = (result.probability * 100).toFixed(1);
-            html += `<li>${result.className} (${confidence}%)</li>`;
-        });
-        html += '</ul></div>';
-        return html;
-    }
 
-
+    /**
+     * Handles clicking on a user: loads their stream into the selected iframe
+     * and adds/moves them to the top of the previous users history.
+     * @param {Object} user - The user object that was clicked.
+     */
     function handleUserClick(user) {
-         if (mainIframes.length === 0 || mainIframes.every(i => !i)) {
-              console.error("Main viewer iframe elements not found. Cannot load user stream.");
-              showReportStatus("Viewer iframes not initialized correctly.", 'error');
+         if (!mainIframe || !mainIframe2) {
+              console.error("Iframe elements (#mainIframe or #mainIframe2) not found. Cannot load user stream.");
+              // Optionally show a user-facing error message
               return;
          }
          if (!user || !user.username) {
@@ -1176,1276 +773,556 @@ function captureConsole() {
          }
         console.log(`User clicked: ${user.username}`);
 
+        // Determine which iframe to use based on radio button selection
         const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
-        // Default to the first iframe ID if no radio is checked (shouldn't happen if mainIframe1 is default checked)
-        const selectedIframeId = iframeChoiceRadio ? iframeChoiceRadio.value : mainIframes[0]?.id;
+        const iframeChoice = iframeChoiceRadio ? iframeChoiceRadio.value : 'mainIframe'; // Default to 'mainIframe'
+        const selectedIframe = (iframeChoice === 'mainIframe2') ? mainIframe2 : mainIframe;
 
-        const selectedIframe = document.getElementById(selectedIframeId);
+        // Construct the iframe URL (ensure parameters are correct)
+        // Example URL structure - verify this matches Chaturbate's requirements
+        const iframeSrc = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+        // Or use the fullvideo URL if preferred:
+        // const iframeSrc = `https://chaturbate.com/fullvideo/?campaign=9cg6A&disable_sound=0&tour=dU9X&b=${user.username}`;
+        // &
 
-         if (!selectedIframe) {
-              console.error(`Selected iframe element '${selectedIframeId}' not found.`);
-              showReportStatus(`Selected viewer viewport '${selectedIframeId}' not found.`, 'error');
-              return;
-         }
-
-        // Use MAIN_IFRAME_BASE_URL and MAIN_IFRAME_PARAMS for the main viewer iframes
-        const iframeSrc = `${MAIN_IFRAME_BASE_URL}${user.username}/${MAIN_IFRAME_PARAMS}`;
-
-        console.log(`Loading ${user.username} into ${selectedIframeId} with src: ${iframeSrc}`);
+        console.log(`Loading ${user.username} into ${iframeChoice} with src: ${iframeSrc}`);
         selectedIframe.src = iframeSrc;
 
-        // Add the user to history asynchronously
+
+        // Add or move the user to the top of the previous users list (async operation)
+        // We don't necessarily need to wait for this to complete before returning
         addToPreviousUsers(user).catch(err => {
             console.error(`Error adding ${user.username} to previous users:`, err);
+            // Handle potential save errors (e.g., show a message)
         });
+        // Refreshing the previous users display is handled by the main fetch cycle or explicitly after removals
     }
 
 
-    // --- History Management ---
+    /**
+     * Adds a user to the `previousUsers` state array.
+     * Ensures uniqueness (moves to front if exists) and enforces `maxHistorySize`.
+     * Saves the updated list to the selected storage.
+     * @param {Object} user - The user object to add/move.
+     * @returns {Promise<void>}
+     */
     async function addToPreviousUsers(user) {
-         const existingIndex = previousUsers.findIndex(u => u.username === user.username);
+        if (!user || !user.username) {
+            console.warn("Attempted to add invalid user to history:", user);
+            return;
+        }
+        // console.log(`Attempting to add/move ${user.username} to history.`);
 
-         const userEntry = {
-             username: user.username,
-             image_url: user.image_url,
-             timestamp: Date.now(),
-             age: user.age,
-             tags: user.tags,
-             is_new: user.is_new,
-             birthday: user.birthday,
-         };
+        // Find index of user if they already exist in the history
+        const existingIndex = previousUsers.findIndex(u => u.username === user.username);
 
-         if (existingIndex !== -1) {
-             // Remove the old entry to move it to the front
-             previousUsers.splice(existingIndex, 1);
-              console.log(`Moved existing user ${user.username} to top of history.`);
-         }
+        // If user exists, remove their old entry first
+        if (existingIndex !== -1) {
+            previousUsers.splice(existingIndex, 1);
+            // console.log(`Removed existing entry for ${user.username} before re-adding to front.`);
+        }
 
-         // Add the new entry to the front
-         previousUsers.unshift(userEntry);
+        // Add the current user object to the beginning of the array
+        previousUsers.unshift(user);
 
-         // Trim history if over limit
-         if (previousUsers.length > maxHistorySize) {
-             previousUsers = previousUsers.slice(0, maxHistorySize);
-             console.log(`History size limited to ${maxHistorySize}.`);
-         }
+        // Trim the array if it exceeds the maximum allowed size
+        if (previousUsers.length > maxHistorySize) {
+            const removed = previousUsers.splice(maxHistorySize); // Remove items from the end
+            console.log(`Previous users history trimmed, ${removed.length} oldest users removed.`);
+        }
 
-         console.log(`Added/Moved ${user.username} to history. History size: ${previousUsers.length}`);
+        // console.log(`Added/Moved ${user.username} to front of history state. Size: ${previousUsers.length}`);
 
-         // Save updated history to storage
-         await saveUsers(previousUsers, historyStorageKey);
-
-         // Refresh the history display
-         await displayPreviousUsers();
+        // Save the updated history list to storage
+        try {
+            await saveUsers("previousUsers", previousUsers);
+            // No need to refresh display here usually, displayPreviousUsers is called periodically
+            // or after specific actions like removal. Calling it here might cause unnecessary redraws.
+        } catch (error) {
+            console.error(`Failed to save previous users after adding ${user.username}:`, error);
+            // Consider reverting the state change or notifying the user if saving fails critically
+            // For now, the state remains updated even if save fails.
+        }
     }
 
+     /**
+      * Removes a user from the `previousUsers` history state by username.
+      * Saves the updated list to the selected storage.
+      * @param {string} username - The username to remove.
+      * @returns {Promise<void>}
+      */
      async function removeFromPreviousUsers(username) {
-          const initialLength = previousUsers.length;
-          previousUsers = previousUsers.filter(user => user.username !== username);
+         if (!username) {
+             console.warn("Attempted to remove user with invalid username from history.");
+             return;
+         }
+         console.log(`Attempting to remove ${username} from history.`);
+         const initialCount = previousUsers.length;
+         // Filter out the user with the matching username
+         previousUsers = previousUsers.filter(u => u.username !== username);
 
-          if (previousUsers.length < initialLength) {
-               console.log(`Removed ${username} from history.`);
-               await saveUsers(previousUsers, historyStorageKey);
-          } else {
-               console.warn(`Attempted to remove ${username} from history, but user not found.`);
-          }
-          // displayPreviousUsers() is called after this in the click handler
+         if (previousUsers.length < initialCount) {
+             console.log(`Successfully removed ${username} from history state. New size: ${previousUsers.length}`);
+             // Save the updated list to storage
+             try {
+                await saveUsers("previousUsers", previousUsers);
+                // The display refresh should be called *after* this function completes successfully
+                // displayPreviousUsers(); // Moved this call to the event listener
+             } catch (error) {
+                 console.error(`Failed to save previous users after removing ${username}:`, error);
+                 // State is updated, but save failed. May need error handling/notification.
+             }
+         } else {
+             console.warn(`Attempted to remove ${username}, but they were not found in the current history state.`);
+         }
      }
 
+     /**
+      * Clears the previous users history from both state and the selected storage.
+      * @returns {Promise<void>}
+      */
      async function clearPreviousUsers() {
-         console.log("Attempting to clear history...");
-         const confirmClear = confirm("Are you sure you want to clear your viewing history?");
-         if (!confirmClear) {
-             console.log("History clear cancelled.");
+         console.log("Clearing previous users history...");
+         const confirmation = confirm("Are you sure you want to clear your entire viewing history?");
+         if (!confirmation) {
+             console.log("Clear history cancelled by user.");
              return;
          }
 
-         previousUsers = [];
-         console.log("History cleared from state.");
+         showOnlineLoadingIndicator("Clearing history..."); // Show feedback
 
+         previousUsers = []; // Clear state array
+
+         // Clear from the currently selected storage
+         const keyToClear = "previousUsers";
          try {
-             if (storageType === 'local') {
-                 localStorage.removeItem(historyStorageKey);
-                 console.log(`History key '${historyStorageKey}' cleared from Local Storage.`);
-             } else if (storageType === 'session') {
-                 sessionStorage.removeItem(historyStorageKey);
-                  console.log(`History key '${historyStorageKey}' cleared from Session Storage.`);
-             } else if (storageType.startsWith('indexedDB')) {
-                  const idbKey = storageType.split(':')[1] || historyStorageKey;
-                  let db;
-                  try {
-                      db = await openIndexedDB();
-                      const transaction = db.transaction('users', 'readwrite');
-                      const store = transaction.objectStore('users');
-                      const request = store.delete(idbKey);
-
-                      await new Promise((resolve, reject) => {
-                           request.onsuccess = () => resolve();
-                           request.onerror = (event) => reject(event.target.error);
-                           transaction.oncomplete = () => { db.close(); resolve(); };
-                           transaction.onerror = (event) => { db.close(); reject(event.target.error); };
-                           transaction.onabort = (event) => { db.close(); reject(event.target.error || new Error('Transaction aborted')); };
-                      });
-                       console.log(`History key '${idbKey}' cleared from IndexedDB.`);
-
-                  } catch (error) {
-                       console.error(`Failed to open/clear IndexedDB for key '${idbKey}':`, error);
-                      throw error;
-                  }
+             if (storageType === "indexedClicked" || storageType.startsWith('IndexedDB:')) {
+                 // For IndexedDB, we need to explicitly delete the key
+                 let db;
+                 try {
+                     db = await openIndexedDB();
+                     const tx = db.transaction('users', 'readwrite');
+                     const store = tx.objectStore('users');
+                     // Use the correct key (handle custom keys if storageType indicates one)
+                     const idbKey = storageType.startsWith('IndexedDB:') ? storageType.substring(11) : keyToClear;
+                     console.log(`Deleting key '${idbKey}' from IndexedDB.`);
+                     store.delete(idbKey);
+                     await new Promise((resolve, reject) => { // Wait for transaction completion
+                         tx.oncomplete = () => { console.log(`IndexedDB delete transaction for key '${idbKey}' complete.`); db.close(); resolve(); };
+                         tx.onerror = (e) => { console.error("IndexedDB delete transaction error:", e.target.error); db.close(); reject(e.target.error); };
+                         tx.onabort = (e) => { console.error("IndexedDB delete transaction aborted:", e.target.error); db.close(); reject(e.target.error || new Error('Delete transaction aborted')); };
+                     });
+                     console.log(`History key '${idbKey}' cleared from IndexedDB.`);
+                 } catch (dbError) {
+                     console.error("Error accessing IndexedDB to clear history:", dbError);
+                     // Re-throw or handle more gracefully
+                     throw dbError; // Propagate error
+                 }
              } else {
-                  console.warn(`Clear history requested for unknown storage type: ${storageType}`);
+                 // For localStorage or sessionStorage
+                 const storage = storageType === "local" ? localStorage : sessionStorage;
+                 storage.removeItem(keyToClear);
+                 console.log(`History key '${keyToClear}' cleared from ${storageType} storage.`);
              }
 
-             console.log(`History cleared from ${storageType}.`);
-             showReportStatus("Viewing history cleared.", 'success');
+             // Successfully cleared from storage, now update display
+             await displayPreviousUsers(); // Refresh display to show it's empty (needs await)
+             console.log("Previous users history cleared successfully.");
 
-         } catch (e) {
-             console.error(`Error clearing history from ${storageType}:`, e);
-              showReportStatus(`Failed to clear history: ${e.message}`, 'error');
+         } catch (error) {
+             console.error("Error clearing previous users history from storage:", error);
+             // Optionally show an error message to the user
+             // showUserMessage("Failed to clear history from storage.", 'error');
          } finally {
-              await displayPreviousUsers();
+             hideOnlineLoadingIndicator(); // Hide feedback indicator
          }
      }
 
 
-      async function populateStorageOptions() {
+     /**
+      * Initializes the options for the storage type selector.
+      * Includes standard options (Local, Session, IndexedDB) and any custom keys found in IndexedDB.
+      * @returns {Promise<void>}
+      */
+     async function populateStorageOptions() {
          if (!storageTypeSelector) {
-              console.warn("Storage type selector not found. Cannot populate options.");
-              return;
+             console.warn("Storage type selector element (#storageType) not found. Cannot populate options.");
+             return;
          }
-          console.log("Populating storage options...");
-          const currentSelectedValue = storageTypeSelector.value;
+         console.log("Populating storage options...");
 
-         storageTypeSelector.innerHTML = `
-             <option value="local">Local Storage</option>
-             <option value="session">Session Storage</option>
-             <option value="indexedDB">IndexedDB (Default History)</option>
-         `;
+         const currentSelectedValue = storageTypeSelector.value; // Preserve current selection if possible
+         storageTypeSelector.innerHTML = ''; // Clear existing options
 
+         // Add standard options
+         storageTypeSelector.add(new Option('Local Storage', 'local'));
+         storageTypeSelector.add(new Option('Session Storage', 'session'));
+         storageTypeSelector.add(new Option('IndexedDB (Default History)', 'indexedClicked')); // Primary IndexedDB option
+
+         // Add keys found in IndexedDB as separate options (potentially for saved lists)
          try {
              const idbKeys = await getIndexedDBKeys();
               console.log("Found IndexedDB keys:", idbKeys);
              idbKeys.forEach(key => {
-                  const option = document.createElement('option');
-                  option.value = `indexedDB:${key}`;
-                  option.textContent = `IndexedDB: ${key}`;
-                   if (currentSelectedValue === option.value) {
-                       option.selected = true;
-                   }
-                  storageTypeSelector.appendChild(option);
-
+                 // Avoid adding the default keys again or internal keys
+                 if (key !== 'previousUsers' && key !== 'removedUsers' && key !== 'indexedClicked') {
+                      // Use a prefix to distinguish these custom keys in the value
+                      const optionValue = `IndexedDB:${key}`;
+                      const optionText = `IndexedDB: ${key}`; // Display key name
+                      storageTypeSelector.add(new Option(optionText, optionValue));
+                      console.log(`Added custom IndexedDB key '${key}' as storage option.`);
+                 }
              });
-         } catch (e) {
-             console.error("Error getting IndexedDB keys:", e);
-              const errorOption = document.createElement('option');
-              errorOption.value = 'indexedDB:error';
-              errorOption.textContent = 'IndexedDB Error';
-              errorOption.disabled = true;
-              storageTypeSelector.appendChild(errorOption);
+         } catch (error) {
+             console.warn("Could not populate custom IndexedDB keys:", error);
+             // Error should have been logged by getIndexedDBKeys
          }
 
-          if (currentSelectedValue && storageTypeSelector.querySelector(`option[value="${currentSelectedValue}"]`)) {
-               storageTypeSelector.value = currentSelectedValue;
+          // Try to restore the previous selection, or default to the current state `storageType`
+          let valueToSet = currentSelectedValue || storageType;
+          if (storageTypeSelector.querySelector(`option[value="${valueToSet}"]`)) {
+              storageTypeSelector.value = valueToSet;
           } else {
-               storageTypeSelector.value = 'indexedDB';
+              // If the previous/current value isn't valid anymore, default to 'local'
+              console.warn(`Storage type '${valueToSet}' not found in options. Defaulting to 'local'.`);
+              storageTypeSelector.value = 'local';
           }
+          // Update the global state variable to match the final selector value
           storageType = storageTypeSelector.value;
-          console.log(`Storage options populated. Current type: ${storageType}`);
-
+          console.log(`Storage options populated. Current selection: ${storageType}`);
      }
 
 
-    async function saveMessage() {
-         if (!messageInput || !messageStatusDisplay || !saveMessageButton) {
-              console.warn("Messaging DOM elements missing. Cannot save message.");
-              showReportStatus("Messaging feature elements missing.", 'error');
+    // --- Reporting Functions ---
+
+    /**
+     * Sends the `lastFilteredUsers` list as a JSON report
+     * to the configured `REPORT_SERVER_ENDPOINT`.
+     * Handles loading state and status feedback.
+     * @returns {Promise<void>}
+     */
+    async function sendReport() {
+        console.log("Attempting to send report...");
+
+        // 1. Validate Endpoint Configuration
+        if (!REPORT_SERVER_ENDPOINT || REPORT_SERVER_ENDPOINT === '/api/send-user-report') { // Check default/placeholder
+             const errorMsg = "Report feature disabled: Server endpoint not configured in the script.";
+             console.error(errorMsg);
+             showReportStatus(errorMsg, 'error');
+             return;
+        }
+         // Optional: Basic check if it looks like a URL path or full URL
+         if (!REPORT_SERVER_ENDPOINT.startsWith('/') && !REPORT_SERVER_ENDPOINT.startsWith('http')) {
+              const errorMsg = `Report feature error: Invalid endpoint URL format: "${REPORT_SERVER_ENDPOINT}"`;
+              console.error(errorMsg);
+              showReportStatus(errorMsg, 'error');
               return;
          }
 
-         const text = messageInput.value.trim();
-         if (text === '') {
-              showStatusMessage(messageStatusDisplay, "Message is empty.", 'warning');
-              return;
-         }
 
-         showStatusMessage(messageStatusDisplay, "Saving...", 'loading');
-         saveMessageButton.disabled = true;
-         messageInput.disabled = true;
+        // 2. Check if there's data to send
+        if (!lastFilteredUsers || lastFilteredUsers.length === 0) {
+            const warnMsg = "No users currently displayed in the 'Online Users' list to report.";
+            console.warn(warnMsg);
+            showReportStatus(warnMsg, 'warning');
+            return;
+        }
 
-         try {
-              await saveMessageToIndexedDB({ text: text });
-              console.log("Message saved successfully.");
-              messageInput.value = '';
-              await loadAndDisplayMessages(); // Reload and display messages
-              showStatusMessage(messageStatusDisplay, "Message saved!", 'success');
-               setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 3000);
-         } catch (error) {
-              console.error("Failed to save message:", error);
-              showStatusMessage(messageStatusDisplay, `Error saving message: ${error.message}`, 'error');
-         } finally {
-             saveMessageButton.disabled = false;
-             messageInput.disabled = false;
-         }
-    }
+        // 3. Show Loading State
+        showReportLoading(`Sending report for ${lastFilteredUsers.length} users...`);
+        clearReportStatus(); // Clear previous status messages
 
-    async function loadAndDisplayMessages() {
-         if (!messageListDiv || !messageSearchInput) {
-              console.warn("Message list div or search input not found. Cannot load/display messages.");
-              return;
-         }
-         console.log("Loading and displaying messages...");
-         messageListDiv.innerHTML = '<p class="text-muted w3-center">Loading messages...</p>';
+        // 4. Prepare Data Payload
+        // Select only the necessary fields to minimize payload size and complexity
+        const reportData = lastFilteredUsers.map(user => ({
+            username: user.username,
+            age: user.age,
+            tags: user.tags,
+            // Add other potentially useful fields if available and needed by the server
+            is_new: user.is_new,
+            num_viewers: user.num_viewers,
+            // current_show: user.current_show, // Usually 'public' if filtered this way
+            // birthday: user.birthday, // Send if needed by server
+            // image_url: user.image_url // Probably not needed for report
+        }));
 
-         try {
-              savedMessages = await loadMessagesFromIndexedDB();
-              console.log(`Loaded ${savedMessages.length} messages from DB.`);
+        console.log(`Sending report payload (${reportData.length} users) to: ${REPORT_SERVER_ENDPOINT}`);
+        // console.log("Sample report payload item:", reportData[0]); // Debugging
 
-              if (typeof $.fn.autocomplete === 'function' && messageSearchInput) {
-                   $(messageSearchInput).autocomplete('option', 'source', getAllMessageTexts());
-              } else {
-                  console.warn("jQuery UI Autocomplete not available or message search input not found for message search.");
-                   if(messageSearchInput) messageSearchInput.disabled = true;
-              }
+        // 5. Send Request using Fetch API
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+             console.error(`Report send aborted due to timeout (${reportSendTimeout}ms).`);
+             controller.abort();
+             }, reportSendTimeout);
 
-              currentMessageSearchTerm = messageSearchInput ? messageSearchInput.value.trim().toLowerCase() : '';
-
-              const filteredMessages = savedMessages.filter(msg =>
-                  currentMessageSearchTerm === '' || (msg.text && msg.text.toLowerCase().includes(currentMessageSearchTerm))
-              );
-
-              displayMessagesList(filteredMessages);
-
-         } catch (error) {
-             console.error("Error loading messages:", error);
-             messageListDiv.innerHTML = '<p class="text-muted w3-center w3-text-red">Error loading messages.</p>';
-         }
-    }
-
-     function getAllMessageTexts() {
-         if (!savedMessages || savedMessages.length === 0) {
-             return [];
-         }
-         return savedMessages.map(msg => msg.text).filter(Boolean);
-     }
-
-
-    function displayMessagesList(messagesToDisplay) {
-         if (!messageListDiv) return;
-
-         messageListDiv.innerHTML = "";
-
-         if (messagesToDisplay.length === 0) {
-              messageListDiv.innerHTML = '<p class="text-muted w3-center">No saved messages found.</p>';
-              return;
-         }
-
-         messagesToDisplay.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-         const fragment = document.createDocumentFragment();
-         messagesToDisplay.forEach(msg => {
-             if (!msg || !msg.text) {
-                 console.warn("Skipping message display due to incomplete data:", msg);
-                 return;
-             }
-             const messageElement = createMessageElement(msg);
-             fragment.appendChild(messageElement);
-         });
-         messageListDiv.appendChild(fragment);
-         console.log(`Displayed ${messagesToDisplay.length} messages.`);
-    }
-
-    function createMessageElement(message) {
-        const messageElement = document.createElement("div");
-        messageElement.className = "message-item w3-light-grey w3-padding-small w3-margin-bottom w3-round";
-        messageElement.textContent = message.text;
-        messageElement.dataset.messageId = message.id;
-        messageElement.style.cursor = 'pointer';
-
-        messageElement.addEventListener("click", function() {
-            copyToClipboard(message.text);
-        });
-
-        return messageElement;
-    }
-
-    function copyToClipboard(text) {
-         if (!messageStatusDisplay) {
-              console.warn("Message status display not found. Cannot provide copy feedback.");
-         }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(() => {
-                console.log("Text copied to clipboard:", text);
-                 if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, "Copied to clipboard!", 'success');
-                 if(messageStatusDisplay) setTimeout(() => showStatusMessage(messageStatusDisplay, '', 'info', false), 2000);
-            }).catch(err => {
-                console.error("Failed to copy text:", err);
-                 if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, `Failed to copy: ${err.message}`, 'error');
+        try {
+            const response = await fetch(REPORT_SERVER_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Add any required Authorization or custom headers here
+                    // e.g., 'Authorization': 'Bearer YOUR_API_TOKEN'
+                    // e.g., 'X-Api-Key': 'YOUR_SECRET_KEY'
+                },
+                body: JSON.stringify(reportData),
+                signal: controller.signal // Link abort controller
             });
-        } else {
-             console.warn("Clipboard API not available.");
-             if(messageStatusDisplay) showStatusMessage(messageStatusDisplay, "Copy failed: Clipboard not supported.", 'error');
+
+            clearTimeout(timeoutId); // Clear the timeout timer if fetch completes/fails
+
+            console.log(`Report send response status: ${response.status}`);
+
+            // 6. Handle Response
+            if (!response.ok) {
+                 // Try to get more detailed error message from server response body
+                 let errorBody = `Server responded with status ${response.status} ${response.statusText}`;
+                 try {
+                     const errorJson = await response.json();
+                     errorBody = errorJson.message || errorJson.error || JSON.stringify(errorJson);
+                 } catch (e) {
+                     // If response is not JSON, try text
+                     try {
+                         errorBody = await response.text();
+                     } catch (e2) { /* Keep the original status text */ }
+                 }
+                 console.error(`Report send HTTP error: ${errorBody}`);
+                 throw new Error(`Server error: ${errorBody.substring(0, 100)}...`); // Throw concise error
+            }
+
+            // Assuming server sends back JSON like { status: 'success', message: '...' }
+            // or { status: 'error', message: '...' }
+            const result = await response.json();
+            console.log("Report send server response:", result);
+
+            if (result && (result.status === 'success' || response.status === 200 || response.status === 201)) { // Check common success indicators
+                const successMsg = result.message || "Report sent successfully!";
+                console.log(successMsg);
+                showReportStatus(successMsg, 'success');
+            } else {
+                const errorMsg = `Report failed: ${result.message || result.error || 'Unknown server response.'}`;
+                console.error(errorMsg);
+                showReportStatus(errorMsg, 'error');
+            }
+
+        } catch (error) {
+            console.error("Error caught during report send fetch:", error);
+             if (error.name === 'AbortError') {
+                 showReportStatus("Report request timed out. Server might be slow or unreachable.", 'error');
+             } else {
+                 // Network errors, JSON parsing errors, or thrown errors from response handling
+                 showReportStatus(`Failed to send report: ${error.message}`, 'error');
+             }
+        } finally {
+            // 7. Hide Loading State
+            hideReportLoading(); // Always hide loading indicator regardless of success/failure
+            console.log("Report sending process finished.");
         }
     }
 
-    // --- Status/Feedback Display ---
-    function showStatusMessage(element, message, type = 'info', show = true) {
-         if (!element) return;
-         element.textContent = message;
-         element.classList.remove('success', 'error', 'warning', 'info', 'loading', 'status-message');
-         element.classList.add('status-message', type);
 
-         if (show && message) {
-             element.style.display = (type === 'loading') ? 'inline-block' : 'block';
-         } else {
-             element.style.display = 'none';
-              element.textContent = '';
-         }
-    }
+    // --- UI Loading and Error/Status Display Helpers ---
 
     function showOnlineLoadingIndicator(message = 'Loading...') {
+        // console.log(`UI: SHOW ONLINE LOADING: ${message}`);
         if (onlineLoadingIndicator) {
             onlineLoadingIndicator.textContent = message;
-            onlineLoadingIndicator.style.display = 'block';
+            onlineLoadingIndicator.style.display = 'block'; // Or 'inline', 'flex' etc.
+            // Optionally disable user interactions while loading
         }
-        const currentText = onlineUsersDiv?.querySelector('.text-muted.w3-center')?.textContent;
-        // Only overwrite the 'Loading' or specific empty/error states, not the rendered user list
-        if (onlineUsersDiv && currentText && (currentText.includes('Loading') || currentText.includes('users found') || currentText.includes('Failed to load'))) {
-             onlineUsersDiv.innerHTML = `<p class="text-muted w3-center">${message}</p>`;
-        }
+         // Clear the list area while loading to avoid confusion
+         if (onlineUsersDiv) onlineUsersDiv.innerHTML = '';
     }
+
     function hideOnlineLoadingIndicator() {
+        // console.log("UI: HIDE ONLINE LOADING");
         if (onlineLoadingIndicator) {
             onlineLoadingIndicator.style.display = 'none';
-             onlineLoadingIndicator.textContent = '';
+            // Re-enable interactions if disabled
         }
     }
+
     function showOnlineErrorDisplay(message) {
-         if (onlineErrorDisplay) {
-            onlineErrorDisplay.textContent = message;
-            onlineErrorDisplay.style.display = 'block';
-         }
-         const currentText = onlineUsersDiv?.querySelector('.text-muted.w3-center')?.textContent;
-          if (onlineUsersDiv && currentText && (currentText.includes('Loading') || currentText.includes('users found') || currentText.includes('Failed to load'))) {
-              onlineUsersDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">${message}</p>`;
-         }
-    }
-    function clearOnlineErrorDisplay() {
+        console.error(`UI: SHOW ONLINE ERROR: ${message}`);
         if (onlineErrorDisplay) {
-            onlineErrorDisplay.textContent = '';
+            onlineErrorDisplay.textContent = `Error: ${message}`;
+            onlineErrorDisplay.style.display = 'block'; // Or 'inline', 'flex' etc.
+            onlineErrorDisplay.className = 'error-message'; // Add class for styling
+        }
+        // Also hide loading indicator if an error occurs
+        hideOnlineLoadingIndicator();
+    }
+
+     function clearOnlineErrorDisplay() {
+        //   console.log("UI: CLEAR ONLINE ERROR DISPLAY");
+          if (onlineErrorDisplay) {
             onlineErrorDisplay.style.display = 'none';
+            onlineErrorDisplay.textContent = '';
+            onlineErrorDisplay.className = ''; // Remove styling class
         }
-    }
+     }
 
-    function showReportLoading(message = 'Processing...') {
+     // --- Reporting Status Display Helpers ---
+     function showReportLoading(message = 'Processing...') {
+         // console.log(`UI: SHOW REPORT LOADING: ${message}`);
          if (reportLoadingIndicator) {
-              showStatusMessage(reportLoadingIndicator, message, 'loading', true);
+             reportLoadingIndicator.textContent = message;
+             reportLoadingIndicator.style.display = 'block'; // Or 'inline', 'flex'
          }
-    }
-    function hideReportLoading() {
+         if (sendReportButton) sendReportButton.disabled = true; // Disable button while loading
+         clearReportStatus(); // Clear previous status messages
+     }
+
+     function hideReportLoading() {
+        //   console.log("UI: HIDE REPORT LOADING");
          if (reportLoadingIndicator) {
-            showStatusMessage(reportLoadingIndicator, '', 'info', false);
+             reportLoadingIndicator.style.display = 'none';
          }
-    }
-    function showReportStatus(message, type = 'info') {
-        if (reportStatusDisplay) {
-             showStatusMessage(reportStatusDisplay, message, type, true);
-              if (type === 'success' || type === 'info') {
-                   setTimeout(() => clearReportStatus(), 5000);
-              }
-        }
-    }
-    function clearReportStatus() {
+          if (sendReportButton) sendReportButton.disabled = false; // Re-enable button
+     }
+
+     /**
+      * Displays a status message related to the reporting action.
+      * @param {string} message - The message to display.
+      * @param {'success' | 'error' | 'warning' | 'info'} [type='info'] - Type for CSS styling.
+      */
+     function showReportStatus(message, type = 'info') {
+         console.log(`UI: SHOW REPORT STATUS (${type}): ${message}`);
          if (reportStatusDisplay) {
-             showStatusMessage(reportStatusDisplay, '', 'info', false);
-         }
-    }
+             reportStatusDisplay.textContent = message;
+             reportStatusDisplay.className = `report-status ${type}`; // Base class + type class for styling
+             reportStatusDisplay.style.display = 'block'; // Or 'inline', 'flex'
 
-    function showRecognitionStatus(message, type = 'info') {
-         if (!recognitionStatusDisplay) return;
-         recognitionStatusDisplay.textContent = message;
-
-         recognitionStatusDisplay.classList.remove('w3-text-grey', 'w3-text-amber', 'w3-text-red');
-         recognitionStatusDisplay.classList.remove('loading-indicator');
-
-         if (message) {
-              recognitionStatusDisplay.style.display = 'inline-block';
-
-              if (type === 'loading') {
-                   recognitionStatusDisplay.classList.add('loading-indicator');
-                   recognitionStatusDisplay.classList.add('w3-text-grey');
-              } else if (type === 'warning') {
-                   recognitionStatusDisplay.classList.add('w3-text-amber');
-              } else if (type === 'error') {
-                   recognitionStatusDisplay.classList.add('w3-text-red');
-              } else {
-                   recognitionStatusDisplay.classList.add('w3-text-grey');
-              }
-
-         } else {
-             recognitionStatusDisplay.style.display = 'none';
-         }
-    }
-
-
-     // --- Auto-Scroll Functionality ---
-     let scrollDirection = 1;
-     let isAtEnd = false;
-
-     function scrollStep() {
-         if (!onlineUsersDiv || !isAutoScrolling) {
-             isAutoScrolling = false;
-             return;
-         }
-
-         const maxScroll = onlineUsersDiv.scrollHeight - onlineUsersDiv.clientHeight;
-
-         if (maxScroll <= 0) {
-             stopAutoScroll();
-             if (toggleAutoScrollButton) {
-                 toggleAutoScrollButton.disabled = true;
-                 toggleAutoScrollButton.textContent = 'Not Scrollable';
-                  toggleAutoScrollButton.classList.remove('w3-red');
-                   toggleAutoScrollButton.classList.add('w3-green');
-             }
-             return;
-         }
-
-         onlineUsersDiv.scrollTop += scrollDirection * AUTO_SCROLL_SPEED;
-
-         if (scrollDirection === 1 && onlineUsersDiv.scrollTop >= maxScroll) {
-             onlineUsersDiv.scrollTop = maxScroll;
-             isAtEnd = true;
-             if (AUTO_SCROLL_DELAY_AT_END > 0) {
-                 stopAutoScroll();
-                 autoScrollTimeoutId = setTimeout(() => {
-                     scrollDirection = -1;
-                      isAtEnd = false;
-                      startAutoScroll();
-                 }, AUTO_SCROLL_DELAY_AT_END);
-                 return;
-             } else {
-                  scrollDirection = -1;
-                  isAtEnd = false;
-             }
-         } else if (scrollDirection === -1 && onlineUsersDiv.scrollTop <= 0) {
-              onlineUsersDiv.scrollTop = 0;
-              isAtEnd = true;
-              if (AUTO_SCROLL_DELAY_AT_END > 0) {
-                 stopAutoScroll();
-                 autoScrollTimeoutId = setTimeout(() => {
-                     scrollDirection = 1;
-                      isAtEnd = false;
-                      startAutoScroll();
-                 }, AUTO_SCROLL_DELAY_AT_END);
-                  return;
-             } else {
-                  scrollDirection = 1;
-                  isAtEnd = false;
+             // Automatically clear non-error messages after a delay
+             if (type !== 'error') {
+                 setTimeout(clearReportStatus, 6000); // e.g., clear after 6 seconds
              }
          }
-
-         autoScrollAnimationFrameId = requestAnimationFrame(scrollStep);
+         // Ensure loading is hidden when status is shown
+         hideReportLoading();
      }
 
-     function startAutoScroll() {
-         if (!onlineUsersDiv || onlineUsersDiv.scrollHeight <= onlineUsersDiv.clientHeight) {
-              console.warn("Cannot start auto-scroll: Online list not found or not scrollable.");
-               if (toggleAutoScrollButton) {
-                   toggleAutoScrollButton.disabled = true;
-                   toggleAutoScrollButton.textContent = 'Not Scrollable';
-                    toggleAutoScrollButton.classList.remove('w3-red');
-                    toggleAutoScrollButton.classList.add('w3-green');
-               }
-              return;
-         }
-
-         if (!isAutoScrolling) {
-             console.log("Starting auto-scroll.");
-             isAutoScrolling = true;
-             scrollDirection = 1;
-             isAtEnd = false;
-              if (toggleAutoScrollButton) {
-                  toggleAutoScrollButton.textContent = 'Stop Auto-Scroll Online';
-                   toggleAutoScrollButton.classList.remove('w3-green');
-                   toggleAutoScrollButton.classList.add('w3-red');
-              }
-             autoScrollAnimationFrameId = requestAnimationFrame(scrollStep);
-         }
-     }
-
-     function stopAutoScroll() {
-         if (isAutoScrolling) {
-             console.log("Stopping auto-scroll.");
-             isAutoScrolling = false;
-             if (autoScrollAnimationFrameId !== null) {
-                 cancelAnimationFrame(autoScrollAnimationFrameId);
-                 autoScrollAnimationFrameId = null;
-             }
-              if (autoScrollTimeoutId !== null) {
-                 clearTimeout(autoScrollTimeoutId);
-                 autoScrollTimeoutId = null;
-              }
-             if (toggleAutoScrollButton) {
-                 toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
-                  toggleAutoScrollButton.classList.remove('w3-red');
-                  toggleAutoScrollButton.classList.add('w3-green');
-             }
-         }
-     }
-
-     function handleManualScroll() {
-         if (isAutoScrolling) {
-             stopAutoScroll();
-             console.log("Manual scroll detected, auto-scroll stopped.");
-         }
-     }
-
-
-     // --- Viewer Layout Toggling ---
-     function updateIframeLayout() {
-         if (!mainViewerContainer || iframeWrappers.length === 0 || mainIframes.length === 0) {
-              console.error("Cannot update iframe layout: Main viewer elements not found.");
-              return;
-         }
-         console.log(`Updating iframe layout to show ${iframeCount} viewports.`);
-
-         // Add/remove the class that triggers the CSS grid layout
-         mainViewerContainer.classList.remove('iframe-count-2', 'iframe-count-4');
-         mainViewerContainer.classList.add(`iframe-count-${iframeCount}`);
-
-         for (let i = 0; i < iframeWrappers.length; i++) {
-             const wrapper = iframeWrappers[i];
-             const iframe = mainIframes[i];
-             const radio = document.querySelector(`input[name="iframeChoice"][value="mainIframe${i + 1}"]`);
-
-             if (!wrapper || !iframe || !radio) {
-                  console.warn(`Missing element for viewport ${i+1}. Skipping layout update for this one.`);
-                  continue;
-             }
-
-             if (i < iframeCount) {
-                 wrapper.style.display = ''; // Show the wrapper
-                 radio.disabled = false; // Enable the radio button
-             } else {
-                 wrapper.style.display = 'none'; // Hide the wrapper
-                 radio.disabled = true; // Disable the radio button
-                 // If the currently selected radio button corresponds to a hidden iframe, select the first one
-                 if (radio.checked) {
-                      const firstRadio = document.querySelector('input[name="iframeChoice"][value="mainIframe1"]');
-                      if (firstRadio) firstRadio.checked = true;
-                 }
-                  // Reset the source of hidden iframes to a default page to save resources
-                  const defaultSrc = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
-                  if (iframe.src && iframe.src !== 'about:blank' && !iframe.src.startsWith(defaultSrc)) {
-                      iframe.src = defaultSrc;
-                      console.log(`Resetting iframe src for hidden viewport ${i + 1}`);
-                  } else if (!iframe.src) {
-                       iframe.src = defaultSrc;
-                  }
-             }
-         }
-
-          // Update the toggle button text
-          if (toggleIframeCountButton) {
-              toggleIframeCountButton.textContent = `Toggle ${iframeCount === 2 ? '4' : '2'} Viewports`;
-          }
-          console.log("Iframe layout updated.");
-     }
-
-     function toggleIframeCount() {
-         console.log("Toggling iframe count.");
-         if (!toggleIframeCountButton || toggleIframeCountButton.disabled) {
-             console.warn("Toggle iframe count button is not available or disabled.");
-             return;
-         }
-         iframeCount = (iframeCount === 2) ? 4 : 2;
-         updateIframeLayout();
-     }
-
-
-     // --- Autocomplete Setup ---
-     function setupUserAutocomplete() {
-         if (!userSearchInput || typeof $.fn.autocomplete !== 'function') {
-              console.warn("Cannot setup user autocomplete: Search input not found or jQuery UI Autocomplete not loaded.");
-              if (userSearchInput) userSearchInput.disabled = true;
-              return;
-         }
-          console.log("Setting up user autocomplete...");
-
-         $(userSearchInput).autocomplete({
-             minLength: AUTOCOMPLETE_MIN_LENGTH,
-             delay: AUTOCOMPLETE_DELAY,
-             source: function(request, response) {
-                 const term = request.term.toLowerCase();
-                 const availableUsernames = getAllUsernames(); // Get usernames from allOnlineUsersData
-                 const filteredSuggestions = availableUsernames.filter(username =>
-                     username.toLowerCase().includes(term)
-                 );
-                  response(filteredSuggestions.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS));
-             },
-             select: function(event, ui) {
-                 event.preventDefault();
-                 userSearchInput.value = ui.item.value;
-                  currentUserSearchTerm = ui.item.value.trim().toLowerCase();
-                  applyFiltersAndDisplay(); // Apply filters on selection
-                 console.log(`User autocomplete selected: ${ui.item.value}. Applying filters.`);
-             },
-              change: function(event, ui) {
-                   const currentValue = userSearchInput.value.trim().toLowerCase();
-                   if (currentValue !== currentUserSearchTerm) {
-                       currentUserSearchTerm = currentValue;
-                       applyFiltersAndDisplay(); // Apply filters on change/blur
-                       console.log(`User search input changed/lost focus. Re-applying filters with term: "${currentUserSearchTerm}".`);
-                   }
-              }
-         });
-
-           // Trigger filter on input change for responsiveness
-           $(userSearchInput).on('input', function() {
-               const currentValue = userSearchInput.value.trim().toLowerCase();
-               if (currentValue !== currentUserSearchTerm) {
-                    currentUserSearchTerm = currentValue;
-                    applyFiltersAndDisplay();
-                    console.log(`User input changed. Filtering list by: "${currentUserSearchTerm}".`);
-               }
-          });
-
-         console.log("User autocomplete setup complete.");
-     }
-
-    function setupMessageAutocomplete() {
-        if (!messageSearchInput || typeof $.fn.autocomplete !== 'function') {
-             console.warn("Cannot setup message autocomplete: Search input not found or jQuery UI Autocomplete not loaded.");
-             if (messageSearchInput) messageSearchInput.disabled = true;
-             return;
+      function clearReportStatus() {
+        //    console.log("UI: CLEAR REPORT STATUS");
+          if (reportStatusDisplay) {
+            reportStatusDisplay.style.display = 'none';
+            reportStatusDisplay.textContent = '';
+            reportStatusDisplay.className = 'report-status'; // Reset classes
         }
-         console.log("Setting up message autocomplete...");
-
-        $(messageSearchInput).autocomplete({
-            minLength: 0,
-            delay: AUTOCOMPLETE_DELAY,
-            source: function(request, response) {
-                const term = request.term.toLowerCase();
-                const filteredSuggestions = savedMessages
-                     .map(msg => msg.text)
-                     .filter(text => text && text.toLowerCase().includes(term));
-
-                 response(filteredSuggestions.slice(0, AUTOCOMPLETE_MAX_SUGGESTIONS));
-            },
-             select: function(event, ui) {
-                 event.preventDefault();
-                 messageSearchInput.value = ui.item.value;
-                  currentMessageSearchTerm = ui.item.value.trim().toLowerCase();
-                  displayMessagesList(savedMessages.filter(msg => msg.text && msg.text.toLowerCase().includes(currentMessageSearchTerm)));
-                 console.log(`Message autocomplete selected: "${ui.item.value}". Filtering list.`);
-             },
-              change: function(event, ui) {
-                   const currentValue = messageSearchInput.value.trim().toLowerCase();
-                   if (currentValue !== currentMessageSearchTerm) {
-                       currentMessageSearchTerm = currentValue;
-                       displayMessagesList(savedMessages.filter(msg => msg.text && msg.text.toLowerCase().includes(currentMessageSearchTerm)));
-                        console.log(`Message autocomplete changed/lost focus. Filtering list by: "${currentMessageSearchTerm}".`);
-                   }
-              }
-        })
-         // Trigger filter on input change for responsiveness
-         .on('input', function() {
-             const currentValue = messageSearchInput.value.trim().toLowerCase();
-              if (currentValue !== currentMessageSearchTerm) {
-                 currentMessageSearchTerm = currentValue;
-                 const filteredMessages = savedMessages.filter(msg =>
-                     currentMessageSearchTerm === '' || (msg.text && msg.text.toLowerCase().includes(currentMessageSearchTerm))
-                 );
-                 displayMessagesList(filteredMessages);
-                  console.log(`Message input changed. Filtering list by: "${currentMessageSearchTerm}".`);
-             }
-         });
-
-        console.log("Message autocomplete setup complete.");
-    }
-
-
-     // --- Image Recognition (TensorFlow.js/MobileNet) ---
-     async function loadMobileNetModel() {
-          if (typeof tf === 'undefined') {
-              console.error("TensorFlow.js script not loaded. Cannot load ML model.");
-               showRecognitionStatus("Recognition unavailable: TensorFlow.js missing.", 'error');
-              return;
-          }
-         if (typeof mobilenet === 'undefined') {
-              console.error("MobileNet script not loaded. Cannot load ML model.");
-               showRecognitionStatus("Recognition unavailable: MobileNet script missing.", 'error');
-              return;
-          }
-         if (mobilenetModel) {
-              console.log("MobileNet model already loaded.");
-              return;
-         }
-
-         console.log("Loading MobileNet model...");
-          showRecognitionStatus("Loading recognition model...", 'loading');
-         try {
-             mobilenetModel = await mobilenet.load();
-             console.log("MobileNet model loaded successfully.");
-             showRecognitionStatus("Recognition model loaded.", 'success');
-              setTimeout(() => showRecognitionStatus(''), 3000);
-
-              // If users are already displayed in image mode, queue them for analysis now
-              if (displayMode === 'image' && lastFilteredUsers.length > 0) {
-                  console.log("Model loaded after users displayed. Queuing displayed images for analysis.");
-                  analysisQueue = lastFilteredUsers.filter(user => user.image_url && user.recognition_results === undefined) // Filter for not-yet-processed
-                                                   .map(user => ({ username: user.username, imageUrl: user.image_url }));
-
-                   // Update user state to pending if they are in the queue
-                    analysisQueue.forEach(item => {
-                        const userState = allOnlineUsersData.find(u => u.username === item.username);
-                        if(userState) userState.recognition_results = null; // Mark as pending
-                    });
-
-                   // Update the display to show "Analyzing..."
-                    displayOnlineUsersList(lastFilteredUsers);
-
-
-                   if(!isAnalyzing) {
-                       processAnalysisQueue();
-                   } else {
-                       console.log("Analysis process is already running.");
-                   }
-              }
-
-
-         } catch (error) {
-             console.error("Failed to load MobileNet model:", error);
-              showRecognitionStatus(`Recognition failed: Model load error - ${error.message}`, 'error');
-              mobilenetModel = null;
-         }
-     }
-
-     async function processAnalysisQueue() {
-         if (isAnalyzing || analysisQueue.length === 0 || !mobilenetModel || displayMode !== 'image' || !onlineUsersDiv) {
-             isAnalyzing = false;
-             // Update status based on why it stopped
-             if (analysisQueue.length === 0) showRecognitionStatus('Analysis complete or no images to process.');
-             else if (displayMode !== 'image') showRecognitionStatus(`Analysis paused (${analysisQueue.length} remaining). Switch to Image mode to resume.`, 'warning');
-             else if (!mobilenetModel) showRecognitionStatus(`Analysis stopped (${analysisQueue.length} remaining): Model unavailable.`, 'error');
-             return;
-         }
-
-         isAnalyzing = true;
-         console.log(`Starting analysis queue processing (${analysisQueue.length} items).`);
-          showRecognitionStatus(`Analyzing... (${analysisQueue.length} remaining)`, 'loading');
-
-
-         while (analysisQueue.length > 0 && mobilenetModel && displayMode === 'image' && onlineUsersDiv) {
-             // Process one item at a time
-             const queueItem = analysisQueue.shift();
-             const { username, imageUrl } = queueItem;
-
-             // Find the user in the main online data array (needed to update the source of truth)
-             const userStateIndex = allOnlineUsersData.findIndex(u => u.username === username);
-             const userState = userStateIndex !== -1 ? allOnlineUsersData[userStateIndex] : null;
-
-             // Find the corresponding DOM element in the online list
-             const userElement = onlineUsersDiv.querySelector(`.user-info[data-username="${username}"]`);
-
-              // Proceed only if user data and element still exist and the image URL is current
-             if (userState && userElement && displayMode === 'image' && userState.image_url === imageUrl) {
-
-                  try {
-                      const imageElement = userElement.querySelector('img');
-
-                      if (imageElement && imageElement.isConnected) {
-
-                           // Wait for the image to load if necessary
-                           if (!imageElement.complete || imageElement.naturalHeight === 0) {
-                                console.log(`Waiting for image for ${username} to load before analysis.`);
-                                await new Promise(resolve => {
-                                     imageElement.onload = resolve;
-                                     imageElement.onerror = resolve;
-                                     // Set a safety timeout for image loading (optional but good practice)
-                                     setTimeout(resolve, 5000); // Wait max 5 seconds for image
-                                });
-                                // Re-check DOM presence and load status after waiting
-                                if (!imageElement.isConnected) {
-                                     console.log(`Image for ${username} removed from DOM during load wait. Skipping analysis.`);
-                                     continue; // Skip to next queue item
-                                }
-                                 if (!imageElement.complete || imageElement.naturalHeight === 0) {
-                                     console.warn(`Image for ${username} failed to load or is empty after waiting. Skipping analysis.`);
-                                      const detailsDiv = userElement.querySelector('.user-details');
-                                       if (detailsDiv) detailsDiv.insertAdjacentHTML('beforeend', `<div class="recognition-results w3-text-red w3-small">Image load failed.</div>`);
-                                      if (userStateIndex !== -1) allOnlineUsersData[userStateIndex].recognition_results = []; // Mark as failed/no results
-                                      if (userElement) userElement.dataset.recognized = 'error';
-                                     continue; // Skip to next queue item
-                                 }
-                           }
-
-                           // Perform classification
-                           console.log(`Analyzing image for ${username}...`);
-                           const predictions = await mobilenetModel.classify(imageElement);
-                           console.log(`Analysis results for ${username}:`, predictions);
-
-                           // Filter results by threshold and limit
-                           const filteredPredictions = predictions.filter(p => p.probability >= IMAGE_RECOGNITION_CONFIDENCE_THRESHOLD)
-                                                                .slice(0, IMAGE_RECOGNITION_MAX_RESULTS);
-
-                           // Update user state with results
-                           if (userStateIndex !== -1) {
-                               allOnlineUsersData[userStateIndex].recognition_results = filteredPredictions;
-                           }
-
-                           // Update the UI element with results
-                           const detailsDiv = userElement.querySelector('.user-details');
-                           const existingResultsDiv = detailsDiv?.querySelector('.recognition-results'); // Find existing pending indicator
-
-                           if (detailsDiv) {
-                                const resultsHtml = buildRecognitionResultsHtml(filteredPredictions);
-                                if (existingResultsDiv) {
-                                     // Replace the "Analyzing..." indicator with results or "No results"
-                                     existingResultsDiv.outerHTML = resultsHtml || `<div class="recognition-results w3-text-grey w3-small">No results above threshold.</div>`;
-                                } else if (resultsHtml) {
-                                     // Add results if no placeholder was present
-                                     detailsDiv.insertAdjacentHTML('beforeend', resultsHtml);
-                                } else {
-                                     // Add "No results" if no placeholder was present and no results met threshold
-                                     detailsDiv.insertAdjacentHTML('beforeend', `<div class="recognition-results w3-text-grey w3-small">No results above threshold.</div>`);
-                                }
-                           }
-                            // Update data attribute based on whether results were found
-                            if (userElement) userElement.dataset.recognized = filteredPredictions.length > 0 ? 'true' : 'none';
-
-                           // Update overall recognition status message
-                           const remaining = analysisQueue.length;
-                           if (remaining > 0) {
-                                showRecognitionStatus(`Analyzing... (${remaining} remaining)`);
-                           } else {
-                                showRecognitionStatus("Analysis complete.", 'success');
-                                setTimeout(() => showRecognitionStatus(''), 3000);
-                           }
-
-                      } else {
-                           // Image element not found or disconnected during processing
-                           console.log(`Skipping analysis for ${username}: Image element not found or not in DOM.`);
-                           const detailsDiv = userElement?.querySelector('.user-details');
-                            if (detailsDiv) {
-                                 const existingResultsDiv = detailsDiv.querySelector('.recognition-results');
-                                  const errorHtml = `<div class="recognition-results w3-text-red w3-small">Image element missing/invalid.</div>`;
-                                 if (existingResultsDiv) { existingResultsDiv.outerHTML = errorHtml; }
-                                 else { detailsDiv.insertAdjacentHTML('beforeend', errorHtml); }
-                            }
-                           if (userStateIndex !== -1) allOnlineUsersData[userStateIndex].recognition_results = []; // Mark as failed/no results
-                            if (userElement) userElement.dataset.recognized = 'error';
-                      }
-
-                  } catch (error) {
-                      // Error during ML classification
-                      console.error(`Error analyzing image for ${username}:`, error);
-                      const userStateIndex = allOnlineUsersData.findIndex(u => u.username === username);
-                      if (userStateIndex !== -1) {
-                           allOnlineUsersData[userStateIndex].recognition_results = []; // Mark as failed/no results
-                      }
-                      const detailsDiv = userElement?.querySelector('.user-details');
-                      const existingResultsDiv = detailsDiv?.querySelector('.recognition-results');
-                       if (detailsDiv) {
-                            const errorHtml = `<div class="recognition-results w3-text-red w3-small">Analysis failed.</div>`;
-                            if (existingResultsDiv) {
-                                existingResultsDiv.outerHTML = errorHtml;
-                            } else {
-                                detailsDiv.insertAdjacentHTML('beforeend', errorHtml);
-                            }
-                       }
-                       if (userElement) userElement.dataset.recognized = 'error';
-                  }
-             } else {
-                  // User not found in state, element not found in DOM, or mode changed away from image
-                  console.log(`Skipping analysis for ${username} (user/element no longer valid, mode changed, or already analyzed).`);
-                   // If the user element was found but wasn't in the online list or mode changed,
-                   // update its pending status to something else like 'skipped' or 'N/A'
-                   if (userElement && userElement.dataset.recognized === 'pending') {
-                       const detailsDiv = userElement.querySelector('.user-details');
-                       const pendingDiv = detailsDiv?.querySelector('.recognition-results.loading-indicator');
-                       if(pendingDiv) pendingDiv.outerHTML = `<div class="recognition-results w3-text-grey w3-small">${displayMode !== 'image' ? 'Analysis skipped (Iframe Mode)' : 'Analysis skipped/User removed.'}</div>`;
-                        if (userElement) userElement.dataset.recognized = 'skipped';
-                   }
-
-             }
-
-             // Small delay to yield control to the browser UI thread
-             await new Promise(resolve => setTimeout(resolve, ANALYSIS_DELAY));
-         }
-
-         // Analysis queue processing finished
-         isAnalyzing = false;
-         console.log("Analysis queue processing finished.");
-          if (analysisQueue.length === 0 && displayMode === 'image' && mobilenetModel) {
-               showRecognitionStatus("Image recognition complete.", 'success');
-               setTimeout(() => showRecognitionStatus(''), 3000);
-          } else if (displayMode !== 'image') {
-               showRecognitionStatus(`Analysis paused (${analysisQueue.length} remaining). Switch to Image mode to resume.`, 'warning');
-          } else if (!mobilenetModel) {
-               showRecognitionStatus(`Analysis stopped (${analysisQueue.length} remaining): Model unavailable.`, 'error');
-          } else if (analysisQueue.length > 0 && onlineUsersDiv) {
-              console.warn("Analysis loop finished but queue is not empty?");
-              showRecognitionStatus(`Analysis interrupted (${analysisQueue.length} remaining).`, 'warning');
-          } else {
-               // Case where onlineUsersDiv is missing or other unexpected state
-               showRecognitionStatus('', false);
-          }
-     }
-
-
-    // --- Section Toggling ---
-    function toggleSection(sectionId) {
-        const section = document.getElementById(`${sectionId}Section`);
-        const icon = document.getElementById(`${sectionId}ToggleIcon`);
-        if (section && icon) {
-            if (section.classList.contains('w3-hide')) {
-                section.classList.remove('w3-hide');
-                icon.textContent = '▲';
-            } else {
-                section.classList.add('w3-hide');
-                icon.textContent = '▼';
-            }
-        } else {
-             console.warn(`Toggle section element not found for ID: ${sectionId}Section or ${sectionId}ToggleIcon`);
-        }
-    }
-
-
-    // --- DOM Initialization and Validation ---
-    function collectAndValidateDOMReferences() {
-         const missingCritical = [];
-         const missingOptional = [];
-
-         onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
-         if (!onlineUsersDiv) missingCritical.push("#onlineUsers .user-list");
-
-         previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
-         if (!previousUsersDiv) missingCritical.push("#previousUsers .user-list");
-
-         mainViewerContainer = document.getElementById("mainViewerContainer");
-         if (!mainViewerContainer) missingCritical.push("#mainViewerContainer");
-
-         mainIframeColumn = document.querySelector('.iframe-column');
-         if (!mainIframeColumn) missingCritical.push(".iframe-column");
-
-         iframeWrapper1 = document.getElementById("iframeWrapper1");
-         mainIframe1 = document.getElementById("mainIframe");
-         iframeWrapper2 = document.getElementById("iframeWrapper2");
-         mainIframe2 = document.getElementById("mainIframe2");
-         iframeWrapper3 = document.getElementById("iframeWrapper3");
-         mainIframe3 = document.getElementById("mainIframe3");
-         iframeWrapper4 = document.getElementById("iframeWrapper4");
-         mainIframe4 = document.getElementById("mainIframe4");
-
-          // Collect all iframe elements and their wrappers into arrays
-          mainIframes = [mainIframe1, mainIframe2, mainIframe3, mainIframe4].filter(Boolean); // Filter out any that weren't found
-          iframeWrappers = [iframeWrapper1, iframeWrapper2, iframeWrapper3, iframeWrapper4].filter(Boolean);
-
-
-         // Check if the minimum required iframe elements exist
-         if (mainIframes.length < 2 || iframeWrappers.length < 2) missingCritical.push("At least 2 main viewer iframes/wrappers (#mainIframe, #mainIframe2, etc.)");
-
-
-         storageTypeSelector = document.getElementById("storageType");
-         if (!storageTypeSelector) missingCritical.push("#storageType");
-
-         filterTagsSelect = document.getElementById("filterTags");
-         if (!filterTagsSelect) missingCritical.push("#filterTags");
-
-         filterAgeSelect = document.getElementById("filterAge");
-         if (!filterAgeSelect) missingCritical.push("#filterAge");
-
-         toggleAutoScrollButton = document.getElementById("toggleAutoScroll");
-         if (!toggleAutoScrollButton) missingCritical.push("#toggleAutoScroll");
-
-         toggleDisplayModeButton = document.getElementById("toggleDisplayMode");
-         if (!toggleDisplayModeButton) missingCritical.push("#toggleDisplayMode");
-
-         toggleIframeCountButton = document.getElementById("toggleIframeCount");
-         if (!toggleIframeCountButton) missingCritical.push("#toggleIframeCount");
-
-         userSearchInput = document.getElementById("userSearchInput");
-         if (!userSearchInput) missingCritical.push("#userSearchInput");
-
-         messageSearchInput = document.getElementById("messageSearchInput");
-         if (!messageSearchInput) missingCritical.push("#messageSearchInput");
-
-         messageInput = document.getElementById("messageInput");
-         if (!messageInput) missingCritical.push("#messageInput");
-
-         saveMessageButton = document.getElementById("saveMessageButton");
-         if (!saveMessageButton) missingCritical.push("#saveMessageButton");
-
-         messageListDiv = document.getElementById("messageList");
-         if (!messageListDiv) missingCritical.push("#messageList");
-
-         logDisplayArea = document.getElementById("logDisplayArea");
-         if (!logDisplayArea) missingCritical.push("#logDisplayArea");
-         logEntriesDiv = document.getElementById("logEntries");
-         if (!logEntriesDiv) missingCritical.push("#logEntries");
-
-         showLogsButton = document.getElementById("showLogsButton");
-         if (!showLogsButton) missingCritical.push("#showLogsButton");
-
-         clearLogsButton = document.getElementById("clearLogsButton");
-         if (!clearLogsButton) missingCritical.push("#clearLogsButton");
-
-
-         clearPreviousUsersButton = document.getElementById("clearPreviousUsers");
-          if (!clearPreviousUsersButton) missingOptional.push("#clearPreviousUsers (Clear History)");
-
-         sendReportButton = document.getElementById("sendReportButton");
-          if (!sendReportButton) missingOptional.push("#sendReportButton (Reporting)");
-
-         reportLoadingIndicator = document.getElementById("reportLoadingIndicator");
-          if (!reportLoadingIndicator) missingOptional.push("#reportLoadingIndicator (Reporting Loading Indicator)");
-
-         reportStatusDisplay = document.getElementById("reportStatusDisplay");
-          if (!reportStatusDisplay) missingOptional.push("#reportStatusDisplay (Reporting Status Display)");
-
-         recognitionStatusDisplay = document.getElementById("recognitionStatus");
-          if (!recognitionStatusDisplay) missingOptional.push("#recognitionStatus (Image Recognition Status)");
-
-         messageStatusDisplay = document.getElementById("messageStatusDisplay");
-          if (!messageStatusDisplay) missingOptional.push("#messageStatusDisplay (Message Status Display)");
-
-         filtersSectionHeader = document.querySelector('h4[onclick="toggleSection(\'filters\')"]');
-          if (!filtersSectionHeader) missingOptional.push("Filter section header (Toggling disabled).");
-         displaySectionHeader = document.querySelector('h4[onclick="toggleSection(\'display\')']");
-          if (!displaySectionHeader) missingOptional.push("Display section header (Toggling disabled).");
-         viewerSectionHeader = document.querySelector('h4[onclick="toggleSection(\'viewer\')"]');
-          if (!viewerSectionHeader) missingOptional.push("Viewer section header (Toggling disabled).");
-         messagingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'messaging\')"]');
-          if (!messagingSectionHeader) missingOptional.push("Messaging section header (Toggling disabled).");
-         reportingSectionHeader = document.querySelector('h4[onclick="toggleSection(\'reporting\')']");
-          if (!reportingSectionHeader) missingOptional.push("Reporting section header (Toggling disabled).");
-
-         const quickFilterButtons = document.querySelectorAll('.quick-filters button');
-          if (quickFilterButtons.length === 0) missingOptional.push("Quick filter buttons (Feature disabled).");
-
-
-        if (missingCritical.length > 0) {
-            const errorMsg = `CRITICAL ERROR: Missing essential DOM elements needed for application startup: ${missingCritical.join(', ')}. Application cannot start.`;
-            originalConsole.error(errorMsg);
-            if (onlineErrorDisplay) {
-                 onlineErrorDisplay.textContent = `Initialization failed: Missing required elements (${missingCritical[0]}...). Check browser console or the Logs section.`;
-                 onlineErrorDisplay.style.display = 'block';
-            } else {
-                alert(errorMsg);
-            }
-
-
-             [
-                storageTypeSelector, filterTagsSelect, filterAgeSelect,
-                toggleAutoScrollButton, toggleDisplayModeButton, toggleIframeCountButton,
-                userSearchInput, messageSearchInput, messageInput, saveMessageButton,
-                clearPreviousUsersButton, sendReportButton,
-                clearLogsButton
-            ].forEach(el => {
-                if (el) {
-                    el.disabled = true;
-                     if (el.tagName === 'BUTTON') el.textContent = 'Error';
-                     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = 'Error: Init Failed';
-                     if (el.tagName === 'SELECT') {
-                          el.innerHTML = '<option>Error</option>';
-                          el.value = 'Error';
-                     }
-                }
-            });
-             if (recognitionStatusDisplay) recognitionStatusDisplay.style.display = 'none';
-             if (messageStatusDisplay) messageStatusDisplay.style.display = 'none';
-             if (onlineLoadingIndicator) onlineLoadingIndicator.style.display = 'none';
-             if (reportLoadingIndicator) reportLoadingIndicator.style.display = 'none';
-
-             if(logDisplayArea) {
-                  logDisplayArea.classList.remove('w3-hide');
-                  if(logEntriesDiv) logEntriesDiv.innerHTML = `<div class="log-entry log-error"><span class="log-timestamp">[${formatLogTime(new Date())}]</span> <span class="log-message">${escapeHTML(errorMsg)}</span></div>`;
-             }
-
-            return false;
+      }
+
+
+    // --- Initial Setup and Event Listeners ---
+
+    /** Checks if all essential DOM elements are present. Logs errors or warnings. */
+    function validateDOMReferences() {
+        const criticalMissing = [];
+        if (!onlineUsersDiv) criticalMissing.push("#onlineUsers .user-list");
+        if (!previousUsersDiv) criticalMissing.push("#previousUsers .user-list");
+        if (!mainIframe) criticalMissing.push("#mainIframe");
+        if (!mainIframe2) criticalMissing.push("#mainIframe2");
+        if (!storageTypeSelector) criticalMissing.push("#storageType");
+        if (!filterTagsSelect) criticalMissing.push("#filterTags");
+        if (!filterAgeSelect) criticalMissing.push("#filterAge");
+
+        if (criticalMissing.length > 0) {
+            const errorMsg = `CRITICAL ERROR: Missing essential DOM elements: ${criticalMissing.join(', ')}. Application might not function correctly.`;
+            console.error(errorMsg);
+            // Display error to user?
+            showOnlineErrorDisplay(`Initialization failed: Missing required page elements (${criticalMissing[0]}...).`);
+            // throw new Error(errorMsg); // Option: Stop execution if critical elements missing
+            return false; // Indicate failure
         }
 
-         if (missingOptional.length > 0) {
-             console.warn("Missing optional DOM elements. Some features may be disabled:", missingOptional.join(', '));
-         }
+        // Optional elements (log warnings if missing)
+        if (!sendReportButton) console.warn("Optional element missing: #sendReportButton. Reporting functionality disabled.");
+        if (!reportLoadingIndicator) console.warn("Optional element missing: #reportLoadingIndicator. Reporting loading feedback unavailable.");
+        if (!reportStatusDisplay) console.warn("Optional element missing: #reportStatusDisplay. Reporting status feedback unavailable.");
+        if (!onlineLoadingIndicator) console.warn("Optional element missing: #onlineLoadingIndicator. Online user loading feedback unavailable.");
+        if (!onlineErrorDisplay) console.warn("Optional element missing: #onlineErrorDisplay. Online user error feedback unavailable.");
 
-        return true;
+        console.log("DOM references validated. Essential elements found.");
+        return true; // Indicate success
     }
 
 
+    /** Sets up all necessary event listeners for UI elements. */
     function setupEventListeners() {
         console.log("Setting up event listeners...");
 
+        // Storage Type Change
         storageTypeSelector?.addEventListener("change", async function() {
              const newStorageType = this.value;
-             console.log(`Storage type changed to: ${newStorageType}. Reloading history.`);
+             console.log(`Storage type changed to: ${newStorageType}`);
+             // Prevent changing if a save is in progress? (More complex state needed)
              if (newStorageType !== storageType) {
                 storageType = newStorageType;
-                showOnlineLoadingIndicator("Loading history from new source...");
-                previousUsers = await loadUsers(historyStorageKey);
-                 // History list depends on online data to show "online now", so only update display if online data is already loaded
-                 // If online data isn't loaded yet, the display will update after the initial fetch.
-                 if(allOnlineUsersData.length > 0 || fetchFailed) { // Also update if fetch failed, to show empty list
-                     await displayPreviousUsers();
-                 }
+                // Reload history from the newly selected storage type
+                showOnlineLoadingIndicator("Loading history from new source..."); // Provide feedback
+                previousUsers = await loadUsers("previousUsers");
+                // removedUsers = await loadUsers("removedUsers"); // If using removedUsers
+                await displayPreviousUsers(); // Refresh display (needs await)
                 hideOnlineLoadingIndicator();
              }
         });
 
+        // Filter Selects Change (use 'change' event)
         filterTagsSelect?.addEventListener("change", () => applyFiltersAndDisplay());
         filterAgeSelect?.addEventListener("change", () => applyFiltersAndDisplay());
 
+         // --- Specific Filter Buttons ---
+         // Example buttons - ensure these IDs exist in your HTML
          document.getElementById("filterAge18")?.addEventListener("click", () => applyFiltersAndDisplay({ age: 18 }));
          document.getElementById("filterTagAsian")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'asian' }));
          document.getElementById("filterTagBlonde")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'blonde' }));
+         // Add listeners for other specific filter buttons...
 
-         clearPreviousUsersButton?.addEventListener("click", clearPreviousUsers);
+         // --- Clear History Button ---
+         document.getElementById("clearPreviousUsers")?.addEventListener("click", clearPreviousUsers); // Calls async function
 
+         // --- Send Report Button ---
          if (sendReportButton) {
-             sendReportButton.addEventListener("click", sendReport);
+             sendReportButton.addEventListener("click", sendReport); // Calls async function
+             console.log("Report button event listener added.");
+         } else {
+             console.log("Report button not found, listener not added.");
          }
-
-        if (toggleAutoScrollButton) {
-             toggleAutoScrollButton.addEventListener("click", function() {
-                 if (isAutoScrolling) {
-                     stopAutoScroll();
-                 } else {
-                     startAutoScroll();
-                 }
-             });
-         }
-
-         if (toggleDisplayModeButton) {
-             toggleDisplayModeButton.addEventListener("click", function() {
-                  console.log("Display mode toggle clicked.");
-                 displayMode = displayMode === 'image' ? 'iframe' : 'image';
-                 console.log(`Display mode switched to: ${displayMode}`);
-                 toggleDisplayModeButton.textContent = displayMode === 'image' ? 'Show Iframes' : 'Show Images';
-                 // Re-display the filtered online users list in the new mode
-                 displayOnlineUsersList(lastFilteredUsers);
-                 if (onlineUsersDiv) onlineUsersDiv.scrollTop = 0; // Scroll to top
-             });
-         }
-
-         if (toggleIframeCountButton) {
-              toggleIframeCountButton.addEventListener("click", toggleIframeCount);
-         }
-
-        if (saveMessageButton) {
-             saveMessageButton.addEventListener("click", saveMessage);
-        }
-         if (messageInput) {
-             messageInput.addEventListener("keypress", function(event) {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault();
-                      saveMessage();
-                  }
-             });
-         }
-
-         if(showLogsButton && logDisplayArea) {
-              showLogsButton.addEventListener("click", function() {
-                  if (logDisplayArea.classList.contains('w3-hide')) {
-                      logDisplayArea.classList.remove('w3-hide');
-                      displayLogs();
-                  } else {
-                      logDisplayArea.classList.add('w3-hide');
-                  }
-              });
-         }
-         if(clearLogsButton) {
-              clearLogsButton.addEventListener("click", clearLogs);
-         }
-
-        if (onlineUsersDiv) {
-             onlineUsersDiv.addEventListener("scroll", handleManualScroll);
-         }
-
-         setupUserAutocomplete();
-         setupMessageAutocomplete();
 
         console.log("Event listeners setup complete.");
     }
 
 
-    // --- Application Initialization ---
+    // --- Application Initialization Sequence ---
+
     async function initializeApp() {
         console.log("Initializing application...");
 
-        captureConsole();
-        console.log("Console capture initialized.");
-
-        console.log("Validating DOM elements...");
-        if (!collectAndValidateDOMReferences()) {
+        if (!validateDOMReferences()) {
              console.error("Initialization aborted due to missing critical DOM elements.");
-             return;
+             return; // Stop initialization
         }
-        console.log("DOM validation complete.");
 
-         window.toggleSection = toggleSection;
-         console.log("toggleSection exposed globally.");
+        // 1. Populate storage options dropdown
+        await populateStorageOptions(); // Sets initial `storageType` based on selector
 
-         console.log("Checking dependencies...");
-         let depsOk = true;
-         if (typeof $ === 'undefined' || typeof $.fn.autocomplete === 'undefined') {
-             console.error("Dependency Error: jQuery or jQuery UI not loaded. Autocomplete and some UI features disabled.");
-             if (userSearchInput) { userSearchInput.disabled = true; userSearchInput.placeholder = 'jQuery UI Missing'; }
-             if (messageSearchInput) { messageSearchInput.disabled = true; messageSearchInput.placeholder = 'jQuery UI Missing'; }
-              depsOk = false;
-         } else {
-             console.log("jQuery and jQuery UI detected.");
-         }
-
-          if (typeof tf === 'undefined' || typeof mobilenet === 'undefined') {
-              console.warn("Dependency Warning: TensorFlow.js or MobileNet not loaded. Image recognition disabled.");
-               showRecognitionStatus("Recognition unavailable: Dependencies missing.", 'warning');
-          } else {
-              console.log("TensorFlow.js and MobileNet detected. Starting model load...");
-               loadMobileNetModel();
-          }
-        console.log("Dependency checks complete.");
-
-         console.log("Setting initial control states...");
-         displayMode = 'image';
-         if (toggleDisplayModeButton) toggleDisplayModeButton.textContent = 'Show Iframes';
-         iframeCount = 2; // Start with 2 viewports by default
-         currentUserSearchTerm = userSearchInput ? userSearchInput.value.trim().toLowerCase() : '';
-         currentMessageSearchTerm = messageSearchInput ? messageSearchInput.value.trim().toLowerCase() : '';
-         console.log("Initial control states set.");
-
-        console.log("Populating storage options...");
-        await populateStorageOptions();
-        console.log("Storage options populated.");
-
-        console.log("Setting up event listeners...");
+        // 2. Setup event listeners for UI elements
         setupEventListeners();
-        console.log("Event listeners setup complete.");
 
-         // Note: History is loaded here, but displayPreviousUsers is called AFTER fetchData,
-         // as it needs the current online user list to filter.
-        console.log("Loading initial history from storage (will display after fetch)...");
-        showOnlineLoadingIndicator("Loading initial history and online users...");
-        previousUsers = await loadUsers(historyStorageKey);
-        console.log(`Initial load: Found ${previousUsers.length} users in history state.`);
+        // 3. Load initial user history from the selected storage
+        showOnlineLoadingIndicator("Loading initial history...");
+        previousUsers = await loadUsers("previousUsers");
+        // removedUsers = await loadUsers("removedUsers"); // Load if needed
+        console.log(`Initial load: Found ${previousUsers.length} users in history.`);
+        // Don't display previous users yet, wait for online data for filtering
 
+        // 4. Perform the initial fetch of online user data
+        // `fetchData` will handle displaying online users and the *filtered* previous users
+        await fetchData(); // This is the main initial data load and display trigger
 
-        console.log("Setting up initial iframe layout...");
-        updateIframeLayout();
-        console.log("Initial iframe layout set.");
-
-        console.log("Loading and displaying messages...");
-         await loadAndDisplayMessages();
-         console.log("Messages loaded and displayed.");
-
-        console.log("Performing initial data fetch...");
-        await fetchData(); // This will populate allOnlineUsersData and trigger display updates
-
-        console.log("Starting periodic fetch interval...");
+        // 5. Start the periodic fetch interval *after* the first fetch completes
         startFetchInterval();
-        console.log("Periodic fetch interval started.");
 
+        // --- Optional: Compatibility Placeholders ---
         if (typeof window.initializeAllUsers === 'function') {
             console.warn("Executing legacy compatibility function: window.initializeAllUsers()");
             window.initializeAllUsers();
@@ -2454,92 +1331,34 @@ function captureConsole() {
             console.log("Legacy compatibility function initializeAllUsersFromScriptJS called.");
             if (typeof callback === 'function') callback();
         };
+        // --- End Compatibility ---
 
-        console.log("Application initialization sequence finished.");
-        hideOnlineLoadingIndicator();
-
-         // Final checks for button states based on fetch outcome
-           if (onlineUsersDiv && toggleAutoScrollButton) {
-               if (onlineUsersDiv.scrollHeight > onlineUsersDiv.clientHeight) {
-                   toggleAutoScrollButton.disabled = false;
-                   toggleAutoScrollButton.textContent = 'Start Auto-Scroll Online';
-                   toggleAutoScrollButton.classList.remove('w3-red');
-                   toggleAutoScrollButton.classList.add('w3-green');
-               } else {
-                   toggleAutoScrollButton.disabled = true;
-                   toggleAutoScrollButton.textContent = 'Not Scrollable';
-                    toggleAutoScrollButton.classList.remove('w3-red');
-                    toggleAutoScrollButton.classList.add('w3-green');
-               }
-           } else if (toggleAutoScrollButton) {
-                toggleAutoScrollButton.disabled = true;
-                toggleAutoScrollButton.textContent = 'List Missing';
-                toggleAutoScrollButton.classList.remove('w3-red');
-                toggleAutoScrollButton.classList.add('w3-green');
-           }
-            if (!onlineUsersDiv && toggleDisplayModeButton) {
-                 toggleDisplayModeButton.disabled = true;
-                 toggleDisplayModeButton.textContent = 'List Missing';
-            }
-             if (!mainViewerContainer) {
-                 if (toggleIframeCountButton) { toggleIframeCountButton.disabled = true; toggleIframeCountButton.textContent = 'Viewer Missing'; }
-             }
+        console.log("Application initialization complete and periodic fetching started.");
+        hideOnlineLoadingIndicator(); // Ensure loading indicator is hidden
     }
 
+    // --- Fetch Interval Control ---
     function startFetchInterval() {
          if (fetchInterval) {
              clearInterval(fetchInterval);
              console.log("Cleared existing fetch interval.");
          }
          console.log(`Starting periodic fetch interval (${fetchIntervalDuration / 1000} seconds).`);
+         // Call fetchData immediately, then set interval for subsequent calls
+         // Note: Initial call is already done by initializeApp()
          fetchInterval = setInterval(async () => {
              console.log("Interval triggered: Fetching updated data...");
-             await fetchData();
+             await fetchData(); // Call the async fetch function periodically
          }, fetchIntervalDuration);
     }
 
-
+    // --- Start the application ---
     initializeApp().catch(error => {
         console.error("Unhandled error during application initialization:", error);
-        const fatalErrorMsg = `Fatal initialization error: ${error.message}. Check browser console or the Logs section.`;
-        showOnlineErrorDisplay(fatalErrorMsg);
-         showReportStatus(fatalErrorMsg, 'error');
-         if (messageStatusDisplay) showStatusMessage(messageStatusDisplay, 'Fatal Init Error', 'error');
-
+        showOnlineErrorDisplay(`Fatal initialization error: ${error.message}. Please refresh or check console.`);
+        // Optionally hide loading indicators if they were left visible
         hideOnlineLoadingIndicator();
         hideReportLoading();
-        showRecognitionStatus('', false);
-
-        [
-             storageTypeSelector, filterTagsSelect, filterAgeSelect,
-             toggleAutoScrollButton, toggleDisplayModeButton, toggleIframeCountButton,
-             userSearchInput, messageSearchInput, messageInput, saveMessageButton,
-             clearPreviousUsersButton, sendReportButton,
-             clearLogsButton
-        ].forEach(el => {
-             if (el && el !== showLogsButton) {
-                 el.disabled = true;
-                 if (el.tagName === 'BUTTON') el.textContent = 'Error';
-                 if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = 'Error: Init Failed';
-                 if (el.tagName === 'SELECT') {
-                      el.innerHTML = '<option>Error</option>';
-                      el.value = 'Error';
-                 }
-             }
-         });
-
-         if (onlineUsersDiv && onlineUsersDiv.innerHTML.includes('Loading')) onlineUsersDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">${fatalErrorMsg}</p>`;
-         if (previousUsersDiv && previousUsersDiv.innerHTML.includes('Loading')) previousUsersDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">History Unavailable due to error.</p>`;
-         if (messageListDiv && messageListDiv.innerHTML.includes('Loading')) messageListDiv.innerHTML = `<p class="text-muted w3-center w3-text-red">Messaging Unavailable due to error.</p>`;
-
-         if(logDisplayArea) {
-              logDisplayArea.classList.remove('w3-hide');
-              if(logEntriesDiv && !logEntriesDiv.innerHTML.includes('Fatal initialization error')) {
-                   const errorHtml = `<div class="log-entry log-error"><span class="log-timestamp">[${formatLogTime(new Date())}]</span> <span class="log-message">${escapeHTML(fatalErrorMsg)}</span></div>`;
-                   logEntriesDiv.insertAdjacentHTML('beforeend', errorHtml);
-                   logEntriesDiv.scrollTop = logEntriesDiv.scrollHeight;
-              }
-         }
     });
 
-});
+}); // End DOMContentLoaded
