@@ -108,9 +108,12 @@ function fetchStockData(symbol = 'TSLA', interval = '1m') {
 }
 
 /**
- * Writes the fetched data to the active Google Sheet.
+ * Writes the fetched data to the active Google Sheet with a specific column order:
+ * A: Date, B: Open, C: High, D: Low, E: Close, F: Volume.
  *
- * @param {Array<Object>} dataToWrite An array of objects, where each object represents a row.
+ * @param {Array<Object>} dataToWrite An array of objects from the API.
+ *                                   Each object is assumed to have fields like 'timestamp', 'open', 'high', 'low', 'close', 'volume'.
+ *                                   IMPORTANT: User might need to adjust these field names based on actual API response.
  * @return {string} A success or error message.
  */
 function writeDataToSheet(dataToWrite) {
@@ -119,7 +122,6 @@ function writeDataToSheet(dataToWrite) {
     return 'No data provided to write.';
   }
 
-  // Ensure dataToWrite is an array of objects
   if (!Array.isArray(dataToWrite) || typeof dataToWrite[0] !== 'object' || dataToWrite[0] === null) {
     Logger.log('writeDataToSheet: Data is not in expected format (array of objects). Data: ' + JSON.stringify(dataToWrite));
     return 'Error: Data is not in the expected format (array of objects). Cannot write to sheet.';
@@ -129,30 +131,70 @@ function writeDataToSheet(dataToWrite) {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     sheet.clearContents(); // Clear existing data
 
-    // Dynamically create header row from keys of the first object
-    const header = Object.keys(dataToWrite[0]);
+    // Define the fixed header row
+    const header = ["Date", "Open", "High", "Low", "Close", "Volume"];
     
-    // Map array of objects to 2D array for setValues()
-    const dataRows = dataToWrite.map(rowObject => {
-      return header.map(colName => {
-        const val = rowObject[colName];
-        // If a value is an object or array, stringify it to fit in a cell
-        if (typeof val === 'object' && val !== null) {
-          return JSON.stringify(val);
+    // --- Assumed API field names ---
+    // IMPORTANT FOR USER: Adjust these field names if your API response uses different keys!
+    const fieldMap = {
+      date: 'timestamp', // Source field for Date (will be formatted)
+      open: 'open',      // Source field for Open
+      high: 'high',      // Source field for High
+      low: 'low',        // Source field for Low
+      close: 'close',    // Source field for Close
+      volume: 'volume'   // Source field for Volume
+    };
+    // --- End of Assumed API field names ---
+
+    const dataRows = dataToWrite.map(apiRowObject => {
+      let dateValue;
+      const timestamp = apiRowObject[fieldMap.date];
+
+      if (timestamp === undefined || timestamp === null) {
+        dateValue = "N/A";
+      } else if (typeof timestamp === 'number') {
+        // Assuming timestamp is in seconds or milliseconds.
+        // If it's like 1678886400 (seconds) or 1678886400000 (milliseconds)
+        const dateObj = new Date(timestamp * (timestamp.toString().length === 10 ? 1000 : 1));
+        dateValue = Utilities.formatDate(dateObj, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+      } else if (typeof timestamp === 'string') {
+        // If it's already a date string, try to parse it to ensure it's valid, then reformat.
+        // This also handles ISO strings directly.
+        try {
+          const dateObj = new Date(timestamp);
+          if (!isNaN(dateObj.getTime())) { // Check if date is valid
+             dateValue = Utilities.formatDate(dateObj, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), "yyyy-MM-dd HH:mm:ss");
+          } else {
+            dateValue = timestamp; // Use as is if parsing fails but it's a string
+          }
+        } catch (e) {
+          dateValue = timestamp; // Fallback to original string value if Date parsing throws error
         }
-        return val;
-      });
+      } else {
+        dateValue = String(timestamp); // Fallback for other types
+      }
+      
+      return [
+        dateValue,
+        apiRowObject[fieldMap.open] !== undefined ? apiRowObject[fieldMap.open] : "N/A",
+        apiRowObject[fieldMap.high] !== undefined ? apiRowObject[fieldMap.high] : "N/A",
+        apiRowObject[fieldMap.low] !== undefined ? apiRowObject[fieldMap.low] : "N/A",
+        apiRowObject[fieldMap.close] !== undefined ? apiRowObject[fieldMap.close] : "N/A",
+        apiRowObject[fieldMap.volume] !== undefined ? apiRowObject[fieldMap.volume] : "N/A"
+      ];
     });
 
     // Write header
     sheet.getRange(1, 1, 1, header.length).setValues([header]);
     // Write data rows
-    sheet.getRange(2, 1, dataRows.length, header.length).setValues(dataRows);
+    if (dataRows.length > 0) {
+      sheet.getRange(2, 1, dataRows.length, header.length).setValues(dataRows);
+    }
 
-    Logger.log(`Successfully wrote ${dataRows.length} rows to the sheet.`);
-    return `Successfully wrote ${dataRows.length} rows and ${header.length} columns to the sheet.`;
+    Logger.log(`Successfully wrote ${dataRows.length} rows with fixed column mapping.`);
+    return `Successfully wrote ${dataRows.length} rows and ${header.length} columns (Date, Open, High, Low, Close, Volume) to the sheet.`;
   } catch (e) {
-    Logger.log(`Error in writeDataToSheet: ${e.toString()}. Data sample: ${JSON.stringify(dataToWrite[0])}`);
-    return `Error writing to sheet: ${e.toString()}`;
+    Logger.log(`Error in writeDataToSheet: ${e.toString()}. Data sample: ${dataToWrite.length > 0 ? JSON.stringify(dataToWrite[0]) : 'N/A'}`);
+    return `Error writing to sheet with fixed mapping: ${e.toString()}`;
   }
 }
