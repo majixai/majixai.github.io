@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; margin: 10px; }
+      .form-group { margin-bottom: 10px; }
+      label { display: block; margin-bottom: 5px; }
+      input[type="text"] { width: calc(100% - 22px); padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+      button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+      button:hover { background-color: #45a049; }
+      #message { margin-top: 10px; font-size: 0.9em; word-wrap: break-word; }
+      .loader {
+        border: 4px solid #f3f3f3; /* Light grey */
+        border-top: 4px solid #3498db; /* Blue */
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 2s linear infinite;
+        display: none; /* Hidden by default */
+        margin-bottom: 10px;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Get Stock Data</h3>
+    <div class="form-group">
+      <label for="symbol">Stock Symbol (e.g., AAPL, TSLA):</label>
+      <input type="text" id="symbol" value="TSLA">
+    </div>
+    <div class="form-group">
+      <label for="interval">Interval (e.g., 1m, 5m, 1h, 1d):</label>
+      <input type="text" id="interval" value="1m">
+    </div>
+    <button onclick="fetchData()">Fetch and Write Data</button>
+    <div class="loader" id="loader"></div>
+    <div id="message"></div>
+
+    <script>
+      function fetchData() {
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('message').innerText = 'Fetching data...';
+        document.getElementById('message').style.color = 'black'; // Reset color
+
+        const symbol = document.getElementById('symbol').value;
+        const interval = document.getElementById('interval').value;
+
+        if (!symbol.trim() || !interval.trim()) {
+          document.getElementById('loader').style.display = 'none';
+          document.getElementById('message').innerText = 'Error: Symbol and Interval cannot be empty.';
+          document.getElementById('message').style.color = 'red';
+          return;
+        }
+
+        google.script.run
+          .withSuccessHandler(handleServerResponse) // Unified handler for initial fetch
+          .withFailureHandler(handleFailure)
+          .fetchStockData(symbol, interval);
+      }
+
+      function handleServerResponse(response) {
+        // This function now handles the response from fetchStockData
+        // It will then decide whether to call writeDataToSheet or display an error.
+
+        if (response.error) {
+          let fullErrorMessage = 'Error: ' + response.error;
+          if (response.details) {
+            fullErrorMessage += " Details: " + response.details;
+          }
+          document.getElementById('loader').style.display = 'none';
+          document.getElementById('message').innerText = fullErrorMessage;
+          document.getElementById('message').style.color = 'red';
+          console.error('Server-side error:', response);
+          return;
+        }
+
+        if (response.data && response.data.length > 0) {
+          document.getElementById('message').innerText = 'Data fetched successfully. Now writing to sheet...';
+          google.script.run
+            .withSuccessHandler(function(writeMsg) {
+              document.getElementById('loader').style.display = 'none';
+              document.getElementById('message').innerText = writeMsg;
+              document.getElementById('message').style.color = writeMsg.startsWith('Error:') ? 'red' : 'green';
+            })
+            .withFailureHandler(handleFailure) // For errors during the write process itself
+            .writeDataToSheet(response.data);
+        } else {
+          document.getElementById('loader').style.display = 'none';
+          document.getElementById('message').innerText = 'No data returned from API or data is empty. Check symbol and interval.';
+          document.getElementById('message').style.color = 'orange';
+        }
+      }
+
+      function handleFailure(error) {
+        // This handles failures in google.script.run itself or errors passed explicitly
+        document.getElementById('loader').style.display = 'none';
+        let errorMessage = 'An unexpected error occurred.';
+        if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && error.message) { // Standard JavaScript error object
+            errorMessage = error.message;
+        } else if (error && error.error) { // For objects like {error: "message", details: "..."}
+            errorMessage = error.error;
+            if(error.details) errorMessage += " Details: " + error.details;
+        }
+        
+        document.getElementById('message').innerText = 'Error: ' + errorMessage;
+        document.getElementById('message').style.color = 'red';
+        console.error('Failure details:', error);
+      }
+    </script>
+  </body>
+</html>
