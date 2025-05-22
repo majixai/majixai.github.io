@@ -1,0 +1,130 @@
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #FFD700; /* Bright yellow background */
+}
+
+.container {
+    background-color: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+}
+
+h1 {
+    color: #FF6347; /* Tomato red heading */
+    font-size: 2.5em;
+    margin-bottom: 20px;
+}
+
+.referral-link-section {
+    margin: 25px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#referralLink {
+    width: 70%;
+    padding: 12px 15px;
+    border: 2px solid #00CED1; /* Dark turquoise border */
+    border-radius: 5px 0 0 5px;
+    font-size: 1em;
+    color: #333;
+    outline: none;
+}
+
+#referralLink:focus {
+    border-color: #FF6347; /* Tomato red border on focus */
+}
+
+#copyButton {
+    padding: 12px 25px;
+    background-color: #FF6347; /* Tomato red button */
+    color: white;
+    border: none;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+#copyButton:hover {
+    background-color: #E5533D; /* Darker tomato red on hover */
+}
+
+#copyButton.copied {
+    background-color: #28a745; /* Green when copied */
+}
+
+#animationDiv1 {
+    width: 60px;
+    height: 60px;
+    background-color: #00CED1; /* Dark turquoise */
+    border-radius: 50%;
+    position: relative;
+    margin: 30px auto 0;
+    animation: bounce 0.8s infinite alternate;
+}
+
+#animationDiv2 {
+    width: 120px;
+    height: 120px;
+    margin: 30px auto 0;
+    position: relative; 
+    /* animation: sparkle 1.5s infinite linear; */ /* Animation will be controlled by JS or interaction */
+}
+
+#animationDiv2::before, #animationDiv2::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(circle, #FFD700 10%, transparent 11%),
+                      radial-gradient(circle, #FF6347 10%, transparent 11%);
+    background-size: 20px 20px; /* Size of individual sparkles */
+    border-radius: 50%;
+    opacity: 0;
+    animation: sparkle-effect 1.5s infinite linear; /* Apply animation here */
+}
+
+#animationDiv2::before {
+    background-position: 0 0, 10px 10px;
+}
+
+#animationDiv2::after {
+    background-position: 5px 5px, 15px 15px; /* Offset sparkles */
+    transform: scale(0.8);
+    animation-delay: 0.5s; /* Delay for staggered sparkle effect */
+}
+
+
+@keyframes bounce {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-25px);
+    }
+}
+
+/* Updated sparkle keyframes for pseudo-elements */
+@keyframes sparkle-effect {
+    0%, 100% {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

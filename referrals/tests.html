@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Page Tests</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        #testResults {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            background-color: #f9f9f9;
+        }
+        .pass {
+            color: green;
+            font-weight: bold;
+        }
+        .fail {
+            color: red;
+            font-weight: bold;
+        }
+        .log-message {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Referral Page Functionality Tests</h1>
+
+    <!-- Replicated HTML elements from referral.html for script.js to interact with -->
+    <div class="container" style="display: none;"> <!-- Hidden as UI not needed for tests -->
+        <div class="referral-link-section">
+            <input type="text" id="referralLink" readonly>
+            <button id="copyButton">Copy Link</button>
+        </div>
+        <div id="animationDiv1"></div>
+        <div id="animationDiv2"></div>
+    </div>
+
+    <div id="testResults">
+        <h2>Test Results:</h2>
+    </div>
+
+    <!-- Link to the main script for the referral page functionality -->
+    <script src="script.js"></script>
+
+    <!-- Inline test script -->
+    <script>
+        window.onload = () => {
+            const resultsDiv = document.getElementById('testResults');
+            const referralLinkInput = document.getElementById('referralLink');
+            const copyButton = document.getElementById('copyButton');
+
+            const log = (message, type = 'log') => {
+                const p = document.createElement('p');
+                p.textContent = message;
+                p.className = 'log-message ' + type; // e.g., pass, fail
+                resultsDiv.appendChild(p);
+                console[type === 'log' ? 'log' : (type === 'pass' ? 'info' : 'error')](message);
+            };
+
+            // --- Test 1: Referral Link Generation ---
+            log('--- Test 1: Referral Link Generation ---');
+            if (referralLinkInput) {
+                const linkValue = referralLinkInput.value;
+                if (linkValue) {
+                    log('Referral link input has a value: ' + linkValue, 'pass');
+                    // As per current script.js, the link starts with "https://example.com/join?ref="
+                    if (linkValue.startsWith('https://example.com/join?ref=')) {
+                        log('Referral link value starts with "https://example.com/join?ref="', 'pass');
+                    } else {
+                        log(`FAIL: Referral link value "${linkValue}" does not start with "https://example.com/join?ref="`, 'fail');
+                    }
+                } else {
+                    log('FAIL: Referral link input is empty.', 'fail');
+                }
+            } else {
+                log('FAIL: Could not find referralLink input element.', 'fail');
+            }
+
+            // --- Test 2: Copy Button Functionality (Simulated) ---
+            log('--- Test 2: Copy Button Functionality ---');
+            if (copyButton && referralLinkInput) {
+                const originalButtonText = copyButton.textContent; // Should be "Copy Link"
+                
+                // Mock navigator.clipboard.writeText if it's not available or for consistent testing
+                let clipboardMocked = false;
+                if (!navigator.clipboard) {
+                    navigator.clipboard = { writeText: async (text) => {
+                        log(`(Mocked clipboard) Copied: ${text}`, 'log');
+                        return Promise.resolve();
+                    }};
+                    clipboardMocked = true;
+                }
+
+
+                copyButton.click(); // Programmatically click the button
+
+                // Check if button text changes to "Copied!"
+                // script.js changes it and then sets a timeout.
+                // We need to wait for the immediate change.
+                setTimeout(() => { // Allow microtask queue to process (e.g. promise in script.js)
+                    if (copyButton.textContent === 'Copied!') {
+                        log('Button text changed to "Copied!" after click.', 'pass');
+
+                        // Check if button text reverts after 2 seconds (as per script.js)
+                        log('Waiting 2 seconds for button text to revert...');
+                        setTimeout(() => {
+                            if (copyButton.textContent === originalButtonText) {
+                                log(`Button text reverted to "${originalButtonText}" after 2 seconds.`, 'pass');
+                            } else {
+                                log(`FAIL: Button text did not revert. Expected "${originalButtonText}", got "${copyButton.textContent}"`, 'fail');
+                            }
+                            if(clipboardMocked) delete navigator.clipboard; // Clean up mock
+                            log('--- All Tests Finished ---');
+                        }, 2100); // A bit more than 2000ms to be safe
+                    } else {
+                        log(`FAIL: Button text did not change to "Copied!". Current text: "${copyButton.textContent}"`, 'fail');
+                        if(clipboardMocked) delete navigator.clipboard; // Clean up mock
+                        log('--- All Tests Finished (Button text did not change as expected) ---');
+                    }
+                }, 100); // Short delay for script.js to process click and promise
+
+            } else {
+                log('FAIL: Could not find copyButton or referralLink input element for Test 2.', 'fail');
+                log('--- All Tests Finished (Elements not found) ---');
+            }
+        };
+    </script>
+</body>
+</html>
