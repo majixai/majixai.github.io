@@ -1275,6 +1275,8 @@ document.addEventListener('DOMContentLoaded', async function() {
          document.getElementById("filterAge18")?.addEventListener("click", () => applyFiltersAndDisplay({ age: 18 }));
          document.getElementById("filterTagAsian")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'asian' }));
          document.getElementById("filterTagBlonde")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'blonde' }));
+         document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'deepthroat' }));
+         document.getElementById("filterTagBigboobs")?.addEventListener("click", () => applyFiltersAndDisplay({ tag: 'bigboobs' }));
          // Add listeners for other specific filter buttons...
 
          // --- Clear History Button ---
