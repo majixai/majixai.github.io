@@ -7,6 +7,57 @@
 import {GoogleGenAI} from '@google/genai';
 import * as marked from 'marked';
 
+// Simple Error Logger Utility
+const ErrorLogger = {
+    logContainer: null,
+    logContentElement: null,
+    init: function() {
+        this.logContainer = document.getElementById('error-log-container');
+        this.logContentElement = document.getElementById('error-log-content');
+        const toggleButton = document.getElementById('toggle-error-log-button');
+
+        if (toggleButton && this.logContainer) {
+            toggleButton.addEventListener('click', () => {
+                const isHidden = this.logContainer.style.display === 'none';
+                this.logContainer.style.display = isHidden ? 'block' : 'none';
+            });
+        } else {
+            console.warn("ErrorLogger: UI elements for error log (button or container) not found during init.");
+        }
+    },
+    logToUI: function(message, error = null) {
+        console.error(message, error || ''); // Keep console logging
+
+        if (!this.logContentElement) {
+            // Fallback if UI elements not ready or found
+            console.error("ErrorLogger: UI logContentElement not found for logging.");
+            return;
+        }
+
+        const entry = document.createElement('div');
+        entry.style.borderBottom = "1px solid #ccc";
+        entry.style.paddingBottom = "5px";
+        entry.style.marginBottom = "5px";
+
+        const timestamp = new Date().toISOString();
+        let content = `<strong>${timestamp}:</strong> ${message}`;
+        if (error) {
+            content += `<br><span style="color: red;">Error: ${error.message || String(error)}</span>`; // Handle non-Error objects
+            if (error.stack) {
+                content += `<br>Stack: ${error.stack.replace(/\n/g, '<br>')}`;
+            }
+        }
+        entry.innerHTML = content;
+        this.logContentElement.appendChild(entry);
+        this.logContentElement.scrollTop = this.logContentElement.scrollHeight; // Scroll to bottom
+
+        if (this.logContainer && this.logContainer.style.display === 'none' && error) {
+             // Automatically show log if an error is logged
+            this.logContainer.style.display = 'block';
+        }
+    }
+};
+
 // --- BSM Calculator Code ---
 class BSMCalculator {
     static #CND(x) { // Made CND a private static method
@@ -160,21 +211,25 @@ class ChatModel {
 
       request.onupgradeneeded = (event) => {
         const dbInstance = event.target.result; 
-        // Chat History Store
-        if (!dbInstance.objectStoreNames.contains(this.HISTORY_STORE_NAME)) {
-          const historyStore = dbInstance.createObjectStore(this.HISTORY_STORE_NAME, { keyPath: 'id', autoIncrement: true });
-          historyStore.createIndex('timestamp', 'timestamp', { unique: false });
-          console.log('IndexedDB: Object store "chatHistory" created.');
-        }
-
-        // Model Parameters and Results Store
-        const MODEL_PARAMS_STORE_NAME = 'modelParamsResults';
-        if (!dbInstance.objectStoreNames.contains(MODEL_PARAMS_STORE_NAME)) {
-          const paramsStore = dbInstance.createObjectStore(MODEL_PARAMS_STORE_NAME, { keyPath: 'id', autoIncrement: true });
-          paramsStore.createIndex('type', 'type', { unique: false });
-          paramsStore.createIndex('name', 'name', { unique: false }); // Name will be user-defined for saving
-          paramsStore.createIndex('timestamp', 'timestamp', { unique: false });
-          console.log(`IndexedDB: Object store "${MODEL_PARAMS_STORE_NAME}" created.`);
+        try {
+            if (!dbInstance.objectStoreNames.contains(this.HISTORY_STORE_NAME)) {
+              const historyStore = dbInstance.createObjectStore(this.HISTORY_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+              historyStore.createIndex('timestamp', 'timestamp', { unique: false });
+              console.log('IndexedDB: Object store "chatHistory" created.');
+            }
+            const MODEL_PARAMS_STORE_NAME = 'modelParamsResults';
+            if (!dbInstance.objectStoreNames.contains(MODEL_PARAMS_STORE_NAME)) {
+              const paramsStore = dbInstance.createObjectStore(MODEL_PARAMS_STORE_NAME, { keyPath: 'id', autoIncrement: true });
+              paramsStore.createIndex('type', 'type', { unique: false });
+              paramsStore.createIndex('name', 'name', { unique: false }); 
+              paramsStore.createIndex('timestamp', 'timestamp', { unique: false });
+              console.log(`IndexedDB: Object store "${MODEL_PARAMS_STORE_NAME}" created.`);
+            }
+        } catch (error) {
+            const errorMessage = "Error during onupgradeneeded while creating object stores.";
+            console.error(errorMessage, error);
+            ErrorLogger.logToUI(errorMessage, error);
+            reject(error); 
         }
       };
 
@@ -185,15 +240,39 @@ class ChatModel {
       };
 
       request.onerror = (event) => {
-        console.error('IndexedDB: Error opening database', event.target.error);
+        const errorMessage = "IndexedDB: Error opening database.";
+        console.error(errorMessage, event.target.error); 
+        ErrorLogger.logToUI(errorMessage, event.target.error);
         reject(event.target.error);
+      };
+
+      request.onblocked = (event) => { 
+        const warnMessage = "IndexedDB: Open request blocked. Close other connections to this database.";
+        console.warn(warnMessage, event);
+        ErrorLogger.logToUI(warnMessage, event);
+        // Not rejecting here as onblocked is a state, not necessarily a final error.
       };
     });
   }
   
   static async create(apiKey, modelName) { 
-    const model = new ChatModel(apiKey, modelName); 
-    await model.#initDB(); // Call private method
+    let model;
+    try {
+        model = new ChatModel(apiKey, modelName); 
+    } catch (error) {
+        const errorMessage = "Error instantiating ChatModel.";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error);
+        throw error; 
+    }
+    try {
+        await model.#initDB(); 
+    } catch (error) {
+        const errorMessage = "Error during ChatModel #initDB().";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error); // #initDB itself also logs, but this adds context.
+        throw error; 
+    }
     return model;
   }
 
@@ -680,18 +759,52 @@ class ChatController {
     try {
         const response = await fetch('./index.json'); 
         if (response.ok) {
-            config = await response.json();
-            console.log("Successfully loaded configuration from index.json", config);
+            try {
+                config = await response.json();
+                console.log("Successfully loaded configuration from index.json", config);
+            } catch (error) {
+                const errorMessage = "Error parsing index.json.";
+                console.error(errorMessage, error);
+                ErrorLogger.logToUI(errorMessage, error);
+            }
         } else {
-            console.error('Failed to load index.json, using default config. Status:', response.status);
+            const errorMessage = `Failed to load index.json, using default config. Status: ${response.status}`;
+            console.error(errorMessage);
+            ErrorLogger.logToUI(errorMessage);
         }
     } catch (error) {
-        console.error('Error loading or parsing index.json, using default config:', error);
+        const errorMessage = "Error fetching index.json.";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error);
     }
 
-    const model = await ChatModel.create(apiKey, config.apiConfig.modelName); 
-    const view = new UIController('chat-container', 'user-question', 'ask-button');
-    return new ChatController(apiKey, config, model, view); 
+    let model, view, controller;
+    try {
+        model = await ChatModel.create(apiKey, config.apiConfig.modelName); 
+    } catch (error) {
+        const errorMessage = "Error creating ChatModel in ChatController.create.";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error);
+        throw error; 
+    }
+    try {
+        view = new UIController('chat-container', 'user-question', 'ask-button');
+        ErrorLogger.init(); // Initialize ErrorLogger after UIController (and its DOM elements) are ready
+    } catch (error) {
+        const errorMessage = "Error creating UIController in ChatController.create.";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error); // ErrorLogger might not be fully initted if this fails
+        throw error; 
+    }
+    try {
+        controller = new ChatController(apiKey, config, model, view);
+    } catch (error) {
+        const errorMessage = "Error creating ChatController instance in ChatController.create.";
+        console.error(errorMessage, error);
+        ErrorLogger.logToUI(errorMessage, error);
+        throw error; 
+    }
+    return controller; 
   }
 
   async #loadAndDisplayHistory() { // Private method
@@ -851,9 +964,25 @@ const callableMathFunctions = {
   try {
     await ChatController.create(API_KEY);
     console.log("Chat application initialized successfully.");
+    ErrorLogger.logToUI("Chat application initialized successfully."); // Also log success to UI log
   } catch (error) {
-    console.error("Failed to initialize chat application:", error);
-    const uiController = new UIController('chat-container', 'user-question', 'ask-button'); // To display error
-    uiController.displayMessage("Failed to initialize chat application. Please refresh the page.", "error");
+    const criticalMessage = "CRITICAL: Failed to initialize chat application.";
+    // ErrorLogger.logToUI would have been called by deeper functions, but this is the top-level catch.
+    // We ensure it's logged to UI here as well, in case earlier attempts failed due to uninitialized logger.
+    if (typeof ErrorLogger !== 'undefined' && ErrorLogger.logToUI) {
+        ErrorLogger.logToUI(criticalMessage, error);
+    } else {
+        console.error(criticalMessage, error); // Fallback if logger itself failed
+    }
+    
+    const chatContainer = document.getElementById('chat-container');
+    const errorLogContainer = document.getElementById('error-log-container'); // Check if error log itself is there
+
+    if (chatContainer) {
+        chatContainer.innerHTML = '<div class="error-message w3-panel w3-red"><strong>Initialization Failed!</strong> Please expand the "Toggle Error Log" section (if available) or check the browser console for details, then refresh the page.</div>';
+    } else { // Very basic fallback if even chat container is missing
+        document.body.innerHTML = '<div style="color: red; padding: 20px; font-family: sans-serif;"><strong>CRITICAL ERROR: Application Initialization Failed!</strong><p>The chat interface could not be loaded. Please check the browser console for detailed error messages and ensure all files are correctly placed and accessible.</p> <p>Try refreshing the page. If the problem persists, contact support or check the application setup instructions.</p></div>';
+        if(errorLogContainer) errorLogContainer.style.display = 'block'; // Try to show log
+    }
   }
 })();
