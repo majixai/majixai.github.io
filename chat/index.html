@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chat Example</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+      "marked": "https://esm.sh/marked@^15.0.7"
+    }
+  }
+  </script>
+  <script src="mathUtils.js"></script>
+  <script src="indicators.js"></script> 
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <script type="module" src="script.js"></script>
+</head>
+<body class="w3-light-grey">
+  <div class="w3-panel w3-padding">
+    <input type="text" id="user-question" class="w3-input w3-border w3-round" style="width:75%; display:inline-block;" placeholder="Ask me anything...">
+    <button id="ask-button" class="w3-button w3-blue w3-round w3-margin-left" style="width:20%; display:inline-block;">Ask</button>
+  </div>
+  <div id="chat-container" class="w3-container w3-margin"></div>
+  <div id="plot-container" class="w3-container w3-margin" style="min-height: 400px;"></div>
+</body>
+</html>
