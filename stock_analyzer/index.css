@@ -1,0 +1,321 @@
+body {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0; /* Let Bootstrap container handle padding */
+  background-color: light-dark(#f8f9fa, #212529); /* Bootstrap-like background colors */
+  color: light-dark(#212529, #f8f9fa);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.header-icon {
+  color: light-dark(#0d6efd, #3ac7fe); /* Primary color or a vibrant accent */
+}
+
+header h1 {
+  color: light-dark(#343a40, #e9ecef);
+  margin-bottom: 0; /* Adjusted as title-container handles spacing */
+  font-size: 2em; 
+  font-weight: 600;
+}
+
+.input-section-card, .results-section-card, .chart-card, .sources-section-card, #errors-section, #rate-limit-info-section {
+  background-color: light-dark(#ffffff, #343a40); /* Card background */
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.input-group label {
+  font-weight: 500;
+  color: light-dark(#495057, #ced4da);
+}
+
+#get-price-button {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+#get-price-button:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#get-price-button:disabled {
+  background-color: #6c757d; 
+  border-color: #6c757d;
+  cursor: not-allowed;
+}
+
+#cooldown-timer {
+    display: none; /* Hidden by default, shown by JS */
+    color: light-dark(#6c757d, #adb5bd);
+    font-size: 0.9em;
+}
+
+.results-section-card h3, .chart-card h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: light-dark(#343a40, #e9ecef);
+  font-size: 1.5em;
+  font-weight: 500;
+}
+
+#results-output ul, #sources-content ul, #rate-limit-info-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem; 
+}
+
+#results-output li, #sources-content li, #rate-limit-info-content li {
+  margin-bottom: 0.25rem;
+}
+
+#results-output a, #sources-content a, #rate-limit-info-content a {
+  color: #0d6efd; 
+  text-decoration: none;
+}
+
+#results-output a:hover, #sources-content a:hover, #rate-limit-info-content a:hover {
+  text-decoration: underline;
+}
+
+.message {
+  padding: 1rem;
+  border-radius: 0.25rem; 
+  animation: fadeInMessage 0.3s ease-out;
+}
+
+@keyframes fadeInMessage {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.message.loading {
+  background-color: light-dark(#e0f7fa, #1a515a); 
+  color: light-dark(#007bff, #61daff);
+  border-left: 4px solid #007bff;
+}
+
+.message.error, .message.cached-ratelimit {
+  background-color: light-dark(#f8d7da, #5a2d2f); 
+  color: light-dark(#dc3545, #f5c6cb);
+  border-left: 4px solid #dc3545;
+}
+
+.message.warning {
+  background-color: light-dark(#fff3cd, #664d03); /* Bootstrap warning colors */
+  color: light-dark(#664d03, #ffecb5);
+  border-left: 4px solid #ffc107; /* Bootstrap warning yellow */
+}
+
+
+.message.success p:first-child, 
+.message.info p:first-child {
+    margin-top: 0;
+}
+.message.success p:last-child,
+.message.info p:last-child {
+    margin-bottom: 0;
+}
+
+.cached-notice {
+    display: inline-block;
+    background-color: light-dark(#d1e7dd, #19875440); 
+    color: light-dark(#0f5132, #a3cfbb);
+    padding: 0.25em 0.5em;
+    border-radius: 0.25rem;
+    font-size: 0.8em;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.cached-notice.error { /* For rate limit cache notice */
+    background-color: light-dark(#f8d7da, #dc354533);
+    color: light-dark(#58151c, #f5c6cb);
+    border: 1px solid light-dark(#f1aeb5, #dc354580);
+}
+
+
+.charts-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; 
+}
+
+.tradingview-container-style, .plotly-container-style {
+  border-radius: 0.25rem;
+  overflow: hidden; 
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* TradingView specific styles */
+.tradingview-widget-container { /* Ensure this matches the dynamically created one */
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.tradingview-widget-copyright .blue-text {
+  color: #0d6efd !important; 
+}
+
+#tradingview-widget-container p { /* Placeholder text for initial load */
+    padding: 20px;
+    text-align: center;
+    color: light-dark(#6c757d, #adb5bd); 
+    min-height: 100px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#plotly-chart-output p { 
+    padding: 20px;
+    text-align: center;
+    color: light-dark(#6c757d, #adb5bd); 
+    min-height: 100px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* Spot Price Display */
+.spot-price-style {
+    font-size: 1.25em;
+    font-weight: 500;
+    color: light-dark(#343a40, #e9ecef); /* Default color for the "Spot Price:" label */
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background-color: light-dark(rgba(230, 245, 233, 0.1), rgba(40, 80, 50, 0.1));
+    border-radius: 0.25rem;
+}
+
+#spot-price-value {
+    font-weight: bold;
+    color: light-dark(#212529, #f8f9fa); /* Default/neutral color for the value */
+    transition: color 0.3s ease-in-out;
+}
+
+#spot-price-value.price-up {
+    color: #198754; /* Bootstrap success green */
+}
+
+#spot-price-value.price-down {
+    color: #dc3545; /* Bootstrap danger red */
+}
+
+
+/* Sources Section Specifics */
+.sources-section-card {
+  margin-top: 1.5rem; /* Ensure some space above it */
+}
+
+#toggle-sources-button {
+  /* Bootstrap classes btn-outline-secondary btn-sm should provide good base */
+}
+
+#sources-content {
+  margin-top: 0.5rem; /* Space between button and content */
+  padding: 0.5rem;
+  border-top: 1px solid light-dark(#dee2e6, #495057); /* Separator */
+  max-height: 200px; /* Limit height and make scrollable if too many sources */
+  overflow-y: auto;
+}
+
+/* Errors Section */
+#errors-section {
+  margin-top: 1.5rem; /* Space above this section */
+}
+
+#copy-errors-button {
+  /* Uses Bootstrap .btn .btn-warning .btn-sm */
+}
+
+#copy-errors-status {
+  font-size: 0.9em;
+  color: light-dark(#198754, #a3cfbb); /* Green for success */
+}
+
+#copy-errors-status.error {
+  color: light-dark(#dc3545, #f5c6cb); /* Red for failure */
+}
+
+/* Rate Limit Info Section */
+#rate-limit-info-section {
+  margin-top: 1.5rem;
+}
+
+#toggle-rate-limit-info-button {
+ /* Bootstrap .btn .btn-info .btn-sm provides good base */
+}
+
+#rate-limit-info-content {
+  padding: 0.5rem;
+  border-top: 1px solid light-dark(#dee2e6, #495057); /* Separator */
+  font-size: 0.9em;
+}
+#rate-limit-info-content h4 {
+    font-size: 1.1em;
+    margin-bottom: 0.5rem;
+}
+
+
+.sr-only { 
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+footer {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid light-dark(#dee2e6, #495057); 
+  font-size: 0.9em;
+  color: light-dark(#6c757d, #adb5bd);
+}
+
+@media (max-width: 768px) { 
+  .title-container {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  header h1 {
+    font-size: 1.75em;
+  }
+  .chart-card h3 {
+    font-size: 1.2em;
+  }
+  .tradingview-widget-container { /* For TradingView chart height */
+    height: 350px !important; 
+  }
+  #plotly-chart-output { /* For Plotly chart height */
+    min-height: 300px;
+  }
+  .spot-price-style {
+    font-size: 1.1em;
+  }
+}
+
+.w3-card-4 {
+   box-shadow: 0 4px 10px 0 rgba(0,0,0,0.12), 0 4px 20px 0 rgba(0,0,0,0.08) !important;
+}
+
+.w3-container.w3-padding {
+    padding: 1rem 1.5rem !important;
+}

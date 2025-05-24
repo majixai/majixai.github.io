@@ -1,0 +1,68 @@
+name: Stock Analyzer CI
+
+on:
+  push:
+    branches: [ main ] # Or your default branch
+    paths:
+      - 'stock_analyzer/**' # Only run on changes within the stock_analyzer directory
+  pull_request:
+    branches: [ main ] # Or your default branch
+    paths:
+      - 'stock_analyzer/**'
+
+jobs:
+  build_and_lint:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./stock_analyzer # Set working directory for all run steps
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # Or your preferred Node.js version
+        cache: 'npm' # Or 'yarn', 'pnpm'
+        cache-dependency-path: stock_analyzer/package-lock.json # Or yarn.lock, etc. - Assumes package.json is in stock_analyzer
+
+    - name: Install dependencies
+      run: |
+        # Ensure you have a package.json in your stock_analyzer directory
+        # For example: npm init -y
+        # Then: npm install typescript esbuild some-linter --save-dev
+        if [ -f package.json ]; then
+          npm install
+        else
+          echo "package.json not found. Skipping dependency installation."
+          echo "Please create a package.json and define your build tools (e.g., typescript, esbuild/webpack/parcel, linters)."
+        fi
+
+    - name: Lint code
+      run: |
+        echo "Linting step placeholder. Configure your linter (e.g., ESLint, Stylelint)."
+        # Example: npx eslint . --ext .ts,.tsx
+        # Example: npx stylelint "**/*.css"
+
+    - name: Type check
+      run: |
+        echo "Type checking placeholder. Configure TypeScript compilation."
+        # Example: npx tsc --noEmit
+        # This assumes you have a tsconfig.json in your stock_analyzer directory
+
+    - name: Build project
+      run: |
+        echo "Build step placeholder. Configure your build process (e.g., esbuild, webpack, parcel)."
+        # Example for esbuild (assuming index.tsx is the entry point and outputs to dist/bundle.js):
+        # npx esbuild index.tsx --bundle --outfile=dist/bundle.js --minify --sourcemap
+        # Ensure your index.html script tag points to the correct bundled output, e.g., <script type="module" src="dist/bundle.js"></script>
+
+    # Add a step to upload build artifacts if needed for deployment
+    # - name: Upload build artifacts
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: stock-analyzer-build
+    #     path: stock_analyzer/dist/ # Or wherever your build output is
