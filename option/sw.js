@@ -6,8 +6,8 @@ const ASSETS_TO_CACHE = [
   '/index.css',
   '/index.js', // In a real build, this would be the bundled JS file
   'https://cdn.plot.ly/plotly-2.32.0.min.js',
-  'https://esm.sh/@google/genai@^0.7.0',
-  'https://esm.sh/marked@^15.0.7',
+  'https://cdn.jsdelivr.net/npm/@google/genai@^0.7.0/+esm', // Updated CDN URL
+  'https://cdn.jsdelivr.net/npm/marked@^15.0.7/+esm', // Updated CDN URL
   'https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap', // Google Font
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css', // Bootstrap CSS
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js', // Bootstrap JS
