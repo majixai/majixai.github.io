@@ -27,18 +27,14 @@ jobs:
       with:
         node-version: '20' # Or your preferred Node.js version
         cache: 'npm' # Or 'yarn', 'pnpm'
-        cache-dependency-path: stock_analyzer/package-lock.json # Or yarn.lock, etc. - Assumes package.json is in stock_analyzer
+        cache-dependency-path: stock_analyzer/package.json # Or yarn.lock, etc. - Assumes package.json is in stock_analyzer
 
     - name: Install dependencies
       run: |
-        # Ensure you have a package.json in your stock_analyzer directory
-        # For example: npm init -y
-        # Then: npm install typescript esbuild some-linter --save-dev
-        if [ -f package.json ]; then
-          npm install
+        if [ -f package-lock.json ]; then
+          npm ci
         else
-          echo "package.json not found. Skipping dependency installation."
-          echo "Please create a package.json and define your build tools (e.g., typescript, esbuild/webpack/parcel, linters)."
+          npm install
         fi
 
     - name: Lint code
@@ -48,21 +44,14 @@ jobs:
         # Example: npx stylelint "**/*.css"
 
     - name: Type check
-      run: |
-        echo "Type checking placeholder. Configure TypeScript compilation."
-        # Example: npx tsc --noEmit
-        # This assumes you have a tsconfig.json in your stock_analyzer directory
+      run: npm run typecheck
 
     - name: Build project
-      run: |
-        echo "Build step placeholder. Configure your build process (e.g., esbuild, webpack, parcel)."
-        # Example for esbuild (assuming index.tsx is the entry point and outputs to dist/bundle.js):
-        # npx esbuild index.tsx --bundle --outfile=dist/bundle.js --minify --sourcemap
-        # Ensure your index.html script tag points to the correct bundled output, e.g., <script type="module" src="dist/bundle.js"></script>
+      run: npm run build
 
     # Add a step to upload build artifacts if needed for deployment
-    # - name: Upload build artifacts
-    #   uses: actions/upload-artifact@v3
-    #   with:
-    #     name: stock-analyzer-build
-    #     path: stock_analyzer/dist/ # Or wherever your build output is
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: stock-analyzer-build
+        path: stock_analyzer/dist/ # Or wherever your build output is
