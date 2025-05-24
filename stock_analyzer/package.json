@@ -1,0 +1,22 @@
+{
+  "name": "stock-analyzer",
+  "version": "0.1.0",
+  "description": "Stock projection analyzer application",
+  "main": "dist/bundle.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "esbuild index.tsx --bundle --outfile=dist/bundle.js --minify --sourcemap --format=esm --platform=browser --external:marked --external:@google/genai",
+    "start": "echo \"Add a simple dev server script here if needed, e.g., using 'serve' or 'http-server' on the stock_analyzer directory.\""
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "esbuild": "^0.20.2",
+    "@types/node": "^20.12.7",
+    "@types/marked": "^6.0.0"
+  },
+  "dependencies": {
+    "marked": "^12.0.2", 
+    "@google/genai": "^0.7.0"
+  },
+  "license": "Apache-2.0"
+}
