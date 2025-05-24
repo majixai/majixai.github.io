@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Projection Analyzer</title>
+    
+    <!-- Google Font: Montserrat -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <!-- W3.CSS -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    
+    <link rel="stylesheet" href="index.css">
+    
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.7.0",
+          "marked": "https://esm.sh/marked@^15.0.7"
+        }
+      }
+    </script>
+</head>
+<body>
+    <div class="container mt-4 mb-4">
+        <header class="text-center mb-4">
+            <div class="title-container">
+                <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="36" height="36">
+                    <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z"/>
+                </svg>
+                <h1>Stock Projection Analyzer</h1>
+            </div>
+        </header>
+        <main>
+            <div class="w3-card-4 w3-margin-bottom input-section-card">
+                <div class="w3-container w3-padding">
+                    <h2 id="form-heading" class="sr-only">Stock Information Query</h2>
+                    <div class="mb-3">
+                        <label for="ticker-input" class="form-label">Ticker Symbol:</label>
+                        <input type="text" class="form-control" id="ticker-input" placeholder="e.g., GOOGL" aria-required="true">
+                    </div>
+                    <div class="mb-3">
+                        <label for="exchange-input" class="form-label">Exchange:</label>
+                        <input type="text" class="form-control" id="exchange-input" placeholder="e.g., NASDAQ" aria-required="true">
+                    </div>
+                    <div class="d-grid">
+                        <button id="get-price-button" class="btn btn-primary btn-lg">Get Projections & Analysis</button>
+                        <span id="cooldown-timer" class="form-text text-center mt-2"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w3-card-4 w3-margin-bottom chart-card">
+                <div class="w3-container w3-padding">
+                    <h3 class="text-center">Market View & Spot Price</h3>
+                    <div id="spot-price-display" class="spot-price-style text-center">
+                        Spot Price: <span id="spot-price-value">--.--</span>
+                    </div>
+                    <!-- TradingView Widget BEGIN -->
+                    <div id="tradingview-widget-container" class="tradingview-widget-container" style="height:450px;width:100%">
+                        <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
+                        <div class="tradingview-widget-copyright">
+                            <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank">
+                                <span class="blue-text">Track all markets on TradingView</span>
+                            </a>
+                        </div>
+                        {/* Script will be dynamically injected by index.js */}
+                    </div>
+                    <!-- TradingView Widget END -->
+                </div>
+            </div>
+
+            <div id="results-output-container" class="w3-card-4 w3-margin-bottom results-section-card">
+                 <div class="w3-container w3-padding">
+                    <h3 class="text-center">AI-Powered Stock Analysis</h3>
+                    <div id="results-output" aria-live="polite">
+                        <p>Enter a ticker and exchange to get price projections, reversal timelines, and options strategy insights.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w3-card-4 w3-margin-bottom chart-card"> 
+                <div class="w3-container w3-padding">
+                    <h3 class="text-center">Projected 7-Day OHLCV Chart</h3>
+                    <div id="plotly-chart-output" class="plotly-container-style" aria-live="polite">
+                        <p>Projected OHLCV candlestick & volume chart will appear here after fetching data.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="options-strategy-charts-container" class="w3-card-4 w3-margin-bottom chart-card" style="display: none;">
+                <div class="w3-container w3-padding">
+                    <h3 class="text-center">Options Strategy Payoff Diagrams</h3>
+                    <div id="options-strategy-charts-output" class="row g-3" aria-live="polite">
+                        {/* Options strategy charts will be injected here by JS */}
+                         <p class="col-12 text-center initial-options-message">Options strategy payoff diagrams will appear here if data is available.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sources-container-wrapper" class="w3-card-4 w3-margin-top sources-section-card" style="display: none;">
+                <div class="w3-container w3-padding">
+                    <button id="toggle-sources-button" class="btn btn-outline-secondary btn-sm mb-2" aria-expanded="false" aria-controls="sources-content">Sources</button>
+                    <div id="sources-content" style="display: none;">
+                        {/* Sources will be injected here by JS */}
+                    </div>
+                </div>
+            </div>
+            
+            <div id="data-storage-info-section" class="w3-card-4 w3-margin-top">
+                <div class="w3-container w3-padding">
+                    <button id="toggle-data-storage-info-button" class="btn btn-secondary btn-sm mb-2" aria-expanded="false" aria-controls="data-storage-info-content">View Data Storage & Caching Info</button>
+                    <div id="data-storage-info-content" class="mt-2" style="display: none;">
+                        <h4>Data Management</h4>
+                        <p>This application uses various browser storage mechanisms to enhance performance and user experience:</p>
+                        <ul>
+                            <li><strong>localStorage:</strong> Used for persisting user preferences such as the last entered ticker and exchange, the last API call timestamp (for rate limiting), the current API key index (for rotation), and for an immediate display of the last known spot price for the previously viewed ticker. This data persists until explicitly cleared by the user or the application.</li>
+                            <li><strong>IndexedDB:</strong> Employed for caching detailed analysis results from the AI, including the full textual response, OHLCV data, and options strategy information. This allows for offline access to previously fetched data and reduces redundant API calls. Data in IndexedDB is typically cached for 1 hour (Time-To-Live).</li>
+                            <li><strong>Cache API (via Service Worker):</strong> Core application assets (like HTML, CSS, JavaScript files, and essential third-party libraries from CDNs) are cached. This enables faster load times on subsequent visits and allows the basic application shell to function even if the network is temporarily unavailable.</li>
+                             <li><strong>API Keys:</strong> If multiple API keys are provided via the <code>USER_PROVIDED_KEYS_STRING</code> in the script, they are stored in the script's memory for rotation. The index of the currently active key is saved in <code>localStorage</code> to maintain consistency across sessions. The primary <code>GEMINI_API_KEY_PRIMARY</code> is also sourced from the script's environment (or a hardcoded fallback). API keys themselves are not directly exposed to the user or stored in a way that's easily retrievable by end-users through browser tools beyond viewing the initial script source if they are hardcoded.</li>
+                            <li><strong>SessionStorage:</strong> This browser storage is available but is not currently used for primary data persistence in this application as its contents are cleared when the browser tab or window is closed. It's suitable for temporary session-specific data.</li>
+                        </ul>
+                        <p>Clearing your browser's cache/site data for this application will remove all stored preferences and cached analyses.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="errors-section" class="w3-card-4 w3-margin-top" style="display: none;">
+                <div class="w3-container w3-padding">
+                    <button id="copy-errors-button" class="btn btn-warning btn-sm">Copy Logged Errors</button>
+                    <span id="copy-errors-status" class="ms-2"></span>
+                </div>
+            </div>
+
+            <div id="rate-limit-info-section" class="w3-card-4 w3-margin-top" >
+                <div class="w3-container w3-padding">
+                    <button id="toggle-rate-limit-info-button" class="btn btn-info btn-sm mb-2" aria-expanded="false" aria-controls="rate-limit-info-content">View API Rate Info</button>
+                    <div id="rate-limit-info-content" class="mt-2" style="display: none;">
+                        <h4>Gemini API Rate Limits</h4>
+                        <p>This application uses the <strong>gemini-2.5-flash-preview-05-20</strong> model.</p>
+                        <ul>
+                            <li><strong>Requests per minute (RPM):</strong> 60</li>
+                            <li><strong>Tokens per minute (TPM):</strong> Not explicitly limited for free tier on this model, but large requests count towards RPM.</li>
+                        </ul>
+                        <p>To avoid exceeding these limits:</p>
+                        <ul>
+                            <li>The "Get Projections & Analysis" button has a cooldown period (currently 60 seconds) after each successful API request.</li>
+                            <li>If you encounter a "RESOURCE_EXHAUSTED" (429) error, the app will attempt to serve data from its local cache (if available for the ticker). Cached data is valid for 1 hour.</li>
+                            <li>Please wait a minute if you frequently hit rate limits before trying again.</li>
+                        </ul>
+                        <p>For more details, visit the <a href="https://ai.google.dev/gemini-api/docs/rate-limits" target="_blank" rel="noopener noreferrer">official Gemini API documentation on rate limits</a>.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center mt-5">
+            <p>Powered by Gemini</p>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS Bundle (Popper.js included) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script type="module" src="index.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker: registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker: registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
