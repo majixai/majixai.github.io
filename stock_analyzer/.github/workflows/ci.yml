@@ -10,6 +10,11 @@ on:
     paths:
       - 'stock_analyzer/**'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build_and_lint:
     runs-on: ubuntu-latest
@@ -49,9 +54,25 @@ jobs:
     - name: Build project
       run: npm run build
 
-    # Add a step to upload build artifacts if needed for deployment
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+    - name: Prepare deployment package
+      run: |
+        mkdir -p staging_dir/dist
+        cp -r dist/* staging_dir/dist/
+        cp index.html staging_dir/
+        cp index.css staging_dir/
+        cp sw.js staging_dir/
+        cp manifest.json staging_dir/
+      working-directory: ./stock_analyzer
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v5
+
+    - name: Upload artifact for GitHub Pages
+      uses: actions/upload-pages-artifact@v3
       with:
-        name: stock-analyzer-build
-        path: stock_analyzer/dist/ # Or wherever your build output is
+        # Upload entire staging directory
+        path: ./stock_analyzer/staging_dir # Path is relative to GITHUB_WORKSPACE
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
