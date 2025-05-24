@@ -29,16 +29,34 @@ This application provides stock projection analysis.
     npm run build
     ```
 
-## Running the Application
+## Running the Application Locally
 
-After building the project, you can open the `index.html` file in your browser. For a better experience, serve the `stock_analyzer` directory using a local web server. Many simple HTTP servers are available, for example, `serve` (which you can install via `npm install -g serve` and then run `serve .` from within the `stock_analyzer` directory).
+After building the project (`npm run build`), the necessary files will be in the `dist` directory. To run locally:
+1.  Ensure `index.html`, `index.css`, `sw.js`, and `manifest.json` are in the same root directory as the `dist` folder. (The GitHub action prepares this structure for deployment).
+2.  Serve the root directory (e.g., `stock_analyzer` if you manually copied `dist` contents, or the root of the downloaded artifact) using a local web server. For example, using `serve`:
+    ```bash
+    # If you have 'serve' installed globally
+    serve .
+    ```
+    Then open `index.html` in your browser.
 
-The application expects `index.html`, `dist/bundle.js`, and `sw.js` to be served from the same root.
+## Deployment to GitHub Pages
 
-## GitHub Actions
+This application is automatically built and deployed to GitHub Pages when changes are pushed to the `main` branch.
 
-A CI workflow is set up in `.github/workflows/ci.yml`. It will:
-- Install dependencies.
-- Run type checks.
-- Build the project.
-- Upload the build output (`dist` directory) as an artifact named `stock-analyzer-build`.
+You should be able to access the live application at a URL similar to:
+`https://<your-github-username>.github.io/<your-repository-name>/`
+
+*(Note: You may need to configure the correct path in your repository settings if you are deploying a sub-directory or if your repository serves multiple projects.)*
+
+## GitHub Actions Workflow
+
+The CI/CD workflow is defined in `.github/workflows/ci.yml`. It performs the following key steps:
+- Installs dependencies.
+- Runs type checks.
+- Builds the project.
+- Prepares a runnable package (including `index.html`, `css`, `sw.js`, `manifest.json`, and the `dist` build output).
+- Uploads this package as an artifact for GitHub Pages deployment.
+- Deploys the application to GitHub Pages.
+
+The artifact uploaded for GitHub Pages (typically named `github-pages`) can also be downloaded from the workflow run summary if you need a packaged version of the application.
