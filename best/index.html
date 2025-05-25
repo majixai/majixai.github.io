@@ -7,14 +7,79 @@
     <link rel="stylesheet" href="style.css">
     <!-- Optional: Link W3.CSS or another framework if you prefer -->
     <!-- <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css"> -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <style>
+        #currentSnippetDisplay {
+            max-height: 150px; /* Or any desired height */
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 5px;
+            margin-top: 5px;
+            background-color: #fff; /* Ensure it has a background */
+        }
+        .snippet-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer; /* Add cursor to indicate clickable */
+            white-space: pre-wrap; /* Preserve whitespace and wrap */
+        }
+        .snippet-item:last-child {
+            border-bottom: none;
+        }
+        .snippet-item:hover {
+            background-color: #f0f0f0;
+        }
+        .autocomplete-suggestions {
+            border: 1px solid #ccc;
+            max-height: 100px;
+            overflow-y: auto;
+            background-color: white;
+            position: absolute; /* Or relative to a parent */
+            z-index: 1000; /* Ensure it's above other elements */
+        }
+        .autocomplete-suggestions div {
+            padding: 8px;
+            cursor: pointer;
+        }
+        .autocomplete-suggestions div:hover {
+            background-color: #e9e9e9;
+        }
+    </style>
 </head>
 <body>
 
     <div class="app-container">
         <h1>Room Viewer</h1>
+        <button id="toggleControlsButton">Toggle Controls</button>
+
+        <!-- Snippet Manager Section -->
+        <div class="snippet-manager-container" id="snippetManagerContainer" style="margin-bottom: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 5px;">
+            <fieldset>
+                <legend>Text Snippet Manager</legend>
+                <div class="control-group">
+                    <label for="newSnippetInput">Add New Snippet:</label>
+                    <textarea id="newSnippetInput" rows="3" style="width: 100%;"></textarea>
+                </div>
+                <button id="saveSnippetButton" style="margin-top: 10px;">Add Snippet</button>
+                <p style="margin-top:10px; font-weight:bold;">Saved Snippets (click to copy):</p>
+                <div id="currentSnippetDisplay" style="margin-top: 10px; padding: 10px; background-color: #e9ecef; border-radius: 4px;">
+                    <p>Loading snippets...</p>
+                </div>
+                <div id="snippetStatusMessage" style="margin-top: 10px; padding: 8px; border-radius: 4px; display: none;"></div>
+            </fieldset>
+        </div>
+
+        <!-- Main Text Area with Autocomplete -->
+        <div class="main-text-area-container" style="margin-bottom: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 5px;">
+            <fieldset>
+                <legend>Main Text Area (with Snippet Autocomplete)</legend>
+                <textarea id="mainTextArea" rows="6" style="width: 100%;" placeholder="Type here... try '{{' to trigger snippets"></textarea>
+                <div id="autocompleteSuggestionsContainer" class="autocomplete-suggestions" style="display: none;"></div>
+            </fieldset>
+        </div>
 
         <!-- Controls Bar -->
-        <div class="controls-bar">
+        <div class="controls-bar" id="controlsBarContainer">
             <fieldset>
                 <legend>Filters & Settings</legend>
                 <div class="control-group">
@@ -47,6 +112,7 @@
                     <button id="filterTagBlonde" class="quick-filter-btn">Blonde</button>
                     <button id="filterTagDeepthroat" class="quick-filter-btn">Deepthroat</button>
                     <button id="filterTagBigboobs" class="quick-filter-btn">bigboobs</button>
+                    <button id="filterBirthdayBanner" class="quick-filter-btn">Birthday Banners</button>
                     <!-- Add more quick filter buttons as needed -->
                 </div>
             </fieldset>
@@ -57,6 +123,16 @@
                     <button id="sendReportButton">Send Report of Online Users</button>
                     <span id="reportLoadingIndicator" class="loading-indicator" style="display: none;">Sending...</span>
                     <div id="reportStatusDisplay" class="report-status" style="display: none;"></div>
+                </div>
+                 <div class="control-group" style="margin-top: 10px;"> <!-- Added margin-top for spacing -->
+                    <button id="bigTipperPopupButton">Open Big Tipper App</button>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Debug</legend>
+                <div class="control-group">
+                    <button id="copyJsErrorsButton">Copy JS Errors</button>
                 </div>
             </fieldset>
         </div>
@@ -115,6 +191,15 @@
             </div>
 
         </div> <!-- End Main Content -->
+
+        <!-- Modal for Big Tipper App -->
+        <div id="bigTipperAppModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeBigTipperAppModal">&times;</span>
+                <h2>Big Tipper App</h2>
+                <iframe id="bigTipperAppIframe" style="width:100%; height:500px; border:none;" src="about:blank"></iframe>
+            </div>
+        </div>
 
     </div> <!-- End App Container -->
 
