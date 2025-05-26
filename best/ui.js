@@ -48,10 +48,10 @@ class UIManager {
         userElement.innerHTML = `
             <div class="user-image-container">
                 <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
-                <div class="iframe-preview-container">
+                <!-- div class="iframe-preview-container">
                     <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
                 </div>
-                <button class="toggle-view-btn">Show Preview</button>
+                <button class="toggle-view-btn">Show Preview</button -->
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -70,22 +70,22 @@ class UIManager {
             handleUserClickCallback(user);
         });
 
-        const toggleBtn = userElement.querySelector('.toggle-view-btn');
-        if (toggleBtn) {
-            toggleBtn.addEventListener('click', function(event) {
-                event.stopPropagation(); // Prevent the main user card click event
-                const imageContainer = this.closest('.user-image-container');
-                if (imageContainer) {
-                    imageContainer.classList.toggle('iframe-active');
-                    if (imageContainer.classList.contains('iframe-active')) {
-                        this.textContent = 'Show Image';
-                    } else {
-                        this.textContent = 'Show Preview';
-                    }
-                }
-            });
-        }
-
+        // const toggleBtn = userElement.querySelector('.toggle-view-btn');
+        // if (toggleBtn) {
+        //     toggleBtn.addEventListener('click', function(event) {
+        //         event.stopPropagation(); // Prevent the main user card click event
+        //         const imageContainer = this.closest('.user-image-container');
+        //         if (imageContainer) {
+        //             imageContainer.classList.toggle('iframe-active');
+        //             if (imageContainer.classList.contains('iframe-active')) {
+        //                 this.textContent = 'Show Image';
+        //             } else {
+        //                 this.textContent = 'Show Preview';
+        //             }
+        //         }
+        //     });
+        // }
+// 
         const removeBtn = userElement.querySelector('.remove-user-btn');
         if (removeBtn) {
             removeBtn.addEventListener("click", async function(event) {
