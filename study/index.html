@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <!-- Link to jQuery CDN -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Link to Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
     <style>
         /* Custom styles not handled by W3.CSS */
@@ -234,169 +238,77 @@
             </div>
         </div>
 
+        <!-- Calendar Section -->
+        <div id="calendar-container" class="w3-container w3-margin-top w3-card w3-padding w3-round-large w3-white" style="width:100%;">
+            <h2 class="w3-center">Study Calendar</h2>
+            <div id="calendar-header" class="w3-center w3-margin-bottom" style="display: flex; justify-content: space-between; align-items: center;">
+                <button id="prev-month" class="w3-button w3-border w3-round-large">&lt; Prev</button>
+                <span id="current-month-year" class="w3-large"></span>
+                <button id="next-month" class="w3-button w3-border w3-round-large">Next &gt;</button>
+            </div>
+            <div id="calendar-grid" class="w3-row" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;">
+                <!-- Days of the week headers -->
+                <div class="w3-center w3-padding-small w3-dark-grey">Sun</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Mon</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Tue</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Wed</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Thu</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Fri</div>
+                <div class="w3-center w3-padding-small w3-dark-grey">Sat</div>
+                <!-- Calendar days will be populated here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- GenAI Interaction Area -->
+        <div id="genai-interaction-area" class="w3-container w3-padding-large w3-card-4 w3-margin-top w3-white" style="width:100%;">
+            <h3 class="w3-center">GenAI Interaction</h3>
+            
+            <!-- Query Box -->
+            <div class="w3-section">
+                <label for="genai-query-input"><b>Ask GenAI:</b></label>
+                <input class="w3-input w3-border w3-round-large" type="text" id="genai-query-input" placeholder="Type your query here...">
+                <button id="submit-genai-query" class="w3-button w3-blue w3-margin-top w3-round-large">Submit Query</button>
+            </div>
+
+            <!-- Elaborate Button -->
+            <div class="w3-section">
+                 <button id="elaborate-lesson-btn" class="w3-button w3-teal w3-round-large">Elaborate on Current Lesson</button>
+            </div>
+
+            <!-- Response Display Area -->
+            <div id="genai-response-area" class="w3-panel w3-light-grey w3-padding w3-round-large" style="min-height: 100px; border: 1px solid #ccc; white-space: pre-wrap; margin-top:20px;">
+                <p>GenAI responses will appear here...</p>
+            </div>
+        </div>
+
     </div> <!-- End w3-content -->
 
     <!-- Link to your JavaScript file -->
-    <script>
-        // Use jQuery's document ready function to ensure the DOM is loaded
-        $(document).ready(function() {
+    <script src="script.js"></script>
 
-            let currentLessons = []; // Array to hold the lessons for the selected topic
-            let currentLessonIndex = 0; // Index of the currently displayed lesson
-            let selectedTopic = null; // Store the currently selected topic name
-
-            // Select DOM elements using jQuery
-            const $lessonTitle = $('#lesson-title');
-            const $lessonContent = $('#lesson-content');
-            const $progressBarContainer = $('.progress-bar-container'); // Get the container
-            const $progressBar = $('#progress-bar');
-            const $topicButtons = $('.topic-btn');
-            const $optionsDisclaimer = $('#options-disclaimer');
-
-            // Function to display a specific lesson by index
-            function displayLesson(index) {
-                // Check if the index is valid
-                if (index >= 0 && index < currentLessons.length) {
-                    const lesson = currentLessons[index];
-                    $lessonTitle.text(lesson.title);
-                    $lessonContent.html(lesson.content); // Use .html() to render HTML content
-
-                    // Update progress bar
-                    const progressPercentage = ((index + 1) / currentLessons.length) * 100;
-                    $progressBar.css('width', progressPercentage + '%');
-
-                    // Update current index
-                    currentLessonIndex = index;
-
-                    // Make the title clickable if there are more lessons, style if it's the current one
-                    $lessonTitle.removeClass('clickable active-lesson');
-                    if (currentLessonIndex < currentLessons.length - 1) {
-                         $lessonTitle.addClass('clickable');
-                    } else {
-                        // If it's the last lesson, style it as 'active-lesson' (completed for this topic)
-                        $lessonTitle.addClass('active-lesson');
-                    }
-
-
-                } else if (currentLessons.length > 0 && index >= currentLessons.length) {
-                    // All lessons viewed - triggered by clicking the last lesson or clicking past the end
-                    $lessonTitle.text(selectedTopic.replace(/_/g, ' ') + " Topic Complete!");
-                    $lessonContent.html("<p class='instructions'>You have finished all lessons for this topic. Please select another topic from the buttons above.</p>");
-                    $progressBar.css('width', '100%'); // Show 100% complete
-                     $lessonTitle.removeClass('clickable active-lesson'); // Remove clickable class
-
-                    // Reset state for next topic selection
-                    currentLessons = [];
-                    currentLessonIndex = 0;
-                    selectedTopic = null;
-                     $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer when complete
-                } else {
-                     // Initial state or error state (index < 0 or no lessons loaded)
-                    $lessonTitle.text("Please Select a Topic Above");
-                     $lessonContent.html("<p class='instructions'>Welcome! Choose a subject from the buttons above to load lessons on that topic.</p>");
-                    $progressBar.css('width', '0%');
-                     $lessonTitle.removeClass('clickable active-lesson');
-                     $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer
-                     currentLessons = []; // Ensure lessons are empty
-                     currentLessonIndex = 0; // Reset index
-                     selectedTopic = null; // Clear selected topic
-                }
-            }
-
-            // Handle topic button clicks
-            $topicButtons.on('click', function() {
-                selectedTopic = $(this).data('topic'); // Get topic name from data attribute
-                // IMPORTANT: Ensure the JSON file is in a 'lessons' subdirectory
-                const jsonFile = 'lessons/' + selectedTopic + '.json'; // Construct file path
-
-                // Remove active class from all buttons and add to the clicked one
-                $topicButtons.removeClass('active');
-                $(this).addClass('active');
-
-                // Show/hide disclaimer based on topic
-                if (selectedTopic === 'options_trading' || selectedTopic === 'advanced_quant_finance') {
-                    $optionsDisclaimer.addClass('w3-show');
-                } else {
-                    $optionsDisclaimer.removeClass('w3-show');
-                }
-
-
-                // Fetch the JSON data using AJAX (jQuery's getJSON is a shortcut)
-                $.getJSON(jsonFile)
-                    .done(function(data) {
-                        // Success: Store data and display the first lesson
-                        if (data && data.length > 0) {
-                             currentLessons = data;
-                             displayLesson(0); // Display the first lesson (index 0)
-                        } else {
-                            // Handle empty or invalid JSON data
-                             $lessonTitle.text("No Lessons Found");
-                             $lessonContent.html("<p class='instructions'>The selected topic '" + selectedTopic.replace(/_/g, ' ') + "' has no lessons or the file is empty/invalid.</p>");
-                             $progressBar.css('width', '0%');
-                             $lessonTitle.removeClass('clickable active-lesson');
-                             currentLessons = [];
-                             currentLessonIndex = 0;
-                             selectedTopic = null;
-                             $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer on empty
-                        }
-
-                    })
-                    .fail(function(jqXHR, textStatus, errorThrown) {
-                        // Error: Display an error message
-                        $lessonTitle.text("Error Loading Topic");
-                        let errorMessage = "Could not load lessons for '" + selectedTopic.replace(/_/g, ' ') + "'. Please check the topic file (" + jsonFile + ") and try again.<br>";
-                        if (textStatus === "parsererror") {
-                             errorMessage += "Error parsing JSON: " + errorThrown;
-                        } else if (textStatus === "timeout") {
-                             errorMessage += "Request timed out.";
-                        } else if (textStatus === "abort") {
-                             errorMessage += "Request was aborted.";
-                        } else {
-                             errorMessage += "Status: " + textStatus + (errorThrown ? " - " + errorThrown : "");
-                        }
-                         $lessonContent.html("<p class='instructions'>" + errorMessage + "</p>");
-                        $progressBar.css('width', '0%'); // Reset progress
-                         $lessonTitle.removeClass('clickable active-lesson'); // Not clickable on error
-                         currentLessons = []; // Clear lessons
-                         currentLessonIndex = 0; // Reset index
-                         selectedTopic = null; // Clear selected topic
-                         $optionsDisclaimer.removeClass('w3-show'); // Hide disclaimer on error
-                    });
-            });
-
-            // Handle click on the lesson title to advance to the NEXT lesson
-            $lessonTitle.on('click', function() {
-                 // Only advance if the title is marked as clickable
-                if ($(this).hasClass('clickable')) {
-                    displayLesson(currentLessonIndex + 1); // Display the next lesson
-                }
-            });
-
-            // *** NEW: Handle click on the progress bar container to jump to a specific lesson ***
-            $progressBarContainer.on('click', function(event) {
-                // Ensure lessons are loaded before allowing interaction
-                if (currentLessons.length > 0) {
-                    const $container = $(this);
-                    const containerWidth = $container.width(); // Get the width of the container
-                    const clickX = event.offsetX; // Get the horizontal click position relative to the container
-
-                    // Calculate the target lesson index based on the click position
-                    let targetIndex = Math.floor((clickX / containerWidth) * currentLessons.length);
-
-                    // Ensure the target index is within the valid range [0, currentLessons.length - 1]
-                    targetIndex = Math.max(0, Math.min(targetIndex, currentLessons.length - 1));
-
-                    // Display the calculated lesson
-                    displayLesson(targetIndex);
-                }
-                // If currentLessons is empty, the click on the bar does nothing
-            });
-
-            // Initial display (shows instructions)
-            displayLesson(-1); // Passing -1 or any invalid index shows the default state
-
-        }); // End of document.ready
-    </script>
+    <!-- Statistics Modal -->
+    <div id="stats-modal" class="w3-modal">
+        <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px; border-radius: 8px;">
+            <header class="w3-container w3-teal">
+                <span onclick="document.getElementById('stats-modal').style.display='none'"
+                class="w3-button w3-display-topright w3-hover-red w3-xlarge" style="border-radius: 0 8px 0 0;">&times;</span>
+                <h2 id="modal-title" class="w3-center" style="padding-top:10px; padding-bottom:10px;">Study Statistics</h2>
+            </header>
+            <div class="w3-container w3-padding">
+                <p><strong>Date:</strong> <span id="modal-date">N/A</span></p>
+                <p><strong>Time Studied on this Date:</strong> <span id="modal-time-studied">0</span> minutes</p>
+                <p><strong>Topics Covered on this Date:</strong> <span id="modal-topics-covered">-</span></p>
+                <hr style="margin-top:16px; margin-bottom:16px;">
+                <h4 class="w3-center">Overall Progress</h4>
+                <p><strong>Current Streak:</strong> <span id="modal-overall-streak">0</span> days</p>
+                <p><strong>Average Study Time:</strong> <span id="modal-overall-average">0</span> minutes/day</p>
+                <p><strong>Total Lessons Completed:</strong> <span id="modal-total-lessons">0</span></p>
+            </div>
+            <footer class="w3-container w3-light-grey w3-padding">
+                <button onclick="document.getElementById('stats-modal').style.display='none'" type="button" class="w3-button w3-right w3-border w3-round-large w3-hover-red">Close</button>
+            </footer>
+        </div>
+    </div>
 
 </body>
 </html>
