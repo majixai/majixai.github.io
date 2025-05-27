@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Advertisement</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Page Header -->
+    <header>
+        <h1>Find Your Next Opportunity!</h1>
+        <p>We're looking for up to 5 talented individuals. Sign up and get paid for your first hour!</p>
+    </header>
+
+    <!-- Main Content Area -->
+    <main>
+        <!-- Job Seekers Display Section -->
+        <section id="job-seekers-section">
+            <h2>Current Candidates</h2>
+            <div id="job-seekers-list">
+                <!-- Job seekers will be listed here by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Signup Form Section -->
+        <section id="signup-section">
+            <h2>Join Us!</h2>
+            <form id="signup-form">
+                <div>
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                <div>
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div>
+                    <label for="skills">Skills (comma-separated):</label>
+                    <input type="text" id="skills" name="skills" required>
+                </div>
+                <button type="submit">Sign Up</button>
+            </form>
+            <p id="signup-message"></p>
+        </section>
+    </main>
+
+    <!-- Page Footer -->
+    <footer>
+        <p>&copy; 2023 Your Company</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="script.js"></script>
+</body>
+</html>

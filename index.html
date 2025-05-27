@@ -3,54 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Advertisement</title>
+    <title>Project Hub</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Page Header -->
     <header>
-        <h1>Find Your Next Opportunity!</h1>
-        <p>We're looking for up to 5 talented individuals. Sign up and get paid for your first hour!</p>
+        <h1>GenAI Project Hub</h1>
     </header>
-
-    <!-- Main Content Area -->
-    <main>
-        <!-- Job Seekers Display Section -->
-        <section id="job-seekers-section">
-            <h2>Current Candidates</h2>
-            <div id="job-seekers-list">
-                <!-- Job seekers will be listed here by JavaScript -->
-            </div>
-        </section>
-
-        <!-- Signup Form Section -->
-        <section id="signup-section">
-            <h2>Join Us!</h2>
-            <form id="signup-form">
-                <div>
-                    <label for="name">Name:</label>
-                    <input type="text" id="name" name="name" required>
-                </div>
-                <div>
-                    <label for="email">Email:</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                <div>
-                    <label for="skills">Skills (comma-separated):</label>
-                    <input type="text" id="skills" name="skills" required>
-                </div>
-                <button type="submit">Sign Up</button>
+    <main id="menu-container">
+        <p><a href="PROJECT_OVERVIEW.md">View Project Overview</a></p>
+        <section id="google-search">
+            <h2>Google Search</h2>
+            <form action="https://www.google.com/search" method="get" target="_blank">
+                <input type="text" name="q">
+                <input type="submit" value="Search">
             </form>
-            <p id="signup-message"></p>
+        </section>
+        <h2>Project Directories</h2>
+        <ul>
+            <li><a href="7t/index.html">7t</a></li>
+            <li><a href="best/index.html">Best</a></li>
+            <li><a href="beta/index.html">Beta</a></li>
+            <li><a href="chat/index.html">Chat</a></li>
+            <li><a href="csv/index.html">CSV Data Archive</a></li>
+            <li><a href="jinx/index.html">Jinx</a></li>
+            <li><a href="market/index.html">Market</a></li>
+            <li><a href="option/index.html">Option</a></li>
+            <li><a href="options/index.html">Options</a></li>
+            <li><a href="referrals/referral.html">Referrals</a></li>
+            <li><a href="seventy/index.html">Seventy</a></li>
+            <li><a href="simple/index.html">Simple</a></li>
+            <li><a href="stock/index.html">Stock</a></li>
+            <li><a href="stock_analyzer/index.html">Stock Analyzer</a></li>
+            <li><a href="study/index.html">Study</a></li>
+            <li><a href="ticker/index.html">Ticker</a></li>
+        </ul>
+        <section id="execution-tools">
+            <h2>Execution Tools</h2>
+            <p>The following tools are available for execution:</p>
+            <ul>
+                <li>data_to_db.py</li>
+                <li>Code.gs</li>
+            </ul>
         </section>
     </main>
-
-    <!-- Page Footer -->
     <footer>
-        <p>&copy; 2023 Your Company</p>
+        &copy; 2024 Project
     </footer>
-
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="script.js"></script>
 </body>
 </html>
