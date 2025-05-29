@@ -834,24 +834,59 @@
         }
 
         #adjustLayoutHeights() {
-            console.log('App: Adjusting layout heights...');
+            console.log('App: Adjusting layout heights for .user-list elements...');
             const iframeColumn = document.querySelector('.iframe-column');
-            if (iframeColumn) {
-                const calculatedHeight = iframeColumn.offsetHeight;
-                console.log('App: Calculated iframe column height:', calculatedHeight);
-                if (calculatedHeight > 0) {
-                    const userColumns = document.querySelectorAll('.user-column');
-                    userColumns.forEach(column => {
-                        column.style.maxHeight = calculatedHeight + 'px';
-                        column.style.overflow = 'hidden'; // Add this line
-                        console.log('App: Applied max-height and overflow:hidden to user column:', column.id || 'N/A');
-                    });
-                } else {
-                    console.warn('App: Iframe column height is 0, not adjusting user column heights.');
-                }
-            } else {
-                console.warn('App: IFrame column not found for height adjustment.');
+            if (!iframeColumn) {
+                console.warn('App: IFrame column not found for height adjustment. Exiting.');
+                return;
             }
+
+            const iframeColumnTotalHeight = iframeColumn.offsetHeight;
+            console.log('App: Calculated iframe column total height:', iframeColumnTotalHeight);
+
+            if (iframeColumnTotalHeight <= 0) {
+                console.warn('App: Iframe column height is 0 or less, not adjusting .user-list heights.');
+                return;
+            }
+
+            const userColumns = document.querySelectorAll('.user-column');
+            userColumns.forEach(userColumn => {
+                // a. Remove old styles from userColumn
+                userColumn.style.removeProperty('max-height');
+                userColumn.style.removeProperty('overflow');
+
+                // b. Find h2Element and get its total height
+                let h2TotalHeight = 0;
+                const h2Element = userColumn.querySelector('h2');
+                if (h2Element) {
+                    const h2Styles = window.getComputedStyle(h2Element);
+                    h2TotalHeight = h2Element.offsetHeight + parseFloat(h2Styles.marginTop) + parseFloat(h2Styles.marginBottom);
+                } else {
+                    console.log('App: No h2 element found in column:', userColumn.id || 'N/A');
+                }
+                
+                // c. Get userColumn vertical padding
+                const userColumnStyles = window.getComputedStyle(userColumn);
+                const userColumnVerticalPadding = parseFloat(userColumnStyles.paddingTop) + parseFloat(userColumnStyles.paddingBottom);
+
+                // d. Find userListElement
+                const userListElement = userColumn.querySelector('.user-list');
+
+                // e. Calculate and Apply max-height to userListElement
+                if (userListElement) {
+                    const listMaxHeight = iframeColumnTotalHeight - h2TotalHeight - userColumnVerticalPadding;
+                    
+                    if (listMaxHeight > 0) {
+                        userListElement.style.maxHeight = listMaxHeight + 'px';
+                        console.log('App: Applied max-height', listMaxHeight, 'px to .user-list in column:', userColumn.id || 'N/A');
+                    } else {
+                        userListElement.style.maxHeight = '0px'; // Sensible default
+                        console.warn('App: Calculated listMaxHeight is not positive for .user-list in column:', userColumn.id || 'N/A', '. Applied 0px. Values:', {iframeColumnTotalHeight, h2TotalHeight, userColumnVerticalPadding});
+                    }
+                } else {
+                    console.warn('App: .user-list element not found in column:', userColumn.id || 'N/A');
+                }
+            });
         }
 
     } // End App Class
