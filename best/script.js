@@ -843,7 +843,8 @@
                     const userColumns = document.querySelectorAll('.user-column');
                     userColumns.forEach(column => {
                         column.style.maxHeight = calculatedHeight + 'px';
-                        console.log('App: Applied max-height to user column:', column.id || 'N/A');
+                        column.style.overflow = 'hidden'; // Add this line
+                        console.log('App: Applied max-height and overflow:hidden to user column:', column.id || 'N/A');
                     });
                 } else {
                     console.warn('App: Iframe column height is 0, not adjusting user column heights.');
