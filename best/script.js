@@ -53,6 +53,10 @@
         #lastFilteredUsers = [];
         #fetchInterval = null;
         #initialIframesSet = false;
+
+        #currentOnlineUsersOffset = 0;
+        #isLoadingOnlineUsers = false;
+        #hasMoreOnlineUsersToLoad = true; 
         
         constructor() {
             // Instantiate services and managers
@@ -204,14 +208,22 @@
             this.uiManager.showOnlineLoadingIndicator("Loading online users...");
             this.uiManager.clearOnlineErrorDisplay();
 
+            // Reset pagination state for initial load
+            this.#currentOnlineUsersOffset = 0;
+            this.#hasMoreOnlineUsersToLoad = true;
+            this.#isLoadingOnlineUsers = false; // Reset loading state
+
             try {
-                const fetchedUsers = await this.apiService.getOnlineRooms();
-                this.#allOnlineUsersData = fetchedUsers;
-                this.#lastFilteredUsers = [];
+                const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
+                this.#allOnlineUsersData = initialData.users;
+                this.#currentOnlineUsersOffset = initialData.nextOffset;
+                this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
+                
+                // this.#lastFilteredUsers = []; // Kept for filter logic, applyFiltersAndDisplay will repopulate
 
                 if (this.#allOnlineUsersData.length > 0) {
-                    this.#populateFilters(this.#allOnlineUsersData);
-                    this.#applyFiltersAndDisplay();
+                    this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
+                    this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
                     await this.#displayPreviousUsers();
                     if (!this.#initialIframesSet) {
                         this.#setDefaultIframes();
@@ -219,7 +231,7 @@
                 } else {
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
                     this.#populateFilters([]);
-                    this.#applyFiltersAndDisplay();
+                    this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
                     await this.#displayPreviousUsers();
                 }
             } catch (error) {
@@ -418,6 +430,80 @@
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
+        }
+
+        async #appendOnlineUsersList(newUsers) {
+            if (!this.onlineUsersDiv || newUsers.length === 0) {
+                console.log("App: No new users to append or onlineUsersDiv not found.");
+                return;
+            }
+            console.log(`App: Appending ${newUsers.length} new users to the list.`);
+            const fragment = document.createDocumentFragment();
+            newUsers.forEach(user => {
+                if (!user || !user.image_url || !user.username) return;
+                const userElement = this.uiManager.createUserElement(
+                    user, 
+                    'online', 
+                    this.#handleUserClick.bind(this), 
+                    this.#removeFromPreviousUsers.bind(this), 
+                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
+                    this.#isBirthday.bind(this), 
+                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), // These might need adjustment for append scenario
+                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), // These might need adjustment for append scenario
+                    this.#displayPreviousUsers.bind(this), 
+                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age)
+                );
+                fragment.appendChild(userElement);
+            });
+            this.onlineUsersDiv.appendChild(fragment);
+        }
+        
+        async #fetchMoreOnlineUsers() {
+            if (this.#isLoadingOnlineUsers || !this.#hasMoreOnlineUsersToLoad) {
+                console.log("App: Not fetching more users. isLoading:", this.#isLoadingOnlineUsers, "hasMore:", this.#hasMoreOnlineUsersToLoad);
+                return;
+            }
+
+            console.log("App: Starting to fetch more online users...");
+            this.#isLoadingOnlineUsers = true;
+            // Optionally: Show a small loading indicator at the bottom of the list
+            // e.g., this.uiManager.showMoreUsersLoadingIndicator(this.onlineUsersDiv);
+
+            try {
+                const nextPageData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
+                
+                if (nextPageData && nextPageData.users) {
+                    console.log(`App: Fetched ${nextPageData.users.length} more users.`);
+                    this.#allOnlineUsersData = this.#allOnlineUsersData.concat(nextPageData.users);
+                    this.#currentOnlineUsersOffset = nextPageData.nextOffset;
+                    this.#hasMoreOnlineUsersToLoad = nextPageData.hasMore;
+
+                    // If filters are active, re-applying filters to the newly expanded list might be complex.
+                    // For simple infinite scroll, we typically append all new users.
+                    // If filtering is desired on the full list, then instead of append,
+                    // you might call #applyFiltersAndDisplay() which would re-render the whole list.
+                    // For this step, we will append directly.
+                    await this.#appendOnlineUsersList(nextPageData.users);
+                    
+                    if (!this.#hasMoreOnlineUsersToLoad) {
+                        console.log("App: No more online users to load.");
+                        // Optionally: Display a "no more users" message.
+                    }
+                } else {
+                    console.warn("App: Fetched no users or invalid data structure for next page.");
+                    this.#hasMoreOnlineUsersToLoad = false; // Stop if data structure is invalid
+                }
+            } catch (error) {
+                console.error("Error in #fetchMoreOnlineUsers (App):", error);
+                this.uiManager.showOnlineErrorDisplay(`Failed to load more users: ${error.message}.`); // Or a more subtle indicator
+                // Consider setting #hasMoreOnlineUsersToLoad = false to prevent retries on persistent errors
+                // For now, we let it be so user can try scrolling again.
+            } finally {
+                this.#isLoadingOnlineUsers = false;
+                // Optionally: Hide the small loading indicator
+                // e.g., this.uiManager.hideMoreUsersLoadingIndicator(this.onlineUsersDiv);
+                console.log("App: Finished fetching more online users. isLoading:", this.#isLoadingOnlineUsers, "hasMore:", this.#hasMoreOnlineUsersToLoad);
+            }
         }
 
         async #displayPreviousUsers() {
@@ -676,6 +762,26 @@
                     this.#adjustLayoutHeights();
                 }, 100); // Debounce resize event
             });
+
+            // Infinite scroll for online users list
+            if (this.onlineUsersDiv) {
+                let scrollTimeout;
+                this.onlineUsersDiv.addEventListener('scroll', () => {
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        const element = this.onlineUsersDiv;
+                        const threshold = 100; // Pixels from bottom to trigger
+                        
+                        // Check if scrolled to near the bottom and if we should fetch more
+                        if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
+                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                                console.log('App: Scrolled near bottom of online users list. Fetching more...');
+                                this.#fetchMoreOnlineUsers();
+                            }
+                        }
+                    }, 150); // Debounce delay of 150ms
+                });
+            }
         }
 
         async start() { 
