@@ -57,6 +57,11 @@
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
         #hasMoreOnlineUsersToLoad = true; 
+
+        #previousUsersDisplayOffset = 0;
+        #previousUsersPageSize = 25; 
+        #isLoadingMorePreviousUsers = false;
+        #hasMorePreviousUsersToLoad = true;
         
         constructor() {
             // Instantiate services and managers
@@ -508,32 +513,174 @@
 
         async #displayPreviousUsers() {
             if (!this.previousUsersDiv) return;
-            this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">Loading history...</p>';
-            if (this.#previousUsers.length === 0) {
-                this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
+            
+            // a. Handle Concurrent Loads
+            if (this.#isLoadingMorePreviousUsers && this.#previousUsersDisplayOffset > 0) { // Only skip if it's a subsequent load
+                console.log("App: Already loading more previous users. Skipping.");
+                return; 
+            }
+            this.#isLoadingMorePreviousUsers = true;
+            console.log("App: Starting #displayPreviousUsers. Offset:", this.#previousUsersDisplayOffset);
+
+            let loadingMoreIndicatorAdded = false;
+            const isSubsequentLoad = this.#previousUsersDisplayOffset > 0;
+
+            if (isSubsequentLoad && this.previousUsersDiv.querySelector('.user-info')) {
+                const loadingMoreEl = document.createElement('p');
+                loadingMoreEl.textContent = 'Loading more history...';
+                loadingMoreEl.className = 'loading-more-indicator text-muted w3-center';
+                this.previousUsersDiv.appendChild(loadingMoreEl);
+                loadingMoreIndicatorAdded = true;
+            }
+
+            try {
+                // b. Initial Load Specifics
+                if (this.#previousUsersDisplayOffset === 0) {
+                this.previousUsersDiv.innerHTML = ''; // Clear only on initial load
+                this.#hasMorePreviousUsersToLoad = true; // Reset on initial load
+                if (this.#previousUsers.length === 0) { // Only load from storage if the array is empty
+                    console.log("App: Previous users array is empty, loading from storage.");
+                    this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
+                }
                 if (this.#previousUsers.length === 0) {
                     this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history.</p>';
+                    this.#hasMorePreviousUsersToLoad = false;
+                    this.#isLoadingMorePreviousUsers = false;
+                    console.log("App: No viewing history found.");
                     return;
                 }
             }
-            if (this.#allOnlineUsersData.length === 0) {
-                this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">History loaded. Fetch online status...</p>';
+
+            // c. Check if More Previous Users to Process from the Array
+            if (!this.#hasMorePreviousUsersToLoad && this.#previousUsersDisplayOffset > 0) {
+                console.log("App: No more previous users in the source array to display (flag was false).");
+                // Potentially add a "no more users" message if not already there and list is empty.
+                if (this.previousUsersDiv.querySelectorAll('.user-info').length === 0) {
+                    this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No more online users from your history to display.</p>';
+                }
+                this.#isLoadingMorePreviousUsers = false;
+                return;
+            }
+            if (this.#previousUsersDisplayOffset >= this.#previousUsers.length) {
+                console.log("App: All previous users from source array have been processed. Offset:", this.#previousUsersDisplayOffset, "Total:", this.#previousUsers.length);
+                if (this.#previousUsersDisplayOffset > 0 && this.previousUsersDiv.querySelectorAll('.user-info').length === 0) {
+                    this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No more online users from your history to display.</p>';
+                } else if (this.#previousUsersDisplayOffset === 0 && this.#previousUsers.length > 0) {
+                    this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users are currently online (from the first batch).</p>';
+                } else if (this.previousUsersDiv.querySelectorAll('.user-info').length > 0 && this.#previousUsersDisplayOffset > 0) {
+                    if (!this.previousUsersDiv.querySelector('.all-history-checked-message')) { // Check for specific class
+                        const noMoreMsg = document.createElement('p');
+                        noMoreMsg.className = 'text-muted w3-center w3-small all-history-checked-message'; // Use specific class
+                        noMoreMsg.textContent = 'All history checked for online users.';
+                        this.previousUsersDiv.appendChild(noMoreMsg);
+                    }
+                }
+                this.#hasMorePreviousUsersToLoad = false;
+                // this.#isLoadingMorePreviousUsers = false; // Moved to finally
+                return; // Return here as all users from the array have been processed
+            }
+
+            // d. Determine Batch to Process
+            const currentBatch = this.#previousUsers.slice(this.#previousUsersDisplayOffset, this.#previousUsersDisplayOffset + this.#previousUsersPageSize);
+            console.log(`App: Processing batch of ${currentBatch.length} previous users. From offset ${this.#previousUsersDisplayOffset}`);
+            
+            // Advance offset by how many were sliced for the NEXT potential load.
+            // This is done before filtering for online, as we've "consumed" this part of the #previousUsers array.
+            this.#previousUsersDisplayOffset += currentBatch.length; 
+            if (this.#previousUsersDisplayOffset >= this.#previousUsers.length) {
+                 this.#hasMorePreviousUsersToLoad = false; 
+                 console.log("App: Reached end of #previousUsers array.");
+            }
+
+
+            // e. Filter Batch for Online Status
+            if (this.#allOnlineUsersData.length === 0 && this.#previousUsersDisplayOffset <= this.#previousUsersPageSize) {
+                // Display a message only if it's the very first attempt to show previous users and online data isn't ready
+                this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">History loaded. Fetching online status for users...</p>';
+                this.#isLoadingMorePreviousUsers = false; // Allow #fetchDataAndUpdateUI to recall this method
+                console.log("App: Online users data not yet available, will retry displayPreviousUsers later.");
                 return;
             }
             const onlineUserMap = new Map(this.#allOnlineUsersData.map(u => [u.username, u]));
-            const onlinePrevious = this.#previousUsers.filter(pU => onlineUserMap.get(pU.username)?.current_show === 'public');
-            this.previousUsersDiv.innerHTML = "";
-            if (onlinePrevious.length === 0) {
-                this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users are online & public.</p>';
-                return;
+            const onlineUsersInBatch = currentBatch.filter(pU => onlineUserMap.get(pU.username)?.current_show === 'public');
+            console.log(`App: Found ${onlineUsersInBatch.length} online users in the current batch.`);
+
+            // f. Append to DOM
+            if (onlineUsersInBatch.length === 0) {
+                if (this.previousUsersDiv.querySelectorAll('.user-info').length === 0 && this.#previousUsersDisplayOffset <= this.#previousUsersPageSize) {
+                    this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users from the first batch are online & public.</p>';
+                } else {
+                    console.log("App: No users from the current history batch are online.");
+                    // If we want to try loading next batch automatically if this one was empty of online users:
+                    if (this.#hasMorePreviousUsersToLoad) { 
+                        console.log("App: Trying to display next batch of previous users as this one was empty of online users.");
+                        // Before recursing, ensure loading indicator for current attempt is removed
+                        if (loadingMoreIndicatorAdded) {
+                            const existingLoadingMoreEl = this.previousUsersDiv.querySelector('.loading-more-indicator');
+                            if (existingLoadingMoreEl) existingLoadingMoreEl.remove();
+                            loadingMoreIndicatorAdded = false;
+                        }
+                        this.#isLoadingMorePreviousUsers = false; // Release lock for the recursive call
+                        await this.#displayPreviousUsers(); // Recurse
+                        return; // Important to return after recursion
+                    } else if (this.previousUsersDiv.querySelectorAll('.user-info').length === 0) {
+                        // No more to load and still nothing displayed
+                        this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">None of your saved users are currently online.</p>';
+                    }
+                }
+            } else {
+                const fragment = document.createDocumentFragment();
+                onlineUsersInBatch.forEach(user => {
+                    if (!user || !user.image_url || !user.username) return;
+                    const userElement = this.uiManager.createUserElement(
+                        user, 
+                        'previous', 
+                        this.#handleUserClick.bind(this), 
+                        this.#removeFromPreviousUsers.bind(this), 
+                        (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
+                        this.#isBirthday.bind(this), 
+                        this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), 
+                        this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), 
+                        this.#displayPreviousUsers.bind(this), // Pass the new paginated version
+                        (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age)
+                    );
+                    fragment.appendChild(userElement);
+                });
+                this.previousUsersDiv.appendChild(fragment);
             }
-            const fragment = document.createDocumentFragment();
-            onlinePrevious.forEach(user => {
-                if (!user || !user.image_url || !user.username) return;
-                 const userElement = this.uiManager.createUserElement(user, 'previous', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this), (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age));
-                fragment.appendChild(userElement);
-            });
-            this.previousUsersDiv.appendChild(fragment);
+            
+            // Remove initial "Loading history..." or other generic messages if users are now shown
+            const loadingMsg = this.previousUsersDiv.querySelector('p.text-muted');
+            if (loadingMsg && this.previousUsersDiv.querySelectorAll('.user-info').length > 0) {
+                 if (loadingMsg.textContent.includes('Loading history...') || 
+                     loadingMsg.textContent.includes('History loaded. Fetch online status for users...') ||
+                     loadingMsg.textContent.includes('None of your saved users from the first batch are online & public.')) {
+                    // Only remove if it's one of these specific messages and actual users are present
+                    loadingMsg.remove();
+                }
+            }
+            
+            // g. Finalize (moved to finally block) and handle "All history checked" message
+            if (!this.#hasMorePreviousUsersToLoad && this.previousUsersDiv.querySelector('.user-info')) {
+                 // Ensure no other message is clobbering this one, and it's not already there
+                const existingGenericMessage = this.previousUsersDiv.querySelector('p.text-muted:not(.all-history-checked-message)');
+                if (!this.previousUsersDiv.querySelector('.all-history-checked-message') && !existingGenericMessage) {
+                    const noMoreMsg = document.createElement('p');
+                    noMoreMsg.className = 'text-muted w3-center w3-small all-history-checked-message';
+                    noMoreMsg.textContent = 'All history checked for online users.';
+                    this.previousUsersDiv.appendChild(noMoreMsg);
+                }
+            }
+            console.log("App: About to finish #displayPreviousUsers. isLoading:", this.#isLoadingMorePreviousUsers, "hasMore:", this.#hasMorePreviousUsersToLoad, "nextOffset:", this.#previousUsersDisplayOffset);
+
+        } finally {
+            if (loadingMoreIndicatorAdded) {
+                const existingLoadingMoreEl = this.previousUsersDiv.querySelector('.loading-more-indicator');
+                if (existingLoadingMoreEl) existingLoadingMoreEl.remove();
+            }
+            this.#isLoadingMorePreviousUsers = false;
+            console.log("App: Finally finished #displayPreviousUsers. isLoading:", this.#isLoadingMorePreviousUsers, "hasMore:", this.#hasMorePreviousUsersToLoad, "nextOffset:", this.#previousUsersDisplayOffset);
+        }
         }
 
         #handleUserClick(user) {
@@ -782,6 +929,27 @@
                     }, 150); // Debounce delay of 150ms
                 });
             }
+
+            // Infinite scroll for previous users list
+            if (this.previousUsersDiv) {
+                let previousUsersScrollTimeout;
+                this.previousUsersDiv.addEventListener('scroll', () => {
+                    clearTimeout(previousUsersScrollTimeout);
+                    previousUsersScrollTimeout = setTimeout(() => {
+                        // Ensure 'this' correctly references the App instance
+                        const appInstance = this; 
+                        const element = appInstance.previousUsersDiv;
+                        const threshold = 100; 
+
+                        if (appInstance.#hasMorePreviousUsersToLoad && !appInstance.#isLoadingMorePreviousUsers) {
+                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                                console.log('App: Scrolled near bottom of previous users list. Loading more...');
+                                appInstance.#displayPreviousUsers(); // Call the updated method
+                            }
+                        }
+                    }, 150); // Debounce delay of 150ms
+                });
+            }
         }
 
         async start() { 
@@ -869,19 +1037,32 @@
                 const userColumnStyles = window.getComputedStyle(userColumn);
                 const userColumnVerticalPadding = parseFloat(userColumnStyles.paddingTop) + parseFloat(userColumnStyles.paddingBottom);
 
+                // New: Calculate height of additional elements like the "Clear History" button
+                let additionalElementsHeight = 0;
+                if (userColumn.id === 'previousUsers') {
+                    const clearButton = userColumn.querySelector('#clearPreviousUsers');
+                    if (clearButton) {
+                        const buttonStyles = window.getComputedStyle(clearButton);
+                        additionalElementsHeight += clearButton.offsetHeight + parseFloat(buttonStyles.marginTop) + parseFloat(buttonStyles.marginBottom);
+                        console.log('App: Clear history button height (incl. margins):', additionalElementsHeight, 'for column:', userColumn.id);
+                    } else {
+                        console.log('App: Clear history button not found in column:', userColumn.id);
+                    }
+                }
+
                 // d. Find userListElement
                 const userListElement = userColumn.querySelector('.user-list');
 
                 // e. Calculate and Apply max-height to userListElement
                 if (userListElement) {
-                    const listMaxHeight = iframeColumnTotalHeight - h2TotalHeight - userColumnVerticalPadding;
+                    const listMaxHeight = iframeColumnTotalHeight - h2TotalHeight - additionalElementsHeight - userColumnVerticalPadding;
                     
                     if (listMaxHeight > 0) {
                         userListElement.style.maxHeight = listMaxHeight + 'px';
-                        console.log('App: Applied max-height', listMaxHeight, 'px to .user-list in column:', userColumn.id || 'N/A');
+                        console.log('App: Applied max-height', listMaxHeight, 'px to .user-list in column:', userColumn.id || 'N/A', '. Values:', {iframeColumnTotalHeight, h2TotalHeight, additionalElementsHeight, userColumnVerticalPadding});
                     } else {
                         userListElement.style.maxHeight = '0px'; // Sensible default
-                        console.warn('App: Calculated listMaxHeight is not positive for .user-list in column:', userColumn.id || 'N/A', '. Applied 0px. Values:', {iframeColumnTotalHeight, h2TotalHeight, userColumnVerticalPadding});
+                        console.warn('App: Calculated listMaxHeight is not positive for .user-list in column:', userColumn.id || 'N/A', '. Applied 0px. Values:', {iframeColumnTotalHeight, h2TotalHeight, additionalElementsHeight, userColumnVerticalPadding});
                     }
                 } else {
                     console.warn('App: .user-list element not found in column:', userColumn.id || 'N/A');
