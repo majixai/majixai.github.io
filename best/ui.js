@@ -30,7 +30,8 @@ class UIManager {
         isBirthdayCallback,
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
-        displayPreviousUsersCallback
+        displayPreviousUsersCallback,
+        getDaysSinceOrUntil18thBirthdayCallback // New callback
     ) {
         const userElement = document.createElement("div");
         userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
@@ -45,6 +46,14 @@ class UIManager {
         const removeButtonHTML = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
         const clickCount = getUserClickCountCallback(user.username);
 
+        let birthdayProximityHTMLString = '';
+        if (typeof getDaysSinceOrUntil18thBirthdayCallback === 'function') {
+            const birthdayProximityText = getDaysSinceOrUntil18thBirthdayCallback(user.birthday, user.age);
+            if (birthdayProximityText && birthdayProximityText.trim() !== '') {
+                birthdayProximityHTMLString = `<p class="birthday-proximity w3-small">${birthdayProximityText}</p>`;
+            }
+        }
+
         userElement.innerHTML = `
             <div class="user-image-container">
                 <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
@@ -57,6 +66,7 @@ class UIManager {
             <div class="user-details w3-container w3-padding-small">
                 <p class="username w3-large">${user.username} ${newBadge}</p>
                 <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}</small></p>
+                ${birthdayProximityHTMLString}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
                 ${birthdayBanner}
             </div>
