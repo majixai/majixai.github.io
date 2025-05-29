@@ -124,6 +124,57 @@
             }
         }
 
+        #getDaysSinceOrUntil18thBirthday(birthdayString, age) {
+            if (age !== 18 || !birthdayString || typeof birthdayString !== 'string') {
+                return "";
+            }
+
+            try {
+                const parts = birthdayString.split('-');
+                if (parts.length !== 3) {
+                    console.warn("Invalid birthday string format:", birthdayString);
+                    return "";
+                }
+
+                const birthYear = parseInt(parts[0], 10);
+                const birthMonth = parseInt(parts[1], 10); // 1-12
+                const birthDay = parseInt(parts[2], 10);    // 1-31
+
+                if (isNaN(birthYear) || isNaN(birthMonth) || isNaN(birthDay) ||
+                    birthMonth < 1 || birthMonth > 12 || birthDay < 1 || birthDay > 31) {
+                    console.warn("Invalid date components in getDaysSinceOrUntil18thBirthday:", birthdayString);
+                    return "";
+                }
+
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+
+                const currentYear = today.getUTCFullYear();
+                const birthdayThisYear = new Date(Date.UTC(currentYear, birthMonth - 1, birthDay));
+                birthdayThisYear.setUTCHours(0,0,0,0);
+                
+                if (birthdayThisYear.getUTCMonth() !== (birthMonth - 1) || birthdayThisYear.getUTCDate() !== birthDay) {
+                    console.warn("Birthday month/day mismatch after constructing for current year (e.g. Feb 29 on non-leap):", birthdayString, birthdayThisYear);
+                    return ""; 
+                }
+
+                const diffTime = birthdayThisYear.getTime() - today.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 0) {
+                    return "18th B-day: Today!";
+                } else if (diffDays < 0) {
+                    return `18th B-day: ${Math.abs(diffDays)} days ago`;
+                } else {
+                    return `18th B-day: In ${diffDays} days`;
+                }
+
+            } catch (error) {
+                console.error("Error in #getDaysSinceOrUntil18thBirthday:", error, "for birthday:", birthdayString);
+                return "";
+            }
+        }
+
         #escapeHtml(unsafe) {
             return unsafe
                  .replace(/&/g, "&amp;")
@@ -363,7 +414,7 @@
             const fragment = document.createDocumentFragment();
             usersToDisplay.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
-                const userElement = this.uiManager.createUserElement(user, 'online', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this));
+                const userElement = this.uiManager.createUserElement(user, 'online', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this), (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age));
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
@@ -393,7 +444,7 @@
             const fragment = document.createDocumentFragment();
             onlinePrevious.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
-                 const userElement = this.uiManager.createUserElement(user, 'previous', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this));
+                 const userElement = this.uiManager.createUserElement(user, 'previous', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this), (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age));
                 fragment.appendChild(userElement);
             });
             this.previousUsersDiv.appendChild(fragment);
@@ -568,19 +619,63 @@
                 });
             }
             if (typeof $ !== 'undefined') {
-                $('#toggleControlsButton').on('click', () => {
-                    $('#controlsBarContainer').slideToggle();
+                const $toggleButton = $('#toggleControlsButton');
+                const $sectionsToToggle = $('#controlsBarContainer, #snippetManagerContainer, #mainTextAreaContainer');
+
+                $toggleButton.on('click', () => {
+                    $sectionsToToggle.slideToggle(function() { 
+                        if ($('#controlsBarContainer').is(':visible')) {
+                            $toggleButton.text('Hide All Controls & Forms');
+                        } else {
+                            $toggleButton.text('Show All Controls & Forms');
+                        }
+                    });
                 });
+                // Initial button text
+                if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
+                    $toggleButton.text('Show All Controls & Forms');
+                } else {
+                     $toggleButton.text('Hide All Controls & Forms');
+                }
             } else {
                 console.error('jQuery is not loaded. Some UI features might not work.');
                 const toggleBtn = document.getElementById('toggleControlsButton');
                 const controlsBar = document.getElementById('controlsBarContainer');
-                if (toggleBtn && controlsBar) {
-                    toggleBtn.addEventListener('click', () => {
-                         controlsBar.style.display = controlsBar.style.display === 'none' ? 'flex' : 'none';
-                    });
+                const snippetManager = document.getElementById('snippetManagerContainer');
+                const mainTextArea = document.getElementById('mainTextAreaContainer');
+
+                if (toggleBtn && controlsBar && snippetManager && mainTextArea) {
+                    const toggleAllSections = () => {
+                        // Check visibility of controlsBar, assuming all sections are toggled together
+                        const isHidden = controlsBar.style.display === 'none' || controlsBar.style.display === '';
+                        
+                        controlsBar.style.display = isHidden ? 'flex' : 'none';
+                        snippetManager.style.display = isHidden ? 'block' : 'none'; 
+                        mainTextArea.style.display = isHidden ? 'block' : 'none'; 
+                        
+                        toggleBtn.textContent = isHidden ? 'Hide All Controls & Forms' : 'Show All Controls & Forms';
+                    };
+
+                    toggleBtn.addEventListener('click', toggleAllSections);
+
+                    // Set initial button text
+                    // Check initial display style from HTML (which is 'none' for all)
+                    if (controlsBar.style.display === 'none' || controlsBar.style.display === '') {
+                        toggleBtn.textContent = 'Show All Controls & Forms';
+                    } else {
+                        toggleBtn.textContent = 'Hide All Controls & Forms';
+                    }
                 }
             }
+
+            // Listen for window resize events to adjust layout
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    this.#adjustLayoutHeights();
+                }, 100); // Debounce resize event
+            });
         }
 
         async start() { 
@@ -619,6 +714,8 @@
             if (typeof window.initializeAllUsers === 'function') window.initializeAllUsers();
             window.initializeAllUsersFromScriptJS = (cb) => { if(typeof cb==='function')cb() };
             
+            this.#adjustLayoutHeights(); // Adjust heights after initial load
+
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
         }
@@ -629,6 +726,27 @@
                 await this.#fetchDataAndUpdateUI(); 
             }, fetchIntervalDuration); 
         }
+
+        #adjustLayoutHeights() {
+            console.log('App: Adjusting layout heights...');
+            const iframeColumn = document.querySelector('.iframe-column');
+            if (iframeColumn) {
+                const calculatedHeight = iframeColumn.offsetHeight;
+                console.log('App: Calculated iframe column height:', calculatedHeight);
+                if (calculatedHeight > 0) {
+                    const userColumns = document.querySelectorAll('.user-column');
+                    userColumns.forEach(column => {
+                        column.style.maxHeight = calculatedHeight + 'px';
+                        console.log('App: Applied max-height to user column:', column.id || 'N/A');
+                    });
+                } else {
+                    console.warn('App: Iframe column height is 0, not adjusting user column heights.');
+                }
+            } else {
+                console.warn('App: IFrame column not found for height adjustment.');
+            }
+        }
+
     } // End App Class
 
     // DOMContentLoaded Listener
