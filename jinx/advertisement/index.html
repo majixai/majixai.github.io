@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jinx AI Autoinvesting</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'GA_MEASUREMENT_ID');
+    </script>
+</head>
+<body>
+    <header class="w3-container w3-teal">
+        <div id="logo-animation-container" style="float: left; margin-right: 20px; width: 100px; height: 70px;">
+            <!-- SVG will be injected here by script.js -->
+        </div>
+        <h1>Jinx AI Autoinvesting</h1>
+    </header>
+
+    <section id="service-details" class="w3-container">
+        <h2>Automate Your Investments with Jinx AI</h2>
+        <p>Jinx AI offers a cutting-edge autoinvesting service that takes the guesswork out of trading. Our AI-powered platform analyzes market trends and makes intelligent investment decisions on your behalf. Benefits include:</p>
+        <ul>
+            <li>Emotion-free investing</li>
+            <li>Time-saving automation</li>
+            <li>Diversified portfolios</li>
+            <li>Optimized returns (results may vary)</li>
+        </ul>
+    </section>
+
+    <section id="pricing" class="w3-container w3-light-grey">
+        <h2>Pricing</h2>
+        <p class="w3-xlarge">$99 a month + commission</p>
+    </section>
+
+    <section id="examples" class="w3-container">
+        <h2>Autoinvesting in Action</h2>
+        <p>See a simplified projection of how Jinx AI could work for you. Enter a hypothetical investment amount below.</p>
+        
+        <div class="w3-panel w3-border w3-padding">
+            <h3>Investment Projection Demo</h3>
+            <label for="investmentAmount">Enter Investment Amount ($):</label>
+            <input type="number" id="investmentAmount" class="w3-input w3-border" placeholder="e.g., 1000">
+            <button id="calculateProjection" class="w3-button w3-blue w3-margin-top">Calculate Projection</button>
+            <div id="projectionResult" class="w3-panel w3-pale-green w3-margin-top" style="display:none;">
+                <p>Your projected returns will appear here.</p>
+            </div>
+        </div>
+
+        <p class="w3-small w3-text-grey">Note: This is a simplified, hypothetical projection for demonstrative purposes only. Actual investment returns can vary significantly and are not guaranteed.</p>
+
+        <div class="w3-panel w3-border">
+            <p>Further Example 1: AI-driven stock selection based on real-time market analysis.</p>
+        </div>
+        <div class="w3-panel w3-border">
+            <p>Further Example 2: Automated portfolio rebalancing to maintain optimal asset allocation.</p>
+        </div>
+    </section>
+
+    <section id="contact" class="w3-container w3-pale-blue">
+        <h2>Contact Us / Get Started</h2>
+        <p>Placeholder for contact form or call-to-action buttons. This will be implemented later.</p>
+    </section>
+
+    <footer class="w3-container w3-dark-grey">
+        <p>&copy; 2023 Jinx AI. All rights reserved.</p>
+    </footer>
+
+    <section id="test-runner-section" class="w3-container w3-light-grey w3-margin-top">
+        <h2>Development & Testing</h2>
+        <p>This section is for development purposes.</p>
+        <button id="runTestsButton" class="w3-button w3-blue">Run Unit Tests</button>
+        <div id="testResultsSummary" class="w3-panel w3-border w3-margin-top" style="display:none;">
+            <p>Test results will appear in the console. Summary:</p>
+            <pre id="testSummaryOutput"></pre>
+        </div>
+    </section>
+
+    <script src="script.js"></script>
+    <script src="tests.js"></script>
+    <script>
+        // Small script to link button to test runner
+        document.addEventListener('DOMContentLoaded', () => {
+            const runTestsButton = document.getElementById('runTestsButton');
+            const testResultsSummaryDiv = document.getElementById('testResultsSummary');
+            const testSummaryOutputPre = document.getElementById('testSummaryOutput');
+
+            if (runTestsButton) {
+                runTestsButton.addEventListener('click', () => {
+                    console.clear(); // Clear console for new test run
+                    if (typeof runAllTests === 'function') {
+                        runAllTests(); // This function is in tests.js
+                        
+                        // Display a summary on the page (console has details)
+                        // This is a bit of a hack to get summary from console logs,
+                        // ideally tests.js would return a summary object.
+                        // For now, just indicate they ran.
+                        testResultsSummaryDiv.style.display = 'block';
+                        if (testsRun > 0) {
+                             testSummaryOutputPre.textContent = `Tests Run: ${testsRun}\nPassed: ${testsPassed}\nFailed: ${testsRun - testsPassed}`;
+                             if (testsRun === testsPassed) {
+                                 testSummaryOutputPre.textContent += "\n\nAll tests passed! 🎉";
+                             } else {
+                                 testSummaryOutputPre.textContent += "\n\nSome tests failed. Check console. 🙁";
+                             }
+                        } else {
+                            testSummaryOutputPre.textContent = "No tests were executed or found.";
+                        }
+
+                    } else {
+                        console.error("Test runner function 'runAllTests' not found. Ensure tests.js is loaded.");
+                        testResultsSummaryDiv.style.display = 'block';
+                        testSummaryOutputPre.textContent = "Test runner function 'runAllTests' not found.";
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
