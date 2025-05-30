@@ -5,32 +5,48 @@
     padding: 0;
 }
 
+html, body {
+    height: 100%;
+    overflow: hidden; /* Prevent scrollbars on html/body if app-container manages all scrolling */
+}
+
 body {
     font-family: sans-serif;
     line-height: 1.6;
     background-color: #f4f4f4;
     color: #333;
-    padding: 15px;
+    padding: 15px; /* Keep existing body padding */
+    margin: 0; /* Ensure no default body margin */
+    display: flex; 
+    flex-direction: column; 
 }
 
 /* Main Application Container */
 .app-container {
     max-width: 1600px;
-    margin: 0 auto;
+    margin: 0 auto; /* Keep centered */
     background: #fff;
-    padding: 20px;
+    padding: 20px; /* Keep padding */
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allow app-container to grow within body's flex context */
+    min-height: 0; /* Important for flex children that need to shrink */
 }
 
-h1, h2 {
+h1 {
     color: #555;
     margin-bottom: 15px;
     text-align: center;
+    font-size: 1.8em; /* New smaller size */
 }
 
 h2 {
-    font-size: 1.4em;
+    color: #555;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.4em; /* Existing h2 font-size */
     border-bottom: 1px solid #eee;
     padding-bottom: 5px;
 }
@@ -112,7 +128,10 @@ h2 {
 .main-content {
     display: flex;
     gap: 20px;
-    flex-wrap: wrap; /* Allow columns to wrap on smaller screens */
+    flex-wrap: wrap; /* Keep for responsiveness on smaller screens */
+    flex-grow: 1; /* Key: allows .main-content to take available vertical space in .app-container */
+    min-height: 0; /* Allow shrinking */
+    overflow: hidden; /* Prevent .main-content itself from scrolling due to children */
 }
 
 /* Column Styling */
@@ -134,6 +153,11 @@ h2 {
 .iframe-column {
     flex: 2; /* Take more space */
     min-width: 400px;
+    /* background-color, border, border-radius from existing */
+    padding: 15px; /* Keep existing padding for now */
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; /* This will replace margin-bottom on .iframe-container */
 }
 
 /* User List Styling */
@@ -276,14 +300,16 @@ h2 {
 }
 
 .iframe-container {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-    height: 0;
-    overflow: hidden;
-    margin-bottom: 15px; /* Space between iframes */
-    background-color: #000; /* Black background while loading */
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    position: relative; 
+    overflow: hidden; 
+    background-color: #000; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    flex-grow: 1; /* Each iframe container will take equal space in .iframe-column */
+    min-height: 0; /* Allow shrinking to prevent overflow if content is small */
+    /* REMOVE: padding-bottom: 56.25%; */
+    /* REMOVE: height: 0; */
+    /* REMOVE: margin-bottom: 15px; (now handled by gap on parent .iframe-column) */
 }
 
 .iframe-container iframe {
