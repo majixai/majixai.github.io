@@ -8,9 +8,109 @@
  * Leading underscores (_) denote internal methods/properties not intended for public use outside the class.
  */
 
+// --- Google Analytics Event Tracking Helper ---
+/**
+ * Sends a custom event to Google Analytics.
+ * Checks if gtag function is available before attempting to send.
+ * @param {string} action - The type of interaction (e.g., 'click', 'submit').
+ * @param {string} category - A category for the event (e.g., 'Button', 'Navigation').
+ * @param {string} label - A label for the event (e.g., 'Calculate Projection', 'Contact Form').
+ * @param {number} [value] - An optional numeric value for the event.
+ */
+function trackGAEvent(action, category, label, value) {
+  if (typeof gtag === 'function') {
+    gtag('event', action, {
+      'event_category': category,
+      'event_label': label,
+      'value': value
+      // 'send_to': 'GA_MEASUREMENT_ID' // Optional: if using multiple GA properties with specific routing
+    });
+    // For debugging: console.log(`GA Event Sent: Action: ${action}, Category: ${category}, Label: ${label}${value !== undefined ? ', Value: ' + value : ''}`);
+  } else {
+    console.warn(`Google Analytics gtag function not defined. GA Event not tracked: Action: ${action}, Category: ${category}, Label: ${label}${value !== undefined ? ', Value: ' + value : ''}`);
+  }
+}
+
+/**
+ * Animates the static SVG logo text elements ("Jinx" and "AI").
+ * Implements a sequential fade-in effect.
+ */
+class LogoAnimator {
+    constructor() {
+        this._jinxText = document.getElementById('logo-text-jinx');
+        this._aiText = document.getElementById('logo-text-ai');
+        this._animationStartTime = null;
+        this._jinxFadeInDuration = 1000; // 1 second for Jinx to fade in
+        this._aiFadeInDelay = 500;     // 0.5 second delay after Jinx starts fading in
+        this._aiFadeInDuration = 1000;   // 1 second for AI to fade in
+
+        if (!this._jinxText || !this._aiText) {
+            console.warn("LogoAnimator: 'Jinx' or 'AI' text elements not found in SVG. Animation disabled.");
+            this._isAvailable = false;
+        } else {
+            this._isAvailable = true;
+            // Ensure elements are initially hidden if not set by inline style (belt and suspenders)
+            this._jinxText.style.opacity = '0';
+            this._aiText.style.opacity = '0';
+        }
+    }
+
+    /**
+     * Starts the fade-in animation sequence for the logo.
+     */
+    init() {
+        if (!this._isAvailable) return;
+        
+        this._animationStartTime = performance.now();
+        requestAnimationFrame((timestamp) => this._animateFadeIn(timestamp));
+        console.log("LogoAnimator initialized and animation started.");
+    }
+
+    /**
+     * Animation loop using requestAnimationFrame.
+     * @param {number} timestamp - The current time provided by requestAnimationFrame.
+     * @private
+     */
+    _animateFadeIn(timestamp) {
+        const elapsedTime = timestamp - this._animationStartTime;
+        let jinxOpacity = 0;
+        let aiOpacity = 0;
+
+        // Animate Jinx text
+        if (elapsedTime < this._jinxFadeInDuration) {
+            jinxOpacity = elapsedTime / this._jinxFadeInDuration;
+        } else {
+            jinxOpacity = 1;
+        }
+        this._jinxText.style.opacity = jinxOpacity.toString();
+
+        // Animate AI text (starts after a delay)
+        const aiStartTime = this._aiFadeInDelay;
+        if (elapsedTime > aiStartTime) {
+            const aiElapsedTime = elapsedTime - aiStartTime;
+            if (aiElapsedTime < this._aiFadeInDuration) {
+                aiOpacity = aiElapsedTime / this._aiFadeInDuration;
+            } else {
+                aiOpacity = 1;
+            }
+            this._aiText.style.opacity = aiOpacity.toString();
+        }
+        
+        // Continue animation if not both fully opaque
+        if (jinxOpacity < 1 || aiOpacity < 1) {
+            requestAnimationFrame((ts) => this._animateFadeIn(ts));
+        } else {
+            console.log("Logo animation complete.");
+            // Optional: Add a subtle pulse or other effect here after fade-in
+        }
+    }
+}
+
+
 /**
  * Manages the creation and animation of SVG elements.
  * Specifically used here for a simple logo/branding animation.
+ * THIS CLASS IS CURRENTLY DISABLED (replaced by LogoAnimator for the static SVG logo).
  */
 class SVGAnimator {
     /**
@@ -191,7 +291,11 @@ class AutoinvestExamples {
     _setupEventListeners() {
         // Ensure button exists before adding listener
         if (this._calculateButton) {
-            this._calculateButton.addEventListener('click', () => this._handleProjectionCalculation());
+            this._calculateButton.addEventListener('click', () => {
+                const amount = parseFloat(this._investmentInput.value) || 0;
+                trackGAEvent('click', 'Button', 'Calculate Projection', amount);
+                this._handleProjectionCalculation();
+            });
         }
     }
 
@@ -266,52 +370,105 @@ class UserInteraction {
     /**
      * @param {string} formContainerId - The ID of the HTML element that will host interaction components (e.g., a contact form).
      */
-    constructor(formContainerId) {
-        this._formContainer = document.getElementById(formContainerId);
-        if (!this._formContainer) {
-            console.warn(`UserInteraction: Container with ID '${formContainerId}' not found. UI elements for this module will not be initialized.`);
-        }
-        console.log(`UserInteraction initialized for container (if found): ${formContainerId}`);
-    }
-
     /**
-     * Initializes the form or other interaction elements within the container.
-     * Public method to be called by the main App class.
+     * @param {string} formContainerId - The ID of the HTML section that contains the contact form.
      */
-    initForm() {
-        if (this._formContainer) {
-            // Example of what could be done:
-            // this._formContainer.innerHTML = '<h3>Contact Us</h3><form id="contactForm"><input type="email" placeholder="Enter your email"><button type="submit">Subscribe</button></form>';
-            // this._setupFormListener();
-            console.log("UserInteraction: 'initForm' called. Container is available. No specific form is implemented in this version.");
+    constructor(formContainerId) { // Though formContainerId is passed, we'll use specific IDs for form elements
+        this._form = document.getElementById('contactForm');
+        this._nameInput = document.getElementById('contact-name');
+        this._emailInput = document.getElementById('contact-email');
+        this._messageInput = document.getElementById('contact-message');
+        this._submitButton = document.getElementById('contact-submit');
+        this._feedbackDiv = document.getElementById('contact-feedback');
+
+        if (!this._form || !this._nameInput || !this._emailInput || !this._messageInput || !this._submitButton || !this._feedbackDiv) {
+            console.warn("UserInteraction: One or more contact form elements (form, name, email, message, submit, feedback) not found. Form functionality will be disabled.");
+            this._isFormAvailable = false;
         } else {
-            console.log("UserInteraction: 'initForm' called, but no container element is set. No form will be displayed.");
+            this._isFormAvailable = true;
+            console.log("UserInteraction initialized: Contact form elements found.");
         }
     }
 
     /**
-     * Example of setting up a form listener.
+     * Initializes the contact form event listeners.
+     * Public method to be called by the App class. Renamed from initForm to initContactForm for clarity.
+     */
+    initContactForm() {
+        if (!this._isFormAvailable) {
+            console.log("UserInteraction: Contact form setup skipped as elements are not available.");
+            return;
+        }
+        
+        this._form.addEventListener('submit', (event) => this._handleSubmission(event));
+        console.log("UserInteraction: Contact form event listener attached.");
+    }
+    
+    /**
+     * Validates the contact form data.
+     * @param {string} name - The name entered by the user.
+     * @param {string} email - The email entered by the user.
+     * @param {string} message - The message entered by the user.
+     * @returns {string|null} An error message string if validation fails, null otherwise.
      * @private
      */
-    _setupFormListener() {
-        const form = this._formContainer.querySelector('#contactForm'); // Assuming a form with this ID is added in initForm
-        if (form) {
-            form.addEventListener('submit', (event) => this._handleSubmission(event));
+    _validateForm(name, email, message) {
+        if (!name.trim()) {
+            return "Name is required.";
         }
+        if (!email.trim()) {
+            return "Email is required.";
+        }
+        // Basic email format check (contains '@' and '.')
+        if (!email.includes('@') || !email.includes('.')) {
+            return "Please enter a valid email address.";
+        }
+        if (!message.trim()) {
+            return "Message is required.";
+        }
+        return null; // No validation errors
     }
 
     /**
-     * Handles form submissions or other user interactions.
-     * Placeholder for actual submission logic (e.g., AJAX request).
-     * @param {Event} [event] - Optional event object, typically from a form submission.
-     * @private Internal method, called by event listeners.
+     * Handles the contact form submission.
+     * Performs validation and simulates data submission.
+     * @param {Event} event - The form submission event.
+     * @private
      */
     _handleSubmission(event) {
-        if (event) {
-            event.preventDefault(); // Prevent default form submission behavior
+        event.preventDefault(); // Prevent default browser form submission
+
+        const name = this._nameInput.value;
+        const email = this._emailInput.value;
+        const message = this._messageInput.value;
+
+        const validationError = this._validateForm(name, email, message);
+
+        if (validationError) {
+            this._feedbackDiv.textContent = validationError;
+            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red'; // Error styling
+            this._feedbackDiv.style.display = 'block';
+            return;
         }
-        console.log("UserInteraction: '_handleSubmission' called. Form submission logic would go here.");
-        // Example: const email = this._formContainer.querySelector('input[type="email"]').value; console.log("Email for submission:", email);
+
+        // Simulate submission
+        console.log("Contact Form Submitted:");
+        console.log("Name:", name);
+        console.log("Email:", email);
+        console.log("Message:", message);
+
+        trackGAEvent('submit', 'Form', 'Contact Form Submitted');
+
+        this._feedbackDiv.textContent = "Thank you for your message! We'll get back to you soon.";
+        this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green'; // Success styling
+        this._feedbackDiv.style.display = 'block';
+
+        // Optionally clear the form
+        this._form.reset(); 
+        // Or clear fields individually:
+        // this._nameInput.value = '';
+        // this._emailInput.value = '';
+        // this._messageInput.value = '';
     }
 }
 
@@ -327,11 +484,41 @@ class App {
      */
     constructor() {
         // Instantiate all primary modules/components, passing necessary configuration (e.g., container IDs)
-        this._svgAnimator = new SVGAnimator('logo-animation-container');
+        this._logoAnimator = new LogoAnimator(); // New animator for the static SVG text logo
+        // this._svgAnimator = new SVGAnimator('logo-animation-container'); // SVGAnimator is disabled as a new static SVG logo is used.
         this._autoinvestExamples = new AutoinvestExamples('examples');
         this._userInteraction = new UserInteraction('contact'); // For contact forms or other interactions
+        
+        // For GA event tracking on navigation and logo
+        this._logoContainer = document.getElementById('logo-container');
+        this._navLinks = document.querySelectorAll('nav.w3-bar a.w3-bar-item');
 
         console.log("Jinx AI App: All components/modules have been instantiated.");
+    }
+
+    /**
+     * Sets up global event listeners managed by the App class.
+     * This includes navigation link clicks and logo clicks for GA tracking.
+     * @private
+     */
+    _setupGlobalEventListeners() {
+        // Navigation link clicks
+        this._navLinks.forEach(link => {
+            link.addEventListener('click', (event) => {
+                const linkText = event.target.textContent.trim() || 'Unknown Link';
+                const linkHref = event.target.getAttribute('href') || 'Unknown Href';
+                trackGAEvent('click', 'Navigation', `Navbar Link: ${linkText} (${linkHref})`);
+            });
+        });
+
+        // SVG Logo click
+        if (this._logoContainer) {
+            this._logoContainer.addEventListener('click', () => {
+                trackGAEvent('click', 'Logo', 'Header SVG Logo Click');
+            });
+        } else {
+            console.warn("App: Logo container not found for GA event tracking.");
+        }
     }
 
     /**
@@ -339,12 +526,20 @@ class App {
      * This method should be called once the DOM is fully loaded and ready.
      */
     init() {
+        this._setupGlobalEventListeners(); // Setup app-level event listeners for GA tracking etc.
+
         // Call init methods on each component that requires explicit initialization
         // Check if the instance and its init method exist before calling
-        if (this._svgAnimator && typeof this._svgAnimator.init === 'function') {
-            this._svgAnimator.init();
+        // if (this._svgAnimator && typeof this._svgAnimator.init === 'function') {
+        //     this._svgAnimator.init();
+        // } else {
+        //     console.warn("App: SVGAnimator (bar chart) is disabled or not available.");
+        // }
+
+        if (this._logoAnimator && typeof this._logoAnimator.init === 'function') {
+            this._logoAnimator.init();
         } else {
-            console.error("App: SVGAnimator not available or 'init' method missing.");
+            console.warn("App: LogoAnimator not available or 'init' method missing.");
         }
 
         if (this._autoinvestExamples && typeof this._autoinvestExamples.loadExamples === 'function') {
@@ -355,10 +550,10 @@ class App {
             console.error("App: AutoinvestExamples not available or 'loadExamples' method missing.");
         }
 
-        if (this._userInteraction && typeof this._userInteraction.initForm === 'function') {
-            this._userInteraction.initForm();
+        if (this._userInteraction && typeof this._userInteraction.initContactForm === 'function') {
+            this._userInteraction.initContactForm();
         } else {
-            console.error("App: UserInteraction not available or 'initForm' method missing.");
+            console.error("App: UserInteraction not available or 'initContactForm' method missing.");
         }
         
         console.log("Jinx AI Advertisement application initialized successfully.");
