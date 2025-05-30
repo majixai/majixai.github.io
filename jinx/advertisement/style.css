@@ -22,11 +22,43 @@ body {
 header.w3-container.w3-teal {
     background-color: var(--primary-color) !important;
     color: var(--header-text-color);
+    display: flex; /* For aligning logo and title */
+    align-items: center; /* Vertically center items in header */
+    padding-top: 10px; /* Add some padding */
+    padding-bottom: 10px;
+}
+
+#logo-container {
+    /* SVG logo container - margin is currently inline in HTML */
+    /* Add specific styles here if needed, e.g., min-width */
 }
 
 header h1 {
     font-weight: bold;
+    margin-left: 10px; /* Adjust if logo takes up too much space or h1 is too close */
 }
+
+/* Navigation Bar Styling */
+.w3-bar.w3-theme-d4 { /* Overriding W3 specific theme class for custom branding */
+    background-color: var(--secondary-color) !important; /* Use Jinx AI secondary color */
+    font-family: 'Arial', sans-serif;
+}
+
+.w3-bar .w3-bar-item.w3-button {
+    color: var(--header-text-color); /* White text for buttons */
+    transition: background-color 0.3s;
+}
+
+.w3-bar .w3-bar-item.w3-button:hover {
+    background-color: var(--primary-color) !important; /* Jinx AI primary color on hover */
+    color: var(--header-text-color) !important;
+}
+
+/* Consider adding an active class style if JS is used to highlight current section */
+/* .w3-bar .w3-bar-item.w3-button.active {
+    background-color: var(--accent-color) !important;
+    color: var(--text-color) !important;
+} */
 
 /* Section Padding and Margins */
 section.w3-container {
@@ -65,27 +97,37 @@ section.w3-container {
     background-color: #fff;
 }
 
-/* Placeholder for SVG Animation Container */
-#svg-animation-container {
-    width: 100%;
-    height: 200px; /* Adjust as needed */
-    background-color: #e0e0e0; /* Placeholder background */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-#svg-animation-container p {
-    color: #666;
-}
-
 /* Placeholder for User Interaction/Contact Form Section */
 #contact.w3-container.w3-pale-blue {
     background-color: #e0f7fa !important; /* A light, inviting blue */
     border-top: 2px solid var(--primary-color);
 }
+
+#contactForm {
+    /* Add any specific overall form styling here if needed */
+}
+
+#contact-feedback {
+    /* W3.CSS classes w3-panel, w3-pale-red/green, w3-border, w3-border-red/green are applied by JS for specific states. */
+    /* Add general styles here if needed, e.g., ensuring text color contrasts with various backgrounds if w3 classes are changed. */
+    padding: 10px; /* Ensure padding is consistent */
+    margin-top: 15px; /* Ensure margin from button is consistent */
+    border-radius: 4px; /* Softer corners */
+}
+
+/* Specific styles for success/error already handled by w3-pale-green/red and w3-border-green/red in JS */
+/* .contact-feedback-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+} */
+
+/* .contact-feedback-error {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+} */
+
 
 /* Footer Styling */
 footer.w3-container.w3-dark-grey {
