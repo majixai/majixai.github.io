@@ -1005,67 +1005,79 @@
             console.log('App: Adjusting layout heights for .user-list elements...');
             const iframeColumn = document.querySelector('.iframe-column');
             if (!iframeColumn) {
-                console.warn('App: IFrame column not found for height adjustment. Exiting.');
+                console.warn('App: CRITICAL - IFrame column not found for height adjustment. Exiting height adjustment.');
                 return;
             }
 
             const iframeColumnTotalHeight = iframeColumn.offsetHeight;
-            console.log('App: Calculated iframe column total height:', iframeColumnTotalHeight);
+            console.log(`App: iframeColumn.offsetHeight = ${iframeColumnTotalHeight}px`);
 
+            if (iframeColumnTotalHeight < 100) { // Threshold for iframe column height
+                console.warn(`App: iframeColumnTotalHeight is ${iframeColumnTotalHeight}px, which is less than 100px. This might lead to very small user list heights.`);
+            }
+
+            // If iframeColumnTotalHeight is 0 or negative, it might be too early in rendering or display:none.
+            // In this case, applying any height to user-lists might be futile or hide them.
+            // The original code already had a check for iframeColumnTotalHeight <= 0 to return, which is good.
+            // Let's ensure that check remains effective.
             if (iframeColumnTotalHeight <= 0) {
-                console.warn('App: Iframe column height is 0 or less, not adjusting .user-list heights.');
+                console.warn('App: iframeColumnTotalHeight is 0 or less. Cannot perform height adjustments for user lists. User lists might not be scrollable or visible.');
+                // Optionally, apply a default fixed height to user lists here if iframe column is not expected to be hidden.
+                // For now, we'll rely on the existing return for this specific case.
                 return;
             }
 
             const userColumns = document.querySelectorAll('.user-column');
             userColumns.forEach(userColumn => {
-                // a. Remove old styles from userColumn
+                const columnId = userColumn.id || 'N/A';
+                console.log(`App: Processing column: ${columnId}`);
+
                 userColumn.style.removeProperty('max-height');
                 userColumn.style.removeProperty('overflow');
 
-                // b. Find h2Element and get its total height
                 let h2TotalHeight = 0;
                 const h2Element = userColumn.querySelector('h2');
                 if (h2Element) {
                     const h2Styles = window.getComputedStyle(h2Element);
                     h2TotalHeight = h2Element.offsetHeight + parseFloat(h2Styles.marginTop) + parseFloat(h2Styles.marginBottom);
                 } else {
-                    console.log('App: No h2 element found in column:', userColumn.id || 'N/A');
+                    console.log(`App: No h2 element found in column: ${columnId}`);
                 }
-                
-                // c. Get userColumn vertical padding
+                console.log(`App: [${columnId}] h2TotalHeight (incl. margins) = ${h2TotalHeight}px`);
+
                 const userColumnStyles = window.getComputedStyle(userColumn);
                 const userColumnVerticalPadding = parseFloat(userColumnStyles.paddingTop) + parseFloat(userColumnStyles.paddingBottom);
+                console.log(`App: [${columnId}] userColumnVerticalPadding = ${userColumnVerticalPadding}px`);
 
-                // New: Calculate height of additional elements like the "Clear History" button
                 let additionalElementsHeight = 0;
                 if (userColumn.id === 'previousUsers') {
                     const clearButton = userColumn.querySelector('#clearPreviousUsers');
                     if (clearButton) {
                         const buttonStyles = window.getComputedStyle(clearButton);
-                        additionalElementsHeight += clearButton.offsetHeight + parseFloat(buttonStyles.marginTop) + parseFloat(buttonStyles.marginBottom);
-                        console.log('App: Clear history button height (incl. margins):', additionalElementsHeight, 'for column:', userColumn.id);
+                        additionalElementsHeight = clearButton.offsetHeight + parseFloat(buttonStyles.marginTop) + parseFloat(buttonStyles.marginBottom);
+                        console.log(`App: [${columnId}] clearButton height (incl. margins) = ${additionalElementsHeight}px`);
                     } else {
-                        console.log('App: Clear history button not found in column:', userColumn.id);
+                        console.log(`App: [${columnId}] Clear history button not found.`);
                     }
                 }
 
-                // d. Find userListElement
                 const userListElement = userColumn.querySelector('.user-list');
-
-                // e. Calculate and Apply max-height to userListElement
                 if (userListElement) {
-                    const listMaxHeight = iframeColumnTotalHeight - h2TotalHeight - additionalElementsHeight - userColumnVerticalPadding;
-                    
-                    if (listMaxHeight > 0) {
-                        userListElement.style.maxHeight = listMaxHeight + 'px';
-                        console.log('App: Applied max-height', listMaxHeight, 'px to .user-list in column:', userColumn.id || 'N/A', '. Values:', {iframeColumnTotalHeight, h2TotalHeight, additionalElementsHeight, userColumnVerticalPadding});
+                    const calculatedListMaxHeight = iframeColumnTotalHeight - h2TotalHeight - additionalElementsHeight - userColumnVerticalPadding;
+                    console.log(`App: [${columnId}] Calculated listMaxHeight = ${iframeColumnTotalHeight} (iframe) - ${h2TotalHeight} (h2) - ${additionalElementsHeight} (other) - ${userColumnVerticalPadding} (padding) = ${calculatedListMaxHeight}px`);
+
+                    const minSensibleHeight = 50; // Minimum sensible calculated height before fallback
+                    const fallbackHeight = '300px'; // Fallback max-height
+
+                    if (calculatedListMaxHeight < minSensibleHeight) {
+                        console.warn(`App: [${columnId}] Calculated listMaxHeight (${calculatedListMaxHeight}px) is less than ${minSensibleHeight}px. Applying fallback max-height: ${fallbackHeight}.`);
+                        userListElement.style.maxHeight = fallbackHeight;
                     } else {
-                        userListElement.style.maxHeight = '0px'; // Sensible default
-                        console.warn('App: Calculated listMaxHeight is not positive for .user-list in column:', userColumn.id || 'N/A', '. Applied 0px. Values:', {iframeColumnTotalHeight, h2TotalHeight, additionalElementsHeight, userColumnVerticalPadding});
+                        userListElement.style.maxHeight = calculatedListMaxHeight + 'px';
+                        console.log(`App: [${columnId}] Applied max-height: ${calculatedListMaxHeight}px to .user-list.`);
                     }
                 } else {
-                    console.warn('App: .user-list element not found in column:', userColumn.id || 'N/A');
+                    console.warn(`App: [${columnId}] .user-list element not found.`);
                 }
             });
         }
