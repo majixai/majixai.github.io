@@ -163,9 +163,10 @@ h2 {
 /* User List Styling */
 .user-list {
     overflow-y: auto; /* Enable vertical scrolling */
-    flex-grow: 1; /* Allow list to fill remaining space in column */
+    flex-grow: 1;    /* Allow list to fill remaining space in column */
     padding-right: 5px; /* Space for scrollbar */
-    min-height: 0; /* Add this line */
+    min-height: 0;   /* Essential for flex item that scrolls */
+    max-height: 70vh; /* CSS FALLBACK: Ensures scrollability if JS fails or sets too large a height. JS inline style can override this if smaller and valid. */
 }
 
 /* Individual User Card Styling */

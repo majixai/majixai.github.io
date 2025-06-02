@@ -980,6 +980,14 @@
             this.uiManager.showOnlineLoadingIndicator("Loading initial history...");
             this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
             console.log(`Initial load: Found ${this.#previousUsers.length} users in history.`);
+
+            // Add this block after storageManager.init and loadUsers
+            if (this.storageManager && this.storageManager.isIndexedDBFailed) { // Check the getter
+                this.uiManager.showOnlineErrorDisplay(
+                    "Main database failed to load. Your browsing history and some settings might not be saved reliably. Using temporary storage. If issues persist, try clearing site data or using a different browser.",
+                    true // Pass true to indicate it's a warning
+                );
+            }
             
             await this.#fetchDataAndUpdateUI(); 
             
@@ -1067,14 +1075,14 @@
                     console.log(`App: [${columnId}] Calculated listMaxHeight = ${iframeColumnTotalHeight} (iframe) - ${h2TotalHeight} (h2) - ${additionalElementsHeight} (other) - ${userColumnVerticalPadding} (padding) = ${calculatedListMaxHeight}px`);
 
                     const minSensibleHeight = 50; // Minimum sensible calculated height before fallback
-                    const fallbackHeight = '300px'; // Fallback max-height
+                    const fallbackHeightString = '300px'; // Fallback max-height
 
                     if (calculatedListMaxHeight < minSensibleHeight) {
-                        console.warn(`App: [${columnId}] Calculated listMaxHeight (${calculatedListMaxHeight}px) is less than ${minSensibleHeight}px. Applying fallback max-height: ${fallbackHeight}.`);
-                        userListElement.style.maxHeight = fallbackHeight;
+                        console.warn(`App: [${columnId}] Calculated listMaxHeight (${calculatedListMaxHeight}px) is less than ${minSensibleHeight}px. APPLYING FALLBACK max-height: ${fallbackHeightString}.`);
+                        userListElement.style.maxHeight = fallbackHeightString;
                     } else {
                         userListElement.style.maxHeight = calculatedListMaxHeight + 'px';
-                        console.log(`App: [${columnId}] Applied max-height: ${calculatedListMaxHeight}px to .user-list.`);
+                        console.log(`App: [${columnId}] APPLIED CALCULATED max-height: ${calculatedListMaxHeight}px to .user-list.`);
                     }
                 } else {
                     console.warn(`App: [${columnId}] .user-list element not found.`);
