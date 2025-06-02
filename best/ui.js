@@ -133,15 +133,21 @@ class UIManager {
         }
     }
 
-    showOnlineErrorDisplay(message) {
+    showOnlineErrorDisplay(message, isWarning = false) {
         const onlineErrorDisplay = document.getElementById("onlineErrorDisplay");
-        console.error(`UI: SHOW ONLINE ERROR: ${message}`);
         if (onlineErrorDisplay) {
-            onlineErrorDisplay.textContent = `Error: ${message}`;
+            if (isWarning) {
+                console.warn(`UI: SHOW ONLINE WARNING: ${message}`);
+                onlineErrorDisplay.textContent = `Warning: ${message}`;
+                onlineErrorDisplay.className = 'warning-message'; // New class for warnings
+            } else {
+                console.error(`UI: SHOW ONLINE ERROR: ${message}`);
+                onlineErrorDisplay.textContent = `Error: ${message}`;
+                onlineErrorDisplay.className = 'error-message';
+            }
             onlineErrorDisplay.style.display = 'block';
-            onlineErrorDisplay.className = 'error-message'; // Ensure styling
         }
-        this.hideOnlineLoadingIndicator(); // Also hide loading indicator
+        this.hideOnlineLoadingIndicator();
     }
 
     clearOnlineErrorDisplay() {
