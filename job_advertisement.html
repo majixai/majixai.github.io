@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Exciting remote job opportunity! Earn $50 to $500 daily, paid instantly. Limited to the first 500 applicants. Apply now!">
+    <title>Urgent Hiring: Remote Content Engagement Specialist - Earn Daily!</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff; /* Blue */
+            --secondary-color: #28a745; /* Green */
+            --accent-color: #ffc107; /* Yellow for urgency */
+            --text-color: #343a40; /* Dark Gray */
+            --light-gray: #f8f9fa;
+            --white: #ffffff;
+            --border-radius: 8px;
+            --font-main: 'Roboto', sans-serif;
+            --font-headings: 'Montserrat', sans-serif;
+        }
+
+        body {
+            font-family: var(--font-main);
+            line-height: 1.8; /* Increased for readability */
+            margin: 0;
+            background-color: var(--light-gray);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0; /* Added padding top and bottom */
+        }
+
+        .container {
+            background-color: var(--white);
+            padding: 30px 40px; /* Increased padding */
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* Enhanced shadow */
+            max-width: 900px;
+            width: 90%; /* Responsive width */
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        #parallax-header { /* Changed from 'header' to ID for specificity */
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--primary-color);
+            padding: 50px 20px; /* Increased padding for visual space with background */
+            min-height: 30vh; /* Minimum height for parallax visibility */
+            color: var(--white); /* Ensure text is visible on dark backgrounds */
+
+            /* Parallax Background Properties */
+            background-image: url('https://picsum.photos/seed/jobad/1200/800'); /* Placeholder image */
+            background-size: cover;
+            background-position: center center;
+            background-attachment: scroll; /* Important for JS-controlled parallax */
+            position: relative; /* For potential pseudo-elements or z-indexing if needed later */
+        }
+
+        #parallax-header h1 { /* Ensure H1 color contrasts with typical images */
+            font-family: var(--font-headings);
+            color: var(--white); /* Changed to white for better contrast on bg image */
+            font-size: 2.8em; /* Slightly larger title */
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7); /* Add text shadow for readability */
+        }
+
+        #parallax-header p.subtitle { /* Ensure subtitle color contrasts */
+            font-size: 1.4em; /* Slightly larger subtitle */
+            color: var(--light-gray); /* Light gray for readability on bg image */
+            margin-top: 0;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* Add text shadow */
+        }
+
+        h2 {
+            font-family: var(--font-headings);
+            color: var(--primary-color);
+            font-size: 1.8em; /* Slightly larger H2 */
+            margin-top: 40px;
+            margin-bottom: 15px; /* Spacing after H2 */
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .urgency-banner {
+            background-color: var(--accent-color);
+            color: var(--text-color);
+            padding: 15px 20px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: 2px solid #e0a800; /* Darker yellow border */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .highlight {
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+
+        .section-content {
+            margin-bottom: 30px; /* Space between sections */
+        }
+
+        ul {
+            padding-left: 20px;
+            list-style-type: '✓ '; /* Custom list bullet */
+        }
+
+        li {
+            margin-bottom: 10px; /* Increased spacing */
+        }
+
+        .apply-section {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #e9ecef; /* Light grey background for emphasis */
+            border-radius: var(--border-radius);
+        }
+
+        .apply-button {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 15px 30px; /* Larger button */
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            font-size: 1.3em; /* Larger text */
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .apply-button:hover {
+            background-color: #218838; /* Darker green */
+            transform: translateY(-2px); /* Slight lift on hover */
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: #777;
+        }
+
+        /* Flexbox for specific alignments if needed, e.g., in a benefits list */
+        .benefits-list-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .benefits-list-item svg { /* Example if using SVGs for icons */
+            margin-right: 10px;
+            fill: var(--primary-color);
+        }
+
+        /* Notification Banner Styles */
+        #notification-banner {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #notification-banner span {
+            margin-right: 20px;
+            flex-grow: 1; /* Allow text to take available space */
+        }
+
+        #dismiss-notification {
+            background-color: transparent;
+            color: var(--white);
+            border: 1px solid var(--white);
+            border-radius: var(--border-radius);
+            padding: 5px 12px; /* Adjusted padding */
+            cursor: pointer;
+            font-size: 1.4em; /* Made slightly larger for better clickability */
+            line-height: 1;
+            transition: background-color 0.3s, color 0.3s;
+            margin-left: auto; /* Push button to the right if span flex-grows */
+            flex-shrink: 0; /* Prevent button from shrinking */
+        }
+
+        #dismiss-notification:hover {
+            background-color: var(--white);
+            color: var(--primary-color);
+        }
+
+        /* Notification Banner Styles */
+        #notification-banner {
+            background-color: var(--primary-color);
+            color: var(--white);
+            padding: 15px 20px;
+            text-align: center;
+            position: relative;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #notification-banner span {
+            margin-right: 20px;
+            flex-grow: 1; /* Allow text to take available space */
+        }
+
+        #dismiss-notification {
+            background-color: transparent;
+            color: var(--white);
+            border: 1px solid var(--white);
+            border-radius: var(--border-radius);
+            padding: 5px 12px; /* Adjusted padding */
+            cursor: pointer;
+            font-size: 1.4em; /* Made slightly larger for better clickability */
+            line-height: 1;
+            transition: background-color 0.3s, color 0.3s;
+            margin-left: auto; /* Push button to the right if span flex-grows */
+            flex-shrink: 0; /* Prevent button from shrinking */
+        }
+
+        #dismiss-notification:hover {
+            background-color: var(--white);
+            color: var(--primary-color);
+        }
+
+        /* Application Notes Section Styles */
+        #application-notes-section {
+            background-color: #f0f4f8; /* Lighter, slightly bluish background */
+            padding: 25px;
+            border-radius: var(--border-radius);
+            margin-top: 40px; /* Increased margin */
+            border: 1px solid #d1d9e0; /* Softer border */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Subtle shadow */
+        }
+
+        #application-notes-section h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--primary-color);
+            padding-bottom: 10px;
+            color: var(--primary-color);
+            font-size: 1.6em; /* Adjusted size */
+        }
+        #application-notes-section h3 {
+            margin-top: 25px;
+            margin-bottom: 12px;
+            color: var(--text-color);
+            font-size: 1.3em;
+        }
+         #application-notes-section p.notes-description {
+            font-size: 0.95em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        #application-note-text {
+            width: 100%;
+            padding: 12px; /* Increased padding */
+            border-radius: var(--border-radius);
+            border: 1px solid #ced4da; /* Standard Bootstrap border color */
+            box-sizing: border-box;
+            margin-bottom: 20px; /* Increased margin */
+            font-family: var(--font-main);
+            font-size: 1em;
+            min-height: 80px; /* Minimum height */
+        }
+
+        .notes-controls {
+            display: flex;
+            gap: 10px; /* Spacing between buttons */
+            margin-bottom: 20px; /* Space after buttons */
+        }
+
+        .notes-controls button { /* Common styling for note buttons */
+            padding: 10px 18px;
+            cursor: pointer;
+            border-radius: var(--border-radius);
+            border: 1px solid transparent;
+            font-weight: bold;
+            font-size: 0.95em;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .notes-controls button:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        /* Company Values Section Styles */
+        #company-values-section {
+            background-color: #f7f9fc; /* A very light, neutral background */
+            padding: 25px;
+            border-radius: var(--border-radius);
+            margin-top: 40px;
+            border: 1px solid #e0e6ed;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+
+        #company-values-section h2 { /* Specific styling for this section's H2 */
+            margin-top: 0;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--accent-color); /* Use accent for a bit of flair */
+            padding-bottom: 10px;
+            font-size: 1.7em;
+        }
+        #company-values-section p.loading-text { /* Style for the placeholder */
+            text-align: center;
+            color: #777;
+            font-style: italic;
+        }
+
+        #company-values-section ul.values-list { /* Specific class for this list */
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        #company-values-section ul.values-list li {
+            background-color: var(--white);
+            border: 1px solid #d1d9e0;
+            padding: 18px; /* More padding */
+            margin-bottom: 12px; /* More space */
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        #company-values-section ul.values-list li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+
+
+        #company-values-section ul.values-list li strong {
+            color: var(--secondary-color); /* Use secondary color for value names */
+            font-size: 1.15em; /* Slightly larger */
+            display: block;
+            margin-bottom: 8px; /* More space below name */
+        }
+        #company-values-section ul.values-list li p.value-description {
+            font-size: 0.95em;
+            line-height: 1.6;
+            margin-bottom: 0; /* Remove default p margin if it's inside li */
+        }
+
+
+        .apply-button-primary { /* For the main save button */
+             background-color: var(--primary-color);
+             color: var(--white);
+        }
+        .apply-button-primary:hover {
+            background-color: #0056b3; /* Darker primary */
+        }
+
+        .apply-button-secondary {
+            background-color: #6c757d;
+            color: var(--white);
+        }
+        .apply-button-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .apply-button-danger {
+            background-color: #dc3545;
+            color: var(--white);
+        }
+        .apply-button-danger:hover {
+            background-color: #c82333;
+        }
+
+
+        #notes-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin-top: 15px;
+        }
+
+        #notes-list li {
+            background-color: var(--white);
+            border: 1px solid #e9ecef; /* Lighter border */
+            padding: 15px; /* Increased padding */
+            border-radius: var(--border-radius);
+            margin-bottom: 12px; /* Increased margin */
+            display: flex;
+            flex-direction: column; /* Stack text and meta/actions */
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07); /* Slightly more shadow */
+            transition: box-shadow 0.2s;
+        }
+        #notes-list li:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+
+        #notes-list li .note-content-display { /* For text and timestamp */
+            margin-bottom: 10px;
+        }
+
+        #notes-list li .note-text {
+            font-size: 1em;
+            color: var(--text-color);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        #notes-list li .note-timestamp {
+            font-size: 0.75em; /* Smaller timestamp */
+            color: #6c757d; /* Muted color */
+            margin-top: 8px; /* Space above timestamp */
+            display: block;
+        }
+
+        #notes-list li .note-actions {
+            margin-top: auto; /* Pushes to the bottom if flex direction was row */
+            align-self: flex-end; /* Aligns button to the right */
+        }
+
+        #notes-list li .delete-note-btn {
+            background-color: transparent;
+            color: var(--accent-color); /* Using accent for delete, can be changed */
+            border: none;
+            padding: 6px 8px; /* Slightly more padding */
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+            border-radius: var(--border-radius);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #notes-list li .delete-note-btn:hover {
+            background-color: var(--accent-color); /* Use accent color for hover bg */
+            color: var(--white); /* White text on hover */
+        }
+
+
+    </style>
+</head>
+<body>
+    <div id="notification-banner">
+        <span>New: Exciting opportunities daily! Apply now!</span>
+        <button id="dismiss-notification" aria-label="Dismiss notification">&times;</button>
+    </div>
+    <main class="container">
+        <header id="parallax-header">
+            <h1>Urgent Hiring: Remote Content Engagement Specialist</h1>
+            <p class="subtitle">Flexible, Home-Based Opportunity with Daily Payments!</p>
+        </header>
+
+        <div class="urgency-banner">
+            🔥 Limited Opportunity: Open to the <span class="highlight">first 500 qualified applicants!</span> Don't miss out! 🔥
+        </div>
+
+        <section id="job-description" class="section-content">
+            <h2>Job Description</h2>
+            <p>We are seeking motivated and detail-oriented individuals for the role of Remote Content Engagement Specialist. This is a unique, fully remote opportunity to earn significant daily income by completing various online content engagement tasks. You'll play a crucial role in helping our clients improve their online presence and content visibility.</p>
+            <p>No prior experience? No problem! We provide all the necessary guidance. If you're reliable, eager to learn, and looking for a flexible way to earn, this is for you!</p>
+        </section>
+
+        <section id="compensation-benefits" class="section-content">
+            <h2>Compensation & Benefits</h2>
+            <p>This role offers an exceptional payment structure designed for immediate reward and flexibility:</p>
+            <ul>
+                <li><strong class="highlight">Earn $50 to $500 PER DAY</strong>, based on task volume and quality.</li>
+                <li><strong class="highlight">Payments are INSTANT and EVERY DAY!</strong> Complete your tasks, get paid the same day.</li>
+                <li>Work from the comfort of your home, on your own schedule.</li>
+                <li>Opportunity to increase earnings with consistent performance.</li>
+                <li>Gain experience in the rapidly growing digital content industry.</li>
+            </ul>
+        </section>
+
+        <section id="responsibilities" class="section-content">
+            <h2>Key Responsibilities</h2>
+            <ul>
+                <li>Engage with various forms of online content as per guidelines.</li>
+                <li>Provide feedback and complete tasks accurately and efficiently.</li>
+                <li>Maintain strict confidentiality and adhere to data protection policies.</li>
+                <li>Ensure high-quality output for all assigned tasks.</li>
+                <li>Communicate effectively with the support team if issues arise.</li>
+            </ul>
+        </section>
+
+        <section id="qualifications" class="section-content">
+            <h2>What You Need to Succeed</h2>
+            <ul>
+                <li>Reliable high-speed internet connection.</li>
+                <li>Access to a computer or a modern smartphone.</li>
+                <li>Strong attention to detail and ability to follow instructions precisely.</li>
+                <li>Basic computer literacy and ability to navigate websites and apps.</li>
+                <li>Good time-management skills and self-discipline for remote work.</li>
+                <li>Must be 18 years or older.</li>
+                <li>Ability to start immediately is a plus!</li>
+            </ul>
+        </section>
+
+        <section id="why-join-us" class="section-content">
+            <h2>Why This Opportunity is Unique</h2>
+            <p>Beyond the competitive daily pay, this role offers:</p>
+            <ul>
+                <li><strong>Unmatched Flexibility:</strong> Choose your hours and work when it suits you.</li>
+                <li><strong>Instant Gratification:</strong> See the results of your work with same-day payments.</li>
+                <li><strong>No Commute:</strong> Save time and money by working entirely remotely.</li>
+                <li><strong>Simple Start:</strong> Easy onboarding process to get you earning quickly.</li>
+                <li><strong>Be Part of Something New:</strong> Join an innovative program at the ground level.</li>
+            </ul>
+        </section>
+
+        <section id="company-values-section" class="section-content">
+            <p class="loading-text">Loading company values...</p>
+        </section>
+
+        <section id="application-notes-section" class="section-content">
+            <h2>My Application Notes</h2>
+            <p class="notes-description">Use this space to jot down any personal notes about your application process, reminders, or questions. These notes are saved locally in your browser and are not submitted with your application.</p>
+            <textarea id="application-note-text" rows="5" placeholder="Enter your notes here..."></textarea>
+            <div class="notes-controls">
+                <button id="save-note-btn" class="apply-button-primary">Save Note</button>
+                <button id="load-notes-btn" class="apply-button-secondary">Refresh Notes</button>
+                <button id="clear-notes-btn" class="apply-button-danger">Clear All Notes</button>
+            </div>
+            <h3>Saved Notes:</h3>
+            <ul id="notes-list">
+                <!-- Notes will be loaded here by JavaScript -->
+            </ul>
+        </section>
+
+        <section id="how-to-apply" class="apply-section">
+            <h2>Ready to Start Earning Daily?</h2>
+            <p>This is a time-sensitive opportunity for the <strong class="highlight">first 500 qualified individuals</strong>. If you're ready to take control of your earnings with a flexible, remote role, apply now!</p>
+            <p>Send your brief application or expression of interest to: <strong style="color: var(--primary-color);">apply_now_@_example_jobs.com</strong> (Please use "Remote Specialist Application" as the subject line).</p>
+            <a href="mailto:apply_now_@_example_jobs.com?subject=Remote Specialist Application" class="apply-button">Apply Now & Secure Your Spot!</a>
+            <p style="margin-top:15px; font-size:0.9em;">We are processing applications rapidly and aim to get successful candidates started within 24-48 hours.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Dynamic Opportunities Hub. All rights reserved.</p>
+        <p>Note: This is a special project-based engagement. Income is based on completed tasks and may vary.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
