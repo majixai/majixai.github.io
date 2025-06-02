@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingView GenAI Integration</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        header { background-color: #f0f0f0; padding: 1em; text-align: center; }
+        main { flex-grow: 1; display: flex; padding: 1em; }
+        #controls { width: 300px; padding-right: 1em; border-right: 1px solid #ccc; }
+        #chart_and_predictions { flex-grow: 1; padding-left: 1em; }
+        #tradingview_widget_container { height: 500px; border: 1px solid #eee; margin-bottom: 1em; }
+        #predictions_container { border: 1px solid #eee; padding: 1em; }
+        .control-group { margin-bottom: 1em; }
+        label { display: block; margin-bottom: 0.25em; }
+        input[type="text"], select { width: 100%; padding: 0.5em; box-sizing: border-box; }
+        button { padding: 0.75em; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TradingView GenAI Market Analysis</h1>
+    </header>
+    <main>
+        <aside id="controls">
+            <h2>Controls</h2>
+            <div class="control-group">
+                <label for="symbol_input">Symbol (e.g., NASDAQ:AAPL, FX:EURUSD, BINANCE:BTCUSDT):</label>
+                <input type="text" id="symbol_input" value="NASDAQ:AAPL">
+            </div>
+            <div class="control-group">
+                <label for="timeframe_select">Timeframe:</label>
+                <select id="timeframe_select">
+                    <option value="1H">Short-term (&lt;1 hour)</option>
+                    <option value="1D">Medium-term (&lt;3 days)</option>
+                    <option value="1W">Long-term (&gt;3 days)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="chart_pattern_input">Chart Pattern (Optional):</label>
+                <input type="text" id="chart_pattern_input" placeholder="e.g., Head and Shoulders">
+            </div>
+            <button id="analyze_button">Analyze & Predict</button>
+        </aside>
+        <section id="chart_and_predictions">
+            <div id="tradingview_widget_container">
+                <!-- TradingView Widget will be loaded here -->
+            </div>
+            <div id="predictions_container">
+                <h3>GenAI Predictions:</h3>
+                <p id="prediction_output">Predictions will appear here...</p>
+            </div>
+        </section>
+    </main>
+    <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script type="module" src="./jinx_strategy/constants.js"></script>
+    <script type="module" src="./jinx_strategy/types.js"></script>
+    <script type="module" src="./jinx_strategy/services/indexedDBService.js"></script>
+    <script type="module" src="./jinx_strategy/components/TradingViewWidget.js"></script>
+    <!-- Ensure geminiService.js is correctly referenced if it's not automatically handled by module resolution -->
+    <script type="module">
+        const { TradingViewWidget } = await import('./jinx_strategy/components/TradingViewWidget.js');
+        const { initDB, saveFMPCacheToDB, getFMPCacheFromDB } = await import('./jinx_strategy/services/indexedDBService.js');
+        const { getPrediction } = await import('./jinx_strategy/services/geminiService.js'); // Updated import
+        console.log("TradingView GenAI page loaded.");
+        const symbolInput = document.getElementById('symbol_input');
+        const timeframeSelect = document.getElementById('timeframe_select');
+        const chartPatternInput = document.getElementById('chart_pattern_input');
+        const analyzeButton = document.getElementById('analyze_button');
+        const widgetContainer = document.getElementById('tradingview_widget_container');
+        const predictionOutput = document.getElementById('prediction_output');
+        let currentSymbol = symbolInput.value;
+        let currentTimeframe = timeframeSelect.value;
+        function mapSelectedTimeToTradingViewInterval(selectedTimeframe) {
+            if (selectedTimeframe === "1H") return "60";
+            if (selectedTimeframe === "1D") return "D";
+            if (selectedTimeframe === "1W") return "W";
+            return "D";
+        }
+        function renderWidget(symbol, interval) {
+            if (typeof TradingViewWidget !== 'function') {
+                console.error('TradingViewWidget is not loaded correctly.');
+                widgetContainer.innerHTML = '<p>Error: TradingView Widget component not available.</p>';
+                return;
+            }
+            const element = React.createElement(TradingViewWidget, {
+                symbol: symbol,
+                interval: interval,
+                theme: "light",
+            });
+            ReactDOM.render(element, widgetContainer);
+        }
+        renderWidget(currentSymbol, mapSelectedTimeToTradingViewInterval(currentTimeframe));
+        symbolInput.addEventListener('change', (event) => {
+            currentSymbol = event.target.value;
+            renderWidget(currentSymbol, mapSelectedTimeToTradingViewInterval(currentTimeframe));
+        });
+        timeframeSelect.addEventListener('change', (event) => {
+            currentTimeframe = event.target.value;
+            renderWidget(currentSymbol, mapSelectedTimeToTradingViewInterval(currentTimeframe));
+        });
+        analyzeButton.addEventListener('click', async () => {
+            predictionOutput.textContent = 'Fetching predictions...';
+            const currentSymbol = symbolInput.value;
+            const currentTimeframe = timeframeSelect.value;
+            const currentPattern = chartPatternInput.value.trim();
+
+            console.log(`Analyze button clicked. Symbol: ${currentSymbol}, Timeframe: ${currentTimeframe}, Pattern: ${currentPattern || 'N/A'}`);
+
+            // Ensure getPrediction is available
+            if (typeof getPrediction !== 'function') {
+                predictionOutput.textContent = 'Error: GenAI Prediction service not loaded.';
+                console.error('getPrediction function is not available.');
+                return;
+            }
+
+            try {
+                await initDB(); // Ensure DB is initialized
+                const patternForCache = currentPattern || 'none';
+                const cacheKey = `genai_prediction_${currentSymbol}_${currentTimeframe}_${patternForCache}`;
+
+                const cachedData = await getFMPCacheFromDB(cacheKey);
+
+                let finalPrediction;
+
+                if (cachedData && cachedData.data && (new Date().getTime() - new Date(cachedData.timestamp).getTime()) < (24 * 60 * 60 * 1000) ) { // Cache valid for 24 hours
+                    finalPrediction = cachedData.data;
+                    predictionOutput.innerHTML = `<strong>Loaded from Cache:</strong><pre>${JSON.stringify(finalPrediction, null, 2)}</pre>`;
+                    console.log("Loaded prediction from cache:", finalPrediction);
+                } else {
+                    console.log(cachedData ? "Cached data expired or invalid, fetching new prediction." : "No cached prediction found, fetching new prediction.");
+                    // Actual GenAI call
+                    finalPrediction = await getPrediction(currentSymbol, currentTimeframe, currentPattern);
+
+                    const dataToCache = {
+                        id: cacheKey,
+                        symbol: currentSymbol,
+                        timeframe: currentTimeframe,
+                        pattern: patternForCache,
+                        timestamp: new Date().toISOString(),
+                        data: finalPrediction // Store the actual prediction
+                    };
+                    await saveFMPCacheToDB(dataToCache);
+                    predictionOutput.innerHTML = `<strong>Fetched New Prediction:</strong><pre>${JSON.stringify(finalPrediction, null, 2)}</pre>`;
+                    console.log("Saved new prediction to cache:", dataToCache);
+                }
+            } catch (error) {
+                console.error("GenAI Prediction or Caching error:", error);
+                predictionOutput.textContent = `Error during analysis: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
