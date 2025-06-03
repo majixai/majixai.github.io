@@ -13,6 +13,7 @@ $(document).ready(function() {
     const $progressBar = $('#progress-bar');
     const $topicButtons = $('.topic-btn');
     const $optionsDisclaimer = $('#options-disclaimer');
+    const $lessonListContainer = $('#lesson-list-container'); // Cache the new element
 
     // --- IndexedDB ---
     let db;
@@ -104,12 +105,18 @@ $(document).ready(function() {
 
 
     function displayLesson(index) {
+        // Remove active class from any previously active lesson link in the side panel
+        $lessonListContainer.find('li.lesson-link').removeClass('active-lesson-link');
+
         if (index >= 0 && index < currentLessons.length) {
             const lesson = currentLessons[index];
             $lessonTitle.text(lesson.title).removeClass('clickable active-lesson'); // Title not clickable during lesson
             $lessonContent.html(lesson.content);
             currentLessonIndex = index;
             startLessonTimer(); // Start the 60-second timer
+
+            // Add active class to the current lesson link in the side panel
+            $lessonListContainer.find('li[data-lesson-index="' + index + '"]').addClass('active-lesson-link');
 
         } else if (currentLessons.length > 0 && index >= currentLessons.length) { // Topic completed
             $lessonTitle.text(selectedTopic.replace(/_/g, ' ') + " Topic Complete!").removeClass('clickable active-lesson');
@@ -147,7 +154,28 @@ $(document).ready(function() {
             currentLessons = [];
             currentLessonIndex = 0;
             selectedTopic = null;
+            displayLessonTitles([]); // Reset lesson titles panel
         }
+    }
+
+    // Function to display lesson titles in the side panel
+    function displayLessonTitles(lessons) {
+        $lessonListContainer.empty(); // Clear previous titles
+
+        if (!lessons || lessons.length === 0) {
+            $lessonListContainer.html('<p class="instructions">No lessons available for this topic, or please select a topic.</p>');
+            return;
+        }
+
+        const $ul = $('<ul></ul>');
+        lessons.forEach((lesson, index) => {
+            const $li = $('<li></li>')
+                .text(lesson.title)
+                .attr('data-lesson-index', index)
+                .addClass('lesson-link'); // Add a class for styling and event handling
+            $ul.append($li);
+        });
+        $lessonListContainer.append($ul);
     }
 
     function startLessonTimer() {
@@ -235,6 +263,7 @@ $(document).ready(function() {
             .done(function(data) {
                 if (data && data.length > 0) {
                     currentLessons = data;
+                    displayLessonTitles(currentLessons); // Populate side panel
                     displayLesson(0); // This will start the timer for the first lesson
                 } else {
                     $lessonTitle.text("No Lessons Found");
@@ -243,6 +272,7 @@ $(document).ready(function() {
                     $lessonTitle.removeClass('clickable active-lesson');
                     currentLessons = []; currentLessonIndex = 0; 
                     $optionsDisclaimer.removeClass('w3-show');
+                    displayLessonTitles([]); // Clear side panel
                 }
             })
             .fail(function(jqXHR, textStatus, errorThrown) {
@@ -254,7 +284,42 @@ $(document).ready(function() {
                 $lessonTitle.removeClass('clickable active-lesson');
                 currentLessons = []; currentLessonIndex = 0; selectedTopic = null; // Clear selectedTopic on load error
                 $optionsDisclaimer.removeClass('w3-show');
+                displayLessonTitles([]); // Clear side panel on failure
             });
+    });
+
+    // Event listener for lesson links in the side panel
+    $lessonListContainer.on('click', '.lesson-link', function() {
+        const $clickedLi = $(this);
+        const targetIndex = parseInt($clickedLi.data('lesson-index'), 10);
+
+        if (!isNaN(targetIndex) && currentLessons && targetIndex >= 0 && targetIndex < currentLessons.length) {
+            // If a lesson was actively being timed (lessonStartTime is set)
+            // AND this click is for a DIFFERENT lesson than the one being timed
+            if (lessonStartTime && selectedTopic && currentLessons.length > 0 && currentLessonIndex < currentLessons.length && currentLessonIndex !== targetIndex) {
+                // Clear current timer and log partial duration
+                if (lessonTimerInterval) {
+                    clearInterval(lessonTimerInterval);
+                    lessonTimerInterval = null;
+                }
+                const lesson = currentLessons[currentLessonIndex];
+                const duration = Math.round((Date.now() - lessonStartTime) / 1000); // Actual time spent
+
+                if (duration > 0) {
+                    addStudySession({
+                        date: new Date().toISOString().split('T')[0],
+                        duration: duration,
+                        lessonTitle: lesson.title,
+                        topic: selectedTopic,
+                        timestamp: Date.now()
+                    }).then(() => {
+                        renderCalendar(currentCalendarDate.getMonth(), currentCalendarDate.getFullYear());
+                    });
+                }
+                lessonStartTime = null; // Reset, new lesson will set its own start time via startLessonTimer()
+            }
+            displayLesson(targetIndex);
+        }
     });
 
     $lessonTitle.on('click', function() {
