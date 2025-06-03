@@ -241,3 +241,56 @@ em { font-style: italic; color: #8e44ad; }
     border-top: 1px solid #ddd;
     background-color: #f9f9f9 !important; /* Override w3-light-grey if needed for more distinction */
 }
+
+/* === Styles for Study Area Layout and Lesson Titles Panel === */
+#study-area-container {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-bottom: 20px; /* Spacing before calendar/next section */
+}
+
+#lesson-titles-panel {
+    /* w3-col m3 l3 classes handle width */
+    /* w3-card, w3-padding, w3-light-grey handle base style from HTML */
+    max-height: 65vh; /* Match lesson content max height */
+    overflow-y: auto;
+    margin-right: 16px; /* Space between panel and lesson content */
+    margin-bottom: 16px; /* Space if items wrap on small screens */
+}
+
+#lesson-list-container ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#lesson-list-container li.lesson-link {
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    background-color: #f8f9fa; /* Light default background */
+    border-radius: 4px;
+    cursor: pointer;
+    border-left: 5px solid transparent;
+    transition: background-color 0.2s ease, border-left-color 0.2s ease;
+    font-size: 0.95em;
+}
+
+#lesson-list-container li.lesson-link:hover {
+    background-color: #e9ecef; /* Adjusted hover color */
+}
+
+#lesson-list-container li.lesson-link.active-lesson-link {
+    background-color: #e0e6ed; /* Adjusted active background */
+    font-weight: bold;
+    color: #2c3e50; /* Darker text for active link */
+    border-left: 5px solid #007bff; /* Brighter blue for active lesson */
+}
+
+#lesson-list-container .instructions {
+    padding: 10px;
+    font-size: 0.9em;
+    color: #6c757d; /* Bootstrap secondary text color like */
+    text-align: center;
+}
+/* === End Styles for Study Area Layout === */

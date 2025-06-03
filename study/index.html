@@ -194,6 +194,7 @@
              display: none;
          }
 
+        /* Styles for lesson titles panel and related elements are now in style.css */
 
     </style>
 </head>
@@ -218,25 +219,39 @@
              <button class="w3-button w3-border w3-round-large topic-btn" data-topic="advanced_quant_finance">Advanced Quant Finance</button>
         </div>
 
-        <!-- Lesson Display Area -->
-        <div class="lesson-container w3-card w3-padding w3-round-large w3-white">
-            <!-- Title - becomes clickable once a topic is loaded -->
-            <h1 id="lesson-title" class="w3-large w3-center">Please Select a Topic Above</h1>
+        <!-- NEW: Main container for side panel and lesson content -->
+        <div id="study-area-container" class="w3-row">
 
-            <!-- Progress Bar - Make the container clickable -->
-            <div class="progress-bar-container w3-light-grey w3-round">
-                <div id="progress-bar" class="w3-green w3-round" style="width:0%"></div>
+            <!-- NEW: Side Panel for Lesson Titles -->
+            <div id="lesson-titles-panel" class="w3-col m3 l3 w3-card w3-padding w3-light-grey">
+                <h4 class="w3-center">Lessons</h4>
+                <div id="lesson-list-container">
+                    <!-- Lesson titles will be populated here by script.js -->
+                    <p class="instructions">Select a topic to see lessons.</p>
+                </div>
             </div>
 
-            <!-- Lesson Content Area -->
-            <div id="lesson-content" class="w3-light-grey w3-padding w3-round-large">
-                <p class="instructions">Welcome! Choose a subject from the buttons above to load lessons on that topic.</p>
-                 <!-- Disclaimer for Options / Finance (Initially hidden, JS will show if needed) -->
-                 <div id="options-disclaimer" class="w3-panel w3-pale-yellow w3-border w3-leftbar w3-border-yellow">
-                     <strong>Disclaimer:</strong> Content on financial markets and options trading involves substantial risk and is for educational purposes only. It does not constitute financial advice. Consult a qualified professional before making any decisions.
-                 </div>
+            <!-- EXISTING: Lesson Display Area (now part of flex) -->
+            <div class="lesson-container w3-col m9 l9 w3-card w3-padding w3-round-large w3-white" style="flex-grow: 1;">
+                <!-- Title - becomes clickable once a topic is loaded -->
+                <h1 id="lesson-title" class="w3-large w3-center">Please Select a Topic Above</h1>
+
+                <!-- Progress Bar - Make the container clickable -->
+                <div class="progress-bar-container w3-light-grey w3-round">
+                    <div id="progress-bar" class="w3-green w3-round" style="width:0%"></div>
+                </div>
+
+                <!-- Lesson Content Area -->
+                <div id="lesson-content" class="w3-light-grey w3-padding w3-round-large">
+                    <p class="instructions">Welcome! Choose a subject from the buttons above to load lessons on that topic.</p>
+                     <!-- Disclaimer for Options / Finance (Initially hidden, JS will show if needed) -->
+                     <div id="options-disclaimer" class="w3-panel w3-pale-yellow w3-border w3-leftbar w3-border-yellow">
+                         <strong>Disclaimer:</strong> Content on financial markets and options trading involves substantial risk and is for educational purposes only. It does not constitute financial advice. Consult a qualified professional before making any decisions.
+                     </div>
+                </div>
             </div>
-        </div>
+
+        </div> <!-- End study-area-container -->
 
         <!-- Calendar Section -->
         <div id="calendar-container" class="w3-container w3-margin-top w3-card w3-padding w3-round-large w3-white" style="width:100%;">
