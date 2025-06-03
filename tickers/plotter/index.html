@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-Curve Set Plot with Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: sans-serif; }
+        .config-header { margin-bottom: 15px; }
+        .config-header label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .config-header input { padding: 8px; width: calc(100% - 20px); margin-bottom: 10px; border: 1px solid #ccc; }
+        .curve-config-section { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; }
+        .curve-config-section h3 { margin-top: 0; }
+        .point-input { margin-bottom: 10px; }
+        .point-input label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .point-input input { padding: 8px; width: 150px; margin-right: 10px; }
+        button { padding: 10px 15px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+        #plot-area { width: 800px; height: 600px; margin-top: 20px; }
+        #data-display { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        #data-display h2 { margin-top: 0; }
+        .curve-data-display { margin-bottom: 15px; border-top: 1px dashed #eee; padding-top: 10px; }
+        .curve-data-display h4 { margin-top: 0; color: #555; }
+        #input-points-display, #amplitude-display, #storage-status, #config-info-display, #average-curve-data, #sd-curve-data, #y-at-x-display, #slope-display { margin-bottom: 10px; }
+        #input-points-display pre, #amplitude-display pre, #storage-status pre, #config-info-display pre, #average-curve-data pre, #sd-curve-data pre, #y-at-x-display pre, #slope-display pre { background-color: #f8f8f8; padding: 10px; border: 1px solid #eee; }
+        #storage-status pre, #config-info-display pre { font-size: 0.9em; color: #777; }
+        #curve-number-input { width: 80px; } /* Adjust width for number input */
+        #curve-configs-container { margin-top: 15px; } /* Container for dynamically generated curve inputs */
+    </style>
+</head>
+<body>
+
+    <h1>Multi-Curve Set Plot with Data</h1>
+
+    <div class="config-header">
+        <label for="curve-ticker">Set Name (Ticker):</label>
+        <input type="text" id="curve-ticker" placeholder="Enter a name for this curve set">
+    </div>
+
+    <div class="config-header">
+        <label for="curve-number-input">Number of Curves to Plot:</label>
+        <input type="number" id="curve-number-input" value="2" min="1">
+        <button id="generate-curves-button">Generate Curve Inputs</button>
+    </div>
+
+    <div id="curve-configs-container">
+    </div>
+
+    <button id="plot-button">Plot Curves</button>
+    <button id="save-config-button">Save Configuration</button>
+    <button id="load-config-button">Load Configuration</button>
+
+    <div id="plot-area"></div>
+
+    <div id="data-display">
+        <h2>Relevant Data</h2>
+        <div id="config-info-display">
+            <h3>Configuration Info:</h3>
+            <pre id="config-info-output"></pre>
+        </div>
+        <div id="average-curve-data">
+            <h3>Average Curve Data:</h3>
+            <pre id="average-curve-output"></pre>
+        </div>
+        <div id="sd-curve-data">
+            <h3>Standard Deviation Curve Data:</h3>
+            <pre id="sd-curve-output"></pre>
+        </div>
+        <div id="y-at-x-display">
+            <h3>Y at Min/Max X Dates (Average Curve):</h3>
+            <pre id="y-at-x-output"></pre>
+        </div>
+        <div id="slope-display">
+            <h3>Average Slope (Average Curve):</h3>
+            <pre id="slope-output"></pre>
+        </div>
+        <div id="individual-curves-data">
+        </div>
+        <div id="storage-status">
+            <pre id="storage-output"></pre>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', initializePage);
+        document.getElementById('plot-button').addEventListener('click', plotCurves);
+        document.getElementById('save-config-button').addEventListener('click', saveConfigToLocalStorage);
+        document.getElementById('load-config-button').addEventListener('click', loadConfigFromLocalStorage);
+        document.getElementById('generate-curves-button').addEventListener('click', generateCurveInputSections);
+
+        let curveConfigurations = []; // Array to hold configurations for multiple curves
+
+        function initializePage() {
+            generateCurveInputSections();
+            loadConfigFromLocalStorage();
+        }
+
+        function generateCurveInputSections() {
+            const numCurves = parseInt(document.getElementById('curve-number-input').value) || 1;
+            const container = document.getElementById('curve-configs-container');
+            container.innerHTML = '';
+
+
+            for (let i = 0; i < numCurves; i++) {
+                const curveSection = document.createElement('div');
+                curveSection.classList.add('curve-config-section');
+                curveSection.id = `curve-config-${i}`;
+
+                const curveHeader = document.createElement('h3');
+                curveHeader.textContent = `Curve ${i + 1} Configuration`;
+                curveSection.appendChild(curveHeader);
+
+                const tickerLabel = document.createElement('label');
+                tickerLabel.setAttribute('for', `curve-${i}-ticker`);
+                tickerLabel.textContent = `Curve ${i + 1} Name (Ticker):`;
+                curveSection.appendChild(tickerLabel);
+                const tickerInput = document.createElement('input');
+                tickerInput.type = 'text';
+                tickerInput.id = `curve-${i}-ticker`;
+                tickerInput.placeholder = `Curve ${i + 1} Name`;
+                curveSection.appendChild(tickerInput);
+
+                for (let j = 0; j < 3; j++) {
+                    const pointDiv = document.createElement('div');
+                    pointDiv.classList.add('point-input');
+                    const pointLabel = document.createElement('label');
+                    pointLabel.textContent = `Point ${j + 1}:`;
+                    pointDiv.appendChild(pointLabel);
+                    const dateInput = document.createElement('input');
+                    dateInput.type = 'date';
+                    dateInput.id = `curve-${i}-x${j + 1}`;
+                    dateInput.placeholder = `Date ${j + 1}`;
+                    dateInput.value = getDefaultDate(j); // Default dates
+                    pointDiv.appendChild(dateInput);
+                    const yInput = document.createElement('input');
+                    yInput.type = 'number';
+                    yInput.id = `curve-${i}-y${j + 1}`;
+                    yInput.placeholder = `Y${j + 1}`;
+                    yInput.value = getDefaultY(j); // Default Y values
+                    pointDiv.appendChild(yInput);
+                    curveSection.appendChild(pointDiv);
+                }
+                container.appendChild(curveSection);
+            }
+        }
+
+        function getDefaultDate(pointIndex) {
+            const today = new Date();
+            const dates = [
+                new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0],
+                new Date(today.getFullYear(), today.getMonth(), 5).toISOString().split('T')[0],
+                new Date(today.getFullYear(), today.getMonth(), 10).toISOString().split('T')[0]
+            ];
+            return dates[pointIndex] || today.toISOString().split('T')[0];
+        }
+
+        function getDefaultY(pointIndex) {
+            return [2, 4, 1][pointIndex] || '';
+        }
+
+
+        function getConfigFromInput() {
+            const numCurves = parseInt(document.getElementById('curve-number-input').value) || 1;
+            const configurations = [];
+            for (let i = 0; i < numCurves; i++) {
+                configurations.push({
+                    points: {
+                        x1: document.getElementById('curve-${i}-x1').value,
+                        y1: parseFloat(document.getElementById('curve-${i}-y1').value),
+                        x2: document.getElementById('curve-${i}-x2').value,
+                        y2: parseFloat(document.getElementById('curve-${i}-y2').value),
+                        x3: document.getElementById('curve-${i}-x3').value,
+                        y3: parseFloat(document.getElementById('curve-${i}-y3').value)
+                    }
+                });
+            }
+            return {
+                tickerSet: document.getElementById('curve-ticker').value, // Set ticker for the whole set
+                timestamp: new Date().toISOString(),
+                curves: configurations
+            };
+        }
+
+
+        function setInputFields(config) {
+            if (!config || !config.curves || config.curves.length === 0) return;
+
+            document.getElementById('curve-ticker').value = config.tickerSet || ""; // Set set ticker
+            document.getElementById('curve-number-input').value = config.curves.length;
+            generateCurveInputSections();
+
+            config.curves.forEach((curveConfig, index) => {
+                document.getElementById('curve-${index}-x1').value = curveConfig.points.x1;
+                document.getElementById('curve-${index}-y1').value = curveConfig.points.y1;
+                document.getElementById('curve-${index}-x2').value = curveConfig.points.x2;
+                document.getElementById('curve-${index}-y2').value = curveConfig.points.y2;
+                document.getElementById('curve-${index}-x3').value = curveConfig.points.x3;
+                document.getElementById('curve-${index}-y3').value = curveConfig.points.y3;
+            });
+        }
+
+
+        function saveConfigToLocalStorage() {
+            const config = getConfigFromInput();
+            localStorage.setItem('multiCurveConfigSet', JSON.stringify(config)); // Changed key to 'multiCurveConfigSet'
+            document.getElementById('storage-output').textContent = "Configurations saved to local storage.";
+        }
+
+        function loadConfigFromLocalStorage() {
+            const storedConfigJSON = localStorage.getItem('multiCurveConfigSet'); // Changed key to 'multiCurveConfigSet'
+            if (storedConfigJSON) {
+                try {
+                    const storedConfig = JSON.parse(storedConfigJSON);
+                    curveConfigurations = storedConfig.curves; // Store loaded configs globally (just curves array now)
+                    setInputFields(storedConfig);
+                    displayConfigInfo(storedConfig);
+                    document.getElementById('storage-output').textContent = "Configurations loaded from local storage.";
+                } catch (e) {
+                    console.error("Error parsing stored configurations from localStorage:", e);
+                    document.getElementById('storage-output').textContent = "Error loading configurations from local storage.";
+                }
+            } else {
+                document.getElementById('storage-output').textContent = "No configurations found in local storage.";
+                displayConfigInfo({});
+            }
+        }
+
+        function displayConfigInfo(configSet) { // Pass configSet now
+            let configText = "No configurations loaded.";
+            if (configSet && configSet.tickerSet && configSet.timestamp) {
+                configText = 'Set Ticker: ${configSet.tickerSet || "N/A"}, Saved Timestamp: ${configSet.timestamp || "N/A"}';
+            }
+            document.getElementById('config-info-output').textContent = configText;
+        }
+
+
+        function plotCurves() {
+            const configSet = getConfigFromInput(); // Get config set
+            curveConfigurations = configSet.curves; // Update global curve configurations
+            const allCurveTraces = [];
+            const allCurveYValues = [];
+
+            curveConfigurations.forEach((config, curveIndex) => {
+                const points = config.points;
+                const xPoints = [new Date(points.x1), new Date(points.x2), new Date(points.x3)];
+                const yPoints = [points.y1, points.y2, points.y3];
+
+                function interpolateLagrange(xValues, yValues) {
+                    return function(x) {
+                        let result = 0;
+                        for (let i = 0; i < xValues.length; i++) {
+                            let term = yValues[i];
+                            for (let j = 0; j < xValues.length; j++) {
+                                if (i !== j) {
+                                    term *= (x.getTime() - xValues[j].getTime()) / (xValues[i].getTime() - xValues[j].getTime());
+                                }
+                            }
+                            result += term;
+                        }
+                        return result;
+                    };
+                }
+
+                const lagrangePolynomial = interpolateLagrange(xPoints, yPoints);
+
+                const minDate = new Date(Math.min(...xPoints));
+                const maxDate = new Date(Math.max(...xPoints));
+                const curveXValues = [];
+                const curveYVals = [];
+                for (let currentDate = new Date(minDate); currentDate <= maxDate; currentDate.setDate(currentDate.getDate() + 1)) {
+                    curveXValues.push(new Date(currentDate));
+                    curveYVals.push(lagrangePolynomial(new Date(currentDate)));
+                }
+                allCurveYValues.push(curveYVals);
+
+                const curveTrace = {
+                    x: curveXValues,
+                    y: curveYVals,
+                    mode: 'lines',
+                    type: 'scatter',
+                    name: 'Curve ${curveIndex + 1}', // Default curve name, no ticker
+                    line: { shape: 'linear' }
+                };
+                allCurveTraces.push(curveTrace);
+            });
+
+            const averageCurveData = calculateAverageCurve(allCurveXValues()[0], allCurveYValues);
+            const averageCurveTrace = {
+                x: averageCurveData.xValues,
+                y: averageCurveData.yValues,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Average Curve',
+                line: { color: 'black', width: 2 }
+            };
+            allCurveTraces.push(averageCurveTrace);
+
+            const sdCurveData = calculateSDCurves(averageCurveData.xValues, allCurveYValues);
+            const upperSDTrace = {
+                x: sdCurveData.upperSD.xValues,
+                y: sdCurveData.upperSD.yValues,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Avg + SD',
+                line: { color: 'rgba(0, 0, 255, 0.5)', dash: 'dash' }
+            };
+            const lowerSDTrace = {
+                x: sdCurveData.lowerSD.xValues,
+                y: sdCurveData.lowerSD.yValues,
+                mode: 'lines',
+                type: 'scatter',
+                name: 'Avg - SD',
+                line: { color: 'rgba(0, 0, 255, 0.5)', dash: 'dash' }
+            };
+            allCurveTraces.push(upperSDTrace);
+            allCurveTraces.push(lowerSDTrace);
+
+
+            const layout = {
+                title: 'Curve Set: ${configSet.tickerSet || "Unnamed Set"}', // Set title using set ticker
+                xaxis: {
+                    title: 'Date (X)',
+                    type: 'date'
+                },
+                yaxis: { title: 'Y' }
+            };
+
+            Plotly.newPlot('plot-area', allCurveTraces, layout);
+
+            // ---- Display Relevant Data ----
+            displayRelevantData(configSet, curveConfigurations, allCurveYValues, averageCurveData, sdCurveData); // Pass configSet
+        }
+
+
+        function calculateAverageCurve(xValues, allCurveYValues) {
+            if (!allCurveYValues || allCurveYValues.length === 0 || xValues.length === 0) {
+                return { xValues: [], yValues: [] };
+            }
+
+            const numCurves = allCurveYValues.length;
+            const averageYValues = [];
+
+            for (let i = 0; i < xValues.length; i++) {
+                let sumY = 0;
+                for (let j = 0; j < numCurves; j++) {
+                    sumY += allCurveYValues[j][i];
+                }
+                averageYValues.push(sumY / numCurves);
+            }
+
+            return { xValues: xValues, yValues: averageYValues };
+        }
+
+
+        function calculateSDCurves(xValues, allCurveYValues) {
+             if (!allCurveYValues || allCurveYValues.length === 0 || xValues.length === 0) {
+                return { upperSD: {xValues: [], yValues: []}, lowerSD: {xValues: [], yValues: []} };
+            }
+
+            const numCurves = allCurveYValues.length;
+            const upperSDValues = [];
+            const lowerSDValues = [];
+
+            for (let i = 0; i < xValues.length; i++) {
+                const yValuesAtX = [];
+                for (let j = 0; j < numCurves; j++) {
+                    yValuesAtX.push(allCurveYValues[j][i]);
+                }
+                const stdev = standardDeviation(yValuesAtX);
+                const averageY = calculateAverageCurve(xValues, allCurveYValues).yValues[i];
+                upperSDValues.push(averageY + stdev);
+                lowerSDValues.push(averageY - stdev);
+            }
+
+            return {
+                upperSD: { xValues: xValues, yValues: upperSDValues },
+                lowerSD: { xValues: xValues, yValues: lowerSDValues }
+            };
+        }
+
+
+        function allCurveXValues() {
+            if (curveConfigurations.length > 0) {
+                 const points = curveConfigurations[0].points;
+                 const xPoints = [new Date(points.x1), new Date(points.x2), new Date(points.x3)];
+                 const minDate = new Date(Math.min(...xPoints));
+                 const maxDate = new Date(Math.max(...xPoints));
+                 const curveXValues = [];
+                 for (let currentDate = new Date(minDate); currentDate <= maxDate; currentDate.setDate(currentDate.getDate() + 1)) {
+                     curveXValues.push(new Date(currentDate));
+                 }
+                 return [curveXValues];
+            }
+            return [[]];
+        }
+
+
+        function displayRelevantData(configSet, curveConfigurations, allCurveYValues, averageCurveData, sdCurveData) { // Pass configSet
+            const individualCurvesDataContainer = document.getElementById('individual-curves-data');
+            individualCurvesDataContainer.innerHTML = '';
+
+            curveConfigurations.forEach((config, index) => {
+                const curveDataDisplay = document.createElement('div');
+                curveDataDisplay.classList.add('curve-data-display');
+                individualCurvesDataContainer.appendChild(curveDataDisplay);
+
+                const curveHeader = document.createElement('h4');
+                curveHeader.textContent = 'Curve ${index + 1} Data'; // Removed ticker from here
+                curveDataDisplay.appendChild(curveHeader);
+
+                const inputPointsDiv = document.createElement('div');
+                inputPointsDiv.id = 'input-points-curve-${index}';
+                inputPointsDiv.classList.add('input-points-display');
+                const inputPointsPre = document.createElement('pre');
+                const xPoints = [new Date(config.points.x1), new Date(config.points.x2), new Date(config.points.x3)];
+                const yPoints = [config.points.y1, config.points.y2, config.points.y3];
+                const inputPointsText = xPoints.map((x, idx) => '(${x.toLocaleDateString()}, ${yPoints[idx]})').join(', ');
+                inputPointsPre.textContent = "Input Points: " + inputPointsText;
+                inputPointsDiv.appendChild(inputPointsPre);
+                curveDataDisplay.appendChild(inputPointsDiv);
+
+                const amplitudeDiv = document.createElement('div');
+                amplitudeDiv.id = 'amplitude-curve-${index}';
+                amplitudeDiv.classList.add('amplitude-display');
+                const amplitudePre = document.createElement('pre');
+                const curveYVals = allCurveYValues[index];
+                let amplitudeText = "Amplitude: N/A";
+                if (curveYVals && curveYVals.length > 0) {
+                    const minY = Math.min(...curveYVals);
+                    const maxY = Math.max(...curveYVals);
+                    const amplitude = maxY - minY;
+                    amplitudeText = "Amplitude: " + amplitude.toFixed(2);
+                }
+                amplitudePre.textContent = amplitudeText;
+                amplitudeDiv.appendChild(amplitudePre);
+                curveDataDisplay.appendChild(amplitudeDiv);
+            });
+
+            // Display Average Curve Data
+            const averageCurveDataDiv = document.getElementById('average-curve-data');
+            let averageCurveDataText = "Amplitude: N/A"; // Default for average curve amplitude
+            if (averageCurveData.yValues.length > 0) {
+                const minY = Math.min(...averageCurveData.yValues);
+                const maxY = Math.max(...averageCurveData.yValues);
+                const amplitude = maxY - minY;
+                averageCurveDataText = "Amplitude: " + amplitude.toFixed(2);
+            }
+            document.getElementById('average-curve-output').textContent = averageCurveDataText;
+
+            // Display SD Curve Data
+            const sdCurveDataDiv = document.getElementById('sd-curve-data');
+            let sdCurveDataText = "SD Range: N/A";
+            if (sdCurveData.upperSD.yValues.length > 0 && sdCurveData.lowerSD.yValues.length > 0) {
+                let minLowerSD = Math.min(...sdCurveData.lowerSD.yValues);
+                let maxUpperSD = Math.max(...sdCurveData.upperSD.yValues);
+                let sdRange = maxUpperSD - minLowerSD;
+                sdCurveDataText = "SD Range (Max Upper SD - Min Lower SD): " + sdRange.toFixed(2);
+            }
+            document.getElementById('sd-curve-output').textContent = sdCurveDataText;
+
+            // Display Y at min/max X dates for Average Curve
+            const yAtXDataDiv = document.getElementById('y-at-x-display');
+            let yAtXText = "Min Date Y: N/A\nMax Date Y: N/A";
+            if (averageCurveData.xValues.length > 0) {
+                const minYValue = averageCurveData.yValues[0]; // Y at min X (first xValue)
+                const maxYValue = averageCurveData.yValues[averageCurveData.yValues.length - 1]; // Y at max X (last xValue)
+                yAtXText = 'Min Date (${averageCurveData.xValues[0].toLocaleDateString()}): ${minYValue.toFixed(2)}\nMax Date (${averageCurveData.xValues[averageCurveData.xValues.length - 1].toLocaleDateString()}): ${maxYValue.toFixed(2)}';
+            }
+            document.getElementById('y-at-x-output').textContent = yAtXText;
+
+            // Display Average Slope for Average Curve
+            const slopeDataDiv = document.getElementById('slope-display');
+            let slopeText = "Average Slope: N/A";
+            if (averageCurveData.xValues.length > 1) {
+                const startY = averageCurveData.yValues[0];
+                const endY = averageCurveData.yValues[averageCurveData.yValues.length - 1];
+                const timeDiffMs = averageCurveData.xValues[averageCurveData.xValues.length - 1] - averageCurveData.xValues[0];
+                const timeDiffDays = timeDiffMs / (1000 * 60 * 60 * 24); // Convert ms to days
+                const avgSlope = (endy - startY) / timeDiffDays;
+                slopeText = "Average Slope: " + avgSlope.toFixed(4) + " Y per day";
+            }
+            document.getElementById('slope-output').textContent = slopeText;
+
+
+            displayConfigInfo(configSet); // Display set config info
+        }
+
+
+        function standardDeviation(arr) {
+            if (!arr || arr.length < 2) return NaN;
+            const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const sqDiffArray = arr.map(val => (val - mean) ** 2);
+            const avgSqDiff = sqDiffArray.reduce((a, b) => a + b, 0) / (arr.length - 1);
+            return Math.sqrt(avgSqDiff);
+        }
+
+    </script>
+
+</body>
+</html>
