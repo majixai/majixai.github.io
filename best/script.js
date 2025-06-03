@@ -27,8 +27,11 @@
         // DOM References (kept public for now, could be refactored later)
         onlineUsersDiv;
         previousUsersDiv;
-        mainIframe;
-        mainIframe2;
+        mainIframe; // Will be less used directly, kept for now.
+        mainIframe2; // Will be less used directly, kept for now.
+        iframeCountSelector;
+        iframeGridArea;
+        iframeWrappers = [];
         storageTypeSelector;
         filterTagsSelect;
         filterAgeSelect;
@@ -53,6 +56,9 @@
         #lastFilteredUsers = [];
         #fetchInterval = null;
         #initialIframesSet = false;
+        #activeIframeCount = 2; // Default
+        #iframeContents = []; // To store {username, url} for each iframe slot
+        #maximizedIframeIndex = -1; // -1 means no iframe is maximized
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -73,8 +79,27 @@
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
             this.previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
-            this.mainIframe = document.getElementById("mainIframe");
-            this.mainIframe2 = document.getElementById("mainIframe2");
+
+            // New Iframe related DOM elements
+            this.iframeCountSelector = document.getElementById('iframeCountSelector');
+            this.iframeGridArea = document.querySelector('.iframe-column .iframe-grid-area'); // More specific selector
+            this.iframeWrappers = [];
+            for (let i = 1; i <= 4; i++) {
+                const wrapper = document.getElementById(`iframeWrapper${i}`);
+                if (wrapper) { // Check if element exists before pushing
+                    this.iframeWrappers.push(wrapper);
+                } else {
+                    console.warn(`App.constructor: iframeWrapper${i} not found.`);
+                }
+            }
+             // Initialize #iframeContents based on the number of wrappers found
+            this.#iframeContents = Array(this.iframeWrappers.length).fill(null);
+
+
+            // Legacy mainIframe references, might be phased out or used for specific main viewer
+            this.mainIframe = document.getElementById("mainIframe1"); // Updated ID
+            this.mainIframe2 = document.getElementById("mainIframe2"); // Updated ID
+
             this.storageTypeSelector = document.getElementById("storageType");
             this.filterTagsSelect = document.getElementById("filterTags");
             this.filterAgeSelect = document.getElementById("filterAge");
@@ -342,20 +367,36 @@
 
         #setDefaultIframes() {
             if (this.#initialIframesSet || !this.#allOnlineUsersData || this.#allOnlineUsersData.length === 0) return;
+
             const femaleUsers = this.#allOnlineUsersData.filter(user => user.gender === 'f');
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
+
             const topUser1 = femaleUsers[0];
             const topUser2 = femaleUsers[1];
-            if (this.mainIframe && topUser1) {
-                this.mainIframe.src = `https://chaturbate.com/embed/${topUser1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+
+            const targets = [
+                { user: topUser1, wrapperIndex: 0 },
+                { user: topUser2, wrapperIndex: 1 }
+            ];
+
+            for (let i = 0; i < targets.length; i++) {
+                const target = targets[i];
+                if (target.user && target.wrapperIndex < this.#activeIframeCount && this.iframeWrappers[target.wrapperIndex]) {
+                    const iframeElement = this.iframeWrappers[target.wrapperIndex].querySelector('iframe');
+                    if (iframeElement) {
+                        const embedUrl = `https://chaturbate.com/embed/${target.user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                        // Only set if currently blank, to avoid disrupting active viewing unless necessary
+                        if (iframeElement.src === 'about:blank' || this.#iframeContents[target.wrapperIndex] === null) {
+                            iframeElement.src = embedUrl;
+                            this.#iframeContents[target.wrapperIndex] = { username: target.user.username, url: embedUrl };
+                            console.log(`Default iframe ${target.wrapperIndex + 1} set to ${target.user.username}`);
+                        }
+                    }
+                }
             }
-            if (this.mainIframe2 && topUser2) {
-                this.mainIframe2.src = `https://chaturbate.com/embed/${topUser2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            } else if (this.mainIframe2 && topUser1 && !topUser2) {
-                 console.log("Only one top female user found. mainIframe2 not changed or cleared.");
-            }
-            this.#initialIframesSet = true;
+            this.#initialIframesSet = true; // Mark as set even if not all slots were filled
         }
+
 
         #populateFilters(users) {
             if (!this.filterTagsSelect || !this.filterAgeSelect) return;
@@ -684,13 +725,55 @@
         }
 
         #handleUserClick(user) {
-            if (!this.mainIframe || !this.mainIframe2 || !user || !user.username) return;
+            if (!user || !user.username) return;
+
+            const embedUrl = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
-            const selectedIframe = (iframeChoiceRadio?.value === 'mainIframe2') ? this.mainIframe2 : this.mainIframe;
-            selectedIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
-            this.#addToPreviousUsers(user).catch(console.error);
+            let explicitTargetIndex = -1;
+
+            if (iframeChoiceRadio) {
+                if (iframeChoiceRadio.value === 'mainIframe1') explicitTargetIndex = 0;
+                else if (iframeChoiceRadio.value === 'mainIframe2') explicitTargetIndex = 1;
+                // Add more conditions if radio buttons for iframe 3 and 4 are introduced
+            }
+
+            let finalTargetIndex = -1;
+
+            // Priority 1: Explicitly selected, active slot
+            if (explicitTargetIndex !== -1 && explicitTargetIndex < this.#activeIframeCount) {
+                finalTargetIndex = explicitTargetIndex;
+            } else {
+                // Priority 2: Find first available (empty) active slot
+                for (let i = 0; i < this.#activeIframeCount; i++) {
+                    if (this.#iframeContents[i] === null || this.iframeWrappers[i]?.querySelector('iframe')?.src === 'about:blank') {
+                        finalTargetIndex = i;
+                        break;
+                    }
+                }
+                // Priority 3: All active slots are full, replace the first one (index 0)
+                if (finalTargetIndex === -1 && this.#activeIframeCount > 0) {
+                    finalTargetIndex = 0;
+                }
+            }
+
+            if (finalTargetIndex !== -1 && this.iframeWrappers[finalTargetIndex]) {
+                const targetIframeElement = this.iframeWrappers[finalTargetIndex].querySelector('iframe');
+                if (targetIframeElement) {
+                    targetIframeElement.src = embedUrl;
+                    this.#iframeContents[finalTargetIndex] = { username: user.username, url: embedUrl };
+                    console.log(`User ${user.username} loaded into iframe ${finalTargetIndex + 1}`);
+
+                    this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
+                    this.#addToPreviousUsers(user).catch(console.error);
+                } else {
+                    console.error(`Target iframe element not found in wrapper ${finalTargetIndex + 1}.`);
+                }
+            } else {
+                console.warn("No suitable active iframe slot found or app not fully initialized for user click.");
+                // Optionally, inform the user if no iframe could be targeted.
+            }
         }
+
 
         async #addToPreviousUsers(user) {
             if (!user || !user.username) return;
@@ -781,6 +864,28 @@
 
             this.filterTagsSelect?.addEventListener("change", () => this.#applyFiltersAndDisplay());
             this.filterAgeSelect?.addEventListener("change", () => this.#applyFiltersAndDisplay());
+
+            // Iframe count selector listener
+            if (this.iframeCountSelector) {
+                this.iframeCountSelector.addEventListener('change', this.#handleIframeCountChange.bind(this));
+            } else {
+                console.warn("App.#setupEventListeners: iframeCountSelector not found.");
+            }
+
+            // Maximize/Restore button listeners
+            this.iframeWrappers.forEach((wrapper, index) => {
+                if (wrapper) {
+                    const button = wrapper.querySelector('.iframe-maximize-btn');
+                    if (button) {
+                        // Pass index to the handler. Bind 'this' for App context.
+                        button.addEventListener('click', this.#handleMaximizeRestoreClick.bind(this, index));
+                    } else {
+                        // This warning can be noisy if buttons are dynamically shown/hidden often.
+                        // console.warn(`App.#setupEventListeners: Maximize button not found for iframeWrapper${index + 1}.`);
+                    }
+                }
+            });
+
             document.getElementById("filterAge18")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: 18 }));
             document.getElementById("filterTagAsian")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'asian' }));
             document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
@@ -954,7 +1059,15 @@
 
         async start() { 
             console.log("App: Initializing application...");
-            if (!this.#validateDOMReferences()) return; 
+            if (!this.#validateDOMReferences()) return;
+
+            // Initialize activeIframeCount from the selector's current value
+            if (this.iframeCountSelector) {
+                this.#activeIframeCount = parseInt(this.iframeCountSelector.value, 10);
+            } else {
+                this.#activeIframeCount = 2; // Fallback default
+                console.warn("App.start: iframeCountSelector not found, defaulting to 2 active iframes.");
+            }
             
             await this.storageManager.init().catch(error => {
                 console.error("StorageManager initialization failed during App.start:", error);
@@ -968,13 +1081,46 @@
             this.#setupEventListeners(); 
             
             if (this.currentSnippetDisplay) {
-                this.storageManager.loadAllTextSnippets()
-                    .then(snippets => this.#displaySnippetsList(snippets)) 
-                    .catch(err => {
-                        console.error("Error loading initial snippets:", err);
-                        this.currentSnippetDisplay.innerHTML = '<p>Error loading snippets.</p>';
-                        this.#showSnippetStatus('Error loading snippets.', 'error'); 
-                    });
+                try {
+                    let existingSnippets = await this.storageManager.loadAllTextSnippets();
+
+                    const defaultSnippets = [
+                        "Hey there, handsome! 😉",
+                        "You make me blush. 😊",
+                        "Having a great time chatting with you! 😘",
+                        "Is it hot in here, or is it just you? 🔥",
+                        "Send a tip to see more? 짓"
+                    ];
+                    let newSnippetsWereAdded = false;
+
+                    for (const snippetText of defaultSnippets) {
+                        // Using .some() for clarity, .includes() would also work for simple string array
+                        if (!existingSnippets.some(s => s === snippetText)) {
+                            try {
+                                await this.storageManager.addTextSnippet(snippetText);
+                                console.log(`Default snippet added: "${snippetText}"`);
+                                newSnippetsWereAdded = true;
+                            } catch (addError) {
+                                console.error(`Failed to add default snippet "${snippetText}":`, addError);
+                                // Optionally show a non-critical error to the user or just log it
+                                // For now, just logging, as snippet functionality is not mission-critical.
+                            }
+                        }
+                    }
+
+                    if (newSnippetsWereAdded) {
+                        // Re-load if new default snippets were added to ensure the list is current
+                        existingSnippets = await this.storageManager.loadAllTextSnippets();
+                    }
+
+                    this.#displaySnippetsList(existingSnippets);
+
+                } catch (err) {
+                    console.error("Error loading or setting up initial snippets:", err);
+                    // Ensure currentSnippetDisplay is checked again before trying to set its innerHTML
+                    if(this.currentSnippetDisplay) this.currentSnippetDisplay.innerHTML = '<p>Error loading snippets.</p>';
+                    this.#showSnippetStatus('Error loading/initializing snippets.', 'error');
+                }
             }
             
             this.uiManager.showOnlineLoadingIndicator("Loading initial history...");
@@ -997,6 +1143,7 @@
             window.initializeAllUsersFromScriptJS = (cb) => { if(typeof cb==='function')cb() };
             
             this.#adjustLayoutHeights(); // Adjust heights after initial load
+            this.#updateIframeLayout(); // Apply initial iframe layout based on default/selected count
 
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
@@ -1008,6 +1155,149 @@
                 await this.#fetchDataAndUpdateUI(); 
             }, fetchIntervalDuration); 
         }
+
+        // New method to handle iframe count changes
+        #handleIframeCountChange(event) {
+            // If an iframe is currently maximized, restore it before changing layout
+            if (this.#maximizedIframeIndex !== -1) {
+                const maximizedWrapper = this.iframeWrappers[this.#maximizedIframeIndex];
+                if (maximizedWrapper) {
+                    maximizedWrapper.classList.remove('maximized');
+                    const button = maximizedWrapper.querySelector('.iframe-maximize-btn');
+                    if (button) button.textContent = 'Maximize';
+                }
+                if (this.iframeGridArea) { // Ensure iframeGridArea exists
+                    this.iframeGridArea.classList.remove('has-maximized');
+                }
+                this.#maximizedIframeIndex = -1;
+                // The call to #updateIframeLayout below will handle resetting view to multi-iframe
+            }
+
+            const newCount = parseInt(event.target.value, 10);
+            if (isNaN(newCount) || newCount < 1 || newCount > this.iframeWrappers.length) {
+                console.warn(`Invalid iframe count selected: ${event.target.value}. Defaulting to 1.`);
+                this.#activeIframeCount = 1; // Or use a defined MIN_IFRAMES constant
+                if(this.iframeCountSelector) this.iframeCountSelector.value = this.#activeIframeCount.toString();
+            } else {
+                this.#activeIframeCount = newCount;
+            }
+            console.log(`App: Iframe count changed to ${this.#activeIframeCount}`);
+            this.#updateIframeLayout(); // This will now set up the normal multi-view
+        }
+
+        // New method to update iframe visibility and layout class
+        #handleMaximizeRestoreClick(index) {
+            if (!this.iframeWrappers[index] || !this.iframeGridArea) {
+                console.error(`App.#handleMaximizeRestoreClick: Cannot toggle maximize: wrapper or grid area not found for index ${index}`);
+                return;
+            }
+
+            const clickedWrapper = this.iframeWrappers[index];
+            const clickedButton = clickedWrapper.querySelector('.iframe-maximize-btn');
+
+            if (this.#maximizedIframeIndex === index) { // Clicked "Restore" on the currently maximized iframe
+                clickedWrapper.classList.remove('maximized');
+                this.iframeGridArea.classList.remove('has-maximized');
+                if (clickedButton) clickedButton.textContent = 'Maximize';
+                this.#maximizedIframeIndex = -1;
+
+                // Restore the normal layout based on #activeIframeCount
+                this.#updateIframeLayout(); // This will ensure correct visibility and button states for all active iframes
+
+            } else { // Clicked "Maximize" on a non-maximized (or no iframe maximized)
+                // If another iframe is already maximized, restore it first
+                if (this.#maximizedIframeIndex !== -1 && this.iframeWrappers[this.#maximizedIframeIndex]) {
+                    this.iframeWrappers[this.#maximizedIframeIndex].classList.remove('maximized');
+                    const oldButton = this.iframeWrappers[this.#maximizedIframeIndex].querySelector('.iframe-maximize-btn');
+                    if (oldButton) oldButton.textContent = 'Maximize';
+                    // Note: its visibility will be handled by CSS once 'has-maximized' is on gridArea and it's not the new 'maximized' one.
+                }
+
+                // Maximize the clicked iframe
+                clickedWrapper.classList.add('maximized');
+                this.iframeGridArea.classList.add('has-maximized');
+                if (clickedButton) clickedButton.textContent = 'Restore';
+                this.#maximizedIframeIndex = index;
+
+                // Ensure other potentially visible buttons are correctly set to "Maximize"
+                // and non-maximized active iframes are hidden by CSS.
+                // The .maximized class and .has-maximized on parent will drive CSS to hide others.
+                // We just need to ensure the maximized one is visible.
+                clickedWrapper.style.display = 'flex';
+
+                // Update button text for all other wrappers, though they will be hidden by CSS
+                this.iframeWrappers.forEach((wrapper, i) => {
+                    if (i !== index) {
+                        const btn = wrapper.querySelector('.iframe-maximize-btn');
+                        if (btn) btn.textContent = 'Maximize';
+                    }
+                });
+            }
+            this.#adjustLayoutHeights(); // Recalculate heights after any layout change
+        }
+
+        #updateIframeLayout() {
+            if (!this.iframeGridArea || !this.iframeWrappers || this.iframeWrappers.length === 0) {
+                console.warn("App.#updateIframeLayout: iframeGridArea or iframeWrappers not initialized. Skipping layout update.");
+                return;
+            }
+
+            // If an iframe is maximized, this method should not override that by applying multi-iframe classes.
+            // The maximized state is dominant until explicitly restored.
+            if (this.#maximizedIframeIndex !== -1) {
+                // When one is maximized, CSS handles visibility. We just ensure buttons are correct.
+                this.iframeWrappers.forEach((wrapper, index) => {
+                    if (!wrapper) return;
+                    const button = wrapper.querySelector('.iframe-maximize-btn');
+                    if (button) {
+                        if (index < this.#activeIframeCount) { // Button potentially visible for active slots
+                             // If this is the maximized one, it's visible. If not, CSS hides it.
+                            button.style.display = 'inline-block'; // JS ensures button is available if slot is active
+                            button.textContent = (this.#maximizedIframeIndex === index) ? 'Restore' : 'Maximize';
+                        } else { // Inactive slots
+                            button.style.display = 'none';
+                        }
+                    }
+                });
+                this.#adjustLayoutHeights();
+                return; // Do not apply multi-layout classes if one is maximized
+            }
+
+            // Proceed with setting up normal multi-iframe layout
+            const currentLayoutClass = this.iframeGridArea.className.match(/iframes-\d+/)?.[0];
+            if (currentLayoutClass) {
+                this.iframeGridArea.classList.remove(currentLayoutClass);
+            }
+            this.iframeGridArea.classList.add(`iframes-${this.#activeIframeCount}`);
+            // console.log(`App.#updateIframeLayout: Applied class iframes-${this.#activeIframeCount} to iframeGridArea.`);
+
+            this.iframeWrappers.forEach((wrapper, index) => {
+                if (!wrapper) return;
+                const button = wrapper.querySelector('.iframe-maximize-btn');
+
+                if (index < this.#activeIframeCount) {
+                    wrapper.style.display = 'flex'; // Use 'flex' as .iframe-container is a flex item
+                    if (button) {
+                        button.style.display = 'inline-block';
+                        // Text should be "Maximize" as no iframe is maximized at this point in the logic flow
+                        button.textContent = 'Maximize';
+                    }
+                } else { // Inactive iframe slots
+                    wrapper.style.display = 'none';
+                    if (button) button.style.display = 'none';
+
+                    const iframe = wrapper.querySelector('iframe');
+                    if (iframe && iframe.src !== 'about:blank') {
+                        iframe.src = 'about:blank';
+                        // console.log(`App.#updateIframeLayout: Cleared and hid inactive iframe ${index + 1}.`);
+                    }
+                    this.#iframeContents[index] = null;
+                }
+            });
+
+            this.#adjustLayoutHeights();
+        }
+
 
         #adjustLayoutHeights() {
             console.log('App: Adjusting layout heights for .user-list elements...');

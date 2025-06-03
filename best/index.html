@@ -153,30 +153,62 @@
             <!-- Main Viewing Column -->
             <div class="iframe-column">
                 <h2>Viewer</h2>
+                <div class="iframe-config-controls" style="margin-bottom: 10px; padding: 10px; background-color: #efefef; border-radius: 4px;">
+                    <label for="iframeCountSelector" style="margin-right: 5px; font-weight: bold;">Number of Viewers:</label>
+                    <select id="iframeCountSelector">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
                 <div class="iframe-selector">
                     <label>
-                        <input type="radio" name="iframeChoice" value="mainIframe" checked> Viewport 1
+                        <input type="radio" name="iframeChoice" value="mainIframe1" checked> Target Viewport 1
                     </label>
                     <label>
-                        <input type="radio" name="iframeChoice" value="mainIframe2"> Viewport 2
+                        <input type="radio" name="iframeChoice" value="mainIframe2"> Target Viewport 2
                     </label>
+                    <!-- Note: These radio buttons might need to be dynamically updated or rethought
+                         when JS handles more than 2 iframes for user click targeting. -->
                 </div>
-                <div class="iframe-container">
-                    <iframe id="mainIframe"
-                            src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
-                            title="Main Viewer"
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                            sandbox="allow-scripts allow-same-origin allow-presentation">
-                            <!-- Security Note: sandbox limits iframe capabilities. Adjust 'allow-*' as needed but be cautious. -->
-                    </iframe>
-                </div>
-                 <div class="iframe-container">
-                    <iframe id="mainIframe2"
-                            src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
-                            title="Secondary Viewer"
-                            allow="autoplay; encrypted-media; picture-in-picture"
-                            sandbox="allow-scripts allow-same-origin allow-presentation">
-                     </iframe>
+                <div class="iframe-grid-area">
+                    <div class="iframe-container" id="iframeWrapper1">
+                        <iframe id="mainIframe1"
+                                title="Viewer 1"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                                src="about:blank">
+                        </iframe>
+                        <button class="iframe-maximize-btn" style="display: none;">Maximize</button>
+                    </div>
+                    <div class="iframe-container" id="iframeWrapper2">
+                        <iframe id="mainIframe2"
+                                title="Viewer 2"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                                src="about:blank">
+                        </iframe>
+                        <button class="iframe-maximize-btn" style="display: none;">Maximize</button>
+                    </div>
+                    <div class="iframe-container" id="iframeWrapper3" style="display: none;"> {/* Initially hidden if default is 2 */}
+                        <iframe id="mainIframe3"
+                                title="Viewer 3"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                                src="about:blank">
+                        </iframe>
+                        <button class="iframe-maximize-btn" style="display: none;">Maximize</button>
+                    </div>
+                    <div class="iframe-container" id="iframeWrapper4" style="display: none;"> {/* Initially hidden if default is 2 */}
+                        <iframe id="mainIframe4"
+                                title="Viewer 4"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                sandbox="allow-scripts allow-same-origin allow-presentation"
+                                src="about:blank">
+                        </iframe>
+                        <button class="iframe-maximize-btn" style="display: none;">Maximize</button>
+                    </div>
                 </div>
             </div>
 

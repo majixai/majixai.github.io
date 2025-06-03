@@ -15,7 +15,7 @@ body {
     line-height: 1.6;
     background-color: #f4f4f4;
     color: #333;
-    padding: 15px; /* Keep existing body padding */
+    padding: 0; /* Remove body padding, app-container will manage it */
     margin: 0; /* Ensure no default body margin */
     display: flex; 
     flex-direction: column; 
@@ -23,12 +23,12 @@ body {
 
 /* Main Application Container */
 .app-container {
-    max-width: 1600px;
-    margin: 0 auto; /* Keep centered */
+    max-width: none; /* Full width */
+    margin: 0; /* No horizontal auto margin */
     background: #fff;
-    padding: 20px; /* Keep padding */
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 10px; /* Consistent padding within the app */
+    border-radius: 0; /* Typically no radius for full-width root elements */
+    box-shadow: none; /* Typically no shadow for full-width root elements */
     display: flex;
     flex-direction: column;
     flex-grow: 1; /* Allow app-container to grow within body's flex context */
@@ -146,18 +146,32 @@ h2 {
     flex: 1; /* Share space equally */
     min-width: 280px; /* Minimum width before wrapping */
     /* max-height: 75vh; */ /* Limit height and make scrollable - Now handled by JS */
+    flex-grow: 1; /* Allow user columns to grow */
+    flex-basis: 28%; /* Suggest a smaller base, considering gap */
     display: flex;
     flex-direction: column; /* Stack title and list vertically */
 }
 
 .iframe-column {
-    flex: 2; /* Take more space */
+    flex-grow: 10; /* Make it grow much more than user columns */
+    flex-basis: 70%; /* Suggest a larger base size */
     min-width: 400px;
-    /* background-color, border, border-radius from existing */
-    padding: 15px; /* Keep existing padding for now */
-    display: flex; 
-    flex-direction: column; 
-    gap: 15px; /* This will replace margin-bottom on .iframe-container */
+    padding: 15px;
+    display: flex;
+    flex-direction: column; /* Stack .iframe-config-controls, .iframe-selector, and .iframe-grid-area */
+    /* gap: 15px; /* Original gap, can be adjusted or removed if specific children handle their margins */
+}
+
+/* New container for the grid of iframes */
+.iframe-grid-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Space between iframe containers */
+    width: 100%;
+    flex-grow: 1; /* Allow this area to take up available vertical space */
+    align-items: flex-start; /* Align rows to the top */
+    justify-content: center; /* Center items if a row is not full */
+    min-height: 0; /* For flex-grow to work properly in some contexts */
 }
 
 /* User List Styling */
@@ -306,12 +320,88 @@ h2 {
     background-color: #000; 
     border: 1px solid #ccc; 
     border-radius: 4px; 
-    flex-grow: 1; /* Each iframe container will take equal space in .iframe-column */
-    min-height: 0; /* Allow shrinking to prevent overflow if content is small */
-    /* REMOVE: padding-bottom: 56.25%; */
-    /* REMOVE: height: 0; */
-    /* REMOVE: margin-bottom: 15px; (now handled by gap on parent .iframe-column) */
+    background-color: #000; /* Ensure background for empty iframes */
+    border: 1px solid #444; /* Darker border for better visibility */
+    border-radius: 4px;
+    display: flex; /* Helps manage the iframe child if needed */
+    position: relative; /* For absolute positioning of the iframe inside */
+    overflow: hidden; /* Clip content like iframe borders if they overflow */
+    aspect-ratio: 16/9; /* Default aspect ratio for video */
+    min-width: 280px; /* Minimum width before wrapping heavily impacts layout */
+    /* flex-grow: 1; /* Allow container to grow - might be needed depending on parent */
+    /* min-height: 0; /* Default, good for flex items */
 }
+
+/* Layout for 1 iframe */
+.iframe-grid-area.iframes-1 .iframe-container:not([style*="display: none"]) {
+    flex-basis: 100%;
+    /* aspect-ratio will define height; ensure .iframe-grid-area can accommodate this height */
+}
+
+/* Layout for 2 iframes (side-by-side) */
+.iframe-grid-area.iframes-2 .iframe-container:not([style*="display: none"]) {
+    flex-basis: calc(50% - 5px); /* 10px gap / 2 items */
+}
+
+/* Layout for 3 iframes (currently aims for 3 in a row, may wrap to 2 top, 1 bottom) */
+.iframe-grid-area.iframes-3 .iframe-container:not([style*="display: none"]) {
+    flex-basis: calc(33.333% - 7px); /* 10px gap, (10*2)/3 items = ~6.67px, adjusted to 7 for safety */
+    /* If min-width forces wrap, they will form 2 on top, 1 on bottom.
+       The bottom one will be centered due to justify-content: center on parent. */
+}
+
+/* Layout for 4 iframes (2x2 grid) */
+.iframe-grid-area.iframes-4 .iframe-container:not([style*="display: none"]) {
+    flex-basis: calc(50% - 5px);
+    /* Height will be determined by aspect-ratio, forming a 2x2 grid.
+       The parent .iframe-grid-area needs to be tall enough. */
+}
+
+/* Maximize Button Styling */
+.iframe-maximize-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 10; /* Ensure it's above the iframe content */
+    padding: 4px 8px; /* Slightly smaller padding */
+    background-color: rgba(0,0,0,0.4);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em; /* Smaller font */
+    opacity: 0.7; /* Slightly transparent by default */
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.iframe-maximize-btn:hover {
+    background-color: rgba(0,0,0,0.6);
+    opacity: 1;
+}
+
+/* Styles for when an iframe is maximized */
+.iframe-grid-area.has-maximized {
+    /* Ensure the maximized child can truly take up space.
+       May not need specific rules if child uses !important. */
+    /* align-items: flex-start; */ /* Already default for .iframe-grid-area */
+    /* justify-content: flex-start; */ /* Change from center to flex-start */
+}
+
+.iframe-container.maximized {
+    flex-basis: 100% !important;
+    width: 100% !important; /* Fallback if flex-basis isn't enough */
+    height: 100% !important; /* Requires .iframe-grid-area to have a constrained or large height */
+    min-height: 300px; /* Ensure it's at least a certain height when maximized */
+    aspect-ratio: unset !important; /* Override aspect ratio for maximized state */
+    order: -1 !important; /* Bring to front in flex order */
+    z-index: 100; /* Ensure it's above other sibling containers if any overlap somehow */
+}
+
+/* Hide other non-maximized iframes when one is maximized */
+.iframe-grid-area.has-maximized .iframe-container:not(.maximized) {
+    display: none !important;
+}
+
 
 .iframe-container iframe {
     position: absolute;

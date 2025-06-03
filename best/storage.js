@@ -308,46 +308,127 @@ class StorageManager {
     }
 
     async addTextSnippet(newSnippetText) {
-        try {
-            let snippetList = await this.#loadFromDB('snippetList');
-            if (!Array.isArray(snippetList)) {
-                snippetList = []; // Initialize if not an array or undefined
+        const storageType = window.storageType;
+        // console.log(`Adding snippet to: ${storageType}`); // Optional: for debugging
+
+        if (storageType === 'local' || storageType === 'session') {
+            const storage = (storageType === 'local') ? localStorage : sessionStorage;
+            try {
+                let snippetList = await this.loadAllTextSnippets(); // This now correctly loads from 'local' or 'session'
+                if (!Array.isArray(snippetList)) { // Should be handled by loadAllTextSnippets, but as safeguard
+                    snippetList = [];
+                }
+                snippetList.push(newSnippetText);
+                storage.setItem('textSnippets', JSON.stringify(snippetList));
+                console.log(`Snippet added and list updated in ${storageType} storage.`);
+            } catch (error) {
+                console.error(`Error adding text snippet to ${storageType} storage:`, error);
+                throw error; // Re-throw to allow UI to handle
             }
-            snippetList.push(newSnippetText);
-            await this.#saveToDB('snippetList', snippetList);
-            console.log('Snippet list updated in IndexedDB.');
-        } catch (error) {
-            console.error('Error adding text snippet:', error);
-            throw error;
+        } else { // IndexedDB or other
+            if (this.#indexedDBFailed) {
+                const err = new Error('IndexedDB is not available. Cannot save snippet.');
+                console.error(err.message);
+                throw err;
+            }
+            try {
+                // For IDB, we use #loadFromDB and #saveToDB directly as before
+                let snippetList = await this.#loadFromDB('snippetList');
+                if (!Array.isArray(snippetList)) {
+                    snippetList = []; // Initialize if not an array or undefined
+                }
+                snippetList.push(newSnippetText);
+                await this.#saveToDB('snippetList', snippetList);
+                console.log('Snippet list updated in IndexedDB.');
+            } catch (error) {
+                console.error('Error adding text snippet to IndexedDB:', error);
+                throw error;
+            }
         }
     }
 
     async loadAllTextSnippets() {
-        try {
-            const snippets = await this.#loadFromDB('snippetList');
-            return Array.isArray(snippets) ? snippets : [];
-        } catch (error) {
-            console.error('Error loading all text snippets:', error);
-            return [];
+        const storageType = window.storageType;
+        // console.log(`Loading snippets from: ${storageType}`); // Optional: for debugging
+
+        if (storageType === 'local') {
+            try {
+                const storedSnippets = localStorage.getItem('textSnippets');
+                return storedSnippets ? JSON.parse(storedSnippets) : [];
+            } catch (error) {
+                console.error('Error loading snippets from localStorage:', error);
+                return [];
+            }
+        } else if (storageType === 'session') {
+            try {
+                const storedSnippets = sessionStorage.getItem('textSnippets');
+                return storedSnippets ? JSON.parse(storedSnippets) : [];
+            } catch (error) {
+                console.error('Error loading snippets from sessionStorage:', error);
+                return [];
+            }
+        } else { // IndexedDB or other (e.g. "indexedClicked")
+            if (this.#indexedDBFailed) {
+                console.error('IndexedDB is not available for snippets because it failed to initialize.');
+                return [];
+            }
+            try {
+                const snippets = await this.#loadFromDB('snippetList');
+                return Array.isArray(snippets) ? snippets : [];
+            } catch (error) {
+                console.error('Error loading all text snippets from IndexedDB:', error);
+                return [];
+            }
         }
     }
 
     async deleteTextSnippet(snippetTextToDelete) {
-         try {
-            let snippetList = await this.#loadFromDB('snippetList');
-            if (!Array.isArray(snippetList)) {
-                snippetList = [];
+        const storageType = window.storageType;
+        // console.log(`Deleting snippet from: ${storageType}`); // Optional: for debugging
+
+        if (storageType === 'local' || storageType === 'session') {
+            const storage = (storageType === 'local') ? localStorage : sessionStorage;
+            try {
+                let snippetList = await this.loadAllTextSnippets(); // Uses storage-aware loading
+                if (!Array.isArray(snippetList)) { // Safeguard
+                    snippetList = [];
+                }
+                const initialLength = snippetList.length;
+                snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
+
+                if (snippetList.length === initialLength) {
+                    console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in ${storageType} storage.`);
+                }
+                storage.setItem('textSnippets', JSON.stringify(snippetList));
+                console.log(`Snippet list updated in ${storageType} storage after deletion.`);
+            } catch (error) {
+                console.error(`Error deleting text snippet from ${storageType} storage:`, error);
+                throw error;
             }
-            const initialLength = snippetList.length;
-            snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
-            if (snippetList.length === initialLength) {
-                console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in list.`);
+        } else { // IndexedDB or other
+            if (this.#indexedDBFailed && storageType !== 'local' && storageType !== 'session') {
+                 // Adding this check here because the IDB path might be taken if storageType is e.g. 'indexedClicked'
+                 // and IDB has failed. loadFromDB/saveToDB might throw their own errors but this is more direct.
+                const err = new Error('IndexedDB is not available. Cannot delete snippet.');
+                console.error(err.message);
+                throw err;
             }
-            await this.#saveToDB('snippetList', snippetList);
-            console.log('Snippet list updated (after potential deletion) in IndexedDB.');
-        } catch (error) {
-            console.error('Error deleting text snippet:', error);
-            throw error;
+            try {
+                let snippetList = await this.#loadFromDB('snippetList');
+                if (!Array.isArray(snippetList)) {
+                    snippetList = [];
+                }
+                const initialLength = snippetList.length;
+                snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
+                if (snippetList.length === initialLength) {
+                    console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in IndexedDB.`);
+                }
+                await this.#saveToDB('snippetList', snippetList);
+                console.log('Snippet list updated (after potential deletion) in IndexedDB.');
+            } catch (error) {
+                console.error('Error deleting text snippet from IndexedDB:', error);
+                throw error;
+            }
         }
     }
     
