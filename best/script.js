@@ -184,6 +184,47 @@
             }
         }
 
+        #extractSocialMedia(descriptionString) {
+            if (!descriptionString || typeof descriptionString !== 'string') {
+                return {}; // Return an empty object if no description
+            }
+
+            const socialMediaPatterns = {
+                twitter: /twitter\.com\/([a-zA-Z0-9_]+)/ig,
+                instagram: /instagram\.com\/([a-zA-Z0-9_.]+)/ig,
+                // Add more patterns for other social media platforms (e.g., facebook, tiktok)
+                // Generic handles starting with @
+                handles: /@([a-zA-Z0-9_]+)/g
+            };
+
+            const foundSocialMedia = {};
+
+            for (const platform in socialMediaPatterns) {
+                const pattern = socialMediaPatterns[platform];
+                let match;
+                const matches = [];
+                while ((match = pattern.exec(descriptionString)) !== null) {
+                    if (platform === 'handles') {
+                        // Avoid capturing email addresses if they start with @
+                        if (match.index > 0 && descriptionString[match.index-1] === '@') {
+                            continue;
+                        }
+                        // Check if it's part of a URL already captured
+                        const potentialHandle = match[1];
+                        if (!Object.values(foundSocialMedia).flat().some(url => url.includes(potentialHandle))) {
+                            matches.push(`@${potentialHandle}`);
+                        }
+                    } else {
+                        matches.push(match[0]); // Store the full URL or the relevant part
+                    }
+                }
+                if (matches.length > 0) {
+                    foundSocialMedia[platform] = [...new Set(matches)]; // Store unique matches
+                }
+            }
+            return foundSocialMedia;
+        }
+
         #escapeHtml(unsafe) {
             return unsafe
                  .replace(/&/g, "&amp;")
@@ -227,6 +268,9 @@
                 // this.#lastFilteredUsers = []; // Kept for filter logic, applyFiltersAndDisplay will repopulate
 
                 if (this.#allOnlineUsersData.length > 0) {
+                    if (this.#allOnlineUsersData && this.#allOnlineUsersData.length > 0) {
+                        console.log("Sample user object:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
+                    }
                     this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
                     this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
                     await this.#displayPreviousUsers();
@@ -418,6 +462,16 @@
 
                 return isPublic && hasTags && isAgeMatch && matchesBirthdayFilter;
             });
+
+            // Sort by age if an age filter is active
+            if (filterAges.length > 0) {
+                this.#lastFilteredUsers.sort((a, b) => {
+                    // Ensure ages are numbers and handle cases where age might be missing
+                    const ageA = typeof a.age === 'number' ? a.age : Infinity;
+                    const ageB = typeof b.age === 'number' ? b.age : Infinity;
+                    return ageA - ageB;
+                });
+            }
             this.#displayOnlineUsersList(this.#lastFilteredUsers); 
         }
 
@@ -431,7 +485,20 @@
             const fragment = document.createDocumentFragment();
             usersToDisplay.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
-                const userElement = this.uiManager.createUserElement(user, 'online', this.#handleUserClick.bind(this), this.#removeFromPreviousUsers.bind(this), (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), this.#isBirthday.bind(this), this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), this.#displayPreviousUsers.bind(this), (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age));
+                const socialMedia = this.#extractSocialMedia(user.description);
+                const userElement = this.uiManager.createUserElement(
+                    user,
+                    'online',
+                    this.#handleUserClick.bind(this),
+                    this.#removeFromPreviousUsers.bind(this),
+                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
+                    this.#isBirthday.bind(this),
+                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
+                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
+                    this.#displayPreviousUsers.bind(this),
+                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
+                    socialMedia // Add the new socialMedia object here
+                );
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
@@ -446,6 +513,7 @@
             const fragment = document.createDocumentFragment();
             newUsers.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
+                const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
                     user, 
                     'online', 
@@ -453,10 +521,11 @@
                     this.#removeFromPreviousUsers.bind(this), 
                     (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
                     this.#isBirthday.bind(this), 
-                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), // These might need adjustment for append scenario
-                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), // These might need adjustment for append scenario
+                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
+                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this), 
-                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age)
+                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
+                    socialMedia // Add the new socialMedia object here
                 );
                 fragment.appendChild(userElement);
             });
@@ -632,6 +701,7 @@
                 const fragment = document.createDocumentFragment();
                 onlineUsersInBatch.forEach(user => {
                     if (!user || !user.image_url || !user.username) return;
+                    const socialMedia = this.#extractSocialMedia(user.description);
                     const userElement = this.uiManager.createUserElement(
                         user, 
                         'previous', 
@@ -641,8 +711,9 @@
                         this.#isBirthday.bind(this), 
                         this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), 
                         this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), 
-                        this.#displayPreviousUsers.bind(this), // Pass the new paginated version
-                        (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age)
+                        this.#displayPreviousUsers.bind(this),
+                        (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
+                        socialMedia // Add the new socialMedia object here
                     );
                     fragment.appendChild(userElement);
                 });

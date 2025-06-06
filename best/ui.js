@@ -31,7 +31,8 @@ class UIManager {
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
-        getDaysSinceOrUntil18thBirthdayCallback // New callback
+        getDaysSinceOrUntil18thBirthdayCallback, // Existing new callback
+        socialMediaData // Add new parameter for social media
     ) {
         const userElement = document.createElement("div");
         userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
@@ -54,6 +55,28 @@ class UIManager {
             }
         }
 
+        let socialMediaHTML = '';
+        if (socialMediaData && Object.keys(socialMediaData).length > 0) {
+            socialMediaHTML += '<p class="social-media-links w3-small">Social: ';
+            const links = [];
+            for (const platform in socialMediaData) {
+                socialMediaData[platform].forEach(handle => {
+                    // Create a clickable link if it's a URL, otherwise just display the handle
+                    if (handle.startsWith('http')) {
+                        links.push(`<a href="${handle}" target="_blank" rel="noopener noreferrer">${handle.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>`);
+                    } else if (handle.startsWith('@') && platform === 'twitter') {
+                        links.push(`<a href="https://twitter.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
+                    } else if (handle.startsWith('@') && platform === 'instagram') {
+                        links.push(`<a href="https://instagram.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
+                    }
+                    else {
+                        links.push(handle);
+                    }
+                });
+            }
+            socialMediaHTML += links.join(' | ') + '</p>';
+        }
+
         userElement.innerHTML = `
             <div class="user-image-container">
                 <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
@@ -67,6 +90,7 @@ class UIManager {
                 <p class="username w3-large">${user.username} ${newBadge}</p>
                 <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}</small></p>
                 ${birthdayProximityHTMLString}
+                ${socialMediaHTML}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
                 ${birthdayBanner}
             </div>
