@@ -324,6 +324,7 @@ export const AICallType = {
  * @property {InsightTabKey} [activeInsightTab]
  * @property {{ [key in AICallType]?: number }} [aiCallDurations]
  * @property {boolean} [showAnalyticsPanel]
+ * @property {boolean} [showUserTrades] - Whether the user trades panel is visible
  */
 
 /**
@@ -595,3 +596,14 @@ export const AICallType = {
 // Since we are aiming for pure JS without a build system initially, we'll remove these
 // and assume that any global variables (like Plotly from a CDN) will be available
 // when the scripts run. API keys would need to be handled securely, likely not hardcoded.
+
+/**
+ * @typedef {Object} UserTrade
+ * @property {string} id - Unique identifier for the trade
+ * @property {string} symbol
+ * @property {string} date
+ * @property {number} quantity
+ * @property {number} price
+ * @property {'buy' | 'sell'} type
+ * @property {string} [notes] - Optional notes
+ */
