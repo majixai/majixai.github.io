@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Indexer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>My Links</h1>
+    <form id="linkForm">
+        <input type="url" id="urlInput" placeholder="Enter URL" required>
+        <input type="text" id="titleInput" placeholder="Enter Title" required>
+        <button type="submit">Add Link</button>
+    </form>
+    <ul id="linkList"></ul>
+
+    <h2>Contacts</h2>
+    <form id="contactForm">
+        <input type="text" id="nameInput" placeholder="Enter Name" required>
+        <input type="email" id="emailInput" placeholder="Enter Email" required>
+        <input type="tel" id="phoneInput" placeholder="Enter Phone" required>
+        <button type="submit">Add Contact</button>
+    </form>
+    <ul id="contactList"></ul>
+
+    <h2>Iframes</h2>
+    <form id="iframeForm">
+        <input type="url" id="iframeUrlInput" placeholder="Enter URL for Iframe" required>
+        <input type="text" id="iframeTitleInput" placeholder="Enter Title for Iframe" required>
+        <button type="submit">Add Iframe</button>
+    </form>
+    <div id="iframeDisplayArea"></div>
+
+    <h2>Notes</h2>
+    <form id="noteForm">
+        <input type="text" id="noteTitleInput" placeholder="Enter Note Title" required>
+        <textarea id="noteContentInput" placeholder="Enter Note Content" required></textarea>
+        <button type="submit">Add Note</button>
+    </form>
+    <ul id="noteList"></ul>
+
+    <h2>Calendar</h2>
+    <form id="calendarForm">
+        <input type="date" id="eventDateInput" required>
+        <input type="text" id="eventDescriptionInput" placeholder="Enter Event Description" required>
+        <button type="submit">Add Event</button>
+    </form>
+    <ul id="calendarEventList"></ul>
+
+    <script src="script.js"></script>
+</body>
+</html>

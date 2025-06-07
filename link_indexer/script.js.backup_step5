@@ -945,23 +945,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (signals && signals.length > 0) {
             signals.forEach(signal => {
                 const listItem = document.createElement('li');
-                const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = `
-                    <div><strong>Platform:</strong> ${signal.platform}</div>
-                    <div><strong>Pair:</strong> ${signal.pair}</div>
-                    <div><strong>Direction:</strong> ${signal.direction}</div>
-                    ${signal.duration ? `<div><strong>Duration:</strong> ${signal.duration}</div>` : ''}
-                    ${signal.tradeValue ? `<div><strong>Trade Value:</strong> ${signal.tradeValue}</div>` : ''}
-                    ${signal.timeLimit ? `<div><strong>Time Limit:</strong> ${signal.timeLimit}</div>` : ''}
-                    ${signal.access ? `<div><strong>Access:</strong> ${signal.access}</div>` : ''}
-                    <div><strong>Added:</strong> ${new Date(signal.added).toLocaleString()}</div>
+                listItem.innerHTML = `
+                    <strong>Platform:</strong> ${signal.platform} <br>
+                    <strong>Pair:</strong> ${signal.pair} <br>
+                    <strong>Direction:</strong> ${signal.direction} <br>
+                    ${signal.duration ? `<strong>Duration:</strong> ${signal.duration} <br>` : ''}
+                    ${signal.tradeValue ? `<strong>Trade Value:</strong> ${signal.tradeValue} <br>` : ''}
+                    ${signal.timeLimit ? `<strong>Time Limit:</strong> ${signal.timeLimit} <br>` : ''}
+                    ${signal.access ? `<strong>Access:</strong> ${signal.access} <br>` : ''}
+                    <strong>Added:</strong> ${new Date(signal.added).toLocaleString()} <br>
+                    <strong>Raw Text:</strong> <pre>${signal.rawText}</pre>
                 `;
-                listItem.appendChild(contentDiv);
-
-                const rawTextDiv = document.createElement('div');
-                rawTextDiv.textContent = signal.rawText;
-                rawTextDiv.classList.add('raw-text-display');
-                listItem.appendChild(rawTextDiv);
 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete Signal';
@@ -1023,30 +1017,20 @@ function deleteDetailedTradingSignal(signalId) {
                         tiersHTML += `<li>Duration: ${tier.duration}, Profit: ${tier.profit}, Min Amount: ${tier.minAmount}</li>`;
                     });
                 } else {
-                    tiersHTML += '<li>No tiers specified.</li>';
+                    tiersHTML += '<li>No tiers specified</li>';
                 }
                 tiersHTML += '</ul>';
-                tiersDiv.innerHTML = tiersHTML;
 
-                const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = `
-                    <div><strong>Platform:</strong> ${signal.platform}</div>
-                    <div><strong>Product:</strong> ${signal.product}</div>
-                    <div><strong>Direction:</strong> ${signal.direction}</div>
-                    ${signal.orderTimeLimit ? `<div><strong>Order Time Limit:</strong> ${signal.orderTimeLimit}</div>` : ''}
-                    ${signal.tradeStyle ? `<div><strong>Trade Style:</strong> ${signal.tradeStyle}</div>` : ''}
+                listItem.innerHTML = `
+                    <strong>Platform:</strong> ${signal.platform} <br>
+                    <strong>Product:</strong> ${signal.product} <br>
+                    <strong>Direction:</strong> ${signal.direction} <br>
+                    ${signal.orderTimeLimit ? `<strong>Order Time Limit:</strong> ${signal.orderTimeLimit} <br>` : ''}
+                    ${signal.tradeStyle ? `<strong>Trade Style:</strong> ${signal.tradeStyle} <br>` : ''}
+                    ${tiersHTML}
+                    <strong>Added:</strong> ${new Date(signal.added).toLocaleString()} <br>
+                    <strong>Raw Text:</strong> <pre>${signal.rawText}</pre>
                 `;
-                listItem.appendChild(contentDiv);
-                listItem.appendChild(tiersDiv); // Append tiers div
-
-                const addedDiv = document.createElement('div');
-                addedDiv.innerHTML = `<div><strong>Added:</strong> ${new Date(signal.added).toLocaleString()}</div>`;
-                listItem.appendChild(addedDiv);
-
-                const rawTextDiv = document.createElement('div');
-                rawTextDiv.textContent = signal.rawText;
-                rawTextDiv.classList.add('raw-text-display');
-                listItem.appendChild(rawTextDiv);
 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete Signal';
@@ -1102,20 +1086,14 @@ function deleteTieredTradingSignal(signalId) {
         if (updates && updates.length > 0) {
             updates.forEach(update => {
                 const listItem = document.createElement('li');
-                const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = `
-                    ${update.platform ? `<div><strong>Platform:</strong> ${update.platform}</div>` : ''}
-                    <div><strong>Asset:</strong> ${update.asset}</div>
-                    <div><strong>Price:</strong> ${update.price}</div>
-                    ${update.profit ? `<div><strong>Profit:</strong> ${update.profit}</div>` : ''}
-                    <div><strong>Added:</strong> ${new Date(update.added).toLocaleString()}</div>
+                listItem.innerHTML = `
+                    ${update.platform ? `<strong>Platform:</strong> ${update.platform} <br>` : ''}
+                    <strong>Asset:</strong> ${update.asset} <br>
+                    <strong>Price:</strong> ${update.price} <br>
+                    ${update.profit ? `<strong>Profit:</strong> ${update.profit} <br>` : ''}
+                    <strong>Added:</strong> ${new Date(update.added).toLocaleString()} <br>
+                    <strong>Raw Text:</strong> <pre>${update.rawText}</pre>
                 `;
-                listItem.appendChild(contentDiv);
-
-                const rawTextDiv = document.createElement('div');
-                rawTextDiv.textContent = update.rawText;
-                rawTextDiv.classList.add('raw-text-display');
-                listItem.appendChild(rawTextDiv);
 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete Update';
@@ -1171,19 +1149,13 @@ function deletePositionUpdate(updateId) {
         if (invites && invites.length > 0) {
             invites.forEach(invite => {
                 const listItem = document.createElement('li');
-                const contentDiv = document.createElement('div');
-                contentDiv.innerHTML = `
-                    <div><strong>Platform:</strong> ${invite.platform}</div>
-                    ${invite.link ? `<div><strong>Link:</strong> <a href="${invite.link}" target="_blank">${invite.link}</a></div>` : ''}
-                    ${invite.message ? `<div><strong>Message:</strong> <pre>${invite.message}</pre></div>` : ''}
-                    <div><strong>Added:</strong> ${new Date(invite.added).toLocaleString()}</div>
+                listItem.innerHTML = `
+                    <strong>Platform:</strong> ${invite.platform} <br>
+                    ${invite.link ? `<strong>Link:</strong> <a href="${invite.link}" target="_blank">${invite.link}</a> <br>` : ''}
+                    ${invite.message ? `<strong>Message:</strong> <pre>${invite.message}</pre>` : ''}
+                    <strong>Added:</strong> ${new Date(invite.added).toLocaleString()} <br>
+                    <strong>Raw Text:</strong> <pre>${invite.rawText}</pre>
                 `;
-                listItem.appendChild(contentDiv);
-
-                const rawTextDiv = document.createElement('div');
-                rawTextDiv.textContent = invite.rawText;
-                rawTextDiv.classList.add('raw-text-display');
-                listItem.appendChild(rawTextDiv);
 
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete Invite';

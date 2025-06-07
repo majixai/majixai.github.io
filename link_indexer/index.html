@@ -48,6 +48,59 @@
     </form>
     <ul id="calendarEventList"></ul>
 
+    <h2>Detailed Trading Signals</h2>
+    <form id="detailedTradingSignalForm">
+        <input type="text" id="detailedSignalPlatformInput" placeholder="Platform (e.g., Block Crypto)" required>
+        <input type="text" id="detailedSignalPairInput" placeholder="Pair (e.g., BTC/USDT)" required>
+        <input type="text" id="detailedSignalDirectionInput" placeholder="Direction (e.g., Long/Short)" required>
+        <input type="text" id="detailedSignalDurationInput" placeholder="Duration (e.g., 300s)">
+        <input type="text" id="detailedSignalTradeValueInput" placeholder="Trade Value (e.g., $1500)">
+        <input type="text" id="detailedSignalTimeLimitInput" placeholder="Time Limit (e.g., 3 minutes)">
+        <input type="text" id="detailedSignalAccessInput" placeholder="Access (e.g., Members only)">
+        <textarea id="detailedSignalRawTextInput" placeholder="Raw Text of Signal" required></textarea>
+        <button type="submit">Add Detailed Signal</button>
+    </form>
+    <ul id="detailedTradingSignalList"></ul>
+
+    <h2>Tiered Trading Signals</h2>
+    <form id="tieredTradingSignalForm">
+        <input type="text" id="tieredSignalPlatformInput" placeholder="Platform (e.g., Block Crypto)" required>
+        <input type="text" id="tieredSignalProductInput" placeholder="Product (e.g., BTC/USDT)" required>
+        <input type="text" id="tieredSignalDirectionInput" placeholder="Direction (e.g., Buy Dowen)" required>
+        <input type="text" id="tieredSignalOrderTimeLimitInput" placeholder="Order Time Limit (e.g., 3 minutes)">
+        <input type="text" id="tieredSignalTradeStyleInput" placeholder="Trade Style (e.g., Full position)">
+        <p>Tiers (Duration, Profit %, Min Amount):</p>
+        <div id="tieredSignalTiersContainer">
+            <!-- Tier inputs will be dynamically added here by JS or manually entered in a textarea -->
+        </div>
+        <textarea id="tieredSignalTiersInput" placeholder="Tiers: e.g., 60s, 5%, $100; 180s, 15%, $10k" rows="3"></textarea>
+        <small>Enter tiers as semicolon-separated values: duration,profit,min_amount;duration2,profit2,min_amount2</small>
+        <textarea id="tieredSignalRawTextInput" placeholder="Raw Text of Signal" required></textarea>
+        <button type="submit">Add Tiered Signal</button>
+    </form>
+    <ul id="tieredTradingSignalList"></ul>
+
+    <h2>Position Updates</h2>
+    <form id="positionUpdateForm">
+        <input type="text" id="positionUpdatePlatformInput" placeholder="Platform (optional)">
+        <input type="text" id="positionUpdateAssetInput" placeholder="Asset (e.g., TRB)" required>
+        <input type="text" id="positionUpdatePriceInput" placeholder="Closing Price (e.g., 45.57)" required>
+        <input type="text" id="positionUpdateProfitInput" placeholder="Profit (e.g., 29%)">
+        <textarea id="positionUpdateRawTextInput" placeholder="Raw Text of Update" required></textarea>
+        <button type="submit">Add Position Update</button>
+    </form>
+    <ul id="positionUpdateList"></ul>
+
+    <h2>Platform Invites</h2>
+    <form id="platformInviteForm">
+        <input type="text" id="platformInviteNameInput" placeholder="Platform Name (e.g., Block Crypto)" required>
+        <input type="url" id="platformInviteLinkInput" placeholder="Registration Link">
+        <textarea id="platformInviteMessageInput" placeholder="Invite Message/Instructions" rows="4"></textarea>
+        <textarea id="platformInviteRawTextInput" placeholder="Raw Text of Invite" required></textarea>
+        <button type="submit">Add Platform Invite</button>
+    </form>
+    <ul id="platformInviteList"></ul>
+
     <script src="script.js"></script>
 </body>
 </html>
