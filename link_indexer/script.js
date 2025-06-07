@@ -1,15 +1,59 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Data structure placeholders
+    // Contact: { id, name, email, phone, linkedEventIds: [] }
+    // Iframe: { id, url, title, linkedEventIds: [] }
+    // Note: { id, title, content, linkedEventIds: [] }
+    // CalendarEvent: { id, date, description, contactIds: [], iframeIds: [], noteIds: [] }
+
     const urlInput = document.getElementById('urlInput');
     const titleInput = document.getElementById('titleInput');
-    const addLinkForm = document.querySelector('form');
+    const addLinkForm = document.querySelector('form'); // This is for links, might need to be more specific if IDs are generic
     const linkList = document.getElementById('linkList');
+
+    // DOM elements for Contacts
+    const contactForm = document.getElementById('contactForm');
+    const contactNameInput = document.getElementById('contactNameInput'); // Assuming ID 'contactNameInput'
+    const contactEmailInput = document.getElementById('contactEmailInput'); // Assuming ID 'contactEmailInput'
+    const contactPhoneInput = document.getElementById('contactPhoneInput'); // Assuming ID 'contactPhoneInput'
+    const contactList = document.getElementById('contactList');
+
+    // DOM elements for Iframes
+    const iframeForm = document.getElementById('iframeForm');
+    const iframeUrlInput = document.getElementById('iframeUrlInput');
+    const iframeTitleInput = document.getElementById('iframeTitleInput');
+    const iframeDisplayArea = document.getElementById('iframeDisplayArea');
+
+    // DOM elements for Notes
+    const noteForm = document.getElementById('noteForm');
+    const noteTitleInput = document.getElementById('noteTitleInput');
+    const noteContentInput = document.getElementById('noteContentInput');
+    const noteList = document.getElementById('noteList');
+    // Assuming the submit button in the note form has id="noteSubmitButton"
+    const noteSubmitButton = document.getElementById('noteSubmitButton');
+    // A cancel button can be added to the HTML or created dynamically.
+    // For simplicity, let's assume there's a <button id="cancelEditNoteButton" style="display:none;">Cancel Edit</button> in the form.
+    const cancelEditNoteButton = document.getElementById('cancelEditNoteButton');
+
+    let currentEditingNoteId = null; // To track if we are editing a note
+
+    // DOM elements for Calendar Events
+    const calendarEventForm = document.getElementById('calendarEventForm');
+    const calendarEventDateInput = document.getElementById('calendarEventDateInput');
+    const calendarEventDescriptionInput = document.getElementById('calendarEventDescriptionInput');
+    const calendarEventList = document.getElementById('calendarEventList');
 
     let db;
     const dbName = 'LinkIndexerDB';
-    const storeName = 'links';
+    const storeName = 'links'; // Keep this for the existing links functionality
 
-    // 1. Initialize IndexedDB
-    const request = indexedDB.open(dbName, 1);
+    // Define names for new stores
+    const contactsStoreName = 'contacts';
+    const iframesStoreName = 'iframes';
+    const notesStoreName = 'notes';
+    const calendarEventsStoreName = 'calendarEvents';
+
+    // 1. Initialize IndexedDB - Increment version to 2
+    const request = indexedDB.open(dbName, 2);
 
     request.onerror = (event) => {
         console.error('Database error:', event.target.errorCode);
@@ -17,10 +61,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     request.onupgradeneeded = (event) => {
         db = event.target.result;
+
+        // Existing 'links' store
         if (!db.objectStoreNames.contains(storeName)) {
-            const store = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('url', 'url', { unique: false }); // Allow duplicate URLs if titles are different, or change to true if URLs must be unique
+            const linkStore = db.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+            linkStore.createIndex('url', 'url', { unique: false });
             console.log('Object store created:', storeName);
+        }
+
+        // New 'contacts' store
+        if (!db.objectStoreNames.contains(contactsStoreName)) {
+            const contactsStore = db.createObjectStore(contactsStoreName, { keyPath: 'id', autoIncrement: true });
+            contactsStore.createIndex('name', 'name', { unique: false });
+            console.log('Object store created:', contactsStoreName);
+        }
+
+        // New 'iframes' store
+        if (!db.objectStoreNames.contains(iframesStoreName)) {
+            const iframesStore = db.createObjectStore(iframesStoreName, { keyPath: 'id', autoIncrement: true });
+            iframesStore.createIndex('title', 'title', { unique: false });
+            console.log('Object store created:', iframesStoreName);
+        }
+
+        // New 'notes' store
+        if (!db.objectStoreNames.contains(notesStoreName)) {
+            const notesStore = db.createObjectStore(notesStoreName, { keyPath: 'id', autoIncrement: true });
+            notesStore.createIndex('title', 'title', { unique: false });
+            console.log('Object store created:', notesStoreName);
+        }
+
+        // New 'calendarEvents' store
+        if (!db.objectStoreNames.contains(calendarEventsStoreName)) {
+            const calendarEventsStore = db.createObjectStore(calendarEventsStoreName, { keyPath: 'id', autoIncrement: true });
+            calendarEventsStore.createIndex('date', 'date', { unique: false });
+            console.log('Object store created:', calendarEventsStoreName);
         }
     };
 
@@ -28,22 +102,648 @@ document.addEventListener('DOMContentLoaded', () => {
         db = event.target.result;
         console.log('Database opened successfully:', dbName);
         displayLinks();
+        displayContacts(); // Initial display of contacts
+        displayIframes(); // Initial display of iframes
+        displayNotes(); // Initial display of notes
+        displayCalendarEvents(); // Initial display of calendar events
     };
 
-    // 2. Handle form submission
-    addLinkForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const url = urlInput.value.trim();
-        const title = titleInput.value.trim();
+    // 2. Handle Link form submission
+    if (addLinkForm) { // Ensure link form exists before adding listener
+        addLinkForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const url = urlInput.value.trim();
+            const title = titleInput.value.trim();
 
-        if (url && title) {
-            addLink(url, title);
-            urlInput.value = '';
-            titleInput.value = '';
-        } else {
-            alert('Please enter both URL and Title.');
+            if (url && title) {
+                addLink(url, title);
+                urlInput.value = '';
+                titleInput.value = '';
+            } else {
+                alert('Please enter both URL and Title.');
+            }
+        });
+    }
+
+
+    // START: Contact CRUD Functionality
+
+    // Handle Contact form submission
+    if (contactForm) {
+        contactForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const name = contactNameInput.value.trim();
+            const email = contactEmailInput.value.trim();
+            const phone = contactPhoneInput.value.trim();
+
+            if (name && email) { // Phone is optional for this example
+                addContact(name, email, phone);
+                contactNameInput.value = '';
+                contactEmailInput.value = '';
+                contactPhoneInput.value = '';
+            } else {
+                alert('Please enter at least Name and Email for the contact.');
+            }
+        });
+    }
+
+    function addContact(name, email, phone) {
+        if (!db) {
+            console.error('Database not initialized for adding contact.');
+            return;
         }
-    });
+        const transaction = db.transaction([contactsStoreName], 'readwrite');
+        const store = transaction.objectStore(contactsStoreName);
+        // Ensure linkedEventIds array is present
+        const contact = { name, email, phone, added: new Date(), linkedEventIds: [] };
+
+        const request = store.add(contact);
+
+        request.onsuccess = () => {
+            console.log('Contact added successfully:', contact);
+            displayContacts(); // Refresh the list
+        };
+
+        request.onerror = (event) => {
+            console.error('Error adding contact:', event.target.error);
+        };
+    }
+
+    function displayContacts() {
+        if (!db) {
+            console.error('Database not initialized for displaying contacts.');
+            if(contactList) contactList.innerHTML = '<li>Database not ready.</li>';
+            return;
+        }
+        if (!contactList) return;
+        contactList.innerHTML = '';
+
+        const transaction = db.transaction([contactsStoreName], 'readonly');
+        const store = transaction.objectStore(contactsStoreName);
+        const request = store.getAll();
+
+        request.onsuccess = (event) => {
+            const contacts = event.target.result;
+            if (contacts && contacts.length > 0) {
+                contacts.forEach(contact => {
+                    const listItem = document.createElement('li');
+                    let content = `Name: ${contact.name}, Email: ${contact.email}, Phone: ${contact.phone || 'N/A'}`;
+                    if (contact.linkedEventIds && contact.linkedEventIds.length > 0) {
+                        content += ` | Linked Event IDs: ${contact.linkedEventIds.join(', ')}`;
+                    } else {
+                        content += ` | Linked Event IDs: None`;
+                    }
+                    listItem.textContent = content;
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('delete-contact-btn');
+                    deleteButton.dataset.id = contact.id;
+                    deleteButton.addEventListener('click', function() {
+                        const idToDelete = parseInt(this.dataset.id, 10);
+                        deleteContact(idToDelete);
+                    });
+
+                    listItem.appendChild(deleteButton);
+                    contactList.appendChild(listItem);
+                });
+            } else {
+                contactList.innerHTML = '<li>No contacts stored yet.</li>';
+            }
+        };
+
+        request.onerror = (event) => {
+            console.error('Error retrieving contacts:', event.target.error);
+            contactList.innerHTML = '<li>Error loading contacts.</li>';
+        };
+    }
+
+    function deleteContact(contactId) {
+        if (isNaN(contactId)) {
+            console.error('Invalid contact ID for deletion.');
+            return;
+        }
+        if (!db) {
+            console.error('Database not initialized for deleting contact.');
+            return;
+        }
+
+        const transaction = db.transaction([contactsStoreName], 'readwrite');
+        const store = transaction.objectStore(contactsStoreName);
+        const request = store.delete(contactId);
+
+        request.onsuccess = () => {
+            console.log('Contact deleted successfully:', contactId);
+            displayContacts(); // Refresh the list
+            // TODO: When a contact is deleted, iterate through all calendarEvents.
+            // If an event's contactIds array contains contactId, remove it and put the event.
+        };
+
+        request.onerror = (event) => {
+            console.error('Error deleting contact:', event.target.error);
+        };
+    }
+    // END: Contact CRUD Functionality
+
+
+    // START: Iframe CRUD Functionality
+
+    // Handle Iframe form submission
+    if (iframeForm) {
+        iframeForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const url = iframeUrlInput.value.trim();
+            const title = iframeTitleInput.value.trim();
+
+            if (url && title) {
+                addIframe(url, title);
+                iframeUrlInput.value = '';
+                iframeTitleInput.value = '';
+            } else {
+                alert('Please enter both URL and Title for the iframe.');
+            }
+        });
+    }
+
+    function addIframe(url, title) {
+        if (!db) {
+            console.error('Database not initialized for adding iframe.');
+            return;
+        }
+        const transaction = db.transaction([iframesStoreName], 'readwrite');
+        const store = transaction.objectStore(iframesStoreName);
+        // Ensure linkedEventIds array is present
+        const iframeData = { url, title, added: new Date(), linkedEventIds: [] };
+
+        const request = store.add(iframeData);
+
+        request.onsuccess = () => {
+            console.log('Iframe added successfully:', iframeData);
+            displayIframes(); // Refresh the display area
+        };
+
+        request.onerror = (event) => {
+            console.error('Error adding iframe:', event.target.error);
+        };
+    }
+
+    function displayIframes() {
+        if (!db) {
+            console.error('Database not initialized for displaying iframes.');
+            if (iframeDisplayArea) iframeDisplayArea.innerHTML = '<p>Database not ready.</p>';
+            return;
+        }
+        if (!iframeDisplayArea) return;
+        iframeDisplayArea.innerHTML = '';
+
+        const transaction = db.transaction([iframesStoreName], 'readonly');
+        const store = transaction.objectStore(iframesStoreName);
+        const request = store.getAll();
+
+        request.onsuccess = (event) => {
+            const iframes = event.target.result;
+            if (iframes && iframes.length > 0) {
+                iframes.forEach(iframe => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.classList.add('iframe-item'); // For potential styling
+
+                    const titleEl = document.createElement('h4');
+                    titleEl.textContent = iframe.title;
+
+                    const urlEl = document.createElement('p');
+                    let urlContent = `URL: ${iframe.url}`;
+                    if (iframe.linkedEventIds && iframe.linkedEventIds.length > 0) {
+                        urlContent += ` | Linked Event IDs: ${iframe.linkedEventIds.join(', ')}`;
+                    } else {
+                        urlContent += ` | Linked Event IDs: None`;
+                    }
+                    urlEl.textContent = urlContent;
+
+                    // Optional: Display the actual iframe (use with caution due to security and layout implications)
+                    // const iframeEl = document.createElement('iframe');
+                    // iframeEl.src = iframe.url;
+                    // iframeEl.title = iframe.title;
+                    // iframeEl.width = "600"; // Example width
+                    // iframeEl.height = "400"; // Example height
+                    // itemDiv.appendChild(iframeEl);
+
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete Iframe';
+                    deleteButton.classList.add('delete-iframe-btn');
+                    deleteButton.dataset.id = iframe.id;
+                    deleteButton.addEventListener('click', function() {
+                        const idToDelete = parseInt(this.dataset.id, 10);
+                        deleteIframe(idToDelete);
+                    });
+
+                    itemDiv.appendChild(titleEl);
+                    itemDiv.appendChild(urlEl);
+                    itemDiv.appendChild(deleteButton);
+                    iframeDisplayArea.appendChild(itemDiv);
+                });
+            } else {
+                iframeDisplayArea.innerHTML = '<p>No iframes stored yet.</p>';
+            }
+        };
+
+        request.onerror = (event) => {
+            console.error('Error retrieving iframes:', event.target.error);
+            iframeDisplayArea.innerHTML = '<p>Error loading iframes.</p>';
+        };
+    }
+
+    function deleteIframe(iframeId) {
+        if (isNaN(iframeId)) {
+            console.error('Invalid iframe ID for deletion.');
+            return;
+        }
+        if (!db) {
+            console.error('Database not initialized for deleting iframe.');
+            return;
+        }
+
+        const transaction = db.transaction([iframesStoreName], 'readwrite');
+        const store = transaction.objectStore(iframesStoreName);
+        const request = store.delete(iframeId);
+
+        request.onsuccess = () => {
+            console.log('Iframe deleted successfully:', iframeId);
+            displayIframes(); // Refresh the display area
+            // TODO: When an iframe is deleted, iterate through all calendarEvents.
+            // If an event's iframeIds array contains iframeId, remove it and put the event.
+        };
+
+        request.onerror = (event) => {
+            console.error('Error deleting iframe:', event.target.error);
+        };
+    }
+    // END: Iframe CRUD Functionality
+
+
+    // START: Notes CRUD Functionality
+    if (noteForm) {
+        noteForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const title = noteTitleInput.value.trim();
+            const content = noteContentInput.value.trim();
+
+            if (title && content) {
+                if (currentEditingNoteId !== null) {
+                    updateNote(currentEditingNoteId, title, content);
+                } else {
+                    addNote(title, content);
+                }
+                noteTitleInput.value = '';
+                noteContentInput.value = '';
+                // Reset form state after add/update is handled by specific functions
+            } else {
+                alert('Please enter both Title and Content for the note.');
+            }
+        });
+    }
+
+    if (cancelEditNoteButton) {
+        cancelEditNoteButton.addEventListener('click', () => {
+            resetNoteFormState();
+        });
+    }
+
+    function resetNoteFormState() {
+        currentEditingNoteId = null;
+        noteTitleInput.value = '';
+        noteContentInput.value = '';
+        if (noteSubmitButton) noteSubmitButton.textContent = 'Add Note';
+        if (cancelEditNoteButton) cancelEditNoteButton.style.display = 'none';
+    }
+
+    function addNote(title, content) {
+        if (!db) {
+            console.error('Database not initialized for adding note.');
+            return;
+        }
+        const transaction = db.transaction([notesStoreName], 'readwrite');
+        const store = transaction.objectStore(notesStoreName);
+        // Ensure linkedEventIds array is present
+        const note = { title, content, added: new Date(), lastModified: new Date(), linkedEventIds: [] };
+
+        const request = store.add(note);
+
+        request.onsuccess = () => {
+            console.log('Note added successfully:', note);
+            displayNotes();
+            resetNoteFormState(); // Clear form and reset editing state
+        };
+
+        request.onerror = (event) => {
+            console.error('Error adding note:', event.target.error);
+        };
+    }
+
+    function displayNotes() {
+        if (!db) {
+            console.error('Database not initialized for displaying notes.');
+            if (noteList) noteList.innerHTML = '<li>Database not ready.</li>';
+            return;
+        }
+        if (!noteList) return;
+        noteList.innerHTML = '';
+
+        const transaction = db.transaction([notesStoreName], 'readonly');
+        const store = transaction.objectStore(notesStoreName);
+        const request = store.getAll();
+
+        request.onsuccess = (event) => {
+            const notes = event.target.result;
+            if (notes && notes.length > 0) {
+                notes.sort((a,b) => new Date(b.lastModified) - new Date(a.lastModified)); // Display newest first
+                notes.forEach(note => {
+                    const listItem = document.createElement('li');
+
+                    const titleEl = document.createElement('h3');
+                    titleEl.textContent = note.title;
+
+                    const contentEl = document.createElement('p');
+                    contentEl.textContent = note.content;
+                    // Simple line break handling, replace \n with <br>
+                    contentEl.innerHTML = note.content.replace(/\n/g, '<br>');
+
+
+                    const addedDate = new Date(note.added).toLocaleString();
+                    const modifiedDate = new Date(note.lastModified).toLocaleString();
+                    const dateInfo = document.createElement('small');
+                    let dateText = `Added: ${addedDate} | Modified: ${modifiedDate}`;
+                    if (note.linkedEventIds && note.linkedEventIds.length > 0) {
+                        dateText += ` | Linked Event IDs: ${note.linkedEventIds.join(', ')}`;
+                    } else {
+                        dateText += ` | Linked Event IDs: None`;
+                    }
+                    dateInfo.textContent = dateText;
+                    dateInfo.style.display = 'block';
+                    dateInfo.style.marginTop = '5px';
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete';
+                    deleteButton.classList.add('delete-note-btn');
+                    deleteButton.dataset.id = note.id;
+                    deleteButton.addEventListener('click', function() {
+                        deleteNote(parseInt(this.dataset.id, 10));
+                    });
+
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Edit';
+                    editButton.classList.add('edit-note-btn');
+                    // Pass the whole note object to handleEditNote
+                    editButton.addEventListener('click', function() {
+                        handleEditNote(note);
+                    });
+
+                    listItem.appendChild(titleEl);
+                    listItem.appendChild(contentEl);
+                    listItem.appendChild(dateInfo);
+                    listItem.appendChild(editButton);
+                    listItem.appendChild(deleteButton);
+                    noteList.appendChild(listItem);
+                });
+            } else {
+                noteList.innerHTML = '<li>No notes stored yet.</li>';
+            }
+        };
+
+        request.onerror = (event) => {
+            console.error('Error retrieving notes:', event.target.error);
+            noteList.innerHTML = '<li>Error loading notes.</li>';
+        };
+    }
+
+    function deleteNote(noteId) {
+        if (isNaN(noteId)) {
+            console.error('Invalid note ID for deletion.');
+            return;
+        }
+        if (!db) {
+            console.error('Database not initialized.');
+            return;
+        }
+        const transaction = db.transaction([notesStoreName], 'readwrite');
+        const store = transaction.objectStore(notesStoreName);
+        const request = store.delete(noteId);
+
+        request.onsuccess = () => {
+            console.log('Note deleted successfully:', noteId);
+            displayNotes();
+            if (currentEditingNoteId === noteId) {
+                resetNoteFormState();
+            }
+            // TODO: When a note is deleted, iterate through all calendarEvents.
+            // If an event's noteIds array contains noteId, remove it and put the event.
+        };
+        request.onerror = (event) => {
+            console.error('Error deleting note:', event.target.error);
+        };
+    }
+
+    function handleEditNote(note) {
+        if (!noteTitleInput || !noteContentInput || !noteSubmitButton || !cancelEditNoteButton) {
+            console.error("Note form elements not found for editing.");
+            return;
+        }
+        noteTitleInput.value = note.title;
+        noteContentInput.value = note.content;
+        currentEditingNoteId = note.id;
+        noteSubmitButton.textContent = 'Update Note';
+        cancelEditNoteButton.style.display = 'inline-block'; // Show cancel button
+        noteTitleInput.focus(); // Focus on title input
+    }
+
+    function updateNote(noteId, title, content) {
+        if (!db) {
+            console.error('Database not initialized for updating note.');
+            return;
+        }
+        const transaction = db.transaction([notesStoreName], 'readwrite');
+        const store = transaction.objectStore(notesStoreName);
+        const getRequest = store.get(noteId);
+
+        getRequest.onsuccess = () => {
+            const noteToUpdate = getRequest.result;
+            if (noteToUpdate) {
+                noteToUpdate.title = title;
+                noteToUpdate.content = content;
+                noteToUpdate.lastModified = new Date();
+                // noteToUpdate.linkedEventIds is preserved as it was, or could be updated here if UI existed
+
+                const putRequest = store.put(noteToUpdate);
+                putRequest.onsuccess = () => {
+                    console.log('Note updated successfully:', noteToUpdate);
+                    displayNotes();
+                    resetNoteFormState(); // Reset form after successful update
+                };
+                putRequest.onerror = (event) => {
+                    console.error('Error updating note (put):', event.target.error);
+                };
+            } else {
+                console.error('Note not found for updating (get):', noteId);
+            }
+        };
+        getRequest.onerror = (event) => {
+            console.error('Error retrieving note for update (get):', event.target.error);
+        };
+    }
+
+    // END: Notes CRUD Functionality
+
+
+    // START: Calendar Event CRUD Functionality
+    if (calendarEventForm) {
+        calendarEventForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const date = calendarEventDateInput.value;
+            const description = calendarEventDescriptionInput.value.trim();
+
+            if (date && description) {
+                addCalendarEvent(date, description);
+                calendarEventDateInput.value = '';
+                calendarEventDescriptionInput.value = '';
+            } else {
+                alert('Please enter both Date and Description for the event.');
+            }
+        });
+    }
+
+    function addCalendarEvent(date, description) {
+        if (!db) {
+            console.error('Database not initialized for adding calendar event.');
+            return;
+        }
+        const transaction = db.transaction([calendarEventsStoreName], 'readwrite');
+        const store = transaction.objectStore(calendarEventsStoreName);
+        const event = {
+            date,
+            description,
+            added: new Date(),
+            contactIds: [],
+            iframeIds: [],
+            noteIds: []
+        };
+
+        const request = store.add(event);
+
+        request.onsuccess = () => {
+            console.log('Calendar event added successfully:', event);
+            displayCalendarEvents();
+        };
+
+        request.onerror = (event) => {
+            console.error('Error adding calendar event:', event.target.error);
+        };
+    }
+
+    function displayCalendarEvents() {
+        if (!db) {
+            console.error('Database not initialized for displaying calendar events.');
+            if (calendarEventList) calendarEventList.innerHTML = '<li>Database not ready.</li>';
+            return;
+        }
+        if (!calendarEventList) return;
+        calendarEventList.innerHTML = '';
+
+        const transaction = db.transaction([calendarEventsStoreName], 'readonly');
+        const store = transaction.objectStore(calendarEventsStoreName);
+        const request = store.getAll(); // Consider store.index('date').getAll() for sorting
+
+        request.onsuccess = (event) => {
+            const events = event.target.result;
+            if (events && events.length > 0) {
+                // Optional: sort by date if not using index
+                events.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+                events.forEach(event => {
+                    const listItem = document.createElement('li');
+                    let content = `Date: ${new Date(event.date).toLocaleDateString()}, Description: ${event.description}`;
+                    content += `<br><small>Linked Contacts: ${event.contactIds.length > 0 ? event.contactIds.join(', ') : 'None'}</small>`;
+                    content += `<br><small>Linked Iframes: ${event.iframeIds.length > 0 ? event.iframeIds.join(', ') : 'None'}</small>`;
+                    content += `<br><small>Linked Notes: ${event.noteIds.length > 0 ? event.noteIds.join(', ') : 'None'}</small>`;
+                    listItem.innerHTML = content;
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Delete Event';
+                    deleteButton.classList.add('delete-event-btn');
+                    deleteButton.dataset.id = event.id;
+                    deleteButton.addEventListener('click', function() {
+                        deleteCalendarEvent(parseInt(this.dataset.id, 10));
+                    });
+
+                    listItem.appendChild(deleteButton);
+                    calendarEventList.appendChild(listItem);
+                });
+            } else {
+                calendarEventList.innerHTML = '<li>No events scheduled.</li>';
+            }
+        };
+
+        request.onerror = (event) => {
+            console.error('Error retrieving calendar events:', event.target.error);
+            calendarEventList.innerHTML = '<li>Error loading events.</li>';
+        };
+    }
+
+    function deleteCalendarEvent(eventId) {
+        if (isNaN(eventId)) {
+            console.error('Invalid event ID for deletion.');
+            return;
+        }
+        if (!db) {
+            console.error('Database not initialized.');
+            return;
+        }
+
+        const transaction = db.transaction([calendarEventsStoreName], 'readwrite');
+        const store = transaction.objectStore(calendarEventsStoreName);
+        const request = store.delete(eventId);
+
+        request.onsuccess = () => {
+            console.log('Calendar event deleted successfully:', eventId);
+            displayCalendarEvents();
+            // TODO: Complex link cleanup
+            // Iterate through contacts, iframes, notes. If any are linked to this eventId,
+            // remove the eventId from their linkedEventIds array and save them.
+            // This requires careful transaction management across multiple stores.
+            // Example for one store (contacts):
+            /*
+            const contactTx = db.transaction([contactsStoreName], 'readwrite');
+            const contactStore = contactTx.objectStore(contactsStoreName);
+            const getAllContactsReq = contactStore.getAll();
+            getAllContactsReq.onsuccess = () => {
+                getAllContactsReq.result.forEach(contact => {
+                    const index = contact.linkedEventIds.indexOf(eventId);
+                    if (index > -1) {
+                        contact.linkedEventIds.splice(index, 1);
+                        contactStore.put(contact); // No need for display update from here
+                    }
+                });
+            };
+            */
+            // Repeat for iframesStoreName and notesStoreName.
+        };
+
+        request.onerror = (event) => {
+            console.error('Error deleting calendar event:', event.target.error);
+        };
+    }
+    // END: Calendar Event CRUD Functionality
+
+
+    // The following addLinkForm listener was identified as a duplicate and removed in the previous step.
+    // It's kept here in comments for reference during this multi-turn process, but should not be re-introduced.
+    // addLinkForm.addEventListener('submit', (event) => {
+    // event.preventDefault();
+    // const url = urlInput.value.trim();
+    // const title = titleInput.value.trim();
+    //
+    // // This is a duplicate of the addLinkForm event listener, removing it.
+    // // The original addLinkForm listener is now wrapped in an if (addLinkForm) check.
+    // });
 
     function addLink(url, title) {
         if (!db) {
@@ -114,8 +814,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 4. Handle link deletion
-    function deleteLink(event) {
-        const linkId = parseInt(event.target.dataset.id, 10);
+    function deleteLink(eventOrId) { // Modified to accept event or ID
+        let linkId;
+        if (typeof eventOrId === 'number') {
+            linkId = eventOrId;
+        } else if (eventOrId && eventOrId.target && eventOrId.target.dataset) {
+            linkId = parseInt(eventOrId.target.dataset.id, 10);
+        }
+
         if (isNaN(linkId)) {
             console.error('Invalid link ID for deletion.');
             return;

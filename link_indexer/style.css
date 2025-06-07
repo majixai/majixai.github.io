@@ -5,9 +5,14 @@ body {
   color: #333;
 }
 
-h1 {
+h1, h2 {
   color: #333;
   text-align: center;
+  margin-bottom: 20px;
+}
+
+h2 {
+  margin-top: 30px; /* Add more space above new section headings */
 }
 
 form {
@@ -18,63 +23,209 @@ form {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* General input and textarea styling within forms */
 form input[type="url"],
-form input[type="text"] {
-  width: calc(50% - 22px); /* Adjust width considering padding and border */
+form input[type="text"],
+form input[type="email"],
+form input[type="tel"],
+form input[type="date"],
+form textarea {
+  width: calc(100% - 22px); /* Full width minus padding and border */
   padding: 10px;
-  margin-right: 10px;
+  margin-bottom: 10px; /* Space between inputs */
   border: 1px solid #ddd;
   border-radius: 4px;
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  box-sizing: border-box;
+  display: block; /* Make inputs take full block for width calculation */
 }
 
-form button {
+/* Specific adjustments if inputs are meant to be side-by-side in some forms */
+/* For example, if a form has multiple inputs on one line, this would need to be overridden */
+/* #linkForm input[type="url"], #linkForm input[type="text"] {
+  width: calc(50% - 22px);
+  margin-right: 10px;
+  display: inline-block;
+} */
+/* Reverting to original side-by-side for linkForm as an example if needed */
+#linkForm input[type="url"],
+#linkForm input[type="text"] {
+  width: calc(45% - 12px); /* Adjusted for two inputs and button */
+  display: inline-block;
+  margin-right: 10px;
+}
+#linkForm button {
+  width: calc(10% - 12px);
+  display: inline-block;
+  vertical-align: top; /* Align button with inputs */
+}
+
+
+form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* General button styling */
+button, form button {
   padding: 10px 15px;
-  background-color: #5cb85c;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  margin-right: 5px; /* Space between buttons */
 }
 
-form button:hover {
+form button[type="submit"], .submit-btn {
+  background-color: #5cb85c; /* Green for add/submit */
+}
+form button[type="submit"]:hover, .submit-btn:hover {
   background-color: #4cae4c;
 }
+
+/* General delete button styling */
+.delete-btn,
+.delete-contact-btn,
+.delete-iframe-btn,
+.delete-note-btn,
+.delete-event-btn {
+  background-color: #d9534f; /* Red for delete */
+  padding: 5px 10px; /* Smaller padding for action buttons in lists */
+}
+.delete-btn:hover,
+.delete-contact-btn:hover,
+.delete-iframe-btn:hover,
+.delete-note-btn:hover,
+.delete-event-btn:hover {
+  background-color: #c9302c;
+}
+
+/* Edit button styling */
+.edit-note-btn, .edit-event-btn /* Add other edit buttons if any */ {
+  background-color: #f0ad4e; /* Orange for edit */
+  padding: 5px 10px;
+}
+.edit-note-btn:hover, .edit-event-btn:hover {
+  background-color: #ec971f;
+}
+
+/* Cancel button styling (e.g., for cancel edit) */
+#cancelEditNoteButton {
+  background-color: #777;
+}
+#cancelEditNoteButton:hover {
+  background-color: #666;
+}
+
 
 ul {
   list-style-type: none;
   padding: 0;
 }
 
-li {
+/* Styling for items in lists (li) and iframe display area */
+#linkList li,
+#contactList li,
+#noteList li,
+#calendarEventList li,
+.iframe-item { /* .iframe-item is used for divs in iframeDisplayArea */
   background-color: #fff;
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  /* For li items that might have buttons, use flex for alignment */
 }
 
-li a {
-  text-decoration: none;
-  color: #0275d8;
+#linkList li,
+#contactList li,
+#noteList li,
+#calendarEventList li {
+ display: flex;
+ justify-content: space-between;
+ align-items: center;
+ flex-wrap: wrap; /* Allow items to wrap if space is tight */
 }
 
-li a:hover {
-  text-decoration: underline;
+
+#linkList li a,
+#contactList li span, /* Assuming contact details are in spans or directly in li */
+#noteList li div, /* Assuming note content might be in divs */
+#calendarEventList li div, /* Assuming event details in divs */
+.iframe-item > p, .iframe-item > h4 { /* Targeting text elements within iframe-item */
+  margin-right: 10px; /* Space before action buttons */
+  flex-grow: 1; /* Allow text content to take available space */
+}
+.iframe-item {
+    border: 1px solid #ddd; /* Visual separation for iframe items */
+}
+.iframe-item h4 { margin-top: 0; }
+
+
+#noteList li h3 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+#noteList li p {
+  margin-top:0;
+  margin-bottom: 5px;
+  white-space: pre-wrap; /* Respect line breaks in notes */
+}
+#noteList li small {
+  color: #666;
+  font-size: 0.8em;
 }
 
-.delete-btn {
-  padding: 5px 10px;
-  background-color: #d9534f;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+#calendarEventList li {
+    flex-direction: column; /* Stack content vertically */
+    align-items: flex-start; /* Align items to the start */
+}
+#calendarEventList li div { /* Container for text content */
+    margin-bottom: 5px;
+}
+#calendarEventList li small {
+    display: block;
+    color: #666;
+    font-size: 0.8em;
 }
 
-.delete-btn:hover {
-  background-color: #c9302c;
+
+/* Ensure buttons within list items are grouped together if multiple */
+#linkList li div:last-child,
+#contactList li div:last-child,
+#noteList li div:last-child, /* Assuming buttons are wrapped in a div */
+#calendarEventList li div:last-child {
+    white-space: nowrap; /* Keep buttons on one line */
 }
+
+/* Hide cancel edit button by default */
+#cancelEditNoteButton {
+    display: none;
+}
+
+/* Make sure text elements within list items don't cause overflow with buttons */
+#linkList li > a,
+#contactList li > span, /* If text is direct child */
+#noteList li > div:first-child, /* If text is in a div */
+#calendarEventList li > div:first-child {
+    max-width: calc(100% - 150px); /* Adjust 150px based on typical button group width */
+    overflow-wrap: break-word; /* Break long words */
+}
+
+/* For notes, allow title and content to take full width before buttons */
+#noteList li > h3, #noteList li > p, #noteList li > small {
+    width: 100%;
+    margin-bottom: 5px;
+}
+#noteList li > div { /* Button container for notes */
+   width: 100%;
+   text-align: right; /* Align buttons to the right for notes */
+}
+
+/* For calendar events, content is already structured with <br> and <small> */
+#calendarEventList li > div:first-of-type { /* The main content block */
+    width: 100%;
+}
+#calendarEventList li > button, #calendarEventList li div:last-of-type > button { /* Direct button or buttons in a div */
+    align-self: flex-end; /* Align delete button to the right for calendar events */
+}
+```
