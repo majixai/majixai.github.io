@@ -41,6 +41,7 @@ import TickersTabContent from './components/insights_panel/TickersTabContent.js'
 import StrategiesTabContent from './components/insights_panel/StrategiesTabContent.js';
 import HistoryTabContent from './components/insights_panel/HistoryTabContent.js';
 import AnalyticsTabContent from './components/insights_panel/AnalyticsTabContent.js';
+import UserTradesPage from './components/user_trades/UserTradesPage.js';
 
 import { generateUniqueId } from './utils/miscUtils.js';
 import { OptionType, Action, InsightTabKey, AICallType, StockPriceCategory, OutlookHorizon } from './types.js'; // Import runtime enums/consts
@@ -147,6 +148,7 @@ export const App = () => {
   const [showDataManagement, setShowDataManagement] = useState(false);
   const [showDeveloperTools, setShowDeveloperTools] = useState(false);
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
+  const [showUserTrades, setShowUserTrades] = useState(false);
   const [showAIDataProvenance, setShowAIDataProvenance] = useState(false);
   const [currentSimulatedTTEDays, setCurrentSimulatedTTEDays] = useState(Math.max(0, Math.round((plotOptions.initialTTEForSimulation || 45/365) * 365)));
   const [simulationSigmaInput, setSimulationSigmaInput] = useState(plotOptions.simulationSigma || '0.20');
@@ -161,7 +163,7 @@ export const App = () => {
     currentAIStrategySuggestions: null, lastUnderlyingForStrategySuggestions: null,
     currentAIBullishStockSuggestions: null, lastFetchedBullishStocksTimestamp: null,
     allAccumulatedAISources: null, activeInsightTab: InsightTabKey.Status,
-    aiCallDurations: {}, showAnalyticsPanel: false,
+    aiCallDurations: {}, showAnalyticsPanel: false, showUserTrades: false,
   }));
   const [isOptionsChainModalOpen, setIsOptionsChainModalOpen] = useState(false);
   const [optionsChainForModal, setOptionsChainForModal] = useState(/** @type {OptionsChainData | null} */ (null));
@@ -203,6 +205,7 @@ export const App = () => {
         }
         if (updates.aiCallDurations) newState.aiCallDurations = { ...prev.aiCallDurations, ...updates.aiCallDurations };
         if (updates.hasOwnProperty('showAnalyticsPanel')) setShowAnalyticsPanel(!!updates.showAnalyticsPanel);
+        if (updates.hasOwnProperty('showUserTrades')) setShowUserTrades(!!updates.showUserTrades);
         return newState;
     });
   }, []);
@@ -221,7 +224,7 @@ export const App = () => {
       if (dbLegs && dbLegs.length > 0) setLegs(dbLegs.map(l => ({...l, premiumMissing: !l.premium || parseFloat(l.premium) <= 0 })));
       else { const defaultLegs = addDefaultLeg(); setLegs(defaultLegs); saveLegsToDB(defaultLegs); if (sqliteDbInitialized) sqliteService.saveLegsToSQLite(defaultLegs); }
       if (dbAppStateFromDB) {
-        const mergedAppState = {...appDBState, ...dbAppStateFromDB}; setAppDBState(mergedAppState); setSelectedStrategyName(mergedAppState.selectedStrategyName); setShowBlackScholes(mergedAppState.showBlackScholes); setActiveInsightTab(mergedAppState.activeInsightTab || InsightTabKey.Status); setShowAnalyticsPanel(!!mergedAppState.showAnalyticsPanel);
+        const mergedAppState = {...appDBState, ...dbAppStateFromDB}; setAppDBState(mergedAppState); setSelectedStrategyName(mergedAppState.selectedStrategyName); setShowBlackScholes(mergedAppState.showBlackScholes); setActiveInsightTab(mergedAppState.activeInsightTab || InsightTabKey.Status); setShowAnalyticsPanel(!!mergedAppState.showAnalyticsPanel); setShowUserTrades(!!mergedAppState.showUserTrades);
         if (mergedAppState.allAccumulatedAISources) setAllAccumulatedAISources(mergedAppState.allAccumulatedAISources);
         if (mergedAppState.lastUnderlyingForStrategySuggestions === currentUnderlyingForSuggestions && mergedAppState.currentAIStrategySuggestions) { const sortedStrategies = mergedAppState.currentAIStrategySuggestions.sort((a,b) => (a.rank || 99) - (b.rank || 99)); setCurrentAIStrategyInsights(sortedStrategies); setSuggestedStrategyNamesForDropdown(sortedStrategies.map(s => s.name)); }
         if (mergedAppState.currentAIBullishStockSuggestions) { const validatedBullishSuggestions = mergedAppState.currentAIBullishStockSuggestions.map(s => ({ ...s, priceProjectionDetails: s.priceProjectionDetails || undefined, detailedReasoning: s.detailedReasoning || undefined, microstructureInsights: s.microstructureInsights || undefined, covarianceConsiderations: s.covarianceConsiderations || undefined, advancedModelReferences: s.advancedModelReferences || undefined, analysisTimestamp: s.analysisTimestamp || undefined, currentChartPatterns: s.currentChartPatterns || undefined, barPlayAnalysis: s.barPlayAnalysis || undefined, })); setCurrentAIBullishStockInsights(validatedBullishSuggestions); }
@@ -289,9 +292,14 @@ export const App = () => {
         showBlackScholes && React.createElement(PanelSection, { title: "Black-Scholes Calculator", isVisible: showBlackScholes, onToggle: () => { toggleSection(setShowBlackScholes, 'showBlackScholes'); } }, React.createElement(BlackScholesCalculator, { underlyingNameForFetch: plotOptions.underlyingName, onBlackScholesError: (calcError, fetchError) => { if (calcError) { showStatus(`B/S Calc Error: ${calcError}`, 'error'); setAllLoggedErrors(prev => [...prev, `B/S Calc: ${calcError}`]); } if (fetchError) { showStatus(`B/S Fetch Error: ${fetchError}`, 'error'); setAllLoggedErrors(prev => [...prev, `B/S Fetch: ${fetchError}`]); } } })),
         showDataManagement && React.createElement(PanelSection, { title: "Data Management", isVisible: showDataManagement, onToggle: () => toggleSection(setShowDataManagement), titleIcon: React.createElement(DatabaseIcon, null) }, React.createElement(DataManagementPanel, { githubSettings, onGitHubSettingsChange: (field, value) => setGithubSettings(prev => ({ ...prev, [field]: value })), onExportData: handleExportData, onClearForm: handleClearForm, anyAppLoading, isExporting })),
         showAnalyticsPanel && React.createElement(PanelSection, { title: "Analytics & App Health", isVisible: showAnalyticsPanel, onToggle: () => toggleSection(setShowAnalyticsPanel, 'showAnalyticsPanel'), titleIcon: React.createElement(AnalyticsIcon, null) }, React.createElement(AnalyticsTabContent, { allLoggedErrors, onCopyErrorsToClipboard: handleCopyErrorsToClipboard, anyAppLoading })),
+        showUserTrades && React.createElement(PanelSection, {
+         title: "User Trades",
+         isVisible: showUserTrades,
+         onToggle: () => toggleSection(setShowUserTrades, 'showUserTrades')
+        }, React.createElement(UserTradesPage, null)),
         showDeveloperTools && React.createElement(PanelSection, { title: "Developer Tools", isVisible: showDeveloperTools, onToggle: () => toggleSection(setShowDeveloperTools) }, React.createElement(DeveloperToolsPanel, { showAIDataProvenance, onToggleAIDataProvenance: setShowAIDataProvenance, allAccumulatedAISources, aiCallDurations: appDBState.aiCallDurations, anyAppLoading })),
         React.createElement('div', { className: "mt-4 flex flex-col sm:flex-row items-center gap-3 sm:gap-4" },
-          React.createElement(ChartSettingsDropdown, { showBlackScholes, onToggleBlackScholes: () => toggleSection(setShowBlackScholes, 'showBlackScholes'), showTTESimulation, onToggleTTESimulation: () => toggleSection(setShowTTESimulation), showDataManagement, onToggleDataManagement: () => toggleSection(setShowDataManagement), showDeveloperTools, onToggleDeveloperTools: () => toggleSection(setShowDeveloperTools), showAnalyticsPanel, onToggleAnalyticsPanel: () => toggleSection(setShowAnalyticsPanel, 'showAnalyticsPanel'), anyAppLoading }),
+          React.createElement(ChartSettingsDropdown, { showBlackScholes, onToggleBlackScholes: () => toggleSection(setShowBlackScholes, 'showBlackScholes'), showTTESimulation, onToggleTTESimulation: () => toggleSection(setShowTTESimulation), showDataManagement, onToggleDataManagement: () => toggleSection(setShowDataManagement), showDeveloperTools, onToggleDeveloperTools: () => toggleSection(setShowDeveloperTools), showAnalyticsPanel, onToggleAnalyticsPanel: () => toggleSection(setShowAnalyticsPanel, 'showAnalyticsPanel'), showUserTrades: showUserTrades, onToggleUserTrades: () => toggleSection(setShowUserTrades, 'showUserTrades'), anyAppLoading }),
           React.createElement('button', { onClick: handleGeneratePlot, disabled: anyAppLoading || isLoadingPlot || legs.length === 0, style: { backgroundColor: OREGON_GREEN }, className: "w-full sm:w-auto flex-grow sm:flex-grow-0 p-2.5 rounded-lg text-sm font-medium shadow-md text-white hover:opacity-90 transition-all duration-150 disabled:opacity-60 flex items-center justify-center" }, isLoadingPlot ? React.createElement(LoadingSpinner, { className: "h-4 w-4 mr-2" }) : React.createElement(ChartIcon, { className: "mr-1.5 w-4 h-4" }), isLoadingPlot ? "Plotting..." : "Generate Plot")
         )
       ),

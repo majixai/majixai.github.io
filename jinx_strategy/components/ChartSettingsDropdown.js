@@ -13,6 +13,8 @@ import { DUKE_BLUE, PANEL_BACKGROUND, TEXT_COLOR_PRIMARY, BORDER_COLOR } from '.
  * @property {() => void} onToggleDeveloperTools
  * @property {boolean} showAnalyticsPanel
  * @property {() => void} onToggleAnalyticsPanel
+ * @property {boolean} showUserTrades
+ * @property {() => void} onToggleUserTrades
  * @property {boolean} anyAppLoading
  */
 
@@ -26,6 +28,7 @@ const ChartSettingsDropdown = ({
     showDataManagement, onToggleDataManagement,
     showDeveloperTools, onToggleDeveloperTools,
     showAnalyticsPanel, onToggleAnalyticsPanel,
+    showUserTrades, onToggleUserTrades,
     anyAppLoading
 }) => {
     if (typeof React === 'undefined') {
@@ -106,6 +109,7 @@ const ChartSettingsDropdown = ({
                 toggleItem("TTE Simulation Panel", showTTESimulation, onToggleTTESimulation),
                 toggleItem("Data Management", showDataManagement, onToggleDataManagement),
                 toggleItem("Analytics Panel", showAnalyticsPanel, onToggleAnalyticsPanel),
+                toggleItem("User Trades", showUserTrades, onToggleUserTrades),
                 toggleItem("Developer Tools", showDeveloperTools, onToggleDeveloperTools)
             )
         )
