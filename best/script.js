@@ -1145,8 +1145,8 @@
                     const calculatedListMaxHeight = iframeColumnTotalHeight - h2TotalHeight - additionalElementsHeight - userColumnVerticalPadding;
                     console.log(`App: [${columnId}] Calculated listMaxHeight = ${iframeColumnTotalHeight} (iframe) - ${h2TotalHeight} (h2) - ${additionalElementsHeight} (other) - ${userColumnVerticalPadding} (padding) = ${calculatedListMaxHeight}px`);
 
-                    const minSensibleHeight = 50; // Minimum sensible calculated height before fallback
-                    const fallbackHeightString = '300px'; // Fallback max-height
+                    const minSensibleHeight = 100; // Minimum sensible calculated height before fallback
+                    const fallbackHeightString = '40vh'; // Fallback max-height
 
                     if (calculatedListMaxHeight < minSensibleHeight) {
                         console.warn(`App: [${columnId}] Calculated listMaxHeight (${calculatedListMaxHeight}px) is less than ${minSensibleHeight}px. APPLYING FALLBACK max-height: ${fallbackHeightString}.`);
