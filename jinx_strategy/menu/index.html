@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jinx Strategy Game - Menu</title>
+    <link rel="stylesheet" href="style.css"> <!-- Added external stylesheet -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <!-- Removed inline <style> block -->
+</head>
+<body>
+    <header>
+        <h1>Jinx Strategy Game</h1>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#home" onclick="showContent('home')">Home</a></li>
+            <li><a href="#rules" onclick="showContent('rules', 'rules.html')">Game Rules</a></li>
+            <li><a href="#strategies" onclick="showContent('strategies', 'strategies.html')">Strategies</a></li>
+            <li><a href="#about" onclick="showContent('about', 'about.html')">About Jinx</a></li>
+            <li><a href="game_interface.html">Play Game (External)</a></li>
+            <!-- User-added links will be appended here by script.js -->
+        </ul>
+        <div id="genai-toggle-container"> {/* Removed inline styles */}
+            <label for="genai-toggle-switch">Enable GenAI Features:</label> {/* Removed inline styles */}
+            <label class="switch">
+                <input type="checkbox" id="genai-toggle-switch">
+                <span class="slider round"></span>
+            </label>
+        </div>
+    </nav>
+
+    <section id="add-menu-item-section" class="form-section"> {/* Added class, removed inline styles */}
+        <h3>Add New Menu Item</h3>
+        <form id="add-menu-item-form">
+            <div>
+                <label for="menu-item-name">Name:</label>
+                <input type="text" id="menu-item-name" name="menu-item-name" required> {/* Removed inline styles */}
+            </div>
+            <div>
+                <label for="menu-item-url">URL:</label>
+                <input type="url" id="menu-item-url" name="menu-item-url" required> {/* Removed inline styles */}
+            </div>
+            <div>
+                <label for="menu-item-type">Type:</label>
+                <select id="menu-item-type" name="menu-item-type"> {/* Removed inline styles */}
+                    <option value="iframe" selected>Load in Iframe</option>
+                    <option value="link">Open as External Link</option>
+                </select>
+            </div>
+            <button type="submit">Add Item</button>
+        </form>
+    </section>
+
+    <section id="set-alert-section" class="form-section"> {/* Added class, removed inline styles */}
+        <h3>Set New Alert</h3>
+        <form id="set-alert-form">
+            <div>
+                <label for="alert-date">Date:</label>
+                <input type="date" id="alert-date" name="alert-date" required> {/* Removed inline styles */}
+            </div>
+            <div>
+                <label for="alert-time">Time:</label>
+                <input type="time" id="alert-time" name="alert-time" required> {/* Removed inline styles */}
+            </div>
+            <div>
+                <label for="alert-message">Message:</label>
+                <input type="text" id="alert-message" name="alert-message" required placeholder="Alert details..."> {/* Removed inline styles */}
+            </div>
+            <button type="submit">Set Alert</button>
+        </form>
+        <div id="alerts-list"> {/* Removed inline styles */}
+            <h4>Upcoming Alerts:</h4>
+            <!-- Alerts will be listed here -->
+        </div>
+    </section>
+
+    <main id="content-display-area" class="content-display">
+        <h2>Welcome!</h2>
+        <p class="welcome-text">Select an option from the menu to learn more or start playing.</p> {/* Added class */}
+        <iframe id="content-iframe" title="Content Area" style="display:none;"></iframe>
+        {/* style="display:none;" is kept as it's initial functional state controlled by JS */}
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Jinx Strategy Game Developers. All rights reserved.</p>
+    </footer>
+
+    <script src="indexedDBService.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Basic setup moved to script.js, keeping this for potential direct calls if any.
+        // const contentIframe = document.getElementById('content-iframe');
+        const contentDisplayArea = document.getElementById('content-display-area');
+        const defaultWelcomeTitle = contentDisplayArea.querySelector('h2');
+        const defaultWelcomeText = contentDisplayArea.querySelector('p');
+
+        function showContent(contentId, url) {
+            // Update URL hash for better navigation history (optional)
+            // window.location.hash = contentId;
+
+            if (url) {
+                if (defaultWelcomeTitle) defaultWelcomeTitle.style.display = 'none';
+                if (defaultWelcomeText) defaultWelcomeText.style.display = 'none';
+                contentIframe.src = url;
+                contentIframe.style.display = 'block';
+            } else {
+                // Handle "Home" or other non-iframe links
+                contentIframe.style.display = 'none';
+                contentIframe.src = 'about:blank'; // Clear iframe
+                if (defaultWelcomeTitle) {
+                    defaultWelcomeTitle.textContent = contentId === 'home' ? 'Welcome!' : 'Content Area';
+                    defaultWelcomeTitle.style.display = 'block';
+                }
+                if (defaultWelcomeText) {
+                    defaultWelcomeText.textContent = contentId === 'home' ? 'Select an option from the menu to learn more or start playing.' : `Content for ${contentId} would be displayed here.`;
+                    defaultWelcomeText.style.display = 'block';
+                }
+            }
+        }
+
+        // Optional: Handle initial content display based on URL hash
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     const hash = window.location.hash.substring(1);
+        //     if (hash) {
+        //         const link = document.querySelector(`nav ul li a[href="#${hash}"]`);
+        //         if (link && link.onclick) {
+        //             link.onclick(); // Simulate click to load content
+        //         } else if (hash === 'home') {
+        //             showContent('home');
+        //         }
+        //     } else {
+        //         showContent('home'); // Default to home
+        //     }
+        // });
+        // Initialize the MenuApp once the DOM is ready
+        $(document).ready(function() {
+            // Assuming indexedDBService.js provides a global dbService object or similar
+            // If indexedDBService.js initializes itself and makes its service available globally,
+            // otherwise, it might need to be instantiated here.
+            // For now, let's assume indexedDBService is ready.
+            if (typeof indexedDBService === 'undefined') {
+                console.warn('indexedDBService.js not loaded or service not available globally. User-added links might not work.');
+                // Optionally, initialize a mock service or disable add link feature
+            }
+            const app = new MenuApp(window.indexedDBService); // Pass the service to MenuApp
+            app.init();
+        });
+    </script>
+</body>
+</html>
