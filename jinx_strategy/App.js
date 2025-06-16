@@ -122,6 +122,13 @@ export const App = () => {
   if (typeof React === 'undefined') { console.error("React not loaded for App"); return null; }
   const { useState, useEffect, useCallback } = React;
 
+  // State for HTML Menu and GenAI features
+  const [isMenuIframeVisible, setIsMenuIframeVisible] = useState(false);
+  const [genAiFeaturesEnabled, setGenAiFeaturesEnabled] = useState(() => {
+    // Initialize from localStorage to sync with menu's initial state
+    return localStorage.getItem('genAiEnabled') === 'true';
+  });
+
   const [legs, setLegs] = useState(/** @type {OptionLeg[]} */ ([]));
   const [plotOptions, setPlotOptions] = useState(/** @type {PlotOptions} */ ({
     id: SINGLE_ITEM_KEY, underlyingName: 'SPY', currentS: '', pointValue: DEFAULT_POINT_VALUE,
@@ -210,9 +217,30 @@ export const App = () => {
     });
   }, []);
 
-  const { isFetchingStrategyData, isFetchingStrategyExplanation, isFetchingAIStrategySuggestions, isFetchingAIBullishStocks, isFetchingDeeperAnalysis, anyGeminiLoading, fetchStrategyData, fetchStrategyExplanation, fetchAISuggestStrategies, fetchAIBullishStocks, fetchDeeperAnalysis, } = useGeminiService({ showStatus, updateAppDBState: updateAppDBStateCallback, predefinedStrategyNames: PREDEFINED_STRATEGIES.map(s=>s.name) });
+  const { isFetchingStrategyData, isFetchingStrategyExplanation, isFetchingAIStrategySuggestions, isFetchingAIBullishStocks, isFetchingDeeperAnalysis, anyGeminiLoading, fetchStrategyData, fetchStrategyExplanation, fetchAISuggestStrategies, fetchAIBullishStocks, fetchDeeperAnalysis, } = useGeminiService({ showStatus, updateAppDBState: updateAppDBStateCallback, predefinedStrategyNames: PREDEFINED_STRATEGIES.map(s=>s.name), genAiFeaturesEnabled }); // Pass genAiFeaturesEnabled to hook
   const anyAppLoading = isLoadingPlot || isExporting || anyGeminiLoading;
   const addDefaultLeg = useCallback(() => [{ id: generateUniqueId(), type: OptionType.Call, action: Action.Buy, strike: '', premium: '', quantity: '1', role: 'Default Leg', premiumMissing: true }], []);
+
+  // Effect for handling GenAI toggle events from the menu
+  useEffect(() => {
+    const handleGenAiToggle = (event) => {
+      console.log('App.js: Received genai-toggle-changed event', event.detail);
+      setGenAiFeaturesEnabled(event.detail.enabled);
+      // Here, you might also call a function from useGeminiService or geminiService
+      // if there was a direct way to tell it to enable/disable.
+      // For now, passing genAiFeaturesEnabled to the hook is the main integration point.
+      showStatus(`GenAI features ${event.detail.enabled ? 'enabled' : 'disabled'} application-wide.`, 'info');
+    };
+
+    window.addEventListener('genai-toggle-changed', handleGenAiToggle);
+    console.log('App.js: Added event listener for genai-toggle-changed.');
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('genai-toggle-changed', handleGenAiToggle);
+      console.log('App.js: Removed event listener for genai-toggle-changed.');
+    };
+  }, [showStatus]); // showStatus added to dependencies
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -274,6 +302,44 @@ export const App = () => {
 
   // JSX to React.createElement for the main return
   return React.createElement('div', { className: "min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 font-sans", style: { backgroundColor: LIGHT_NEUTRAL_BACKGROUND, color: TEXT_COLOR_PRIMARY } },
+    // Button to toggle menu iframe
+    React.createElement('button', {
+      onClick: () => setIsMenuIframeVisible(prev => !prev),
+      style: {
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        zIndex: 1001, // Above menu iframe if menu is also fixed
+        padding: '8px 12px',
+        backgroundColor: DUKE_BLUE,
+        color: 'white',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+      }
+    }, isMenuIframeVisible ? "Close Menu" : "Open Menu"),
+
+    // Menu Iframe
+    isMenuIframeVisible && React.createElement('iframe', {
+      src: "./menu/index.html", // Path relative to the deployed index.html of the main app
+      style: {
+        position: 'fixed',
+        top: '50px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '90vw',
+        maxWidth: '1000px',
+        height: '85vh',
+        zIndex: 1000,
+        border: `2px solid ${DUKE_BLUE}`,
+        borderRadius: '8px',
+        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+        backgroundColor: '#fff' // Ensure iframe bg is opaque
+      },
+      title: "Jinx Strategy Menu"
+    }),
+
     React.createElement('header', { className: "mb-6 sm:mb-8 text-center" },
       React.createElement('h1', { className: "text-3xl sm:text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#003087] via-[#001A57] to-[#000F33]" }, "Advanced Option Strategy Visualizer"),
       React.createElement('p', { className: "text-sm sm:text-md mt-1.5", style: { color: TEXT_COLOR_SECONDARY } }, "Plot payoff diagrams, analyze strategies with AI, and explore market data.")

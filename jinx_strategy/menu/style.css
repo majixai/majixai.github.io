@@ -1,0 +1,368 @@
+/* General Body Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f7f6; /* Light grey-green */
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+/* Header Styles */
+header {
+    background-color: #004d40; /* Dark teal */
+    color: #fff;
+    padding: 1rem 0;
+    text-align: center;
+    width: 100%;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 500;
+}
+
+/* Navigation Menu Styles */
+nav {
+    margin: 2rem 0;
+    width: 90%;
+    max-width: 700px; /* Slightly wider for nav items + toggle */
+    text-align: center;
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem; /* Space between menu items */
+}
+
+nav ul li a {
+    display: block;
+    background-color: #00796b; /* Medium teal */
+    color: white;
+    padding: 0.8rem 1rem;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+nav ul li a:hover, nav ul li a:focus {
+    background-color: #009688; /* Lighter teal on hover */
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Content Display Area (for iframe or welcome text) */
+.content-display {
+    width: 90%;
+    max-width: 800px;
+    margin-top: 1rem; /* Reduced from 2rem as nav has more margin */
+    padding: 1.5rem;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+}
+
+.content-display h2 {
+    margin-top: 0;
+    color: #004d40; /* Dark teal for headings */
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.content-display iframe {
+    width: 100%;
+    height: 450px; /* Slightly increased height */
+    border: 1px solid #ddd; /* Subtle border for iframe */
+    border-radius: 6px;
+}
+
+.content-display p.welcome-text { /* Class for specific welcome paragraph */
+    text-align: center;
+    font-style: italic;
+    color: #555;
+    font-size: 1.1rem;
+}
+
+/* Footer Styles */
+footer {
+    text-align: center;
+    padding: 1.5rem;
+    margin-top: auto; /* Pushes footer to bottom if content is short */
+    font-size: 0.9rem;
+    color: #666;
+    width: 100%;
+    background-color: #e0e0e0; /* Light grey for footer background */
+    border-top: 1px solid #ccc;
+}
+
+/* Sections for Forms (Add URI, Set Alert) */
+.form-section {
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+#add-menu-item-section {
+    background-color: #e0f2f1; /* Very light teal */
+}
+
+#set-alert-section {
+    background-color: #e8f5e9; /* Very light green */
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #004d40; /* Dark teal */
+    text-align: center;
+}
+
+.form-section div {
+    margin-bottom: 0.8rem;
+}
+
+.form-section label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-section input[type="text"],
+.form-section input[type="url"],
+.form-section input[type="date"],
+.form-section input[type="time"],
+.form-section select {
+    width: calc(100% - 20px); /* Adjust for padding */
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-section button[type="submit"] {
+    display: block;
+    width: 100%;
+    padding: 0.7rem;
+    background-color: #00796b; /* Medium teal */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.form-section button[type="submit"]:hover {
+    background-color: #00695c; /* Darker teal */
+}
+
+/* GenAI Toggle Switch Styles */
+#genai-toggle-container {
+    text-align: center;
+    margin: 1rem auto; /* Centered if nav is wider */
+    padding: 0.8rem;
+    background-color: #f0f0f0;
+    border-radius: 8px;
+    max-width: 600px;
+    width: fit-content; /* Adjust width to content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#genai-toggle-container label { /* Label for "Enable GenAI Features" */
+    margin-right: 10px;
+    font-size: 1rem;
+    color: #333;
+    font-weight: normal; /* Override general label boldness if needed */
+}
+
+.switch { /* Container for the actual switch input and slider */
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+.switch input { /* Hide default checkbox */
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider { /* The visual part of the switch */
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 28px; /* For rounded slider */
+}
+.slider:before { /* The sliding knob */
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+input:checked + .slider {
+    background-color: #00796b; /* Medium teal when active */
+}
+input:focus + .slider {
+    box-shadow: 0 0 1px #00796b;
+}
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Alerts List Styles */
+#alerts-list {
+    margin-top: 1.5rem;
+}
+#alerts-list h4 {
+    margin-bottom: 0.5rem;
+    color: #004d40; /* Dark teal */
+}
+.alert-item {
+    padding: 0.8rem;
+    border: 1px solid #b2dfdb; /* Light teal border */
+    background-color: #f0fafa; /* Very light cyan/teal */
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+.alert-item span em { /* For the date/time part of the alert message */
+    color: #00796b; /* Medium teal */
+    font-size: 0.9em;
+}
+.dismiss-alert-btn {
+    cursor: pointer;
+    color: #ef5350; /* Reddish for dismiss */
+    border: none;
+    background: none;
+    font-size: 0.9em;
+    padding: 0.2rem 0.5rem;
+    transition: color 0.2s ease;
+}
+.dismiss-alert-btn:hover {
+    color: #d32f2f; /* Darker red */
+}
+
+/* User-added Menu Item Delete Button */
+.delete-item-btn {
+    margin-left: 10px;
+    cursor: pointer;
+    color: #ef5350; /* Reddish */
+    border: none;
+    background: none;
+    font-size: 0.9em;
+    padding: 0.2rem 0.5rem;
+    transition: color 0.2s ease;
+}
+.delete-item-btn:hover {
+    color: #d32f2f; /* Darker red */
+}
+
+
+/* Responsive Design Adjustments */
+@media (min-width: 768px) {
+    nav ul {
+        flex-direction: row; /* Horizontal layout for larger screens */
+        justify-content: center;
+        gap: 1rem; /* Adjust gap for horizontal items */
+    }
+
+    nav ul li a {
+        padding: 0.8rem 1.2rem; /* Adjust padding for horizontal items */
+    }
+
+    .form-section {
+        /* Could make forms wider or arrange label/input side-by-side on larger screens */
+    }
+}
+
+/* Specific overrides for inline styles that were in HTML */
+/* Example: input widths in forms. The general rule above handles this, but if more specific needed: */
+/* #menu-item-name, #menu-item-url, etc. { width: calc(100% - 20px); } */
+/* This is now handled by .form-section input[type="text"] etc. */
+
+/* Clearing previously set inline styles:
+   - nav: text-align: center (already in nav selector)
+   - add-menu-item-section: margin, padding, background-color, border-radius, max-width, width (moved to .form-section and #add-menu-item-section)
+   - menu-item-name, menu-item-url, menu-item-type: width, margin-bottom (moved to .form-section input/select)
+   - genai-toggle-container: text-align, margin, padding, background-color, border-radius, max-width, width, display, align-items, justify-content (moved to #genai-toggle-container)
+   - genai-toggle-switch label: margin-right, font-size, color (moved to #genai-toggle-container label)
+   - set-alert-section: margin, padding, background-color, border-radius, max-width, width (moved to .form-section and #set-alert-section)
+   - alert-date, alert-time, alert-message: width, margin-bottom (moved to .form-section input)
+   - alerts-list: margin-top (moved to #alerts-list)
+   - content-iframe: display:none (this is dynamically changed by JS, so it's okay as an initial state)
+   - alert-item in JS: padding, border, marginBottom, display, justifyContent, alignItems (moved to .alert-item)
+   - dismiss-alert-btn in JS: cursor, color, border, background, fontSize (moved to .dismiss-alert-btn)
+   - delete-item-btn in JS: margin-left, cursor, color, border, background, fontSize (moved to .delete-item-btn)
+*/
+
+/* Styles for HTML content within iframes (rules.html, about.html, strategies.html) */
+/* These are illustrative, assuming content structure from previous steps */
+.iframe-content-body { /* Add this class to body of rules.html etc. or style body tag directly if preferred */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 20px;
+    padding: 0;
+    background-color: #fff;
+    color: #333;
+    line-height: 1.6;
+}
+.iframe-content-body h1 {
+    color: #004d40; /* Dark teal */
+    margin-bottom: 1rem;
+}
+.iframe-content-body h2 {
+    color: #00796b; /* Medium teal */
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+}
+.iframe-content-body p,
+.iframe-content-body ul {
+    margin-bottom: 1rem;
+}
+.iframe-content-body ul {
+    list-style-type: disc;
+    margin-left: 20px;
+}
+.iframe-content-body .strategy-category { /* From strategies.html example */
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e0f2f1; /* Very light teal border */
+    border-radius: 6px;
+    background-color: #faffff; /* Extremely light cyan */
+}
+.iframe-content-body .highlight { /* From about.html example */
+    color: #00796b; /* Medium teal */
+    font-weight: bold;
+}
+
+/* Ensure the old <style> tag in index.html is removed or emptied */
