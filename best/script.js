@@ -351,12 +351,58 @@
                 snippetElement.appendChild(textNode);
                 snippetElement.addEventListener('click', (e) => {
                     if (e.target.tagName !== 'BUTTON') {
-                        navigator.clipboard.writeText(snippetText)
-                            .then(() => this.#showSnippetStatus('Snippet copied to clipboard!', 'success'))
-                            .catch(err => {
-                                console.error('Failed to copy snippet: ', err);
-                                this.#showSnippetStatus('Failed to copy snippet.', 'error');
-                            });
+                        try {
+                            const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
+                            const selectedIframeId = iframeChoiceRadio ? iframeChoiceRadio.value : 'mainIframe'; // Default to mainIframe
+                            const targetIframe = (selectedIframeId === 'mainIframe2') ? this.mainIframe2 : this.mainIframe;
+
+                            if (targetIframe && targetIframe.contentWindow) {
+                                const iframeDoc = targetIframe.contentWindow.document;
+                                let inputField = iframeDoc.querySelector('textarea');
+                                if (!inputField) inputField = iframeDoc.querySelector('#chat_input');
+                                if (!inputField) inputField = iframeDoc.querySelector('#input_text');
+                                // if (!inputField) inputField = iframeDoc.querySelector('.chat-input-textarea'); // Example for class
+
+                                if (inputField) {
+                                    inputField.value = snippetText;
+                                    // Optional: focus and dispatch input event
+                                    // inputField.focus();
+                                    // const inputEvent = new Event('input', { bubbles: true });
+                                    // inputField.dispatchEvent(inputEvent);
+                                    this.#showSnippetStatus(`Snippet inserted into ${selectedIframeId}!`, 'success');
+                                } else {
+                                    this.#showSnippetStatus('Could not find message input in the selected iframe.', 'error');
+                                    console.warn('Message input field not found in iframe:', selectedIframeId, 'Attempting to copy to clipboard as fallback.');
+                                    // Fallback to clipboard if input field not found
+                                    navigator.clipboard.writeText(snippetText)
+                                        .then(() => this.#showSnippetStatus('Snippet copied (input not found).', 'warning'))
+                                        .catch(copyErr => {
+                                            console.error('Fallback: Failed to copy snippet: ', copyErr);
+                                            this.#showSnippetStatus('Failed to insert or copy snippet.', 'error');
+                                        });
+                                }
+                            } else {
+                                this.#showSnippetStatus('Selected iframe or its content window is not accessible.', 'error');
+                                console.warn('Target iframe or contentWindow not accessible:', selectedIframeId, 'Attempting to copy to clipboard as fallback.');
+                                // Fallback to clipboard if iframe not accessible
+                                navigator.clipboard.writeText(snippetText)
+                                    .then(() => this.#showSnippetStatus('Snippet copied (iframe not accessible).', 'warning'))
+                                    .catch(copyErr => {
+                                        console.error('Fallback: Failed to copy snippet: ', copyErr);
+                                        this.#showSnippetStatus('Failed to insert or copy snippet.', 'error');
+                                    });
+                            }
+                        } catch (err) {
+                            console.error('Error inserting snippet into iframe:', err);
+                            this.#showSnippetStatus('Error inserting snippet. Check console.', 'error');
+                            // Fallback to clipboard for any other errors (e.g., cross-origin)
+                            navigator.clipboard.writeText(snippetText)
+                                .then(() => this.#showSnippetStatus('Snippet copied to clipboard (iframe insert failed).', 'warning'))
+                                .catch(copyErr => {
+                                    console.error('Failed to copy snippet as fallback: ', copyErr);
+                                    this.#showSnippetStatus('Failed to insert snippet or copy to clipboard.', 'error');
+                                });
+                        }
                     }
                 });
                 const deleteButton = document.createElement('button');

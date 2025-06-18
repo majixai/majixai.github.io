@@ -308,45 +308,116 @@ class StorageManager {
     }
 
     async addTextSnippet(newSnippetText) {
-        try {
-            let snippetList = await this.#loadFromDB('snippetList');
-            if (!Array.isArray(snippetList)) {
-                snippetList = []; // Initialize if not an array or undefined
+        if (this.#indexedDBFailed) {
+            console.log('StorageManager.addTextSnippet: Using localStorage due to IndexedDB failure.');
+            try {
+                let snippetList = [];
+                const storedSnippets = localStorage.getItem('snippetList_fallback');
+                if (storedSnippets) {
+                    snippetList = JSON.parse(storedSnippets);
+                    if (!Array.isArray(snippetList)) snippetList = [];
+                }
+                if (!snippetList.includes(newSnippetText)) {
+                    snippetList.push(newSnippetText);
+                    localStorage.setItem('snippetList_fallback', JSON.stringify(snippetList));
+                    console.log('Snippet list updated in localStorage (fallback).');
+                } else {
+                    console.log('Snippet already exists in localStorage (fallback). Not adding duplicate.');
+                }
+            } catch (error) {
+                console.error('Error adding text snippet to localStorage (fallback):', error);
+                throw error; // Re-throw so UI can be notified
             }
-            snippetList.push(newSnippetText);
-            await this.#saveToDB('snippetList', snippetList);
-            console.log('Snippet list updated in IndexedDB.');
-        } catch (error) {
-            console.error('Error adding text snippet:', error);
-            throw error;
+        } else {
+            try {
+                let snippetList = await this.#loadFromDB('snippetList');
+                if (!Array.isArray(snippetList)) {
+                    snippetList = []; // Initialize if not an array or undefined
+                }
+                if (!snippetList.includes(newSnippetText)) {
+                    snippetList.push(newSnippetText);
+                    await this.#saveToDB('snippetList', snippetList);
+                    console.log('Snippet list updated in IndexedDB.');
+                } else {
+                     console.log('Snippet already exists in IndexedDB. Not adding duplicate.');
+                }
+            } catch (error) {
+                console.error('Error adding text snippet to IndexedDB:', error);
+                throw error;
+            }
         }
     }
 
     async loadAllTextSnippets() {
-        try {
-            const snippets = await this.#loadFromDB('snippetList');
-            return Array.isArray(snippets) ? snippets : [];
-        } catch (error) {
-            console.error('Error loading all text snippets:', error);
-            return [];
+        if (this.#indexedDBFailed) {
+            console.log('StorageManager.loadAllTextSnippets: Using localStorage due to IndexedDB failure.');
+            try {
+                const storedSnippets = localStorage.getItem('snippetList_fallback');
+                if (storedSnippets) {
+                    const snippetList = JSON.parse(storedSnippets);
+                    return Array.isArray(snippetList) ? snippetList : [];
+                }
+                return [];
+            } catch (error) {
+                console.error('Error loading text snippets from localStorage (fallback):', error);
+                return []; // Return empty array on error
+            }
+        } else {
+            try {
+                const snippets = await this.#loadFromDB('snippetList');
+                console.log('Snippets loaded from IndexedDB.');
+                return Array.isArray(snippets) ? snippets : [];
+            } catch (error) {
+                console.error('Error loading all text snippets from IndexedDB:', error);
+                return [];
+            }
         }
     }
 
     async deleteTextSnippet(snippetTextToDelete) {
-         try {
-            let snippetList = await this.#loadFromDB('snippetList');
-            if (!Array.isArray(snippetList)) {
-                snippetList = [];
+        if (this.#indexedDBFailed) {
+            console.log('StorageManager.deleteTextSnippet: Using localStorage due to IndexedDB failure.');
+            try {
+                let snippetList = [];
+                const storedSnippets = localStorage.getItem('snippetList_fallback');
+                if (storedSnippets) {
+                    snippetList = JSON.parse(storedSnippets);
+                    if (!Array.isArray(snippetList)) snippetList = [];
+                }
+                const initialLength = snippetList.length;
+                snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
+                if (snippetList.length < initialLength) {
+                    localStorage.setItem('snippetList_fallback', JSON.stringify(snippetList));
+                    console.log('Snippet list updated (after deletion) in localStorage (fallback).');
+                } else {
+                    console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in localStorage (fallback).`);
+                }
+            } catch (error) {
+                console.error('Error deleting text snippet from localStorage (fallback):', error);
+                throw error; // Re-throw so UI can be notified
             }
-            const initialLength = snippetList.length;
-            snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
-            if (snippetList.length === initialLength) {
-                console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in list.`);
+        } else {
+            try {
+                let snippetList = await this.#loadFromDB('snippetList');
+                if (!Array.isArray(snippetList)) {
+                    snippetList = [];
+                }
+                const initialLength = snippetList.length;
+                snippetList = snippetList.filter(snippet => snippet !== snippetTextToDelete);
+                if (snippetList.length < initialLength) {
+                    await this.#saveToDB('snippetList', snippetList);
+                    console.log('Snippet list updated (after deletion) in IndexedDB.');
+                } else {
+                    console.warn(`Snippet to delete ("${snippetTextToDelete}") not found in IndexedDB list.`);
+                }
+            } catch (error) {
+                console.error('Error deleting text snippet from IndexedDB:', error);
+                throw error;
             }
-            await this.#saveToDB('snippetList', snippetList);
-            console.log('Snippet list updated (after potential deletion) in IndexedDB.');
-        } catch (error) {
-            console.error('Error deleting text snippet:', error);
+        }
+    }
+
+    // Option 1: Takes previousUsersArray as argument
             throw error;
         }
     }
