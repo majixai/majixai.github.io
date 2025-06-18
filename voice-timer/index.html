@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Voice Activated Timer</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+      "marked": "https://esm.sh/marked@^15.0.7"
+    }
+  }
+  </script>
+  <script type="module" src="voice-timer/script.js"></script>
+  <script src="voice-timer/test.js"></script>
+</head>
+<body class="w3-light-grey">
+  <div class="w3-panel w3-padding">
+    <h1>Voice Activated Timer</h1>
+    <button id="activate-button" class="w3-button w3-blue w3-round w3-margin-left" style="width:20%; display:inline-block;">Activate Voice</button>
+    <div id="timer-display" class="w3-container w3-margin"></div>
+    <div id="end-times-closeness" class="w3-container w3-margin"></div>
+  </div>
+  <button id="toggle-error-log-button" class="w3-button w3-khaki w3-margin-top w3-margin-left w3-margin-right w3-margin-bottom">Toggle Error Log</button>
+  <div id="error-log-container" class="w3-container w3-border w3-sand w3-padding" style="display: none; margin: 10px; max-height: 300px; overflow-y: scroll;">
+      <h4>Initialization & Error Log:</h4>
+      <pre id="error-log-content" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+  </div>
+</body>
+</html>
