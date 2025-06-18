@@ -140,14 +140,14 @@
         <!-- Main Content Area (Columns) -->
         <div class="main-content">
 
-            <!-- Online Users Column -->
-            <div class="user-column" id="onlineUsers">
-                <h2>Online Users</h2>
-                <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
-                <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
-                <div class="user-list">
-                    <!-- User cards will be added here by JS -->
-                </div>
+            <!-- Previous Users Column -->
+            <div class="user-column" id="previousUsers">
+                 <h2>History (Online Now)</h2>
+                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
+                 <div class="user-list">
+                     <!-- Previous user cards will be added here by JS -->
+                     <p class="text-muted w3-center">Loading history...</p> <!-- Initial placeholder -->
+                 </div>
             </div>
 
             <!-- Main Viewing Column -->
@@ -180,14 +180,14 @@
                 </div>
             </div>
 
-            <!-- Previous Users Column -->
-            <div class="user-column" id="previousUsers">
-                 <h2>History (Online Now)</h2>
-                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
-                 <div class="user-list">
-                     <!-- Previous user cards will be added here by JS -->
-                     <p class="text-muted w3-center">Loading history...</p> <!-- Initial placeholder -->
-                 </div>
+            <!-- Online Users Column -->
+            <div class="user-column" id="onlineUsers">
+                <h2>Online Users</h2>
+                <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
+                <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
+                <div class="user-list">
+                    <!-- User cards will be added here by JS -->
+                </div>
             </div>
 
         </div> <!-- End Main Content -->
