@@ -450,7 +450,14 @@
                 let hasTags=true;
                 if(filterTags.length>0){
                     const userTagsLower=(u.tags&&Array.isArray(u.tags))?u.tags.map(t=>typeof t==='string'?t.toLowerCase():''):[];
-                    hasTags=filterTags.some(fT=>userTagsLower.includes(fT))
+                    hasTags = filterTags.some(fT => {
+                        if (fT === 'deepthroat') {
+                            return userTagsLower.includes('deepthroat') || userTagsLower.includes('blowjob');
+                        } else if (fT === 'bigboobs') {
+                            return userTagsLower.includes('bigboobs') || userTagsLower.includes('bigtits');
+                        }
+                        return userTagsLower.includes(fT);
+                    });
                 }
                 let isAgeMatch=true;
                 if(filterAges.length>0){isAgeMatch=(u.age&&typeof u.age==='number')?filterAges.includes(u.age):false}
@@ -552,12 +559,44 @@
                     this.#currentOnlineUsersOffset = nextPageData.nextOffset;
                     this.#hasMoreOnlineUsersToLoad = nextPageData.hasMore;
 
-                    // If filters are active, re-applying filters to the newly expanded list might be complex.
-                    // For simple infinite scroll, we typically append all new users.
-                    // If filtering is desired on the full list, then instead of append,
-                    // you might call #applyFiltersAndDisplay() which would re-render the whole list.
-                    // For this step, we will append directly.
-                    await this.#appendOnlineUsersList(nextPageData.users);
+                    // Retrieve current filters
+                    let filterTags = [];
+                    if (this.filterTagsSelect) {
+                        filterTags = Array.from(this.filterTagsSelect.selectedOptions).map(o => o.value.toLowerCase()).filter(t => t !== '');
+                    }
+                    let filterAges = [];
+                    if (this.filterAgeSelect) {
+                        filterAges = Array.from(this.filterAgeSelect.selectedOptions).map(o => parseInt(o.value)).filter(a => !isNaN(a) && a > 0);
+                    }
+
+                    let usersToAppend = nextPageData.users;
+                    // Apply filters if any are selected
+                    if (filterTags.length > 0 || filterAges.length > 0) {
+                        usersToAppend = nextPageData.users.filter(u => {
+                            if (!u || !u.username) return false;
+                            const isPublic = u.current_show === 'public';
+                            let hasTags = true;
+                            if (filterTags.length > 0) {
+                                const userTagsLower = (u.tags && Array.isArray(u.tags)) ? u.tags.map(t => typeof t === 'string' ? t.toLowerCase() : '') : [];
+                                hasTags = filterTags.some(fT => {
+                                    if (fT === 'deepthroat') {
+                                        return userTagsLower.includes('deepthroat') || userTagsLower.includes('blowjob');
+                                    } else if (fT === 'bigboobs') {
+                                        return userTagsLower.includes('bigboobs') || userTagsLower.includes('bigtits');
+                                    }
+                                    return userTagsLower.includes(fT);
+                                });
+                            }
+                            let isAgeMatch = true;
+                            if (filterAges.length > 0) {
+                                isAgeMatch = (u.age && typeof u.age === 'number') ? filterAges.includes(u.age) : false;
+                            }
+                            return isPublic && hasTags && isAgeMatch;
+                        });
+                        console.log(`App: Filtered ${nextPageData.users.length} new users down to ${usersToAppend.length} before appending.`);
+                    }
+
+                    await this.#appendOnlineUsersList(usersToAppend);
                     
                     if (!this.#hasMoreOnlineUsersToLoad) {
                         console.log("App: No more online users to load.");
