@@ -64,6 +64,26 @@
         #hasMorePreviousUsersToLoad = true;
         
         constructor() {
+            // --- Critical Dependency Checks ---
+            if (typeof ApiService === 'undefined') {
+                const errorMsg = "FATAL: ApiService class is not defined. api.js might be missing, have a syntax error, or failed to load.";
+                console.error(errorMsg);
+                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: ApiService not loaded. Application cannot start. Please check console for details. (api.js)</div>`;
+                throw new Error(errorMsg);
+            }
+            if (typeof StorageManager === 'undefined') {
+                const errorMsg = "FATAL: StorageManager class is not defined. storage.js might be missing, have a syntax error, or failed to load.";
+                console.error(errorMsg);
+                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: StorageManager not loaded. Application cannot start. Please check console for details. (storage.js)</div>`;
+                throw new Error(errorMsg);
+            }
+            if (typeof UIManager === 'undefined') {
+                const errorMsg = "FATAL: UIManager class is not defined. ui.js might be missing, have a syntax error, or failed to load.";
+                console.error(errorMsg);
+                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: UIManager not loaded. Application cannot start. Please check console for details. (ui.js)</div>`;
+                throw new Error(errorMsg);
+            }
+
             // Instantiate services and managers
             // Config variables (apiUrlBase, etc.) are globally available from config.js
             this.apiService = new ApiService(apiUrlBase, apiLimit, maxApiFetchLimit, apiFetchTimeout);
