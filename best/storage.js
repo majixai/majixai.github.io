@@ -416,11 +416,6 @@ class StorageManager {
             }
         }
     }
-
-    // Option 1: Takes previousUsersArray as argument
-            throw error;
-        }
-    }
     
     // Option 1: Takes previousUsersArray as argument
     async incrementUserClickCount(username, previousUsersArray) {
