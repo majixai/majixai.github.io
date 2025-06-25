@@ -189,17 +189,41 @@ h2 {
 }
 
 .user-image-container {
-    flex-shrink: 0; /* Prevent image container from shrinking */
-    width: 80px; /* Fixed width for image container */
+    flex-shrink: 0;
+    width: 80px; /* Or desired width */
+    height: 60px; /* Or desired height, to maintain aspect ratio for iframe */
     margin-right: 10px;
     position: relative;
+    background-color: #000; /* Background for when iframe loads */
+    overflow: hidden; /* Important to contain the iframe */
+    border-radius: 3px; /* Match image border-radius */
 }
 
-.user-image-container img {
+.user-image-container img,
+.user-image-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: auto;
+    height: 100%;
     display: block;
     border-radius: 3px;
+    border: none; /* For iframe */
+    object-fit: cover; /* For img, to cover the area */
+}
+
+.user-image-container iframe {
+    visibility: hidden; /* Hidden by default */
+    background-color: #000; /* Ensure iframe bg is black before content loads */
+}
+
+/* When .iframe-active is added to .user-image-container */
+.user-image-container.iframe-active img {
+    visibility: hidden;
+}
+
+.user-image-container.iframe-active iframe {
+    visibility: visible;
 }
 
 .user-details {
@@ -293,35 +317,74 @@ h2 {
 }
 
 /* Iframe Styling */
-.iframe-selector {
-    margin-bottom: 10px;
-    text-align: center;
-}
-.iframe-selector label {
-    margin: 0 10px;
-    cursor: pointer;
-}
+/* Removed .iframe-selector and .iframe-container as they are no longer used or replaced by .dynamic-iframe-container */
 
-.iframe-container {
-    position: relative; 
-    overflow: hidden; 
-    background-color: #000; 
-    border: 1px solid #ccc; 
-    border-radius: 4px; 
-    flex-grow: 1; /* Each iframe container will take equal space in .iframe-column */
-    min-height: 0; /* Allow shrinking to prevent overflow if content is small */
-    /* REMOVE: padding-bottom: 56.25%; */
-    /* REMOVE: height: 0; */
-    /* REMOVE: margin-bottom: 15px; (now handled by gap on parent .iframe-column) */
-}
-
-.iframe-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
+.dynamic-iframe-container {
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
-    height: 100%;
+    height: 100%; /* Take full height of parent (.iframe-column) */
+    gap: 5px; /* Small gap between iframes */
+    overflow: hidden; /* Prevent scrollbars on the container itself */
+    background-color: #000; /* Background for the container */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    flex-grow: 1; /* Allow it to grow within .iframe-column */
+    min-height: 0; /* Important for flex children */
+}
+
+.dynamic-iframe-container iframe {
+    flex-grow: 1; /* Allow iframes to grow and fill space */
+    flex-shrink: 1; /* Allow iframes to shrink if needed */
+    /* flex-basis will be set by JS or more specific CSS rules based on count */
     border: none; /* Remove default iframe border */
+    min-width: 0; /* Allow shrinking below default min-width */
+    min-height: 0; /* Allow shrinking below default min-height */
+    /* Aspect ratio can be maintained if desired, but full fill is current goal */
+}
+
+/* Styling for different iframe counts */
+/* 1 iframe */
+.dynamic-iframe-container[data-count="1"] iframe {
+    flex-basis: 100%;
+    height: 100%;
+}
+
+/* 2 iframes (side-by-side or stacked, let's go side-by-side for now) */
+.dynamic-iframe-container[data-count="2"] iframe {
+    flex-basis: calc(50% - 2.5px); /* 50% minus half the gap */
+    height: 100%;
+}
+/* Or stacked for 2:
+.dynamic-iframe-container[data-count="2"] iframe {
+    flex-basis: 100%;
+    height: calc(50% - 2.5px);
+}
+*/
+
+/* 3 iframes (e.g., 2 on top, 1 on bottom or vice-versa, or all in a row) */
+/* Let's try 2 on top, 1 full width on bottom for 3 */
+.dynamic-iframe-container[data-count="3"] iframe {
+    flex-basis: calc(50% - 2.5px); /* Default for 2 top ones */
+    height: calc(50% - 2.5px); /* Half height for top ones */
+}
+.dynamic-iframe-container[data-count="3"] iframe:nth-child(3) {
+    flex-basis: 100%; /* Full width for the bottom one */
+    height: calc(50% - 2.5px); /* Half height for the bottom one */
+}
+/* Alternative for 3: all side-by-side */
+/*
+.dynamic-iframe-container[data-count="3"] iframe {
+    flex-basis: calc(33.333% - 3.33px); // Adjust gap calculation
+    height: 100%;
+}
+*/
+
+
+/* 4 iframes (2x2 grid) */
+.dynamic-iframe-container[data-count="4"] iframe {
+    flex-basis: calc(50% - 2.5px); /* 50% minus half the gap */
+    height: calc(50% - 2.5px); /* 50% minus half the gap */
 }
 
 /* Loading / Error / Status Indicators */
