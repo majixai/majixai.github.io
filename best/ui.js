@@ -79,11 +79,8 @@ class UIManager {
 
         userElement.innerHTML = `
             <div class="user-image-container">
-                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
-                <!-- div class="iframe-preview-container">
-                    <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
-                </div>
-                <button class="toggle-view-btn">Show Preview</button -->
+                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="user-thumbnail-img">
+                <!-- Iframe will be created and inserted here by JS if needed -->
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -97,29 +94,52 @@ class UIManager {
         `;
 
         userElement.addEventListener("click", function(event) {
-            if (event.target.closest('.remove-user-btn')) {
-                return;
+            // Prevent card click if dblclick target is image container or if remove button is clicked
+            if (event.target.closest('.user-image-container') || event.target.closest('.remove-user-btn')) {
+                // For double click, we let its own handler manage it.
+                // For remove button, its own handler manages it.
+                // This prevents the main card click (which loads to main viewer)
+                // if the intention was to interact with the preview or remove button.
+                // However, single click on image container might still be desired for main viewer if not dblclick.
+                // Let's refine: only stop if it's the remove button. Dblclick is a separate event.
+                if (event.target.closest('.remove-user-btn')) {
+                    return;
+                }
             }
-            event.preventDefault();
-            handleUserClickCallback(user);
+            // If the click was on the image container, but not a double click,
+            // it might still be intended to load to the main viewer.
+            // The double click handler will call event.stopPropagation() if it handles the event.
+            // For now, let the main user click proceed unless it's the remove button.
+            handleUserClickCallback(user); // This loads user to main iframe viewer
         });
 
-        // const toggleBtn = userElement.querySelector('.toggle-view-btn');
-        // if (toggleBtn) {
-        //     toggleBtn.addEventListener('click', function(event) {
-        //         event.stopPropagation(); // Prevent the main user card click event
-        //         const imageContainer = this.closest('.user-image-container');
-        //         if (imageContainer) {
-        //             imageContainer.classList.toggle('iframe-active');
-        //             if (imageContainer.classList.contains('iframe-active')) {
-        //                 this.textContent = 'Show Image';
-        //             } else {
-        //                 this.textContent = 'Show Preview';
-        //             }
-        //         }
-        //     });
-        // }
-// 
+        const imageContainer = userElement.querySelector('.user-image-container');
+        if (imageContainer) {
+            // Store references
+            userElement.imageEl = imageContainer.querySelector('.user-thumbnail-img');
+            userElement.imageContainerEl = imageContainer;
+            // userElement.iframeEl will be created on demand by App class
+
+            imageContainer.addEventListener('dblclick', function(event) {
+                event.preventDefault(); // Prevent any browser default double-click behavior
+                event.stopPropagation(); // Stop event from bubbling to the main card click listener
+
+                // The actual toggle logic (toggleUserCardPreview) will be passed in handleUserClickCallback
+                // or as a new parameter. For now, assuming it's part of app instance accessible via handleUserClickCallback's context
+                // This needs to be adjusted: toggleUserCardPreview should be a distinct callback.
+                // Let's assume a new callback: toggleUserCardPreviewCallback
+                if (typeof window.appInstance !== 'undefined' && typeof window.appInstance.toggleUserCardPreview === 'function') {
+                    if (window.appInstance.userCardPreviewMode === 'image') { // Only allow dblclick if global mode is 'image'
+                        window.appInstance.toggleUserCardPreview(userElement, user.username);
+                    } else {
+                        console.log("Double-click ignored: Global preview mode is active.");
+                    }
+                } else {
+                    console.warn("toggleUserCardPreview function or appInstance not available for user card.", user.username);
+                }
+            });
+        }
+
         const removeBtn = userElement.querySelector('.remove-user-btn');
         if (removeBtn) {
             removeBtn.addEventListener("click", async function(event) {
