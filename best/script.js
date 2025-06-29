@@ -281,57 +281,52 @@
         }
 
         async #fetchDataAndUpdateUI() {
-            console.log("App: Executing fetchDataAndUpdateUI...");
+            console.log("[DIAGNOSTIC] App: Starting #fetchDataAndUpdateUI...");
             this.uiManager.showOnlineLoadingIndicator("Loading online users...");
             this.uiManager.clearOnlineErrorDisplay();
 
-            // Unobserve all elements in onlineUsersDiv before clearing for a fresh load
             if (this.#userListIntersectionObserver && this.onlineUsersDiv) {
                 this.onlineUsersDiv.querySelectorAll('.user-info').forEach(el => this.#userListIntersectionObserver.unobserve(el));
             }
-            // onlineUsersDiv.innerHTML will be cleared by #displayOnlineUsersList if it's called with users,
-            // or explicitly if no users are found.
 
-            // Reset pagination state for initial load
             this.#currentOnlineUsersOffset = 0;
             this.#hasMoreOnlineUsersToLoad = true;
-            this.#isLoadingOnlineUsers = false; // Reset loading state
+            this.#isLoadingOnlineUsers = false;
 
             try {
+                console.log("[DIAGNOSTIC] App: Calling apiService.getOnlineRooms...");
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                this.#allOnlineUsersData = initialData.users;
+                console.log("[DIAGNOSTIC] App: apiService.getOnlineRooms returned:", initialData);
+
+                this.#allOnlineUsersData = initialData.users || []; // Ensure it's an array
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
-                // this.#lastFilteredUsers = []; // Kept for filter logic, applyFiltersAndDisplay will repopulate
+                console.log(`[DIAGNOSTIC] App: Fetched ${this.#allOnlineUsersData.length} users initially.`);
 
                 if (this.#allOnlineUsersData.length > 0) {
-                    if (this.#allOnlineUsersData && this.#allOnlineUsersData.length > 0) {
-                        console.log("Sample user object:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
+                    if (this.#allOnlineUsersData[0]) { // Check if first element exists
+                        console.log("[DIAGNOSTIC] Sample user object from fetch:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
                     }
-                    this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
-                    this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
+                    this.#populateFilters(this.#allOnlineUsersData);
+                    console.log("[DIAGNOSTIC] App: Calling #applyFiltersAndDisplay after fetch.");
+                    this.#applyFiltersAndDisplay();
                     await this.#displayPreviousUsers();
-                    // The old call to #setDefaultIframes() here is removed.
-                    // Iframes are now updated via #updateIframes after data fetch if needed,
-                    // or when the user changes the count.
-                    // For now, #setDefaultIframes is just a placeholder.
-                    // We might want to call #updateIframes here with current user data
-                    // to populate the iframes if that's the desired behavior.
-                    // For this step, we'll rely on the initial call in start() and user interaction.
-                    this.#setDefaultIframes(); // Call the refactored placeholder
+                    this.#setDefaultIframes();
                 } else {
+                    console.log("[DIAGNOSTIC] App: No online users found or failed to fetch (initialData.users was empty or not an array).");
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
                     this.#populateFilters([]);
+                    console.log("[DIAGNOSTIC] App: Calling #applyFiltersAndDisplay for empty dataset.");
                     this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
                     await this.#displayPreviousUsers();
                 }
             } catch (error) {
-                console.error("Error in fetchDataAndUpdateUI (App):", error);
+                console.error("[DIAGNOSTIC] Error in #fetchDataAndUpdateUI (App):", error);
                 this.uiManager.showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
-                console.log("App: fetchDataAndUpdateUI execution finished.");
+                console.log("[DIAGNOSTIC] App: #fetchDataAndUpdateUI execution finished.");
             }
         }
 
@@ -542,7 +537,7 @@
                 filterAges = [];
             }
 
-            this.#lastFilteredUsers=this.#allOnlineUsersData.filter(u=>{ 
+            this.#lastFilteredUsers = (this.#allOnlineUsersData || []).filter(u => { // Add guard for #allOnlineUsersData
                 if(!u||!u.username)return false;
                 const isPublic=u.current_show==='public';
                 let hasTags=true;
@@ -581,36 +576,57 @@
         }
 
         #displayOnlineUsersList(usersToDisplay) {
-            if (!this.onlineUsersDiv) return;
-            this.onlineUsersDiv.innerHTML = "";
-            if (usersToDisplay.length === 0) {
-                this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match filters.</p>';
+            console.log(`[DIAGNOSTIC] App: Starting #displayOnlineUsersList with ${usersToDisplay ? usersToDisplay.length : 'null/undefined'} users.`);
+            if (!this.onlineUsersDiv) {
+                console.error("[DIAGNOSTIC] App: #displayOnlineUsersList - onlineUsersDiv is null!");
                 return;
             }
+
+            console.log("[DIAGNOSTIC] App: Clearing onlineUsersDiv.innerHTML");
+            this.onlineUsersDiv.innerHTML = ""; // Clear existing content
+
+            if (!usersToDisplay || usersToDisplay.length === 0) { // Check usersToDisplay itself as well
+                console.log("[DIAGNOSTIC] App: No users to display or usersToDisplay is empty. Setting message.");
+                this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center" style="color: orange; border: 1px solid orange; padding: 10px;">[DIAGNOSTIC] No online users match filters (or usersToDisplay is empty).</p>';
+                return;
+            }
+
+            console.log(`[DIAGNOSTIC] App: Preparing to display ${usersToDisplay.length} users.`);
             const fragment = document.createDocumentFragment();
-            usersToDisplay.forEach(user => {
-                if (!user || !user.image_url || !user.username) return;
-                const socialMedia = this.#extractSocialMedia(user.description);
-                const userElement = this.uiManager.createUserElement(
-                    user,
-                    'online',
-                    this.#handleUserClick.bind(this),
-                    this.#removeFromPreviousUsers.bind(this),
-                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
-                    this.#isBirthday.bind(this),
-                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
-                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
-                    this.#displayPreviousUsers.bind(this),
-                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia, // Add the new socialMedia object here
-                    this.toggleUserCardPreview.bind(this) // New callback for toggling preview
-                );
-                fragment.appendChild(userElement);
-                if (this.#userListIntersectionObserver && userElement.dataset.username) { // Ensure username for IO logic
-                    this.#userListIntersectionObserver.observe(userElement);
+            usersToDisplay.forEach((user, index) => {
+                if (!user || !user.image_url || !user.username) {
+                    console.warn(`[DIAGNOSTIC] App: Skipping user at index ${index} due to missing critical data (image_url or username). User:`, user);
+                    return;
+                }
+                // console.log(`[DIAGNOSTIC] App: Creating element for user: ${user.username}`);
+                const socialMedia = this.#extractSocialMedia(user.description); // Ensure this doesn't throw
+                try {
+                    const userElement = this.uiManager.createUserElement(
+                        user,
+                        'online',
+                        this.#handleUserClick.bind(this),
+                        this.#removeFromPreviousUsers.bind(this),
+                        (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
+                        this.#isBirthday.bind(this),
+                        this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
+                        this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
+                        this.#displayPreviousUsers.bind(this),
+                        (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
+                        socialMedia,
+                        this.toggleUserCardPreview.bind(this)
+                    );
+                    fragment.appendChild(userElement);
+                    if (this.#userListIntersectionObserver && userElement.dataset.username) {
+                        this.#userListIntersectionObserver.observe(userElement);
+                    }
+                } catch (e) {
+                    console.error(`[DIAGNOSTIC] Error creating user element for ${user.username}:`, e);
                 }
             });
+
+            console.log("[DIAGNOSTIC] App: Appending fragment to onlineUsersDiv. Fragment child count:", fragment.children.length);
             this.onlineUsersDiv.appendChild(fragment);
+            console.log("[DIAGNOSTIC] App: #displayOnlineUsersList finished.");
         }
 
         async #appendOnlineUsersList(newUsers) {

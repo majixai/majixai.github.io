@@ -27,139 +27,55 @@ class UIManager {
         handleUserClickCallback, 
         removeFromPreviousUsersCallback, 
         getUserClickCountCallback,
-        isBirthdayCallback,
+        isBirthdayCallback, // Keep other params for signature consistency for now
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
-        getDaysSinceOrUntil18thBirthdayCallback, // Existing new callback
-        socialMediaData // Add new parameter for social media
+        getDaysSinceOrUntil18thBirthdayCallback,
+        socialMediaData,
+        toggleUserCardPreviewCallback // Added in original, keep for now
     ) {
         const userElement = document.createElement("div");
-        userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
-        userElement.dataset.username = user.username;
+        // Apply some basic classes for context, but main styling is inline for test
+        userElement.className = `user-info simple-test-user ${listType}-list-item`;
+        userElement.dataset.username = user.username; // Keep username for other potential logic
 
-        const tagsDisplay = (user.tags && Array.isArray(user.tags) && user.tags.length > 0)
-                            ? user.tags.join(', ')
-                            : 'N/A';
-        const ageDisplay = (user.age && typeof user.age === 'number') ? user.age : 'N/A';
-        const newBadge = user.is_new ? '<span class="badge new-badge w3-tag w3-small w3-red w3-round">New</span>' : '';
-        const birthdayBanner = isBirthdayCallback(user.birthday) ? `<p class="birthday w3-text-amber w3-center">🎂 Happy Birthday! 🎂</p>` : '';
-        const removeButtonHTML = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
-        const clickCount = getUserClickCountCallback(user.username);
+        // Simplified content
+        userElement.textContent = `User: ${user.username} | Viewers: ${user.num_viewers || 'N/A'} | Age: ${user.age || 'N/A'}`;
 
-        let birthdayProximityHTMLString = '';
-        if (typeof getDaysSinceOrUntil18thBirthdayCallback === 'function') {
-            const birthdayProximityText = getDaysSinceOrUntil18thBirthdayCallback(user.birthday, user.age);
-            if (birthdayProximityText && birthdayProximityText.trim() !== '') {
-                birthdayProximityHTMLString = `<p class="birthday-proximity w3-small">${birthdayProximityText}</p>`;
-            }
-        }
+        // Highly visible styling for testing
+        userElement.style.border = "2px solid red";
+        userElement.style.padding = "5px";
+        userElement.style.margin = "3px";
+        userElement.style.backgroundColor = "#ffe5e5"; // Light red background
+        userElement.style.color = "#000"; // Ensure text is visible
 
-        let socialMediaHTML = '';
-        if (socialMediaData && Object.keys(socialMediaData).length > 0) {
-            socialMediaHTML += '<p class="social-media-links w3-small">Social: ';
-            const links = [];
-            for (const platform in socialMediaData) {
-                socialMediaData[platform].forEach(handle => {
-                    // Create a clickable link if it's a URL, otherwise just display the handle
-                    if (handle.startsWith('http')) {
-                        links.push(`<a href="${handle}" target="_blank" rel="noopener noreferrer">${handle.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>`);
-                    } else if (handle.startsWith('@') && platform === 'twitter') {
-                        links.push(`<a href="https://twitter.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
-                    } else if (handle.startsWith('@') && platform === 'instagram') {
-                        links.push(`<a href="https://instagram.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
-                    }
-                    else {
-                        links.push(handle);
-                    }
-                });
-            }
-            socialMediaHTML += links.join(' | ') + '</p>';
-        }
-
-        userElement.innerHTML = `
-            <div class="user-image-container">
-                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="user-thumbnail-img">
-                <!-- Iframe will be created and inserted here by JS if needed -->
-                ${removeButtonHTML}
-            </div>
-            <div class="user-details w3-container w3-padding-small">
-                <p class="username w3-large">${user.username} ${newBadge}</p>
-                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}</small></p>
-                ${birthdayProximityHTMLString}
-                ${socialMediaHTML}
-                <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
-                ${birthdayBanner}
-            </div>
-        `;
-
+        // Basic click handler to see if interaction works
         userElement.addEventListener("click", function(event) {
-            // Prevent card click if dblclick target is image container or if remove button is clicked
-            if (event.target.closest('.user-image-container') || event.target.closest('.remove-user-btn')) {
-                // For double click, we let its own handler manage it.
-                // For remove button, its own handler manages it.
-                // This prevents the main card click (which loads to main viewer)
-                // if the intention was to interact with the preview or remove button.
-                // However, single click on image container might still be desired for main viewer if not dblclick.
-                // Let's refine: only stop if it's the remove button. Dblclick is a separate event.
-                if (event.target.closest('.remove-user-btn')) {
-                    return;
-                }
+            console.log(`Simplified user card clicked: ${user.username}`);
+            if (typeof handleUserClickCallback === 'function') {
+                handleUserClickCallback(user);
             }
-            // If the click was on the image container, but not a double click,
-            // it might still be intended to load to the main viewer.
-            // The double click handler will call event.stopPropagation() if it handles the event.
-            // For now, let the main user click proceed unless it's the remove button.
-            handleUserClickCallback(user); // This loads user to main iframe viewer
         });
 
-        const imageContainer = userElement.querySelector('.user-image-container');
-        if (imageContainer) {
-            // Store references
-            userElement.imageEl = imageContainer.querySelector('.user-thumbnail-img');
-            userElement.imageContainerEl = imageContainer;
-            // userElement.iframeEl will be created on demand by App class
+        // Store some original references on the element if other parts of the code might expect them,
+        // even if not used by this simplified version directly.
+        // This is mainly to prevent errors if other code (e.g., intersection observer) tries to access them.
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'user-image-container'; // For IntersectionObserver checks on dataset.previewState
+        const img = document.createElement('img');
+        img.src = user.image_url_360x270 || user.image_url || ''; // Use a valid image URL
+        imageContainer.appendChild(img);
+        userElement.appendChild(imageContainer); // Append it so it's part of the element
+        userElement.imageContainerEl = imageContainer;
+        userElement.imageEl = img;
+        userElement.dataset.previewState = 'image'; // Initialize previewState for observer
 
-            imageContainer.addEventListener('dblclick', function(event) {
-                event.preventDefault(); // Prevent any browser default double-click behavior
-                event.stopPropagation(); // Stop event from bubbling to the main card click listener
-
-                // The actual toggle logic (toggleUserCardPreview) will be passed in handleUserClickCallback
-                // or as a new parameter. For now, assuming it's part of app instance accessible via handleUserClickCallback's context
-                // This needs to be adjusted: toggleUserCardPreview should be a distinct callback.
-                // Let's assume a new callback: toggleUserCardPreviewCallback
-                if (typeof window.appInstance !== 'undefined' && typeof window.appInstance.toggleUserCardPreview === 'function') {
-                    if (window.appInstance.userCardPreviewMode === 'image') { // Only allow dblclick if global mode is 'image'
-                        window.appInstance.toggleUserCardPreview(userElement, user.username);
-                    } else {
-                        console.log("Double-click ignored: Global preview mode is active.");
-                    }
-                } else {
-                    console.warn("toggleUserCardPreview function or appInstance not available for user card.", user.username);
-                }
-            });
-        }
-
-        const removeBtn = userElement.querySelector('.remove-user-btn');
-        if (removeBtn) {
-            removeBtn.addEventListener("click", async function(event) {
-                event.stopPropagation();
-                console.log(`User clicked remove for: ${user.username}`);
-                if (typeof showOnlineLoadingIndicatorCallback === 'function') {
-                    showOnlineLoadingIndicatorCallback("Removing from history...");
-                }
-                await removeFromPreviousUsersCallback(user.username);
-                if (typeof displayPreviousUsersCallback === 'function') {
-                     await displayPreviousUsersCallback(); // Refresh display
-                }
-                if (typeof hideOnlineLoadingIndicatorCallback === 'function') {
-                    hideOnlineLoadingIndicatorCallback();
-                }
-            });
-        }
+        console.log(`[DIAGNOSTIC] Simplified createUserElement for: ${user.username}`);
         return userElement;
     }
 
+    // ... rest of UIManager class remains the same
     showOnlineLoadingIndicator(message = 'Loading...') {
         const onlineLoadingIndicator = document.getElementById("onlineLoadingIndicator");
         const onlineUsersDivList = document.getElementById("onlineUsers")?.querySelector('.user-list');
