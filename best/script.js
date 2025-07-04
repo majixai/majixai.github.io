@@ -296,9 +296,10 @@
             try {
                 console.log("[DIAGNOSTIC] App: Calling apiService.getOnlineRooms...");
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                console.log("[DIAGNOSTIC] App: apiService.getOnlineRooms returned:", initialData);
+                console.log("[DEBUG] App: #fetchDataAndUpdateUI - initialData from API:", JSON.stringify(initialData, null, 2));
 
                 this.#allOnlineUsersData = initialData.users || []; // Ensure it's an array
+                console.log("[DEBUG] App: #fetchDataAndUpdateUI - this.#allOnlineUsersData assigned:", JSON.stringify(this.#allOnlineUsersData.slice(0, 3), null, 2)); // Log first 3 users
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
@@ -322,7 +323,7 @@
                     await this.#displayPreviousUsers();
                 }
             } catch (error) {
-                console.error("[DIAGNOSTIC] Error in #fetchDataAndUpdateUI (App):", error);
+                console.error("[DEBUG] App: #fetchDataAndUpdateUI - Error caught:", error);
                 this.uiManager.showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
@@ -473,21 +474,24 @@
             // Instead, it should prepare a list of user URLs to be used by #updateIframes.
             // For now, it will just log and #updateIframes will use a default.
             // Later, this can be expanded to pick top users for the current number of iframes.
-            console.log("App: #setDefaultIframes called. Logic to select users for iframes would go here.");
+            console.log("[DEBUG] App: #setDefaultIframes called.");
             if (!this.#allOnlineUsersData || this.#allOnlineUsersData.length === 0) {
-                console.log("App: No online user data to select for iframes.");
+                console.warn("[DEBUG] App: #setDefaultIframes - No online user data available (#allOnlineUsersData is empty or null).");
                 return []; // Return empty array or handle as needed
             }
+            console.log("[DEBUG] App: #setDefaultIframes - #allOnlineUsersData available (first 3):", JSON.stringify(this.#allOnlineUsersData.slice(0,3), null, 2));
+
 
             const femaleUsers = this.#allOnlineUsersData.filter(user => user.gender === 'f');
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
+            console.log(`[DEBUG] App: #setDefaultIframes - Found ${femaleUsers.length} female users.`);
 
             const iframeUsers = [];
             // Example: Get up to 4 users for the iframes
             for (let i = 0; i < Math.min(femaleUsers.length, 4); i++) {
                 iframeUsers.push(femaleUsers[i]);
             }
-            console.log("App: Selected users for iframes (up to 4):", iframeUsers.map(u => u.username));
+            console.log("[DEBUG] App: #setDefaultIframes - Selected users for iframes (up to 4):", iframeUsers.map(u => u.username));
 
             // The actual setting of iframe sources will be handled by #updateIframes
             // #updateIframes could call this method to get the user data.
@@ -536,6 +540,8 @@
                 filterTags = [];
                 filterAges = [];
             }
+            console.log("[DEBUG] App: #applyFiltersAndDisplay - #allOnlineUsersData (first 3):", JSON.stringify((this.#allOnlineUsersData || []).slice(0,3), null, 2));
+            console.log("[DEBUG] App: #applyFiltersAndDisplay - Filters - Tags:", filterTags, "Ages:", filterAges, "Birthday:", buttonFilters.birthdayBanner);
 
             this.#lastFilteredUsers = (this.#allOnlineUsersData || []).filter(u => { // Add guard for #allOnlineUsersData
                 if(!u||!u.username)return false;
@@ -572,13 +578,14 @@
                     return ageA - ageB;
                 });
             }
+            console.log("[DEBUG] App: #applyFiltersAndDisplay - #lastFilteredUsers (first 3):", JSON.stringify(this.#lastFilteredUsers.slice(0,3), null, 2));
             this.#displayOnlineUsersList(this.#lastFilteredUsers); 
         }
 
         #displayOnlineUsersList(usersToDisplay) {
-            console.log(`[DIAGNOSTIC] App: Starting #displayOnlineUsersList with ${usersToDisplay ? usersToDisplay.length : 'null/undefined'} users.`);
+            console.log(`[DEBUG] App: #displayOnlineUsersList - Received usersToDisplay (first 3):`, JSON.stringify((usersToDisplay || []).slice(0,3), null, 2));
             if (!this.onlineUsersDiv) {
-                console.error("[DIAGNOSTIC] App: #displayOnlineUsersList - onlineUsersDiv is null!");
+                console.error("[DEBUG] App: #displayOnlineUsersList - onlineUsersDiv is null! Cannot display users.");
                 return;
             }
 
@@ -586,7 +593,7 @@
             this.onlineUsersDiv.innerHTML = ""; // Clear existing content
 
             if (!usersToDisplay || usersToDisplay.length === 0) { // Check usersToDisplay itself as well
-                console.log("[DIAGNOSTIC] App: No users to display or usersToDisplay is empty. Setting message.");
+                console.log("[DEBUG] App: #displayOnlineUsersList - No users to display or usersToDisplay is empty. Setting message.");
                 this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center" style="color: orange; border: 1px solid orange; padding: 10px;">[DIAGNOSTIC] No online users match filters (or usersToDisplay is empty).</p>';
                 return;
             }
@@ -595,7 +602,7 @@
             const fragment = document.createDocumentFragment();
             usersToDisplay.forEach((user, index) => {
                 if (!user || !user.image_url || !user.username) {
-                    console.warn(`[DIAGNOSTIC] App: Skipping user at index ${index} due to missing critical data (image_url or username). User:`, user);
+                    console.warn(`[DEBUG] App: #displayOnlineUsersList - Skipping user at index ${index} due to missing critical data (image_url or username). User:`, user);
                     return;
                 }
                 // console.log(`[DIAGNOSTIC] App: Creating element for user: ${user.username}`);
@@ -930,11 +937,13 @@
             const firstIframe = this.dynamicIframeContainer.querySelector('iframe');
 
             if (firstIframe) {
-                firstIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                const newSrc = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                console.log(`[DEBUG] App: #handleUserClick - Setting iframe ${firstIframe.id} src to: ${newSrc}`);
+                firstIframe.src = newSrc;
                 // Optionally update the title if it was set to the username
                 // firstIframe.title = user.username;
             } else {
-                console.warn("App: No iframes found in dynamic container to update on user click.");
+                console.warn("[DEBUG] App: #handleUserClick - No iframes found in dynamicIframeContainer to update on user click.");
                 // Fallback: maybe update all iframes or the first one created by #updateIframes
                 // For now, if no iframe, do nothing.
             }
@@ -1056,18 +1065,25 @@
             });
 
             if (this.globalUserCardIframeToggleRadios) {
-                this.globalUserCardIframeToggleRadios.forEach(radio => {
-                    radio.addEventListener('change', (event) => {
-                        this.userCardPreviewMode = event.target.value;
-                        console.log(`App: User card preview mode changed to: ${this.userCardPreviewMode}`);
-                        if (this.userCardPreviewMode === 'image') {
-                            this.#revertAllCardPreviewsToImage();
-                        } else {
-                            // When switching to 'iframe-in-view', trigger a check for currently visible items.
-                            this.#checkVisibleUserCardsForPreviewUpdate();
-                        }
+                if (this.globalUserCardIframeToggleRadios.length > 0) {
+                    console.log("[DEBUG] App: #setupEventListeners - Setting up event listeners for userCardPreviewMode radio buttons.");
+                    this.globalUserCardIframeToggleRadios.forEach(radio => {
+                        radio.addEventListener('change', (event) => {
+                            this.userCardPreviewMode = event.target.value;
+                            console.log(`[DEBUG] App: User card preview mode changed to: ${this.userCardPreviewMode}`);
+                            if (this.userCardPreviewMode === 'image') {
+                                this.#revertAllCardPreviewsToImage();
+                            } else {
+                                // When switching to 'iframe-in-view', trigger a check for currently visible items.
+                                this.#checkVisibleUserCardsForPreviewUpdate();
+                            }
+                        });
                     });
-                });
+                } else {
+                    console.warn("[DEBUG] App: #setupEventListeners - No radio buttons found for userCardPreviewMode.");
+                }
+            } else {
+                console.warn("[DEBUG] App: #setupEventListeners - globalUserCardIframeToggleRadios is null.");
             }
 
             this.iframeCountSelector?.addEventListener("change", (event) => {
@@ -1150,26 +1166,32 @@
                 });
             }
             if (typeof $ !== 'undefined') {
+                console.log("[DEBUG] App: #setupEventListeners - jQuery detected. Setting up #toggleControlsButton with jQuery.");
                 const $toggleButton = $('#toggleControlsButton');
                 const $sectionsToToggle = $('#controlsBarContainer, #snippetManagerContainer, #mainTextAreaContainer');
 
-                $toggleButton.on('click', () => {
-                    $sectionsToToggle.slideToggle(function() { 
-                        if ($('#controlsBarContainer').is(':visible')) {
-                            $toggleButton.text('Hide All Controls & Forms');
-                        } else {
-                            $toggleButton.text('Show All Controls & Forms');
-                        }
+                if ($toggleButton.length) {
+                    $toggleButton.on('click', () => {
+                        console.log("[DEBUG] App: #toggleControlsButton (jQuery) clicked.");
+                        $sectionsToToggle.slideToggle(function() {
+                            if ($('#controlsBarContainer').is(':visible')) {
+                                $toggleButton.text('Hide All Controls & Forms');
+                            } else {
+                                $toggleButton.text('Show All Controls & Forms');
+                            }
+                        });
                     });
-                });
-                // Initial button text
-                if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
-                    $toggleButton.text('Show All Controls & Forms');
+                    // Initial button text
+                    if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
+                        $toggleButton.text('Show All Controls & Forms');
+                    } else {
+                        $toggleButton.text('Hide All Controls & Forms');
+                    }
                 } else {
-                     $toggleButton.text('Hide All Controls & Forms');
+                    console.warn("[DEBUG] App: #setupEventListeners - #toggleControlsButton not found by jQuery.");
                 }
             } else {
-                console.error('jQuery is not loaded. Some UI features might not work.');
+                console.log("[DEBUG] App: #setupEventListeners - jQuery not loaded. Using vanilla JS for #toggleControlsButton.");
                 const toggleBtn = document.getElementById('toggleControlsButton');
                 const controlsBar = document.getElementById('controlsBarContainer');
                 const snippetManager = document.getElementById('snippetManagerContainer');
@@ -1352,14 +1374,18 @@
         }
 
         #updateIframes(count) {
-            if (!this.dynamicIframeContainer) return;
+            if (!this.dynamicIframeContainer) {
+                console.error("[DEBUG] App: #updateIframes - dynamicIframeContainer is null! Cannot update iframes.");
+                return;
+            }
 
-            console.log(`App: Updating iframes to ${count}`);
+            console.log(`[DEBUG] App: #updateIframes - Updating iframes to count: ${count}`);
             this.dynamicIframeContainer.innerHTML = ''; // Clear existing iframes
             this.dynamicIframeContainer.dataset.count = count; // For CSS styling
 
             const defaultSrc = "https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never";
             const selectedUsers = this.#setDefaultIframes(); // Get user data
+            console.log(`[DEBUG] App: #updateIframes - selectedUsers for iframes (first 3):`, JSON.stringify((selectedUsers || []).slice(0,3), null, 2));
 
             for (let i = 0; i < count; i++) {
                 const iframe = document.createElement('iframe');
@@ -1372,6 +1398,7 @@
                     userSrc = `https://chaturbate.com/embed/${selectedUsers[i].username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
                     userTitle = selectedUsers[i].username;
                 }
+                console.log(`[DEBUG] App: #updateIframes - Creating iframe ${i}: id=${iframe.id}, src=${userSrc}, title=${userTitle}`);
 
                 iframe.src = userSrc;
                 iframe.title = userTitle;
@@ -1485,16 +1512,19 @@
                 newState = (currentState === 'image') ? 'iframe' : 'image';
             }
 
-            if (newState === currentState && forceState !== null) { // No change needed if forcing to current state
-                // However, if forceState is null (toggle) and newState === currentState, something is wrong or it's a first-time setup.
-                // For toggling, newState will always be different from currentState.
-            }
+            // This condition might be redundant if the goal is to always reach the target 'newState'
+            // if (newState === currentState && forceState !== null) {
+            //     console.log(`[DEBUG] App: toggleUserCardPreview - Already in target state '${newState}' for ${username}. No change.`);
+            //     return;
+            // }
 
-            console.log(`App: Toggling user card preview for ${username}. Current: ${currentState}, Target: ${newState}`);
+            console.log(`[DEBUG] App: toggleUserCardPreview for ${username}. UserElement:`, userElement, `ForceState: ${forceState}, CurrentInternalState: ${currentState}, TargetNewState: ${newState}`);
 
             if (newState === 'iframe') {
-                if (currentState === 'image' || !userElement.iframeEl) { // Only create/setup if not already iframe
+                if (currentState === 'image' || !userElement.iframeEl) { // Only create/setup if not already iframe OR if iframeEl somehow got removed
+                    console.log(`[DEBUG] App: toggleUserCardPreview - Condition met to create or update iframe for ${username}. Current state: ${currentState}, iframeEl exists: ${!!userElement.iframeEl}`);
                     if (!userElement.iframeEl) {
+                        console.log(`[DEBUG] App: toggleUserCardPreview - Creating new iframe element for ${username}.`);
                         userElement.iframeEl = document.createElement('iframe');
                         userElement.iframeEl.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
                         userElement.iframeEl.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
