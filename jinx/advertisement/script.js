@@ -31,6 +31,48 @@ function trackGAEvent(action, category, label, value) {
   }
 }
 
+// --- Decorator Functions ---
+/**
+ * A simple method decorator that logs when a method is called and its arguments.
+ * This is a functional approach to decorators.
+ * @param {Function} originalMethod - The original method to be decorated.
+ * @param {string} methodName - The name of the method (for logging purposes).
+ * @param {Object} contextObject - The object instance (`this`) the method belongs to.
+ * @returns {Function} - The decorated method.
+ */
+function logMethodCall(originalMethod, methodName, contextObject) {
+    return function(...args) {
+        console.log(`LOG: Calling method "${methodName}" on ${contextObject.constructor.name} with arguments:`, args);
+        // Example GA event: trackGAEvent('call', 'MethodExecution', `${contextObject.constructor.name}.${methodName}`);
+
+        const result = originalMethod.apply(contextObject, args); // Ensure correct 'this'
+        console.log(`LOG: Method "${methodName}" finished execution.`);
+        return result;
+    };
+}
+
+// --- Generator Functions ---
+/**
+ * A generator function that yields a series of investment tips.
+ * Loops indefinitely.
+ */
+function* investmentTipGenerator() {
+    const tips = [
+        "Tip: Diversify your portfolio to manage risk.",
+        "Tip: Invest for the long term; avoid emotional decisions.",
+        "Tip: Understand your risk tolerance before investing.",
+        "Tip: Regularly review and rebalance your investments.",
+        "Tip: Start early and leverage the power of compounding.",
+        "Tip: Research thoroughly or trust experts like Jinx AI!"
+    ];
+    let currentIndex = 0;
+    while (true) {
+        yield tips[currentIndex];
+        currentIndex = (currentIndex + 1) % tips.length;
+    }
+}
+
+
 /**
  * Animates the static SVG logo text elements ("Jinx" and "AI").
  * Implements a sequential fade-in effect.
@@ -274,11 +316,18 @@ class AutoinvestExamples {
         if (!this._investmentInput || !this._calculateButton || !this._resultDisplay) {
             console.error("AutoinvestExamples: Critical HTML elements for the demo are missing. Ensure IDs 'investmentAmount', 'calculateProjection', and 'projectionResult' exist and are correct.");
             // Abort initialization if critical elements are missing
+            this._isAvailable = false; // Mark as not available
             return;
         }
+        this._isAvailable = true;
+
         if (!this._section){
              console.warn(`AutoinvestExamples: The main section container with ID '${sectionId}' was not found, but core demo elements are present and functional.`);
         }
+
+        // Apply the decorator to calculateProjection
+        // Ensure 'this' context is correctly bound for the original method when called through the decorator
+        this.calculateProjection = logMethodCall(this.calculateProjection.bind(this), 'calculateProjection', this);
 
         console.log(`AutoinvestExamples initialized. Ready for user interaction on section: ${sectionId}`);
         this._setupEventListeners();
@@ -435,8 +484,13 @@ class UserInteraction {
      * @param {Event} event - The form submission event.
      * @private
      */
-    _handleSubmission(event) {
-        event.preventDefault(); // Prevent default browser form submission
+    async _handleSubmission(event) { // Added async
+        event.preventDefault();
+
+        this._submitButton.disabled = true; // Disable button during submission
+        this._feedbackDiv.textContent = "Submitting...";
+        this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-blue w3-border w3-border-blue'; // Submitting style
+        this._feedbackDiv.style.display = 'block';
 
         const name = this._nameInput.value;
         const email = this._emailInput.value;
@@ -447,28 +501,35 @@ class UserInteraction {
         if (validationError) {
             this._feedbackDiv.textContent = validationError;
             this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red'; // Error styling
-            this._feedbackDiv.style.display = 'block';
-            return;
+            // No need to set display to block as it's already visible or will be set in finally
+            this._submitButton.disabled = false; // Re-enable button
+            return; // Return early, finally will still execute if this was in try block.
         }
 
-        // Simulate submission
-        console.log("Contact Form Submitted:");
-        console.log("Name:", name);
-        console.log("Email:", email);
-        console.log("Message:", message);
+        try {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
 
-        trackGAEvent('submit', 'Form', 'Contact Form Submitted');
+            // Simulate submission success
+            console.log("Contact Form Submitted (Simulated Async):");
+            console.log("Name:", name);
+            console.log("Email:", email);
+            console.log("Message:", message);
 
-        this._feedbackDiv.textContent = "Thank you for your message! We'll get back to you soon.";
-        this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green'; // Success styling
-        this._feedbackDiv.style.display = 'block';
+            trackGAEvent('submit', 'Form', 'Contact Form Submitted Async');
 
-        // Optionally clear the form
-        this._form.reset(); 
-        // Or clear fields individually:
-        // this._nameInput.value = '';
-        // this._emailInput.value = '';
-        // this._messageInput.value = '';
+            this._feedbackDiv.textContent = "Thank you for your message! We'll get back to you soon.";
+            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green'; // Success styling
+            this._form.reset();
+        } catch (error) {
+            // Simulate submission failure (though our current simulation doesn't throw)
+            console.error("Simulated submission error:", error);
+            this._feedbackDiv.textContent = "Submission failed. Please try again later.";
+            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red'; // Error styling
+        } finally {
+            this._feedbackDiv.style.display = 'block'; // Ensure feedback is visible
+            this._submitButton.disabled = false; // Re-enable button
+        }
     }
 }
 
@@ -492,6 +553,10 @@ class App {
         // For GA event tracking on navigation and logo
         this._logoContainer = document.getElementById('logo-container');
         this._navLinks = document.querySelectorAll('nav.w3-bar a.w3-bar-item');
+
+        // For Investment Tip Generator
+        this._tipGenerator = investmentTipGenerator();
+        this._tipDisplayElement = document.getElementById('investmentTipDisplay');
 
         console.log("Jinx AI App: All components/modules have been instantiated.");
     }
@@ -518,6 +583,22 @@ class App {
             });
         } else {
             console.warn("App: Logo container not found for GA event tracking.");
+        }
+    }
+
+    /**
+     * Updates the investment tip display with the next tip from the generator.
+     * @private
+     */
+    _updateInvestmentTip() {
+        if (!this._tipDisplayElement || !this._tipGenerator) return;
+
+        const nextTipResult = this._tipGenerator.next();
+        if (!nextTipResult.done && nextTipResult.value) {
+            this._tipDisplayElement.innerHTML = `<p><em>${nextTipResult.value}</em></p>`;
+            // Example: trackGAEvent('view', 'DynamicContent', 'InvestmentTipDisplayed', nextTipResult.value);
+            // Be careful about PII or very long strings if sending value to GA.
+            trackGAEvent('view', 'DynamicContent', 'InvestmentTipDisplayed');
         }
     }
 
@@ -554,6 +635,15 @@ class App {
             this._userInteraction.initContactForm();
         } else {
             console.error("App: UserInteraction not available or 'initContactForm' method missing.");
+        }
+
+        // Initialize and start investment tip display
+        if (this._tipDisplayElement && this._tipGenerator) {
+            this._updateInvestmentTip(); // Display the first tip immediately
+            setInterval(() => this._updateInvestmentTip(), 7000); // Cycle tips every 7 seconds
+            console.log("App: Investment tip generator initialized and interval set.");
+        } else {
+            console.warn("App: Investment tip display element or generator not found. Tip feature disabled.");
         }
         
         console.log("Jinx AI Advertisement application initialized successfully.");
