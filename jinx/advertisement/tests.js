@@ -114,6 +114,110 @@ function runAutoinvestExamplesTests() {
     console.log("--- AutoinvestExamples Tests Finished ---");
 }
 
+// --- Tests for Decorators (logMethodCall) ---
+function runDecoratorTests() {
+    console.log("--- Running Decorator (logMethodCall) Tests ---");
+    let originalConsoleLog = console.log;
+    let logOutput = [];
+
+    // Temporarily override console.log to capture its output
+    console.log = (message, ...args) => {
+        // originalConsoleLog(message, ...args); // Uncomment to see logs during test
+        logOutput.push({ message, args: args.map(arg => JSON.stringify(arg)).join(' ') });
+    };
+
+    const testObj = {
+        value: 0,
+        // A simple method to be decorated
+        method: function(a, b) {
+            this.value = a + b; // 'this' context is important
+            return this.value;
+        }
+    };
+
+    // Decorate the method. Note: logMethodCall expects (originalMethod, methodName, contextObject)
+    // We are testing the decorator function directly here.
+    // The 'this' for originalMethod.apply inside the decorator will be contextObject.
+    const decoratedMethod = logMethodCall(testObj.method, 'methodInTestObj', testObj);
+
+    // Test 1: Method call logging and execution
+    logOutput = []; // Clear log before call
+    let result = decoratedMethod(5, 3); // Call the decorated method directly
+
+    assertEquals(8, result, "Decorator Test 1: Result of decorated method");
+    assertEquals(8, testObj.value, "Decorator Test 1: 'this' context correctly applied (value updated)");
+
+    // Check log messages (simplified check for inclusion)
+    let callLogged = logOutput.some(log => log.message.includes('Calling method "methodInTestObj" on Object with arguments:'));
+    // Note: contextObject.constructor.name might be tricky if contextObject is a simple literal.
+    // For the actual implementation, it's `AutoinvestExamples`. Here, it's a generic Object.
+    // args[0] for the log is an array [5,3]. So JSON.stringify(args[0]) might be more robust.
+    // For simplicity, we're just checking parts of the message.
+    let argsLoggedCorrectly = logOutput.some(log => log.args.includes('[5,3]'));
+
+    assertEquals(true, callLogged, "Decorator Test 1: Logged call message");
+    assertEquals(true, argsLoggedCorrectly, "Decorator Test 1: Logged call with correct args representation");
+
+    let finishLogged = logOutput.some(log => log.message.includes('Method "methodInTestObj" finished execution.'));
+    assertEquals(true, finishLogged, "Decorator Test 1: Logged finish message");
+
+    // Reset console.log and clear output for next tests
+    testObj.value = 0; // Reset internal state of testObj
+    logOutput = [];
+
+    console.log = originalConsoleLog; // Restore original console.log
+    console.log("--- Decorator Tests Finished ---");
+}
+
+
+// --- Tests for Generators (investmentTipGenerator) ---
+function runGeneratorTests() {
+    console.log("--- Running Generator (investmentTipGenerator) Tests ---");
+
+    // We need to ensure `investmentTipGenerator` is available in this scope.
+    // If tests.js is loaded before script.js defines it, this will fail.
+    // Assuming script.js is loaded and `investmentTipGenerator` is global or accessible.
+    if (typeof investmentTipGenerator !== 'function') {
+        console.error("FAIL: investmentTipGenerator is not defined. Ensure script.js is loaded before tests.js or the generator is made available.");
+        testsRun++; // Count this as a failed test setup
+        return;
+    }
+    const generator = investmentTipGenerator();
+    const tips = [ // Must match the ones in script.js
+        "Tip: Diversify your portfolio to manage risk.",
+        "Tip: Invest for the long term; avoid emotional decisions.",
+        "Tip: Understand your risk tolerance before investing.",
+        "Tip: Regularly review and rebalance your investments.",
+        "Tip: Start early and leverage the power of compounding.",
+        "Tip: Research thoroughly or trust experts like Jinx AI!"
+    ];
+
+    // Test 1: Yields all tips in order
+    for (let i = 0; i < tips.length; i++) {
+        const { value, done } = generator.next();
+        assertEquals(tips[i], value, `Generator Test 1.${i}: Yields correct tip #${i+1}`);
+        assertEquals(false, done, `Generator Test 1.${i}: Not done yet`);
+    }
+
+    // Test 2: Loops back to the first tip
+    let { value, done } = generator.next();
+    assertEquals(tips[0], value, "Generator Test 2: Loops back to the first tip");
+    assertEquals(false, done, "Generator Test 2: Still not done");
+
+    // Test 3: Subsequent call yields second tip again
+    ({ value, done } = generator.next());
+    assertEquals(tips[1], value, "Generator Test 3: Yields second tip after looping");
+    assertEquals(false, done, "Generator Test 3: Still not done after looping and getting next");
+
+    // Test 4: Check type of yielded value
+    const firstTipResult = investmentTipGenerator().next(); // Get the first result object
+    assertEquals('string', typeof firstTipResult.value, "Generator Test 4: Yielded value is a string");
+    assertEquals(false, firstTipResult.done, "Generator Test 4: Generator not done on first yield");
+
+
+    console.log("--- Generator Tests Finished ---");
+}
+
 
 // --- Main Test Execution ---
 // This function will be called by a button or automatically.
@@ -121,10 +225,13 @@ function runAllTests() {
     testsRun = 0;
     testsPassed = 0;
     
+    console.log("--- Starting All Tests ---");
     runAutoinvestExamplesTests();
-    // Add calls to other test suites here if created
+    runDecoratorTests();
+    runGeneratorTests();
 
     summarizeTests();
+    console.log("--- All Tests Finished ---");
 }
 
 // To run tests automatically when the script loads (optional):
