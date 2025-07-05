@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Contact Form Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; }
+        .form-section { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; }
+        .form-section h3 { color: #009688; margin-top:0; border-bottom: 1px solid #009688; padding-bottom:5px; } /* Teal */
+        .field-label { font-weight: bold; display: block; margin-bottom: 2px; }
+        .editable-field { background-color: #f9f9f9; border: 1px solid #ccc; padding: 6px; width: 100%; box-sizing: border-box; margin-bottom: 8px; min-height: 30px;}
+        .small-editable-inline { background-color: #f9f9f9; border-bottom: 1px solid #ccc; padding: 4px; min-width:150px; display:inline-block;}
+        .important-note { background-color: #fff3e0; border-left: 4px solid #ff9800; padding: 10px; margin-top: 15px; } /* W3.CSS Orange */
+        @media print {
+            .no-print { display: none; }
+            body { font-size: 12pt; }
+            .editable-field { border: 1px solid #ccc !important; background-color: #fff !important; } /* Ensure visibility for print */
+            .small-editable-inline { border-bottom: 1px solid #ccc !important; background-color: #fff !important;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center no-print">
+        <h1>Emergency Contact & Medical Information Form</h1>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+        <p>This form is for collecting essential emergency contact and medical information for each student. Please ensure this information is kept confidential and secure, according to your church's privacy policies.</p>
+        <button class="w3-button w3-green w3-margin-bottom" onclick="window.print()">Print Blank Form</button>
+        <p class="w3-small w3-text-red"><strong>Note:</strong> Teachers would typically print this form for parents to fill out, or fill it in based on information provided by parents. The "editable" fields below are for template viewing or if a teacher is transcribing information digitally.</p>
+    </div>
+
+    <div class="w3-card-4 w3-padding w3-margin-top">
+        <h2 class="w3-center w3-text-teal">Student Information</h2>
+        <div class="form-section">
+            <label class="field-label" for="student_name">Full Name of Student:</label>
+            <div id="student_name" contenteditable="true" class="editable-field"></div>
+
+            <label class="field-label" for="dob">Date of Birth:</label>
+            <div id="dob" contenteditable="true" class="editable-field"></div>
+
+            <label class="field-label" for="class_grade">Class/Grade:</label>
+            <div id="class_grade" contenteditable="true" class="editable-field">6-7 Year Olds</div>
+        </div>
+
+        <h2 class="w3-center w3-text-teal">Parent/Guardian Information</h2>
+        <div class="form-section">
+            <h3>Parent/Guardian 1:</h3>
+            <label class="field-label" for="pg1_name">Full Name:</label>
+            <div id="pg1_name" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg1_relation">Relationship to Student:</label>
+            <div id="pg1_relation" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg1_phone_primary">Primary Phone:</label>
+            <div id="pg1_phone_primary" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg1_phone_secondary">Secondary Phone (Optional):</label>
+            <div id="pg1_phone_secondary" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg1_email">Email Address:</label>
+            <div id="pg1_email" contenteditable="true" class="editable-field"></div>
+        </div>
+        <div class="form-section">
+            <h3>Parent/Guardian 2 (If applicable):</h3>
+            <label class="field-label" for="pg2_name">Full Name:</label>
+            <div id="pg2_name" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg2_relation">Relationship to Student:</label>
+            <div id="pg2_relation" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg2_phone_primary">Primary Phone:</label>
+            <div id="pg2_phone_primary" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg2_phone_secondary">Secondary Phone (Optional):</label>
+            <div id="pg2_phone_secondary" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="pg2_email">Email Address:</label>
+            <div id="pg2_email" contenteditable="true" class="editable-field"></div>
+        </div>
+
+        <h2 class="w3-center w3-text-teal">Emergency Contacts (Other than Parents/Guardians)</h2>
+        <p class="w3-center">(Please provide at least one person who can be contacted if parents/guardians are unreachable)</p>
+        <div class="form-section">
+            <h3>Emergency Contact 1:</h3>
+            <label class="field-label" for="ec1_name">Full Name:</label>
+            <div id="ec1_name" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="ec1_relation">Relationship to Student:</label>
+            <div id="ec1_relation" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="ec1_phone">Phone Number:</label>
+            <div id="ec1_phone" contenteditable="true" class="editable-field"></div>
+        </div>
+        <div class="form-section">
+            <h3>Emergency Contact 2 (Optional):</h3>
+            <label class="field-label" for="ec2_name">Full Name:</label>
+            <div id="ec2_name" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="ec2_relation">Relationship to Student:</label>
+            <div id="ec2_relation" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="ec2_phone">Phone Number:</label>
+            <div id="ec2_phone" contenteditable="true" class="editable-field"></div>
+        </div>
+
+        <h2 class="w3-center w3-text-teal">Medical Information</h2>
+        <div class="form-section">
+            <label class="field-label" for="allergies">Allergies (Food, Medication, Environmental, etc.):</label>
+            <div id="allergies" contenteditable="true" class="editable-field">Please specify reaction and management if any.</div>
+
+            <label class="field-label" for="medications">Regular Medications Student Takes (If any, and if any need to be administered during class - provide details and authorization separately as per policy):</label>
+            <div id="medications" contenteditable="true" class="editable-field"></div>
+
+            <label class="field-label" for="medical_conditions">Other Medical Conditions or Special Needs (Asthma, Diabetes, Seizures, Physical Limitations, Behavioral Considerations, etc.):</label>
+            <div id="medical_conditions" contenteditable="true" class="editable-field">Please provide details.</div>
+
+            <label class="field-label" for="physician_name">Family Physician/Pediatrician Name:</label>
+            <div id="physician_name" contenteditable="true" class="editable-field"></div>
+            <label class="field-label" for="physician_phone">Physician's Phone Number:</label>
+            <div id="physician_phone" contenteditable="true" class="editable-field"></div>
+
+            <label class="field-label" for="insurance_info">Health Insurance Information (Optional, but helpful in emergencies - e.g., Provider & Policy #):</label>
+            <div id="insurance_info" contenteditable="true" class="editable-field"></div>
+        </div>
+
+        <div class="form-section">
+            <h3>Consent for Emergency Medical Treatment:</h3>
+            <p>In the event of a medical emergency where I (parent/guardian) cannot be reached, I hereby authorize the church school staff to obtain necessary emergency medical treatment for my child named above. I understand that I will be responsible for any medical expenses incurred.</p>
+            <p><strong>Parent/Guardian Signature:</strong> <span class="small-editable-inline" style="min-width:300px;"></span></p>
+            <p><strong>Date:</strong> <span class="small-editable-inline"></span></p>
+        </div>
+
+        <div class="important-note no-print">
+            <p><strong>Teacher/Administrator Note:</strong> Ensure this form is completed for every student. Store this information securely and have it readily accessible in case of an emergency. Follow all church privacy and safety policies regarding this sensitive information.</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

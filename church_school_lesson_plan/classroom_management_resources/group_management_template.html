@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Management Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; margin-bottom: 5px;}
+        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 80px; display: inline-block; }
+        .group-card { margin-bottom: 20px; }
+        .group-header { background-color: #009688; color: white; padding: 10px; } /* Teal */
+        .student-list li { padding: 5px 0; }
+        .notes-area { min-height: 60px; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center no-print">
+        <h1>Group Management Template</h1>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+        <p><strong>Activity/Project:</strong> <span class="editable">_________________________</span></p>
+        <p><strong>Date(s):</strong> <span class="editable">_________________</span></p>
+        <p>Use this template to organize students into groups for projects or activities, and to note roles or observations.</p>
+    </div>
+
+    <div class="w3-center no-print">
+        <button class="w3-button w3-green w3-margin-bottom" onclick="window.print()">Print Group List</button>
+        <button class="w3-button w3-blue-grey w3-margin-bottom" onclick="addGroupCard()">+ Add Another Group</button>
+    </div>
+
+    <!-- Repeat this .group-card block for each group -->
+    <div class="w3-card-4 group-card">
+        <header class="w3-container group-header">
+            <h2>Group Name/Number: <span contenteditable="true" class="small-editable" style="background-color: #00796b; color:white;">Group 1</span></h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <div class="w3-row-padding">
+                <div class="w3-half">
+                    <h4 class="w3-text-teal">Group Members:</h4>
+                    <ul class="w3-ul student-list">
+                        <li><span class="editable">Student Name A</span></li>
+                        <li><span class="editable">Student Name B</span></li>
+                        <li><span class="editable">Student Name C</span></li>
+                        <li><span class="editable">Student Name D (Optional)</span></li>
+                        <!-- Add more li for more students -->
+                    </ul>
+                    <button class="w3-button w3-tiny w3-light-blue w3-border w3-margin-top no-print" onclick="addStudentToGroup(this)">+ Add Student</button>
+                </div>
+                <div class="w3-half">
+                    <h4 class="w3-text-teal">Group Roles (Optional):</h4>
+                    <span class="editable notes-area">(e.g., Leader: [Name], Scribe: [Name], Materials Manager: [Name], Encourager: [Name])</span>
+
+                    <h4 class="w3-text-teal w3-margin-top">Teacher Notes/Observations for this Group:</h4>
+                    <span class="editable notes-area">(e.g., Dynamics, collaboration, challenges, successes)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End of group-card block -->
+
+</div>
+
+<script>
+function addStudentToGroup(buttonEl) {
+    let ul = buttonEl.previousElementSibling; // Assuming ul is right before the button
+    if (ul && ul.tagName === 'UL') {
+        let newLi = document.createElement('li');
+        let newSpan = document.createElement('span');
+        newSpan.className = 'editable';
+        newSpan.textContent = 'New Student';
+        newSpan.setAttribute('contenteditable', 'true'); // Make it directly editable
+        newLi.appendChild(newSpan);
+        ul.appendChild(newLi);
+    }
+}
+
+function addGroupCard() {
+    const container = document.querySelector('.w3-container'); // Main container
+    const groupCards = document.querySelectorAll('.group-card');
+    if (groupCards.length > 0) {
+        const lastGroupCard = groupCards[groupCards.length - 1];
+        const newGroupCard = lastGroupCard.cloneNode(true);
+
+        // Clear or reset fields in the new card
+        const groupNameSpan = newGroupCard.querySelector('.group-header .small-editable');
+        if(groupNameSpan) groupNameSpan.textContent = 'Group ' + (groupCards.length + 1);
+
+        const studentListItems = newGroupCard.querySelectorAll('.student-list li .editable');
+        studentListItems.forEach((item, index) => {
+            item.textContent = (index === 0) ? 'Student Name' : 'Student Name (Optional)';
+        });
+        // Keep only one student list item as a template perhaps, or a few blanks
+        const studentListUL = newGroupCard.querySelector('.student-list');
+        while(studentListUL.children.length > 2) { // Keep first two example lines
+            studentListUL.removeChild(studentListUL.lastChild);
+        }
+
+
+        const notesAreas = newGroupCard.querySelectorAll('.notes-area.editable');
+        notesAreas.forEach(area => {
+            area.textContent = '(Enter notes here)';
+        });
+
+        // Insert the new card after the last one
+        lastGroupCard.parentNode.insertBefore(newGroupCard, lastGroupCard.nextSibling);
+        newGroupCard.scrollIntoView({ behavior: 'smooth' });
+
+    } else { // If no group cards exist yet, create a default one (this part might be complex to do perfectly without a hidden template)
+        // For simplicity, this case can be handled by asking user to manually setup first card if none exist
+        // Or, ideally, have a hidden template in the HTML to clone from.
+        // For now, we assume at least one card is there to be cloned.
+        alert("Please ensure at least one group card exists to duplicate.");
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Grades & Observations Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; }
+        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 50px; display: inline-block; }
+        .w3-table-all th { background-color: #009688; color: white; } /* Teal background for table headers */
+        .w3-table-all td, .w3-table-all th { vertical-align: top; padding: 8px; }
+        .student-record { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #009688; }
+        .notes-area { min-height: 60px; }
+        .section-title { margin-top: 1em; margin-bottom: 0.5em; font-size: 1.2em; font-weight: bold; color: #00796b; } /* Darker Teal */
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center">
+        <h1>Student Grades & Observations Template</h1>
+        <p>(For Teacher's Use - Manual Input)</p>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+        <p><strong>Term/Semester:</strong> <span class="small-editable">_________________</span> &nbsp;&nbsp;
+           <strong>Year:</strong> <span class="small-editable">_________</span> &nbsp;&nbsp;
+           <strong>Class/Group:</strong> <span class="small-editable">6-7 Year Olds</span>
+        </p>
+        <p>Refer to `grading_and_feedback_philosophy.html` for guidance on age-appropriate assessment.</p>
+    </div>
+
+    <!-- Repeat this .student-record block for each student -->
+    <div class="student-record w3-card-2 w3-padding w3-margin-top">
+        <h2 class="w3-text-teal">Student Name: <span class="editable">_________________________</span></h2>
+
+        <div class="section-title">Overall Participation & Engagement:</div>
+        <span class="editable notes-area">(e.g., Actively participates in discussions, shows enthusiasm, works well with others, needs encouragement to share, etc.)</span>
+
+        <div class="section-title">Key Learning Observations / Anecdotal Notes:</div>
+        <span class="editable notes-area">(Record specific observations about understanding, skills, 'aha!' moments, areas for growth, social interactions, application of values, etc. Date entries if helpful.)</span>
+
+        <div class="section-title">Assessments & Projects:</div>
+        <div class="w3-responsive">
+            <table class="w3-table-all w3-hoverable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Assignment/Quiz/Project Title</th>
+                        <th>Score/Descriptor</th>
+                        <th>Teacher Comments/Feedback Given</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="small-editable">MM/DD/YY</span></td>
+                        <td><span class="editable">e.g., Noah's Ark Quiz</span></td>
+                        <td><span class="editable">e.g., Good Understanding / 8 out of 10 pictures matched</span></td>
+                        <td><span class="editable notes-area">e.g., Remembered key parts of the story well.</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="small-editable">MM/DD/YY</span></td>
+                        <td><span class="editable">e.g., Kindness Poster Project</span></td>
+                        <td><span class="editable">e.g., Excellent Effort! / Showed good understanding of kindness</span></td>
+                        <td><span class="editable notes-area">e.g., Creative ideas, shared materials well with partner.</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="small-editable">MM/DD/YY</span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable notes-area"></span></td>
+                    </tr>
+                    <!-- Add more rows as needed -->
+                </tbody>
+            </table>
+        </div>
+        <button class="w3-button w3-tiny w3-teal w3-margin-top" onclick="addRow(this)">+ Add Row</button>
+
+        <div class="section-title">Memory Verse Progress:</div>
+        <span class="editable notes-area">(e.g., List verses and note familiarity or successful recitation.)</span>
+
+        <div class="section-title">Holistic Development Notes (Optional - see philosophy doc):</div>
+        <span class="editable notes-area">(Observations related to social skills, communication, problem-solving, creativity, responsibility, emerging leadership, etc. that may inform your understanding of the child's growth beyond specific academic tasks.)</span>
+    </div>
+    <!-- End of student-record block -->
+
+    <!-- Placeholder for adding more student blocks - Teacher would copy-paste the above block -->
+    <div class="w3-center w3-margin-top">
+        <button class="w3-button w3-large w3-pale-green w3-border w3-border-green w3-hover-green" onclick="addStudent()">+ Add Another Student Record</button>
+    </div>
+
+</div>
+
+<script>
+// Basic JavaScript to add rows to tables - this makes the template slightly more "UI-like"
+// For a static template, teacher would copy-paste rows in HTML. This is an enhancement.
+function addRow(buttonEl) {
+    let table = buttonEl.previousElementSibling.querySelector('table tbody');
+    if (table) {
+        let newRow = table.rows[table.rows.length - 1].cloneNode(true);
+        let editables = newRow.querySelectorAll('.editable, .small-editable, .notes-area');
+        editables.forEach(el => {
+            if (el.tagName === 'SPAN' || el.tagName === 'DIV') el.textContent = ''; // Clear content for spans/divs
+            else el.value = ''; // Clear value for input elements if any
+        });
+        table.appendChild(newRow);
+    }
+}
+
+// Function to duplicate the student record block - more advanced, teacher would typically copy-paste the HTML block
+function addStudent() {
+    const studentRecords = document.querySelectorAll('.student-record');
+    if (studentRecords.length > 0) {
+        const lastStudentRecord = studentRecords[studentRecords.length - 1];
+        const newStudentRecord = lastStudentRecord.cloneNode(true);
+
+        // Clear all editable fields in the new cloned student record
+        const editables = newStudentRecord.querySelectorAll('.editable, .small-editable, .notes-area');
+        editables.forEach(el => {
+            if (el.tagName === 'SPAN' || el.tagName === 'DIV') el.textContent = '_________________________'; // Reset to placeholder
+            if (el.classList.contains('notes-area')) el.textContent = '(Enter notes here)';
+            // Clear table rows beyond the first one in the new student record
+            const tables = newStudentRecord.querySelectorAll('table tbody');
+            tables.forEach(tbody => {
+                while (tbody.rows.length > 1) {
+                    tbody.deleteRow(1);
+                }
+                // Clear the first row's editable fields too
+                const firstRowEditables = tbody.rows[0].querySelectorAll('.editable, .small-editable, .notes-area');
+                firstRowEditables.forEach(fre => {
+                    if (fre.tagName === 'SPAN' || fre.tagName === 'DIV') fre.textContent = '';
+                    else fre.value = '';
+                });
+
+            });
+        });
+        // Insert the new student record after the last one
+        lastStudentRecord.parentNode.insertBefore(newStudentRecord, lastStudentRecord.nextSibling);
+        // Scroll to the new student record
+        newStudentRecord.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        alert("No student record block found to duplicate. This is unexpected.");
+    }
+}
+</script>
+
+</body>
+</html>

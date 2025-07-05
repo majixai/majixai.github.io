@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Sheet Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; }
+        .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 80px; display: inline-block; }
+        .w3-table-all th { background-color: #009688; color: white; } /* Teal */
+        .w3-table-all td, .w3-table-all th { text-align: center; vertical-align: middle; padding: 6px;}
+        .student-name-col { text-align: left; min-width: 150px;}
+        .date-col { min-width: 80px; }
+        .notes-col { min-width: 200px; text-align: left;}
+        .print-button { margin-top:20px; margin-bottom:20px; }
+        @media print {
+            .no-print { display: none; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } /* Ensure colors print */
+            .w3-table-all th { background-color: #009688 !important; color: white !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center no-print">
+        <h1>Attendance Sheet Template</h1>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+        <p><strong>Class/Group:</strong> <span class="editable">6-7 Year Olds</span></p>
+        <p><strong>Month/Term:</strong> <span class="editable">_________________</span> &nbsp;&nbsp;
+           <strong>Year:</strong> <span class="editable">_________</span>
+        </p>
+        <p><strong>Key:</strong> P = Present, A = Absent, T = Tardy, E = Excused</p>
+    </div>
+
+    <div class="w3-center no-print">
+        <button class="w3-button w3-green print-button" onclick="window.print()">Print Attendance Sheet</button>
+    </div>
+
+    <div class="w3-responsive w3-card-4">
+        <table class="w3-table-all w3-hoverable">
+            <thead>
+                <tr>
+                    <th class="student-name-col">Student Name</th>
+                    <th class="date-col">Date: <span class="editable">MM/DD</span></th>
+                    <th class="date-col">Date: <span class="editable">MM/DD</span></th>
+                    <th class="date-col">Date: <span class="editable">MM/DD</span></th>
+                    <th class="date-col">Date: <span class="editable">MM/DD</span></th>
+                    <th class="date-col">Date: <span class="editable">MM/DD</span></th>
+                    <!-- Add more date columns as needed for the week/month -->
+                    <th class="notes-col">Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Repeat this row for each student -->
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 1</span></td>
+                    <td><span class="editable">P</span></td>
+                    <td><span class="editable">P</span></td>
+                    <td><span class="editable">A</span></td>
+                    <td><span class="editable">P</span></td>
+                    <td><span class="editable">T</span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 2</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 3</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 4</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 5</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 6</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 7</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 8</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 9</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <tr>
+                    <td class="student-name-col"><span class="editable">Student Name 10</span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td><span class="editable"></span></td>
+                    <td class="notes-col"><span class="editable"></span></td>
+                </tr>
+                <!-- Add more student rows as needed by copy-pasting a <tr> block -->
+            </tbody>
+        </table>
+    </div>
+    <div class="w3-center no-print">
+         <button class="w3-button w3-small w3-blue-grey w3-margin-top" onclick="addStudentRow()">+ Add Student Row</button>
+    </div>
+
+</div>
+
+<script>
+function addStudentRow() {
+    let table = document.querySelector('.w3-table-all tbody');
+    if (table) {
+        let newRow = table.rows[table.rows.length - 1].cloneNode(true);
+        let editables = newRow.querySelectorAll('.editable');
+        editables.forEach(el => {
+            el.textContent = ''; // Clear content for spans
+        });
+        table.appendChild(newRow);
+    }
+}
+</script>
+
+</body>
+</html>
