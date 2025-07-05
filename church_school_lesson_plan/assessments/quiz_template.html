@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Template (6-7 Year Olds)</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; }
+        .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; }
+        .quiz-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
+        .instructions { font-style: italic; margin-bottom: 10px; }
+        .drawing-space { border: 1px dashed #aaa; min-height: 150px; margin-top: 10px; padding:10px; text-align:center; color: #aaa; }
+        .image-placeholder { border: 1px solid #ccc; padding: 20px; text-align: center; margin: 5px; background-color: #f9f9f9; min-width: 100px; min-height: 80px; display: inline-block;}
+        .word-bank { background-color: #e7f3fe; border: 1px solid #b3d7ff; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center">
+        <h1>Quiz Template (6-7 Year Olds)</h1>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+        <p><strong>Subject:</strong> <span class="editable">_________________________</span></p>
+        <p><strong>Topic/Unit:</strong> <span class="editable">_________________________</span></p>
+        <p><strong>Name:</strong> <span class="editable">_________________________</span></p>
+        <p><strong>Date:</strong> <span class="editable">_________________________</span></p>
+    </div>
+
+    <hr>
+
+    <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue w3-padding">
+        <p class="instructions"><strong>Instructions:</strong> Listen carefully to the instructions for each part. Do your best!</p>
+    </div>
+
+    <hr>
+
+    <div class="quiz-section w3-card">
+        <h2 class="w3-text-blue">Part 1: Picture Matching <span class="w3-small w3-text-grey">(Example)</span></h2>
+        <p class="instructions">Draw a line to match the picture to the correct word or concept.</p>
+        <table class="w3-table w3-bordered">
+            <thead>
+                <tr>
+                    <th>Picture</th>
+                    <th>Word/Concept</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><div class="image-placeholder">(Image of an apple)</div></td>
+                    <td>Apple</td>
+                </tr>
+                <tr>
+                    <td><div class="image-placeholder">(Image of a cross)</div></td>
+                    <td>Cross</td>
+                </tr>
+                <tr>
+                    <td><div class="image-placeholder">(Image of praying hands)</div></td>
+                    <td>Prayer</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="quiz-section w3-card">
+        <h2 class="w3-text-green">Part 2: Circle the Answer <span class="w3-small w3-text-grey">(Example)</span></h2>
+
+        <p class="instructions">Circle the picture that shows kindness.</p>
+        <div class="w3-row">
+            <div class="w3-half w3-center"><div class="image-placeholder">(Image A: Child sharing toys)</div><p>A</p></div>
+            <div class="w3-half w3-center"><div class="image-placeholder">(Image B: Child not sharing)</div><p>B</p></div>
+        </div>
+
+        <hr style="margin-top:15px; margin-bottom:15px;">
+
+        <p>Who was Jesus's mother?</p>
+        <ul class="w3-ul">
+            <li><input class="w3-radio" type="radio" name="jesus_mother" value="Mary"> <label>Mary</label></li>
+            <li><input class="w3-radio" type="radio" name="jesus_mother" value="Martha"> <label>Martha</label></li>
+            <li><input class="w3-radio" type="radio" name="jesus_mother" value="Eve"> <label>Eve</label></li>
+        </ul>
+    </div>
+
+    <div class="quiz-section w3-card">
+        <h2 class="w3-text-orange">Part 3: Fill in the Blank (with Word Bank) <span class="w3-small w3-text-grey">(Example)</span></h2>
+        <div class="word-bank">
+            <strong>Word Bank:</strong> love, God, Bible
+        </div>
+        <ol class="w3-ul">
+            <li>We learn about Jesus in the <span class="editable">_______________</span>.</li>
+            <li>Jesus teaches us to <span class="editable">_______________</span> one another.</li>
+            <li><span class="editable">_______________</span> created the world.</li>
+        </ol>
+    </div>
+
+    <div class="quiz-section w3-card">
+        <h2 class="w3-text-purple">Part 4: Drawing Response <span class="w3-small w3-text-grey">(Example)</span></h2>
+        <p class="instructions">Draw a picture of your favorite Bible story we learned.</p>
+        <div class="drawing-space">
+            (Space for drawing)
+        </div>
+    </div>
+
+    <hr>
+
+    <div class="w3-panel w3-pale-yellow w3-leftbar w3-border-yellow w3-padding w3-card">
+        <h3 class="w3-text-brown">Teacher Notes:</h3>
+        <ul class="w3-ul">
+            <li>Read questions aloud for students who need help with reading.</li>
+            <li>Focus on understanding of concepts rather than perfect spelling/writing for this age group.</li>
+            <li>Use as a tool to gauge understanding and inform future teaching.</li>
+            <li>Keep it short and engaging.</li>
+        </ul>
+    </div>
+
+</div>
+
+</body>
+</html>
