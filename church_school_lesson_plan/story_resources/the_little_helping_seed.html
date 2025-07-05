@@ -11,37 +11,141 @@
             line-height: 1.8;
             background-color: #f0fdf4; /* Light green background */
             color: #386641; /* Dark green text */
+            overflow-x: hidden; /* Prevent horizontal scroll */
         }
+        .page-header {
+            position: relative; /* For logo positioning */
+            padding-bottom: 10px; /* Space if logo is below title */
+        }
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 80px; /* Adjust as needed */
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #e3f2fd; }
+        .youth-school-logo-svg .book-stroke { stroke: #00796b; stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #6a994e; }
+        .youth-school-logo-svg .church-stroke { stroke: #004d40; stroke-width:2; fill:none; }
+
         .w3-container h1, .w3-container h2 {
             font-weight: bold;
             color: #6a994e; /* Medium green for headers */
         }
-        .story-content {
+        .story-container {
             max-width: 800px;
             margin: auto;
+            position: relative; /* For potential absolute positioned elements within story */
+        }
+        .scene {
             padding: 20px;
+            margin-bottom: 30px;
             background-color: #ffffff;
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            opacity: 0; /* Initially hidden for scroll animation */
+            transform: translateY(30px); /* Initial offset for scroll animation */
+            transition: opacity 1s ease-out, transform 1s ease-out; /* Slightly slower transition */
+            min-height: 280px; /* Ensure scenes have some height, adjusted */
+            overflow: hidden; /* To contain floated elements if any for print */
+        }
+        .scene.is-visible {
+            opacity: 1;
+            transform: translateY(0);
         }
         .illustration-container {
             text-align: center;
-            margin: 20px 0;
+            margin: 20px 0; /* Increased margin */
+            min-height: 150px; /* Increased space for SVGs */
         }
-        .seed-svg {
-            width: 150px;
+        /* General SVG styling */
+        .story-svg {
+            width: 120px;
             height: auto;
-            animation: gentlePulse 2s infinite ease-in-out;
+            opacity: 0; /* SVGs also fade in */
+            transform: scale(0.8);
+            transition: opacity 0.7s ease-out 0.5s, transform 0.7s ease-out 0.5s; /* Delayed SVG animation */
         }
+        .scene.is-visible .story-svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* --- Specific SVG styles and keyframe animations from previous step --- */
+        .pip-seed-svg { width: 100px; }
+        .scene.is-visible .pip-seed-svg { animation: gentlePulse 2.5s infinite ease-in-out 1.2s; }
+
+        .farmer-hand-svg { width: 130px; }
+        .scene.is-visible .farmer-hand-svg .seed-in-hand-element { animation: dropSeed 2s ease-out 1.2s forwards; }
+
+        .pip-sprouting-svg { width: 120px; }
+        .scene.is-visible .pip-sprouting-svg .sprout-path { animation: growSprout 2.5s ease-out 1.2s forwards; }
+        .scene.is-visible .pip-sprouting-svg .leaf1-path { animation: unfurlLeaf 1.5s ease-out 2.2s forwards; transform-origin: bottom center;}
+        .scene.is-visible .pip-sprouting-svg .leaf2-path { animation: unfurlLeaf 1.5s ease-out 2.5s forwards; transform-origin: bottom center;}
+
+        .andy-ant-svg { width: 80px; }
+        .scene.is-visible .andy-ant-svg { animation: antWalk 3s linear 1.2s infinite; }
+
+        .lulu-ladybug-svg { width: 70px; }
+        /* Wings need to be grouped in SVG with a class for this to work well, or target paths directly if simple enough */
+        .scene.is-visible .lulu-ladybug-svg .ladybug-wing-left { animation: flutterWingLeft 0.3s linear 1.2s infinite alternate; transform-origin: 90% 90%; }
+        .scene.is-visible .lulu-ladybug-svg .ladybug-wing-right { animation: flutterWingRight 0.3s linear 1.2s infinite alternate; transform-origin: 10% 90%; }
+
+        .pip-plant-butterfly-svg { width: 180px; }
+        .scene.is-visible .pip-plant-butterfly-svg .plant-main { animation: gentleSway 4s ease-in-out 1.2s infinite alternate; transform-origin: bottom center; }
+        .scene.is-visible .pip-plant-butterfly-svg .butterfly { animation: butterflyFlight 5s ease-in-out 1.5s infinite alternate; transform-origin: center; }
+
+        /* Keyframes (some from previous step, some new/adjusted) */
         @keyframes gentlePulse {
-            0% { transform: scale(1); }
+            0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
         }
+        @keyframes dropSeed {
+            0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+            50% { opacity: 1; transform: translateY(15px) rotate(10deg); }
+            100% { opacity: 0; transform: translateY(40px) rotate(20deg); }
+        }
+        @keyframes growSprout {
+            0% { transform: scaleY(0); transform-origin: bottom; opacity:0; }
+            100% { transform: scaleY(1); transform-origin: bottom; opacity:1; }
+        }
+        @keyframes unfurlLeaf {
+            0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes antWalk {
+            0% { transform: translate(-3px, 1px) rotate(-2deg); }
+            25% { transform: translate(0px, -1px) rotate(0deg); }
+            50% { transform: translate(3px, 1px) rotate(2deg); }
+            75% { transform: translate(0px, -1px) rotate(0deg); }
+            100% { transform: translate(-3px, 1px) rotate(-2deg); }
+        }
+        @keyframes flutterWingLeft {
+            0% { transform: rotate(-15deg); }
+            100% { transform: rotate(5deg); }
+        }
+        @keyframes flutterWingRight {
+            0% { transform: rotate(15deg); }
+            100% { transform: rotate(-5deg); }
+        }
+        @keyframes gentleSway {
+            0% { transform: rotate(-1.5deg); }
+            100% { transform: rotate(1.5deg); }
+        }
+        @keyframes butterflyFlight {
+            0% { transform: translate(0px, 0px) rotate(15deg) scale(1); }
+            25% { transform: translate(5px, -5px) rotate(20deg) scale(1.05); }
+            50% { transform: translate(0px, -10px) rotate(10deg) scale(1); }
+            75% { transform: translate(-5px, -5px) rotate(15deg) scale(0.95); }
+            100% { transform: translate(0px, 0px) rotate(15deg) scale(1); }
+        }
+
         .moral-box {
-            background-color: #a7c957; /* Lighter green for moral box */
-            color: #2b2f00; /* Darker text for contrast */
-            padding: 15px;
+            background-color: #a7c957;
+            color: #2b2f00;
+            padding: 20px;
             border-radius: 8px;
             margin-top: 25px;
             text-align: center;
@@ -53,88 +157,214 @@
         }
         .character-name {
             font-weight: bold;
-            color: #bc4749; /* A contrasting color for names */
+            color: #bc4749;
+        }
+
+        /* Print styles */
+        @media print {
+            body { background-color: #fff; color: #000; font-size: 11pt; }
+            .story-container { max-width: none; }
+            .scene {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                page-break-inside: avoid;
+                opacity: 1 !important; /* Ensure visible for print */
+                transform: none !important; /* Reset transform for print */
+                margin-bottom: 15px;
+                overflow: visible; /* ensure content is not clipped in print */
+            }
+            .illustration-container { margin: 10px 0; text-align: center; } /* Center for print */
+            .story-svg {
+                max-width: 200px; /* Fixed max width for print */
+                max-height: 150px;
+                float: none; /* No float for simpler print layout */
+                display: block; margin-left:auto; margin-right:auto; /* Center SVGs */
+                margin-bottom: 10px;
+            }
+            .story-paragraph { font-size: 1em; clear: both; }
+            .no-print { display: none; }
+            h1, h2, p { color: #000 !important; }
+            .moral-box { background-color: #eee !important; color: #000 !important; border: 1px solid #aaa;}
+            .youth-school-logo-container { display: none !important; } /* Hide logo in print by default */
+            @page {
+                size: landscape;
+                margin: 0.75in;
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="w3-container">
-    <header class="w3-container w3-center w3-padding-32">
+<div class="story-container">
+    <header class="w3-container w3-center w3-padding-32 no-print page-header">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <!-- SVG style block moved to main style block for better organization -->
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
         <h1>The Little Helping Seed</h1>
         <p class="w3-text-grey">A story about kindness and how small actions grow.</p>
     </header>
 
-    <div class="story-content w3-card-4">
-
-        <div class="illustration-container">
-            <svg class="seed-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <!-- Simple Seed Shape -->
-                <path d="M50 10 C20 25, 20 75, 50 90 C80 75, 80 25, 50 10 Z" fill="#a7c957"/>
-                <!-- Eyes -->
-                <circle cx="40" cy="45" r="5" fill="#386641"/>
-                <circle cx="60" cy="45" r="5" fill="#386641"/>
-                <!-- Smile -->
-                <path d="M40 60 Q50 70, 60 60" stroke="#386641" stroke-width="3" fill="transparent"/>
-                <!-- Optional little sprout -->
-                <path d="M50 15 Q55 5, 60 10" stroke="#6a994e" stroke-width="3" fill="transparent" />
-            </svg>
+    <div class="story-content">
+        <!-- Scene 1: Pip in the Seed Bag -->
+        <div class="scene" id="scene1">
+            <div class="illustration-container">
+                <svg class="story-svg pip-seed-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Original Pip Seed SVG -->
+                    <path d="M50 10 C20 25, 20 75, 50 90 C80 75, 80 25, 50 10 Z" fill="#a7c957"/>
+                    <circle cx="40" cy="45" r="5" fill="#386641"/><circle cx="60" cy="45" r="5" fill="#386641"/>
+                    <path d="M40 60 Q50 70, 60 60" stroke="#386641" stroke-width="3" fill="transparent"/>
+                    <path class="seed-sprout-element" d="M50 15 Q55 5, 60 10" stroke="#6a994e" stroke-width="3" fill="transparent" />
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                Once upon a time, nestled deep in a cozy bag of seeds, lived a tiny seed named <span class="character-name">Pip</span>. Pip wasn't the biggest seed, nor the fanciest. Pip was just a little, round, ordinary seed. All the seeds in the bag were waiting for Farmer Giles to plant them. They dreamed of growing into tall sunflowers or yummy green beans.
+            </p>
         </div>
 
-        <p class="story-paragraph">
-            Once upon a time, nestled deep in a cozy bag of seeds, lived a tiny seed named <span class="character-name">Pip</span>. Pip wasn't the biggest seed, nor the fanciest. Pip was just a little, round, ordinary seed. All the seeds in the bag were waiting for Farmer Giles to plant them. They dreamed of growing into tall sunflowers or yummy green beans.
-        </p>
-
-        <p class="story-paragraph">
-            One sunny morning, Farmer Giles took the bag of seeds out to his big, beautiful garden. He began to plant them one by one. When it was <span class="character-name">Pip</span>'s turn, Farmer Giles gently tucked Pip into the soft, warm earth. "Grow well, little one," he whispered.
-        </p>
-
-        <p class="story-paragraph">
-            <span class="character-name">Pip</span> felt a little lonely under the soil. It was dark and quiet. But then, <span class="character-name">Pip</span> remembered what Mama Seed used to say: "Even the smallest seed can do wonderful things with a little help from God's sunshine and rain." So, <span class="character-name">Pip</span> waited patiently.
-        </p>
-
-        <p class="story-paragraph">
-            Soon, the rain came pitter-patter, and the sun shone warm and bright. <span class="character-name">Pip</span> started to feel a little tingle! A tiny root pushed its way down, and a little sprout pushed its way up, up, up, until it poked out into the bright world! <span class="character-name">Pip</span> was growing!
-        </p>
-
-        <p class="story-paragraph">
-            Nearby, a family of busy ants was trying to move a big crumb. It was too heavy! <span class="character-name">Andy Ant</span>, the smallest ant, was huffing and puffing. <span class="character-name">Pip</span>, now a tiny sprout, saw them struggling. <span class="character-name">Pip</span> couldn't lift the crumb, but <span class="character-name">Pip</span> had an idea! As <span class="character-name">Pip</span> grew a little taller that day, one of Pip's new leaves stretched out just enough to give <span class="character-name">Andy Ant</span> a tiny bit of shade from the hot sun.
-        </p>
-
-        <p class="story-paragraph">
-            "Oh, thank you!" chirped <span class="character-name">Andy Ant</span>, feeling a little cooler. With that tiny bit of rest, <span class="character-name">Andy</span> and his family gave one more BIG push and moved the crumb! They cheered and thanked the little sprout. <span class="character-name">Pip</span> felt a warmth inside that wasn't just the sun. It was the happiness of helping!
-        </p>
-
-        <p class="story-paragraph">
-            As days turned into weeks, <span class="character-name">Pip</span> grew into a lovely little plant with bright green leaves. One day, a little ladybug named <span class="character-name">Lulu</span> lost her way. She was tired and couldn't find her family. She landed on one of <span class="character-name">Pip</span>'s wide leaves. <span class="character-name">Pip</span> held very still, offering <span class="character-name">Lulu</span> a safe place to rest.
-        </p>
-
-        <p class="story-paragraph">
-            "You are very kind," whispered <span class="character-name">Lulu</span>. While she rested, she saw her family flying nearby! "You helped me find them!" she buzzed happily before flying off. <span class="character-name">Pip</span> wiggled its leaves with joy.
-        </p>
-
-        <p class="story-paragraph">
-            <span class="character-name">Pip</span> didn't grow into the tallest sunflower or the biggest beanstalk. <span class="character-name">Pip</span> grew into a sturdy, kind little plant that offered shade to tired ants and a resting spot for lost ladybugs. And sometimes, when the wind blew just right, <span class="character-name">Pip</span>'s leaves would rustle, sounding like a happy little song.
-        </p>
-
-        <p class="story-paragraph">
-            Farmer Giles would often come by and smile at <span class="character-name">Pip</span>. "You see, little one," he'd say, "you don't have to be the biggest or the fanciest to make the garden a better place. Every little bit of help, every act of kindness, makes a big difference. God made you special, just the way you are, to do special things."
-        </p>
-
-        <div class="moral-box w3-card-2">
-            And <span class="character-name">Pip</span> knew it was true. Even a little helping seed, with God's love, could spread a lot of joy.
-            <br><strong>Remember:</strong> "Each of you should use whatever gift you have received to serve others, as faithful stewards of God’s grace in its various forms." (1 Peter 4:10 - simplified: Use your gifts to help others!)
+        <!-- Scene 2: Farmer Giles Planting Pip -->
+        <div class="scene" id="scene2">
+            <div class="illustration-container">
+                 <svg class="story-svg farmer-hand-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M30 90 C10 90, 5 70, 20 50 Q25 30, 40 35 C40 20, 50 10, 60 15 C70 20, 75 35, 70 45 L85 80 C90 95, 70 100, 50 95 Z" fill="#f5deb3"/>
+                    <ellipse cx="45" cy="25" rx="8" ry="15" fill="#f5deb3" transform="rotate(-10 45 25)"/>
+                    <ellipse cx="60" cy="22" rx="8" ry="18" fill="#f5deb3" transform="rotate(0 60 22)"/>
+                    <ellipse cx="75" cy="30" rx="7" ry="16" fill="#f5deb3" transform="rotate(15 75 30)"/>
+                    <path d="M40 60 C45 65, 50 60" stroke="#deb887" stroke-width="1" fill="transparent"/>
+                    <path d="M25 55 C30 60, 30 50" stroke="#deb887" stroke-width="1" fill="transparent"/>
+                    <circle cx="35" cy="55" r="5" fill="#a7c957" class="seed-in-hand-element"/>
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                One sunny morning, Farmer Giles took the bag of seeds out to his big, beautiful garden. He began to plant them one by one. When it was <span class="character-name">Pip</span>'s turn, Farmer Giles gently tucked Pip into the soft, warm earth. "Grow well, little one," he whispered.
+            </p>
         </div>
 
-    </div>
+        <!-- Scene 3: Pip Underground / Sprouting -->
+        <div class="scene" id="scene3">
+            <div class="illustration-container">
+                <svg class="story-svg pip-sprouting-svg" viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 70 C20 85, 20 115, 50 120 C80 115, 80 85, 50 70 Z" fill="#a7c957"/>
+                    <ellipse cx="42" cy="95" rx="6" ry="4" fill="#386641"/><ellipse cx="58" cy="95" rx="6" ry="4" fill="#386641"/>
+                    <line x1="45" y1="105" x2="55" y2="105" stroke="#386641" stroke-width="2"/>
+                    <path d="M50 75 Q50 40, 55 30 Q60 20, 50 10 Q40 20, 45 30 Q50 40, 50 75" fill="#6a994e" stroke="#386641" stroke-width="1"/>
+                    <path d="M50 40 C 40 35, 35 25, 50 30 C 35 20, 40 10, 50 15" fill="#8fbc8f" stroke="#386641" stroke-width="1"/>
+                    <path d="M50 45 C 60 40, 65 30, 50 35 C 65 25, 60 15, 50 20" fill="#8fbc8f" stroke="#386641" stroke-width="1"/>
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                <span class="character-name">Pip</span> felt a little lonely under the soil. It was dark and quiet. But then, <span class="character-name">Pip</span> remembered what Mama Seed used to say: "Even the smallest seed can do wonderful things with a little help from God's sunshine and rain." So, <span class="character-name">Pip</span> waited patiently. Soon, the rain came pitter-patter, and the sun shone warm and bright. <span class="character-name">Pip</span> started to feel a little tingle! A tiny root pushed its way down, and a little sprout pushed its way up, up, up, until it poked out into the bright world! <span class="character-name">Pip</span> was growing!
+            </p>
+        </div>
 
-    <footer class="w3-container w3-center w3-padding-32">
+        <!-- Scene 4: Pip Helps Andy Ant -->
+        <div class="scene" id="scene4">
+            <div class="illustration-container">
+                <svg class="story-svg andy-ant-svg" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="30" cy="30" rx="10" ry="8" fill="#795548"/><ellipse cx="50" cy="30" rx="12" ry="10" fill="#8d6e63"/>
+                    <ellipse cx="75" cy="30" rx="15" ry="12" fill="#a1887f"/>
+                    <circle cx="25" cy="28" r="2" fill="white"/><circle cx="26" cy="28" r="1" fill="black"/>
+                    <path d="M30 25 Q35 15, 40 20" stroke="#5d4037" stroke-width="1.5" fill="transparent"/>
+                    <path d="M28 22 Q25 12, 30 15" stroke="#5d4037" stroke-width="1.5" fill="transparent"/>
+                    <line x1="45" y1="38" x2="40" y2="50" stroke="#5d4037" stroke-width="1.5"/><line x1="50" y1="40" x2="50" y2="52" stroke="#5d4037" stroke-width="1.5"/>
+                    <line x1="55" y1="38" x2="60" y2="50" stroke="#5d4037" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                Nearby, a family of busy ants was trying to move a big crumb. It was too heavy! <span class="character-name">Andy Ant</span>, the smallest ant, was huffing and puffing. <span class="character-name">Pip</span>, now a tiny sprout, saw them struggling. <span class="character-name">Pip</span> couldn't lift the crumb, but <span class="character-name">Pip</span> had an idea! As <span class="character-name">Pip</span> grew a little taller that day, one of Pip's new leaves stretched out just enough to give <span class="character-name">Andy Ant</span> a tiny bit of shade from the hot sun. "Oh, thank you!" chirped <span class="character-name">Andy Ant</span>. With that tiny bit of rest, <span class="character-name">Andy</span> and his family gave one more BIG push and moved the crumb! They cheered. <span class="character-name">Pip</span> felt the happiness of helping!
+            </p>
+        </div>
+
+        <!-- Scene 5: Pip Helps Lulu Ladybug -->
+        <div class="scene" id="scene5">
+            <div class="illustration-container">
+                 <svg class="story-svg lulu-ladybug-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="40" cy="55" rx="35" ry="40" fill="#d32f2f"/>
+                    <circle cx="40" cy="25" r="15" fill="#212121"/>
+                    <circle cx="33" cy="23" r="3" fill="white"/><circle cx="47" cy="23" r="3" fill="white"/>
+                    <line x1="40" y1="35" x2="40" y2="90" stroke="#212121" stroke-width="3"/>
+                    <circle cx="25" cy="45" r="5" fill="#212121"/><circle cx="55" cy="45" r="5" fill="#212121"/>
+                    <circle cx="30" cy="65" r="6" fill="#212121"/><circle cx="50" cy="65" r="6" fill="#212121"/>
+                    <circle cx="40" cy="80" r="5" fill="#212121"/>
+                    <line x1="30" y1="15" x2="25" y2="5" stroke="#212121" stroke-width="1.5"/><line x1="50" y1="15" x2="55" y2="5" stroke="#212121" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                As days turned into weeks, <span class="character-name">Pip</span> grew into a lovely little plant with bright green leaves. One day, a little ladybug named <span class="character-name">Lulu</span> lost her way. She was tired and couldn't find her family. She landed on one of <span class="character-name">Pip</span>'s wide leaves. <span class="character-name">Pip</span> held very still, offering <span class="character-name">Lulu</span> a safe place to rest. "You are very kind," whispered <span class="character-name">Lulu</span>. While she rested, she saw her family flying nearby! "You helped me find them!" she buzzed happily before flying off. <span class="character-name">Pip</span> wiggled its leaves with joy.
+            </p>
+        </div>
+
+        <!-- Scene 6: Pip as a Sturdy Plant / Farmer Giles' Reflection -->
+        <div class="scene" id="scene6">
+            <div class="illustration-container">
+                <svg class="story-svg pip-plant-butterfly-svg" viewBox="0 0 150 200" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="75" cy="190" rx="70" ry="10" fill="#b08d57"/>
+                    <path d="M75 190 Q70 150, 75 100 Q80 50, 75 30" stroke="#6a994e" stroke-width="5" fill="transparent"/>
+                    <ellipse cx="60" cy="120" rx="30" ry="15" fill="#8fbc8f" transform="rotate(-30 60 120)"/><ellipse cx="90" cy="110" rx="35" ry="18" fill="#8fbc8f" transform="rotate(25 90 110)"/>
+                    <ellipse cx="65" cy="80" rx="25" ry="12" fill="#8fbc8f" transform="rotate(-40 65 80)"/><ellipse cx="85" cy="70" rx="28" ry="14" fill="#8fbc8f" transform="rotate(35 85 70)"/>
+                    <ellipse cx="75" cy="45" rx="20" ry="10" fill="#a7c957"/>
+                    <circle cx="70" cy="45" r="2" fill="#386641"/><circle cx="80" cy="45" r="2" fill="#386641"/>
+                    <path d="M70 50 Q75 55, 80 50" stroke="#386641" stroke-width="1" fill="transparent"/>
+                    <g class="butterfly" transform="translate(95 60) rotate(15)">
+                        <ellipse cx="0" cy="0" rx="15" ry="10" fill="#ffca28" transform="rotate(-30)"/><ellipse cx="5" cy="10" rx="12" ry="8" fill="#ffeb3b" transform="rotate(-20)"/>
+                        <ellipse cx="15" cy="-5" rx="15" ry="10" fill="#ffca28" transform="rotate(30) scale(-1, 1) translate(-30,0)"/><ellipse cx="10" cy="5" rx="12" ry="8" fill="#ffeb3b" transform="rotate(20) scale(-1, 1) translate(-30,0)"/>
+                        <ellipse cx="7.5" cy="2.5" rx="3" ry="8" fill="#795548"/>
+                        <path d="M6 0 Q0 -10, 2 -15" stroke="#5d4037" stroke-width="0.5" fill="transparent"/><path d="M9 0 Q15 -10, 13 -15" stroke="#5d4037" stroke-width="0.5" fill="transparent"/>
+                    </g>
+                </svg>
+            </div>
+            <p class="story-paragraph">
+                <span class="character-name">Pip</span> didn't grow into the tallest sunflower or the biggest beanstalk. <span class="character-name">Pip</span> grew into a sturdy, kind little plant that offered shade to tired ants and a resting spot for lost ladybugs. And sometimes, when the wind blew just right, <span class="character-name">Pip</span>'s leaves would rustle, sounding like a happy little song. Farmer Giles would often come by and smile at <span class="character-name">Pip</span>. "You see, little one," he'd say, "you don't have to be the biggest or the fanciest to make the garden a better place. Every little bit of help, every act of kindness, makes a big difference. God made you special, just the way you are, to do special things."
+            </p>
+        </div>
+
+        <!-- Moral Box -->
+        <div class="scene" id="scene-moral">
+             <div class="moral-box w3-card-2">
+                And <span class="character-name">Pip</span> knew it was true. Even a little helping seed, with God's love, could spread a lot of joy.
+                <br><strong>Remember:</strong> "Each of you should use whatever gift you have received to serve others, as faithful stewards of God’s grace in its various forms." (1 Peter 4:10 - simplified: Use your gifts to help others!)
+            </div>
+        </div>
+
+    </div> <!-- End of story-content -->
+
+    <footer class="w3-container w3-center w3-padding-32 no-print">
         <p class="w3-text-grey">&copy; <span id="year"></span> Church School Resources. Happy Reading!</p>
     </footer>
 </div>
 
 <script>
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Simple Intersection Observer for scroll animations
+    const scenes = document.querySelectorAll('.scene');
+    const observerOptions = {
+        root: null, // relative to document viewport
+        rootMargin: '0px',
+        threshold: 0.2 // 20% of item visible
+    };
+
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                // Optional: unobserve after animation to save resources
+                // observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    scenes.forEach(scene => {
+        observer.observe(scene);
+    });
 </script>
 
 </body>
