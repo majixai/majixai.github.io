@@ -1,0 +1,60 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 1000px;
+    text-align: center;
+}
+
+h1 {
+    color: #4CAF50;
+}
+
+.controls {
+    margin-bottom: 20px;
+}
+
+#openWhatsApp {
+    background-color: #25D366;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#openWhatsApp:hover {
+    background-color: #1DAE54;
+}
+
+.iframe-container {
+    width: 100%;
+    height: 600px; /* Default height, can be adjusted */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden; /* Ensures the iframe stays within the container's bounds */
+}
+
+#whatsappFrame {
+    width: 100%;
+    height: 100%;
+    border: none; /* Remove iframe default border */
+}
