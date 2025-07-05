@@ -6,31 +6,44 @@
     <title>Field Trip Planning Template</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; line-height: 1.6; }
         .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
         .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; margin-bottom: 8px;}
         .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; margin-bottom: 5px;}
         .section-card { margin-top: 20px; }
-        .section-header { background-color: #00796b; color: white; padding:8px 16px; } /* Darker Teal */
-        .subsection-title { font-weight: bold; margin-top: 10px; color: #004d40; } /* Darkest Teal */
+        .section-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); padding:8px 16px; }
+        .subsection-title { font-weight: bold; margin-top: 10px; color: var(--theme-color-main); }
         .checkbox-item label { margin-left: 5px; }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .print-button { background-color: var(--theme-color-dark-accent) !important; color: var(--text-color-on-main) !important;}
+        .page-footer { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+
+
          @media print {
             .no-print { display: none; }
             .editable { border: 1px solid #ccc !important; background-color: #fff !important; }
             .small-editable { border-bottom: 1px solid #ccc !important; background-color: #fff !important;}
-        }
+            .section-header { background-color: #ccc !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
+         }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center no-print">
+    <header class="w3-container main-page-header w3-center no-print">
         <h1>Class Field Trip Planning Template</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card no-print">
         <p>This template is designed to help plan and organize a class field trip for 6-7 year old students. Fill in all relevant sections to ensure a smooth, educational, and enjoyable experience.</p>
-        <button class="w3-button w3-green w3-margin-bottom" onclick="window.print()">Print Field Trip Plan</button>
+        <button class="w3-button print-button w3-margin-bottom" onclick="window.print()">Print Field Trip Plan</button>
     </div>
 
     <!-- Basic Information -->

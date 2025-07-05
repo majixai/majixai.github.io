@@ -6,26 +6,38 @@
     <title>School Year Structure Considerations (6-7 Year Olds Church School)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; line-height: 1.6; }
-        .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
+        .w3-container h1, .w3-container h2, .w3-container h3, .w3-container h4 { font-weight: 400; }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
         .section-card { margin-top: 20px; }
-        .main-point { color: #00796b; font-weight: bold; } /* Darker Teal */
-        .example-box { background-color: #e0f2f1; border-left: 4px solid #00796b; padding: 0.1em 16px; margin-top:10px; margin-bottom:10px;} /* Light teal with dark teal border */
+        .section-card-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); }
+        .section-card-header.alt { background-color: var(--theme-color-main); color: var(--text-color-on-main); } /* For the example snippet header */
+        .main-point { color: var(--theme-color-dark-accent); font-weight: bold; }
+        .example-box { background-color: var(--theme-color-light-accent); border-left: 4px solid var(--theme-color-dark-accent); padding: 0.1em 16px; margin-top:10px; margin-bottom:10px;}
+        .example-box h4 { color: var(--theme-color-dark-accent); }
+        .page-footer { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>School Year Structure Considerations (6-7 Year Olds Church School)</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding-16 w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding-16 w3-margin-top w3-card">
         <p>Planning the structure of the church school year helps in organizing curriculum delivery, special events, and ensuring a balanced approach to learning. This document outlines key considerations.</p>
     </div>
 
     <div class="w3-card section-card">
-        <header class="w3-container w3-blue-grey">
+        <header class="w3-container section-card-header">
             <h2>1. Dividing the School Year</h2>
         </header>
         <div class="w3-container w3-padding">

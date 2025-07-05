@@ -6,22 +6,33 @@
     <title>Project Outline Template (6-7 Year Olds)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --theme-color-table-header: #a33a3a; /* Medium-dark red for table headers */
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; margin-bottom: 5px;}
         .full-width-editable { background-color: #f0f0f0; padding: 5px; border: 1px dotted #ccc; width: 100%; min-height: 40px; display: block; margin-bottom:5px; box-sizing: border-box;}
-        .section-header { margin-top: 20px; color: #00796b; } /* Darker Teal */
-        .w3-table-all th, .w3-table-all td { padding: 8px; vertical-align: top;}
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .section-header { margin-top: 20px; color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-main); padding-bottom: 5px;}
+        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
+        .w3-table-all td { padding: 8px; vertical-align: top;}
         .w3-card-4 { margin-bottom: 20px; }
+        .notes-panel { border-left: 4px solid var(--theme-color-dark-accent); background-color: var(--theme-color-light-accent); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Project Outline Template (6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-card-4 w3-light-grey w3-padding w3-margin-top">
+    <div class="w3-card-4 info-panel w3-padding w3-margin-top">
         <p><strong>Project Title:</strong> <span class="editable" style="min-width:300px;">_________________________________________________</span></p>
         <p><strong>Subject(s) Integration:</strong> <span class="editable" style="min-width:300px;">_________________________________________</span><br>
         <span class="w3-small w3-text-grey">(e.g., Bible Story, Arts & Crafts, Community Service)</span></p>
@@ -30,7 +41,7 @@
     </div>
 
     <div class="w3-card-4 w3-padding">
-        <h2 class="section-header w3-border-bottom">1. Project Goal/Big Idea:</h2>
+        <h2 class="section-header">1. Project Goal/Big Idea:</h2>
         <p><strong>What are we trying to make, do, or learn with this project?</strong> (In simple terms for the children)</p>
         <span class="full-width-editable"></span>
         <p><strong>Why is this project important or interesting?</strong> (Connect to faith, values, or learning)</p>
@@ -38,7 +49,7 @@
     </div>
 
     <div class="w3-card-4 w3-padding">
-        <h2 class="section-header w3-border-bottom">2. Learning Objectives for Children:</h2>
+        <h2 class="section-header">2. Learning Objectives for Children:</h2>
         <p>By doing this project, children will:</p>
         <ol class="w3-ul">
             <li><span class="full-width-editable">(e.g., Learn about [Bible Story/Character])</span></li>
@@ -48,12 +59,12 @@
     </div>
 
     <div class="w3-card-4 w3-padding">
-        <h2 class="section-header w3-border-bottom">3. Project Steps/Phases (Simplified for 6-7 year olds):</h2>
-        <p class="w3-panel w3-leftbar w3-sand"><em>(Break down the project into manageable steps. Use simple language. Add more steps if needed.)</em></p>
+        <h2 class="section-header">3. Project Steps/Phases (Simplified for 6-7 year olds):</h2>
+        <p class="w3-panel w3-leftbar notes-panel"><em>(Break down the project into manageable steps. Use simple language. Add more steps if needed.)</em></p>
         <div class="w3-responsive">
             <table class="w3-table-all w3-hoverable">
                 <thead>
-                    <tr class="w3-light-blue">
+                    <tr> <!-- Removed w3-light-blue -->
                         <th>Step #</th>
                         <th>Task Description</th>
                         <th>Key Activities / What Children Will Do</th>
