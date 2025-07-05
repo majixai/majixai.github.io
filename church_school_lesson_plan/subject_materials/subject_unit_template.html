@@ -8,23 +8,60 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1;
-            --theme-color-dark-accent: #701111;
-            --theme-color-table-header: #a33a3a; /* Medium-dark red for table headers */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
-            --text-color-on-dark-accent: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
         }
-        body { font-family: sans-serif; }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-family-headings); font-weight: bold; }
+
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 150px; display: inline-block; margin-bottom:5px; }
         .full-width-editable { background-color: #f0f0f0; padding: 5px; border: 1px dotted #ccc; width: 100%; min-height: 50px; display: block; margin-bottom:5px; box-sizing: border-box;}
-        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .section-card-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-dark-accent); }
-        .section-card-header h2 { margin-top:0; padding-top:10px; padding-bottom:10px;}
-        .unit-details-form { background-color: var(--theme-color-light-accent); color: var(--theme-color-dark-accent); border-left: 5px solid var(--theme-color-main); }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 16px; padding-bottom: 16px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .section-card { margin: 20px 0; border-radius: 10px; } /* Added top/bottom margin, rounded corners */
+        .section-card-header {
+            background-color: var(--theme-color-bright-accent); /* Brighter red for section headers */
+            color: var(--text-color-on-bright);
+            border-top-left-radius: 10px; border-top-right-radius: 10px;
+        }
+        .section-card-header h2 { margin-top:0; padding:12px 16px; font-size: 1.5em;}
+
+        .unit-details-form {
+            background-color: var(--theme-color-light-accent);
+            color: var(--text-color-on-light);
+            border: 2px solid var(--theme-color-bright-accent);
+            padding: 16px;
+            border-radius: 10px;
+        }
         .unit-details-form h2 { color: var(--theme-color-main); }
-        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
+        .unit-details-form strong { color: var(--theme-color-dark-accent); }
+
+        .w3-table-all th {
+            background-color: var(--theme-color-bright-accent) !important;
+            color: var(--text-color-on-bright) !important;
+        }
         .w3-table-all td { padding: 8px; vertical-align: top;}
-        .info-panel { border-left: 4px solid var(--theme-color-main); background-color: var(--theme-color-light-accent); }
+
+        .info-panel {
+            border-left: 4px solid var(--theme-color-bright-accent);
+            background-color: var(--theme-color-light-accent);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .w3-card-4 { box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12); } /* Default W3 card shadow for consistency */
     </style>
 </head>
 <body>

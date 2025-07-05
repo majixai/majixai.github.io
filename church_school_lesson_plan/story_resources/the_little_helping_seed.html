@@ -8,47 +8,50 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1;
-            --theme-color-dark-accent: #701111;
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif; /* More readable body font for general text */
         }
         body {
-            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            font-family: var(--font-family-headings); /* Kid-friendly font for story page */
             line-height: 1.8;
             background-color: #f0fdf4; /* Light green background - Story specific, keep */
             color: #386641; /* Dark green text - Story specific, keep */
             overflow-x: hidden; /* Prevent horizontal scroll */
         }
         .page-header {
-            position: relative; /* For logo positioning */
-            padding-bottom: 10px; /* Space if logo is below title */
-            background-color: var(--theme-color-main); /* Themed header background */
-            color: var(--text-color-on-main); /* Themed header text */
+            position: relative;
+            padding: 16px 0; /* Adjusted padding */
+            background-color: var(--theme-color-bright-accent); /* Use brighter red for story header */
+            color: var(--text-color-on-bright);
+            border-bottom: 3px solid var(--theme-color-main);
         }
-        .page-header h1 { color: var(--text-color-on-main) !important; } /* Ensure h1 in header is themed */
-        .page-header .w3-text-grey { color: var(--theme-color-light-accent) !important; } /* Subtitle color */
+        .page-header h1 {
+            color: var(--text-color-on-bright) !important;
+            margin:0; font-size: 2.2em; /* Adjusted size */
+        }
+        .page-header .story-subtitle { /* Using a class for subtitle */
+            color: var(--theme-color-light-accent) !important;
+            font-size: 1.1em;
+        }
 
         .youth-school-logo-container {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            width: 80px; /* Adjust as needed */
+            top: 15px; /* Adjusted */
+            left: 15px; /* Adjusted */
+            width: 70px;
             height: auto;
             z-index: 10;
         }
-        /* Logo SVG colors are defined inline in its own style block for portability, or can be moved here */
-        .youth-school-logo-svg .book-fill { fill: #e3f2fd; }
-        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent); stroke-width:1.5; }
-        .youth-school-logo-svg .sprout-fill { fill: #6a994e; } /* Keep sprout green */
-        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent); stroke-width:2; fill:none; }
-
-
-        .story-title-h1 { /* Specific for story title if different from general h1 */
-            font-weight: bold;
-            color: var(--text-color-on-main); /* Match header text color */
-        }
-        .story-subtitle { color: var(--theme-color-light-accent) !important; }
-
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; } /* Alice blue - lighter */
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-main); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; } /* Darker sea green for sprout */
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-main); stroke-width:2; fill:none; }
 
         .story-container {
             max-width: 800px;
@@ -56,16 +59,19 @@
             position: relative;
         }
         .scene {
-            padding: 20px;
-            margin-bottom: 30px;
-            background-color: #ffffff; /* Keep story scenes on white */
-            border-radius: 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 25px; /* Increased padding */
+            margin-bottom: 35px; /* Increased margin */
+            background-color: #ffffff;
+            border-radius: 20px; /* More rounded */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1); /* Softer shadow */
             opacity: 0;
-            transform: translateY(30px);
-            transition: opacity 1s ease-out, transform 1s ease-out;
-            min-height: 280px;
+            transform: translateY(40px); /* Slightly more offset */
+            transition: opacity 1.2s ease-out, transform 1.2s ease-out; /* Smoother, slightly longer */
+            min-height: 300px;
             overflow: hidden;
+        }
+        .scene.w3-animate-bottom { /* For additional W3 animation on entrance */
+            position:relative; /* Needed for some w3 animations */
         }
         .scene.is-visible {
             opacity: 1;
@@ -215,7 +221,6 @@
     <header class="w3-container w3-center w3-padding-32 no-print page-header">
         <div class="youth-school-logo-container no-print">
             <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
-                <!-- SVG style block moved to main style block for better organization -->
                 <path class="church-stroke" d="M30 35 L50 15 L70 35" />
                 <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
                 <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
@@ -231,14 +236,13 @@
 
     <div class="story-content">
         <!-- Scene 1: Pip in the Seed Bag -->
-        <div class="scene" id="scene1">
+        <div class="scene w3-animate-bottom" id="scene1">
             <div class="illustration-container">
                 <svg class="story-svg pip-seed-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Original Pip Seed SVG -->
                     <path d="M50 10 C20 25, 20 75, 50 90 C80 75, 80 25, 50 10 Z" fill="#a7c957"/>
                     <circle cx="40" cy="45" r="5" fill="#386641"/><circle cx="60" cy="45" r="5" fill="#386641"/>
                     <path d="M40 60 Q50 70, 60 60" stroke="#386641" stroke-width="3" fill="transparent"/>
-                    <path class="seed-sprout-element" d="M50 15 Q55 5, 60 10" stroke="#6a994e" stroke-width="3" fill="transparent" />
+                    <path class="seed-sprout-element" d="M50 15 Q55 5, 60 10" stroke="#6a994e" stroke-width="3" fill="transparent" style="animation: tinySproutWiggle 3s infinite ease-in-out 2s; transform-origin: 50px 15px;"/>
                 </svg>
             </div>
             <p class="story-paragraph">

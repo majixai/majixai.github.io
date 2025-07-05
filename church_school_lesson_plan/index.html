@@ -8,24 +8,70 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1; /* Lighter shade for hover/accents */
-            --theme-color-dark-accent: #701111; /* Darker shade for contrast or text */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds - Kid friendly */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
+            --text-color-on-light: #5D4037; /* A warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif; /* More readable body font */
         }
-        body { font-family: sans-serif; background-color: #f4f4f4; }
-        .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
-        .main-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .nav-card { margin-top: 16px; margin-bottom: 16px; }
-        .nav-card-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .nav-list li { border-bottom: 1px solid #eee; }
-        .nav-list li a { display: block; padding: 10px 15px; text-decoration: none; color: #333; }
-        .nav-list li a:hover { background-color: var(--theme-color-light-accent); color: var(--theme-color-dark-accent); }
-        .nav-list li a .w3-small { color: #555; display:block; margin-top:3px;}
-        .footer { background-color: #333; color: white; padding: 20px 0; margin-top: 30px;}
-        .welcome-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); padding: 16px; color: var(--theme-color-dark-accent); }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; /* Very light off-white */ }
+        .w3-container h1, .w3-container h2, .w3-container h3 { font-family: var(--font-family-headings); font-weight: bold; }
+
+        .main-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+        }
+        .main-header h1 { font-size: 2.5em; }
+
+        .nav-card {
+            margin-top: 16px;
+            margin-bottom: 16px;
+            border-radius: 10px; /* Softer corners */
+            box-shadow: 0 2px 5px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12);
+        }
+        .nav-card-header {
+            background-color: var(--theme-color-bright-accent);
+            color: var(--text-color-on-main);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .nav-card-header h3 {
+             margin-top:0; margin-bottom:0; padding-top:12px; padding-bottom:12px; /* Adjust padding */
+        }
+        .nav-list li { border-bottom: 1px solid var(--theme-color-light-accent); }
+        .nav-list li:last-child { border-bottom: none; }
+        .nav-list li a {
+            display: block;
+            padding: 12px 15px; /* Slightly more padding */
+            text-decoration: none;
+            color: var(--text-color-on-light);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .nav-list li a:hover {
+            background-color: var(--theme-color-light-accent);
+            color: var(--theme-color-main);
+        }
+        .nav-list li a .w3-small { color: #757575; display:block; margin-top:3px;} /* Slightly darker small text */
+
+        .footer {
+            background-color: var(--theme-color-dark-accent);
+            color: var(--theme-color-light-accent);
+            padding: 20px 0;
+            margin-top: 30px;
+        }
+        .welcome-panel {
+            background-color: var(--theme-color-light-accent);
+            border-left: 5px solid var(--theme-color-bright-accent);
+            padding: 20px; /* More padding */
+            color: var(--text-color-on-light);
+            border-radius: 8px;
+        }
         .welcome-panel h2 { color: var(--theme-color-main); }
-        .welcome-panel a { color: var(--theme-color-dark-accent); font-weight:bold; }
-        .welcome-panel a:hover { color: var(--theme-color-main); }
+        .welcome-panel a { color: var(--theme-color-main); font-weight:bold; }
+        .welcome-panel a:hover { color: var(--theme-color-dark-accent); }
 
     </style>
 </head>

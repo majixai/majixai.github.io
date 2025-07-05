@@ -8,18 +8,74 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1;
-            --theme-color-dark-accent: #701111;
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
         }
-        body { font-family: sans-serif; }
-        .subject-card { margin-bottom: 16px; }
-        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
-        .section-heading { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-main); padding-bottom: 5px;}
-        .card-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); }
-        .integration-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-dark-accent); }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        .w3-container h1, .w3-container h2, .w3-container h3 { font-family: var(--font-family-headings); font-weight: bold; }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 16px; padding-bottom: 16px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .info-panel {
+            background-color: var(--theme-color-light-accent);
+            border-left: 5px solid var(--theme-color-bright-accent);
+            padding: 16px;
+            color: var(--text-color-on-light);
+            border-radius: 8px;
+        }
+        .info-panel p strong { color: var(--theme-color-dark-accent); }
+
+        .section-heading {
+            color: var(--theme-color-main);
+            border-bottom: 3px solid var(--theme-color-bright-accent);
+            padding-bottom: 8px; margin-bottom: 20px;
+        }
+
+        .subject-card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        .subject-card .w3-card-4 { border-radius: 10px; }
+
+        .card-header {
+            background-color: var(--theme-color-bright-accent);
+            color: var(--text-color-on-bright);
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+         /* Using specific W3.CSS colors for variety on cards, but could be themed too */
+        .card-header.blue { background-color: #2196F3 !important;} /* W3.CSS Blue */
+        .card-header.green { background-color: #4CAF50 !important;} /* W3.CSS Green */
+        .card-header.orange { background-color: #ff9800 !important;} /* W3.CSS Orange */
+        .card-header.red { background-color: var(--theme-color-bright-accent) !important;} /* Theme Bright Red */
+        .card-header.purple { background-color: #9c27b0 !important;} /* W3.CSS Purple */
+        .card-header.deep-purple { background-color: #673ab7 !important;} /* W3.CSS Deep Purple */
+        .card-header.indigo { background-color: #3f51b5 !important;} /* W3.CSS Indigo */
+        .card-header.pink { background-color: #e91e63 !important;} /* W3.CSS Pink */
+
+
+        .card-header h3 { margin-top:0; margin-bottom:0; padding-top:10px; padding-bottom:10px;}
+
+        .integration-panel {
+            background-color: var(--theme-color-light-accent);
+            border-left: 5px solid var(--theme-color-main);
+            padding: 16px;
+            border-radius: 8px;
+        }
         .integration-panel h2 { color: var(--theme-color-main); }
+
     </style>
 </head>
 <body>
@@ -38,7 +94,7 @@
     <div class="w3-row-padding">
         <div class="w3-col m6 l6 subject-card">
             <div class="w3-card-4">
-                <header class="w3-container card-header">
+                <header class="w3-container card-header blue">
                     <h3>1. Bible Stories & Teachings</h3>
                 </header>
                 <div class="w3-container w3-padding">
@@ -51,7 +107,7 @@
 
         <div class="w3-col m6 l6 subject-card">
             <div class="w3-card-4">
-                <header class="w3-container w3-green">
+                <header class="w3-container card-header green">
                     <h3>2. Christian Values & Ethics</h3>
                 </header>
                 <div class="w3-container w3-padding">
@@ -66,7 +122,7 @@
     <div class="w3-row-padding">
         <div class="w3-col m6 l6 subject-card">
             <div class="w3-card-4">
-                <header class="w3-container w3-orange">
+                <header class="w3-container card-header orange">
                     <h3>3. Early Literacy (Reading & Writing)</h3>
                 </header>
                 <div class="w3-container w3-padding">
