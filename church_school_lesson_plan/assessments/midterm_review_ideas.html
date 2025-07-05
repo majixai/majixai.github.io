@@ -8,21 +8,67 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1;
-            --theme-color-dark-accent: #701111;
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
         }
-        body { font-family: sans-serif; }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; }
-        .section { margin-bottom: 20px; }
-        .checklist-item { margin-bottom: 5px; }
-        .w3-ul li { padding-bottom: 8px; }
-        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
-        .section-card h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-main); padding-bottom: 5px; }
-        .checklist-panel { background-color: var(--theme-color-light-accent); border-left: 4px solid var(--theme-color-dark-accent); }
-        .follow-up-panel { background-color: #fff8e1; border-left: 5px solid #ffc107; } /* Amber for follow-up */
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .info-panel {
+            background-color: var(--theme-color-light-accent);
+            border-left: 5px solid var(--theme-color-bright-accent);
+            padding: 16px;
+            color: var(--text-color-on-light);
+            border-radius: 8px;
+        }
+        .info-panel p strong { color: var(--theme-color-dark-accent); }
+        .age-differentiation-note {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fffacd; /* Lemon chiffon */
+            border: 1px solid #f0e68c; /* Khaki */
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        .age-differentiation-note strong { color: var(--theme-color-dark-accent); }
+
+        .section-card { margin-top:20px; border-radius: 8px;}
+        .section-card h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .section-card h3 { color: var(--theme-color-dark-accent); }
+        .checklist-panel { background-color: var(--theme-color-light-accent); border-left: 4px solid var(--theme-color-dark-accent); border-radius:5px; }
+        .follow-up-panel { background-color: #fff8e1; border-left: 5px solid #ffc107; border-radius: 8px;} /* Amber for follow-up */
         .follow-up-panel h3 { color: #e65100; } /* Darker Amber */
+        .w3-ul li { padding-bottom: 8px; }
 
     </style>
 </head>
@@ -30,13 +76,32 @@
 
 <div class="w3-container">
     <header class="w3-container main-page-header w3-center">
-        <h1>Midterm Review Ideas & Checklist (6-7 Year Olds)</h1>
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Midterm Review Ideas & Checklist</h1>
     </header>
 
     <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p><strong>Purpose:</strong> To review key concepts, stories, and values covered in the first half of the term/semester in an engaging and non-stressful way. This is more about reinforcing learning and identifying areas for re-teaching than formal testing.</p>
+        <p><strong>Target Age Group(s):</strong> <span class="editable" contenteditable="true" placeholder="e.g., 4-5yo, 5-8yo, etc."></span></p>
         <p><strong>Subject(s) Covered:</strong> <span class="editable">_______________________________________</span></p>
         <p><strong>Review Period:</strong> <span class="editable">(e.g., Week of [Date])</span></p>
+        <div class="age-differentiation-note">
+            <p><strong>Note for Mrs. Scott:</strong> Adapt these review activities for the specific age sub-groups.
+            For <strong>2-3 year olds</strong>, review is very informal, through repetition of songs, simple actions, or pointing to familiar pictures.
+            For <strong>4-5 year olds</strong>, activities like story retelling with props or simple matching games are good.
+            For <strong>5-8 year olds</strong>, more structured games, Q&A, and creative responses can be used. The checklist below is more geared towards 5-8 year olds but can be simplified.
+            </p>
+        </div>
     </div>
 
     <hr>

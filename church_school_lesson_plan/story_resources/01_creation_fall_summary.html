@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Theme 1: Creation & The Fall</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
+            --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 60px; display: block; box-sizing: border-box; margin-bottom: 10px; font-family: var(--font-family-body); }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .content-container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .summary-section h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .age-adaptation-section { margin-top: 20px; padding: 15px; background-color: var(--theme-color-light-accent); border-radius: 8px; border: 1px solid var(--theme-color-bright-accent); }
+        .age-adaptation-section h3 { color: var(--theme-color-dark-accent); margin-top: 0; font-size: 1.3em; }
+        .illustration-container { text-align: center; margin: 20px 0; }
+        .story-svg { width: 150px; height: auto; }
+
+        @media print {
+            .no-print { display: none; }
+            .editable { border: 1px solid #ccc !important; background-color: #fff !important; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Bible Theme 1: Creation & The Fall</h1>
+    </header>
+
+    <div class="content-container">
+        <div class="summary-section">
+            <h2>Overall Summary of Creation & The Fall</h2>
+            <div class="illustration-container">
+                <svg class="story-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Tree Trunk -->
+                    <rect x="45" y="40" width="10" height="50" fill="#8B4513"/>
+                    <!-- Leaves -->
+                    <circle cx="50" cy="30" r="25" fill="#228B22"/>
+                    <circle cx="35" cy="35" r="15" fill="#2E8B57"/>
+                    <circle cx="65" cy="35" r="15" fill="#2E8B57"/>
+                    <!-- Apple -->
+                    <circle cx="60" cy="30" r="5" fill="#FF0000" stroke="#A00000" stroke-width="1"/>
+                    <!-- Serpent -->
+                    <path d="M45 90 Q55 80 50 70 Q45 60 50 50 Q55 40 45 35" stroke="#006400" stroke-width="3" fill="none" stroke-linecap="round"/>
+                    <circle cx="44" cy="34" r="1.5" fill="yellow"/> <!-- Serpent eye -->
+                </svg>
+            </div>
+            <p>In the very beginning, there was nothing but God. Then, God decided to create everything! He spoke, and light appeared. He made the sky, the land, and the seas. He filled the world with amazing plants, shining stars, swimming fish, flying birds, and all sorts of wonderful animals. Everything God made was good and beautiful.</p>
+            <p>Finally, God made the first people, Adam and Eve. He made them special, in His own image, to take care of His beautiful world and to be His friends. God placed them in a perfect garden called Eden. There was only one rule: they were not to eat fruit from one special tree, the Tree of the Knowledge of Good and Evil.</p>
+            <p>But a sneaky serpent (Satan) tricked Eve into eating the fruit, and she gave some to Adam. When they ate it, they disobeyed God. This was the first sin, and it brought sadness, trouble, and separation from God into the world. Adam and Eve had to leave the perfect garden. But even though they made a mistake, God still loved them and had a plan to one day fix what was broken and bring people back to Him.</p>
+        </div>
+
+        <div class="age-adaptation-section">
+            <h3>Age-Specific Adaptations & Activities for Mrs. Scott to Develop:</h3>
+
+            <div>
+                <h4>Key Concepts & Sensory Activities for 2-3 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: God made everything! God made light, dark, animals. Sensory: Touch different textures (soft fur for animals, smooth stone for land, crinkly paper for water). Simple song about creation."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Simplified Story & Craft for 4-5 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: God made the world. God made Adam & Eve. They made a sad choice. Story: Very simple version of creation (days 1-6 focusing on what was made) and the choice in the garden. Craft: Creation collage (stars, sun, animals cut-outs)."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Core Story & Discussion for 5-6 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: God's good creation, Adam & Eve's responsibility, the serpent's trick, the consequence of disobedience, God's continued love. Story: Read from a children's Bible. Discussion: What was the garden like? What was the one rule? Why was it important to obey?"></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Deeper Dive & Questions for 7-8 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Nature of sin as disobedience, impact of the Fall on humanity and creation, God's justice and mercy, introduction to God's rescue plan. Discussion: What does 'sin' mean? How did Adam and Eve's choice affect everything? How do we see God's love even after they sinned?"></span>
+            </div>
+        </div>
+         <footer class="w3-container w3-center w3-padding-16 no-print">
+            <p><a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)">&laquo; Back to Main Menu</a></p>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>

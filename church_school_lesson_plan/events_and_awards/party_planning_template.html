@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Party Planning Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
+            --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 40px; display: block; box-sizing: border-box; margin-bottom: 10px; font-family: var(--font-family-body); }
+        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 150px; display: inline-block; margin-bottom: 5px;}
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .content-container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 20px; }
+        .section h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .subsection-title { font-family: var(--font-family-body); font-weight: bold; color: var(--theme-color-dark-accent); margin-top:10px; display:block;}
+
+        @media print {
+            .no-print { display: none; }
+            .editable, .small-editable { border: 1px solid #ccc !important; background-color: #fff !important; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Class Party Planning Template</h1>
+    </header>
+
+    <div class="content-container w3-card-4">
+        <div class="section">
+            <h2>Party Details</h2>
+            <label class="subsection-title">Party Theme/Occasion:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Christmas Celebration, End of Year Party, Easter Fun Day"></span>
+
+            <label class="subsection-title">Date:</label>
+            <span class="small-editable" contenteditable="true" placeholder="MM/DD/YYYY"></span>
+
+            <label class="subsection-title">Time:</label>
+            <span class="small-editable" contenteditable="true" placeholder="HH:MM AM/PM - HH:MM AM/PM"></span>
+
+            <label class="subsection-title">Location:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Classroom, Church Hall, Park (specify)"></span>
+
+            <label class="subsection-title">Target Age Group(s):</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., 2-5 year olds, 5-8 year olds, or specific sub-groups"></span>
+        </div>
+
+        <div class="section">
+            <h2>Guest List & RSVPs</h2>
+            <label class="subsection-title">Number of Students Expected:</label>
+            <span class="small-editable" contenteditable="true"></span>
+            <label class="subsection-title">Adult Volunteers/Chaperones Needed:</label>
+            <span class="small-editable" contenteditable="true"></span>
+            <label class="subsection-title">RSVP Deadline (if applicable):</label>
+            <span class="small-editable" contenteditable="true"></span>
+            <label class="subsection-title">RSVP Tracking Notes:</label>
+            <span class="editable" contenteditable="true" placeholder="List students attending, any parent volunteers confirmed..."></span>
+        </div>
+
+        <div class="section">
+            <h2>Decorations</h2>
+            <label class="subsection-title">Theme-Specific Decorations:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Nativity scene cutouts, Easter eggs, balloons, streamers in specific colors..."></span>
+            <label class="subsection-title">General Party Supplies:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Tablecloths, banners, centerpieces..."></span>
+            <label class="subsection-title">Who is Responsible for Decorations?:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Mrs. Scott, Parent Volunteers (names)"></span>
+        </div>
+
+        <div class="section">
+            <h2>Food & Drinks</h2>
+            <label class="subsection-title">Menu Plan (Age-Appropriate):</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Cupcakes, fruit platter, juice boxes, popcorn. List items and who is bringing what if potluck-style."></span>
+            <label class="subsection-title">Allergy Considerations (CRITICAL - Cross-reference with Emergency Contact Forms):</label>
+            <span class="editable" style="color:red; font-weight:bold;" contenteditable="true" placeholder="List all known allergies and how they will be managed (e.g., nut-free table, specific snacks for children with allergies)."></span>
+            <label class="subsection-title">Paper Goods Needed:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Plates, cups, napkins, cutlery."></span>
+        </div>
+
+        <div class="section">
+            <h2>Activities & Games</h2>
+            <label class="subsection-title">Planned Activities/Games (Age-Specific if necessary):</label>
+            <div class="w3-responsive">
+                <table class="w3-table w3-bordered">
+                    <thead><tr><th>Activity/Game</th><th>Brief Description</th><th>Materials Needed</th><th>Age Group Focus</th></tr></thead>
+                    <tbody>
+                        <tr><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td></tr>
+                        <tr><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td></tr>
+                        <tr><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td><td><span class="editable" contenteditable="true"></span></td></tr>
+                    </tbody>
+                </table>
+                 <button class="w3-button w3-tiny w3-margin-top no-print" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)" onclick="addRow(this.previousElementSibling.querySelector('table tbody'))">+ Add Activity Row</button>
+            </div>
+            <label class="subsection-title">Music/Background Ambiance:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Playlist of children's Christian songs, Christmas carols..."></span>
+        </div>
+
+        <div class="section">
+            <h2>Supplies & Budget</h2>
+            <label class="subsection-title">Other Supplies Needed:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Prizes for games, craft supplies for an activity, goody bags..."></span>
+            <label class="subsection-title">Estimated Budget (if applicable):</label>
+            <span class="small-editable" contenteditable="true"></span>
+            <label class="subsection-title">Source of Funds:</label>
+            <span class="editable" contenteditable="true" placeholder="e.g., Church budget, parent contributions..."></span>
+        </div>
+
+        <div class="section">
+            <h2>Volunteer Roles & Responsibilities</h2>
+            <span class="editable" contenteditable="true" placeholder="List volunteers and their assigned tasks (e.g., [Parent Name] - supervise craft table, [Another Parent] - serve food)."></span>
+        </div>
+
+        <footer class="w3-container w3-center w3-padding-16 no-print">
+            <p><a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)">&laquo; Back to Main Menu</a></p>
+        </footer>
+    </div>
+</div>
+<script>
+    function addRow(tbody) {
+        if (tbody) {
+            let newRow = tbody.rows[tbody.rows.length - 1].cloneNode(true);
+            let editables = newRow.querySelectorAll('.editable, .small-editable');
+            editables.forEach(el => {
+                if (el.tagName === 'SPAN') el.textContent = '';
+                else if (el.isContentEditable) el.innerHTML = '';
+                else el.value = '';
+            });
+            tbody.appendChild(newRow);
+        }
+    }
+</script>
+</body>
+</html>

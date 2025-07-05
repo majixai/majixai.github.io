@@ -23,8 +23,24 @@
             background-color: var(--theme-color-main);
             color: var(--text-color-on-main);
             border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo positioning */
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
-        .main-header h1 { font-size: 2.5em; }
+        .main-header h1 { font-size: 2.5em; margin: 0.2em 0; } /* Adjusted margin for h1 */
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
 
         .nav-card {
             margin-top: 16px;
@@ -78,6 +94,17 @@
 <body>
 
 <header class="w3-container main-header w3-center w3-padding-32">
+    <div class="youth-school-logo-container no-print">
+        <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+            <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+            <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+            <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+            <path class="book-stroke" d="M50 50 L50 65" />
+            <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+            <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+            <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+        </svg>
+    </div>
     <h1>Church School Lesson Plan Hub</h1>
     <p class="w3-large">Curriculum Resources & Templates for Ages 6-7</p>
 </header>
@@ -158,6 +185,7 @@
                 <ul class="w3-ul nav-list w3-hoverable">
                     <li><a href="events_and_awards/annual_events_calendar_template.html">Annual Events Calendar <span class="w3-small">Planning special church school events.</span></a></li>
                     <li><a href="events_and_awards/field_trip_planning_template.html">Field Trip Planning Template <span class="w3-small">Comprehensive guide for outings.</span></a></li>
+                    <li><a href="events_and_awards/party_planning_template.html">Party Planning Template <span class="w3-small">Guide for class celebrations.</span></a></li>
                     <li><a href="events_and_awards/weekly_prize_system.html">Weekly Prize System Guide <span class="w3-small">Optional fun recognition system.</span></a></li>
                     <li><a href="homework_optional/homework_classwork_ideas.html">Homework/Classwork Ideas <span class="w3-small">Optional reinforcement activities.</span></a></li>
                 </ul>
@@ -172,6 +200,12 @@
                 </header>
                 <ul class="w3-ul nav-list w3-hoverable">
                     <li><a href="story_resources/the_little_helping_seed.html">The Little Helping Seed <span class="w3-small">A story about kindness.</span></a></li>
+                    <li><a href="story_resources/01_creation_fall_summary.html">1. Creation & The Fall <span class="w3-small">Bible Theme Summary.</span></a></li>
+                    <li><a href="story_resources/02_gods_promises_summary.html">2. God's Promises (Abraham, Moses) <span class="w3-small">Bible Theme Summary.</span></a></li>
+                    <li><a href="story_resources/03_kings_prophets_summary.html">3. Kings & Prophets (David, Daniel) <span class="w3-small">Bible Theme Summary.</span></a></li>
+                    <li><a href="story_resources/04_life_of_jesus_summary.html">4. The Life of Jesus <span class="w3-small">Bible Theme Summary.</span></a></li>
+                    <li><a href="story_resources/05_death_resurrection_jesus_summary.html">5. Death & Resurrection of Jesus <span class="w3-small">Bible Theme Summary.</span></a></li>
+                    <li><a href="story_resources/06_early_church_our_future_summary.html">6. Early Church & Our Future <span class="w3-small">Bible Theme Summary.</span></a></li>
                 </ul>
             </div>
         </div>

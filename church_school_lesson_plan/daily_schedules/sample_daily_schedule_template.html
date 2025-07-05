@@ -25,10 +25,24 @@
         .main-page-header {
             background-color: var(--theme-color-main);
             color: var(--text-color-on-main);
-            padding-top: 16px; padding-bottom: 16px; /* More padding */
+            padding-top: 10px; padding-bottom: 10px;
             border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
         }
         .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
 
         .info-panel {
             background-color: var(--theme-color-light-accent);
@@ -37,6 +51,7 @@
             color: var(--text-color-on-light);
             border-radius: 8px;
         }
+        .info-panel .age-group-info { font-size: 0.9em; margin-top: 10px; padding: 8px; background-color: white; border: 1px solid var(--theme-color-bright-accent); border-radius: 5px;}
         .info-panel p strong { color: var(--theme-color-dark-accent); }
 
         .w3-table-all th {
@@ -80,6 +95,17 @@
 
 <div class="w3-container">
     <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
         <h1>Sample Daily Schedule Template (6-7 Year Olds)</h1>
     </header>
 

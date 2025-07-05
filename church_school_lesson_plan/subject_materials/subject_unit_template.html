@@ -26,17 +26,35 @@
         .main-page-header {
             background-color: var(--theme-color-main);
             color: var(--text-color-on-main);
-            padding-top: 16px; padding-bottom: 16px;
+            padding-top: 10px; padding-bottom: 10px; /* Standardized padding */
             border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
         }
         .main-page-header h1 { margin:0; font-size: 2em; }
 
-        .section-card { margin: 20px 0; border-radius: 10px; } /* Added top/bottom margin, rounded corners */
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .section-card { margin: 20px 0; border-radius: 10px; }
         .section-card-header {
-            background-color: var(--theme-color-bright-accent); /* Brighter red for section headers */
+            background-color: var(--theme-color-bright-accent);
             color: var(--text-color-on-bright);
             border-top-left-radius: 10px; border-top-right-radius: 10px;
         }
+        .age-diff-section { margin-top:15px; padding-left:10px; border-left: 2px solid var(--theme-color-light-accent); }
+        .age-diff-section h4 { font-size: 1em; color: var(--theme-color-dark-accent); margin-bottom:3px; font-family: var(--font-family-body); font-weight: bold;}
+        .age-diff-section .editable, .age-diff-section .full-width-editable {font-size: 0.9em; background-color: #fdf5f5; }
+
         .section-card-header h2 { margin-top:0; padding:12px 16px; font-size: 1.5em;}
 
         .unit-details-form {
