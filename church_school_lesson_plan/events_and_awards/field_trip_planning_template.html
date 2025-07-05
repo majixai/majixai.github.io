@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Field Trip Planning Template</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; }
+        .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; margin-bottom: 8px;}
+        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; margin-bottom: 5px;}
+        .section-card { margin-top: 20px; }
+        .section-header { background-color: #00796b; color: white; padding:8px 16px; } /* Darker Teal */
+        .subsection-title { font-weight: bold; margin-top: 10px; color: #004d40; } /* Darkest Teal */
+        .checkbox-item label { margin-left: 5px; }
+         @media print {
+            .no-print { display: none; }
+            .editable { border: 1px solid #ccc !important; background-color: #fff !important; }
+            .small-editable { border-bottom: 1px solid #ccc !important; background-color: #fff !important;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container w3-teal w3-center no-print">
+        <h1>Class Field Trip Planning Template</h1>
+    </header>
+
+    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+        <p>This template is designed to help plan and organize a class field trip for 6-7 year old students. Fill in all relevant sections to ensure a smooth, educational, and enjoyable experience.</p>
+        <button class="w3-button w3-green w3-margin-bottom" onclick="window.print()">Print Field Trip Plan</button>
+    </div>
+
+    <!-- Basic Information -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>I. Basic Information</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <p><span class="subsection-title">Field Trip Destination:</span> <span class="editable"></span></p>
+            <p><span class="subsection-title">Proposed Date(s):</span> <span class="small-editable"></span>
+               &nbsp;&nbsp;<span class="subsection-title">Alternate Date(s):</span> <span class="small-editable"></span></p>
+            <p><span class="subsection-title">Time:</span> From <span class="small-editable">HH:MM AM/PM</span> to <span class="small-editable">HH:MM AM/PM</span></p>
+            <p><span class="subsection-title">Estimated Cost Per Student (if any):</span> <span class="small-editable"></span></p>
+            <p><span class="subsection-title">Payment Due Date (if applicable):</span> <span class="small-editable"></span></p>
+        </div>
+    </div>
+
+    <!-- Educational Purpose & Objectives -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>II. Educational Purpose & Objectives</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <p class="subsection-title">Purpose of the Field Trip:</p>
+            <span class="editable" style="min-height: 60px;">(Explain how this trip supports the curriculum, Christian values, or specific learning goals.)</span>
+
+            <p class="subsection-title">Learning Objectives (What students will learn or experience):</p>
+            <ol class="w3-ul">
+                <li><span class="editable"></span></li>
+                <li><span class="editable"></span></li>
+                <li><span class="editable"></span></li>
+                <li><span class="editable">(Add more as needed)</span></li>
+            </ol>
+
+            <p class="subsection-title">Connection to Bible Themes/Christian Values:</p>
+            <span class="editable" style="min-height: 60px;">(e.g., God's creation, community helpers, serving others, historical context of Bible stories, etc.)</span>
+        </div>
+    </div>
+
+    <!-- Logistics -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>III. Logistics & Preparations</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <p class="subsection-title">Transportation Arrangements:</p>
+            <span class="editable">(e.g., Church bus, parent drivers, walking. Specify departure/arrival points and times.)</span>
+
+            <p class="subsection-title">Chaperones:</p>
+            <ul class="w3-ul">
+                <li>Number of Chaperones Needed: <span class="small-editable"></span> (Recommended ratio: <span class="small-editable">e.g., 1 adult per 5 students</span>)</li>
+                <li>Chaperone Sign-up Deadline: <span class="small-editable"></span></li>
+                <li>Lead Chaperone(s) (if any): <span class="editable"></span></li>
+                <li>Chaperone Responsibilities/Instructions: <span class="editable" style="min-height: 60px;">(Attach separate sheet if detailed)</span></li>
+            </ul>
+
+            <p class="subsection-title">Permission Slips:</p>
+            <ul class="w3-ul">
+                <li>Date Permission Slips Sent Home: <span class="small-editable"></span></li>
+                <li>Permission Slips Due Date: <span class="small-editable"></span></li>
+                <li><span class="w3-text-red">Note: A separate permission slip form must be created and include details like destination, date, time, emergency contact for the trip, any costs, and parent signature line.</span> (<a href="../classroom_management_resources/emergency_contact_form_template.html" target="_blank" class="no-print">See Emergency Contact Template for basic info to include on perm. slip</a>)</li>
+                <li>Permission Slip Tracking: <span class="editable">(Method for tracking returned slips, e.g., checklist)</span></li>
+            </ul>
+
+            <p class="subsection-title">What Students Need to Bring:</p>
+            <span class="editable">(e.g., Sack lunch, water bottle, comfortable shoes, jacket, spending money - if applicable)</span>
+
+            <p class="subsection-title">What the Class Will Provide:</p>
+            <span class="editable">(e.g., Name tags, first aid kit, group activity materials)</span>
+
+            <p class="subsection-title">Contact Person at Field Trip Location (if applicable):</p>
+            <p>Name: <span class="small-editable"></span> &nbsp;&nbsp; Phone/Email: <span class="small-editable"></span></p>
+            <p>Booking Confirmation Number (if any): <span class="small-editable"></span></p>
+        </div>
+    </div>
+
+    <!-- Pre-Trip & Post-Trip Activities -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>IV. Learning Activities</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <p class="subsection-title">Pre-Trip Preparation Activities for Students:</p>
+            <span class="editable" style="min-height: 80px;">(e.g., Read a related story, discuss expectations, learn relevant vocabulary, research the location, brainstorm questions to ask.)</span>
+
+            <p class="subsection-title">Activity Plan for During the Field Trip:</p>
+            <span class="editable" style="min-height: 100px;">(e.g., Scavenger hunt, guided tour points, specific things to observe, questions to answer, group tasks. Include a rough timeline if possible.)</span>
+
+            <p class="subsection-title">Post-Trip Follow-Up & Reflection Activities:</p>
+            <span class="editable" style="min-height: 80px;">(e.g., Class discussion, thank you notes to chaperones/location, drawing/writing about experience, creating a class book/mural, connecting experience back to Bible lesson.)</span>
+        </div>
+    </div>
+
+    <!-- Safety & Emergency -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>V. Safety & Emergency Plan</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <p class="subsection-title">Risk Assessment Considerations:</p>
+            <span class="editable" style="min-height: 60px;">(Identify potential risks and how they will be mitigated. E.g., getting lost, minor injuries, allergies.)</span>
+
+            <p class="subsection-title">Emergency Plan Notes:</p>
+            <ul class="w3-ul">
+                <li>Lead Teacher Cell Phone: <span class="small-editable"></span></li>
+                <li>Church Office Phone: <span class="small-editable"></span></li>
+                <li>First Aid Kit Location: <span class="editable"></span> (Carried by: <span class="small-editable"></span>)</li>
+                <li>Student Emergency Contact Forms: <span class="editable">Accessible via [Method/Location]</span></li>
+                <li>Meeting point if separated: <span class="editable"></span></li>
+                <li>Procedure for minor injuries: <span class="editable"></span></li>
+                <li>Procedure for major emergencies: <span class="editable"></span></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Budget -->
+    <div class="w3-card section-card">
+        <header class="w3-container section-header">
+            <h2>VI. Budget (If Applicable)</h2>
+        </header>
+        <div class="w3-container w3-padding">
+            <table class="w3-table w3-bordered">
+                <thead>
+                    <tr><th>Item</th><th>Estimated Cost</th><th>Actual Cost</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="editable">e.g., Entrance Fees</span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="editable">e.g., Transportation</span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="editable">e.g., Supplies</span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                        <td><span class="editable"></span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total</strong></td>
+                        <td><span class="small-editable"></span></td>
+                        <td><span class="small-editable"></span></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer class="w3-container w3-teal w3-center w3-margin-top w3-padding no-print">
+        <p>Thorough planning makes for a successful and enriching field trip experience!</p>
+    </footer>
+
+</div>
+
+</body>
+</html>
