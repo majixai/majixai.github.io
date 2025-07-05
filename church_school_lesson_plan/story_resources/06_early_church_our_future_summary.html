@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Theme 6: The Early Church & Our Future with God</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
+            --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 60px; display: block; box-sizing: border-box; margin-bottom: 10px; font-family: var(--font-family-body); }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .content-container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .summary-section h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .age-adaptation-section { margin-top: 20px; padding: 15px; background-color: var(--theme-color-light-accent); border-radius: 8px; border: 1px solid var(--theme-color-bright-accent); }
+        .age-adaptation-section h3 { color: var(--theme-color-dark-accent); margin-top: 0; font-size: 1.3em; }
+        .illustration-container { text-align: center; margin: 20px 0; }
+        .story-svg { width: 180px; height: auto; }
+
+        @media print {
+            .no-print { display: none; }
+            .editable { border: 1px solid #ccc !important; background-color: #fff !important; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Bible Theme 6: The Early Church & Our Future with God</h1>
+    </header>
+
+    <div class="content-container">
+        <div class="summary-section">
+            <h2>Overall Summary of The Early Church & Our Future</h2>
+            <div class="illustration-container">
+                <svg class="story-svg" viewBox="0 0 150 120" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Diverse group of simple figures -->
+                    <circle cx="50" cy="70" r="8" fill="#FFB6C1"/> <circle cx="70" cy="75" r="8" fill="#87CEEB"/>
+                    <circle cx="60" cy="60" r="9" fill="#90EE90"/> <circle cx="80" cy="65" r="8" fill="#FFDEAD"/>
+                    <circle cx="40" cy="80" r="7" fill="#DA70D6"/> <circle cx="95" cy="78" r="7" fill="#FFA07A"/>
+                    <!-- Dove (Holy Spirit) -->
+                    <path d="M65 25 Q75 15 85 25 Q95 35 85 45 L75 50 L65 45 Q55 35 65 25 Z" fill="white" stroke="#ccc" stroke-width="1"/>
+                    <path d="M75 50 Q70 55 65 45" stroke="#ccc" stroke-width="1" fill="none"/> <!-- Wing detail -->
+                    <path d="M75 50 Q80 55 85 45" stroke="#ccc" stroke-width="1" fill="none"/> <!-- Wing detail -->
+                    <!-- Path to Horizon/Light -->
+                    <path d="M20 110 Q75 95 130 110" fill="none" stroke="#A0522D" stroke-width="4" />
+                    <radialGradient id="grad1" cx="50%" cy="0%" r="70%" fx="50%" fy="0%">
+                        <stop offset="0%" style="stop-color:yellow;stop-opacity:0.7" />
+                        <stop offset="100%" style="stop-color:white;stop-opacity:0" />
+                    </radialGradient>
+                    <ellipse cx="75" cy="0" rx="100" ry="40" fill="url(#grad1)" /> <!-- Light on Horizon -->
+                </svg>
+            </div>
+            <p>After Jesus rose from the dead and went back to heaven, He didn't leave His followers alone. He sent the Holy Spirit to be with them, to help them, and to give them power to tell others about Jesus. This happened on a special day called Pentecost, and it was like the birthday of the Church! The disciples, filled with the Holy Spirit, started bravely telling everyone in Jerusalem about Jesus – how He died for their sins and rose again.</p>
+            <p>Many people believed and joined them. These first Christians loved each other very much. They shared everything they had, prayed together, learned together from the apostles (Jesus's main disciples), and helped anyone in need. The Church began to grow and spread. Men like Peter and John performed miracles in Jesus' name. A man named Saul, who at first tried to stop the Christians, met Jesus in an amazing way and became Paul, one of the greatest missionaries ever! Paul traveled to many different cities and countries, telling people about Jesus and starting new churches.</p>
+            <p>Being a follower of Jesus means being part of God's family, the Church. We learn to love God, love others, share the good news about Jesus, and help each other grow in faith. And the Bible tells us that one day, Jesus will come back again! When He does, He will make everything new and perfect. All who believe in Him will live with Him forever in Heaven, a wonderful place with no sadness, no tears, and no more goodbyes. This is the amazing future God has planned for all His children!</p>
+        </div>
+
+        <div class="age-adaptation-section">
+            <h3>Age-Specific Adaptations & Activities for Mrs. Scott to Develop:</h3>
+
+            <div>
+                <h4>Key Concepts & Sensory Activities for 2-3 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Jesus's friends love each other. We love Jesus. Sensory: Heart shapes, 'flames' of red/orange tissue paper for Holy Spirit. Song: 'Jesus Loves the Little Children'."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Simplified Story & Craft for 4-5 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Jesus's friends told others about Him. The Holy Spirit helped them. Craft: Dove craft (Holy Spirit), 'Friendship chain' paper craft."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Core Story & Discussion for 5-6 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Pentecost - Holy Spirit comes. Early Christians sharing. Paul's conversion (simple). Story: Simplified stories of Pentecost and Paul. Discussion: What is the Church? How did the Holy Spirit help Jesus's friends? How can we share God's love?"></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Deeper Dive & Questions for 7-8 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: The role of the Holy Spirit. What it means to be part of the Church (local and universal). The Great Commission. The hope of Jesus's return and Heaven. Discussion: How does the Holy Spirit help us today? What are some ways our church helps people? What do you think Heaven will be like?"></span>
+            </div>
+        </div>
+         <footer class="w3-container w3-center w3-padding-16 no-print">
+            <p><a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)">&laquo; Back to Main Menu</a></p>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>

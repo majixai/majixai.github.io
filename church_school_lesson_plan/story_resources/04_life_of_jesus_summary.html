@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Theme 4: The Life of Jesus</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
+            --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 60px; display: block; box-sizing: border-box; margin-bottom: 10px; font-family: var(--font-family-body); }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .content-container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .summary-section h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .age-adaptation-section { margin-top: 20px; padding: 15px; background-color: var(--theme-color-light-accent); border-radius: 8px; border: 1px solid var(--theme-color-bright-accent); }
+        .age-adaptation-section h3 { color: var(--theme-color-dark-accent); margin-top: 0; font-size: 1.3em; }
+        .illustration-container { text-align: center; margin: 20px 0; }
+        .story-svg { width: 180px; height: auto; }
+
+        @media print {
+            .no-print { display: none; }
+            .editable { border: 1px solid #ccc !important; background-color: #fff !important; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Bible Theme 4: The Life of Jesus</h1>
+    </header>
+
+    <div class="content-container">
+        <div class="summary-section">
+            <h2>Overall Summary of the Life of Jesus</h2>
+            <div class="illustration-container">
+                <svg class="story-svg" viewBox="0 0 150 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Manger -->
+                    <path d="M10 70 L20 50 L50 50 L60 70 Z" fill="#D2B48C" stroke="#8B4513" stroke-width="1"/>
+                    <path d="M15 70 L15 85 L55 85 L55 70" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+                    <ellipse cx="35" cy="60" rx="10" ry="5" fill="#F5EAAA"/> <!-- Baby Jesus -->
+                    <path d="M35 55 Q37 50 40 52" stroke="#DAA520" stroke-width="0.5" fill="none"/> <!-- Halo idea -->
+
+                    <!-- Teacher (Jesus) and Listeners -->
+                    <circle cx="90" cy="40" r="10" fill="#87CEEB"/> <!-- Jesus figure -->
+                    <circle cx="80" cy="60" r="7" fill="#90EE90"/> <!-- Listener 1 -->
+                    <circle cx="100" cy="60" r="7" fill="#FFB6C1"/> <!-- Listener 2 -->
+                    <circle cx="90" cy="75" r="7" fill="#FFDEAD"/> <!-- Listener 3 -->
+
+                    <!-- Fish and Loaves -->
+                    <ellipse cx="130" cy="70" rx="10" ry="4" fill="#D2B48C"/> <!-- Loaf 1 -->
+                    <ellipse cx="135" cy="78" rx="10" ry="4" fill="#D2B48C"/> <!-- Loaf 2 -->
+                    <path d="M125 60 Q130 55 135 60 T145 60" stroke="#3498db" fill="none" stroke-width="2"/> <!-- Fish -->
+                </svg>
+            </div>
+            <p>Many years after the prophets, God fulfilled His biggest promise! He sent His own Son, Jesus, into the world. Jesus was born in a humble stable in Bethlehem. Angels sang and shepherds came to worship Him. Wise men followed a special star to bring Him gifts. This was Christmas!</p>
+            <p>When Jesus grew up, He began His ministry, teaching people about God's love and the Kingdom of Heaven. He chose twelve special helpers called disciples to learn from Him and help Him. Jesus taught in amazing ways, often using stories called parables, like the story of the Good Samaritan or the Lost Sheep, to help people understand important truths about God and how to live.</p>
+            <p>Jesus also performed many incredible miracles that showed He was truly God's Son. He healed people who were sick, helped blind people see, and even calmed a huge storm with just His words! One time, He fed over five thousand people with just five loaves of bread and two small fish. Everywhere Jesus went, He showed compassion, love, and God's power.</p>
+            <p>He taught people the most important commandments: to love God with all their heart, soul, and mind, and to love their neighbor as themselves. Jesus's whole life was about showing God's love to the world and inviting people to follow Him.</p>
+        </div>
+
+        <div class="age-adaptation-section">
+            <h3>Age-Specific Adaptations & Activities for Mrs. Scott to Develop:</h3>
+
+            <div>
+                <h4>Key Concepts & Sensory Activities for 2-3 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Baby Jesus is special. Jesus loves children. Sensory: Soft blanket for baby, star shapes. Sing 'Jesus Loves Me'."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Simplified Story & Craft for 4-5 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Jesus's birth (Nativity). Jesus helped people (simple miracle like feeding 5000 with fish/bread). Craft: Manger craft, paper plate fish."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Core Story & Discussion for 5-6 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Nativity story. One or two key parables (e.g., Good Samaritan). One or two key miracles (e.g., Jesus calms storm). Discussion: Who was Jesus? What did He teach us? How did He show God's love?"></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Deeper Dive & Questions for 7-8 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Significance of Jesus's birth. Deeper meaning of parables. Types of miracles and what they show about Jesus. Jesus's main teachings (Love God, Love Others). Discussion: Why did Jesus come? What can we learn from His miracles/parables? How can we follow Jesus's teachings?"></span>
+            </div>
+        </div>
+         <footer class="w3-container w3-center w3-padding-16 no-print">
+            <p><a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)">&laquo; Back to Main Menu</a></p>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>

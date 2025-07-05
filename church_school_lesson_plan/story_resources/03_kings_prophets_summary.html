@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bible Theme 3: Kings & Prophets</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
+            --text-color-on-main: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1,h2,h3,h4,h5,h6 { font-family: var(--font-family-headings); font-weight: bold; }
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 60px; display: block; box-sizing: border-box; margin-bottom: 10px; font-family: var(--font-family-body); }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 10px; padding-bottom: 10px;
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+            position: relative; /* For logo */
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .youth-school-logo-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 60px;
+            height: auto;
+            z-index: 10;
+        }
+        .youth-school-logo-svg .book-fill { fill: #f0f8ff; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #8fbc8f; }
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent, #701111); stroke-width:2; fill:none; }
+
+        .content-container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .summary-section h2 { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-bright-accent); padding-bottom: 5px; }
+        .age-adaptation-section { margin-top: 20px; padding: 15px; background-color: var(--theme-color-light-accent); border-radius: 8px; border: 1px solid var(--theme-color-bright-accent); }
+        .age-adaptation-section h3 { color: var(--theme-color-dark-accent); margin-top: 0; font-size: 1.3em; }
+        .illustration-container { text-align: center; margin: 20px 0; }
+        .story-svg { width: 150px; height: auto; }
+
+        @media print {
+            .no-print { display: none; }
+            .editable { border: 1px solid #ccc !important; background-color: #fff !important; min-height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="w3-container">
+    <header class="w3-container main-page-header w3-center">
+        <div class="youth-school-logo-container no-print">
+            <svg class="youth-school-logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+                <path class="church-stroke" d="M30 35 L50 15 L70 35" />
+                <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+                <path class="book-fill book-stroke" d="M10 60 Q20 50, 50 50 Q80 50, 90 60 L90 65 L10 65 Z" />
+                <path class="book-stroke" d="M50 50 L50 65" />
+                <path class="sprout-fill book-stroke" d="M50 50 Q50 35, 53 30 Q56 25, 50 20 Q44 25, 47 30 Q50 35, 50 50" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 45 28, 42 22, 50 25" />
+                <path class="sprout-fill book-stroke" d="M50 30 C 55 28, 58 22, 50 25" />
+            </svg>
+        </div>
+        <h1>Bible Theme 3: Kings & Prophets</h1>
+    </header>
+
+    <div class="content-container">
+        <div class="summary-section">
+            <h2>Overall Summary of Kings & Prophets</h2>
+            <div class="illustration-container">
+                <svg class="story-svg" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Crown -->
+                    <path d="M20 40 L25 20 L40 30 L50 15 L60 30 L75 20 L80 40 Z" fill="#FFD700" stroke="#DAA520" stroke-width="2"/>
+                    <circle cx="25" cy="20" r="3" fill="red"/> <circle cx="50" cy="15" r="3" fill="blue"/> <circle cx="75" cy="20" r="3" fill="green"/>
+                    <!-- Scroll -->
+                    <rect x="50" y="55" width="60" height="30" rx="5" ry="5" fill="#F5E9D3" stroke="#D2B48C" stroke-width="1"/>
+                    <path d="M50 55 Q45 70 50 85" stroke="#D2B48C" stroke-width="1" fill="none"/>
+                    <path d="M110 55 Q115 70 110 85" stroke="#D2B48C" stroke-width="1" fill="none"/>
+                    <line x1="55" y1="62" x2="105" y2="62" stroke="#B08D57" stroke-width="0.5"/>
+                    <line x1="55" y1="67" x2="100" y2="67" stroke="#B08D57" stroke-width="0.5"/>
+                    <line x1="55" y1="72" x2="105" y2="72" stroke="#B08D57" stroke-width="0.5"/>
+                    <line x1="55" y1="77" x2="100" y2="77" stroke="#B08D57" stroke-width="0.5"/>
+                </svg>
+            </div>
+            <p>After God's people, the Israelites, settled in the Promised Land, they eventually asked for a king to rule over them, like other nations. God allowed this, and Saul became the first king. However, the most famous and beloved king was David. When David was just a young shepherd boy, he showed great courage and faith in God by defeating a giant named Goliath with only a sling and a stone! God chose David to be king because David had a heart that loved God very much. King David wrote many beautiful songs to God, which we call Psalms.</p>
+            <p>Even good kings sometimes made mistakes, and often the people and their kings would forget God and His ways. During these times, God sent special messengers called prophets. Prophets like Elijah, Isaiah, Jeremiah, and Daniel were brave men who spoke God's messages to the kings and the people. Sometimes these messages were warnings to turn back to God and live right. Other times, the prophets brought messages of comfort and hope, reminding people of God's love and His promises for the future. Daniel, for example, showed amazing faith when he was thrown into a den of hungry lions for praying to God, but God protected him and kept him safe!</p>
+            <p>Through the kings and prophets, God continued to guide His people and prepare them for someone very special He had promised to send – a Savior, who would be a king from David's family line and would rescue people from sin forever.</p>
+        </div>
+
+        <div class="age-adaptation-section">
+            <h3>Age-Specific Adaptations & Activities for Mrs. Scott to Develop:</h3>
+
+            <div>
+                <h4>Key Concepts & Sensory Activities for 2-3 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: David was brave. God helps us. Sensory: Soft wool for sheep, smooth stones. Make 'crowns' from paper. Simple songs about being brave."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Simplified Story & Craft for 4-5 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Story of David & Goliath (very simplified). Daniel prayed to God and God kept him safe. Craft: Decorate a paper crown. Make a simple paper scroll."></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Core Story & Discussion for 5-6 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: Who was King David? Why was he special? What did prophets do? Story of Daniel in the lions' den. Discussion: What does it mean to be brave for God? Why is it important to listen to God's messengers?"></span>
+            </div>
+            <div style="margin-top:10px;">
+                <h4>Deeper Dive & Questions for 7-8 Year Olds:</h4>
+                <span class="editable" contenteditable="true" placeholder="e.g., Focus: David's heart for God (and his mistakes). The role of prophets in calling people to repentance and announcing future hope (Messiah). Discussion: How did David show he loved God? What kind of messages did prophets bring? How did Daniel show his faithfulness even when it was dangerous?"></span>
+            </div>
+        </div>
+         <footer class="w3-container w3-center w3-padding-16 no-print">
+            <p><a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-light-accent); color:var(--theme-color-dark-accent)">&laquo; Back to Main Menu</a></p>
+        </footer>
+    </div>
+</div>
+
+</body>
+</html>
