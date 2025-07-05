@@ -6,17 +6,28 @@
     <title>The Little Helping Seed - A Story for Kids</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body {
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
             line-height: 1.8;
-            background-color: #f0fdf4; /* Light green background */
-            color: #386641; /* Dark green text */
+            background-color: #f0fdf4; /* Light green background - Story specific, keep */
+            color: #386641; /* Dark green text - Story specific, keep */
             overflow-x: hidden; /* Prevent horizontal scroll */
         }
         .page-header {
             position: relative; /* For logo positioning */
             padding-bottom: 10px; /* Space if logo is below title */
+            background-color: var(--theme-color-main); /* Themed header background */
+            color: var(--text-color-on-main); /* Themed header text */
         }
+        .page-header h1 { color: var(--text-color-on-main) !important; } /* Ensure h1 in header is themed */
+        .page-header .w3-text-grey { color: var(--theme-color-light-accent) !important; } /* Subtitle color */
+
         .youth-school-logo-container {
             position: absolute;
             top: 10px;
@@ -25,31 +36,36 @@
             height: auto;
             z-index: 10;
         }
+        /* Logo SVG colors are defined inline in its own style block for portability, or can be moved here */
         .youth-school-logo-svg .book-fill { fill: #e3f2fd; }
-        .youth-school-logo-svg .book-stroke { stroke: #00796b; stroke-width:1.5; }
-        .youth-school-logo-svg .sprout-fill { fill: #6a994e; }
-        .youth-school-logo-svg .church-stroke { stroke: #004d40; stroke-width:2; fill:none; }
+        .youth-school-logo-svg .book-stroke { stroke: var(--theme-color-dark-accent); stroke-width:1.5; }
+        .youth-school-logo-svg .sprout-fill { fill: #6a994e; } /* Keep sprout green */
+        .youth-school-logo-svg .church-stroke { stroke: var(--theme-color-dark-accent); stroke-width:2; fill:none; }
 
-        .w3-container h1, .w3-container h2 {
+
+        .story-title-h1 { /* Specific for story title if different from general h1 */
             font-weight: bold;
-            color: #6a994e; /* Medium green for headers */
+            color: var(--text-color-on-main); /* Match header text color */
         }
+        .story-subtitle { color: var(--theme-color-light-accent) !important; }
+
+
         .story-container {
             max-width: 800px;
             margin: auto;
-            position: relative; /* For potential absolute positioned elements within story */
+            position: relative;
         }
         .scene {
             padding: 20px;
             margin-bottom: 30px;
-            background-color: #ffffff;
+            background-color: #ffffff; /* Keep story scenes on white */
             border-radius: 15px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            opacity: 0; /* Initially hidden for scroll animation */
-            transform: translateY(30px); /* Initial offset for scroll animation */
-            transition: opacity 1s ease-out, transform 1s ease-out; /* Slightly slower transition */
-            min-height: 280px; /* Ensure scenes have some height, adjusted */
-            overflow: hidden; /* To contain floated elements if any for print */
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 1s ease-out, transform 1s ease-out;
+            min-height: 280px;
+            overflow: hidden;
         }
         .scene.is-visible {
             opacity: 1;

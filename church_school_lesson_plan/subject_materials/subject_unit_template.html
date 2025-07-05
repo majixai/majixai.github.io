@@ -6,21 +6,35 @@
     <title>Subject Unit/Weekly Theme Plan Template</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --theme-color-table-header: #a33a3a; /* Medium-dark red for table headers */
+            --text-color-on-main: white;
+            --text-color-on-dark-accent: white;
+        }
         body { font-family: sans-serif; }
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 150px; display: inline-block; margin-bottom:5px; }
-        .full-width-editable { background-color: #f0f0f0; padding: 5px; border: 1px dotted #ccc; width: 100%; min-height: 50px; display: block; margin-bottom:5px;}
-        .section-header { margin-top: 20px; }
-        .w3-table-all th, .w3-table-all td { padding: 8px; vertical-align: top;}
+        .full-width-editable { background-color: #f0f0f0; padding: 5px; border: 1px dotted #ccc; width: 100%; min-height: 50px; display: block; margin-bottom:5px; box-sizing: border-box;}
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .section-card-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-dark-accent); }
+        .section-card-header h2 { margin-top:0; padding-top:10px; padding-bottom:10px;}
+        .unit-details-form { background-color: var(--theme-color-light-accent); color: var(--theme-color-dark-accent); border-left: 5px solid var(--theme-color-main); }
+        .unit-details-form h2 { color: var(--theme-color-main); }
+        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
+        .w3-table-all td { padding: 8px; vertical-align: top;}
+        .info-panel { border-left: 4px solid var(--theme-color-main); background-color: var(--theme-color-light-accent); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Subject Unit/Weekly Theme Plan Template</h1>
     </header>
 
-    <form class="w3-container w3-card-4 w3-light-grey w3-text-blue w3-margin">
+    <form class="w3-container w3-card-4 unit-details-form w3-margin">
         <h2 class="w3-center">Unit Details</h2>
         <div class="w3-row w3-section">
           <div class="w3-col" style="width:150px"><strong>Subject:</strong></div>
@@ -41,8 +55,8 @@
     </form>
 
     <div class="w3-card-4 w3-margin">
-        <header class="w3-container w3-blue">
-            <h2 class="section-header">1. Overview & Goals</h2>
+        <header class="w3-container section-card-header">
+            <h2>1. Overview & Goals</h2>
         </header>
         <div class="w3-container w3-padding">
             <p><strong>Brief Description of Unit/Theme:</strong></p>
@@ -59,18 +73,18 @@
     </div>
 
     <div class="w3-card-4 w3-margin">
-        <header class="w3-container w3-green">
-            <h2 class="section-header">2. Lesson Breakdown & Activities</h2>
+        <header class="w3-container section-card-header">
+            <h2>2. Lesson Breakdown & Activities</h2>
         </header>
         <div class="w3-container w3-padding">
-            <p class="w3-panel w3-leftbar w3-sand"><em>(Repeat this section for each lesson/session within the unit if applicable)</em></p>
+            <p class="w3-panel w3-leftbar info-panel"><em>(Repeat this section for each lesson/session within the unit if applicable)</em></p>
             <p><strong>Lesson/Session #:</strong> <span class="editable">_______</span></p>
             <p><strong>Topic/Focus:</strong> <span class="editable">_________________________</span></p>
 
             <div class="w3-responsive">
                 <table class="w3-table-all w3-hoverable">
                     <thead>
-                        <tr class="w3-light-green">
+                        <tr> <!-- Removed w3-light-green, th style is now global -->
                             <th>Time Allotment</th>
                             <th>Activity Segment</th>
                             <th>Description of Activity & Teaching Points</th>

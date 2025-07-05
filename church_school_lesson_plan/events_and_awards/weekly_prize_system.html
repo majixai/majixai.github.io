@@ -6,26 +6,37 @@
     <title>Optional Weekly Prize System Guide</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; line-height: 1.6; }
         .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
-        .highlight-panel { background-color: #fff8e1; border-left: 5px solid #ffc107; } /* W3.CSS amber */
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .section-card h2 { color: var(--theme-color-main); }
+        .highlight-panel { background-color: var(--theme-color-light-accent); border-left: 4px solid var(--theme-color-dark-accent); } /* Themed highlight */
+        .highlight-panel h4 { color: var(--theme-color-dark-accent); }
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; }
-        .important-note { color: #d32f2f; font-weight: bold; } /* W3.CSS red */
+        .important-note { color: var(--theme-color-main); font-weight: bold; } /* Themed important note */
+        .page-footer { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-amber w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Optional Weekly Prize System Guide (6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding-16 w3-margin-top w3-card">
-        <p>This document provides ideas and considerations for implementing an <span class="w3-text-red w3-large">optional</span> weekly random prize winner system for a 6-7 year old church school class. The primary aim should be to add a little fun and positive anticipation, not to create competition or feelings of exclusion.</p>
+    <div class="w3-panel info-panel w3-padding-16 w3-margin-top w3-card">
+        <p>This document provides ideas and considerations for implementing an <span class="important-note w3-large">optional</span> weekly random prize winner system for a 6-7 year old church school class. The primary aim should be to add a little fun and positive anticipation, not to create competition or feelings of exclusion.</p>
     </div>
 
-    <div class="w3-card w3-margin-top w3-padding">
-        <h2 class="w3-text-amber">Core Philosophy</h2>
+    <div class="w3-card w3-margin-top w3-padding section-card">
+        <h2>Core Philosophy</h2>
         <ul class="w3-ul w3-hoverable">
             <li><strong>Fun & Encouragement:</strong> The system should be light-hearted and seen as a bonus, not a primary motivator for good behavior or learning (these should be intrinsic or encouraged through other means).</li>
             <li><strong>Fairness & Inclusivity:</strong> If implementing, ensure the selection process is genuinely random and that, over time, all children have opportunities.</li>

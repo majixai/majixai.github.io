@@ -6,23 +6,36 @@
     <title>Quiz Template (6-7 Year Olds)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; }
         .quiz-section { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; }
-        .instructions { font-style: italic; margin-bottom: 10px; }
+        .quiz-section h2 { color: var(--theme-color-dark-accent); }
+        .instructions { font-style: italic; margin-bottom: 10px; color: var(--theme-color-dark-accent); }
         .drawing-space { border: 1px dashed #aaa; min-height: 150px; margin-top: 10px; padding:10px; text-align:center; color: #aaa; }
         .image-placeholder { border: 1px solid #ccc; padding: 20px; text-align: center; margin: 5px; background-color: #f9f9f9; min-width: 100px; min-height: 80px; display: inline-block;}
-        .word-bank { background-color: #e7f3fe; border: 1px solid #b3d7ff; padding: 10px; margin-bottom: 10px; }
+        .word-bank { background-color: var(--theme-color-light-accent); border: 1px solid var(--theme-color-main); padding: 10px; margin-bottom: 10px; color: var(--theme-color-dark-accent); }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .teacher-notes-panel { background-color: #fff8e1; border-left: 5px solid #ffc107; } /* Amber for teacher notes */
+        .teacher-notes-panel h3 { color: #e65100; } /* Darker Amber */
+        .w3-table th { background-color: var(--theme-color-dark-accent) !important; color: var(--text-color-on-main) !important; }
+
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Quiz Template (6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p><strong>Subject:</strong> <span class="editable">_________________________</span></p>
         <p><strong>Topic/Unit:</strong> <span class="editable">_________________________</span></p>
         <p><strong>Name:</strong> <span class="editable">_________________________</span></p>
@@ -31,14 +44,14 @@
 
     <hr>
 
-    <div class="w3-panel w3-pale-blue w3-leftbar w3-border-blue w3-padding">
+    <div class="w3-panel info-panel w3-padding">
         <p class="instructions"><strong>Instructions:</strong> Listen carefully to the instructions for each part. Do your best!</p>
     </div>
 
     <hr>
 
     <div class="quiz-section w3-card">
-        <h2 class="w3-text-blue">Part 1: Picture Matching <span class="w3-small w3-text-grey">(Example)</span></h2>
+        <h2>Part 1: Picture Matching <span class="w3-small w3-text-grey">(Example)</span></h2>
         <p class="instructions">Draw a line to match the picture to the correct word or concept.</p>
         <table class="w3-table w3-bordered">
             <thead>

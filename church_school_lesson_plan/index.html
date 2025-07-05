@@ -6,17 +6,27 @@
     <title>Church School Lesson Plan Hub (Ages 6-7)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1; /* Lighter shade for hover/accents */
+            --theme-color-dark-accent: #701111; /* Darker shade for contrast or text */
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; background-color: #f4f4f4; }
-        .w3-container h1 { font-weight: 400; }
-        .main-header { background-color: #00796b; color: white; } /* Darker Teal */
+        .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
+        .main-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
         .nav-card { margin-top: 16px; margin-bottom: 16px; }
-        .nav-card-header { background-color: #009688; color: white; } /* Teal */
+        .nav-card-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
         .nav-list li { border-bottom: 1px solid #eee; }
-        .nav-list li a { display: block; padding: 10px 15px; text-decoration: none; }
-        .nav-list li a:hover { background-color: #e0f2f1; } /* Light Teal hover */
+        .nav-list li a { display: block; padding: 10px 15px; text-decoration: none; color: #333; }
+        .nav-list li a:hover { background-color: var(--theme-color-light-accent); color: var(--theme-color-dark-accent); }
         .nav-list li a .w3-small { color: #555; display:block; margin-top:3px;}
         .footer { background-color: #333; color: white; padding: 20px 0; margin-top: 30px;}
-        .welcome-panel { background-color: #e0f2f1; border-left: 5px solid #009688; padding: 16px; }
+        .welcome-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); padding: 16px; color: var(--theme-color-dark-accent); }
+        .welcome-panel h2 { color: var(--theme-color-main); }
+        .welcome-panel a { color: var(--theme-color-dark-accent); font-weight:bold; }
+        .welcome-panel a:hover { color: var(--theme-color-main); }
+
     </style>
 </head>
 <body>
@@ -30,7 +40,7 @@
 
     <div class="w3-panel welcome-panel w3-card">
         <h2>Welcome, Teacher!</h2>
-        <p>This hub provides quick access to all the planning templates and resources for our 6-7 year old church school class. Remember to consult the <a href="AGENTS.md" class="w3-text-teal w3-hover-text-dark-grey"><strong>AGENTS.md</strong></a> file for detailed guidance on using and adapting these materials for your specific class needs and for each unique school year.</p>
+        <p>This hub provides quick access to all the planning templates and resources for our 6-7 year old church school class. Remember to consult the <a href="AGENTS.md"><strong>AGENTS.md</strong></a> file for detailed guidance on using and adapting these materials for your specific class needs and for each unique school year.</p>
     </div>
 
     <div class="w3-row-padding">
@@ -116,6 +126,20 @@
                 </header>
                 <ul class="w3-ul nav-list w3-hoverable">
                     <li><a href="story_resources/the_little_helping_seed.html">The Little Helping Seed <span class="w3-small">A story about kindness.</span></a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Lesson Calendars -->
+        <div class="w3-col l4 m6 s12">
+            <div class="w3-card-4 nav-card">
+                <header class="w3-container nav-card-header">
+                    <h3><i class="w3-margin-right"></i>Lesson Calendars</h3>
+                </header>
+                <ul class="w3-ul nav-list w3-hoverable">
+                    <li><a href="lesson_calendars/yearly_overview_template.html">Yearly Overview Template <span class="w3-small">High-level annual planning.</span></a></li>
+                    <li><a href="lesson_calendars/monthly_calendar_template.html">Monthly Calendar Template <span class="w3-small">Grid view for monthly lesson organization.</span></a></li>
+                    <li><a href="lesson_calendars/weekly_calendar_template.html">Weekly Calendar Template <span class="w3-small">Detailed 7-day lesson snapshot.</span></a></li>
                 </ul>
             </div>
         </div>

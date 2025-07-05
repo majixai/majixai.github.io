@@ -6,27 +6,39 @@
     <title>Subject Areas Overview (6-7 Year Olds)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
         .subject-card { margin-bottom: 16px; }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .section-heading { color: var(--theme-color-main); border-bottom: 2px solid var(--theme-color-main); padding-bottom: 5px;}
+        .card-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); }
+        .integration-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-dark-accent); }
+        .integration-panel h2 { color: var(--theme-color-main); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Subject Areas Overview (Focus: 6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p>This document outlines the key subject areas for a church school curriculum designed for children aged 6-7. The goal is to provide a holistic education that integrates faith, foundational academic skills, and personal development.</p>
     </div>
 
-    <h2 class="w3-text-teal w3-border-bottom w3-border-teal">Core Subject Areas:</h2>
+    <h2 class="section-heading">Core Subject Areas:</h2>
 
     <div class="w3-row-padding">
         <div class="w3-col m6 l6 subject-card">
             <div class="w3-card-4">
-                <header class="w3-container w3-blue">
+                <header class="w3-container card-header">
                     <h3>1. Bible Stories & Teachings</h3>
                 </header>
                 <div class="w3-container w3-padding">

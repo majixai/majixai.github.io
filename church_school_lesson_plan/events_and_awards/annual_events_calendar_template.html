@@ -6,26 +6,41 @@
     <title>Annual Events, Awards & Celebrations Calendar (6-7 Year Olds)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --theme-color-table-header: #a33a3a; /* Medium-dark red for table headers */
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 50px; display: inline-block; margin-bottom:3px;}
         .full-width-editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box;}
-        .w3-table-all th { background-color: #00796b; color: white; } /* Darker Teal */
+        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
         .w3-table-all td, .w3-table-all th { vertical-align: top; padding: 8px; }
-        .term-header { background-color: #a0d2db; color: #004d40; padding: 10px; margin-top:20px; font-size: 1.2em; font-weight: bold;} /* Light blue-grey with dark teal text */
+        .term-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); padding: 10px; margin-top:20px; font-size: 1.2em; font-weight: bold;}
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .key-panel { background-color: #fff8e1; border: 1px solid #ffdd72; color: #795548;} /* Light Amber with Brown text */
+        .key-panel h4 { color: #c08c0c;} /* Darker Amber for Key title */
+        .notes-panel { background-color: var(--theme-color-light-accent); border-left: 4px solid var(--theme-color-dark-accent); }
+        .notes-panel h4 { color: var(--theme-color-main); }
+        .add-row-button { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
+
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Annual Events, Awards & Celebrations Calendar Template (6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p><strong>School Year:</strong> <span class="editable">_________________</span></p>
         <p>This template helps plan and track special events, award recognitions, and celebrations throughout the church school year.</p>
-        <div class="w3-panel w3-sand w3-padding">
-            <h4 class="w3-text-brown">Key:</h4>
+        <div class="w3-panel key-panel w3-padding">
+            <h4>Key:</h4>
             <ul class="w3-ul">
                 <li><strong>(E)</strong> = Event (e.g., pageant, party, special service)</li>
                 <li><strong>(A)</strong> = Award/Recognition (e.g., monthly kindness award, end-of-term certificates)</li>

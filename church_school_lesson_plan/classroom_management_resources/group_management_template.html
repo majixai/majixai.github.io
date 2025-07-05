@@ -6,45 +6,63 @@
     <title>Group Management Template</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
         .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; margin-bottom: 5px;}
         .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 80px; display: inline-block; }
         .group-card { margin-bottom: 20px; }
-        .group-header { background-color: #009688; color: white; padding: 10px; } /* Teal */
+        .group-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); padding: 10px; }
+        .group-header .small-editable { background-color: var(--theme-color-main); color: var(--text-color-on-main); border-bottom: 1px solid var(--theme-color-light-accent);}
         .student-list li { padding: 5px 0; }
         .notes-area { min-height: 60px; }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .print-button { background-color: var(--theme-color-dark-accent) !important; color: var(--text-color-on-main) !important;}
+        .add-group-button { background-color: var(--theme-color-main) !important; color: var(--text-color-on-main) !important;}
+        .add-student-button { background-color: var(--theme-color-light-accent) !important; color: var(--theme-color-dark-accent) !important; border: 1px solid var(--theme-color-dark-accent) !important;}
+        .group-subsection-title { color: var(--theme-color-main); }
+
+
         @media print {
             .no-print { display: none; }
+            .group-header { background-color: #ccc !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
+            .group-header .small-editable { background-color: #ccc !important; color: #000 !important; border-bottom: 1px solid #000 !important;}
+
         }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center no-print">
+    <header class="w3-container main-page-header w3-center no-print">
         <h1>Group Management Template</h1>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card no-print">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card no-print">
         <p><strong>Activity/Project:</strong> <span class="editable">_________________________</span></p>
         <p><strong>Date(s):</strong> <span class="editable">_________________</span></p>
         <p>Use this template to organize students into groups for projects or activities, and to note roles or observations.</p>
     </div>
 
     <div class="w3-center no-print">
-        <button class="w3-button w3-green w3-margin-bottom" onclick="window.print()">Print Group List</button>
-        <button class="w3-button w3-blue-grey w3-margin-bottom" onclick="addGroupCard()">+ Add Another Group</button>
+        <button class="w3-button print-button w3-margin-bottom" onclick="window.print()">Print Group List</button>
+        <button class="w3-button add-group-button w3-margin-bottom" onclick="addGroupCard()">+ Add Another Group</button>
     </div>
 
     <!-- Repeat this .group-card block for each group -->
     <div class="w3-card-4 group-card">
         <header class="w3-container group-header">
-            <h2>Group Name/Number: <span contenteditable="true" class="small-editable" style="background-color: #00796b; color:white;">Group 1</span></h2>
+            <h2>Group Name/Number: <span contenteditable="true" class="small-editable">Group 1</span></h2>
         </header>
         <div class="w3-container w3-padding">
             <div class="w3-row-padding">
                 <div class="w3-half">
-                    <h4 class="w3-text-teal">Group Members:</h4>
+                    <h4 class="group-subsection-title">Group Members:</h4>
                     <ul class="w3-ul student-list">
                         <li><span class="editable">Student Name A</span></li>
                         <li><span class="editable">Student Name B</span></li>

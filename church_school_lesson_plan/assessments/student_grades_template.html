@@ -6,25 +6,39 @@
     <title>Student Grades & Observations Template</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --theme-color-table-header: #a33a3a; /* Medium-dark red for table headers */
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; }
-        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; }
-        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 50px; display: inline-block; }
-        .w3-table-all th { background-color: #009688; color: white; } /* Teal background for table headers */
+        .editable { background-color: #f0f0f0; padding: 4px; border: 1px dotted #ccc; width: 100%; min-height: 30px; display: block; box-sizing: border-box; margin-bottom: 5px; } /* Added margin-bottom */
+        .small-editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 50px; display: inline-block; margin-bottom: 5px;} /* Added margin-bottom */
+        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
         .w3-table-all td, .w3-table-all th { vertical-align: top; padding: 8px; }
-        .student-record { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #009688; }
+        .student-record { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid var(--theme-color-main); }
+        .student-record h2 { color: var(--theme-color-main); }
         .notes-area { min-height: 60px; }
-        .section-title { margin-top: 1em; margin-bottom: 0.5em; font-size: 1.2em; font-weight: bold; color: #00796b; } /* Darker Teal */
+        .section-title { margin-top: 1em; margin-bottom: 0.5em; font-size: 1.2em; font-weight: bold; color: var(--theme-color-dark-accent); }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .add-row-button { background-color: var(--theme-color-dark-accent) !important; color: var(--text-color-on-main) !important; }
+        .add-student-button { background-color: var(--theme-color-main) !important; color: var(--text-color-on-main) !important; border-color: var(--theme-color-dark-accent) !important; }
+        .add-student-button:hover { background-color: var(--theme-color-dark-accent) !important; }
+
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Student Grades & Observations Template</h1>
         <p>(For Teacher's Use - Manual Input)</p>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p><strong>Term/Semester:</strong> <span class="small-editable">_________________</span> &nbsp;&nbsp;
            <strong>Year:</strong> <span class="small-editable">_________</span> &nbsp;&nbsp;
            <strong>Class/Group:</strong> <span class="small-editable">6-7 Year Olds</span>
@@ -34,7 +48,7 @@
 
     <!-- Repeat this .student-record block for each student -->
     <div class="student-record w3-card-2 w3-padding w3-margin-top">
-        <h2 class="w3-text-teal">Student Name: <span class="editable">_________________________</span></h2>
+        <h2>Student Name: <span class="editable">_________________________</span></h2>
 
         <div class="section-title">Overall Participation & Engagement:</div>
         <span class="editable notes-area">(e.g., Actively participates in discussions, shows enthusiasm, works well with others, needs encouragement to share, etc.)</span>

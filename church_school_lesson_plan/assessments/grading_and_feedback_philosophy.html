@@ -6,26 +6,35 @@
     <title>Grading and Feedback Philosophy (6-7 Year Olds)</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
+        :root {
+            --theme-color-main: #8C1515; /* Cardinal Red */
+            --theme-color-light-accent: #f8e1e1;
+            --theme-color-dark-accent: #701111;
+            --text-color-on-main: white;
+        }
         body { font-family: sans-serif; line-height: 1.6; }
         .w3-container h1, .w3-container h2, .w3-container h3 { font-weight: 400; }
-        .emphasis { color: #0066cc; font-weight: bold; } /* W3.CSS teal is #009688 */
-        .highlight-panel { background-color: #f0f8ff; border-left: 5px solid #009688; }
+        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
+        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); color: var(--theme-color-dark-accent); }
+        .section-card h2, .section-card h3 { color: var(--theme-color-main); }
+        .emphasis { color: var(--theme-color-dark-accent); font-weight: bold; }
+        .highlight-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-dark-accent); }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container w3-teal w3-center">
+    <header class="w3-container main-page-header w3-center">
         <h1>Grading and Feedback Philosophy</h1>
         <p>(Focus: 6-7 Year Olds in a Church School Setting)</p>
     </header>
 
-    <div class="w3-panel w3-light-grey w3-padding-16 w3-margin-top w3-card">
+    <div class="w3-panel info-panel w3-padding-16 w3-margin-top w3-card">
         <p>This document outlines a recommended philosophy for assessment, grading, and feedback for young children (6-7 years old) in a church school environment. The primary goal is to <span class="emphasis">nurture their faith, encourage participation, and foster a love for learning</span>, rather than focusing on rigorous academic scoring.</p>
     </div>
 
-    <div class="w3-card w3-margin-top w3-padding">
-        <h2 class="w3-text-teal">Core Principles</h2>
+    <div class="w3-card w3-margin-top w3-padding section-card">
+        <h2>Core Principles</h2>
         <ul class="w3-ul w3-hoverable">
             <li><strong>Encouragement over Criticism:</strong> Feedback should always be positive and encouraging, focusing on effort and growth.</li>
             <li><strong>Process over Product:</strong> Value the child's learning journey, participation, and effort more than the perfection of the final product.</li>
@@ -36,8 +45,8 @@
         </ul>
     </div>
 
-    <div class="w3-card w3-margin-top w3-padding">
-        <h2 class="w3-text-teal">What "Grading" Might Look Like</h2>
+    <div class="w3-card w3-margin-top w3-padding section-card">
+        <h2>What "Grading" Might Look Like</h2>
         <p>Formal letter grades (A, B, C) are generally not recommended for this age group in this context. Instead, consider:</p>
         <ul class="w3-ul">
             <li><strong>Completion & Participation:</strong> Acknowledging that a child has completed an activity or participated earnestly.
