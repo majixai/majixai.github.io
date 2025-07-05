@@ -8,31 +8,82 @@
     <style>
         :root {
             --theme-color-main: #8C1515; /* Cardinal Red */
-            --theme-color-light-accent: #f8e1e1;
-            --theme-color-table-header: #701111; /* Darker red for table headers */
-            --theme-color-section-header: #a33a3a; /* Medium-dark red for section titles */
+            --theme-color-light-accent: #fde0e0; /* Softer Pink/Red for backgrounds */
+            --theme-color-bright-accent: #D9534F; /* Brighter, slightly desaturated red */
+            --theme-color-dark-accent: #701111; /* Darker Cardinal for text or fine borders */
             --text-color-on-main: white;
-            --text-color-on-section: white;
+            --text-color-on-bright: white;
+            --text-color-on-light: #5D4037; /* Warm dark brown for text on light backgrounds */
+            --font-family-headings: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-family-body: 'Arial', sans-serif;
         }
-        body { font-family: sans-serif; }
+        body { font-family: var(--font-family-body); background-color: #fffcfc; }
+        h1, h2, h3, h4, h5, h6 { font-family: var(--font-family-headings); font-weight: bold; }
+
         .editable { background-color: #f0f0f0; padding: 2px; border-bottom: 1px dotted #ccc; min-width: 100px; display: inline-block; }
-        .section-title { margin-top: 20px; margin-bottom: 10px; font-weight: bold; background-color: var(--theme-color-section-header); color: var(--text-color-on-section); padding: 5px 8px; }
-        .w3-table-all th { background-color: var(--theme-color-table-header) !important; color: var(--text-color-on-main) !important; }
+
+        .main-page-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-color-on-main);
+            padding-top: 16px; padding-bottom: 16px; /* More padding */
+            border-bottom: 5px solid var(--theme-color-dark-accent);
+        }
+        .main-page-header h1 { margin:0; font-size: 2em; }
+
+        .info-panel {
+            background-color: var(--theme-color-light-accent);
+            border-left: 5px solid var(--theme-color-bright-accent);
+            padding: 16px;
+            color: var(--text-color-on-light);
+            border-radius: 8px;
+        }
+        .info-panel p strong { color: var(--theme-color-dark-accent); }
+
+        .w3-table-all th {
+            background-color: var(--theme-color-bright-accent) !important;
+            color: var(--text-color-on-bright) !important;
+        }
         .w3-table-all td { padding: 8px; }
-        .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .info-panel { background-color: var(--theme-color-light-accent); border-left: 5px solid var(--theme-color-main); }
-        .notes-panel-header { color: var(--theme-color-dark-accent); font-weight: bold;} /* For h2 in notes panels */
-        .notes-panel {border-left: 5px solid var(--theme-color-table-header); background-color: #fff8f8; }
+        .w3-card-4 { border-radius: 8px; } /* Softer corners for cards */
+
+        .section-title {
+            margin-top: 10px; margin-bottom: 0px; /* Adjusted margin */
+            font-weight: bold;
+            background-color: var(--theme-color-light-accent);
+            color: var(--theme-color-dark-accent);
+            padding: 8px;
+            border-top-left-radius: 8px; border-top-right-radius: 8px; /* Rounded top if it's the first element of a section */
+            border: 1px solid var(--theme-color-bright-accent);
+            border-bottom: none;
+        }
+        /* Specific styling for section titles that are full row in table */
+        .w3-table-all .section-title {
+             background-color: var(--theme-color-bright-accent);
+             color: var(--text-color-on-bright);
+             font-size: 1.1em;
+             border-radius: 0; /* Reset radius if inside table */
+             border: none;
+        }
+
+
+        .notes-panel {
+            border-left: 5px solid var(--theme-color-bright-accent);
+            background-color: #fffefb; /* Creamy off-white for notes */
+            padding:16px;
+            border-radius: 8px;
+        }
+        .notes-panel h2 { color: var(--theme-color-main); }
+
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container main-page-header">
+    <header class="w3-container main-page-header w3-center">
         <h1>Sample Daily Schedule Template (6-7 Year Olds)</h1>
     </header>
 
-    <div class="w3-panel info-panel w3-padding w3-margin-top">
+    <div class="w3-panel info-panel w3-padding w3-margin-top w3-card">
         <p><strong>Theme/Topic for the Day:</strong> <span class="editable">_________________________</span></p>
         <p><strong>Date:</strong> <span class="editable">_______________</span></p>
     </div>
@@ -42,7 +93,7 @@
     <div class="w3-responsive">
         <table class="w3-table-all w3-hoverable w3-card-4">
             <thead>
-                <tr> <!-- Removed w3-teal, th style is now global -->
+                <tr>
                     <th>Time Slot</th>
                     <th>Activity/Subject</th>
                     <th>Details/Notes</th>
