@@ -40,6 +40,7 @@
                         <div class="w3-container">
                             <p>Hand: ${player.hand.join(', ')}</p>
                             <p>Chips: ${player.chips}</p>
+                            <p>Pot Odds: ${player.pot_odds.toFixed(2)}:1</p>
                             <button onclick="bet(${player.id})">Bet 10</button>
                             <button onclick="fold(${player.id})">Fold</button>
                         </div>
