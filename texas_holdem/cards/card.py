@@ -8,6 +8,9 @@ class Card:
     def __str__(self):
         return f"{self.rank}{self.suit}"
 
+    def to_json(self):
+        return str(self)
+
 class Deck:
     def __init__(self):
         self.cards = [Card(s, r) for s in "♠♥♦♣" for r in "23456789TJQKA"]

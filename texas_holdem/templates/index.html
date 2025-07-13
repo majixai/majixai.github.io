@@ -32,7 +32,19 @@
         $.get('/game_state', function(data) {
             $('#players').empty();
             data.players.forEach(function(player) {
-                $('#players').append(`<p>${player.name}: ${player.hand.join(', ')} (${player.chips} chips)</p>`);
+                $('#players').append(`
+                    <div class="w3-card w3-margin">
+                        <header class="w3-container w3-light-grey">
+                            <h3>${player.name}</h3>
+                        </header>
+                        <div class="w3-container">
+                            <p>Hand: ${player.hand.join(', ')}</p>
+                            <p>Chips: ${player.chips}</p>
+                            <button onclick="bet(${player.id})">Bet 10</button>
+                            <button onclick="fold(${player.id})">Fold</button>
+                        </div>
+                    </div>
+                `);
             });
 
             $('#community-cards').html(`Community Cards: ${data.community_cards.join(', ')}`);
@@ -40,14 +52,13 @@
         });
     }
 
-    function bet() {
+    function bet(playerId) {
         // For simplicity, we'll just bet 10 for now
-        // and assume it's Alice's turn
         $.ajax({
             url: '/bet',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ player: 'Alice', amount: 10 }),
+            data: JSON.stringify({ player_id: playerId, amount: 10 }),
             success: function(response) {
                 if (response.success) {
                     updateGameState();
@@ -58,13 +69,12 @@
         });
     }
 
-    function fold() {
-        // For simplicity, we'll assume it's Alice's turn
+    function fold(playerId) {
         $.ajax({
             url: '/fold',
             type: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify({ player: 'Alice' }),
+            data: JSON.stringify({ player_id: playerId }),
             success: function(response) {
                 if (response.success) {
                     updateGameState();
