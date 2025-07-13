@@ -1,14 +1,44 @@
 from texas_holdem.cards.card import Deck
 from texas_holdem.player.player import Player
+from database import get_db_connection
+import json
 
 class Game:
-    def __init__(self, players):
+    def __init__(self, players, id=None):
+        self.id = id
         self.players = players
         self.deck = Deck()
         self.community_cards = []
         self.pot = 0
         self.current_bet = 0
         self.round_of_betting_complete = False
+
+    def save(self):
+        conn = get_db_connection()
+        if self.id is None:
+            cursor = conn.execute('INSERT INTO game (community_cards, pot, current_bet) VALUES (?, ?, ?)',
+                                  (json.dumps([c.to_json() for c in self.community_cards]), self.pot, self.current_bet))
+            self.id = cursor.lastrowid
+        else:
+            conn.execute('UPDATE game SET community_cards = ?, pot = ?, current_bet = ? WHERE id = ?',
+                         (json.dumps([c.to_json() for c in self.community_cards]), self.pot, self.current_bet, self.id))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get(id):
+        conn = get_db_connection()
+        game_row = conn.execute('SELECT * FROM game WHERE id = ?', (id,)).fetchone()
+        conn.close()
+        if game_row:
+            # Note: Players are not loaded here. This needs to be handled separately.
+            game = Game([], id=game_row['id'])
+            game.community_cards = [Card(c[1], c[0]) for c in json.loads(game_row['community_cards'])]
+            game.pot = game_row['pot']
+            game.current_bet = game_row['current_bet']
+            return game
+        return None
+
 
     def start_round(self):
         self.deck.shuffle()
@@ -40,7 +70,7 @@ class Game:
 
     def get_state(self):
         return {
-            'players': [{'name': p.name, 'chips': p.chips, 'hand': [str(c) for c in p.hand]} for p in self.players],
+            'players': [{'id': p.id, 'name': p.name, 'chips': p.chips, 'hand': [str(c) for c in p.hand]} for p in self.players],
             'community_cards': [str(c) for c in self.community_cards],
             'pot': self.pot
         }

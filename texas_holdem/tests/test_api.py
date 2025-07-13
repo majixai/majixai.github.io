@@ -1,10 +1,20 @@
 import unittest
 import json
 from texas_holdem.app import app
+from texas_holdem.database import init_db, get_db_connection
+from texas_holdem.player.player import Player
+from texas_holdem.game.game import Game
 
 class TestApi(unittest.TestCase):
     def setUp(self):
+        app.config['TESTING'] = True
+        app.config['DATABASE'] = 'test.db'
         self.app = app.test_client()
+        init_db()
+        Player("Alice").save()
+        Player("Bob").save()
+        Game([]).save()
+
 
     def test_game_state(self):
         response = self.app.get('/game_state')
@@ -16,7 +26,7 @@ class TestApi(unittest.TestCase):
 
     def test_bet(self):
         response = self.app.post('/bet',
-                                 data=json.dumps({'player': 'Alice', 'amount': 10}),
+                                 data=json.dumps({'player_id': 1, 'amount': 10}),
                                  content_type='application/json')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
@@ -24,7 +34,7 @@ class TestApi(unittest.TestCase):
 
     def test_fold(self):
         response = self.app.post('/fold',
-                                 data=json.dumps({'player': 'Alice'}),
+                                 data=json.dumps({'player_id': 1}),
                                  content_type='application/json')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
