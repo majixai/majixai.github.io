@@ -1,7 +1,9 @@
-from texas_holdem.cards.card import Deck
+from texas_holdem.cards.card import Deck, Card
 from texas_holdem.player.player import Player
 from database import get_db_connection
 import json
+from texas_holdem.statistics.hand_evaluator import evaluate_hand
+from texas_holdem.statistics.odds import calculate_pot_odds
 
 class Game:
     def __init__(self, players, id=None):
@@ -69,8 +71,36 @@ class Game:
             self.community_cards.append(self.deck.deal())
 
     def get_state(self):
-        return {
-            'players': [{'id': p.id, 'name': p.name, 'chips': p.chips, 'hand': [str(c) for c in p.hand]} for p in self.players],
+        game_state = {
+            'players': [],
             'community_cards': [str(c) for c in self.community_cards],
             'pot': self.pot
         }
+
+        for p in self.players:
+            player_state = {
+                'id': p.id,
+                'name': p.name,
+                'chips': p.chips,
+                'hand': [str(c) for c in p.hand],
+                'pot_odds': calculate_pot_odds(self.pot, self.current_bet)
+            }
+            game_state['players'].append(player_state)
+
+        return game_state
+
+    def determine_winner(self):
+        best_hand_rank = (-1,)
+        winners = []
+
+        for player in self.players:
+            if player.is_playing:
+                player_hand = player.hand + self.community_cards
+                hand_rank = evaluate_hand(player_hand)
+                if hand_rank > best_hand_rank:
+                    best_hand_rank = hand_rank
+                    winners = [player]
+                elif hand_rank == best_hand_rank:
+                    winners.append(player)
+
+        return winners

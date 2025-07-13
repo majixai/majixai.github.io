@@ -66,6 +66,11 @@ def next_round():
         game.deal_community_cards(1) # Turn
     elif len(game.community_cards) == 4:
         game.deal_community_cards(1) # River
+    else:
+        winners = game.determine_winner()
+        # For now, just print the winner to the console
+        print("Winner(s):", ", ".join([w.name for w in winners]))
+        # In a real app, you'd distribute the pot and start a new round
     game.save()
     return jsonify(game.get_state())
 
