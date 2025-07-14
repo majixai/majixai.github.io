@@ -1,0 +1,1 @@
+// This file is deprecated. All icon logic has been moved to components/Icon.tsx
