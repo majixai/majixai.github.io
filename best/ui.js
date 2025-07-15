@@ -22,56 +22,104 @@ class UIManager {
      * @returns {HTMLElement} The created user div element.
      */
     createUserElement(
-        user, 
-        listType, 
-        handleUserClickCallback, 
-        removeFromPreviousUsersCallback, 
+        user,
+        listType,
+        handleUserClickCallback,
+        removeFromPreviousUsersCallback,
         getUserClickCountCallback,
-        isBirthdayCallback, // Keep other params for signature consistency for now
+        isBirthdayCallback,
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
         getDaysSinceOrUntil18thBirthdayCallback,
         socialMediaData,
-        toggleUserCardPreviewCallback // Added in original, keep for now
+        toggleUserCardPreviewCallback
     ) {
         const userElement = document.createElement("div");
-        // Apply some basic classes for context, but main styling is inline for test
-        userElement.className = `user-info simple-test-user ${listType}-list-item`;
-        userElement.dataset.username = user.username; // Keep username for other potential logic
+        userElement.className = `user-info ${listType}-list-item`;
+        userElement.dataset.username = user.username;
 
-        // Simplified content
-        userElement.textContent = `User: ${user.username} | Viewers: ${user.num_viewers || 'N/A'} | Age: ${user.age || 'N/A'}`;
+        const clickCount = getUserClickCountCallback(user.username);
+        const isBirthday = isBirthdayCallback(user.birthday);
+        const birthdayMessage = getDaysSinceOrUntil18thBirthdayCallback(user.birthday, user.age);
 
-        // Highly visible styling for testing
-        userElement.style.border = "2px solid red";
-        userElement.style.padding = "5px";
-        userElement.style.margin = "3px";
-        userElement.style.backgroundColor = "#ffe5e5"; // Light red background
-        userElement.style.color = "#000"; // Ensure text is visible
+        let socialLinksHtml = '';
+        if (socialMediaData) {
+            for (const platform in socialMediaData) {
+                socialMediaData[platform].forEach(link => {
+                    socialLinksHtml += `<a href="${link.startsWith('@') ? `https://twitter.com/${link.substring(1)}` : link}" target="_blank" class="social-link">${platform}</a> `;
+                });
+            }
+        }
 
-        // Basic click handler to see if interaction works
-        userElement.addEventListener("click", function(event) {
-            console.log(`Simplified user card clicked: ${user.username}`);
-            if (typeof handleUserClickCallback === 'function') {
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'user-image-container';
+        const img = document.createElement('img');
+        img.src = user.image_url_360x270 || user.image_url;
+        img.alt = `${user.username}'s stream preview`;
+        img.loading = 'lazy';
+        imageContainer.appendChild(img);
+
+        userElement.imageContainerEl = imageContainer;
+        userElement.imageEl = img;
+        userElement.dataset.previewState = 'image';
+
+        userElement.innerHTML = `
+            ${isBirthday ? '<div class="birthday-banner">🎉 Happy Birthday! 🎉</div>' : ''}
+            <div class="user-image-container">
+                <img src="${user.image_url_360x270 || user.image_url}" alt="${user.username}'s stream preview" loading="lazy">
+            </div>
+            <div class="user-details">
+                <div class="user-title">${user.username}</div>
+                <div class="user-stats">
+                    <span class="user-age">Age: ${user.age}</span> |
+                    <span class="user-viewers">Viewers: ${user.num_viewers}</span>
+                    ${clickCount > 0 ? `<span class="user-click-count"> | Clicks: ${clickCount}</span>` : ''}
+                </div>
+                ${birthdayMessage ? `<div class="birthday-message">${birthdayMessage}</div>` : ''}
+                <div class="user-tags">${(user.tags || []).join(', ')}</div>
+                <div class="social-media-links">${socialLinksHtml}</div>
+            </div>
+        `;
+
+        userElement.prepend(imageContainer);
+
+
+        userElement.addEventListener("click", (event) => {
+            if (event.target.tagName !== 'A') {
                 handleUserClickCallback(user);
             }
         });
 
-        // Store some original references on the element if other parts of the code might expect them,
-        // even if not used by this simplified version directly.
-        // This is mainly to prevent errors if other code (e.g., intersection observer) tries to access them.
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'user-image-container'; // For IntersectionObserver checks on dataset.previewState
-        const img = document.createElement('img');
-        img.src = user.image_url_360x270 || user.image_url || ''; // Use a valid image URL
-        imageContainer.appendChild(img);
-        userElement.appendChild(imageContainer); // Append it so it's part of the element
-        userElement.imageContainerEl = imageContainer;
-        userElement.imageEl = img;
-        userElement.dataset.previewState = 'image'; // Initialize previewState for observer
+        if (listType === 'previous') {
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'X';
+            removeButton.className = 'remove-from-history-btn';
+            removeButton.title = `Remove ${user.username} from history`;
+            removeButton.addEventListener('click', async (event) => {
+                event.stopPropagation();
+                if (confirm(`Are you sure you want to remove ${user.username} from your history?`)) {
+                    showOnlineLoadingIndicatorCallback("Removing user...");
+                    await removeFromPreviousUsersCallback(user.username);
+                    // No longer need to manually remove element, displayPreviousUsers will redraw
+                    await displayPreviousUsersCallback();
+                    hideOnlineLoadingIndicatorCallback();
+                }
+            });
+            userElement.querySelector('.user-details').appendChild(removeButton);
+        }
 
-        console.log(`[DIAGNOSTIC] Simplified createUserElement for: ${user.username}`);
+        // Add a toggle button for the preview
+        const togglePreviewButton = document.createElement('button');
+        togglePreviewButton.textContent = 'Toggle Preview';
+        togglePreviewButton.className = 'toggle-preview-btn';
+        togglePreviewButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleUserCardPreviewCallback(userElement, user.username);
+        });
+        userElement.querySelector('.user-details').appendChild(togglePreviewButton);
+
+
         return userElement;
     }
 
