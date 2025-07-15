@@ -25,11 +25,15 @@ const App: React.FC = () => {
         const viewProps = { setView };
         switch(view) {
             case 'profile-manager':
-                return <ProfileManager
-                          profiles={profiles}
-                          selectProfile={selectProfile}
-                          createProfile={createProfile}
-                       />;
+                return (
+                    <div id="profile-manager-view" className="view active">
+                        <ProfileManager
+                            profiles={profiles}
+                            selectProfile={selectProfile}
+                            createProfile={createProfile}
+                        />
+                    </div>
+                );
             case 'main-menu':
                 return (
                     <div id="main-menu-view" className="view active">
@@ -45,7 +49,15 @@ const App: React.FC = () => {
              case 'slots':
                  return <div className="view active w3-center"><h1 className="w3-xxxlarge">Slots Game Coming Soon!</h1></div>
             default:
-                return <ProfileManager profiles={profiles} selectProfile={selectProfile} createProfile={createProfile} />;
+                return (
+                    <div id="profile-manager-view" className="view active">
+                        <ProfileManager
+                            profiles={profiles}
+                            selectProfile={selectProfile}
+                            createProfile={createProfile}
+                        />
+                    </div>
+                );
         }
     }
 
