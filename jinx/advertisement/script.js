@@ -422,20 +422,43 @@ class UserInteraction {
     /**
      * @param {string} formContainerId - The ID of the HTML section that contains the contact form.
      */
-    constructor(formContainerId) { // Though formContainerId is passed, we'll use specific IDs for form elements
-        this._form = document.getElementById('contactForm');
-        this._nameInput = document.getElementById('contact-name');
-        this._emailInput = document.getElementById('contact-email');
-        this._messageInput = document.getElementById('contact-message');
-        this._submitButton = document.getElementById('contact-submit');
-        this._feedbackDiv = document.getElementById('contact-feedback');
+    constructor(formContainerId) {
+        // Contact Form
+        this._contactForm = document.getElementById('contactForm');
+        this._contactNameInput = document.getElementById('contact-name');
+        this._contactEmailInput = document.getElementById('contact-email');
+        this._contactReasonInput = document.getElementById('contact-reason');
+        this._contactMessageInput = document.getElementById('contact-message');
+        this._contactSubmitButton = document.getElementById('contact-submit');
+        this._contactFeedbackDiv = document.getElementById('contact-feedback');
 
-        if (!this._form || !this._nameInput || !this._emailInput || !this._messageInput || !this._submitButton || !this._feedbackDiv) {
-            console.warn("UserInteraction: One or more contact form elements (form, name, email, message, submit, feedback) not found. Form functionality will be disabled.");
-            this._isFormAvailable = false;
-        } else {
-            this._isFormAvailable = true;
-            console.log("UserInteraction initialized: Contact form elements found.");
+        // Demo Form
+        this._demoForm = document.getElementById('demoForm');
+        this._demoNameInput = document.getElementById('demo-name');
+        this._demoEmailInput = document.getElementById('demo-email');
+        this._demoCompanyInput = document.getElementById('demo-company');
+        this._demoFeaturesInput = document.getElementById('demo-features');
+        this._demoSubmitButton = document.getElementById('demo-submit');
+        this._demoFeedbackDiv = document.getElementById('demo-feedback');
+
+        // Newsletter Form
+        this._newsletterForm = document.getElementById('newsletterForm');
+        this._newsletterEmailInput = document.getElementById('newsletter-email');
+        this._newsletterSubmitButton = document.getElementById('newsletter-submit');
+        this._newsletterFeedbackDiv = document.getElementById('newsletter-feedback');
+
+        this._isContactFormAvailable = !!(this._contactForm && this._contactNameInput && this._contactEmailInput && this._contactReasonInput && this._contactMessageInput && this._contactSubmitButton && this._contactFeedbackDiv);
+        this._isDemoFormAvailable = !!(this._demoForm && this._demoNameInput && this._demoEmailInput && this._demoCompanyInput && this._demoFeaturesInput && this._demoSubmitButton && this._demoFeedbackDiv);
+        this._isNewsletterFormAvailable = !!(this._newsletterForm && this._newsletterEmailInput && this._newsletterSubmitButton && this._newsletterFeedbackDiv);
+
+        if (!this._isContactFormAvailable) {
+            console.warn("UserInteraction: One or more contact form elements not found. Contact form functionality will be disabled.");
+        }
+        if (!this._isDemoFormAvailable) {
+            console.warn("UserInteraction: One or more demo form elements not found. Demo form functionality will be disabled.");
+        }
+        if (!this._isNewsletterFormAvailable) {
+            console.warn("UserInteraction: One or more newsletter form elements not found. Newsletter form functionality will be disabled.");
         }
     }
 
@@ -443,92 +466,142 @@ class UserInteraction {
      * Initializes the contact form event listeners.
      * Public method to be called by the App class. Renamed from initForm to initContactForm for clarity.
      */
-    initContactForm() {
-        if (!this._isFormAvailable) {
-            console.log("UserInteraction: Contact form setup skipped as elements are not available.");
-            return;
+    init() {
+        if (this._isContactFormAvailable) {
+            this._contactForm.addEventListener('submit', (event) => this._handleContactSubmission(event));
+            console.log("UserInteraction: Contact form event listener attached.");
         }
-        
-        this._form.addEventListener('submit', (event) => this._handleSubmission(event));
-        console.log("UserInteraction: Contact form event listener attached.");
-    }
-    
-    /**
-     * Validates the contact form data.
-     * @param {string} name - The name entered by the user.
-     * @param {string} email - The email entered by the user.
-     * @param {string} message - The message entered by the user.
-     * @returns {string|null} An error message string if validation fails, null otherwise.
-     * @private
-     */
-    _validateForm(name, email, message) {
-        if (!name.trim()) {
-            return "Name is required.";
+        if (this._isDemoFormAvailable) {
+            this._demoForm.addEventListener('submit', (event) => this._handleDemoSubmission(event));
+            console.log("UserInteraction: Demo form event listener attached.");
         }
-        if (!email.trim()) {
-            return "Email is required.";
+        if (this._isNewsletterFormAvailable) {
+            this._newsletterForm.addEventListener('submit', (event) => this._handleNewsletterSubmission(event));
+            console.log("UserInteraction: Newsletter form event listener attached.");
         }
-        // Basic email format check (contains '@' and '.')
-        if (!email.includes('@') || !email.includes('.')) {
-            return "Please enter a valid email address.";
-        }
-        if (!message.trim()) {
-            return "Message is required.";
-        }
-        return null; // No validation errors
     }
 
-    /**
-     * Handles the contact form submission.
-     * Performs validation and simulates data submission.
-     * @param {Event} event - The form submission event.
-     * @private
-     */
-    async _handleSubmission(event) { // Added async
+    _validateContactForm(name, email, reason, message) {
+        if (!name.trim()) return "Name is required.";
+        if (!email.trim() || !email.includes('@') || !email.includes('.')) return "Please enter a valid email address.";
+        if (!reason) return "Please select a reason for your inquiry.";
+        if (!message.trim()) return "Message is required.";
+        return null;
+    }
+
+    _validateDemoForm(name, email) {
+        if (!name.trim()) return "Name is required.";
+        if (!email.trim() || !email.includes('@') || !email.includes('.')) return "Please enter a valid email address.";
+        return null;
+    }
+
+    _validateNewsletterForm(email) {
+        if (!email.trim() || !email.includes('@') || !email.includes('.')) return "Please enter a valid email address.";
+        return null;
+    }
+
+    async _handleContactSubmission(event) {
         event.preventDefault();
+        this._contactSubmitButton.disabled = true;
+        this._contactFeedbackDiv.textContent = "Submitting...";
+        this._contactFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-blue w3-border w3-border-blue';
+        this._contactFeedbackDiv.style.display = 'block';
 
-        this._submitButton.disabled = true; // Disable button during submission
-        this._feedbackDiv.textContent = "Submitting...";
-        this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-blue w3-border w3-border-blue'; // Submitting style
-        this._feedbackDiv.style.display = 'block';
-
-        const name = this._nameInput.value;
-        const email = this._emailInput.value;
-        const message = this._messageInput.value;
-
-        const validationError = this._validateForm(name, email, message);
+        const name = this._contactNameInput.value;
+        const email = this._contactEmailInput.value;
+        const reason = this._contactReasonInput.value;
+        const message = this._contactMessageInput.value;
+        const validationError = this._validateContactForm(name, email, reason, message);
 
         if (validationError) {
-            this._feedbackDiv.textContent = validationError;
-            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red'; // Error styling
-            // No need to set display to block as it's already visible or will be set in finally
-            this._submitButton.disabled = false; // Re-enable button
-            return; // Return early, finally will still execute if this was in try block.
+            this._contactFeedbackDiv.textContent = validationError;
+            this._contactFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
+            this._contactSubmitButton.disabled = false;
+            return;
         }
 
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
-
-            // Simulate submission success
-            console.log("Contact Form Submitted (Simulated Async):");
-            console.log("Name:", name);
-            console.log("Email:", email);
-            console.log("Message:", message);
-
-            trackGAEvent('submit', 'Form', 'Contact Form Submitted Async');
-
-            this._feedbackDiv.textContent = "Thank you for your message! We'll get back to you soon.";
-            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green'; // Success styling
-            this._form.reset();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log("Contact Form Submitted:", { name, email, reason, message });
+            trackGAEvent('submit', 'Form', 'Contact Form Submitted');
+            this._contactFeedbackDiv.textContent = "Thank you for your message! We'll get back to you soon.";
+            this._contactFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green';
+            this._contactForm.reset();
         } catch (error) {
-            // Simulate submission failure (though our current simulation doesn't throw)
-            console.error("Simulated submission error:", error);
-            this._feedbackDiv.textContent = "Submission failed. Please try again later.";
-            this._feedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red'; // Error styling
+            console.error("Submission error:", error);
+            this._contactFeedbackDiv.textContent = "Submission failed. Please try again later.";
+            this._contactFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
         } finally {
-            this._feedbackDiv.style.display = 'block'; // Ensure feedback is visible
-            this._submitButton.disabled = false; // Re-enable button
+            this._contactSubmitButton.disabled = false;
+        }
+    }
+
+    async _handleDemoSubmission(event) {
+        event.preventDefault();
+        this._demoSubmitButton.disabled = true;
+        this._demoFeedbackDiv.textContent = "Submitting...";
+        this._demoFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-blue w3-border w3-border-blue';
+        this._demoFeedbackDiv.style.display = 'block';
+
+        const name = this._demoNameInput.value;
+        const email = this._demoEmailInput.value;
+        const company = this._demoCompanyInput.value;
+        const features = this._demoFeaturesInput.value;
+        const validationError = this._validateDemoForm(name, email);
+
+        if (validationError) {
+            this._demoFeedbackDiv.textContent = validationError;
+            this._demoFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
+            this._demoSubmitButton.disabled = false;
+            return;
+        }
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log("Demo Request Submitted:", { name, email, company, features });
+            trackGAEvent('submit', 'Form', 'Demo Request Submitted');
+            this._demoFeedbackDiv.textContent = "Thank you for your request! We'll be in touch to schedule your demo.";
+            this._demoFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green';
+            this._demoForm.reset();
+        } catch (error) {
+            console.error("Submission error:", error);
+            this._demoFeedbackDiv.textContent = "Submission failed. Please try again later.";
+            this._demoFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
+        } finally {
+            this._demoSubmitButton.disabled = false;
+        }
+    }
+
+    async _handleNewsletterSubmission(event) {
+        event.preventDefault();
+        this._newsletterSubmitButton.disabled = true;
+        this._newsletterFeedbackDiv.textContent = "Subscribing...";
+        this._newsletterFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-blue w3-border w3-border-blue';
+        this._newsletterFeedbackDiv.style.display = 'block';
+
+        const email = this._newsletterEmailInput.value;
+        const validationError = this._validateNewsletterForm(email);
+
+        if (validationError) {
+            this._newsletterFeedbackDiv.textContent = validationError;
+            this._newsletterFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
+            this._newsletterSubmitButton.disabled = false;
+            return;
+        }
+
+        try {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log("Newsletter Subscription:", { email });
+            trackGAEvent('submit', 'Form', 'Newsletter Subscription');
+            this._newsletterFeedbackDiv.textContent = "Thank you for subscribing!";
+            this._newsletterFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-green w3-border w3-border-green';
+            this._newsletterForm.reset();
+        } catch (error) {
+            console.error("Subscription error:", error);
+            this._newsletterFeedbackDiv.textContent = "Subscription failed. Please try again later.";
+            this._newsletterFeedbackDiv.className = 'w3-panel w3-margin-top w3-pale-red w3-border w3-border-red';
+        } finally {
+            this._newsletterSubmitButton.disabled = false;
         }
     }
 }
@@ -631,10 +704,10 @@ class App {
             console.error("App: AutoinvestExamples not available or 'loadExamples' method missing.");
         }
 
-        if (this._userInteraction && typeof this._userInteraction.initContactForm === 'function') {
-            this._userInteraction.initContactForm();
+        if (this._userInteraction && typeof this._userInteraction.init === 'function') {
+            this._userInteraction.init();
         } else {
-            console.error("App: UserInteraction not available or 'initContactForm' method missing.");
+            console.error("App: UserInteraction not available or 'init' method missing.");
         }
 
         // Initialize and start investment tip display
