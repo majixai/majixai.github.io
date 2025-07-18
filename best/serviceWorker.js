@@ -1,4 +1,4 @@
-const CACHE_NAME = 'room-viewer-v1';
+const CACHE_NAME = 'room-viewer-v2';
 const urlsToCache = [
     '/', // Alias for index.html
     'index.html',
