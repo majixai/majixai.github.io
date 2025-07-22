@@ -12,10 +12,10 @@ html, body {
 
 body {
     font-family: sans-serif;
-    line-height: 1.5; /* Slightly reduced line height */
+    line-height: 1.6;
     background-color: #f4f4f4;
     color: #333;
-    padding: 8px; /* Reduced body padding */
+    padding: 15px; /* Keep existing body padding */
     margin: 0; /* Ensure no default body margin */
     display: flex; 
     flex-direction: column; 
@@ -26,9 +26,9 @@ body {
     max-width: 1600px;
     margin: 0 auto; /* Keep centered */
     background: #fff;
-    padding: 10px; /* Reduced padding */
-    border-radius: 6px; /* Slightly reduced border-radius */
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1); /* Slightly reduced shadow */
+    padding: 20px; /* Keep padding */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
     flex-grow: 1; /* Allow app-container to grow within body's flex context */
@@ -37,65 +37,64 @@ body {
 
 h1 {
     color: #555;
-    margin-bottom: 10px; /* Reduced margin */
+    margin-bottom: 15px;
     text-align: center;
-    font-size: 1.7em; /* Slightly reduced font size */
+    font-size: 1.8em; /* New smaller size */
 }
 
 h2 {
     color: #555;
-    margin-bottom: 8px; /* Reduced margin */
+    margin-bottom: 15px;
     text-align: center;
-    font-size: 1.3em; /* Slightly reduced font size */
+    font-size: 1.4em; /* Existing h2 font-size */
     border-bottom: 1px solid #eee;
-    padding-bottom: 4px; /* Reduced padding */
+    padding-bottom: 5px;
 }
 
 /* Controls Bar */
 .controls-bar {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px; /* Reduced gap */
-    margin-bottom: 15px; /* Reduced margin */
-    padding: 10px; /* Reduced padding */
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
     background-color: #eaeaea;
-    border-radius: 4px; /* Slightly reduced */
+    border-radius: 5px;
 }
 
 .controls-bar fieldset {
     border: 1px solid #ccc;
-    padding: 8px 12px; /* Reduced padding */
-    border-radius: 3px; /* Slightly reduced */
+    padding: 10px 15px;
+    border-radius: 4px;
     flex: 1; /* Allow fieldsets to grow */
-    min-width: 230px; /* Slightly reduced */
+    min-width: 250px; /* Prevent excessive shrinking */
 }
 
 .controls-bar legend {
     font-weight: bold;
-    padding: 0 4px; /* Reduced padding */
+    padding: 0 5px;
     color: #444;
-    font-size: 0.95em; /* Slightly increased legend font for prominence */
 }
 
 .control-group {
-    margin-bottom: 6px; /* Reduced margin */
+    margin-bottom: 10px;
 }
 
 .control-group label,
 .control-group span { /* For quick filter label */
     display: block;
-    margin-bottom: 3px; /* Reduced margin */
+    margin-bottom: 5px;
     font-weight: bold;
-    font-size: 0.85em; /* Slightly reduced font size */
+    font-size: 0.9em;
 }
 
 .control-group select,
 .control-group button {
     width: 100%;
-    padding: 6px; /* Reduced padding */
+    padding: 8px;
     border: 1px solid #ccc;
-    border-radius: 3px; /* Slightly reduced */
-    font-size: 0.9em; /* Slightly reduced font size */
+    border-radius: 4px;
+    font-size: 0.95em;
 }
 
 .control-group select[multiple] {
@@ -128,7 +127,7 @@ h2 {
 /* Main Content Layout (Flexbox) */
 .main-content {
     display: flex;
-    gap: 10px; /* Reduced gap */
+    gap: 20px;
     flex-wrap: wrap; /* Keep for responsiveness on smaller screens */
     flex-grow: 1; /* Key: allows .main-content to take available vertical space in .app-container */
     min-height: 0; /* Allow shrinking */
@@ -139,13 +138,13 @@ h2 {
 .user-column, .iframe-column {
     background-color: #f9f9f9;
     border: 1px solid #ddd;
-    border-radius: 4px; /* Slightly reduced */
-    padding: 10px; /* Reduced padding */
+    border-radius: 5px;
+    padding: 15px;
 }
 
 .user-column {
     flex: 1; /* Share space equally */
-    min-width: 260px; /* Slightly reduced */
+    min-width: 280px; /* Minimum width before wrapping */
     /* max-height: 75vh; */ /* Limit height and make scrollable - Now handled by JS */
     display: flex;
     flex-direction: column; /* Stack title and list vertically */
@@ -154,12 +153,12 @@ h2 {
 
 .iframe-column {
     flex: 2; /* Take more space */
-    min-width: 380px; /* Slightly reduced */
+    min-width: 400px;
     /* background-color, border, border-radius from existing */
-    padding: 10px; /* Reduced padding, consistent with user-column */
+    padding: 15px; /* Keep existing padding for now */
     display: flex; 
     flex-direction: column; 
-    gap: 10px; /* Reduced gap, was 15px */
+    gap: 15px; /* This will replace margin-bottom on .iframe-container */
     flex-shrink: 0;
 }
 
@@ -167,7 +166,7 @@ h2 {
 .user-list {
     overflow-y: auto; /* Enable vertical scrolling */
     flex-grow: 1;    /* Allow list to fill remaining space in column */
-    padding-right: 3px; /* Reduced space for scrollbar */
+    padding-right: 5px; /* Space for scrollbar */
     min-height: 0;   /* Essential for flex item that scrolls */
     max-height: 70vh; /* CSS FALLBACK: Ensures scrollability if JS fails or sets too large a height. JS inline style can override this if smaller and valid. */
 }
@@ -177,83 +176,58 @@ h2 {
     display: flex;
     background-color: #fff;
     border: 1px solid #eee;
-    border-radius: 3px; /* Slightly reduced */
-    margin-bottom: 6px; /* Reduced margin */
-    padding: 6px; /* Reduced padding */
+    border-radius: 4px;
+    margin-bottom: 10px;
+    padding: 8px;
     cursor: pointer;
     transition: box-shadow 0.2s ease;
     position: relative; /* Needed for absolute positioning of remove button */
 }
 
 .user-info:hover {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Slightly reduced shadow */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .user-image-container {
-    flex-shrink: 0;
-    width: 70px; /* Reduced width */
-    height: 52px; /* Adjusted height (maintaining approx 4:3) */
-    margin-right: 8px; /* Reduced margin */
+    flex-shrink: 0; /* Prevent image container from shrinking */
+    width: 80px; /* Fixed width for image container */
+    margin-right: 10px;
     position: relative;
-    background-color: #000;
-    overflow: hidden;
-    border-radius: 2px; /* Slightly reduced */
 }
 
-.user-image-container img,
-.user-image-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
+.user-image-container img {
     width: 100%;
-    height: 100%;
+    height: auto;
     display: block;
-    border-radius: 2px; /* Match container */
-    border: none;
-    object-fit: cover;
-}
-
-.user-image-container iframe {
-    visibility: hidden;
-    background-color: #000;
-}
-
-/* When .iframe-active is added to .user-image-container */
-.user-image-container.iframe-active img {
-    visibility: hidden;
-}
-
-.user-image-container.iframe-active iframe {
-    visibility: visible;
+    border-radius: 3px;
 }
 
 .user-details {
-    flex-grow: 1;
-    overflow: hidden;
-    font-size: 0.95em; /* Base font for user-details slightly smaller */
+    flex-grow: 1; /* Allow details to take remaining space */
+    overflow: hidden; /* Prevent text overflow */
 }
 
 .user-details p {
-    margin-bottom: 2px; /* Reduced margin */
-    font-size: 0.85em; /* Relative to parent or absolute */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    white-space: nowrap; /* Prevent wrapping */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Show ellipsis (...) for overflow */
 }
 
 .user-details .username {
     font-weight: bold;
-    font-size: 1em; /* Relative to user-details font-size */
+    font-size: 1.1em;
     color: #0056b3;
-    white-space: normal;
+    white-space: normal; /* Allow username to wrap if needed */
     overflow: visible;
     text-overflow: clip;
 }
 
 .user-details .tags {
-    font-size: 0.75em; /* Relative to user-details font-size */
+    font-size: 0.8em;
     color: #666;
-    white-space: normal;
+    white-space: normal; /* Allow tags to wrap */
      overflow: visible;
     text-overflow: clip;
 }
@@ -319,74 +293,35 @@ h2 {
 }
 
 /* Iframe Styling */
-/* Removed .iframe-selector and .iframe-container as they are no longer used or replaced by .dynamic-iframe-container */
+.iframe-selector {
+    margin-bottom: 10px;
+    text-align: center;
+}
+.iframe-selector label {
+    margin: 0 10px;
+    cursor: pointer;
+}
 
-.dynamic-iframe-container {
-    display: flex;
-    flex-wrap: wrap;
+.iframe-container {
+    position: relative; 
+    overflow: hidden; 
+    background-color: #000; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
+    flex-grow: 1; /* Each iframe container will take equal space in .iframe-column */
+    min-height: 0; /* Allow shrinking to prevent overflow if content is small */
+    /* REMOVE: padding-bottom: 56.25%; */
+    /* REMOVE: height: 0; */
+    /* REMOVE: margin-bottom: 15px; (now handled by gap on parent .iframe-column) */
+}
+
+.iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100%; /* Take full height of parent (.iframe-column) */
-    gap: 2px; /* Reduced gap */
-    overflow: hidden; /* Prevent scrollbars on the container itself */
-    background-color: #000; /* Background for the container */
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    flex-grow: 1; /* Allow it to grow within .iframe-column */
-    min-height: 0; /* Important for flex children */
-}
-
-.dynamic-iframe-container iframe {
-    flex-grow: 1; /* Allow iframes to grow and fill space */
-    flex-shrink: 1; /* Allow iframes to shrink if needed */
-    /* flex-basis will be set by JS or more specific CSS rules based on count */
+    height: 100%;
     border: none; /* Remove default iframe border */
-    min-width: 0; /* Allow shrinking below default min-width */
-    min-height: 0; /* Allow shrinking below default min-height */
-    /* Aspect ratio can be maintained if desired, but full fill is current goal */
-}
-
-/* Styling for different iframe counts */
-/* 1 iframe */
-.dynamic-iframe-container[data-count="1"] iframe {
-    flex-basis: 100%;
-    height: 100%;
-}
-
-/* 2 iframes (side-by-side or stacked, let's go side-by-side for now) */
-.dynamic-iframe-container[data-count="2"] iframe {
-    flex-basis: calc(50% - 1px); /* 50% minus half the new gap (2px/2=1px) */
-    height: 100%;
-}
-/* Or stacked for 2:
-.dynamic-iframe-container[data-count="2"] iframe {
-    flex-basis: 100%;
-    height: calc(50% - 1px);
-}
-*/
-
-/* 3 iframes (e.g., 2 on top, 1 on bottom or vice-versa, or all in a row) */
-/* Let's try 2 on top, 1 full width on bottom for 3 */
-.dynamic-iframe-container[data-count="3"] iframe {
-    flex-basis: calc(50% - 1px); /* Default for 2 top ones */
-    height: calc(50% - 1px); /* Half height for top ones */
-}
-.dynamic-iframe-container[data-count="3"] iframe:nth-child(3) {
-    flex-basis: 100%; /* Full width for the bottom one */
-    height: calc(50% - 1px); /* Half height for the bottom one */
-}
-/* Alternative for 3: all side-by-side */
-/*
-.dynamic-iframe-container[data-count="3"] iframe {
-    flex-basis: calc(33.333% - 0.67px); /* (2px * 2/3) */
-    height: 100%;
-}
-*/
-
-
-/* 4 iframes (2x2 grid) */
-.dynamic-iframe-container[data-count="4"] iframe {
-    flex-basis: calc(50% - 1px); /* 50% minus half the gap */
-    height: calc(50% - 1px); /* 50% minus half the gap */
 }
 
 /* Loading / Error / Status Indicators */
