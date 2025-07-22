@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/face-api.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 </head>
 <body>
     <div class="app-container">
@@ -19,10 +20,14 @@
             </div>
         </div>
 
-        <!-- Snippet Manager Section -->
-        <div class="snippet-manager-container" id="snippetManagerContainer" style="display: none;">
-            <fieldset>
-                <legend>Text Snippet Manager</legend>
+        <!-- Controls Modal -->
+        <div id="controlsModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeControlsModal">&times;</span>
+                <h2>Controls</h2>
+                <div id="snippetManagerContainer">
+                    <fieldset>
+                        <legend>Text Snippet Manager</legend>
                 <div class="control-group">
                     <label for="newSnippetInput">Add New Snippet:</label>
                     <textarea id="newSnippetInput" rows="3"></textarea>
@@ -35,14 +40,14 @@
                 <div id="snippetStatusMessage" style="display: none;"></div>
             </fieldset>
         </div>
-
-        <!-- Main Text Area with Autocomplete -->
-        <div class="main-text-area-container" id="mainTextAreaContainer" style="display: none;">
+        <div id="mainTextAreaContainer">
             <fieldset>
                 <legend>Main Text Area (with Snippet Autocomplete)</legend>
                 <textarea id="mainTextArea" rows="6" placeholder="Type here... try '{{' to trigger snippets"></textarea>
                 <div id="autocompleteSuggestionsContainer" class="autocomplete-suggestions" style="display: none;"></div>
             </fieldset>
+        </div>
+        </div>
         </div>
 
         <!-- Main Content Area -->
@@ -139,6 +144,13 @@
                         <div class="control-group">
                             <label for="iframeRecognitionEnabled">Enable:</label>
                             <input type="checkbox" id="iframeRecognitionEnabled">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Image OCR</legend>
+                        <div class="control-group">
+                            <label for="ocrEnabled">Enable:</label>
+                            <input type="checkbox" id="ocrEnabled">
                         </div>
                     </fieldset>
                     <fieldset>

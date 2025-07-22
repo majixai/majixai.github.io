@@ -107,6 +107,9 @@
             this.iframeChangeInterval = document.getElementById('iframeChangeInterval');
             this.faceApiEnabled = document.getElementById('faceApiEnabled');
             this.iframeRecognitionEnabled = document.getElementById('iframeRecognitionEnabled');
+            this.ocrEnabled = document.getElementById('ocrEnabled');
+            this.controlsModal = document.getElementById('controlsModal');
+            this.closeControlsModal = document.getElementById('closeControlsModal');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -142,6 +145,50 @@
             } catch (e) {
                  console.error("Error checking birthday for:", birthday, e);
                  return false;
+            }
+        }
+
+        async #toggleOcr() {
+            if (this.ocrEnabled.checked && !this.#tesseractWorker) {
+                this.uiManager.showOnlineLoadingIndicator("Loading OCR models...");
+                try {
+                    this.#tesseractWorker = await Tesseract.createWorker('eng');
+                    this.uiManager.hideOnlineLoadingIndicator();
+                    this.#processVisibleUserImagesWithOcr();
+                } catch (error) {
+                    console.error("Error loading Tesseract.js models:", error);
+                    this.uiManager.showOnlineErrorDisplay("Failed to load OCR models.");
+                }
+            } else {
+                this.#processVisibleUserImagesWithOcr();
+            }
+        }
+
+        #processVisibleUserImagesWithOcr() {
+            const userImages = document.querySelectorAll('.user-image-container img');
+            userImages.forEach(img => {
+                this.#processImageWithOcr(img);
+            });
+        }
+
+        async #processImageWithOcr(imgElement) {
+            if (!this.ocrEnabled.checked || !this.#tesseractWorker) {
+                return;
+            }
+
+            try {
+                const { data: { text } } = await this.#tesseractWorker.recognize(imgElement);
+                const socialMedia = this.#extractSocialMedia(text);
+                if (Object.keys(socialMedia).length > 0) {
+                    const username = imgElement.closest('.user-info').dataset.username;
+                    const user = this.#allOnlineUsersData.find(u => u.username === username);
+                    if (user) {
+                        user.socialMedia = { ...(user.socialMedia || {}), ...socialMedia };
+                        this.#displayOnlineUsersList(this.#lastFilteredUsers);
+                    }
+                }
+            } catch (error) {
+                console.error("Error processing image with OCR:", error);
             }
         }
 
@@ -273,7 +320,8 @@
 
             try {
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                this.#allOnlineUsersData = initialData.users;
+                console.log("App: Fetched initial data:", initialData);
+                this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
@@ -963,50 +1011,21 @@
                 if (event.target === this.storageModal) {
                     this.storageModal.style.display = 'none';
                 }
+                if (event.target === this.controlsModal) {
+                    this.controlsModal.style.display = 'none';
+                }
             });
 
-            if (typeof $ !== 'undefined') {
-                const $toggleButton = $('#toggleControlsButton');
-                const $sectionsToToggle = $('#snippetManagerContainer, #mainTextAreaContainer');
-
-                $toggleButton.on('click', () => {
-                    $sectionsToToggle.slideToggle(function() { 
-                        if ($('#snippetManagerContainer').is(':visible')) {
-                            $toggleButton.text('Hide Controls');
-                        } else {
-                            $toggleButton.text('Show Controls');
-                        }
-                    });
+            const toggleBtn = document.getElementById('toggleControlsButton');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    if (this.controlsModal) this.controlsModal.style.display = 'flex';
                 });
-                if (!$('#snippetManagerContainer').is(':visible')) {
-                    $toggleButton.text('Show Controls');
-                } else {
-                     $toggleButton.text('Hide Controls');
-                }
-            } else {
-                const toggleBtn = document.getElementById('toggleControlsButton');
-                const snippetManager = document.getElementById('snippetManagerContainer');
-                const mainTextArea = document.getElementById('mainTextAreaContainer');
-
-                if (toggleBtn && snippetManager && mainTextArea) {
-                    const toggleAllSections = () => {
-                        const isHidden = snippetManager.style.display === 'none' || snippetManager.style.display === '';
-                        
-                        snippetManager.style.display = isHidden ? 'block' : 'none'; 
-                        mainTextArea.style.display = isHidden ? 'block' : 'none'; 
-                        
-                        toggleBtn.textContent = isHidden ? 'Hide Controls' : 'Show Controls';
-                    };
-
-                    toggleBtn.addEventListener('click', toggleAllSections);
-
-                    if (snippetManager.style.display === 'none' || snippetManager.style.display === '') {
-                        toggleBtn.textContent = 'Show Controls';
-                    } else {
-                        toggleBtn.textContent = 'Hide Controls';
-                    }
-                }
             }
+
+            this.closeControlsModal?.addEventListener('click', () => {
+                if (this.controlsModal) this.controlsModal.style.display = 'none';
+            });
 
             // Listen for window resize events to adjust layout
             let resizeTimeout;
@@ -1064,11 +1083,16 @@
             this.iframeRecognitionEnabled?.addEventListener('change', () => {
                 this.#toggleIframeRecognition();
             });
+
+            this.ocrEnabled?.addEventListener('change', () => {
+                this.#toggleOcr();
+            });
         }
 
         #autoScrollInterval = null;
         #autoIframeChangeInterval = null;
         #faceApiLoaded = false;
+        #tesseractWorker = null;
 
         #startAutoScroll(speed) {
             clearInterval(this.#autoScrollInterval);
