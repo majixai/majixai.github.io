@@ -106,6 +106,7 @@
             this.autoIframeChange = document.getElementById('autoIframeChange');
             this.iframeChangeInterval = document.getElementById('iframeChangeInterval');
             this.faceApiEnabled = document.getElementById('faceApiEnabled');
+            this.iframeRecognitionEnabled = document.getElementById('iframeRecognitionEnabled');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -500,7 +501,7 @@
             }
             const fragment = document.createDocumentFragment();
             usersToDisplay.forEach(user => {
-                if (!user || !user.image_url || !user.username) return;
+                if (!user || !user.image_urls || user.image_urls.length === 0 || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
                     user,
@@ -1059,6 +1060,10 @@
             this.faceApiEnabled?.addEventListener('change', () => {
                 this.#toggleFaceApi();
             });
+
+            this.iframeRecognitionEnabled?.addEventListener('change', () => {
+                this.#toggleIframeRecognition();
+            });
         }
 
         #autoScrollInterval = null;
@@ -1178,9 +1183,12 @@
         }
 
         #processVisibleUserImages() {
-            const userImages = document.querySelectorAll('.user-image-container img');
-            userImages.forEach(img => {
-                this.#processImage(img);
+            const userImageContainers = document.querySelectorAll('.user-image-container');
+            userImageContainers.forEach(container => {
+                const img = container.querySelector('img');
+                if (img) {
+                    this.#processImage(img);
+                }
             });
         }
 
@@ -1212,6 +1220,56 @@
                         result.detection.box.bottomLeft
                     ).draw(canvas);
                 });
+            }
+        }
+
+        async #toggleIframeRecognition() {
+            if (this.iframeRecognitionEnabled.checked) {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.play();
+
+                    const canvas = document.createElement('canvas');
+                    document.body.appendChild(canvas);
+                    canvas.style.position = 'absolute';
+                    canvas.style.top = '0';
+                    canvas.style.left = '0';
+                    canvas.style.zIndex = '1000';
+
+                    const processFrame = async () => {
+                        if (!this.iframeRecognitionEnabled.checked) {
+                            stream.getTracks().forEach(track => track.stop());
+                            document.body.removeChild(canvas);
+                            return;
+                        }
+
+                        canvas.width = this.mainIframe.clientWidth;
+                        canvas.height = this.mainIframe.clientHeight;
+                        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions().withAgeAndGender();
+                        const displaySize = { width: canvas.width, height: canvas.height };
+                        const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                        faceapi.draw.drawDetections(canvas, resizedDetections);
+                        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                        faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+                        resizedDetections.forEach(result => {
+                            const { age, gender, genderProbability } = result;
+                            new faceapi.draw.DrawTextField(
+                                [
+                                    `${faceapi.utils.round(age, 0)} years`,
+                                    `${gender} (${faceapi.utils.round(genderProbability)})`
+                                ],
+                                result.detection.box.bottomLeft
+                            ).draw(canvas);
+                        });
+                        requestAnimationFrame(processFrame);
+                    };
+                    processFrame();
+                } catch (error) {
+                    console.error("Error starting iframe recognition:", error);
+                    this.uiManager.showOnlineErrorDisplay("Failed to start iframe recognition.");
+                }
             }
         }
 
