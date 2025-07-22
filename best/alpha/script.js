@@ -95,6 +95,13 @@
 
             this.copyJsErrorsButton = document.getElementById('copyJsErrorsButton');
             this.filterBirthdayBannerButton = document.getElementById('filterBirthdayBanner');
+
+            this.settingsButton = document.getElementById('settingsButton');
+            this.storageButton = document.getElementById('storageButton');
+            this.settingsModal = document.getElementById('settingsModal');
+            this.storageModal = document.getElementById('storageModal');
+            this.closeSettingsModal = document.getElementById('closeSettingsModal');
+            this.closeStorageModal = document.getElementById('closeStorageModal');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -922,52 +929,71 @@
                     try{await navigator.clipboard.writeText(errStr);this.#showSnippetStatus('JS errors copied!','success')}catch(e){this.#showSnippetStatus('Failed to copy JS errors.','error')}
                 });
             }
+
+            this.settingsButton?.addEventListener('click', () => {
+                if (this.settingsModal) this.settingsModal.style.display = 'flex';
+            });
+
+            this.storageButton?.addEventListener('click', () => {
+                if (this.storageModal) this.storageModal.style.display = 'flex';
+            });
+
+            this.closeSettingsModal?.addEventListener('click', () => {
+                if (this.settingsModal) this.settingsModal.style.display = 'none';
+            });
+
+            this.closeStorageModal?.addEventListener('click', () => {
+                if (this.storageModal) this.storageModal.style.display = 'none';
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === this.settingsModal) {
+                    this.settingsModal.style.display = 'none';
+                }
+                if (event.target === this.storageModal) {
+                    this.storageModal.style.display = 'none';
+                }
+            });
+
             if (typeof $ !== 'undefined') {
                 const $toggleButton = $('#toggleControlsButton');
-                const $sectionsToToggle = $('#controlsBarContainer, #snippetManagerContainer, #mainTextAreaContainer');
+                const $sectionsToToggle = $('#snippetManagerContainer, #mainTextAreaContainer');
 
                 $toggleButton.on('click', () => {
                     $sectionsToToggle.slideToggle(function() { 
-                        if ($('#controlsBarContainer').is(':visible')) {
-                            $toggleButton.text('Hide All Controls & Forms');
+                        if ($('#snippetManagerContainer').is(':visible')) {
+                            $toggleButton.text('Hide Controls');
                         } else {
-                            $toggleButton.text('Show All Controls & Forms');
+                            $toggleButton.text('Show Controls');
                         }
                     });
                 });
-                // Initial button text
-                if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
-                    $toggleButton.text('Show All Controls & Forms');
+                if (!$('#snippetManagerContainer').is(':visible')) {
+                    $toggleButton.text('Show Controls');
                 } else {
-                     $toggleButton.text('Hide All Controls & Forms');
+                     $toggleButton.text('Hide Controls');
                 }
             } else {
-                console.error('jQuery is not loaded. Some UI features might not work.');
                 const toggleBtn = document.getElementById('toggleControlsButton');
-                const controlsBar = document.getElementById('controlsBarContainer');
                 const snippetManager = document.getElementById('snippetManagerContainer');
                 const mainTextArea = document.getElementById('mainTextAreaContainer');
 
-                if (toggleBtn && controlsBar && snippetManager && mainTextArea) {
+                if (toggleBtn && snippetManager && mainTextArea) {
                     const toggleAllSections = () => {
-                        // Check visibility of controlsBar, assuming all sections are toggled together
-                        const isHidden = controlsBar.style.display === 'none' || controlsBar.style.display === '';
+                        const isHidden = snippetManager.style.display === 'none' || snippetManager.style.display === '';
                         
-                        controlsBar.style.display = isHidden ? 'flex' : 'none';
                         snippetManager.style.display = isHidden ? 'block' : 'none'; 
                         mainTextArea.style.display = isHidden ? 'block' : 'none'; 
                         
-                        toggleBtn.textContent = isHidden ? 'Hide All Controls & Forms' : 'Show All Controls & Forms';
+                        toggleBtn.textContent = isHidden ? 'Hide Controls' : 'Show Controls';
                     };
 
                     toggleBtn.addEventListener('click', toggleAllSections);
 
-                    // Set initial button text
-                    // Check initial display style from HTML (which is 'none' for all)
-                    if (controlsBar.style.display === 'none' || controlsBar.style.display === '') {
-                        toggleBtn.textContent = 'Show All Controls & Forms';
+                    if (snippetManager.style.display === 'none' || snippetManager.style.display === '') {
+                        toggleBtn.textContent = 'Show Controls';
                     } else {
-                        toggleBtn.textContent = 'Hide All Controls & Forms';
+                        toggleBtn.textContent = 'Hide Controls';
                     }
                 }
             }
