@@ -79,12 +79,12 @@ class UIManager {
 
         userElement.innerHTML = `
             <div class="user-image-container">
-                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
+                <img src="${user.image_urls[0]}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
                 <canvas></canvas>
-                <!-- div class="iframe-preview-container">
-                    <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
+                <div class="slideshow-controls">
+                    <button class="prev-btn">&lt;</button>
+                    <button class="next-btn">&gt;</button>
                 </div>
-                <button class="toggle-view-btn">Show Preview</button -->
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -138,6 +138,24 @@ class UIManager {
                 }
             });
         }
+
+        const prevBtn = userElement.querySelector('.prev-btn');
+        const nextBtn = userElement.querySelector('.next-btn');
+        const img = userElement.querySelector('img');
+        let currentImageIndex = 0;
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentImageIndex = (currentImageIndex - 1 + user.image_urls.length) % user.image_urls.length;
+            img.src = user.image_urls[currentImageIndex];
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentImageIndex = (currentImageIndex + 1) % user.image_urls.length;
+            img.src = user.image_urls[currentImageIndex];
+        });
+
         return userElement;
     }
 
