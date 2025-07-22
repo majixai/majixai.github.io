@@ -115,7 +115,7 @@ html, body {
 }
 
 .modal {
-    position: fixed;
+    position: absolute;
     z-index: 100;
     left: 0;
     top: 0;
@@ -123,16 +123,18 @@ html, body {
     height: 100%;
     background-color: rgba(0,0,0,0.5);
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: flex-end;
+    align-items: flex-start;
 }
 
 .modal-content {
     background-color: #fff;
     padding: 20px;
     border-radius: 5px;
-    width: 80%;
-    max-width: 600px;
+    width: 300px;
+    max-width: 90%;
+    margin-top: 50px;
+    margin-right: 20px;
     position: relative;
 }
 
