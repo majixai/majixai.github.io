@@ -96,14 +96,25 @@ html, body {
 }
 
 .user-image-container {
-    width: 60px;
+    width: 120px;
     margin-right: 10px;
     flex-shrink: 0;
+    position: relative;
 }
 
 .user-image-container img {
     width: 100%;
     border-radius: 3px;
+}
+
+.user-details {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    padding: 5px;
 }
 
 .slideshow-controls {

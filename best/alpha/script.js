@@ -450,12 +450,12 @@
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
             const topUser1 = femaleUsers[0];
             const topUser2 = femaleUsers[1];
-            if (this.mainIframe && topUser1) {
+            if (this.mainIframe && topUser1 && topUser1.username) {
                 this.mainIframe.src = `https://chaturbate.com/embed/${topUser1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             }
-            if (this.mainIframe2 && topUser2) {
+            if (this.mainIframe2 && topUser2 && topUser2.username) {
                 this.mainIframe2.src = `https://chaturbate.com/embed/${topUser2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            } else if (this.mainIframe2 && topUser1 && !topUser2) {
+            } else if (this.mainIframe2 && topUser1 && topUser1.username && !topUser2) {
                  console.log("Only one top female user found. mainIframe2 not changed or cleared.");
             }
             this.#initialIframesSet = true;
@@ -1407,3 +1407,5 @@
     });
 
 })();
+
+[end of best/alpha/script.js]
