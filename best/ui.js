@@ -22,108 +22,124 @@ class UIManager {
      * @returns {HTMLElement} The created user div element.
      */
     createUserElement(
-        user,
-        listType,
-        handleUserClickCallback,
-        removeFromPreviousUsersCallback,
+        user, 
+        listType, 
+        handleUserClickCallback, 
+        removeFromPreviousUsersCallback, 
         getUserClickCountCallback,
         isBirthdayCallback,
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
-        getDaysSinceOrUntil18thBirthdayCallback,
-        socialMediaData,
-        toggleUserCardPreviewCallback
+        getDaysSinceOrUntil18thBirthdayCallback, // Existing new callback
+        socialMediaData // Add new parameter for social media
     ) {
         const userElement = document.createElement("div");
-        userElement.className = `user-info ${listType}-list-item`;
+        userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
         userElement.dataset.username = user.username;
 
+        const tagsDisplay = (user.tags && Array.isArray(user.tags) && user.tags.length > 0)
+                            ? user.tags.join(', ')
+                            : 'N/A';
+        const ageDisplay = (user.age && typeof user.age === 'number') ? user.age : 'N/A';
+        const newBadge = user.is_new ? '<span class="badge new-badge w3-tag w3-small w3-red w3-round">New</span>' : '';
+        const birthdayBanner = isBirthdayCallback(user.birthday) ? `<p class="birthday w3-text-amber w3-center">🎂 Happy Birthday! 🎂</p>` : '';
+        const removeButtonHTML = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
         const clickCount = getUserClickCountCallback(user.username);
-        const isBirthday = isBirthdayCallback(user.birthday);
-        const birthdayMessage = getDaysSinceOrUntil18thBirthdayCallback(user.birthday, user.age);
 
-        let socialLinksHtml = '';
-        if (socialMediaData) {
-            for (const platform in socialMediaData) {
-                socialMediaData[platform].forEach(link => {
-                    socialLinksHtml += `<a href="${link.startsWith('@') ? `https://twitter.com/${link.substring(1)}` : link}" target="_blank" class="social-link">${platform}</a> `;
-                });
+        let birthdayProximityHTMLString = '';
+        if (typeof getDaysSinceOrUntil18thBirthdayCallback === 'function') {
+            const birthdayProximityText = getDaysSinceOrUntil18thBirthdayCallback(user.birthday, user.age);
+            if (birthdayProximityText && birthdayProximityText.trim() !== '') {
+                birthdayProximityHTMLString = `<p class="birthday-proximity w3-small">${birthdayProximityText}</p>`;
             }
         }
 
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'user-image-container';
-        const img = document.createElement('img');
-        img.src = user.image_url_360x270 || user.image_url;
-        img.alt = `${user.username}'s stream preview`;
-        img.loading = 'lazy';
-        imageContainer.appendChild(img);
-
-        userElement.imageContainerEl = imageContainer;
-        userElement.imageEl = img;
-        userElement.dataset.previewState = 'image';
+        let socialMediaHTML = '';
+        if (socialMediaData && Object.keys(socialMediaData).length > 0) {
+            socialMediaHTML += '<p class="social-media-links w3-small">Social: ';
+            const links = [];
+            for (const platform in socialMediaData) {
+                socialMediaData[platform].forEach(handle => {
+                    // Create a clickable link if it's a URL, otherwise just display the handle
+                    if (handle.startsWith('http')) {
+                        links.push(`<a href="${handle}" target="_blank" rel="noopener noreferrer">${handle.replace(/^(https?:\/\/)?(www\.)?/, '')}</a>`);
+                    } else if (handle.startsWith('@') && platform === 'twitter') {
+                        links.push(`<a href="https://twitter.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
+                    } else if (handle.startsWith('@') && platform === 'instagram') {
+                        links.push(`<a href="https://instagram.com/${handle.substring(1)}" target="_blank" rel="noopener noreferrer">${handle}</a>`);
+                    }
+                    else {
+                        links.push(handle);
+                    }
+                });
+            }
+            socialMediaHTML += links.join(' | ') + '</p>';
+        }
 
         userElement.innerHTML = `
-            ${isBirthday ? '<div class="birthday-banner">🎉 Happy Birthday! 🎉</div>' : ''}
             <div class="user-image-container">
-                <img src="${user.image_url_360x270 || user.image_url}" alt="${user.username}'s stream preview" loading="lazy">
-            </div>
-            <div class="user-details">
-                <div class="user-title">${user.username}</div>
-                <div class="user-stats">
-                    <span class="user-age">Age: ${user.age}</span> |
-                    <span class="user-viewers">Viewers: ${user.num_viewers}</span>
-                    ${clickCount > 0 ? `<span class="user-click-count"> | Clicks: ${clickCount}</span>` : ''}
+                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
+                <!-- div class="iframe-preview-container">
+                    <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
                 </div>
-                ${birthdayMessage ? `<div class="birthday-message">${birthdayMessage}</div>` : ''}
-                <div class="user-tags">${(user.tags || []).join(', ')}</div>
-                <div class="social-media-links">${socialLinksHtml}</div>
+                <button class="toggle-view-btn">Show Preview</button -->
+                ${removeButtonHTML}
+            </div>
+            <div class="user-details w3-container w3-padding-small">
+                <p class="username w3-large">${user.username} ${newBadge}</p>
+                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}</small></p>
+                ${birthdayProximityHTMLString}
+                ${socialMediaHTML}
+                <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
+                ${birthdayBanner}
             </div>
         `;
 
-        userElement.prepend(imageContainer);
-
-
-        userElement.addEventListener("click", (event) => {
-            if (event.target.tagName !== 'A') {
-                handleUserClickCallback(user);
+        userElement.addEventListener("click", function(event) {
+            if (event.target.closest('.remove-user-btn')) {
+                return;
             }
+            event.preventDefault();
+            handleUserClickCallback(user);
         });
 
-        if (listType === 'previous') {
-            const removeButton = document.createElement('button');
-            removeButton.textContent = 'X';
-            removeButton.className = 'remove-from-history-btn';
-            removeButton.title = `Remove ${user.username} from history`;
-            removeButton.addEventListener('click', async (event) => {
+        // const toggleBtn = userElement.querySelector('.toggle-view-btn');
+        // if (toggleBtn) {
+        //     toggleBtn.addEventListener('click', function(event) {
+        //         event.stopPropagation(); // Prevent the main user card click event
+        //         const imageContainer = this.closest('.user-image-container');
+        //         if (imageContainer) {
+        //             imageContainer.classList.toggle('iframe-active');
+        //             if (imageContainer.classList.contains('iframe-active')) {
+        //                 this.textContent = 'Show Image';
+        //             } else {
+        //                 this.textContent = 'Show Preview';
+        //             }
+        //         }
+        //     });
+        // }
+// 
+        const removeBtn = userElement.querySelector('.remove-user-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener("click", async function(event) {
                 event.stopPropagation();
-                if (confirm(`Are you sure you want to remove ${user.username} from your history?`)) {
-                    showOnlineLoadingIndicatorCallback("Removing user...");
-                    await removeFromPreviousUsersCallback(user.username);
-                    // No longer need to manually remove element, displayPreviousUsers will redraw
-                    await displayPreviousUsersCallback();
+                console.log(`User clicked remove for: ${user.username}`);
+                if (typeof showOnlineLoadingIndicatorCallback === 'function') {
+                    showOnlineLoadingIndicatorCallback("Removing from history...");
+                }
+                await removeFromPreviousUsersCallback(user.username);
+                if (typeof displayPreviousUsersCallback === 'function') {
+                     await displayPreviousUsersCallback(); // Refresh display
+                }
+                if (typeof hideOnlineLoadingIndicatorCallback === 'function') {
                     hideOnlineLoadingIndicatorCallback();
                 }
             });
-            userElement.querySelector('.user-details').appendChild(removeButton);
         }
-
-        // Add a toggle button for the preview
-        const togglePreviewButton = document.createElement('button');
-        togglePreviewButton.textContent = 'Toggle Preview';
-        togglePreviewButton.className = 'toggle-preview-btn';
-        togglePreviewButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleUserCardPreviewCallback(userElement, user.username);
-        });
-        userElement.querySelector('.user-details').appendChild(togglePreviewButton);
-
-
         return userElement;
     }
 
-    // ... rest of UIManager class remains the same
     showOnlineLoadingIndicator(message = 'Loading...') {
         const onlineLoadingIndicator = document.getElementById("onlineLoadingIndicator");
         const onlineUsersDivList = document.getElementById("onlineUsers")?.querySelector('.user-list');
