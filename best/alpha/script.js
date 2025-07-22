@@ -102,6 +102,10 @@
             this.storageModal = document.getElementById('storageModal');
             this.closeSettingsModal = document.getElementById('closeSettingsModal');
             this.closeStorageModal = document.getElementById('closeStorageModal');
+            this.scrollSpeed = document.getElementById('scrollSpeed');
+            this.autoIframeChange = document.getElementById('autoIframeChange');
+            this.iframeChangeInterval = document.getElementById('iframeChangeInterval');
+            this.faceApiEnabled = document.getElementById('faceApiEnabled');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -473,7 +477,12 @@
             // Sort by age if an age filter is active
             if (filterAges.length > 0) {
                 this.#lastFilteredUsers.sort((a, b) => {
-                    // Ensure ages are numbers and handle cases where age might be missing
+                    const ageA = typeof a.age === 'number' ? a.age : Infinity;
+                    const ageB = typeof b.age === 'number' ? b.age : Infinity;
+                    return ageA - ageB;
+                });
+            } else if (buttonFilters.age === 18) {
+                this.#lastFilteredUsers.sort((a, b) => {
                     const ageA = typeof a.age === 'number' ? a.age : Infinity;
                     const ageB = typeof b.age === 'number' ? b.age : Infinity;
                     return ageA - ageB;
@@ -1009,94 +1018,201 @@
 
             // Infinite scroll for online users list
             if (this.onlineUsersDiv) {
-                let scrollTimeout;
                 this.onlineUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(() => {
-                        const element = this.onlineUsersDiv;
-                        const threshold = 100; // Pixels from bottom to trigger
-                        
-                        // Check if scrolled to near the bottom and if we should fetch more
-                        if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of online users list. Fetching more...');
-                                this.#fetchMoreOnlineUsers();
-                            }
+                    const element = this.onlineUsersDiv;
+                    const threshold = 100; // Pixels from bottom to trigger
+
+                    if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
+                        if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                            this.#fetchMoreOnlineUsers();
                         }
-                    }, 150); // Debounce delay of 150ms
+                    }
                 });
             }
 
             // Infinite scroll for previous users list
             if (this.previousUsersDiv) {
-                let previousUsersScrollTimeout;
                 this.previousUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(previousUsersScrollTimeout);
-                    previousUsersScrollTimeout = setTimeout(() => {
-                        // Ensure 'this' correctly references the App instance
-                        const appInstance = this; 
-                        const element = appInstance.previousUsersDiv;
-                        const threshold = 100; 
+                    const element = this.previousUsersDiv;
+                    const threshold = 100;
 
-                        if (appInstance.#hasMorePreviousUsersToLoad && !appInstance.#isLoadingMorePreviousUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of previous users list. Loading more...');
-                                appInstance.#displayPreviousUsers(); // Call the updated method
-                            }
+                    if (this.#hasMorePreviousUsersToLoad && !this.#isLoadingMorePreviousUsers) {
+                        if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                            this.#displayPreviousUsers();
                         }
-                    }, 150); // Debounce delay of 150ms
+                    }
                 });
+            }
+
+            this.scrollSpeed?.addEventListener('input', (event) => {
+                this.#startAutoScroll(event.target.value);
+            });
+
+            this.autoIframeChange?.addEventListener('change', () => {
+                this.#toggleAutoIframeChange();
+            });
+
+            this.iframeChangeInterval?.addEventListener('change', () => {
+                this.#toggleAutoIframeChange();
+            });
+
+            this.faceApiEnabled?.addEventListener('change', () => {
+                this.#toggleFaceApi();
+            });
+        }
+
+        #autoScrollInterval = null;
+        #autoIframeChangeInterval = null;
+        #faceApiLoaded = false;
+
+        #startAutoScroll(speed) {
+            clearInterval(this.#autoScrollInterval);
+            if (speed > 0) {
+                this.#autoScrollInterval = setInterval(() => {
+                    if (this.onlineUsersDiv) {
+                        this.onlineUsersDiv.scrollTop += speed / 10;
+                    }
+                    if (this.previousUsersDiv) {
+                        this.previousUsersDiv.scrollTop += speed / 10;
+                    }
+                }, 20);
             }
         }
 
-        async start() { 
+        #toggleAutoIframeChange() {
+            clearInterval(this.#autoIframeChangeInterval);
+            if (this.autoIframeChange.checked) {
+                const interval = (this.iframeChangeInterval.value || 15) * 1000;
+                this.#autoIframeChangeInterval = setInterval(() => {
+                    this.#changeIframes();
+                }, interval);
+            }
+        }
+
+        #changeIframes() {
+            const mostClickedUsers = this.#previousUsers
+                .slice()
+                .sort((a, b) => this.storageManager.getUserClickCount(b.username, this.#previousUsers) - this.storageManager.getUserClickCount(a.username, this.#previousUsers));
+
+            if (mostClickedUsers.length > 0) {
+                const user1 = mostClickedUsers[0];
+                const user2 = mostClickedUsers[1] || mostClickedUsers[0];
+
+                if (this.mainIframe) {
+                    this.mainIframe.src = `https://chaturbate.com/embed/${user1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                }
+                if (this.mainIframe2) {
+                    this.mainIframe2.src = `https://chaturbate.com/embed/${user2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                }
+            }
+        }
+
+        async start() {
             console.log("App: Initializing application...");
-            if (!this.#validateDOMReferences()) return; 
-            
+            if (!this.#validateDOMReferences()) return;
+
             await this.storageManager.init().catch(error => {
                 console.error("StorageManager initialization failed during App.start:", error);
                 this.uiManager.showOnlineErrorDisplay("Critical error: Failed to initialize storage. Application may not function correctly.");
-                throw error; 
+                throw error;
             });
 
             await this.storageManager.populateStorageOptions();
-            this.#storageType = window.storageType; 
+            this.#storageType = window.storageType;
 
-            this.#setupEventListeners(); 
-            
+            this.#setupEventListeners();
+
             if (this.currentSnippetDisplay) {
                 this.storageManager.loadAllTextSnippets()
-                    .then(snippets => this.#displaySnippetsList(snippets)) 
+                    .then(snippets => this.#displaySnippetsList(snippets))
                     .catch(err => {
                         console.error("Error loading initial snippets:", err);
                         this.currentSnippetDisplay.innerHTML = '<p>Error loading snippets.</p>';
-                        this.#showSnippetStatus('Error loading snippets.', 'error'); 
+                        this.#showSnippetStatus('Error loading snippets.', 'error');
                     });
             }
-            
+
             this.uiManager.showOnlineLoadingIndicator("Loading initial history...");
             this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
             console.log(`Initial load: Found ${this.#previousUsers.length} users in history.`);
 
-            // Add this block after storageManager.init and loadUsers
-            if (this.storageManager && this.storageManager.isIndexedDBFailed) { // Check the getter
+            if (this.storageManager && this.storageManager.isIndexedDBFailed) {
                 this.uiManager.showOnlineErrorDisplay(
                     "Main database failed to load. Your browsing history and some settings might not be saved reliably. Using temporary storage. If issues persist, try clearing site data or using a different browser.",
-                    true // Pass true to indicate it's a warning
+                    true
                 );
             }
-            
-            await this.#fetchDataAndUpdateUI(); 
-            
-            this.#startFetchInterval(); 
+
+            await this.#fetchDataAndUpdateUI();
+
+            this.#startFetchInterval();
 
             if (typeof window.initializeAllUsers === 'function') window.initializeAllUsers();
-            window.initializeAllUsersFromScriptJS = (cb) => { if(typeof cb==='function')cb() };
-            
-            this.#adjustLayoutHeights(); // Adjust heights after initial load
+            window.initializeAllUsersFromScriptJS = (cb) => { if (typeof cb === 'function') cb() };
+
+            this.#adjustLayoutHeights();
 
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
+        }
+
+        async #toggleFaceApi() {
+            if (this.faceApiEnabled.checked && !this.#faceApiLoaded) {
+                this.uiManager.showOnlineLoadingIndicator("Loading facial recognition models...");
+                try {
+                    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+                    await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+                    await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+                    await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+                    await faceapi.nets.ageGenderNet.loadFromUri('/models');
+                    this.#faceApiLoaded = true;
+                    this.uiManager.hideOnlineLoadingIndicator();
+                    this.#processVisibleUserImages();
+                } catch (error) {
+                    console.error("Error loading face-api.js models:", error);
+                    this.uiManager.showOnlineErrorDisplay("Failed to load facial recognition models.");
+                }
+            } else {
+                this.#processVisibleUserImages();
+            }
+        }
+
+        #processVisibleUserImages() {
+            const userImages = document.querySelectorAll('.user-image-container img');
+            userImages.forEach(img => {
+                this.#processImage(img);
+            });
+        }
+
+        async #processImage(imgElement) {
+            if (!this.faceApiEnabled.checked || !this.#faceApiLoaded) {
+                const canvas = imgElement.nextElementSibling;
+                if (canvas && canvas.tagName === 'CANVAS') {
+                    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+                }
+                return;
+            }
+
+            const detections = await faceapi.detectAllFaces(imgElement, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions().withAgeAndGender();
+            const canvas = imgElement.nextElementSibling;
+            if (canvas && canvas.tagName === 'CANVAS') {
+                const displaySize = { width: imgElement.width, height: imgElement.height };
+                faceapi.matchDimensions(canvas, displaySize);
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                faceapi.draw.drawDetections(canvas, resizedDetections);
+                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+                resizedDetections.forEach(result => {
+                    const { age, gender, genderProbability } = result;
+                    new faceapi.draw.DrawTextField(
+                        [
+                            `${faceapi.utils.round(age, 0)} years`,
+                            `${gender} (${faceapi.utils.round(genderProbability)})`
+                        ],
+                        result.detection.box.bottomLeft
+                    ).draw(canvas);
+                });
+            }
         }
 
         #startFetchInterval() {

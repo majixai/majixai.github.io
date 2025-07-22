@@ -79,7 +79,8 @@ class UIManager {
 
         userElement.innerHTML = `
             <div class="user-image-container">
-                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
+                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
+                <canvas></canvas>
                 <!-- div class="iframe-preview-container">
                     <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
                 </div>

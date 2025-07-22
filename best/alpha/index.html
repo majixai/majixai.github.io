@@ -6,6 +6,7 @@
     <title>Room Viewer</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/face-api.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -106,6 +107,31 @@
                             <button id="filterTagDeepthroat" class="quick-filter-btn">Deepthroat</button>
                             <button id="filterTagBigboobs" class="quick-filter-btn">bigboobs</button>
                             <button id="filterBirthdayBanner" class="quick-filter-btn">Birthday Banners</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Auto-Scroll</legend>
+                        <div class="control-group">
+                            <label for="scrollSpeed">Scroll Speed:</label>
+                            <input type="range" id="scrollSpeed" min="0" max="10" value="0">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Auto-Iframe Change</legend>
+                        <div class="control-group">
+                            <label for="autoIframeChange">Enable:</label>
+                            <input type="checkbox" id="autoIframeChange">
+                        </div>
+                        <div class="control-group">
+                            <label for="iframeChangeInterval">Interval (seconds):</label>
+                            <input type="number" id="iframeChangeInterval" min="15" value="15">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Facial Recognition</legend>
+                        <div class="control-group">
+                            <label for="faceApiEnabled">Enable:</label>
+                            <input type="checkbox" id="faceApiEnabled">
                         </div>
                     </fieldset>
                     <fieldset>
