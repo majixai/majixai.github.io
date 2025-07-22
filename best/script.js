@@ -24,17 +24,15 @@
         uiManager;
         storageManager;
 
-        // DOM References
+        // DOM References (kept public for now, could be refactored later)
         onlineUsersDiv;
         previousUsersDiv;
-        // mainIframe and mainIframe2 removed
-        dynamicIframeContainer; // New
-        iframeCountSelector; // New
+        mainIframe;
+        mainIframe2;
         storageTypeSelector;
         filterTagsSelect;
         filterAgeSelect;
         sendReportButton;
-        globalUserCardIframeToggleRadios; // New: for the radio button group
         newSnippetInput;
         saveSnippetButton;
         currentSnippetDisplay;
@@ -54,7 +52,7 @@
         #allOnlineUsersData = [];
         #lastFilteredUsers = [];
         #fetchInterval = null;
-        // #initialIframesSet = false; // Removed, iframe initialization handled differently
+        #initialIframesSet = false;
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -64,36 +62,8 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
-
-        // New properties for IntersectionObserver and card preview mode
-        #userListIntersectionObserver = null;
-        userCardPreviewMode = 'image'; // 'image' or 'iframe-in-view'
-        #isScrollingFast = false;
-        #scrollCheckTimeout = null;
         
         constructor() {
-            // window.appInstance = this; // Removed: toggleUserCardPreview passed as callback
-
-            // --- Critical Dependency Checks ---
-            if (typeof ApiService === 'undefined') {
-                const errorMsg = "FATAL: ApiService class is not defined. api.js might be missing, have a syntax error, or failed to load.";
-                console.error(errorMsg);
-                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: ApiService not loaded. Application cannot start. Please check console for details. (api.js)</div>`;
-                throw new Error(errorMsg);
-            }
-            if (typeof StorageManager === 'undefined') {
-                const errorMsg = "FATAL: StorageManager class is not defined. storage.js might be missing, have a syntax error, or failed to load.";
-                console.error(errorMsg);
-                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: StorageManager not loaded. Application cannot start. Please check console for details. (storage.js)</div>`;
-                throw new Error(errorMsg);
-            }
-            if (typeof UIManager === 'undefined') {
-                const errorMsg = "FATAL: UIManager class is not defined. ui.js might be missing, have a syntax error, or failed to load.";
-                console.error(errorMsg);
-                document.body.innerHTML = `<div style="color:red;padding:20px;font-size:18px;font-family:sans-serif;text-align:center;">Critical Error: UIManager not loaded. Application cannot start. Please check console for details. (ui.js)</div>`;
-                throw new Error(errorMsg);
-            }
-
             // Instantiate services and managers
             // Config variables (apiUrlBase, etc.) are globally available from config.js
             this.apiService = new ApiService(apiUrlBase, apiLimit, maxApiFetchLimit, apiFetchTimeout);
@@ -103,13 +73,12 @@
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
             this.previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
-            this.dynamicIframeContainer = document.getElementById("dynamicIframeContainer"); // New
-            this.iframeCountSelector = document.getElementById("iframeCountSelector"); // New
+            this.mainIframe = document.getElementById("mainIframe");
+            this.mainIframe2 = document.getElementById("mainIframe2");
             this.storageTypeSelector = document.getElementById("storageType");
             this.filterTagsSelect = document.getElementById("filterTags");
             this.filterAgeSelect = document.getElementById("filterAge");
             this.sendReportButton = document.getElementById("sendReportButton");
-            this.globalUserCardIframeToggleRadios = document.getElementsByName("userCardPreviewMode"); // New
             
             this.newSnippetInput = document.getElementById('newSnippetInput');
             this.saveSnippetButton = document.getElementById('saveSnippetButton');
@@ -281,53 +250,45 @@
         }
 
         async #fetchDataAndUpdateUI() {
-            console.log("[DIAGNOSTIC] App: Starting #fetchDataAndUpdateUI...");
+            console.log("App: Executing fetchDataAndUpdateUI...");
             this.uiManager.showOnlineLoadingIndicator("Loading online users...");
             this.uiManager.clearOnlineErrorDisplay();
 
-            if (this.#userListIntersectionObserver && this.onlineUsersDiv) {
-                this.onlineUsersDiv.querySelectorAll('.user-info').forEach(el => this.#userListIntersectionObserver.unobserve(el));
-            }
-
+            // Reset pagination state for initial load
             this.#currentOnlineUsersOffset = 0;
             this.#hasMoreOnlineUsersToLoad = true;
-            this.#isLoadingOnlineUsers = false;
+            this.#isLoadingOnlineUsers = false; // Reset loading state
 
             try {
-                console.log("[DIAGNOSTIC] App: Calling apiService.getOnlineRooms...");
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                console.log("[DEBUG] App: #fetchDataAndUpdateUI - initialData from API:", JSON.stringify(initialData, null, 2));
-
-                this.#allOnlineUsersData = initialData.users || []; // Ensure it's an array
-                console.log("[DEBUG] App: #fetchDataAndUpdateUI - this.#allOnlineUsersData assigned:", JSON.stringify(this.#allOnlineUsersData.slice(0, 3), null, 2)); // Log first 3 users
+                this.#allOnlineUsersData = initialData.users;
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
-                console.log(`[DIAGNOSTIC] App: Fetched ${this.#allOnlineUsersData.length} users initially.`);
+                // this.#lastFilteredUsers = []; // Kept for filter logic, applyFiltersAndDisplay will repopulate
 
                 if (this.#allOnlineUsersData.length > 0) {
-                    if (this.#allOnlineUsersData[0]) { // Check if first element exists
-                        console.log("[DIAGNOSTIC] Sample user object from fetch:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
+                    if (this.#allOnlineUsersData && this.#allOnlineUsersData.length > 0) {
+                        console.log("Sample user object:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
                     }
-                    this.#populateFilters(this.#allOnlineUsersData);
-                    console.log("[DIAGNOSTIC] App: Calling #applyFiltersAndDisplay after fetch.");
-                    this.#applyFiltersAndDisplay();
+                    this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
+                    this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
                     await this.#displayPreviousUsers();
-                    this.#setDefaultIframes();
+                    if (!this.#initialIframesSet) {
+                        this.#setDefaultIframes();
+                    }
                 } else {
-                    console.log("[DIAGNOSTIC] App: No online users found or failed to fetch (initialData.users was empty or not an array).");
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
                     this.#populateFilters([]);
-                    console.log("[DIAGNOSTIC] App: Calling #applyFiltersAndDisplay for empty dataset.");
                     this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
                     await this.#displayPreviousUsers();
                 }
             } catch (error) {
-                console.error("[DEBUG] App: #fetchDataAndUpdateUI - Error caught:", error);
+                console.error("Error in fetchDataAndUpdateUI (App):", error);
                 this.uiManager.showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
-                console.log("[DIAGNOSTIC] App: #fetchDataAndUpdateUI execution finished.");
+                console.log("App: fetchDataAndUpdateUI execution finished.");
             }
         }
 
@@ -390,58 +351,12 @@
                 snippetElement.appendChild(textNode);
                 snippetElement.addEventListener('click', (e) => {
                     if (e.target.tagName !== 'BUTTON') {
-                        try {
-                            // Target the first iframe in the dynamic container
-                            const targetIframe = this.dynamicIframeContainer?.querySelector('iframe');
-                            const targetIframeId = targetIframe ? targetIframe.id : 'N/A';
-
-                            if (targetIframe && targetIframe.contentWindow) {
-                                const iframeDoc = targetIframe.contentWindow.document;
-                                let inputField = iframeDoc.querySelector('textarea');
-                                if (!inputField) inputField = iframeDoc.querySelector('#chat_input');
-                                if (!inputField) inputField = iframeDoc.querySelector('#input_text');
-                                // if (!inputField) inputField = iframeDoc.querySelector('.chat-input-textarea'); // Example for class
-
-                                if (inputField) {
-                                    inputField.value = snippetText;
-                                    // Optional: focus and dispatch input event
-                                    // inputField.focus();
-                                    // const inputEvent = new Event('input', { bubbles: true });
-                                    // inputField.dispatchEvent(inputEvent);
-                                    this.#showSnippetStatus(`Snippet inserted into ${selectedIframeId}!`, 'success');
-                                } else {
-                                    this.#showSnippetStatus('Could not find message input in the selected iframe.', 'error');
-                                    console.warn('Message input field not found in iframe:', selectedIframeId, 'Attempting to copy to clipboard as fallback.');
-                                    // Fallback to clipboard if input field not found
-                                    navigator.clipboard.writeText(snippetText)
-                                        .then(() => this.#showSnippetStatus('Snippet copied (input not found).', 'warning'))
-                                        .catch(copyErr => {
-                                            console.error('Fallback: Failed to copy snippet: ', copyErr);
-                                            this.#showSnippetStatus('Failed to insert or copy snippet.', 'error');
-                                        });
-                                }
-                            } else {
-                                this.#showSnippetStatus('Selected iframe or its content window is not accessible.', 'error');
-                                console.warn('Target iframe or contentWindow not accessible:', selectedIframeId, 'Attempting to copy to clipboard as fallback.');
-                                // Fallback to clipboard if iframe not accessible
-                                navigator.clipboard.writeText(snippetText)
-                                    .then(() => this.#showSnippetStatus('Snippet copied (iframe not accessible).', 'warning'))
-                                    .catch(copyErr => {
-                                        console.error('Fallback: Failed to copy snippet: ', copyErr);
-                                        this.#showSnippetStatus('Failed to insert or copy snippet.', 'error');
-                                    });
-                            }
-                        } catch (err) {
-                            console.error('Error inserting snippet into iframe:', err);
-                            this.#showSnippetStatus('Error inserting snippet. Check console.', 'error');
-                            // Fallback to clipboard for any other errors (e.g., cross-origin)
-                            navigator.clipboard.writeText(snippetText)
-                                .then(() => this.#showSnippetStatus('Snippet copied to clipboard (iframe insert failed).', 'warning'))
-                                .catch(copyErr => {
-                                    console.error('Failed to copy snippet as fallback: ', copyErr);
-                                    this.#showSnippetStatus('Failed to insert snippet or copy to clipboard.', 'error');
-                                });
-                        }
+                        navigator.clipboard.writeText(snippetText)
+                            .then(() => this.#showSnippetStatus('Snippet copied to clipboard!', 'success'))
+                            .catch(err => {
+                                console.error('Failed to copy snippet: ', err);
+                                this.#showSnippetStatus('Failed to copy snippet.', 'error');
+                            });
                     }
                 });
                 const deleteButton = document.createElement('button');
@@ -470,32 +385,20 @@
         }
 
         #setDefaultIframes() {
-            // This method is refactored. It no longer directly sets iframe src attributes.
-            // Instead, it should prepare a list of user URLs to be used by #updateIframes.
-            // For now, it will just log and #updateIframes will use a default.
-            // Later, this can be expanded to pick top users for the current number of iframes.
-            console.log("[DEBUG] App: #setDefaultIframes called.");
-            if (!this.#allOnlineUsersData || this.#allOnlineUsersData.length === 0) {
-                console.warn("[DEBUG] App: #setDefaultIframes - No online user data available (#allOnlineUsersData is empty or null).");
-                return []; // Return empty array or handle as needed
-            }
-            console.log("[DEBUG] App: #setDefaultIframes - #allOnlineUsersData available (first 3):", JSON.stringify(this.#allOnlineUsersData.slice(0,3), null, 2));
-
-
+            if (this.#initialIframesSet || !this.#allOnlineUsersData || this.#allOnlineUsersData.length === 0) return;
             const femaleUsers = this.#allOnlineUsersData.filter(user => user.gender === 'f');
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
-            console.log(`[DEBUG] App: #setDefaultIframes - Found ${femaleUsers.length} female users.`);
-
-            const iframeUsers = [];
-            // Example: Get up to 4 users for the iframes
-            for (let i = 0; i < Math.min(femaleUsers.length, 4); i++) {
-                iframeUsers.push(femaleUsers[i]);
+            const topUser1 = femaleUsers[0];
+            const topUser2 = femaleUsers[1];
+            if (this.mainIframe && topUser1) {
+                this.mainIframe.src = `https://chaturbate.com/embed/${topUser1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             }
-            console.log("[DEBUG] App: #setDefaultIframes - Selected users for iframes (up to 4):", iframeUsers.map(u => u.username));
-
-            // The actual setting of iframe sources will be handled by #updateIframes
-            // #updateIframes could call this method to get the user data.
-            return iframeUsers; // Or just their URLs
+            if (this.mainIframe2 && topUser2) {
+                this.mainIframe2.src = `https://chaturbate.com/embed/${topUser2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+            } else if (this.mainIframe2 && topUser1 && !topUser2) {
+                 console.log("Only one top female user found. mainIframe2 not changed or cleared.");
+            }
+            this.#initialIframesSet = true;
         }
 
         #populateFilters(users) {
@@ -540,23 +443,14 @@
                 filterTags = [];
                 filterAges = [];
             }
-            console.log("[DEBUG] App: #applyFiltersAndDisplay - #allOnlineUsersData (first 3):", JSON.stringify((this.#allOnlineUsersData || []).slice(0,3), null, 2));
-            console.log("[DEBUG] App: #applyFiltersAndDisplay - Filters - Tags:", filterTags, "Ages:", filterAges, "Birthday:", buttonFilters.birthdayBanner);
 
-            this.#lastFilteredUsers = (this.#allOnlineUsersData || []).filter(u => { // Add guard for #allOnlineUsersData
+            this.#lastFilteredUsers=this.#allOnlineUsersData.filter(u=>{ 
                 if(!u||!u.username)return false;
                 const isPublic=u.current_show==='public';
                 let hasTags=true;
                 if(filterTags.length>0){
                     const userTagsLower=(u.tags&&Array.isArray(u.tags))?u.tags.map(t=>typeof t==='string'?t.toLowerCase():''):[];
-                    hasTags = filterTags.some(fT => {
-                        if (fT === 'deepthroat') {
-                            return userTagsLower.includes('deepthroat') || userTagsLower.includes('blowjob');
-                        } else if (fT === 'bigboobs') {
-                            return userTagsLower.includes('bigboobs') || userTagsLower.includes('bigtits');
-                        }
-                        return userTagsLower.includes(fT);
-                    });
+                    hasTags=filterTags.some(fT=>userTagsLower.includes(fT))
                 }
                 let isAgeMatch=true;
                 if(filterAges.length>0){isAgeMatch=(u.age&&typeof u.age==='number')?filterAges.includes(u.age):false}
@@ -578,62 +472,36 @@
                     return ageA - ageB;
                 });
             }
-            console.log("[DEBUG] App: #applyFiltersAndDisplay - #lastFilteredUsers (first 3):", JSON.stringify(this.#lastFilteredUsers.slice(0,3), null, 2));
             this.#displayOnlineUsersList(this.#lastFilteredUsers); 
         }
 
         #displayOnlineUsersList(usersToDisplay) {
-            console.log(`[DEBUG] App: #displayOnlineUsersList - Received usersToDisplay (first 3):`, JSON.stringify((usersToDisplay || []).slice(0,3), null, 2));
-            if (!this.onlineUsersDiv) {
-                console.error("[DEBUG] App: #displayOnlineUsersList - onlineUsersDiv is null! Cannot display users.");
+            if (!this.onlineUsersDiv) return;
+            this.onlineUsersDiv.innerHTML = "";
+            if (usersToDisplay.length === 0) {
+                this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match filters.</p>';
                 return;
             }
-
-            console.log("[DIAGNOSTIC] App: Clearing onlineUsersDiv.innerHTML");
-            this.onlineUsersDiv.innerHTML = ""; // Clear existing content
-
-            if (!usersToDisplay || usersToDisplay.length === 0) { // Check usersToDisplay itself as well
-                console.log("[DEBUG] App: #displayOnlineUsersList - No users to display or usersToDisplay is empty. Setting message.");
-                this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center" style="color: orange; border: 1px solid orange; padding: 10px;">[DIAGNOSTIC] No online users match filters (or usersToDisplay is empty).</p>';
-                return;
-            }
-
-            console.log(`[DIAGNOSTIC] App: Preparing to display ${usersToDisplay.length} users.`);
             const fragment = document.createDocumentFragment();
-            usersToDisplay.forEach((user, index) => {
-                if (!user || !user.image_url || !user.username) {
-                    console.warn(`[DEBUG] App: #displayOnlineUsersList - Skipping user at index ${index} due to missing critical data (image_url or username). User:`, user);
-                    return;
-                }
-                // console.log(`[DIAGNOSTIC] App: Creating element for user: ${user.username}`);
-                const socialMedia = this.#extractSocialMedia(user.description); // Ensure this doesn't throw
-                try {
-                    const userElement = this.uiManager.createUserElement(
-                        user,
-                        'online',
-                        this.#handleUserClick.bind(this),
-                        this.#removeFromPreviousUsers.bind(this),
-                        (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
-                        this.#isBirthday.bind(this),
-                        this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
-                        this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
-                        this.#displayPreviousUsers.bind(this),
-                        (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                        socialMedia,
-                        this.toggleUserCardPreview.bind(this)
-                    );
-                    fragment.appendChild(userElement);
-                    if (this.#userListIntersectionObserver && userElement.dataset.username) {
-                        this.#userListIntersectionObserver.observe(userElement);
-                    }
-                } catch (e) {
-                    console.error(`[DIAGNOSTIC] Error creating user element for ${user.username}:`, e);
-                }
+            usersToDisplay.forEach(user => {
+                if (!user || !user.image_url || !user.username) return;
+                const socialMedia = this.#extractSocialMedia(user.description);
+                const userElement = this.uiManager.createUserElement(
+                    user,
+                    'online',
+                    this.#handleUserClick.bind(this),
+                    this.#removeFromPreviousUsers.bind(this),
+                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
+                    this.#isBirthday.bind(this),
+                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
+                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
+                    this.#displayPreviousUsers.bind(this),
+                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
+                    socialMedia // Add the new socialMedia object here
+                );
+                fragment.appendChild(userElement);
             });
-
-            console.log("[DIAGNOSTIC] App: Appending fragment to onlineUsersDiv. Fragment child count:", fragment.children.length);
             this.onlineUsersDiv.appendChild(fragment);
-            console.log("[DIAGNOSTIC] App: #displayOnlineUsersList finished.");
         }
 
         async #appendOnlineUsersList(newUsers) {
@@ -657,13 +525,9 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this), 
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia, // Add the new socialMedia object here
-                    this.toggleUserCardPreview.bind(this) // New callback
+                    socialMedia // Add the new socialMedia object here
                 );
                 fragment.appendChild(userElement);
-                if (this.#userListIntersectionObserver && userElement.dataset.username) {
-                    this.#userListIntersectionObserver.observe(userElement);
-                }
             });
             this.onlineUsersDiv.appendChild(fragment);
         }
@@ -688,44 +552,12 @@
                     this.#currentOnlineUsersOffset = nextPageData.nextOffset;
                     this.#hasMoreOnlineUsersToLoad = nextPageData.hasMore;
 
-                    // Retrieve current filters
-                    let filterTags = [];
-                    if (this.filterTagsSelect) {
-                        filterTags = Array.from(this.filterTagsSelect.selectedOptions).map(o => o.value.toLowerCase()).filter(t => t !== '');
-                    }
-                    let filterAges = [];
-                    if (this.filterAgeSelect) {
-                        filterAges = Array.from(this.filterAgeSelect.selectedOptions).map(o => parseInt(o.value)).filter(a => !isNaN(a) && a > 0);
-                    }
-
-                    let usersToAppend = nextPageData.users;
-                    // Apply filters if any are selected
-                    if (filterTags.length > 0 || filterAges.length > 0) {
-                        usersToAppend = nextPageData.users.filter(u => {
-                            if (!u || !u.username) return false;
-                            const isPublic = u.current_show === 'public';
-                            let hasTags = true;
-                            if (filterTags.length > 0) {
-                                const userTagsLower = (u.tags && Array.isArray(u.tags)) ? u.tags.map(t => typeof t === 'string' ? t.toLowerCase() : '') : [];
-                                hasTags = filterTags.some(fT => {
-                                    if (fT === 'deepthroat') {
-                                        return userTagsLower.includes('deepthroat') || userTagsLower.includes('blowjob');
-                                    } else if (fT === 'bigboobs') {
-                                        return userTagsLower.includes('bigboobs') || userTagsLower.includes('bigtits');
-                                    }
-                                    return userTagsLower.includes(fT);
-                                });
-                            }
-                            let isAgeMatch = true;
-                            if (filterAges.length > 0) {
-                                isAgeMatch = (u.age && typeof u.age === 'number') ? filterAges.includes(u.age) : false;
-                            }
-                            return isPublic && hasTags && isAgeMatch;
-                        });
-                        console.log(`App: Filtered ${nextPageData.users.length} new users down to ${usersToAppend.length} before appending.`);
-                    }
-
-                    await this.#appendOnlineUsersList(usersToAppend);
+                    // If filters are active, re-applying filters to the newly expanded list might be complex.
+                    // For simple infinite scroll, we typically append all new users.
+                    // If filtering is desired on the full list, then instead of append,
+                    // you might call #applyFiltersAndDisplay() which would re-render the whole list.
+                    // For this step, we will append directly.
+                    await this.#appendOnlineUsersList(nextPageData.users);
                     
                     if (!this.#hasMoreOnlineUsersToLoad) {
                         console.log("App: No more online users to load.");
@@ -752,9 +584,9 @@
             if (!this.previousUsersDiv) return;
             
             // a. Handle Concurrent Loads
-            if (this.#isLoadingMorePreviousUsers && this.#previousUsersDisplayOffset > 0) {
+            if (this.#isLoadingMorePreviousUsers && this.#previousUsersDisplayOffset > 0) { // Only skip if it's a subsequent load
                 console.log("App: Already loading more previous users. Skipping.");
-                return;
+                return; 
             }
             this.#isLoadingMorePreviousUsers = true;
             console.log("App: Starting #displayPreviousUsers. Offset:", this.#previousUsersDisplayOffset);
@@ -773,16 +605,11 @@
             try {
                 // b. Initial Load Specifics
                 if (this.#previousUsersDisplayOffset === 0) {
-                    // Unobserve all previous elements before clearing
-                    if (this.#userListIntersectionObserver && this.previousUsersDiv) {
-                        this.previousUsersDiv.querySelectorAll('.user-info').forEach(el => this.#userListIntersectionObserver.unobserve(el));
-                    }
-                    this.previousUsersDiv.innerHTML = ''; // Clear only on initial load
-                    this.#hasMorePreviousUsersToLoad = true; // Reset on initial load
-                    if (this.#previousUsers.length === 0) {
-                        console.log("App: Previous users array is empty, loading from storage.");
-                        this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
-                    }
+                this.previousUsersDiv.innerHTML = ''; // Clear only on initial load
+                this.#hasMorePreviousUsersToLoad = true; // Reset on initial load
+                if (this.#previousUsers.length === 0) { // Only load from storage if the array is empty
+                    console.log("App: Previous users array is empty, loading from storage.");
+                    this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
                 }
                 if (this.#previousUsers.length === 0) {
                     this.previousUsersDiv.innerHTML = '<p class="text-muted w3-center">No viewing history.</p>';
@@ -886,13 +713,9 @@
                         this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), 
                         this.#displayPreviousUsers.bind(this),
                         (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                        socialMedia, // Add the new socialMedia object here
-                        this.toggleUserCardPreview.bind(this) // New callback
+                        socialMedia // Add the new socialMedia object here
                     );
                     fragment.appendChild(userElement);
-                    if (this.#userListIntersectionObserver && userElement.dataset.username) {
-                        this.#userListIntersectionObserver.observe(userElement);
-                    }
                 });
                 this.previousUsersDiv.appendChild(fragment);
             }
@@ -932,22 +755,10 @@
         }
 
         #handleUserClick(user) {
-            if (!this.dynamicIframeContainer || !user || !user.username) return;
-
-            const firstIframe = this.dynamicIframeContainer.querySelector('iframe');
-
-            if (firstIframe) {
-                const newSrc = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-                console.log(`[DEBUG] App: #handleUserClick - Setting iframe ${firstIframe.id} src to: ${newSrc}`);
-                firstIframe.src = newSrc;
-                // Optionally update the title if it was set to the username
-                // firstIframe.title = user.username;
-            } else {
-                console.warn("[DEBUG] App: #handleUserClick - No iframes found in dynamicIframeContainer to update on user click.");
-                // Fallback: maybe update all iframes or the first one created by #updateIframes
-                // For now, if no iframe, do nothing.
-            }
-
+            if (!this.mainIframe || !this.mainIframe2 || !user || !user.username) return;
+            const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
+            const selectedIframe = (iframeChoiceRadio?.value === 'mainIframe2') ? this.mainIframe2 : this.mainIframe;
+            selectedIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
             this.#addToPreviousUsers(user).catch(console.error);
         }
@@ -981,21 +792,12 @@
         async #clearPreviousUsers() {
             if (!confirm("Are you sure you want to clear your entire viewing history?")) return;
             this.uiManager.showOnlineLoadingIndicator("Clearing history...");
-
-            // Unobserve all elements in previousUsersDiv before clearing
-            if (this.#userListIntersectionObserver && this.previousUsersDiv) {
-                this.previousUsersDiv.querySelectorAll('.user-info').forEach(el => this.#userListIntersectionObserver.unobserve(el));
-            }
-
             this.#previousUsers = [];
             try {
                 await this.storageManager.saveUsers("previousUsers", []); 
                 if (this.#storageType === "indexedClicked" || this.#storageType?.startsWith('IndexedDB:')) {
-                    // This assumes saveUsers with an empty array effectively clears it
+                    // This assumes saveUsers with an empty array effectively clears it or an explicit delete might be needed.
                 }
-                // #displayPreviousUsers will be called and it will handle the empty state
-                // by setting innerHTML to "No viewing history." and not adding any new observers.
-                this.#previousUsersDisplayOffset = 0; // Reset offset for displayPreviousUsers
                 await this.#displayPreviousUsers();
             } catch (error) {
                 console.error("Error clearing previous users history:", error);
@@ -1025,27 +827,11 @@
         }
 
         #validateDOMReferences() {
-            const criticalElementsMap = {
-                "onlineUsersDiv": this.onlineUsersDiv,
-                "previousUsersDiv": this.previousUsersDiv,
-                "dynamicIframeContainer": this.dynamicIframeContainer, // New
-                "iframeCountSelector": this.iframeCountSelector,   // New
-                "storageTypeSelector": this.storageTypeSelector,
-                "filterTagsSelect": this.filterTagsSelect,
-                "filterAgeSelect": this.filterAgeSelect
-            };
-
-            const missing = Object.keys(criticalElementsMap).filter(key => !criticalElementsMap[key]);
-
-            if (missing.length > 0) {
-                const missingStr = missing.join(', ');
-                console.error(`CRITICAL ERROR: Missing essential DOM elements: ${missingStr}. App might not function.`);
-                // Attempt to show error via UIManager if available, otherwise alert.
-                if (this.uiManager && typeof this.uiManager.showOnlineErrorDisplay === 'function') {
-                    this.uiManager.showOnlineErrorDisplay(`Initialization failed: Missing elements (${missingStr}).`);
-                } else {
-                    alert(`CRITICAL ERROR: Missing essential DOM elements: ${missingStr}. App might not function. Check console.`);
-                }
+            const critical = [this.onlineUsersDiv, this.previousUsersDiv, this.mainIframe, this.mainIframe2, this.storageTypeSelector, this.filterTagsSelect, this.filterAgeSelect];
+            if (critical.some(el => !el)) { 
+                const missing = critical.map((el,i)=>el?null:["onlineUsersDiv","previousUsersDiv","mainIframe","mainIframe2","storageTypeSelector","filterTagsSelect","filterAgeSelect"][i]).filter(Boolean).join(', ');
+                console.error(`CRITICAL ERROR: Missing essential DOM elements: ${missing}. App might not function.`);
+                this.uiManager.showOnlineErrorDisplay(`Initialization failed: Missing elements (${missing}).`);
                 return false;
             }
             return true;
@@ -1061,35 +847,6 @@
                     this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
                     await this.#displayPreviousUsers();
                     this.uiManager.hideOnlineLoadingIndicator();
-                }
-            });
-
-            if (this.globalUserCardIframeToggleRadios) {
-                if (this.globalUserCardIframeToggleRadios.length > 0) {
-                    console.log("[DEBUG] App: #setupEventListeners - Setting up event listeners for userCardPreviewMode radio buttons.");
-                    this.globalUserCardIframeToggleRadios.forEach(radio => {
-                        radio.addEventListener('change', (event) => {
-                            this.userCardPreviewMode = event.target.value;
-                            console.log(`[DEBUG] App: User card preview mode changed to: ${this.userCardPreviewMode}`);
-                            if (this.userCardPreviewMode === 'image') {
-                                this.#revertAllCardPreviewsToImage();
-                            } else {
-                                // When switching to 'iframe-in-view', trigger a check for currently visible items.
-                                this.#checkVisibleUserCardsForPreviewUpdate();
-                            }
-                        });
-                    });
-                } else {
-                    console.warn("[DEBUG] App: #setupEventListeners - No radio buttons found for userCardPreviewMode.");
-                }
-            } else {
-                console.warn("[DEBUG] App: #setupEventListeners - globalUserCardIframeToggleRadios is null.");
-            }
-
-            this.iframeCountSelector?.addEventListener("change", (event) => {
-                const count = parseInt(event.target.value);
-                if (!isNaN(count)) {
-                    this.#updateIframes(count);
                 }
             });
 
@@ -1166,32 +923,26 @@
                 });
             }
             if (typeof $ !== 'undefined') {
-                console.log("[DEBUG] App: #setupEventListeners - jQuery detected. Setting up #toggleControlsButton with jQuery.");
                 const $toggleButton = $('#toggleControlsButton');
                 const $sectionsToToggle = $('#controlsBarContainer, #snippetManagerContainer, #mainTextAreaContainer');
 
-                if ($toggleButton.length) {
-                    $toggleButton.on('click', () => {
-                        console.log("[DEBUG] App: #toggleControlsButton (jQuery) clicked.");
-                        $sectionsToToggle.slideToggle(function() {
-                            if ($('#controlsBarContainer').is(':visible')) {
-                                $toggleButton.text('Hide All Controls & Forms');
-                            } else {
-                                $toggleButton.text('Show All Controls & Forms');
-                            }
-                        });
+                $toggleButton.on('click', () => {
+                    $sectionsToToggle.slideToggle(function() { 
+                        if ($('#controlsBarContainer').is(':visible')) {
+                            $toggleButton.text('Hide All Controls & Forms');
+                        } else {
+                            $toggleButton.text('Show All Controls & Forms');
+                        }
                     });
-                    // Initial button text
-                    if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
-                        $toggleButton.text('Show All Controls & Forms');
-                    } else {
-                        $toggleButton.text('Hide All Controls & Forms');
-                    }
+                });
+                // Initial button text
+                if (!$('#controlsBarContainer').is(':visible')) { // This checks visibility based on current state which includes inline styles
+                    $toggleButton.text('Show All Controls & Forms');
                 } else {
-                    console.warn("[DEBUG] App: #setupEventListeners - #toggleControlsButton not found by jQuery.");
+                     $toggleButton.text('Hide All Controls & Forms');
                 }
             } else {
-                console.log("[DEBUG] App: #setupEventListeners - jQuery not loaded. Using vanilla JS for #toggleControlsButton.");
+                console.error('jQuery is not loaded. Some UI features might not work.');
                 const toggleBtn = document.getElementById('toggleControlsButton');
                 const controlsBar = document.getElementById('controlsBarContainer');
                 const snippetManager = document.getElementById('snippetManagerContainer');
@@ -1317,96 +1068,9 @@
             window.initializeAllUsersFromScriptJS = (cb) => { if(typeof cb==='function')cb() };
             
             this.#adjustLayoutHeights(); // Adjust heights after initial load
-            this.#updateIframes(parseInt(this.iframeCountSelector?.value || '1')); // Initialize iframes
-            this.#initializeIntersectionObserver(); // New
 
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
-        }
-
-        #initializeIntersectionObserver() {
-            const observerOptions = {
-                root: null, // Use the viewport as the root
-                rootMargin: '0px 0px 50px 0px', // Trigger a bit before it's fully in view (bottom margin)
-                threshold: 0.01 // Trigger if even 1% is visible
-            };
-
-            const observerCallback = (entries, observer) => {
-                if (this.userCardPreviewMode !== 'iframe-in-view') {
-                    return; // Do nothing if not in the correct mode
-                }
-
-                // Basic scroll speed detection (can be refined)
-                // If many entries change rapidly, assume fast scroll.
-                // This is a very rough heuristic. A proper implementation would track scroll events.
-                if (entries.length > 10 && entries.every(e => e.isIntersecting !== (e.target.dataset.previewState === 'iframe'))) { // Heuristic for many changes
-                    this.#isScrollingFast = true;
-                    clearTimeout(this.#scrollCheckTimeout);
-                    this.#scrollCheckTimeout = setTimeout(() => this.#isScrollingFast = false, 300); // Reset after a pause
-                }
-
-                if (this.#isScrollingFast) {
-                    console.log("App: Fast scroll detected, pausing iframe conversion.");
-                    return;
-                }
-
-                entries.forEach(entry => {
-                    const userElement = entry.target;
-                    const username = userElement.dataset.username;
-                    if (!username) return;
-
-                    if (entry.isIntersecting) {
-                        // console.log(`App IO: ${username} is intersecting. Current state: ${userElement.dataset.previewState}`);
-                        if (userElement.dataset.previewState !== 'iframe') {
-                           this.toggleUserCardPreview(userElement, username, 'iframe');
-                        }
-                    } else {
-                        // console.log(`App IO: ${username} is NOT intersecting. Current state: ${userElement.dataset.previewState}`);
-                        if (userElement.dataset.previewState === 'iframe') {
-                           this.toggleUserCardPreview(userElement, username, 'image');
-                        }
-                    }
-                });
-            };
-
-            this.#userListIntersectionObserver = new IntersectionObserver(observerCallback, observerOptions);
-            console.log("App: IntersectionObserver initialized.");
-        }
-
-        #updateIframes(count) {
-            if (!this.dynamicIframeContainer) {
-                console.error("[DEBUG] App: #updateIframes - dynamicIframeContainer is null! Cannot update iframes.");
-                return;
-            }
-
-            console.log(`[DEBUG] App: #updateIframes - Updating iframes to count: ${count}`);
-            this.dynamicIframeContainer.innerHTML = ''; // Clear existing iframes
-            this.dynamicIframeContainer.dataset.count = count; // For CSS styling
-
-            const defaultSrc = "https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never";
-            const selectedUsers = this.#setDefaultIframes(); // Get user data
-            console.log(`[DEBUG] App: #updateIframes - selectedUsers for iframes (first 3):`, JSON.stringify((selectedUsers || []).slice(0,3), null, 2));
-
-            for (let i = 0; i < count; i++) {
-                const iframe = document.createElement('iframe');
-                iframe.id = `dynamicIframe-${i}`;
-
-                let userSrc = defaultSrc;
-                let userTitle = `Viewer ${i + 1}`;
-
-                if (selectedUsers && selectedUsers[i] && selectedUsers[i].username) {
-                    userSrc = `https://chaturbate.com/embed/${selectedUsers[i].username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-                    userTitle = selectedUsers[i].username;
-                }
-                console.log(`[DEBUG] App: #updateIframes - Creating iframe ${i}: id=${iframe.id}, src=${userSrc}, title=${userTitle}`);
-
-                iframe.src = userSrc;
-                iframe.title = userTitle;
-                iframe.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
-                this.dynamicIframeContainer.appendChild(iframe);
-            }
-            this.#adjustLayoutHeights(); // Re-adjust layout after adding iframes
         }
 
         #startFetchInterval() {
@@ -1497,107 +1161,11 @@
             });
         }
 
-        toggleUserCardPreview(userElement, username, forceState = null) {
-            if (!userElement || !username) return;
-            if (!userElement.imageContainerEl || !userElement.imageEl) {
-                console.warn("User element is missing imageContainerEl or imageEl references", userElement);
-                return;
-            }
-
-            const container = userElement.imageContainerEl;
-            let currentState = container.classList.contains('iframe-active') ? 'iframe' : 'image';
-            let newState = forceState;
-
-            if (!newState) { // If not forcing a state, toggle
-                newState = (currentState === 'image') ? 'iframe' : 'image';
-            }
-
-            // This condition might be redundant if the goal is to always reach the target 'newState'
-            // if (newState === currentState && forceState !== null) {
-            //     console.log(`[DEBUG] App: toggleUserCardPreview - Already in target state '${newState}' for ${username}. No change.`);
-            //     return;
-            // }
-
-            console.log(`[DEBUG] App: toggleUserCardPreview for ${username}. UserElement:`, userElement, `ForceState: ${forceState}, CurrentInternalState: ${currentState}, TargetNewState: ${newState}`);
-
-            if (newState === 'iframe') {
-                if (currentState === 'image' || !userElement.iframeEl) { // Only create/setup if not already iframe OR if iframeEl somehow got removed
-                    console.log(`[DEBUG] App: toggleUserCardPreview - Condition met to create or update iframe for ${username}. Current state: ${currentState}, iframeEl exists: ${!!userElement.iframeEl}`);
-                    if (!userElement.iframeEl) {
-                        console.log(`[DEBUG] App: toggleUserCardPreview - Creating new iframe element for ${username}.`);
-                        userElement.iframeEl = document.createElement('iframe');
-                        userElement.iframeEl.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
-                        userElement.iframeEl.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
-                        // CSS already handles visibility:hidden initially, and width/height 100%
-                        container.appendChild(userElement.iframeEl);
-                    }
-                    // Set src only when intending to show, to prevent loading all iframes upfront
-                    userElement.iframeEl.src = `https://chaturbate.com/embed/${username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&mobileRedirect=never&bgcolor=black`;
-                    userElement.iframeEl.title = `${username} preview`;
-                }
-                container.classList.add('iframe-active');
-                userElement.dataset.previewState = 'iframe';
-            } else { // newState === 'image'
-                if (userElement.iframeEl) {
-                    userElement.iframeEl.src = 'about:blank'; // Stop loading, free resources
-                    // Optionally, remove the iframe after a short delay or keep it for reuse
-                    // For simplicity now, keep it but hidden. CSS handles visibility.
-                }
-                container.classList.remove('iframe-active');
-                userElement.dataset.previewState = 'image';
-            }
-        }
-
-        #revertAllCardPreviewsToImage() {
-            console.log("App: Reverting all active card previews to images.");
-            const activePreviews = document.querySelectorAll('.user-image-container.iframe-active');
-            activePreviews.forEach(container => {
-                const userElement = container.closest('.user-info'); // Assuming .user-info is the main card element
-                if (userElement && userElement.dataset.username) {
-                    this.toggleUserCardPreview(userElement, userElement.dataset.username, 'image');
-                }
-            });
-            // Also ensure IntersectionObserver stops trying to convert them if mode changed.
-            // (This is handled by the mode check in observer callback)
-        }
-
-        #checkVisibleUserCardsForPreviewUpdate() {
-            // This method will be primarily driven by the IntersectionObserver.
-            // However, it can be called manually to process currently visible items if needed.
-            console.log("App: Checking visible user cards for preview update (IntersectionObserver will handle ongoing).");
-            // For initial implementation, we rely on IntersectionObserver to trigger for currently visible items
-            // when it's initialized or when the mode changes.
-            // Manually iterating and checking visibility here can be complex and less performant than IO.
-            // If IO is setup correctly, it should handle elements already in view upon activation.
-            if (this.userCardPreviewMode === 'iframe-in-view') {
-                // Force re-evaluation of observed items, though IO should do this.
-                // This might involve iterating through all observed elements and checking their current intersection status
-                // if the observer doesn't automatically re-trigger on mode change.
-                // For now, assume IO handles initial visible set.
-                if (this.#userListIntersectionObserver) {
-                    // Re-observe all currently displayed user cards to trigger updates
-                    const allUserCards = [
-                        ...(this.onlineUsersDiv?.querySelectorAll('.user-info') || []),
-                        ...(this.previousUsersDiv?.querySelectorAll('.user-info') || [])
-                    ];
-                    allUserCards.forEach(card => {
-                        // Temporarily unobserve and reobserve to force a check if observer is already active
-                        // This is a bit of a heavy-handed way to force re-check.
-                        // A more refined approach might be needed if IO doesn't auto-trigger.
-                        // this.#userListIntersectionObserver.unobserve(card);
-                        // this.#userListIntersectionObserver.observe(card);
-                        // Better: just let the IO do its job. If an item is visible, it should be processed.
-                    });
-                    console.log("App: IntersectionObserver is active, it will handle visible cards.");
-                }
-            }
-        }
-
     } // End App Class
 
     // DOMContentLoaded Listener
     document.addEventListener('DOMContentLoaded', () => {
-            const app = new App(); // Correct placement
+        const app = new App();
         app.start().catch(error => {
             console.error("Unhandled error during app startup:", error);
             const body = document.body;
