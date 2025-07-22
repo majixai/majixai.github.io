@@ -135,30 +135,6 @@
                     <button id="copyJsErrorsButton">Copy JS Errors</button>
                 </div>
             </fieldset>
-
-            <fieldset>
-                <legend>Viewer Setup</legend>
-                <div class="control-group">
-                    <label for="iframeCountSelector">Number of Viewers:</label>
-                    <select id="iframeCountSelector">
-                        <option value="1" selected>1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>User Card Previews:</label>
-                    <div>
-                        <input type="radio" id="userCardPreviewImages" name="userCardPreviewMode" value="image" checked>
-                        <label for="userCardPreviewImages" style="display: inline; font-weight: normal;">Show Images</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="userCardPreviewIframes" name="userCardPreviewMode" value="iframe-in-view">
-                        <label for="userCardPreviewIframes" style="display: inline; font-weight: normal;">Show Previews in View</label>
-                    </div>
-                </div>
-            </fieldset>
         </div>
 
         <!-- Main Content Area (Columns) -->
@@ -177,8 +153,30 @@
             <!-- Main Viewing Column -->
             <div class="iframe-column">
                 <h2>Viewer</h2>
-                <div id="dynamicIframeContainer" class="dynamic-iframe-container">
-                    <!-- Iframes will be dynamically injected here by JavaScript -->
+                <div class="iframe-selector">
+                    <label>
+                        <input type="radio" name="iframeChoice" value="mainIframe" checked> Viewport 1
+                    </label>
+                    <label>
+                        <input type="radio" name="iframeChoice" value="mainIframe2"> Viewport 2
+                    </label>
+                </div>
+                <div class="iframe-container">
+                    <iframe id="mainIframe"
+                            src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
+                            title="Main Viewer"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            sandbox="allow-scripts allow-same-origin allow-presentation">
+                            <!-- Security Note: sandbox limits iframe capabilities. Adjust 'allow-*' as needed but be cautious. -->
+                    </iframe>
+                </div>
+                 <div class="iframe-container">
+                    <iframe id="mainIframe2"
+                            src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never"
+                            title="Secondary Viewer"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            sandbox="allow-scripts allow-same-origin allow-presentation">
+                     </iframe>
                 </div>
             </div>
 
@@ -210,6 +208,5 @@
     <script src="storage.js"></script>
     <script src="ui.js"></script>
     <script src="script.js"></script>
-    <script src="main.js"></script>
 </body>
 </html>
