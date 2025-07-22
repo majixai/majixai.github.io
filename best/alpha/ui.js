@@ -77,14 +77,18 @@ class UIManager {
             socialMediaHTML += links.join(' | ') + '</p>';
         }
 
+        const slideshowControls = user.image_urls.length > 1 ? `
+            <div class="slideshow-controls">
+                <button class="prev-btn">&lt;</button>
+                <button class="next-btn">&gt;</button>
+            </div>
+        ` : '';
+
         userElement.innerHTML = `
             <div class="user-image-container">
                 <img src="${user.image_urls[0]}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
                 <canvas></canvas>
-                <div class="slideshow-controls">
-                    <button class="prev-btn">&lt;</button>
-                    <button class="next-btn">&gt;</button>
-                </div>
+                ${slideshowControls}
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
