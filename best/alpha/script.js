@@ -324,7 +324,11 @@
             try {
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
                 console.log("App: Fetched initial data:", initialData);
-                this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
+                if (initialData && initialData.users) {
+                    this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
+                } else {
+                    this.#allOnlineUsersData = [];
+                }
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
@@ -1443,5 +1447,3 @@
     });
 
 })();
-
-[end of best/alpha/script.js]
