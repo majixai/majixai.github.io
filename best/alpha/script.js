@@ -110,6 +110,9 @@
             this.ocrEnabled = document.getElementById('ocrEnabled');
             this.controlsModal = document.getElementById('controlsModal');
             this.closeControlsModal = document.getElementById('closeControlsModal');
+            this.slotsModal = document.getElementById('slotsModal');
+            this.closeSlotsModal = document.getElementById('closeSlotsModal');
+            this.spinButton = document.getElementById('spinButton');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -1027,6 +1030,24 @@
                 if (this.controlsModal) this.controlsModal.style.display = 'none';
             });
 
+            this.closeSlotsModal?.addEventListener('click', () => {
+                if (this.slotsModal) this.slotsModal.style.display = 'none';
+            });
+
+            let lastTap = 0;
+            document.addEventListener('touchend', (event) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 500 && tapLength > 0) {
+                    if (this.slotsModal) this.slotsModal.style.display = 'flex';
+                }
+                lastTap = currentTime;
+            });
+
+            this.spinButton?.addEventListener('click', () => {
+                this.#spinSlots();
+            });
+
             // Listen for window resize events to adjust layout
             let resizeTimeout;
             window.addEventListener('resize', () => {
@@ -1302,6 +1323,21 @@
             this.#fetchInterval = setInterval(async () => { 
                 await this.#fetchDataAndUpdateUI(); 
             }, fetchIntervalDuration); 
+        }
+
+        #spinSlots() {
+            const reels = document.querySelectorAll('.reel');
+            const symbols = ['🍒', '🍋', '🍊', '🍉', '🍇', '🍓'];
+            reels.forEach(reel => {
+                const interval = setInterval(() => {
+                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(interval);
+                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                }, 1000);
+            });
         }
 
         #adjustLayoutHeights() {
