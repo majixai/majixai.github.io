@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room Viewer</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/face-api.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="symbols.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -201,14 +204,14 @@
 
         <!-- Slots Machine Modal -->
         <div id="slotsModal" class="modal" style="display:none;">
-            <div class="modal-content fullscreen">
+            <div class="modal-content fullscreen w3-animate-zoom">
                 <span class="close-button" id="closeSlotsModal">&times;</span>
                 <div class="slots-container">
                     <div class="reel"></div>
                     <div class="reel"></div>
                     <div class="reel"></div>
                 </div>
-                <button id="spinButton">Spin</button>
+                <button id="spinButton" class="btn btn-primary btn-lg">Spin</button>
             </div>
         </div>
     </div>
