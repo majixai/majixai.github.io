@@ -1,12 +1,87 @@
+const FORMATIONS = {
+    I_FORM_TWINS: { C: {x:0, y:0}, QB: {x:-2, y:0}, HB: {x:-4, y:0}, WR1: {x:0, y:20}, WR2: {x:0, y:23}, TE: {x:0, y:-8} },
+    SHOTGUN_SPREAD: { C: {x:0, y:0}, QB: {x:-5, y:0}, WR1: {x:0, y:22}, WR2: {x:0, y:-22}, WR3: {x:0, y:12}, WR4: {x:0, y:-12} },
+    SHOTGUN_TRIPS: { C: {x:0, y:0}, QB: {x:-5, y:0}, WR1: {x:0, y:22}, WR2: {x:0, y:12}, WR3: {x:0, y:28}, WR4: {x:0, y:-22} },
+    SINGLEBACK_ACE: { C: {x:0, y:0}, QB: {x:-2, y:0}, HB: {x:-5, y:0}, WR1: {x:0, y:22}, WR2: {x:0, y:-22} },
+    PISTOL_ACE: { C: {x:0, y:0}, QB: {x:-3, y:0}, HB: {x:-5, y:0}, WR1: {x:0, y:22}, WR2: {x:0, y:-22}},
+    PUNT_FORMATION: { C: {x:0, y:0}, P: {x:-15, y:0} },
+    FG_FORMATION: { C: {x:0, y:0}, H: {x:-8, y:0}, K: {x:-10, y:0} },
 
+    DEF_4_3: { DL1: {x:1, y:3}, DL2: {x:1, y:-3}, DL3: {x:1, y:8}, DL4: {x:1, y:-8}, LB1: {x:5, y:0}, LB2: {x:5, y:10}, LB3: {x:5, y:-10}, CB1: {x:1, y:22}, CB2: {x:1, y:-22}, S1: {x:12, y:8}, S2: {x:12, y:-8} },
+    DEF_3_4: { DL1: {x:1, y:0}, DL2: {x:1, y:5}, DL3: {x:1, y:-5}, LB1: {x:5, y:3}, LB2: {x:5, y:-3}, LB3: {x:2, y:10}, LB4: {x:2, y:-10}, CB1: {x:1, y:22}, CB2: {x:1, y:-22}, S1: {x:12, y:0} },
+    DEF_NICKEL: { DL1: {x:1, y:3}, DL2: {x:1, y:-3}, DL3: {x:1, y:8}, DL4: {x:1, y:-8}, LB1: {x:5, y:5}, LB2: {x:5, y:-5}, CB1: {x:1, y:22}, CB2: {x:1, y:-22}, CB3: {x:5, y:12}, S1: {x:12, y:8}, S2: {x:12, y:-8} },
+    DEF_PUNT_RETURN: { R: {x:40, y:0} },
+    DEF_FG_BLOCK: { DL1: {x:1, y:0}, DL2: {x:1, y:3}, DL3: {x:1, y:-3} }
+};
 
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+const ROUTES = {
+    // Short
+    SLANT: [{x:3, y:2}],
+    OUT: [{x:5, y:0}, {x:5, y:5}],
+    IN: [{x:5, y:0}, {x:5, y:-5}],
+    DRAG: [{x:4, y:-8}],
+    FLAT: [{x:1, y:4}],
+    SCREEN: [{x:-2, y:3}],
+    // Medium
+    CURL: [{x:12, y:0}, {x:10, y:0}],
+    COMEBACK: [{x:15, y:0}, {x:13, y:3}],
+    POST: [{x:12, y:0}, {x:20, y:-5}],
+    CORNER: [{x:12, y:0}, {x:20, y:5}],
+    SEAM: [{x:22, y:0}],
+    // Deep
+    GO: [{x:30, y:0}],
+    FADE: [{x:25, y:3}],
+    POST_CORNER: [{x:12, y:0}, {x:20, y:-5}, {x:25, y:0}],
+    OUT_AND_UP: [{x:10,y:0},{x:10,y:5},{x:25,y:5}],
+    // HB
+    DIVE: [{x:3, y:0}],
+    SWEEP: [{x:1, y:5}, {x:10, y:5}],
+    SWING: [{x:2, y:5}, {x:8, y:5}],
+    BLOCK: [],
+};
 
-import { GoogleGenAI } from "@google/genai";
-import { PLAYBOOK, FORMATIONS, ROUTES } from './playbook';
+const PLAYBOOK = {
+    // --- OFFENSE: I-FORM ---
+    'hb_dive': { id: 'hb_dive', name: 'HB Dive', description: 'A direct run up the middle.', type: 'offense_run', formation: FORMATIONS.I_FORM_TWINS, formationName: 'I-Form', playCategory: 'Run', audibles: ['play_action', 'pitch_right'], routes: { HB: ROUTES.DIVE } },
+    'play_action': { id: 'play_action', name: 'PA Boot', description: 'Fake the run, QB rolls out to pass.', type: 'offense_pass', formation: FORMATIONS.I_FORM_TWINS, formationName: 'I-Form', playCategory: 'Deep Pass', audibles: ['deep_bomb', 'hb_dive'], routes: { WR1: ROUTES.POST, TE: ROUTES.FLAT }, assignments: { WR1: { passButton: 'c' }, TE: { passButton: 'b' } } },
+    'pitch_right': { id: 'pitch_right', name: 'HB Toss', description: 'Toss the ball to the HB running wide.', type: 'offense_run', formation: FORMATIONS.I_FORM_TWINS, formationName: 'I-Form', playCategory: 'Run', audibles: ['hb_dive', 'qb_sneak'], routes: { HB: ROUTES.SWEEP } },
+    'te_attack': { id: 'te_attack', name: 'TE Attack', description: 'Routes designed to get the TE open.', type: 'offense_pass', formation: FORMATIONS.I_FORM_TWINS, formationName: 'I-Form', playCategory: 'Short Pass', audibles: ['hb_dive', 'pitch_right'], routes: { TE: ROUTES.CORNER, WR1: ROUTES.SLANT, WR2: ROUTES.GO }, assignments: { TE: { passButton: 'c' }, WR1: { passButton: 'b' } } },
+
+    // --- OFFENSE: SHOTGUN ---
+    'four_verts': { id: 'four_verts', name: 'Four Verticals', description: 'All four receivers run deep go routes.', type: 'offense_pass', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Deep Pass', audibles: ['stick', 'wr_screen'], routes: { WR1: ROUTES.GO, WR2: ROUTES.GO, WR3: ROUTES.SEAM, WR4: ROUTES.SEAM }, assignments: { WR1: { passButton: 'd' }, WR2: { passButton: 'b' }, WR3: { passButton: 'c' } } },
+    'stick': { id: 'stick', name: 'Stick', description: 'Quick pass concept with a vertical and a flat route.', type: 'offense_pass', formation: FORMATIONS.SHOTGUN_TRIPS, formationName: 'Shotgun', playCategory: 'Short Pass', audibles: ['four_verts', 'hb_draw'], routes: { WR1: ROUTES.GO, WR2: ROUTES.OUT, WR3: ROUTES.FLAT }, assignments: { WR2: { passButton: 'c' }, WR3: { passButton: 'b' } } },
+    'wr_screen': { id: 'wr_screen', name: 'WR Screen', description: 'Quick throw to a WR behind blockers.', type: 'offense_pass', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Short Pass', audibles: ['four_verts', 'hb_draw'], routes: { WR1: ROUTES.SCREEN, WR2: ROUTES.BLOCK, WR3: ROUTES.BLOCK }, assignments: { WR1: { passButton: 'b' } } },
+    'hb_draw': { id: 'hb_draw', name: 'HB Draw', description: 'Fake a pass and hand off to the HB for a delayed run.', type: 'offense_run', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Run', audibles: ['four_verts', 'stick'], routes: { HB: ROUTES.DIVE } },
+    'mesh': { id: 'mesh', name: 'Mesh', description: 'Two receivers cross paths over the middle.', type: 'offense_pass', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Short Pass', audibles: ['four_verts', 'stick'], routes: { WR3: [{x:10, y:-10}], WR4: [{x:10, y:10}], WR1: ROUTES.GO, WR2: ROUTES.CURL }, assignments: { WR3: { passButton: 'b' }, WR4: { passButton: 'c' } } },
+    'qb_sneak': { id: 'qb_sneak', name: 'QB Sneak', description: 'QB runs forward for a short gain.', type: 'offense_run', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Run', audibles: [], routes: { QB: [{x:2,y:0}] } },
+    'double_outs': { id: 'double_outs', name: 'Double Outs', description: 'Both outside receivers run 10 yard out routes.', type: 'offense_pass', formation: FORMATIONS.SHOTGUN_SPREAD, formationName: 'Shotgun', playCategory: 'Short Pass', audibles: ['mesh', 'hb_draw'], routes: { WR1: ROUTES.OUT, WR2: ROUTES.OUT, WR3: ROUTES.SEAM, WR4: ROUTES.SEAM }, assignments: { WR1: { passButton: 'd' }, WR2: { passButton: 'b' } } },
+
+    // --- OFFENSE: SINGLEBACK ---
+    'levels': { id: 'levels', name: 'Levels', description: 'Two receivers run in-breaking routes at different depths.', type: 'offense_pass', formation: FORMATIONS.SINGLEBACK_ACE, formationName: 'Singleback', playCategory: 'Short Pass', audibles: ['pa_cross', 'hb_stretch'], routes: { WR1: ROUTES.IN, WR2: ROUTES.DRAG }, assignments: { WR1: { passButton: 'c' }, WR2: { passButton: 'b' } } },
+    'pa_crossers': { id: 'pa_crossers', name: 'PA Crossers', description: 'Play action with receivers crossing deep.', type: 'offense_pass', formation: FORMATIONS.SINGLEBACK_ACE, formationName: 'Singleback', playCategory: 'Deep Pass', audibles: ['levels', 'hb_stretch'], routes: { WR1: ROUTES.POST, WR2: [{x:15, y:15}]}, assignments: { WR1: { passButton: 'c' }, WR2: { passButton: 'b' } } },
+    'hb_stretch': { id: 'hb_stretch', name: 'HB Stretch', description: 'Outside run for the halfback.', type: 'offense_run', formation: FORMATIONS.SINGLEBACK_ACE, formationName: 'Singleback', playCategory: 'Run', audibles: ['levels', 'pa_crossers'], routes: { HB: ROUTES.SWEEP } },
+    'sluggo': { id: 'sluggo', name: 'Slant and Go', description: 'Receiver fakes a slant then goes deep.', type: 'offense_pass', formation: FORMATIONS.SINGLEBACK_ACE, formationName: 'Singleback', playCategory: 'Deep Pass', audibles: ['levels', 'hb_stretch'], routes: { WR1: [{x:3, y:2}, {x:25,y:2}], WR2: ROUTES.DRAG }, assignments: { WR1: { passButton: 'c' }, WR2: { passButton: 'b' } } },
+
+    // --- OFFENSE: PISTOL ---
+    'pistol_pa_seam': { id: 'pistol_pa_seam', name: 'Pistol PA Seams', description: 'Deep shot to the seams out of the pistol formation.', type: 'offense_pass', formation: FORMATIONS.PISTOL_ACE, formationName: 'Pistol', playCategory: 'Deep Pass', audibles: ['pistol_dive', 'pistol_read'], routes: { WR1: ROUTES.SEAM, WR2: ROUTES.SEAM }, assignments: { WR1: { passButton: 'c' }, WR2: { passButton: 'b' } } },
+    'pistol_dive': { id: 'pistol_dive', name: 'Pistol Dive', description: 'Quick handoff up the middle from the pistol.', type: 'offense_run', formation: FORMATIONS.PISTOL_ACE, formationName: 'Pistol', playCategory: 'Run', audibles: ['pistol_pa_seam', 'pistol_read'], routes: { HB: ROUTES.DIVE } },
+
+    // --- SPECIAL TEAMS ---
+    'field_goal': { id: 'field_goal', name: 'Field Goal', description: 'Attempt a field goal.', type: 'special_teams', formation: FORMATIONS.FG_FORMATION, formationName: 'Field Goal', playCategory: 'Special Teams' },
+    'punt': { id: 'punt', name: 'Punt', description: 'Punt the ball downfield.', type: 'special_teams', formation: FORMATIONS.PUNT_FORMATION, formationName: 'Punt', playCategory: 'Special Teams' },
+
+    // --- DEFENSE ---
+    'cover_2': { id: 'cover_2', name: 'Cover 2', description: 'Two deep safeties, corners cover the flats.', type: 'defense', formation: FORMATIONS.DEF_4_3, formationName: '4-3', playCategory: 'Zone', assignments: { S1: { cover: 'zone', area: 'deep_half_right' }, S2: { cover: 'zone', area: 'deep_half_left' }, CB1: { cover: 'zone', area: 'flat' }, CB2: { cover: 'zone', area: 'flat' } } },
+    'cover_3': { id: 'cover_3', name: 'Cover 3', description: 'Three deep defenders, four underneath.', type: 'defense', formation: FORMATIONS.DEF_4_3, formationName: '4-3', playCategory: 'Zone', assignments: { S1: { cover: 'zone', area: 'deep_middle' }, CB1: { cover: 'zone', area: 'deep_third' }, CB2: { cover: 'zone', area: 'deep_third' } } },
+    'man_2_under': { id: 'man_2_under', name: '2 Man Under', description: 'Man coverage with two deep safeties.', type: 'defense', formation: FORMATIONS.DEF_4_3, formationName: '4-3', playCategory: 'Man', assignments: { S1: { cover: 'zone', area: 'deep_half_right' }, S2: { cover: 'zone', area: 'deep_half_left' }, CB1: { cover: 'man', target: 'WR1' }, CB2: { cover: 'man', target: 'WR2' }, LB1: {cover: 'man', target: 'HB'} } },
+    'ss_blitz': { id: 'ss_blitz', name: 'SS Blitz', description: 'Strong safety blitzes from the edge.', type: 'defense', formation: FORMATIONS.DEF_4_3, formationName: '4-3', playCategory: 'Blitz', assignments: { S1: { cover: 'blitz' }, CB1: { cover: 'man', target: 'WR1' }, CB2: { cover: 'man', target: 'WR2' } } },
+    'cover_1_man': { id: 'cover_1_man', name: 'Cover 1 Man', description: 'Man coverage with a single high safety.', type: 'defense', formation: FORMATIONS.DEF_3_4, formationName: '3-4', playCategory: 'Man', assignments: { S1: { cover: 'zone', area: 'deep_middle' }, CB1: { cover: 'man', target: 'WR1' }, CB2: { cover: 'man', target: 'WR2' }, LB1: {cover: 'man', target: 'HB'}, LB2: {cover: 'man', target: 'TE'} } },
+    'olb_fire': { id: 'olb_fire', name: 'OLB Fire', description: 'Outside linebackers blitz.', type: 'defense', formation: FORMATIONS.DEF_3_4, formationName: '3-4', playCategory: 'Blitz', assignments: { LB3: { cover: 'blitz' }, LB4: { cover: 'blitz' }, S1: { cover: 'zone', area: 'deep_middle' } } },
+    'nickel_blitz': { id: 'nickel_blitz', name: 'Nickel Blitz', description: 'The nickel corner blitzes from the slot.', type: 'defense', formation: FORMATIONS.DEF_NICKEL, formationName: 'Nickel', playCategory: 'Blitz', assignments: { CB3: { cover: 'blitz' }, S1: { cover: 'zone', area: 'deep_half' }, S2: { cover: 'zone', area: 'deep_half' } } },
+    'cover_0_blitz': { id: 'cover_0_blitz', name: 'Cover 0 Blitz', description: 'All-out blitz with no deep help.', type: 'defense', formation: FORMATIONS.DEF_NICKEL, formationName: 'Nickel', playCategory: 'Blitz', assignments: { CB1: { cover: 'man', target: 'WR1' }, CB2: { cover: 'man', target: 'WR2' }, LB1: { cover: 'blitz' }, S1: { cover: 'blitz' } } },
+    'punt_return': { id: 'punt_return', name: 'Punt Return', description: 'Set up a return for a punt.', type: 'defense', formation: FORMATIONS.DEF_PUNT_RETURN, formationName: 'Punt Return', playCategory: 'Special Teams' },
+    'fg_block': { id: 'fg_block', name: 'FG Block', description: 'Attempt to block a field goal.', type: 'defense', formation: FORMATIONS.DEF_FG_BLOCK, formationName: 'FG Block', playCategory: 'Special Teams' }
+};
 
 // --- CONSTANTS & ENUMS ---
 const API_KEY = process.env.API_KEY;
@@ -16,34 +91,34 @@ const YARDS_TO_PIXELS = 10;
 const PLAYER_BASE_SPEED = 50; // Adjusted for deltaTime
 const BALL_SPEED = 2.5;
 
-const TEAMS: { [key: string]: { name: string, color: string, secondaryColor: string, logo: string } } = {
+const TEAMS = {
     'titans': { name: 'Titans', color: '#FF5733', secondaryColor: '#272727', logo: 'https://i.imgur.com/gC2S1fC.png' },
     'bolts': { name: 'Thunderbolts', color: '#00BFFF', secondaryColor: '#FFD700', logo: 'https://i.imgur.com/gOpinG.png' },
     'vipers': { name: 'Vipers', color: '#DC143C', secondaryColor: '#FFFFFF', logo: 'https://i.imgur.com/AEd3a2h.png' },
     'sharks': { name: 'Sharks', color: '#003366', secondaryColor: '#CCCCCC', logo: 'https://i.imgur.com/e5a2s8W.png' }
 };
 
-enum GameStatus { MENU, TEAM_SELECTION, GAME_SETTINGS, DIFFICULTY, KICKOFF, PLAY_SELECTION, AUDIBLE_SELECTION, PRE_SNAP, PLAY_IN_PROGRESS, POST_PLAY, CONVERSION_CHOICE, KICK_METER, GAME_OVER }
-interface GameState { running: boolean; possession: 'player' | 'cpu'; down: number; yardsToGo: number; lineOfScrimmage: number; score: { player: number; cpu: number; }; currentPlay: any; defensivePlay?: any; }
+const GameStatus = { MENU: 0, TEAM_SELECTION: 1, GAME_SETTINGS: 2, DIFFICULTY: 3, KICKOFF: 4, PLAY_SELECTION: 5, AUDIBLE_SELECTION: 6, PRE_SNAP: 7, PLAY_IN_PROGRESS: 8, POST_PLAY: 9, CONVERSION_CHOICE: 10, KICK_METER: 11, GAME_OVER: 12 };
 
 // --- CONTROLLER ---
 class Controller {
-    public directions = { up: false, down: false, left: false, right: false };
-    public actions = { a: false, b: false, c: false, d: false, audible: false };
-    private keyMap: { [key: string]: keyof typeof this.actions | keyof typeof this.directions } = { 'w': 'up', 's': 'down', 'a': 'left', 'd': 'right', 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right', ' ': 'a', 'j': 'b', 'k': 'c', 'l': 'd', 'Tab': 'audible' };
-    
-    constructor() { this.addListeners(); }
-    private addListeners(): void {
+    constructor() {
+        this.directions = { up: false, down: false, left: false, right: false };
+        this.actions = { a: false, b: false, c: false, d: false, audible: false };
+        this.keyMap = { 'w': 'up', 's': 'down', 'a': 'left', 'd': 'right', 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right', ' ': 'a', 'j': 'b', 'k': 'c', 'l': 'd', 'Tab': 'audible' };
+        this.addListeners();
+    }
+    addListeners() {
         document.addEventListener('keydown', e => this.updateKeyState(e.key, true, e));
         document.addEventListener('keyup', e => this.updateKeyState(e.key, false, e));
 
-        const bindButton = (id: string, action: keyof typeof this.actions | keyof typeof this.directions) => {
+        const bindButton = (id, action) => {
             const btn = document.getElementById(id);
             if (!btn) return;
-            const setAction = (val: boolean, e: Event) => {
+            const setAction = (val, e) => {
                 e.preventDefault();
-                if (action in this.directions) this.directions[action as keyof typeof this.directions] = val;
-                else this.actions[action as keyof typeof this.actions] = val;
+                if (action in this.directions) this.directions[action] = val;
+                else this.actions[action] = val;
             };
             btn.addEventListener('touchstart', e => setAction(true, e), { passive: false });
             btn.addEventListener('touchend', e => setAction(false, e));
@@ -58,25 +133,26 @@ class Controller {
         bindButton('c-button', 'c'); bindButton('d-button', 'd');
         bindButton('audible-btn', 'audible');
     }
-    private updateKeyState(key: string, isPressed: boolean, e: KeyboardEvent) {
+    updateKeyState(key, isPressed, e) {
         const action = this.keyMap[key];
         if (!action) return;
         e.preventDefault();
-        if (action in this.directions) this.directions[action as keyof typeof this.directions] = isPressed;
-        else this.actions[action as keyof typeof this.actions] = isPressed;
+        if (action in this.directions) this.directions[action] = isPressed;
+        else this.actions[action] = isPressed;
     }
 }
 
 // --- AI COACH ---
 class AICoach {
-    private difficulty: 'easy' | 'medium' | 'hard' = 'medium';
-    private useGenAI: boolean = true;
-    
-    constructor() { if (!API_KEY) console.warn("API_KEY not set, Gemini functionality will be disabled."); }
-    public setDifficulty(d: 'easy' | 'medium' | 'hard'): void { this.difficulty = d; }
-    public setUseGenAI(useGenAI: boolean): void { this.useGenAI = useGenAI; }
+    constructor() {
+        this.difficulty = 'medium';
+        this.useGenAI = true;
+        if (!API_KEY) console.warn("API_KEY not set, Gemini functionality will be disabled.");
+    }
+    setDifficulty(d) { this.difficulty = d; }
+    setUseGenAI(useGenAI) { this.useGenAI = useGenAI; }
 
-    public choosePlay(gameState: any, availablePlays: string[], playType: 'offense' | 'defense'): string {
+    choosePlay(gameState, availablePlays, playType) {
         if (!this.useGenAI || !API_KEY) {
             const playObjects = availablePlays.map(id => PLAYBOOK[id]);
 
@@ -125,7 +201,7 @@ class AICoach {
         return playScores[playScores.length - 1].playId;
     }
 
-    private calculatePlayScore(play: any, gameState: any, playType: 'offense' | 'defense'): number {
+    calculatePlayScore(play, gameState, playType) {
         let score = 10; 
 
         const { down, yardsToGo, lineOfScrimmage, quarter, gameClock, score: gameScore } = gameState;
@@ -202,13 +278,10 @@ class AICoach {
 }
 
 class Player {
-    x: number; y: number; team: 'player' | 'cpu'; role: string; color: string; secondaryColor: string;
-    hasBall = false; isControlled = false; assignment: any = {}; route: {x:number, y:number}[] = []; routeIndex = 0;
-    speed: number; strength: number; agility: number; awareness: number; catchRating: number; throwPower: number; throwAccuracy: number;
-
-    constructor(x: number, y: number, team: 'player' | 'cpu', role: string, pTeam: any) {
+    constructor(x, y, team, role, pTeam) {
         this.x = x; this.y = y; this.team = team; this.role = role;
         this.color = pTeam.color; this.secondaryColor = pTeam.secondaryColor;
+        this.hasBall = false; this.isControlled = false; this.assignment = {}; this.route = []; this.routeIndex = 0;
         
         let stats = { speed: 60, strength: 60, agility: 60, awareness: 60, catchRating: 60, throwPower: 20, throwAccuracy: 20 };
         if (role.startsWith('QB')) { stats = { ...stats, speed: 70, agility: 75, awareness: 85, throwPower: 88, throwAccuracy: 85 }; }
@@ -224,7 +297,7 @@ class Player {
         Object.assign(this, stats);
     }
 
-    draw(ctx: CanvasRenderingContext2D, scale: number): void {
+    draw(ctx, scale) {
         const r = 8 * scale;
         const headR = 5 * scale;
         ctx.fillStyle = this.color;
@@ -259,12 +332,14 @@ class Player {
 }
 
 class Football {
-    x: number = 0; y: number = 0; z: number = 0;
-    targetX: number = 0; targetY: number = 0;
-    inAir = false; speed = BALL_SPEED;
-    targetPlayer?: Player;
+    constructor() {
+        this.x = 0; this.y = 0; this.z = 0;
+        this.targetX = 0; this.targetY = 0;
+        this.inAir = false; this.speed = BALL_SPEED;
+        this.startX = 0; this.startY = 0;
+    }
     
-    update(deltaTime: number, scale: number) {
+    update(deltaTime, scale) {
         if (!this.inAir) return;
         const dx = this.targetX - this.x, dy = this.targetY - this.y;
         const dist = Math.hypot(dx, dy);
@@ -280,7 +355,7 @@ class Football {
             this.z = Math.sin(progress * Math.PI) * (totalDist * 0.2);
         }
     }
-    draw(ctx: CanvasRenderingContext2D, scale: number) {
+    draw(ctx, scale) {
         if(this.inAir){
             ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath();
             ctx.ellipse(this.x, this.y, 4 * scale * (1 + this.z/50), 2 * scale * (1 + this.z/50), 0, 0, Math.PI * 2);
@@ -290,7 +365,7 @@ class Football {
         ctx.ellipse(this.x, this.y - this.z, 4 * scale, 2.5 * scale, -Math.PI/4, 0, Math.PI * 2);
         ctx.fill();
     }
-    throw(startX: number, startY: number, targetX: number, targetY: number, targetPlayer: Player) {
+    throw(startX, startY, targetX, targetY, targetPlayer) {
         this.inAir = true;
         this.x = startX; this.y = startY;
         this.startX = startX; this.startY = startY;
@@ -298,36 +373,34 @@ class Football {
         this.targetPlayer = targetPlayer;
         this.z = 0;
     }
-    private startX: number = 0;
-    private startY: number = 0;
 }
 
 // --- MAIN GAME CLASS ---
 class Game {
-    private static instance: Game;
-    private canvas: HTMLCanvasElement; private ctx: CanvasRenderingContext2D;
-    private controller: Controller; private aiCoach: AICoach;
-    private homeTeam: any; private awayTeam: any; private players: Player[] = []; private football: Football;
-    private status: GameStatus = GameStatus.MENU;
-    private gameClock: number = 0; private quarter: number = 1; private quarterLength: number = 240;
-    private gameState: GameState;
-    private lastFrameTime = 0;
-    private playerMotionTarget: Player | null = null;
-    private kickPower = 0; private kickAccuracy = 0; private kickMeterPhase: 'power' | 'accuracy' | 'inactive' = 'inactive';
-    
-    private constructor(aiCoach: AICoach) {
-        this.canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
-        this.ctx = this.canvas.getContext('2d')!;
+    constructor(aiCoach) {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
         this.controller = new Controller();
         this.aiCoach = aiCoach;
         this.football = new Football();
+        this.players = [];
+        this.status = GameStatus.MENU;
+        this.gameClock = 0; this.quarter = 1; this.quarterLength = 240;
         this.gameState = { running: false, possession: 'player', down: 1, yardsToGo: 10, lineOfScrimmage: 25, score: { player: 0, cpu: 0 }, currentPlay: null };
+        this.lastFrameTime = 0;
+        this.playerMotionTarget = null;
+        this.kickPower = 0; this.kickAccuracy = 0; this.kickMeterPhase = 'inactive';
+        this.resizeCanvas = this.resizeCanvas.bind(this);
+        this.gameLoop = this.gameLoop.bind(this);
+        this.showNotification = this.showNotification.bind(this);
+        this.triggerScreenShake = this.triggerScreenShake.bind(this);
+        this.getScale = this.getScale.bind(this);
     }
-    public static getInstance(aiCoach: AICoach): Game {
+    static getInstance(aiCoach) {
         if (!Game.instance) Game.instance = new Game(aiCoach);
         return Game.instance;
     }
-    public start(playerTeamId: string, cpuTeamId: string, difficulty: 'easy'|'medium'|'hard', qLength: number, useGenAI: boolean): void {
+    start(playerTeamId, cpuTeamId, difficulty, qLength, useGenAI) {
         this.homeTeam = TEAMS[playerTeamId]; this.awayTeam = TEAMS[cpuTeamId];
         this.aiCoach.setDifficulty(difficulty);
         this.aiCoach.setUseGenAI(useGenAI);
@@ -343,8 +416,8 @@ class Game {
         requestAnimationFrame(this.gameLoop);
     }
     
-    private resizeCanvas = () => {
-        const container = document.getElementById('field-container')!;
+    resizeCanvas() {
+        const container = document.getElementById('field-container');
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
     
@@ -360,7 +433,7 @@ class Game {
         }
     }
 
-    private gameLoop = (timestamp: number): void => {
+    gameLoop(timestamp) {
         if (!this.gameState.running) return;
         if (!this.lastFrameTime) this.lastFrameTime = timestamp;
         const deltaTime = (timestamp - this.lastFrameTime) / 1000;
@@ -371,7 +444,7 @@ class Game {
         requestAnimationFrame(this.gameLoop);
     }
     
-    private update(deltaTime: number) {
+    update(deltaTime) {
         if (this.status === GameStatus.PRE_SNAP) { this.handlePreSnapInput(); } 
         else if (this.status === GameStatus.PLAY_IN_PROGRESS) {
             this.updatePlayInProgress(deltaTime);
@@ -382,7 +455,7 @@ class Game {
         this.updateScoreboard();
     }
 
-    private runClock(playSeconds: number) {
+    runClock(playSeconds) {
         this.gameClock -= playSeconds;
          if (this.gameClock <= 0) {
             this.quarter++;
@@ -399,7 +472,7 @@ class Game {
         }
     }
     
-    private handlePreSnapInput() {
+    handlePreSnapInput() {
         if (this.controller.actions.a) { this.hikeBall(); this.controller.actions.a = false; return; }
         if (this.controller.actions.audible) { this.showAudibleSelection(); this.controller.actions.audible = false; return; }
         
@@ -414,7 +487,7 @@ class Game {
         }
     }
 
-    private updatePlayInProgress(deltaTime: number) {
+    updatePlayInProgress(deltaTime) {
         this.runClock(deltaTime);
         const scale = this.getScale();
         const wasInAir = this.football.inAir;
@@ -456,7 +529,7 @@ class Game {
         }
         
         if(this.gameState.currentPlay?.type !== 'offense_run' && !this.football.inAir && this.players.find(p=>p.role.startsWith('QB'))?.hasBall) {
-            ['b', 'c', 'd'].forEach((button: 'b'|'c'|'d') => {
+            ['b', 'c', 'd'].forEach((button) => {
                  if (this.controller.actions[button]) {
                     const target = this.players.find(p => p.assignment.passButton === button);
                     if (target) this.throwBall(target);
@@ -466,7 +539,7 @@ class Game {
         }
     }
     
-    private updatePlayerLogic(player: Player, deltaTime: number, scale: number) {
+    updatePlayerLogic(player, deltaTime, scale) {
         const baseSpeed = PLAYER_BASE_SPEED * (player.speed / 100);
         const speed = baseSpeed * scale * deltaTime;
 
@@ -508,14 +581,14 @@ class Game {
             }
         }
     }
-    private moveTowards(p: Player, target: { x: number, y: number } | undefined, speed: number) {
+    moveTowards(p, target, speed) {
         if (!target) return;
         const dx = target.x - p.x, dy = target.y - p.y;
         const dist = Math.hypot(dx, dy);
         if (dist > speed) { p.x += (dx / dist) * speed; p.y += (dy / dist) * speed; }
     }
     
-    private render(): void {
+    render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.drawField();
         
@@ -524,7 +597,7 @@ class Game {
         this.players.filter(p => p.y >= this.football.y + this.football.z).forEach(player => player.draw(this.ctx, this.getScale()));
     }
 
-    private drawField(): void {
+    drawField() {
         const scale = this.getScale();
         this.ctx.fillStyle = '#4a7f3d'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.fillStyle = '#639a55';
@@ -553,7 +626,7 @@ class Game {
         }
     }
     
-    private prepareForPlay() {
+    prepareForPlay() {
         this.status = GameStatus.PLAY_SELECTION;
         this.playerMotionTarget = null;
         this.runClock(Math.random() * 5 + 10);
@@ -580,7 +653,7 @@ class Game {
         }
     }
 
-    private showPlaySelection(plays: any[], side: 'offense' | 'defense') {
+    showPlaySelection(plays, side) {
         App.showPlaySelectionModal(plays, playId => {
             if (playId === 'field_goal' || playId === 'punt') {
                 this.startKick(playId);
@@ -592,11 +665,11 @@ class Game {
         }, side);
     }
     
-    private showAudibleSelection() {
+    showAudibleSelection() {
         this.status = GameStatus.AUDIBLE_SELECTION;
         const basePlay = this.gameState.possession === 'player' ? this.gameState.currentPlay : this.gameState.defensivePlay;
         const audibleIds = basePlay.audibles ?? [];
-        const audiblePlays = audibleIds.map((id:string) => PLAYBOOK[id]);
+        const audiblePlays = audibleIds.map((id) => PLAYBOOK[id]);
 
         App.showPlaySelectionModal(audiblePlays, playId => {
             if (this.gameState.possession === 'player') {
@@ -608,19 +681,19 @@ class Game {
         }, this.gameState.possession === 'player' ? 'offense' : 'defense', true);
     }
 
-    private selectOffensivePlay(playerPlayId: string) {
+    selectOffensivePlay(playerPlayId) {
         this.gameState.currentPlay = PLAYBOOK[playerPlayId];
         const defensivePlays = Object.values(PLAYBOOK).filter(p => p.type === 'defense').map(p => p.id);
         this.gameState.defensivePlay = PLAYBOOK[this.aiCoach.choosePlay(this.gameState, defensivePlays, 'defense')];
         this.setupFormation();
     }
     
-    private selectDefensivePlay(playerPlayId: string) {
+    selectDefensivePlay(playerPlayId) {
         this.gameState.defensivePlay = PLAYBOOK[playerPlayId];
         this.setupFormation();
     }
     
-    private setupFormation(play: any = null) {
+    setupFormation(play = null) {
         this.players = [];
         this.football.inAir = false;
         const scale = this.getScale();
@@ -630,9 +703,9 @@ class Game {
         const currentPlay = play ?? (this.gameState.possession === 'player' ? this.gameState.currentPlay : this.gameState.defensivePlay);
         const formation = currentPlay.formation;
         
-        const [team, teamName] = this.gameState.possession === 'player' ? [this.homeTeam, 'player' as const] : [this.awayTeam, 'cpu' as const];
+        const [team, teamName] = this.gameState.possession === 'player' ? [this.homeTeam, 'player'] : [this.awayTeam, 'cpu'];
         
-        Object.entries(formation).forEach(([role, pos]: [string, any]) => {
+        Object.entries(formation).forEach(([role, pos]) => {
             const p = new Player(losX + (pos.x * scale), centerY + (pos.y * scale), teamName, role, team);
             this.players.push(p);
         });
@@ -641,13 +714,13 @@ class Game {
             this.status = GameStatus.KICK_METER;
             this.kickMeterPhase = 'power';
             this.kickPower = 0;
-            document.getElementById('kick-meter-container')!.style.display = 'flex';
+            document.getElementById('kick-meter-container').style.display = 'flex';
         } else {
              const [offTeam, defTeam] = this.gameState.possession === 'player' ? [this.homeTeam, this.awayTeam] : [this.awayTeam, this.homeTeam];
-             const [offTeamName, defTeamName] = this.gameState.possession === 'player' ? ['player', 'cpu'] as const : ['cpu', 'player'] as const;
+             const [offTeamName, defTeamName] = this.gameState.possession === 'player' ? ['player', 'cpu'] : ['cpu', 'player'];
 
-            const setupSide = (p: any, tN: 'player'|'cpu', tD: any, isOff: boolean) => {
-                 Object.entries(p.formation).forEach(([role, pos]: [string, any]) => {
+            const setupSide = (p, tN, tD, isOff) => {
+                 Object.entries(p.formation).forEach(([role, pos]) => {
                     const player = new Player(losX + (pos.x * scale * (isOff ? 1 : -1)), centerY + (pos.y * scale), tN, role, tD);
                     player.assignment = { ...p.assignments?.[role] };
                     if (isOff) player.route = p.routes?.[role] ?? [];
@@ -664,7 +737,7 @@ class Game {
         }
     }
     
-    private hikeBall() {
+    hikeBall() {
         if(this.status !== GameStatus.PRE_SNAP) return;
         this.status = GameStatus.PLAY_IN_PROGRESS;
         this.lastFrameTime = performance.now();
@@ -681,11 +754,11 @@ class Game {
         if (ballCarrier.team === 'player') ballCarrier.isControlled = true;
         
         if (this.gameState.currentPlay.type.startsWith('offense_pass')) {
-            document.getElementById('passing-controls-info')!.style.display = 'block';
+            document.getElementById('passing-controls-info').style.display = 'block';
         }
     }
     
-    private throwBall(targetPlayer: Player) {
+    throwBall(targetPlayer) {
         const qb = this.players.find(p => p.hasBall && p.role.startsWith('QB'));
         if(!qb) return;
         qb.hasBall = false;
@@ -697,7 +770,7 @@ class Game {
         this.football.throw(qb.x, qb.y, targetX, targetY, targetPlayer);
     }
     
-    private completePass(receiver: Player) {
+    completePass(receiver) {
         this.football.inAir = false;
         receiver.hasBall = true;
         if (receiver.team === 'player') {
@@ -706,7 +779,7 @@ class Game {
         }
     }
     
-    private incompletePass() {
+    incompletePass() {
         this.status = GameStatus.POST_PLAY;
         this.showNotification('Incomplete pass!');
         this.runClock(Math.random() * 3 + 2); // Incompletions take less time
@@ -718,10 +791,10 @@ class Game {
         }
     }
 
-    private endPlay(ballCarrier: Player, isTouchdown = false) {
+    endPlay(ballCarrier, isTouchdown = false) {
         if(this.status !== GameStatus.PLAY_IN_PROGRESS) return;
         this.status = GameStatus.POST_PLAY;
-        document.getElementById('passing-controls-info')!.style.display = 'none';
+        document.getElementById('passing-controls-info').style.display = 'none';
         const startLine = this.gameState.lineOfScrimmage;
         const endLine = Math.round((ballCarrier.x / this.getScale() / YARDS_TO_PIXELS) - 10);
         const gain = Math.min(100-startLine, Math.max(-startLine, endLine - startLine));
@@ -732,7 +805,7 @@ class Game {
             if (ballCarrier.team === 'player') this.gameState.score.player += 6;
             else this.gameState.score.cpu += 6;
             this.status = GameStatus.CONVERSION_CHOICE;
-            document.getElementById('conversion-choice-modal')!.style.display = 'flex';
+            document.getElementById('conversion-choice-modal').style.display = 'flex';
         } else {
             this.showNotification(`${gain >= 0 ? 'Gain' : 'Loss'} of ${Math.abs(gain)} yards`);
             this.gameState.lineOfScrimmage += gain;
@@ -751,8 +824,8 @@ class Game {
         }
     }
     
-    public handleConversionChoice(type: 'kick' | '2pt') {
-        document.getElementById('conversion-choice-modal')!.style.display = 'none';
+    handleConversionChoice(type) {
+        document.getElementById('conversion-choice-modal').style.display = 'none';
         if (type === 'kick') {
             this.gameState.lineOfScrimmage = 15; // XP snap line
             this.startKick('field_goal');
@@ -764,13 +837,13 @@ class Game {
         }
     }
 
-    private startKick(type: 'field_goal' | 'punt') {
+    startKick(type) {
         this.gameState.currentPlay = PLAYBOOK[type];
         this.gameState.defensivePlay = PLAYBOOK[type === 'field_goal' ? 'fg_block' : 'punt_return'];
         this.setupFormation(this.gameState.currentPlay);
     }
     
-    private handleCpuSpecialTeams() {
+    handleCpuSpecialTeams() {
         const play = this.gameState.currentPlay;
         if(play.id === 'punt') {
             this.showNotification("CPU Punts");
@@ -790,31 +863,31 @@ class Game {
         }
     }
     
-    private updateKickMeter(deltaTime: number) {
+    updateKickMeter(deltaTime) {
         if(this.kickMeterPhase === 'power') {
             this.kickPower += deltaTime * 120;
             if(this.kickPower >= 100) this.kickPower = 100;
-            (document.getElementById('kick-meter-power') as HTMLElement).style.width = `${this.kickPower}%`;
+            document.getElementById('kick-meter-power').style.width = `${this.kickPower}%`;
         }
     }
 
-    private handleKickInput() {
+    handleKickInput() {
         if(!this.controller.actions.a) return;
         this.controller.actions.a = false;
         
         if (this.kickMeterPhase === 'power') {
             this.kickMeterPhase = 'accuracy';
         } else if (this.kickMeterPhase === 'accuracy') {
-            const indicator = document.getElementById('kick-meter-indicator')!;
+            const indicator = document.getElementById('kick-meter-indicator');
             const pos = parseFloat(indicator.style.left || '0');
             this.kickAccuracy = 100 - Math.abs(pos - 87.5) * 2;
             this.resolveKick();
         }
     }
 
-    private resolveKick() {
+    resolveKick() {
         this.kickMeterPhase = 'inactive';
-        document.getElementById('kick-meter-container')!.style.display = 'none';
+        document.getElementById('kick-meter-container').style.display = 'none';
         const type = this.gameState.currentPlay.id;
 
         if (type === 'punt') {
@@ -839,7 +912,7 @@ class Game {
         }
     }
 
-    private startKickoff() {
+    startKickoff() {
         this.showNotification("Kickoff!");
         this.gameState.possession = this.gameState.possession === 'player' ? 'cpu' : 'player';
         this.gameState.lineOfScrimmage = 25;
@@ -848,7 +921,7 @@ class Game {
         setTimeout(() => this.prepareForPlay(), 2000);
     }
     
-    private turnover(reason: string) {
+    turnover(reason) {
         if (reason !== 'kickoff') this.showNotification(reason);
         this.gameState.possession = this.gameState.possession === 'player' ? 'cpu' : 'player';
         this.gameState.lineOfScrimmage = 100 - this.gameState.lineOfScrimmage;
@@ -858,12 +931,12 @@ class Game {
         setTimeout(() => this.prepareForPlay(), 2000);
     }
 
-    private endGame(reason: string) {
+    endGame(reason) {
         this.gameState.running = false;
         this.status = GameStatus.GAME_OVER;
-        const modal = document.getElementById('game-over-modal')!;
-        const scoreEl = document.getElementById('game-over-score')!;
-        const titleEl = document.getElementById('game-over-title')!;
+        const modal = document.getElementById('game-over-modal');
+        const scoreEl = document.getElementById('game-over-score');
+        const titleEl = document.getElementById('game-over-title');
         const playerScore = this.gameState.score.player;
         const cpuScore = this.gameState.score.cpu;
 
@@ -872,42 +945,38 @@ class Game {
         modal.style.display = 'flex';
     }
 
-    private updateScoreboard(): void {
-        document.getElementById('home-team-name')!.textContent = this.homeTeam.name.toUpperCase();
-        document.getElementById('home-team-score')!.textContent = `${this.gameState.score.player}`;
-        document.getElementById('away-team-name')!.textContent = this.awayTeam.name.toUpperCase();
-        document.getElementById('away-team-score')!.textContent = `${this.gameState.score.cpu}`;
-        document.getElementById('home-team-logo')!.style.backgroundImage = `url(${this.homeTeam.logo})`;
-        document.getElementById('away-team-logo')!.style.backgroundImage = `url(${this.awayTeam.logo})`;
+    updateScoreboard() {
+        document.getElementById('home-team-name').textContent = this.homeTeam.name.toUpperCase();
+        document.getElementById('home-team-score').textContent = `${this.gameState.score.player}`;
+        document.getElementById('away-team-name').textContent = this.awayTeam.name.toUpperCase();
+        document.getElementById('away-team-score').textContent = `${this.gameState.score.cpu}`;
+        document.getElementById('home-team-logo').style.backgroundImage = `url(${this.homeTeam.logo})`;
+        document.getElementById('away-team-logo').style.backgroundImage = `url(${this.awayTeam.logo})`;
         const clock = this.gameClock > 0 ? this.gameClock : 0;
-        document.getElementById('game-clock')!.textContent = `${Math.floor(clock / 60)}:${(Math.floor(clock) % 60).toString().padStart(2, '0')} | Q${this.quarter}`;
+        document.getElementById('game-clock').textContent = `${Math.floor(clock / 60)}:${(Math.floor(clock) % 60).toString().padStart(2, '0')} | Q${this.quarter}`;
         const downNth = this.gameState.down === 1 ? '1st' : this.gameState.down === 2 ? '2nd' : this.gameState.down === 3 ? '3rd' : '4th';
-        document.getElementById('down-and-distance')!.textContent = `${downNth} & ${this.gameState.yardsToGo <= 0 ? 'Goal' : Math.ceil(this.gameState.yardsToGo)}`;
+        document.getElementById('down-and-distance').textContent = `${downNth} & ${this.gameState.yardsToGo <= 0 ? 'Goal' : Math.ceil(this.gameState.yardsToGo)}`;
         const yardLine = this.gameState.lineOfScrimmage <= 50 ? `Own ${this.gameState.lineOfScrimmage}` : `Opp ${100 - this.gameState.lineOfScrimmage}`;
-        document.getElementById('ball-on')!.textContent = `Ball on ${yardLine}`;
+        document.getElementById('ball-on').textContent = `Ball on ${yardLine}`;
     }
     
-    private showNotification = (message: string) => {
-        const container = document.getElementById('notification-container')!;
+    showNotification(message) {
+        const container = document.getElementById('notification-container');
         const notif = document.createElement('div');
         notif.className = 'notification'; notif.textContent = message;
         container.appendChild(notif);
         setTimeout(() => notif.remove(), 3000);
     }
-    private triggerScreenShake = () => {
+    triggerScreenShake() {
         this.canvas.classList.add('shake');
         setTimeout(() => this.canvas.classList.remove('shake'), 150);
     }
-    private getScale = () => this.canvas.width / (FIELD_WIDTH_YARDS * YARDS_TO_PIXELS);
+    getScale() { return this.canvas.width / (FIELD_WIDTH_YARDS * YARDS_TO_PIXELS); }
 }
 
 // --- APP CLASS ---
 class App {
-    private static game: Game;
-    private static playerTeamId: string | null = null;
-    private static currentPlayFilters = { type: 'all', formation: 'all' };
-    
-    public static main(): void {
+    static main() {
         if (!API_KEY) { document.body.innerHTML = `<div style="color:white; padding: 20px;"><h3>Warning</h3><p>API_KEY is not set. AI will use local probability logic.</p></div>`; }
         const aiCoach = new AICoach();
         App.game = Game.getInstance(aiCoach);
@@ -915,38 +984,38 @@ class App {
         App.populateTeamSelection();
         App.showScreen('main-menu-screen');
     }
-    private static setupEventListeners(): void {
-        document.getElementById('play-cpu-btn')!.onclick = () => App.showScreen('team-selection-screen');
-        document.getElementById('high-scores-btn')!.onclick = () => App.showScreen('high-scores-screen');
-        document.getElementById('back-to-menu-from-scores-btn')!.onclick = () => App.showScreen('main-menu-screen');
-        document.getElementById('back-to-menu-from-teams-btn')!.onclick = () => App.showScreen('main-menu-screen');
-        document.getElementById('back-to-menu-from-game-over-btn')!.onclick = () => {
-             document.getElementById('game-over-modal')!.style.display = 'none';
+    static setupEventListeners() {
+        document.getElementById('play-cpu-btn').onclick = () => App.showScreen('team-selection-screen');
+        document.getElementById('high-scores-btn').onclick = () => App.showScreen('high-scores-screen');
+        document.getElementById('back-to-menu-from-scores-btn').onclick = () => App.showScreen('main-menu-screen');
+        document.getElementById('back-to-menu-from-teams-btn').onclick = () => App.showScreen('main-menu-screen');
+        document.getElementById('back-to-menu-from-game-over-btn').onclick = () => {
+             document.getElementById('game-over-modal').style.display = 'none';
              App.showScreen('main-menu-screen');
         };
 
-        document.getElementById('extra-point-btn')!.onclick = () => App.game.handleConversionChoice('kick');
-        document.getElementById('two-point-btn')!.onclick = () => App.game.handleConversionChoice('2pt');
+        document.getElementById('extra-point-btn').onclick = () => App.game.handleConversionChoice('kick');
+        document.getElementById('two-point-btn').onclick = () => App.game.handleConversionChoice('2pt');
 
-        const qSlider = document.getElementById('quarter-length-slider') as HTMLInputElement;
-        qSlider.oninput = () => { document.getElementById('quarter-length-value')!.textContent = qSlider.value; };
+        const qSlider = document.getElementById('quarter-length-slider');
+        qSlider.oninput = () => { document.getElementById('quarter-length-value').textContent = qSlider.value; };
 
-        document.getElementById('continue-to-difficulty-btn')!.onclick = () => App.showScreen('difficulty-screen');
+        document.getElementById('continue-to-difficulty-btn').onclick = () => App.showScreen('difficulty-screen');
         
         document.querySelectorAll('.difficulty-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const difficulty = (btn as HTMLElement).dataset.difficulty as 'easy'|'medium'|'hard';
+                const difficulty = btn.dataset.difficulty;
                 if (!App.playerTeamId) App.playerTeamId = 'titans';
                 const availableCpuTeams = Object.keys(TEAMS).filter(id => id !== App.playerTeamId);
                 const cpuTeamId = availableCpuTeams[Math.floor(Math.random() * availableCpuTeams.length)];
-                const quarterLength = parseInt((document.getElementById('quarter-length-slider') as HTMLInputElement).value);
-                const useGenAI = (document.getElementById('genai-toggle') as HTMLInputElement).checked;
-                App.game.start(App.playerTeamId!, cpuTeamId, difficulty, quarterLength, useGenAI);
+                const quarterLength = parseInt(document.getElementById('quarter-length-slider').value);
+                const useGenAI = document.getElementById('genai-toggle').checked;
+                App.game.start(App.playerTeamId, cpuTeamId, difficulty, quarterLength, useGenAI);
             });
         });
     }
-    private static populateTeamSelection(): void {
-        const list = document.getElementById('team-list')!;
+    static populateTeamSelection() {
+        const list = document.getElementById('team-list');
         list.innerHTML = '';
         Object.entries(TEAMS).forEach(([id, team]) => {
             const card = document.createElement('div');
@@ -962,8 +1031,8 @@ class App {
         });
     }
 
-    public static showScreen(screenId: string): void {
-        document.querySelectorAll('.screen').forEach(s => (s as HTMLElement).style.display = 'none');
+    static showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
         const screen = document.getElementById(screenId);
         if(screen) {
             screen.style.display = 'flex';
@@ -971,12 +1040,12 @@ class App {
         }
     }
     
-    public static showPlaySelectionModal(plays: any[], onSelect: (playId: string) => void, side: 'offense' | 'defense', isAudible = false) {
-        const modal = document.getElementById(isAudible ? 'audible-modal' : 'play-selection-modal')!;
-        const listContainer = document.getElementById(isAudible ? 'audible-list' : 'play-list')!;
-        const filterContainer = document.getElementById(isAudible ? 'play-filters-audible' : 'play-filters')!;
+    static showPlaySelectionModal(plays, onSelect, side, isAudible = false) {
+        const modal = document.getElementById(isAudible ? 'audible-modal' : 'play-selection-modal');
+        const listContainer = document.getElementById(isAudible ? 'audible-list' : 'play-list');
+        const filterContainer = document.getElementById(isAudible ? 'play-filters-audible' : 'play-filters');
         
-        const titleEl = document.getElementById(isAudible ? 'audible-selection-title' : 'play-selection-title')!;
+        const titleEl = document.getElementById(isAudible ? 'audible-selection-title' : 'play-selection-title');
         titleEl.textContent = isAudible ? 'Choose an Audible' : side === 'offense' ? 'Choose Your Offensive Play' : 'Choose Your Defensive Play';
 
         const render = () => {
@@ -1017,9 +1086,9 @@ class App {
         
         filterContainer.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const target = e.currentTarget as HTMLElement;
-                const filterType = target.dataset.filterType as 'type' | 'formation';
-                const filterValue = target.dataset.filterValue!;
+                const target = e.currentTarget;
+                const filterType = target.dataset.filterType;
+                const filterValue = target.dataset.filterValue;
                 App.currentPlayFilters[filterType] = filterValue;
                 filterContainer.querySelectorAll(`.filter-btn[data-filter-type="${filterType}"]`).forEach(b => b.classList.remove('active'));
                 target.classList.add('active');
@@ -1028,7 +1097,7 @@ class App {
         });
         
         if (isAudible) {
-            document.getElementById('cancel-audible-btn')!.onclick = () => {
+            document.getElementById('cancel-audible-btn').onclick = () => {
                 modal.style.display = 'none';
                 App.game['status'] = GameStatus.PRE_SNAP;
             }
@@ -1038,7 +1107,7 @@ class App {
         modal.style.display = 'flex';
     }
 
-    private static generatePlayArtSVG(play: any, side: 'offense'|'defense'): string {
+    static generatePlayArtSVG(play, side) {
         const width = 200, height = 120;
         const oColor = '#dc3545'; 
         const dColor = '#00BFFF'; 
@@ -1054,7 +1123,7 @@ class App {
         const dFormation = dPlay.formation;
 
         // Draw Offense
-        Object.entries(oFormation).forEach(([role, pos]: [string, any]) => {
+        Object.entries(oFormation).forEach(([role, pos]) => {
             const cx = width / 2 + pos.y * scale.y;
             const cy = height / 1.5 - pos.x * scale.x;
             svg += `<circle cx="${cx}" cy="${cy}" r="4" fill="${oColor}" />`;
@@ -1063,7 +1132,7 @@ class App {
             if (route && route.length > 0) {
                 let path = `M ${cx} ${cy}`;
                 let endPoint = { x: cx, y: cy };
-                route.forEach((p: {x:number, y:number}) => { 
+                route.forEach((p) => {
                     endPoint = { x: cx + p.y * scale.y, y: cy - p.x * scale.x };
                     path += ` L ${endPoint.x} ${endPoint.y}`; 
                 });
@@ -1073,7 +1142,7 @@ class App {
         });
         
         // Draw Defense
-        Object.entries(dFormation).forEach(([role, pos]: [string, any]) => {
+        Object.entries(dFormation).forEach(([role, pos]) => {
             const cx = width / 2 + pos.y * scale.y;
             const cy = height / 1.5 + pos.x * scale.x + 10;
             svg += `<text x="${cx}" y="${cy+1.5}" font-family="monospace" font-weight="bold" font-size="10" fill="${dColor}" text-anchor="middle">X</text>`;
@@ -1091,5 +1160,6 @@ class App {
         return svg;
     }
 }
+App.currentPlayFilters = { type: 'all', formation: 'all' };
 
 document.addEventListener('DOMContentLoaded', () => App.main());
