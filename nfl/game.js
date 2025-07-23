@@ -535,3 +535,5 @@ class App {
 App.currentPlayFilters = { type: 'all', formation: 'all' };
 
 document.addEventListener('DOMContentLoaded', () => App.main());
+
+[end of nfl/game.js]
