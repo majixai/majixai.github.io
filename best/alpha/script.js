@@ -1327,15 +1327,15 @@
 
         #spinSlots() {
             const reels = document.querySelectorAll('.reel');
-            const symbols = ['🍒', '🍋', '🍊', '🍉', '🍇', '🍓'];
+            const symbolKeys = Object.keys(symbols);
             reels.forEach(reel => {
                 const interval = setInterval(() => {
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 100);
 
                 setTimeout(() => {
                     clearInterval(interval);
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 1000);
             });
         }
