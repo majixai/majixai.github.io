@@ -1,1 +1,196 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gridiron AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Teko:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.10.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="app-container">
+
+        <!-- Main Menu -->
+        <div id="main-menu-screen" class="screen w3-animate-opacity">
+            <div class="menu-content">
+                <h1 class="game-title">GRIDIRON AI</h1>
+                <p class="w3-text-grey">The Ultimate AI Football Challenge</p>
+                <div class="d-grid gap-2 col-8 col-md-6 mx-auto">
+                    <button id="play-cpu-btn" class="menu-button w3-blue">Play Game</button>
+                    <button id="high-scores-btn" class="menu-button w3-grey">High Scores</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- High Scores -->
+        <div id="high-scores-screen" class="screen" style="display: none;">
+             <div class="menu-content">
+                <h1 class="game-title">High Scores</h1>
+                <p class="w3-text-grey">(Feature coming soon)</p>
+                <button id="back-to-menu-from-scores-btn" class="menu-button w3-grey w3-margin-top">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Team Selection -->
+        <div id="team-selection-screen" class="screen" style="display: none;">
+            <div class="menu-content">
+                <h2 class="menu-header">Select Your Team</h2>
+                <div id="team-list" class="w3-row w3-padding-32">
+                    <!-- Teams will be populated here -->
+                </div>
+                 <button id="back-to-menu-from-teams-btn" class="menu-button w3-grey w3-margin-top">Back</button>
+            </div>
+        </div>
+
+        <!-- Game Settings Screen -->
+        <div id="game-settings-screen" class="screen" style="display: none;">
+            <div class="menu-content">
+                <h2 class="menu-header">Game Settings</h2>
+                <div class="w3-container w3-padding-32" style="max-width:400px; margin: auto;">
+                    <label for="quarter-length-slider">Quarter Length: <span id="quarter-length-value">4</span> min</label>
+                    <input type="range" id="quarter-length-slider" class="w3-input" min="1" max="15" value="4">
+
+                    <label for="genai-toggle" class="w3-margin-top">Enable GenAI Coach</label>
+                    <input type="checkbox" id="genai-toggle" class="w3-check" checked>
+                </div>
+                <button id="continue-to-difficulty-btn" class="menu-button w3-blue w3-margin-top">Continue</button>
+            </div>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div id="difficulty-screen" class="screen" style="display: none;">
+            <div class="menu-content">
+                <h2 class="menu-header">Select AI Difficulty</h2>
+                <div class="d-grid gap-3 col-8 col-md-6 mx-auto">
+                    <button class="menu-button w3-green difficulty-btn" data-difficulty="easy">Rookie</button>
+                    <button class="menu-button w3-yellow w3-text-black difficulty-btn" data-difficulty="medium">Pro</button>
+                    <button class="menu-button w3-red difficulty-btn" data-difficulty="hard">All-Pro</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen game-layout" style="display: none;">
+            <header id="top-bar">
+                <div class="app-title">Gridiron AI - Advanced</div>
+                <div class="top-bar-controls">
+                    <i class="fas fa-sync-alt"></i>
+                    <i class="fas fa-expand"></i>
+                </div>
+            </header>
+
+            <div id="scoreboard-container">
+                <header id="scoreboard">
+                    <div class="team-info home">
+                        <div id="home-team-logo" class="team-logo-sm"></div>
+                        <div class="team-name" id="home-team-name">TEAM</div>
+                        <div class="team-score" id="home-team-score">0</div>
+                    </div>
+                    <div class="game-info">
+                        <div id="game-clock">04:00 | Q1</div>
+                        <div id="down-and-distance">1st & 10</div>
+                        <div id="ball-on">Ball on Own 25</div>
+                    </div>
+                    <div class="team-info away">
+                        <div class="team-score" id="away-team-score">0</div>
+                        <div class="team-name" id="away-team-name">CPU</div>
+                        <div id="away-team-logo" class="team-logo-sm"></div>
+                    </div>
+                </header>
+            </div>
+
+            <main id="field-container">
+                <canvas id="game-canvas"></canvas>
+                <div id="notification-container"></div>
+                <div id="passing-controls-info" class="w3-text-white w3-center" style="display: none;">
+                    <p>Press B, C, or D to pass to the corresponding receiver.</p>
+                </div>
+                <div id="kick-meter-container" style="display: none;">
+                    <div id="kick-meter-bar">
+                        <div id="kick-meter-power"></div>
+                        <div id="kick-meter-accuracy-marker"></div>
+                    </div>
+                    <div id="kick-meter-indicator"></div>
+                </div>
+            </main>
+
+            <footer id="controller-container">
+                <div id="controller">
+                     <div class="controller-group d-pad-container">
+                        <div class="d-pad">
+                            <button id="up-btn" class="control-btn d-pad-btn"><i class="fas fa-arrow-up"></i></button>
+                            <button id="down-btn" class="control-btn d-pad-btn"><i class="fas fa-arrow-down"></i></button>
+                            <button id="left-btn" class="control-btn d-pad-btn"><i class="fas fa-arrow-left"></i></button>
+                            <button id="right-btn" class="control-btn d-pad-btn"><i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+                    <div class="controller-group center-controls">
+                        <button id="audible-btn" class="control-btn small-btn">AUD</button>
+                    </div>
+                    <div class="controller-group action-buttons-container">
+                        <div class="action-buttons">
+                            <button id="a-button" class="control-btn action-btn" style="background-color: #28a745;">A</button>
+                            <button id="b-button" class="control-btn action-btn" style="background-color: #dc3545;">B</button>
+                            <button id="c-button" class="control-btn action-btn" style="background-color: #ffc107;">C</button>
+                            <button id="d-button" class="control-btn action-btn" style="background-color: #17a2b8;">D</button>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Modals -->
+        <div id="ai-thinking-modal" class="custom-modal"><div><div class="loader"></div><h4>AI is thinking...</h4></div></div>
+        <div id="conversion-choice-modal" class="custom-modal">
+            <div>
+                <h3>TOUCHDOWN!</h3><p>What's the call, coach?</p>
+                <button id="extra-point-btn" class="menu-button" style="background-color: #28a745;">Kick Extra Point (1pt)</button>
+                <button id="two-point-btn" class="menu-button" style="background-color: #007bff; margin-top: 10px;">Go for Two (2pt)</button>
+            </div>
+        </div>
+        <div id="audible-modal" class="custom-modal wide">
+             <div>
+                <h3 id="audible-selection-title">Choose an Audible</h3>
+                <div id="play-filters-audible" class="play-filters"></div>
+                <div id="audible-list" class="play-list-area"></div>
+                <button id="cancel-audible-btn" class="menu-button" style="background-color: #dc3545; margin-top: 15px;">Cancel</button>
+            </div>
+        </div>
+        <div id="play-selection-modal" class="custom-modal wide">
+            <div>
+                <h3 id="play-selection-title">Choose Your Play</h3>
+                <div id="play-filters" class="play-filters"></div>
+                <div id="play-list-container">
+                  <div id="play-list" class="play-list-area"></div>
+                </div>
+                <div id="play-selection-details">
+                    <h4 id="play-detail-name">Select a play</h4>
+                    <p id="play-detail-desc"></p>
+                </div>
+            </div>
+        </div>
+        <div id="game-over-modal" class="custom-modal">
+            <div>
+                <h3 id="game-over-title">FINAL</h3>
+                <p id="game-over-score"></p>
+                <button id="back-to-menu-from-game-over-btn" class="menu-button" style="background-color: #007bff;">Main Menu</button>
+            </div>
+        </div>
+
+    </div>
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
