@@ -231,3 +231,83 @@ for (let i = 0; i < 5; i++) {
 
 // Start the game loop
 gameLoop();
+
+function attemptFieldGoal(distance) {
+  let probability;
+  if (distance >= 50) {
+    probability = probabilities.kicking.fieldGoal['50+'];
+  } else if (distance >= 40) {
+    probability = probabilities.kicking.fieldGoal['40-49'];
+  } else if (distance >= 30) {
+    probability = probabilities.kicking.fieldGoal['30-39'];
+  } else {
+    probability = probabilities.kicking.fieldGoal['20-29'];
+  }
+
+  return Math.random() < probability;
+}
+
+function attemptFourthDown(distance) {
+  const probability = probabilities.fourthDown[distance];
+  return Math.random() < probability;
+}
+
+function attemptTwoPointConversion(type) {
+  const probability = probabilities.twoPointConversion[type];
+  return Math.random() < probability;
+}
+
+function getDriveOutcome() {
+  const rand = Math.random();
+  if (rand < probabilities.driveOutcomes.touchdown) {
+    return 'touchdown';
+  } else if (rand < probabilities.driveOutcomes.touchdown + probabilities.driveOutcomes.fieldGoal) {
+    return 'fieldGoal';
+  } else if (rand < probabilities.driveOutcomes.touchdown + probabilities.driveOutcomes.fieldGoal + probabilities.driveOutcomes.punt) {
+    return 'punt';
+  } else {
+    return 'turnover';
+  }
+}
+
+function attemptPass() {
+  const rand = Math.random();
+  if (rand < probabilities.passing.completion) {
+    return 'complete';
+  } else if (rand < probabilities.passing.completion + probabilities.passing.interception) {
+    return 'interception';
+  } else if (rand < probabilities.passing.completion + probabilities.passing.interception + probabilities.passing.sack) {
+    return 'sack';
+  } else {
+    return 'incomplete';
+  }
+}
+
+function checkFumble() {
+  return Math.random() < probabilities.turnovers.fumbleRush;
+}
+
+function checkSpecialTeamsTD() {
+  const rand = Math.random();
+  if (rand < probabilities.specialTeams.kickoffReturnTD) {
+    return 'kickoff';
+  } else if (rand < probabilities.specialTeams.kickoffReturnTD + probabilities.specialTeams.puntReturnTD) {
+    return 'punt';
+  } else {
+    return 'none';
+  }
+}
+
+function checkPenalty() {
+  if (Math.random() < probabilities.penalties.anyPlay) {
+    const rand = Math.random();
+    if (rand < probabilities.penalties.offensive) {
+      return 'offensive';
+    } else if (rand < probabilities.penalties.offensive + probabilities.penalties.defensive) {
+      return 'defensive';
+    } else {
+      return 'specialTeams';
+    }
+  }
+  return 'none';
+}
