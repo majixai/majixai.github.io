@@ -10,7 +10,28 @@ class MenuApp {
 
         request.onupgradeneeded = (event) => {
             this.db = event.target.result;
-            this.db.createObjectStore('links', { keyPath: 'id', autoIncrement: true });
+            const objectStore = this.db.createObjectStore('links', { keyPath: 'id', autoIncrement: true });
+
+            const originalLinks = [
+                { name: 'The VAS Community', url: 'https://thevascommunity.com/' },
+                { name: 'HAI Community AI', url: 'https://haicommunityai.com/sign/' },
+                { name: 'The CAI Community', url: 'https://thecaicommunity.com/sign/' },
+                { name: 'Dirfn', url: 'https://dirfn.com/#/pages/home/home' },
+                { name: 'Bote Finance Institute', url: 'https://www.botefinanceinstitute.com/#/user/info' },
+                { name: 'AIAIIS', url: 'https://www.aiaiis.net/#/' },
+                { name: 'Lakshmi Finance', url: 'https://www.lakshmifinance.com/#/online-event' },
+                { name: 'Solid Rockes', url: 'https://www.solidrockes.com/#/' },
+                { name: 'EMXJ', url: 'https://www.emxj.com/#/luckdraw' },
+                { name: 'Full Force Cultures', url: 'https://fullforcecultures.com/pages/user/taskRecord' },
+                { name: 'BCBIT AI', url: 'https://m.bcbit-ai.cc/#/pages/mine/login' },
+                { name: 'Block Crypto', url: 'https://www.blockcrypto.info/#/pages/login/rego' },
+                { name: 'CJ Go With AC', url: 'https://cj.gowithac.org/' },
+                { name: 'Private Key Tracer', url: 'https://privatekeytracer.cc/#!/main' },
+            ];
+
+            originalLinks.forEach(link => {
+                objectStore.add(link);
+            });
         };
 
         request.onsuccess = (event) => {
@@ -97,8 +118,19 @@ document.addEventListener('DOMContentLoaded', () => {
     linkList.addEventListener('click', (event) => {
         if (event.target.tagName === 'A') {
             event.preventDefault();
+            iframe.classList.add('loading');
             iframe.src = event.target.href;
             modal.style.display = 'none';
         }
+    });
+
+    iframe.addEventListener('load', () => {
+        iframe.classList.remove('loading');
+    });
+
+    const parallax = document.querySelector('.parallax');
+    window.addEventListener('scroll', () => {
+        const offset = window.pageYOffset;
+        parallax.style.backgroundPositionY = offset * 0.7 + 'px';
     });
 });
