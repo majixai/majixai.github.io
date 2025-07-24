@@ -6,7 +6,7 @@ const REPORT_SERVER_ENDPOINT = '/api/send-user-report'; // Placeholder URL - NEE
 
 // --- API Configuration ---
 // !! Verify this URL is correct and accessible from where your page is hosted !!
-const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=dU9X&wm=9cg6A&disable_sound=1&client_ip=request_ip&gender=f';
+const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A&client_ip=request_ip&limit=500';
 const apiLimit = 500; // Limit per API page request
 const fetchIntervalDuration = 120000; // 2 minutes (120 * 1000 milliseconds)
 const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
