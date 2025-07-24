@@ -23,5 +23,24 @@
         <li><a href="https://cj.gowithac.org/" target="_blank">CJ Go With AC</a></li>
         <li><a href="https://privatekeytracer.cc/#!/main" target="_blank">Private Key Tracer</a></li>
     </ul>
+
+    <iframe id="menu-iframe" src="https://thevascommunity.com/" width="100%" height="500px" style="border:none;"></iframe>
+
+    <script>
+        const links = document.querySelectorAll('ul a');
+        const iframe = document.getElementById('menu-iframe');
+
+        links.forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                iframe.src = this.href;
+            });
+
+            link.addEventListener('dblclick', function(event) {
+                event.preventDefault();
+                window.open(this.href, '_blank');
+            });
+        });
+    </script>
 </body>
 </html>
