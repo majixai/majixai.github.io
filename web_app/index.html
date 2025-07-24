@@ -8,15 +8,6 @@
       margin: 0;
     }
 
-    .parallax {
-      background-image: url("https://www.w3schools.com/howto/img_parallax.jpg");
-      height: 100%;
-      background-attachment: fixed;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: cover;
-    }
-
     .game-container {
       position: absolute;
       top: 50%;
@@ -28,696 +19,206 @@
       background-color: rgba(0, 100, 0, 0.5);
       border: 1px solid #FFFFFF;
     }
-
-    #controller {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-    }
-
-    #d-pad {
-      position: relative;
-      width: 120px;
-      height: 120px;
-    }
-
-    .d-pad-button {
-      position: absolute;
-      width: 40px;
-      height: 40px;
-      background-color: #555;
-      border: 1px solid #FFF;
-    }
-
-    #up { top: 0; left: 40px; }
-    #down { bottom: 0; left: 40px; }
-    #left { top: 40px; left: 0; }
-    #right { top: 40px; right: 0; }
-
-    #action-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-gap: 10px;
-      margin-left: 20px;
-    }
-
-    .action-button {
-      width: 50px;
-      height: 50px;
-      background-color: #555;
-      border: 1px solid #FFF;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 24px;
-    }
-
-    #shoulder-buttons {
-      position: absolute;
-      top: -30px;
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    .shoulder-button {
-      width: 60px;
-      height: 30px;
-      background-color: #555;
-      border: 1px solid #FFF;
-    }
   </style>
 </head>
 <body>
-  <div class="parallax">
-    <div class="game-container">
-      <h1 class="w3-text-white">Football Game</h1>
-      <div id="play-calling-screen" class="w3-modal">
-        <div class="w3-modal-content w3-card-4">
-          <header class="w3-container w3-teal">
-            <h2>Choose a Play</h2>
-          </header>
-          <div class="w3-container" id="play-list"></div>
-        </div>
+  <div class="game-container">
+    <h1>Football Game</h1>
+    <canvas id="gameCanvas"></canvas>
+    <div id="commentary"></div>
+    <div id="controller">
+      <div id="d-pad">
+        <div id="up" class="d-pad-button"></div>
+        <div id="down" class="d-pad-button"></div>
+        <div id="left" class="d-pad-button"></div>
+        <div id="right" class="d-pad-button"></div>
       </div>
-      <canvas id="gameCanvas"></canvas>
-      <div id="commentary" class="w3-panel w3-white w3-card-4"></div>
-      <div id="controller">
-        <div id="d-pad">
-          <div id="up" class="d-pad-button"></div>
-          <div id="down" class="d-pad-button"></div>
-          <div id="left" class="d-pad-button"></div>
-          <div id="right" class="d-pad-button"></div>
-        </div>
-        <div id="action-buttons">
-          <div id="a-button" class="action-button">A</div>
-          <div id="b-button" class="action-button">B</div>
-          <div id="c-button" class="action-button">C</div>
-          <div id="d-button" class="action-button">D</div>
-        </div>
-        <div id="shoulder-buttons">
-          <div id="l-button" class="shoulder-button">L</div>
-          <div id="r-button" class="shoulder-button">R</div>
-        </div>
+      <div id="action-buttons">
+        <div id="a-button" class="action-button">A</div>
+        <div id="b-button" class="action-button">B</div>
+        <div id="c-button" class="action-button">C</div>
+        <div id="d-button" class="action-button">D</div>
       </div>
-      <button id="startButton" class="w3-button w3-green">Start</button>
-      <button id="stopButton" class="w3-button w3-red">Stop</button>
-      <button id="saveButton" class="w3-button w3-blue">Save</button>
-      <button id="loadButton" class="w3-button w3-orange">Load</button>
-      <div id="settingsPanel" class="w3-panel w3-white w3-card-4">
-        <h3>Settings</h3>
-        <label for="playerSpeed">Player Speed:</label>
-        <input type="range" id="playerSpeed" min="1" max="10" value="5">
-        <br>
-        <label for="ballColor">Ball Color:</label>
-        <input type="color" id="ballColor" value="#FFFFFF">
+      <div id="shoulder-buttons">
+        <div id="l-button" class="shoulder-button">L</div>
+        <div id="r-button" class="shoulder-button">R</div>
       </div>
-      <svg id="ball-animation" width="100" height="100" style="display: none;">
-        <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="brown" />
-        <animate attributeName="r" from="40" to="50" dur="1s" repeatCount="indefinite" />
-      </svg>
+    </div>
+    <button id="startButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <button id="saveButton">Save</button>
+    <button id="loadButton">Load</button>
+    <div id="settingsPanel">
+      <h3>Settings</h3>
+      <label for="playerSpeed">Player Speed:</label>
+      <input type="range" id="playerSpeed" min="1" max="10" value="5">
+      <br>
+      <label for="ballColor">Ball Color:</label>
+      <input type="color" id="ballColor" value="#FFFFFF">
     </div>
   </div>
   <script>
-    class GameObject {
-      constructor(x, y, width, height) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-      }
-    }
-
-    class Player extends GameObject {
-      constructor(x, y, width, height, speed) {
-        super(x, y, width, height);
-        this.speed = speed;
-      }
-    }
-
-    class Ball extends GameObject {
-      constructor(x, y, radius, speed) {
-        super(x, y, radius * 2, radius * 2);
-        this.radius = radius;
-        this.speed = speed;
-        this.dx = 0;
-        this.dy = 0;
-        this.isThrown = false;
-        this.color = '#FFFFFF';
-      }
-    }
-
-    class Opponent extends GameObject {
-      constructor(x, y, width, height, speed) {
-        super(x, y, width, height);
-        this.speed = speed;
-      }
-    }
-
-    class Game {
-      #player;
-      #ball;
-      #opponents;
-      #score;
-      #touchdownMessage;
-      #gameClock;
-      #quarter;
-      #referee;
-      #animationManager;
-
-      constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.#player = new Player(50, 200, 20, 20, 5);
-        this.#ball = new Ball(400, 200, 5, 10);
-        this.#opponents = [];
-        this.#score = 0;
-        this.#touchdownMessage = false;
-        this.#gameClock = 15 * 60; // 15 minutes per quarter
-        this.#quarter = 1;
-        this.#referee = new Referee();
-        this.#animationManager = new AnimationManager(sprites.player.running, 20, 20);
-        this.#animationManager.define('run', [0, 1, 2, 3], 0.1);
-
-        for (let i = 0; i < 5; i++) {
-          this.#opponents.push(new Opponent(Math.random() * 2000 - 1000, Math.random() * 1000 - 500, 20, 20, 2));
-        }
-      }
-
-      static getTeamName() {
-        return "The Eagles";
-      }
-
-      reset() {
-        this.#player.x = 50;
-        this.#player.y = 200;
-        this.#ball.isThrown = false;
-        this.#opponents.forEach(opponent => {
-          opponent.x = Math.random() * 2000 - 1000;
-          opponent.y = Math.random() * 1000 - 500;
-        });
-        showPlayCallingScreen();
-      }
-
-      getGameState() {
-        return {
-          player: this.#player,
-          ball: this.#ball,
-          opponents: this.#opponents,
-          score: this.#score,
-        };
-      }
-
-      setGameState(gameState) {
-        this.#player = gameState.player;
-        this.#ball = gameState.ball;
-        this.#opponents = gameState.opponents;
-        this.#score = gameState.score;
-      }
-
-      passTo(receiver) {
-        // TODO: Implement passing logic
-      }
-
-      jump() {
-        // TODO: Implement jump logic
-      }
-
-      spin() {
-        // TODO: Implement spin logic
-      }
-
-      dive() {
-        // TODO: Implement dive logic
-      }
-
-      sendPlayerInMotion(receiver) {
-        // TODO: Implement pre-snap motion logic
-      }
-
-      audible(direction) {
-        // TODO: Implement audible logic
-      }
-
-      update() {
-        if (this.currentPlay) {
-          if (this.currentPlay.type === 'pass') {
-            // Passing logic
-            if (controller.a) this.passTo('A');
-            if (controller.b) this.passTo('B');
-            if (controller.c) this.passTo('C');
-            if (controller.d) this.passTo('D');
-          } else if (this.currentPlay.type === 'run') {
-            // Running logic
-            if (controller.up) this.#player.y -= this.#player.speed;
-            if (controller.down) this.#player.y += this.#player.speed;
-            if (controller.left) this.#player.x -= 2;
-            if (controller.right) this.#player.x += 2;
-
-            if (controller.a) this.jump();
-            if (controller.b) this.spin();
-            if (controller.c) this.dive();
-          }
-        } else {
-          // No play selected, wait for user to press 'A'
-          if (controller.a) {
-            showPlayCallingScreen();
-          }
-
-          // Pre-snap motion
-          if (controller.b) {
-            this.sendPlayerInMotion('B');
-          }
-
-          // Audibles
-          if (controller.l) {
-            this.audible('left');
-          }
-          if (controller.r) {
-            this.audible('right');
-          }
-        }
-
-        const penalty = this.#referee.check_for_penalties(this.currentPlay);
-        if (penalty) {
-          // Handle penalty
-        }
-
-        // Update game clock
-        this.#gameClock -= 1 / 60;
-        if (this.#gameClock <= 0) {
-          this.#quarter++;
-          this.#gameClock = 15 * 60;
-        }
-      }
-
-      render() {
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Save the current context state
-        this.ctx.save();
-
-        // Translate the canvas to follow the player
-        this.ctx.translate(-this.#player.x + this.canvas.width / 2, -this.#player.y + this.canvas.height / 2);
-
-        // Draw field
-        this.ctx.fillStyle = '#006400';
-        this.ctx.fillRect(-1000, -500, 2000, 1000);
-
-        // Draw yard lines
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 1;
-        for (let i = -1000; i <= 1000; i += 50) {
-          this.ctx.beginPath();
-          this.ctx.moveTo(i, -500);
-          this.ctx.lineTo(i, 500);
-          this.ctx.stroke();
-        }
-
-        // Draw goalposts
-        this.ctx.fillStyle = '#FFFF00';
-        this.ctx.fillRect(-20, -100, 10, 200);
-        this.ctx.fillRect(10, -100, 10, 200);
-        this.ctx.fillRect(-20, -100, 40, 10);
-        this.ctx.fillRect(1970, -100, 10, 200);
-        this.ctx.fillRect(1980, -100, 10, 200);
-        this.ctx.fillRect(1970, -100, 20, 10);
-
-
-        // Draw player
-        this.#animationManager.draw(this.ctx, 'run', this.#player.x, this.#player.y);
-
-        // Draw ball
-        this.ctx.drawImage(sprites.ball, this.#ball.x, this.#ball.y, this.#ball.width, this.#ball.height);
-
-        // Draw opponents
-        this.ctx.fillStyle = '#FF0000';
-        this.#opponents.forEach(opponent => {
-          this.ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
-        });
-
-        // Restore the context state
-        this.ctx.restore();
-
-        // Draw score
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '24px Arial';
-        this.ctx.fillText(`Score: ${this.#score}`, 10, 30);
-
-        // Draw game clock and quarter
-        const minutes = Math.floor(this.#gameClock / 60);
-        const seconds = Math.floor(this.#gameClock % 60);
-        this.ctx.fillText(`Q${this.#quarter} ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`, this.canvas.width - 150, 30);
-
-        // Draw touchdown message
-        if (this.#touchdownMessage) {
-          this.ctx.fillStyle = '#FFFF00';
-          this.ctx.font = '48px Arial';
-          this.ctx.fillText('Touchdown!', this.canvas.width / 2 - 150, this.canvas.height / 2);
-        }
-      }
-
-      gameLoop() {
-        this.update();
-        this.render();
-        requestAnimationFrame(() => this.gameLoop());
-      }
-    }
-
-    const dbName = 'footballGameDB';
-    const dbVersion = 1;
-    let db;
-
-    function openDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, dbVersion);
-
-        request.onerror = (event) => {
-          reject('Error opening IndexedDB');
-        };
-
-        request.onsuccess = (event) => {
-          db = event.target.result;
-          resolve();
-        };
-
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          db.createObjectStore('gameState', { keyPath: 'id' });
-        };
-      });
-    }
-
-    function saveGameState(gameState) {
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['gameState'], 'readwrite');
-        const store = transaction.objectStore('gameState');
-        const request = store.put({ id: 'current', ...gameState });
-
-        request.onerror = (event) => {
-          reject('Error saving game state');
-        };
-
-        request.onsuccess = (event) => {
-          resolve();
-        };
-      });
-    }
-
-    function loadGameState() {
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['gameState'], 'readonly');
-        const store = transaction.objectStore('gameState');
-        const request = store.get('current');
-
-        request.onerror = (event) => {
-          reject('Error loading game state');
-        };
-
-        request.onsuccess = (event) => {
-          resolve(event.target.result);
-        };
-      });
-    }
-
-    const playbook = {
-      offense: {
-        formations: {
-          'I-Form': {
-            'HB-Dive': {
-              routes: {
-                'A': 'block',
-                'B': 'block',
-                'C': 'block',
-                'D': 'block',
-              },
-              run: 'dive',
-            },
-            'HB-Toss': {
-              routes: {
-                'A': 'block',
-                'B': 'block',
-                'C': 'block',
-                'D': 'block',
-              },
-              run: 'toss',
-            },
-          },
-          'Shotgun': {
-            'Four-Verticals': {
-              routes: {
-                'A': 'streak',
-                'B': 'streak',
-                'C': 'streak',
-                'D': 'streak',
-              },
-            },
-            'Slants': {
-              routes: {
-                'A': 'slant',
-                'B': 'slant',
-                'C': 'slant',
-                'D': 'slant',
-              },
-            },
-          },
-        },
-      },
-      defense: {
-        formations: {
-          '4-3': {
-            'Cover-2': {
-              assignments: {
-                'DE1': 'pass-rush',
-                'DE2': 'pass-rush',
-                'DT1': 'pass-rush',
-                'DT2': 'pass-rush',
-                'LB1': 'zone',
-                'LB2': 'zone',
-                'LB3': 'zone',
-                'CB1': 'man',
-                'CB2': 'man',
-                'S1': 'deep-half',
-                'S2': 'deep-half',
-              },
-            },
-          },
-          '3-4': {
-            'Cover-3': {
-              assignments: {
-                'DE1': 'pass-rush',
-                'NT': 'pass-rush',
-                'DE2': 'pass-rush',
-                'LB1': 'zone',
-                'LB2': 'zone',
-                'LB3': 'zone',
-                'LB4': 'zone',
-                'CB1': 'deep-third',
-                'CB2': 'deep-third',
-                'S1': 'deep-third',
-                'S2': 'flat',
-              },
-            },
-          },
-        },
-      },
-    };
-
-    const specialTeams = {
-      kickoff: {
-        'Normal': {},
-        'Onside': {},
-      },
-      punt: {
-        'Normal': {},
-        'Fake': {},
-      },
-      fieldGoal: {
-        'Normal': {},
-        'Fake': {},
-      },
-      extraPoint: {
-        'Normal': {},
-        'Fake': {},
-      },
-    };
-
-    class Referee {
-      constructor() {
-        this.penalties = {
-          'holding': 10,
-          'false-start': 5,
-          'pass-interference': 15,
-        };
-      }
-
-      check_for_penalties(play) {
-        // TODO: Implement penalty logic
-        return null;
-      }
-    }
-
-    const settings = {
-      player: {
-        speed: 5,
-      },
-      ball: {
-        color: '#FFFFFF',
-      },
-      game: {
-        quarterLength: 15 * 60,
-      },
-    };
-
-    const sprites = {
-      player: {
-        running: new Image(),
-        throwing: new Image(),
-      },
-      ball: new Image(),
-    };
-
-    sprites.player.running.src = 'https://www.w3schools.com/w3images/avatar2.png';
-    sprites.player.throwing.src = 'https://www.w3schools.com/w3images/avatar2.png';
-    sprites.ball.src = 'https://www.w3schools.com/images/w3lynx_200.png';
-
-    class AnimationManager {
-      constructor(spriteSheet, frameWidth, frameHeight) {
-        this.spriteSheet = spriteSheet;
-        this.frameWidth = frameWidth;
-        this.frameHeight = frameHeight;
-        this.animations = {};
-      }
-
-      define(name, frames, speed) {
-        this.animations[name] = {
-          frames: frames,
-          speed: speed,
-          frame: 0,
-          timer: 0,
-        };
-      }
-
-      update(animation, dt) {
-        const anim = this.animations[animation];
-        anim.timer += dt;
-        if (anim.timer >= anim.speed) {
-          anim.frame = (anim.frame + 1) % anim.frames.length;
-          anim.timer = 0;
-        }
-      }
-
-      draw(ctx, animation, x, y) {
-        const anim = this.animations[animation];
-        const frame = anim.frames[anim.frame];
-        ctx.drawImage(
-          this.spriteSheet,
-          frame * this.frameWidth,
-          0,
-          this.frameWidth,
-          this.frameHeight,
-          x,
-          y,
-          this.frameWidth,
-          this.frameHeight
-        );
-      }
-    }
-
     const canvas = document.getElementById('gameCanvas');
-    const game = new Game(canvas);
-    let gameLoopId;
+    const ctx = canvas.getContext('2d');
 
-    document.getElementById('startButton').addEventListener('click', () => {
-      if (!gameLoopId) {
-        gameLoopId = requestAnimationFrame(() => game.gameLoop());
-        document.getElementById('ball-animation').style.display = 'block';
-      }
-    });
-
-    document.getElementById('stopButton').addEventListener('click', () => {
-      if (gameLoopId) {
-        cancelAnimationFrame(gameLoopId);
-        gameLoopId = null;
-        document.getElementById('ball-animation').style.display = 'none';
-      }
-    });
-
-    document.getElementById('saveButton').addEventListener('click', async () => {
-      await openDB();
-      await saveGameState(game.getGameState());
-      alert('Game saved!');
-    });
-
-    document.getElementById('loadButton').addEventListener('click', async () => {
-      await openDB();
-      const gameState = await loadGameState();
-      if (gameState) {
-        game.setGameState(gameState);
-        alert('Game loaded!');
-      } else {
-        alert('No saved game found.');
-      }
-    });
-
-    const keys = {};
-    document.addEventListener('keydown', (e) => {
-      keys[e.key] = true;
-    });
-    document.addEventListener('keyup', (e) => {
-      keys[e.key] = false;
-    });
-
-    const mouse = {
-      x: 0,
-      y: 0,
+    let player = {
+      x: 50,
+      y: 200,
+      width: 20,
+      height: 20,
+      speed: 5,
     };
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
-    });
 
-    function showCommentary(event, details) {
-      google.script.run.withSuccessHandler((commentary) => {
-        const commentaryDiv = document.getElementById('commentary');
-        commentaryDiv.innerHTML = commentary;
-      }).getCommentary(event, details);
+    let ball = {
+      x: 400,
+      y: 200,
+      radius: 5,
+      dx: 0,
+      dy: 0,
+      speed: 10,
+      isThrown: false,
+      color: '#FFFFFF',
+    };
+
+    let opponents = [];
+    for (let i = 0; i < 5; i++) {
+      opponents.push({
+        x: Math.random() * 2000 - 1000,
+        y: Math.random() * 1000 - 500,
+        width: 20,
+        height: 20,
+        speed: 2,
+      });
     }
 
-    function showPlayCallingScreen() {
-      const playList = document.getElementById('play-list');
-      playList.innerHTML = '';
-      for (const formation in playbook.offense.formations) {
-        const formationButton = document.createElement('button');
-        formationButton.className = 'w3-button w3-block w3-blue';
-        formationButton.innerHTML = formation;
-        formationButton.onclick = () => {
-          showPlaysForFormation(formation);
-        };
-        playList.appendChild(formationButton);
+    let score = 0;
+    let touchdownMessage = false;
+    let gameClock = 15 * 60;
+    let quarter = 1;
+    let currentPlay;
+
+    function update() {
+      if (currentPlay) {
+        if (currentPlay.type === 'pass') {
+          // Passing logic
+          if (controller.a) passTo('A');
+          if (controller.b) passTo('B');
+          if (controller.c) passTo('C');
+          if (controller.d) passTo('D');
+        } else if (currentPlay.type === 'run') {
+          // Running logic
+          if (controller.up) player.y -= player.speed;
+          if (controller.down) player.y += player.speed;
+          if (controller.left) player.x -= 2;
+          if (controller.right) player.x += 2;
+
+          if (controller.a) jump();
+          if (controller.b) spin();
+          if (controller.c) dive();
+        }
+      } else {
+        // No play selected, wait for user to press 'A'
+        if (controller.a) {
+          showPlayCallingScreen();
+        }
+
+        // Pre-snap motion
+        if (controller.b) {
+          sendPlayerInMotion('B');
+        }
+
+        // Audibles
+        if (controller.l) {
+          audible('left');
+        }
+        if (controller.r) {
+          audible('right');
+        }
       }
-      document.getElementById('play-calling-screen').style.display = 'block';
+
+      // Update game clock
+      gameClock -= 1 / 60;
+      if (gameClock <= 0) {
+        quarter++;
+        gameClock = 15 * 60;
+      }
     }
 
-    function showPlaysForFormation(formation) {
-      const playList = document.getElementById('play-list');
-      playList.innerHTML = '';
-      for (const play in playbook.offense.formations[formation]) {
-        const playButton = document.createElement('button');
-        playButton.className = 'w3-button w3-block w3-teal';
-        playButton.innerHTML = play;
-        playButton.onclick = () => {
-          game.currentPlay = playbook.offense.formations[formation][play];
-          document.getElementById('play-calling-screen').style.display = 'none';
-        };
-        playList.appendChild(playButton);
+    function render() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Save the current context state
+      ctx.save();
+
+      // Translate the canvas to follow the player
+      ctx.translate(-player.x + canvas.width / 2, -player.y + canvas.height / 2);
+
+      // Draw field
+      ctx.fillStyle = '#006400';
+      ctx.fillRect(-1000, -500, 2000, 1000);
+
+      // Draw yard lines
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1;
+      for (let i = -1000; i <= 1000; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, -500);
+        ctx.lineTo(i, 500);
+        ctx.stroke();
       }
+
+      // Draw goalposts
+      ctx.fillStyle = '#FFFF00';
+      ctx.fillRect(-20, -100, 10, 200);
+      ctx.fillRect(10, -100, 10, 200);
+      ctx.fillRect(-20, -100, 40, 10);
+      ctx.fillRect(1970, -100, 10, 200);
+      ctx.fillRect(1980, -100, 10, 200);
+      ctx.fillRect(1970, -100, 20, 10);
+
+      // Draw player
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+
+      // Draw ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = ball.color;
+      ctx.fill();
+      ctx.closePath();
+
+      // Draw opponents
+      ctx.fillStyle = '#FF0000';
+      opponents.forEach(function(opponent) {
+        ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
+      });
+
+      // Restore the context state
+      ctx.restore();
+
+      // Draw score
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '24px Arial';
+      ctx.fillText('Score: ' + score, 10, 30);
+
+      // Draw game clock and quarter
+      const minutes = Math.floor(gameClock / 60);
+      const seconds = Math.floor(gameClock % 60);
+      ctx.fillText('Q' + quarter + ' ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds, canvas.width - 150, 30);
+
+      // Draw touchdown message
+      if (touchdownMessage) {
+        ctx.fillStyle = '#FFFF00';
+        ctx.font = '48px Arial';
+        ctx.fillText('Touchdown!', canvas.width / 2 - 150, canvas.height / 2);
+      }
+    }
+
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
     }
 
     const controller = {
@@ -733,64 +234,49 @@
       r: false,
     };
 
-    document.getElementById('up').addEventListener('mousedown', () => controller.up = true);
-    document.getElementById('up').addEventListener('mouseup', () => controller.up = false);
-    document.getElementById('down').addEventListener('mousedown', () => controller.down = true);
-    document.getElementById('down').addEventListener('mouseup', () => controller.down = false);
-    document.getElementById('left').addEventListener('mousedown', () => controller.left = true);
-    document.getElementById('left').addEventListener('mouseup', () => controller.left = false);
-    document.getElementById('right').addEventListener('mousedown', () => controller.right = true);
-    document.getElementById('right').addEventListener('mouseup', () => controller.right = false);
-    document.getElementById('a-button').addEventListener('mousedown', () => controller.a = true);
-    document.getElementById('a-button').addEventListener('mouseup', () => controller.a = false);
-    document.getElementById('b-button').addEventListener('mousedown', () => controller.b = true);
-    document.getElementById('b-button').addEventListener('mouseup', () => controller.b = false);
-    document.getElementById('c-button').addEventListener('mousedown', () => controller.c = true);
-    document.getElementById('c-button').addEventListener('mouseup', () => controller.c = false);
-    document.getElementById('d-button').addEventListener('mousedown', () => controller.d = true);
-    document.getElementById('d-button').addEventListener('mouseup', () => controller.d = false);
-    document.getElementById('l-button').addEventListener('mousedown', () => controller.l = true);
-    document.getElementById('l-button').addEventListener('mouseup', () => controller.l = false);
-    document.getElementById('r-button').addEventListener('mousedown', () => controller.r = true);
-    document.getElementById('r-button').addEventListener('mouseup', () => controller.r = false);
+    document.getElementById('up').addEventListener('mousedown', function() { controller.up = true; });
+    document.getElementById('up').addEventListener('mouseup', function() { controller.up = false; });
+    document.getElementById('down').addEventListener('mousedown', function() { controller.down = true; });
+    document.getElementById('down').addEventListener('mouseup', function() { controller.down = false; });
+    document.getElementById('left').addEventListener('mousedown', function() { controller.left = true; });
+    document.getElementById('left').addEventListener('mouseup', function() { controller.left = false; });
 
-    document.getElementById('playerSpeed').addEventListener('input', (e) => {
-      settings.player.speed = e.target.value;
-      game.player.speed = e.target.value;
+    document.getElementById('right').addEventListener('mousedown', function() { controller.right = true; });
+    document.getElementById('right').addEventListener('mouseup', function() { controller.right = false; });
+    document.getElementById('a-button').addEventListener('mousedown', function() { controller.a = true; });
+    document.getElementById('a-button').addEventListener('mouseup', function() { controller.a = false; });
+    document.getElementById('b-button').addEventListener('mousedown', function() { controller.b = true; });
+    document.getElementById('b-button').addEventListener('mouseup', function() { controller.b = false; });
+    document.getElementById('c-button').addEventListener('mousedown', function() { controller.c = true; });
+    document.getElementById('c-button').addEventListener('mouseup', function() { controller.c = false; });
+    document.getElementById('d-button').addEventListener('mousedown', function() { controller.d = true; });
+    document.getElementById('d-button').addEventListener('mouseup', function() { controller.d = false; });
+    document.getElementById('l-button').addEventListener('mousedown', function() { controller.l = true; });
+    document.getElementById('l-button').addEventListener('mouseup', function() { controller.l = false; });
+    document.getElementById('r-button').addEventListener('mousedown', function() { controller.r = true; });
+    document.getElementById('r-button').addEventListener('mouseup', function() { controller.r = false; });
+
+    document.getElementById('playerSpeed').addEventListener('input', function(e) {
+      player.speed = e.target.value;
     });
 
-    document.getElementById('ballColor').addEventListener('input', (e) => {
-      settings.ball.color = e.target.value;
-      game.ball.color = e.target.value;
+    document.getElementById('ballColor').addEventListener('input', function(e) {
+      ball.color = e.target.value;
     });
 
-    // Initialize settings panel
-    document.getElementById('playerSpeed').value = settings.player.speed;
-    document.getElementById('ballColor').value = settings.ball.color;
-
-    (function() {
-      let lastTime = 0;
-      const vendors = ['ms', 'moz', 'webkit', 'o'];
-      for(let x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
-        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
-        window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] || window[vendors[x]+'CancelRequestAnimationFrame'];
+    let gameLoopId;
+    document.getElementById('startButton').addEventListener('click', function() {
+      if (!gameLoopId) {
+        gameLoopId = requestAnimationFrame(gameLoop);
       }
+    });
 
-      if (!window.requestAnimationFrame)
-        window.requestAnimationFrame = function(callback, element) {
-          const currTime = new Date().getTime();
-          const timeToCall = Math.max(0, 16 - (currTime - lastTime));
-          const id = window.setTimeout(function() { callback(currTime + timeToCall); },
-            timeToCall);
-          lastTime = currTime + timeToCall;
-          return id;
-        };
-
-      if (!window.cancelAnimationFrame)
-        window.cancelAnimationFrame = function(id) {
-          clearTimeout(id);
-        };
-    }());
+    document.getElementById('stopButton').addEventListener('click', function() {
+      if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+        gameLoopId = null;
+      }
+    });
   </script>
 </body>
 </html>
