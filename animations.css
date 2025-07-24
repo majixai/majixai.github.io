@@ -1,0 +1,29 @@
+.parallax {
+  background-image: url("https://www.w3schools.com/howto/img_parallax.jpg");
+  min-height: 500px;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+#svg-container {
+  width: 100px;
+  height: 100px;
+}
+
+#animated-rect {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
