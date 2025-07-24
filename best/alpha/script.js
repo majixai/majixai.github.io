@@ -931,7 +931,10 @@
             document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
             document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'deepthroat' }));
             document.getElementById("filterTagBigboobs")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'bigboobs' }));
-            document.getElementById("filterUnder24")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: [18, 19, 20, 21, 22, 23] }));
+            const filterUnder24Button = document.getElementById("filterUnder24");
+            if (filterUnder24Button) {
+                filterUnder24Button.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: [18, 19, 20, 21, 22, 23] }));
+            }
             
             if (this.filterBirthdayBannerButton) {
                 this.filterBirthdayBannerButton.addEventListener('click', () => {
