@@ -54,6 +54,9 @@
                 <div class="w3-container w3-padding-32" style="max-width:400px; margin: auto;">
                     <label for="quarter-length-slider">Quarter Length: <span id="quarter-length-value">4</span> min</label>
                     <input type="range" id="quarter-length-slider" class="w3-input" min="1" max="15" value="4">
+
+                    <label for="genai-toggle" class="w3-margin-top">Enable GenAI Coach</label>
+                    <input type="checkbox" id="genai-toggle" class="w3-check" checked>
                 </div>
                 <button id="continue-to-difficulty-btn" class="menu-button w3-blue w3-margin-top">Continue</button>
             </div>
@@ -180,7 +183,6 @@
         </div>
 
     </div>
-    <script src="probabilities.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

@@ -442,24 +442,6 @@ class StorageManager {
         const user = previousUsersArray.find(u => u.username === username);
         return (user && user.clickCount) ? user.clickCount : 0;
     }
-
-    async saveTokenBalance(tokens) {
-        try {
-            await this.#saveToDB('tokenBalance', tokens);
-        } catch (error) {
-            console.error('Error saving token balance:', error);
-        }
-    }
-
-    async loadTokenBalance() {
-        try {
-            const tokens = await this.#loadFromDB('tokenBalance');
-            return tokens === undefined ? 100 : tokens;
-        } catch (error) {
-            console.error('Error loading token balance:', error);
-            return 100;
-        }
-    }
 }
 
 // The class is now defined. If not using ES modules, it will be available globally.

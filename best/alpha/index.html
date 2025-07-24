@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Room Viewer</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/face-api.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <script src="symbols.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -57,7 +54,6 @@
         <div class="main-content">
             <!-- Previous Users Column -->
             <div class="user-column" id="previousUsers">
-                <div id="historySlideshow" class="slideshow-container"></div>
                 <h2>History (Online Now)</h2>
                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
                 <div class="user-list">
@@ -115,7 +111,6 @@
                             <button id="filterTagBlonde" class="quick-filter-btn">Blonde</button>
                             <button id="filterTagDeepthroat" class="quick-filter-btn">Deepthroat</button>
                             <button id="filterTagBigboobs" class="quick-filter-btn">bigboobs</button>
-                            <button id="filterUnder24" class="quick-filter-btn">Under 24</button>
                             <button id="filterBirthdayBanner" class="quick-filter-btn">Birthday Banners</button>
                         </div>
                     </fieldset>
@@ -206,14 +201,14 @@
 
         <!-- Slots Machine Modal -->
         <div id="slotsModal" class="modal" style="display:none;">
-            <div class="modal-content fullscreen w3-animate-zoom">
+            <div class="modal-content fullscreen">
                 <span class="close-button" id="closeSlotsModal">&times;</span>
                 <div class="slots-container">
                     <div class="reel"></div>
                     <div class="reel"></div>
                     <div class="reel"></div>
                 </div>
-                <button id="spinButton" class="btn btn-primary btn-lg">Spin</button>
+                <button id="spinButton">Spin</button>
             </div>
         </div>
     </div>

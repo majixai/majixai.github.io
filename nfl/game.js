@@ -84,6 +84,7 @@ const PLAYBOOK = {
 };
 
 // --- CONSTANTS & ENUMS ---
+const API_KEY = process.env.API_KEY;
 const FIELD_WIDTH_YARDS = 120; // 100 field + 2x10 endzones
 const FIELD_HEIGHT_YARDS = 53.3;
 const YARDS_TO_PIXELS = 10;
@@ -145,10 +146,37 @@ class Controller {
 class AICoach {
     constructor() {
         this.difficulty = 'medium';
+        this.useGenAI = true;
+        if (!API_KEY) console.warn("API_KEY not set, Gemini functionality will be disabled.");
     }
     setDifficulty(d) { this.difficulty = d; }
+    setUseGenAI(useGenAI) { this.useGenAI = useGenAI; }
 
     choosePlay(gameState, availablePlays, playType) {
+        if (!this.useGenAI || !API_KEY) {
+            const playObjects = availablePlays.map(id => PLAYBOOK[id]);
+
+            const playScores = playObjects.map(play => {
+                const score = this.calculatePlayScore(play, gameState, playType);
+                const weight = this.difficulty === 'easy' ? score : this.difficulty === 'medium' ? Math.pow(score, 2) : this.difficulty === 'hard' ? Math.pow(score, 3) : score;
+                return { playId: play.id, score: weight };
+            });
+
+            const totalScore = playScores.reduce((sum, current) => sum + current.score, 0);
+            if (totalScore === 0) {
+                return availablePlays[Math.floor(Math.random() * availablePlays.length)];
+            }
+
+            let randomVal = Math.random() * totalScore;
+            for (const play of playScores) {
+                randomVal -= play.score;
+                if (randomVal <= 0) {
+                    return play.playId;
+                }
+            }
+
+            return playScores[playScores.length - 1].playId;
+        }
         const playObjects = availablePlays.map(id => PLAYBOOK[id]);
 
         const playScores = playObjects.map(play => {
@@ -347,10 +375,609 @@ class Football {
     }
 }
 
+// --- MAIN GAME CLASS ---
+class Game {
+    constructor(aiCoach) {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.controller = new Controller();
+        this.aiCoach = aiCoach;
+        this.football = new Football();
+        this.players = [];
+        this.status = GameStatus.MENU;
+        this.gameClock = 0; this.quarter = 1; this.quarterLength = 240;
+        this.gameState = { running: false, possession: 'player', down: 1, yardsToGo: 10, lineOfScrimmage: 25, score: { player: 0, cpu: 0 }, currentPlay: null };
+        this.lastFrameTime = 0;
+        this.playerMotionTarget = null;
+        this.kickPower = 0; this.kickAccuracy = 0; this.kickMeterPhase = 'inactive';
+        this.resizeCanvas = this.resizeCanvas.bind(this);
+        this.gameLoop = this.gameLoop.bind(this);
+        this.showNotification = this.showNotification.bind(this);
+        this.triggerScreenShake = this.triggerScreenShake.bind(this);
+        this.getScale = this.getScale.bind(this);
+    }
+    static getInstance(aiCoach) {
+        if (!Game.instance) Game.instance = new Game(aiCoach);
+        return Game.instance;
+    }
+    start(playerTeamId, cpuTeamId, difficulty, qLength, useGenAI) {
+        this.homeTeam = TEAMS[playerTeamId]; this.awayTeam = TEAMS[cpuTeamId];
+        this.aiCoach.setDifficulty(difficulty);
+        this.aiCoach.setUseGenAI(useGenAI);
+        this.quarterLength = qLength * 60;
+        this.gameClock = this.quarterLength; this.quarter = 1;
+        this.gameState = { running: true, possession: 'player', down: 1, yardsToGo: 10, lineOfScrimmage: 25, score: { player: 0, cpu: 0 }, currentPlay: null, defensivePlay: null };
+
+        App.showScreen('game-screen');
+        this.resizeCanvas();
+        window.addEventListener('resize', this.resizeCanvas);
+
+        this.prepareForPlay();
+        requestAnimationFrame(this.gameLoop);
+    }
+
+    resizeCanvas() {
+        const container = document.getElementById('field-container');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+
+        const fieldAspectRatio = FIELD_WIDTH_YARDS / FIELD_HEIGHT_YARDS;
+        const containerAspectRatio = containerWidth / containerHeight;
+
+        if (containerAspectRatio > fieldAspectRatio) {
+            this.canvas.height = containerHeight;
+            this.canvas.width = containerHeight * fieldAspectRatio;
+        } else {
+            this.canvas.width = containerWidth;
+            this.canvas.height = containerWidth / fieldAspectRatio;
+        }
+    }
+
+    gameLoop(timestamp) {
+        if (!this.gameState.running) return;
+        if (!this.lastFrameTime) this.lastFrameTime = timestamp;
+        const deltaTime = (timestamp - this.lastFrameTime) / 1000;
+        this.lastFrameTime = timestamp;
+
+        this.update(deltaTime);
+        this.render();
+        requestAnimationFrame(this.gameLoop);
+    }
+
+    update(deltaTime) {
+        if (this.status === GameStatus.PRE_SNAP) { this.handlePreSnapInput(); }
+        else if (this.status === GameStatus.PLAY_IN_PROGRESS) {
+            this.updatePlayInProgress(deltaTime);
+        } else if (this.status === GameStatus.KICK_METER) {
+            this.updateKickMeter(deltaTime);
+            this.handleKickInput();
+        }
+        this.updateScoreboard();
+    }
+
+    runClock(playSeconds) {
+        this.gameClock -= playSeconds;
+         if (this.gameClock <= 0) {
+            this.quarter++;
+            if (this.quarter > 4) { this.endGame("Time Expired"); }
+            else {
+                this.gameClock = this.quarterLength;
+                this.showNotification(`End of Q${this.quarter - 1}`);
+                if (this.quarter === 3) { // Halftime possession change
+                     this.gameState.possession = this.gameState.possession === 'player' ? 'cpu' : 'player';
+                }
+                this.status = GameStatus.POST_PLAY;
+                setTimeout(() => this.startKickoff(), 2000);
+            }
+        }
+    }
+
+    handlePreSnapInput() {
+        if (this.controller.actions.a) { this.hikeBall(); this.controller.actions.a = false; return; }
+        if (this.controller.actions.audible) { this.showAudibleSelection(); this.controller.actions.audible = false; return; }
+
+        if (this.gameState.possession === 'player' && this.gameState.currentPlay.type.startsWith('offense')) {
+            if (!this.playerMotionTarget) { this.playerMotionTarget = this.players.find(p => p.team === 'player' && p.role.startsWith('WR')) ?? null; }
+            if (this.playerMotionTarget) {
+                const scale = this.getScale();
+                const motionSpeed = 3 * scale;
+                if (this.controller.directions.left) this.playerMotionTarget.y -= motionSpeed;
+                if (this.controller.directions.right) this.playerMotionTarget.y += motionSpeed;
+            }
+        }
+    }
+
+    updatePlayInProgress(deltaTime) {
+        this.runClock(deltaTime);
+        const scale = this.getScale();
+        const wasInAir = this.football.inAir;
+
+        this.players.forEach(p => this.updatePlayerLogic(p, deltaTime, scale));
+        this.football.update(deltaTime, scale);
+
+        if (wasInAir && !this.football.inAir && this.football.targetPlayer) {
+            const target = this.football.targetPlayer;
+            const defender = this.players.find(p => p.team !== target.team && Math.hypot(p.x - target.x, p.y - target.y) < 15 * scale);
+            const catchChance = (target.catchRating / 100) * 0.9 - (defender ? defender.awareness / 400 : 0) + (Math.random() * 0.1 - 0.05);
+
+            if (Math.random() < catchChance) {
+                this.completePass(target);
+            } else {
+                // Check for interception
+                if (defender && Math.random() < (defender.catchRating / 100) * 0.5) {
+                    this.completePass(defender);
+                } else {
+                    this.incompletePass();
+                }
+            }
+            return;
+        }
+
+        const ballCarrier = this.players.find(p => p.hasBall);
+        if (ballCarrier) {
+            this.players.filter(d => d.team !== ballCarrier.team).forEach(defender => {
+                if (Math.hypot(ballCarrier.x - defender.x, ballCarrier.y - defender.y) < 8 * scale) {
+                     const breakChance = (ballCarrier.agility + ballCarrier.strength) / (defender.strength * 2.5) + (Math.random() * 0.1 - 0.05);
+                     if (Math.random() > breakChance * 0.1) {
+                         this.triggerScreenShake(); this.endPlay(ballCarrier); return;
+                     }
+                }
+            });
+            const yardLine = (ballCarrier.x / scale / YARDS_TO_PIXELS) - 10;
+            if (yardLine >= 100) { this.endPlay(ballCarrier, true); return; }
+            if (ballCarrier.y < 0 || ballCarrier.y > this.canvas.height) { this.endPlay(ballCarrier); return; }
+        }
+
+        if(this.gameState.currentPlay?.type !== 'offense_run' && !this.football.inAir && this.players.find(p=>p.role.startsWith('QB'))?.hasBall) {
+            ['b', 'c', 'd'].forEach((button) => {
+                 if (this.controller.actions[button]) {
+                    const target = this.players.find(p => p.assignment.passButton === button);
+                    if (target) this.throwBall(target);
+                    this.controller.actions[button] = false;
+                }
+            });
+        }
+    }
+
+    updatePlayerLogic(player, deltaTime, scale) {
+        const baseSpeed = PLAYER_BASE_SPEED * (player.speed / 100);
+        const speed = baseSpeed * scale * deltaTime;
+
+        if (player.isControlled && player.hasBall) {
+            // Player has limited control over the runner
+            if (this.controller.directions.left) player.y -= speed * 0.5;
+            if (this.controller.directions.right) player.y += speed * 0.5;
+
+            // AI controls forward movement
+            player.x += speed;
+
+        } else {
+            const ballCarrier = this.players.find(p => p.hasBall);
+            const isOffense = player.team === this.gameState.possession;
+
+            if (!isOffense) { // AI Defense
+                const assignment = player.assignment;
+                if (assignment?.cover === 'man' && !ballCarrier) {
+                    const target = this.players.find(p => p.role === assignment.target && p.team !== player.team);
+                    if (target) this.moveTowards(player, target, speed * 0.98);
+                } else if (assignment?.cover === 'blitz') {
+                    const qb = this.players.find(p => p.role.startsWith('QB') && p.team !== player.team && !p.hasBall);
+                    this.moveTowards(player, ballCarrier ?? qb, speed * 1.1);
+                } else {
+                    if (ballCarrier) this.moveTowards(player, ballCarrier, speed * 0.9);
+                }
+            } else if (isOffense && !player.hasBall && this.status === GameStatus.PLAY_IN_PROGRESS) { // AI Offense
+                if(player.route.length > player.routeIndex) {
+                    const targetPoint = player.route[player.routeIndex];
+                    const worldTarget = {
+                        x: player.assignment.startX + targetPoint.y * YARDS_TO_PIXELS * scale,
+                        y: player.assignment.startY - targetPoint.x * YARDS_TO_PIXELS * scale
+                    };
+                    this.moveTowards(player, worldTarget, speed);
+                    if(Math.hypot(player.x - worldTarget.x, player.y - worldTarget.y) < speed * 2) {
+                        player.routeIndex++;
+                    }
+                }
+            }
+        }
+    }
+    moveTowards(p, target, speed) {
+        if (!target) return;
+        const dx = target.x - p.x, dy = target.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > speed) { p.x += (dx / dist) * speed; p.y += (dy / dist) * speed; }
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawField();
+
+        this.players.filter(p => p.y < this.football.y + this.football.z).forEach(player => player.draw(this.ctx, this.getScale()));
+        if(this.football.inAir || this.players.some(p => p.hasBall)) this.football.draw(this.ctx, this.getScale());
+        this.players.filter(p => p.y >= this.football.y + this.football.z).forEach(player => player.draw(this.ctx, this.getScale()));
+    }
+
+    drawField() {
+        const scale = this.getScale();
+        this.ctx.fillStyle = '#4a7f3d'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = '#639a55';
+        for(let i = 0; i < this.canvas.width; i+= 20 * scale) {
+            this.ctx.fillRect(i, 0, 10 * scale, this.canvas.height);
+        }
+        this.ctx.fillStyle = this.homeTeam.color; this.ctx.globalAlpha = 0.6;
+        this.ctx.fillRect(0, 0, 10 * YARDS_TO_PIXELS * scale, this.canvas.height);
+        this.ctx.fillStyle = this.awayTeam.color;
+        this.ctx.fillRect(110 * YARDS_TO_PIXELS * scale, 0, 10 * YARDS_TO_PIXELS * scale, this.canvas.height);
+        this.ctx.globalAlpha = 1.0;
+
+        this.ctx.strokeStyle = 'rgba(255,255,255,0.6)'; this.ctx.lineWidth = 1;
+        for (let y = 10; y <= 110; y += 5) {
+            const x = y * YARDS_TO_PIXELS * scale;
+            this.ctx.beginPath(); this.ctx.moveTo(x, 0); this.ctx.lineTo(x, this.canvas.height); this.ctx.stroke();
+        }
+        const losX = (this.gameState.lineOfScrimmage + 10) * YARDS_TO_PIXELS * scale;
+        this.ctx.strokeStyle = '#3399FF'; this.ctx.lineWidth = 3 * scale;
+        this.ctx.beginPath(); this.ctx.moveTo(losX, 0); this.ctx.lineTo(losX, this.canvas.height); this.ctx.stroke();
+
+        const firstDownX = (this.gameState.lineOfScrimmage + this.gameState.yardsToGo + 10) * YARDS_TO_PIXELS * scale;
+        if (firstDownX < 110 * YARDS_TO_PIXELS * scale) {
+            this.ctx.strokeStyle = '#FFFF00'; this.ctx.lineWidth = 3 * scale;
+            this.ctx.beginPath(); this.ctx.moveTo(firstDownX, 0); this.ctx.lineTo(firstDownX, this.canvas.height); this.ctx.stroke();
+        }
+    }
+
+    prepareForPlay() {
+        this.status = GameStatus.PLAY_SELECTION;
+        this.playerMotionTarget = null;
+        this.runClock(Math.random() * 5 + 10);
+
+        if (this.gameState.possession === 'player') {
+            let plays = Object.values(PLAYBOOK).filter(p => p.type.startsWith('offense'));
+            if(this.gameState.down === 4 && this.gameState.lineOfScrimmage >= 20) {
+                 plays.push(PLAYBOOK['field_goal'], PLAYBOOK['punt']);
+            }
+            this.showPlaySelection(plays, 'offense');
+        } else { // Player on defense
+            let cpuOffensivePlays = Object.values(PLAYBOOK).filter(p => p.type.startsWith('offense')).map(p => p.id);
+            if(this.gameState.down === 4 && this.gameState.lineOfScrimmage >= 20) {
+                 cpuOffensivePlays.push('field_goal', 'punt');
+            }
+            const cpuPlayId = this.aiCoach.choosePlay(this.gameState, cpuOffensivePlays, 'offense');
+            this.gameState.currentPlay = PLAYBOOK[cpuPlayId];
+            if(this.gameState.currentPlay.type === 'special_teams') {
+                this.handleCpuSpecialTeams();
+                return;
+            }
+            const playerDefensivePlays = Object.values(PLAYBOOK).filter(p => p.type === 'defense');
+            this.showPlaySelection(playerDefensivePlays, 'defense');
+        }
+    }
+
+    showPlaySelection(plays, side) {
+        App.showPlaySelectionModal(plays, playId => {
+            if (playId === 'field_goal' || playId === 'punt') {
+                this.startKick(playId);
+            } else if (side === 'offense') {
+                this.selectOffensivePlay(playId);
+            } else {
+                this.selectDefensivePlay(playId);
+            }
+        }, side);
+    }
+
+    showAudibleSelection() {
+        this.status = GameStatus.AUDIBLE_SELECTION;
+        const basePlay = this.gameState.possession === 'player' ? this.gameState.currentPlay : this.gameState.defensivePlay;
+        const audibleIds = basePlay.audibles ?? [];
+        const audiblePlays = audibleIds.map((id) => PLAYBOOK[id]);
+
+        App.showPlaySelectionModal(audiblePlays, playId => {
+            if (this.gameState.possession === 'player') {
+                this.gameState.currentPlay = PLAYBOOK[playId];
+            } else {
+                this.gameState.defensivePlay = PLAYBOOK[playId];
+            }
+            this.setupFormation();
+        }, this.gameState.possession === 'player' ? 'offense' : 'defense', true);
+    }
+
+    selectOffensivePlay(playerPlayId) {
+        this.gameState.currentPlay = PLAYBOOK[playerPlayId];
+        const defensivePlays = Object.values(PLAYBOOK).filter(p => p.type === 'defense').map(p => p.id);
+        this.gameState.defensivePlay = PLAYBOOK[this.aiCoach.choosePlay(this.gameState, defensivePlays, 'defense')];
+        this.setupFormation();
+    }
+
+    selectDefensivePlay(playerPlayId) {
+        this.gameState.defensivePlay = PLAYBOOK[playerPlayId];
+        this.setupFormation();
+    }
+
+    setupFormation(play = null) {
+        this.players = [];
+        this.football.inAir = false;
+        const scale = this.getScale();
+        const losX = (this.gameState.lineOfScrimmage + 10) * YARDS_TO_PIXELS * scale;
+        const centerY = this.canvas.height / 2;
+
+        const currentPlay = play ?? (this.gameState.possession === 'player' ? this.gameState.currentPlay : this.gameState.defensivePlay);
+        const formation = currentPlay.formation;
+
+        const [team, teamName] = this.gameState.possession === 'player' ? [this.homeTeam, 'player'] : [this.awayTeam, 'cpu'];
+
+        Object.entries(formation).forEach(([role, pos]) => {
+            const p = new Player(losX + (pos.x * scale), centerY + (pos.y * scale), teamName, role, team);
+            this.players.push(p);
+        });
+
+        if (play) {
+            this.status = GameStatus.KICK_METER;
+            this.kickMeterPhase = 'power';
+            this.kickPower = 0;
+            document.getElementById('kick-meter-container').style.display = 'flex';
+        } else {
+             const [offTeam, defTeam] = this.gameState.possession === 'player' ? [this.homeTeam, this.awayTeam] : [this.awayTeam, this.homeTeam];
+             const [offTeamName, defTeamName] = this.gameState.possession === 'player' ? ['player', 'cpu'] : ['cpu', 'player'];
+
+            const setupSide = (p, tN, tD, isOff) => {
+                 Object.entries(p.formation).forEach(([role, pos]) => {
+                    const player = new Player(losX + (pos.x * scale * (isOff ? 1 : -1)), centerY + (pos.y * scale), tN, role, tD);
+                    player.assignment = { ...p.assignments?.[role] };
+                    if (isOff) player.route = p.routes?.[role] ?? [];
+                    player.routeIndex = 0;
+                    player.assignment.startX = player.x;
+                    player.assignment.startY = player.y;
+                    this.players.push(player);
+                });
+            };
+            this.players = [];
+            setupSide(this.gameState.currentPlay, offTeamName, offTeam, true);
+            setupSide(this.gameState.defensivePlay, defTeamName, defTeam, false);
+            this.status = GameStatus.PRE_SNAP;
+        }
+    }
+
+    hikeBall() {
+        if(this.status !== GameStatus.PRE_SNAP) return;
+        this.status = GameStatus.PLAY_IN_PROGRESS;
+        this.lastFrameTime = performance.now();
+
+        const qb = this.players.find(p => p.role.startsWith('QB') && p.team === this.gameState.possession);
+        if (!qb) return;
+
+        const ballCarrier = this.gameState.currentPlay.type === 'offense_run' ? (this.players.find(p => p.role.startsWith('HB') && p.team === this.gameState.possession) ?? qb) : qb;
+
+        ballCarrier.hasBall = true;
+        this.football.x = ballCarrier.x; this.football.y = ballCarrier.y;
+
+        this.players.forEach(p => p.isControlled = false);
+        if (ballCarrier.team === 'player') ballCarrier.isControlled = true;
+
+        if (this.gameState.currentPlay.type.startsWith('offense_pass')) {
+            document.getElementById('passing-controls-info').style.display = 'block';
+        }
+    }
+
+    throwBall(targetPlayer) {
+        const qb = this.players.find(p => p.hasBall && p.role.startsWith('QB'));
+        if(!qb) return;
+        qb.hasBall = false;
+
+        const accuracyRoll = (100 - qb.throwAccuracy) / 1.5;
+        const targetX = targetPlayer.x + (Math.random() - 0.5) * accuracyRoll;
+        const targetY = targetPlayer.y + (Math.random() - 0.5) * accuracyRoll;
+
+        this.football.throw(qb.x, qb.y, targetX, targetY, targetPlayer);
+    }
+
+    completePass(receiver) {
+        this.football.inAir = false;
+        receiver.hasBall = true;
+        if (receiver.team === 'player') {
+             this.players.forEach(p => p.isControlled = false);
+             receiver.isControlled = true;
+        }
+    }
+
+    incompletePass() {
+        this.status = GameStatus.POST_PLAY;
+        this.showNotification('Incomplete pass!');
+        this.runClock(Math.random() * 3 + 2); // Incompletions take less time
+        this.gameState.down++;
+        if (this.gameState.down > 4) {
+            this.turnover('Turnover on downs!');
+        } else {
+            setTimeout(() => this.prepareForPlay(), 2000);
+        }
+    }
+
+    endPlay(ballCarrier, isTouchdown = false) {
+        if(this.status !== GameStatus.PLAY_IN_PROGRESS) return;
+        this.status = GameStatus.POST_PLAY;
+        document.getElementById('passing-controls-info').style.display = 'none';
+        const startLine = this.gameState.lineOfScrimmage;
+        const endLine = Math.round((ballCarrier.x / this.getScale() / YARDS_TO_PIXELS) - 10);
+        const gain = Math.min(100-startLine, Math.max(-startLine, endLine - startLine));
+        this.runClock(Math.random() * 8 + 4);
+
+        if (isTouchdown) {
+            this.showNotification("TOUCHDOWN!");
+            if (ballCarrier.team === 'player') this.gameState.score.player += 6;
+            else this.gameState.score.cpu += 6;
+            this.status = GameStatus.CONVERSION_CHOICE;
+            document.getElementById('conversion-choice-modal').style.display = 'flex';
+        } else {
+            this.showNotification(`${gain >= 0 ? 'Gain' : 'Loss'} of ${Math.abs(gain)} yards`);
+            this.gameState.lineOfScrimmage += gain;
+            if (gain >= this.gameState.yardsToGo) {
+                this.gameState.down = 1;
+                this.gameState.yardsToGo = Math.min(10, 100 - this.gameState.lineOfScrimmage);
+            } else {
+                this.gameState.down++;
+                this.gameState.yardsToGo -= gain;
+            }
+             if (this.gameState.down > 4) {
+                this.turnover("Turnover on downs!");
+            } else {
+                setTimeout(() => this.prepareForPlay(), 2000);
+            }
+        }
+    }
+
+    handleConversionChoice(type) {
+        document.getElementById('conversion-choice-modal').style.display = 'none';
+        if (type === 'kick') {
+            this.gameState.lineOfScrimmage = 15; // XP snap line
+            this.startKick('field_goal');
+        } else {
+            this.gameState.lineOfScrimmage = 2; // 2pt conversion line
+            this.gameState.down = 1;
+            this.gameState.yardsToGo = 2;
+            this.prepareForPlay();
+        }
+    }
+
+    startKick(type) {
+        this.gameState.currentPlay = PLAYBOOK[type];
+        this.gameState.defensivePlay = PLAYBOOK[type === 'field_goal' ? 'fg_block' : 'punt_return'];
+        this.setupFormation(this.gameState.currentPlay);
+    }
+
+    handleCpuSpecialTeams() {
+        const play = this.gameState.currentPlay;
+        if(play.id === 'punt') {
+            this.showNotification("CPU Punts");
+            const puntDist = 40 + (Math.random() * 15);
+            this.gameState.lineOfScrimmage += puntDist;
+            this.turnover('Punt');
+        } else if (play.id === 'field_goal') {
+            const kickDist = this.gameState.lineOfScrimmage + 17;
+            const success = Math.random() > (kickDist / 60);
+            if(success) {
+                this.showNotification(`CPU Field Goal is GOOD from ${kickDist} yards!`);
+                this.gameState.score.cpu += 3;
+            } else {
+                this.showNotification(`CPU Field Goal is NO GOOD from ${kickDist} yards!`);
+            }
+             this.startKickoff();
+        }
+    }
+
+    updateKickMeter(deltaTime) {
+        if(this.kickMeterPhase === 'power') {
+            this.kickPower += deltaTime * 120;
+            if(this.kickPower >= 100) this.kickPower = 100;
+            document.getElementById('kick-meter-power').style.width = `${this.kickPower}%`;
+        }
+    }
+
+    handleKickInput() {
+        if(!this.controller.actions.a) return;
+        this.controller.actions.a = false;
+
+        if (this.kickMeterPhase === 'power') {
+            this.kickMeterPhase = 'accuracy';
+        } else if (this.kickMeterPhase === 'accuracy') {
+            const indicator = document.getElementById('kick-meter-indicator');
+            const pos = parseFloat(indicator.style.left || '0');
+            this.kickAccuracy = 100 - Math.abs(pos - 87.5) * 2;
+            this.resolveKick();
+        }
+    }
+
+    resolveKick() {
+        this.kickMeterPhase = 'inactive';
+        document.getElementById('kick-meter-container').style.display = 'none';
+        const type = this.gameState.currentPlay.id;
+
+        if (type === 'punt') {
+            const puntDist = this.kickPower * 0.6;
+            this.showNotification(`Punted ${Math.round(puntDist)} yards.`);
+            this.gameState.lineOfScrimmage += puntDist;
+            this.turnover('Punt');
+        } else if (type === 'field_goal') {
+            const kickDist = (100 - this.gameState.lineOfScrimmage) + 17;
+            const requiredPower = kickDist / 60 * 100;
+
+            if (this.kickPower >= requiredPower && this.kickAccuracy > 60) {
+                 const points = this.gameState.down === 1 ? 1 : 3; // Is it an XP or FG?
+                 this.showNotification(`Kick is GOOD from ${kickDist} yards!`);
+                 if(this.gameState.possession === 'player') this.gameState.score.player += points;
+                 else this.gameState.score.cpu += points;
+                 this.startKickoff();
+            } else {
+                 this.showNotification(`Kick is NO GOOD from ${kickDist} yards!`);
+                 this.turnover('Missed FG');
+            }
+        }
+    }
+
+    startKickoff() {
+        this.showNotification("Kickoff!");
+        this.gameState.possession = this.gameState.possession === 'player' ? 'cpu' : 'player';
+        this.gameState.lineOfScrimmage = 25;
+        this.gameState.down = 1;
+        this.gameState.yardsToGo = 10;
+        setTimeout(() => this.prepareForPlay(), 2000);
+    }
+
+    turnover(reason) {
+        if (reason !== 'kickoff') this.showNotification(reason);
+        this.gameState.possession = this.gameState.possession === 'player' ? 'cpu' : 'player';
+        this.gameState.lineOfScrimmage = 100 - this.gameState.lineOfScrimmage;
+        if (this.gameState.lineOfScrimmage < 1) this.gameState.lineOfScrimmage = 25;
+        this.gameState.down = 1;
+        this.gameState.yardsToGo = 10;
+        setTimeout(() => this.prepareForPlay(), 2000);
+    }
+
+    endGame(reason) {
+        this.gameState.running = false;
+        this.status = GameStatus.GAME_OVER;
+        const modal = document.getElementById('game-over-modal');
+        const scoreEl = document.getElementById('game-over-score');
+        const titleEl = document.getElementById('game-over-title');
+        const playerScore = this.gameState.score.player;
+        const cpuScore = this.gameState.score.cpu;
+
+        titleEl.textContent = playerScore > cpuScore ? "YOU WIN!" : playerScore < cpuScore ? "YOU LOSE" : "IT'S A TIE!";
+        scoreEl.textContent = `${this.homeTeam.name}: ${playerScore} - ${this.awayTeam.name}: ${cpuScore}`;
+        modal.style.display = 'flex';
+    }
+
+    updateScoreboard() {
+        document.getElementById('home-team-name').textContent = this.homeTeam.name.toUpperCase();
+        document.getElementById('home-team-score').textContent = `${this.gameState.score.player}`;
+        document.getElementById('away-team-name').textContent = this.awayTeam.name.toUpperCase();
+        document.getElementById('away-team-score').textContent = `${this.gameState.score.cpu}`;
+        document.getElementById('home-team-logo').style.backgroundImage = `url(${this.homeTeam.logo})`;
+        document.getElementById('away-team-logo').style.backgroundImage = `url(${this.awayTeam.logo})`;
+        const clock = this.gameClock > 0 ? this.gameClock : 0;
+        document.getElementById('game-clock').textContent = `${Math.floor(clock / 60)}:${(Math.floor(clock) % 60).toString().padStart(2, '0')} | Q${this.quarter}`;
+        const downNth = this.gameState.down === 1 ? '1st' : this.gameState.down === 2 ? '2nd' : this.gameState.down === 3 ? '3rd' : '4th';
+        document.getElementById('down-and-distance').textContent = `${downNth} & ${this.gameState.yardsToGo <= 0 ? 'Goal' : Math.ceil(this.gameState.yardsToGo)}`;
+        const yardLine = this.gameState.lineOfScrimmage <= 50 ? `Own ${this.gameState.lineOfScrimmage}` : `Opp ${100 - this.gameState.lineOfScrimmage}`;
+        document.getElementById('ball-on').textContent = `Ball on ${yardLine}`;
+    }
+
+    showNotification(message) {
+        const container = document.getElementById('notification-container');
+        const notif = document.createElement('div');
+        notif.className = 'notification'; notif.textContent = message;
+        container.appendChild(notif);
+        setTimeout(() => notif.remove(), 3000);
+    }
+    triggerScreenShake() {
+        this.canvas.classList.add('shake');
+        setTimeout(() => this.canvas.classList.remove('shake'), 150);
+    }
+    getScale() { return this.canvas.width / (FIELD_WIDTH_YARDS * YARDS_TO_PIXELS); }
+}
 
 // --- APP CLASS ---
 class App {
     static main() {
+        if (!API_KEY) { document.body.innerHTML = `<div style="color:white; padding: 20px;"><h3>Warning</h3><p>API_KEY is not set. AI will use local probability logic.</p></div>`; }
         const aiCoach = new AICoach();
         App.game = Game.getInstance(aiCoach);
         App.setupEventListeners();
@@ -382,7 +1009,8 @@ class App {
                 const availableCpuTeams = Object.keys(TEAMS).filter(id => id !== App.playerTeamId);
                 const cpuTeamId = availableCpuTeams[Math.floor(Math.random() * availableCpuTeams.length)];
                 const quarterLength = parseInt(document.getElementById('quarter-length-slider').value);
-                App.game.start(App.playerTeamId, cpuTeamId, difficulty, quarterLength);
+                const useGenAI = document.getElementById('genai-toggle').checked;
+                App.game.start(App.playerTeamId, cpuTeamId, difficulty, quarterLength, useGenAI);
             });
         });
     }
@@ -535,5 +1163,3 @@ class App {
 App.currentPlayFilters = { type: 'all', formation: 'all' };
 
 document.addEventListener('DOMContentLoaded', () => App.main());
-
-[end of nfl/game.js]
