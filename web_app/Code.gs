@@ -24,7 +24,7 @@ function getGameUpdate(event, details) {
 
   switch (event) {
     case 'update':
-      prompt = `You are a football game AI. Generate game logic based on the following details: ${details}. Respond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary'.`;
+      prompt = `You are a football game AI. Generate challenging and realistic opponent behavior and play outcomes based on the following details: ${details}. Respond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary'.`;
       break;
     case 'play-analysis':
       prompt = `You are a football analyst. Provide a detailed analysis of the following play: ${details}.`;

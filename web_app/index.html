@@ -19,6 +19,82 @@
       background-color: rgba(0, 100, 0, 0.5);
       border: 1px solid #FFFFFF;
     }
+
+    #controller {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+    }
+
+    #d-pad {
+      position: relative;
+      width: 120px;
+      height: 120px;
+    }
+
+    .d-pad-button {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #555;
+      border: 1px solid #FFF;
+      transition: all 0.1s ease-in-out;
+    }
+
+    .d-pad-button:active {
+      transform: scale(0.9);
+    }
+
+    #up { top: 0; left: 40px; }
+    #down { bottom: 0; left: 40px; }
+    #left { top: 40px; left: 0; }
+    #right { top: 40px; right: 0; }
+
+    #action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 10px;
+      margin-left: 20px;
+    }
+
+    .action-button {
+      width: 50px;
+      height: 50px;
+      background-color: #555;
+      border: 1px solid #FFF;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      transition: all 0.1s ease-in-out;
+    }
+
+    .action-button:active {
+      transform: scale(0.9);
+    }
+
+    #shoulder-buttons {
+      position: absolute;
+      top: -30px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .shoulder-button {
+      width: 60px;
+      height: 30px;
+      background-color: #555;
+      border: 1px solid #FFF;
+    }
+
+    .selected-receiver {
+      border: 2px solid yellow;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +143,8 @@
       width: 20,
       height: 20,
       speed: 5,
+      animation: 'run',
+      angle: 0,
     };
 
     let ball = {
@@ -96,6 +174,16 @@
     let gameClock = 15 * 60;
     let quarter = 1;
     let currentPlay;
+    let selectedReceiver = 'A';
+
+    const spriteSheet = new Image();
+    spriteSheet.src = 'spritesheet.png';
+    const animationManager = new AnimationManager(spriteSheet, 20, 20);
+    animationManager.define('run', [0, 1, 2, 3], 0.1);
+    animationManager.define('pass', [4, 5, 6, 7], 0.1);
+    animationManager.define('jump', [8, 9, 10, 11], 0.1);
+    animationManager.define('spin', [12, 13, 14, 15], 0.1);
+    animationManager.define('dive', [16, 17, 18, 19], 0.1);
 
     function update() {
       if (currentPlay) {
@@ -107,10 +195,20 @@
           if (controller.d) passTo('D');
         } else if (currentPlay.type === 'run') {
           // Running logic
-          if (controller.up) player.y -= player.speed;
-          if (controller.down) player.y += player.speed;
-          if (controller.left) player.x -= 2;
-          if (controller.right) player.x += 2;
+          if (controller.up) {
+            player.x += Math.sin(player.angle) * player.speed;
+            player.y -= Math.cos(player.angle) * player.speed;
+          }
+          if (controller.down) {
+            player.x -= Math.sin(player.angle) * player.speed;
+            player.y += Math.cos(player.angle) * player.speed;
+          }
+          if (controller.left) {
+            player.angle -= 0.1;
+          }
+          if (controller.right) {
+            player.angle += 0.1;
+          }
 
           if (controller.a) jump();
           if (controller.b) spin();
@@ -142,6 +240,25 @@
         quarter++;
         gameClock = 15 * 60;
       }
+
+      animationManager.update(player.animation, 1 / 60);
+    }
+
+    function passTo(receiver) {
+      player.animation = 'pass';
+      sounds.tackle.play();
+    }
+
+    function jump() {
+      player.animation = 'jump';
+    }
+
+    function spin() {
+      player.animation = 'spin';
+    }
+
+    function dive() {
+      player.animation = 'dive';
     }
 
     function render() {
@@ -151,8 +268,10 @@
       // Save the current context state
       ctx.save();
 
-      // Translate the canvas to follow the player
-      ctx.translate(-player.x + canvas.width / 2, -player.y + canvas.height / 2);
+      // Translate the canvas to follow the player from a third-person perspective
+      const cameraX = player.x - canvas.width / 2;
+      const cameraY = player.y - canvas.height / 2 - 100;
+      ctx.translate(-cameraX, -cameraY);
 
       // Draw field
       ctx.fillStyle = '#006400';
@@ -178,8 +297,11 @@
       ctx.fillRect(1970, -100, 20, 10);
 
       // Draw player
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(player.x, player.y, player.width, player.height);
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.rotate(player.angle);
+      animationManager.draw(ctx, player.animation, -player.width / 2, -player.height / 2);
+      ctx.restore();
 
       // Draw ball
       ctx.beginPath();
@@ -193,6 +315,16 @@
       opponents.forEach(function(opponent) {
         ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
       });
+
+      // Draw selected receiver indicator
+      if (currentPlay && currentPlay.type === 'pass') {
+        const receiver = opponents.find(o => o.receiver === selectedReceiver);
+        if (receiver) {
+          ctx.strokeStyle = 'yellow';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(receiver.x - 5, receiver.y - 5, receiver.width + 10, receiver.height + 10);
+        }
+      }
 
       // Restore the context state
       ctx.restore();
