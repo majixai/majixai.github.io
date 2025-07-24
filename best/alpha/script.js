@@ -62,7 +62,6 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
-        #tokens = 100;
         
         constructor() {
             // Instantiate services and managers
@@ -504,7 +503,14 @@
             if(buttonFilters.tag){filterTags=[buttonFilters.tag.toLowerCase()];if(this.filterTagsSelect)this.filterTagsSelect.value=buttonFilters.tag.toLowerCase()}
             else if(this.filterTagsSelect){filterTags=Array.from(this.filterTagsSelect.selectedOptions).map(o=>o.value.toLowerCase()).filter(t=>t!=='')}
             let filterAges=[];
-            if(buttonFilters.age){filterAges=[parseInt(buttonFilters.age)];if(this.filterAgeSelect)this.filterAgeSelect.value=String(buttonFilters.age)}
+            if(buttonFilters.age){
+                if (Array.isArray(buttonFilters.age)) {
+                    filterAges = buttonFilters.age;
+                } else {
+                    filterAges=[parseInt(buttonFilters.age)];
+                }
+                if(this.filterAgeSelect)this.filterAgeSelect.value=String(buttonFilters.age)
+            }
             else if(this.filterAgeSelect){filterAges=Array.from(this.filterAgeSelect.selectedOptions).map(o=>parseInt(o.value)).filter(a=>!isNaN(a)&&a>0)}
             
             if (buttonFilters.birthdayBanner) {
@@ -533,12 +539,6 @@
 
             // Sort by age if an age filter is active
             if (filterAges.length > 0) {
-                this.#lastFilteredUsers.sort((a, b) => {
-                    const ageA = typeof a.age === 'number' ? a.age : Infinity;
-                    const ageB = typeof b.age === 'number' ? b.age : Infinity;
-                    return ageA - ageB;
-                });
-            } else if (buttonFilters.age === 18) {
                 this.#lastFilteredUsers.sort((a, b) => {
                     const ageA = typeof a.age === 'number' ? a.age : Infinity;
                     const ageB = typeof b.age === 'number' ? b.age : Infinity;
@@ -844,6 +844,7 @@
             if (this.#previousUsers.length > maxHistorySize) this.#previousUsers.splice(maxHistorySize);
             try {
                 await this.storageManager.saveUsers("previousUsers", this.#previousUsers);
+                this.#displayHistorySlideshow();
             } catch (error) {
                 console.error(`Failed to save previous users after adding ${user.username}:`, error);
             }
@@ -930,6 +931,7 @@
             document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
             document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'deepthroat' }));
             document.getElementById("filterTagBigboobs")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'bigboobs' }));
+            document.getElementById("filterUnder24")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: [18, 19, 20, 21, 22, 23] }));
             
             if (this.filterBirthdayBannerButton) {
                 this.filterBirthdayBannerButton.addEventListener('click', () => {
@@ -1053,17 +1055,6 @@
                 this.#spinSlots();
             });
 
-            document.getElementById('prizeStoreButton')?.addEventListener('click', () => {
-                this.#showPrizeStore();
-            });
-
-            document.getElementById('closePrizeStoreModal')?.addEventListener('click', () => {
-                const prizeStoreModal = document.getElementById('prizeStoreModal');
-                if (prizeStoreModal) {
-                    prizeStoreModal.style.display = 'none';
-                }
-            });
-
             // Listen for window resize events to adjust layout
             let resizeTimeout;
             window.addEventListener('resize', () => {
@@ -1182,9 +1173,6 @@
                 this.uiManager.showOnlineErrorDisplay("Critical error: Failed to initialize storage. Application may not function correctly.");
                 throw error;
             });
-
-            this.#tokens = await this.storageManager.loadTokenBalance();
-            this.#updateTokenDisplay();
 
             await this.storageManager.populateStorageOptions();
             this.#storageType = window.storageType;
@@ -1347,105 +1335,59 @@
         #spinSlots() {
             const reels = document.querySelectorAll('.reel');
             const symbolKeys = Object.keys(symbols);
-            const cost = 1;
-
-            if (this.#tokens < cost) {
-                console.log("Not enough tokens to spin.");
-                return;
-            }
-
-            this.#tokens -= cost;
-            this.#updateTokenDisplay();
-
-            let results = [];
-            reels.forEach((reel, index) => {
+            reels.forEach(reel => {
                 const interval = setInterval(() => {
                     reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 100);
 
                 setTimeout(() => {
                     clearInterval(interval);
-                    const finalSymbol = symbolKeys[Math.floor(Math.random() * symbolKeys.length)];
-                    reel.innerHTML = symbols[finalSymbol];
-                    results[index] = finalSymbol;
-
-                    if (index === reels.length - 1) {
-                        this.#calculateWinnings(results);
-                    }
-                }, 1000 + (index * 500));
+                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
+                }, 1000);
             });
         }
 
-        #calculateWinnings(results) {
-            const payouts = {
-                'C': { 3: 10, 2: 5 },
-                'L': { 3: 20 },
-                'O': { 3: 30 },
-                'B': { 3: 50 },
-                'S': { 3: 100 },
-                '7': { 3: 500 },
-            };
+        #displayHistorySlideshow() {
+            const slideshowContainer = document.getElementById('historySlideshow');
+            if (!slideshowContainer) return;
 
-            let winnings = 0;
-            const [a, b, c] = results;
+            slideshowContainer.innerHTML = '';
 
-            if (a === b && b === c) {
-                winnings = payouts[a][3] || 0;
-            } else if (a === b) {
-                winnings = payouts[a][2] || 0;
+            if (this.#previousUsers.length === 0) {
+                slideshowContainer.style.display = 'none';
+                return;
             }
 
-            if (winnings > 0) {
-                this.#tokens += winnings;
-                this.#updateTokenDisplay();
-                this.storageManager.saveTokenBalance(this.#tokens);
-                console.log(`Won ${winnings} tokens!`);
-            }
-        }
+            slideshowContainer.style.display = 'block';
 
-        #updateTokenDisplay() {
-            const tokenDisplay = document.getElementById('tokenBalance');
-            if (tokenDisplay) {
-                tokenDisplay.textContent = `Tokens: ${this.#tokens}`;
-            }
-        }
+            this.#previousUsers.forEach((user, index) => {
+                const slide = document.createElement('div');
+                slide.classList.add('history-slide');
+                if (index === 0) {
+                    slide.classList.add('active');
+                }
 
-        #showPrizeStore() {
-            const prizes = [
-                { name: '10 Extra Spins', cost: 50 },
-                { name: 'Mystery Box', cost: 100 },
-                { name: 'Custom Chat Badge', cost: 250 },
-            ];
+                const img = document.createElement('img');
+                img.src = user.image_url;
+                img.style.width = '100%';
 
-            const prizeList = document.getElementById('prizeList');
-            if (prizeList) {
-                prizeList.innerHTML = '';
-                prizes.forEach(prize => {
-                    const prizeElement = document.createElement('div');
-                    prizeElement.classList.add('prize-item');
-                    prizeElement.innerHTML = `
-                        <span>${prize.name} - ${prize.cost} tokens</span>
-                        <button class="btn btn-success" onclick="app.purchasePrize(${prize.cost})">Buy</button>
-                    `;
-                    prizeList.appendChild(prizeElement);
-                });
+                slide.appendChild(img);
+                slideshowContainer.appendChild(slide);
+            });
+
+            let slideIndex = 0;
+            const showSlides = () => {
+                const slides = document.getElementsByClassName("history-slide");
+                for (let i = 0; i < slides.length; i++) {
+                    slides[i].style.display = "none";
+                }
+                slideIndex++;
+                if (slideIndex > slides.length) {slideIndex = 1}
+                slides[slideIndex-1].style.display = "block";
+                setTimeout(showSlides, 2000); // Change image every 2 seconds
             }
 
-            const prizeStoreModal = document.getElementById('prizeStoreModal');
-            if (prizeStoreModal) {
-                prizeStoreModal.style.display = 'block';
-            }
-        }
-
-        purchasePrize(cost) {
-            if (this.#tokens >= cost) {
-                this.#tokens -= cost;
-                this.#updateTokenDisplay();
-                this.storageManager.saveTokenBalance(this.#tokens);
-                alert('Prize purchased successfully!');
-            } else {
-                alert('Not enough tokens to purchase this prize.');
-            }
+            showSlides();
         }
 
         #adjustLayoutHeights() {
@@ -1534,7 +1476,6 @@
     // DOMContentLoaded Listener
     document.addEventListener('DOMContentLoaded', () => {
         const app = new App();
-        window.app = app;
         app.start().catch(error => {
             console.error("Unhandled error during app startup:", error);
             const body = document.body;
