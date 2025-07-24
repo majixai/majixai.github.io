@@ -1,5 +1,4 @@
 function doGet() {
-
   return HtmlService.createHtmlOutputFromFile('index');
 }
 
@@ -31,11 +30,4 @@ function getCommentary(event) {
 
   const data = JSON.parse(response.getContentText());
   return data.choices[0].text.trim();
-
-  return HtmlService.createHtmlOutputFromFile('sidebar');
-}
-
-function getUnreadEmails() {
-  return GmailApp.getInboxUnreadCount();
-
 }
