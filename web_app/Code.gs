@@ -2,7 +2,7 @@ function doGet() {
   return HtmlService.createHtmlOutputFromFile('index');
 }
 
-function getCommentary(event, details) {
+function getGameUpdate(event, details) {
   const cache = CacheService.getScriptCache();
   const cacheKey = `lastCall_${event}`;
   const lastCall = cache.get(cacheKey);
@@ -14,7 +14,7 @@ function getCommentary(event, details) {
   }
 
   if (lastCall && now - lastCall < cooldown) {
-    return `Commentary for ${event} is cooling down...`;
+    return { commentary: `Commentary for ${event} is cooling down...` };
   }
 
   cache.put(cacheKey, now, 60); // Cache for 60 seconds
@@ -23,20 +23,17 @@ function getCommentary(event, details) {
   let prompt;
 
   switch (event) {
-    case 'touchdown':
-      prompt = `Generate an ecstatic play-by-play commentary for a touchdown. Details: ${details}`;
+    case 'update':
+      prompt = `You are a football game AI. Generate game logic based on the following details: ${details}. Respond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary'.`;
       break;
-    case 'interception':
-      prompt = `Generate a dramatic play-by-play commentary for an interception. Details: ${details}`;
-      break;
-    case 'fieldGoal':
-      prompt = `Generate a play-by-play commentary for a successful field goal. Details: ${details}`;
+    case 'play-analysis':
+      prompt = `You are a football analyst. Provide a detailed analysis of the following play: ${details}.`;
       break;
     default:
       prompt = `Generate a play-by-play commentary for the following event: ${event}. Details: ${details}`;
   }
 
-  const response = UrlFetchApp.fetch("https://api.generativeai.com/v1/commentary", {
+  const response = UrlFetchApp.fetch("https://api.generativeai.com/v1/game", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -44,10 +41,10 @@ function getCommentary(event, details) {
     },
     payload: JSON.stringify({
       prompt: prompt,
-      max_tokens: 100,
+      max_tokens: 500,
     }),
   });
 
   const data = JSON.parse(response.getContentText());
-  return data.choices[0].text.trim();
+  return JSON.parse(data.choices[0].text.trim());
 }
