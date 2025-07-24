@@ -19,7 +19,7 @@ class ApiService {
      */
     async getOnlineRooms(requestedOffset = 0) {
         console.log(`ApiService: Fetching page (limit ${this.#apiLimit}, offset ${requestedOffset}).`);
-        const apiUrl = `${this.#apiUrlBase}&limit=${this.#apiLimit}&offset=${requestedOffset}`;
+        const apiUrl = `${this.#apiUrlBase.replace(/&client_ip=request_ip/g, '')}&limit=${this.#apiLimit}&offset=${requestedOffset}`;
         
         let usersForThisPage = [];
         let hasMoreData = false;
