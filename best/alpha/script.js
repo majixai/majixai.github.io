@@ -62,6 +62,7 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
+        #tokens = 100;
         
         constructor() {
             // Instantiate services and managers
@@ -1052,6 +1053,17 @@
                 this.#spinSlots();
             });
 
+            document.getElementById('prizeStoreButton')?.addEventListener('click', () => {
+                this.#showPrizeStore();
+            });
+
+            document.getElementById('closePrizeStoreModal')?.addEventListener('click', () => {
+                const prizeStoreModal = document.getElementById('prizeStoreModal');
+                if (prizeStoreModal) {
+                    prizeStoreModal.style.display = 'none';
+                }
+            });
+
             // Listen for window resize events to adjust layout
             let resizeTimeout;
             window.addEventListener('resize', () => {
@@ -1170,6 +1182,9 @@
                 this.uiManager.showOnlineErrorDisplay("Critical error: Failed to initialize storage. Application may not function correctly.");
                 throw error;
             });
+
+            this.#tokens = await this.storageManager.loadTokenBalance();
+            this.#updateTokenDisplay();
 
             await this.storageManager.populateStorageOptions();
             this.#storageType = window.storageType;
@@ -1332,16 +1347,105 @@
         #spinSlots() {
             const reels = document.querySelectorAll('.reel');
             const symbolKeys = Object.keys(symbols);
-            reels.forEach(reel => {
+            const cost = 1;
+
+            if (this.#tokens < cost) {
+                console.log("Not enough tokens to spin.");
+                return;
+            }
+
+            this.#tokens -= cost;
+            this.#updateTokenDisplay();
+
+            let results = [];
+            reels.forEach((reel, index) => {
                 const interval = setInterval(() => {
                     reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 100);
 
                 setTimeout(() => {
                     clearInterval(interval);
-                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
-                }, 1000);
+                    const finalSymbol = symbolKeys[Math.floor(Math.random() * symbolKeys.length)];
+                    reel.innerHTML = symbols[finalSymbol];
+                    results[index] = finalSymbol;
+
+                    if (index === reels.length - 1) {
+                        this.#calculateWinnings(results);
+                    }
+                }, 1000 + (index * 500));
             });
+        }
+
+        #calculateWinnings(results) {
+            const payouts = {
+                'C': { 3: 10, 2: 5 },
+                'L': { 3: 20 },
+                'O': { 3: 30 },
+                'B': { 3: 50 },
+                'S': { 3: 100 },
+                '7': { 3: 500 },
+            };
+
+            let winnings = 0;
+            const [a, b, c] = results;
+
+            if (a === b && b === c) {
+                winnings = payouts[a][3] || 0;
+            } else if (a === b) {
+                winnings = payouts[a][2] || 0;
+            }
+
+            if (winnings > 0) {
+                this.#tokens += winnings;
+                this.#updateTokenDisplay();
+                this.storageManager.saveTokenBalance(this.#tokens);
+                console.log(`Won ${winnings} tokens!`);
+            }
+        }
+
+        #updateTokenDisplay() {
+            const tokenDisplay = document.getElementById('tokenBalance');
+            if (tokenDisplay) {
+                tokenDisplay.textContent = `Tokens: ${this.#tokens}`;
+            }
+        }
+
+        #showPrizeStore() {
+            const prizes = [
+                { name: '10 Extra Spins', cost: 50 },
+                { name: 'Mystery Box', cost: 100 },
+                { name: 'Custom Chat Badge', cost: 250 },
+            ];
+
+            const prizeList = document.getElementById('prizeList');
+            if (prizeList) {
+                prizeList.innerHTML = '';
+                prizes.forEach(prize => {
+                    const prizeElement = document.createElement('div');
+                    prizeElement.classList.add('prize-item');
+                    prizeElement.innerHTML = `
+                        <span>${prize.name} - ${prize.cost} tokens</span>
+                        <button class="btn btn-success" onclick="app.purchasePrize(${prize.cost})">Buy</button>
+                    `;
+                    prizeList.appendChild(prizeElement);
+                });
+            }
+
+            const prizeStoreModal = document.getElementById('prizeStoreModal');
+            if (prizeStoreModal) {
+                prizeStoreModal.style.display = 'block';
+            }
+        }
+
+        purchasePrize(cost) {
+            if (this.#tokens >= cost) {
+                this.#tokens -= cost;
+                this.#updateTokenDisplay();
+                this.storageManager.saveTokenBalance(this.#tokens);
+                alert('Prize purchased successfully!');
+            } else {
+                alert('Not enough tokens to purchase this prize.');
+            }
         }
 
         #adjustLayoutHeights() {
@@ -1430,6 +1534,7 @@
     // DOMContentLoaded Listener
     document.addEventListener('DOMContentLoaded', () => {
         const app = new App();
+        window.app = app;
         app.start().catch(error => {
             console.error("Unhandled error during app startup:", error);
             const body = document.body;
