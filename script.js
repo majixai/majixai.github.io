@@ -7,25 +7,6 @@ function log(target, name, descriptor) {
   };
   return descriptor;
 }
-
-class WebApp {
-  constructor() {
-    this._users = [];
-    this.db = null;
-    this.initDB();
-    this.init();
-  }
-
-  initDB() {
-    const request = indexedDB.open('WebAppDB', 1);
-
-    request.onupgradeneeded = (event) => {
-      this.db = event.target.result;
-      if (!this.db.objectStoreNames.contains('users')) {
-        this.db.createObjectStore('users', { keyPath: 'id', autoIncrement: true });
-      }
-    };
-
     request.onsuccess = (event) => {
       this.db = event.target.result;
       this.displayUsers();
@@ -151,11 +132,3 @@ class WebApp {
     this.fetchData();
   }
 }
-
-// Wrapper for the WebApp class
-const app = new WebApp();
-
-// Protected member (by convention)
-WebApp.prototype._protectedMethod = function() {
-  console.log('This is a protected method.');
-};

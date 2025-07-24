@@ -45,3 +45,28 @@ body {
 #menu-btn.spinning {
     animation: spin 2s linear infinite;
 }
+
+.parallax {
+    background-image: url("https://via.placeholder.com/1500x500");
+    min-height: 500px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+@keyframes loading {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+iframe.loading {
+    animation: loading 1s linear infinite;
+}
