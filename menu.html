@@ -4,24 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu Links</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Menu Links</h1>
-    <ul>
-        <li><a href="https://thevascommunity.com/" target="_blank">The VAS Community</a></li>
-        <li><a href="https://haicommunityai.com/sign/" target="_blank">HAI Community AI</a></li>
-        <li><a href="https://thecaicommunity.com/sign/" target="_blank">The CAI Community</a></li>
-        <li><a href="https://dirfn.com/#/pages/home/home" target="_blank">Dirfn</a></li>
-        <li><a href="https://www.botefinanceinstitute.com/#/user/info" target="_blank">Bote Finance Institute</a></li>
-        <li><a href="https://www.aiaiis.net/#/" target="_blank">AIAIIS</a></li>
-        <li><a href="https://www.lakshmifinance.com/#/online-event" target="_blank">Lakshmi Finance</a></li>
-        <li><a href="https://www.solidrockes.com/#/" target="_blank">Solid Rockes</a></li>
-        <li><a href="https://www.emxj.com/#/luckdraw" target="_blank">EMXJ</a></li>
-        <li><a href="https://fullforcecultures.com/pages/user/taskRecord" target="_blank">Full Force Cultures</a></li>
-        <li><a href="https://m.bcbit-ai.cc/#/pages/mine/login" target="_blank">BCBIT AI</a></li>
-        <li><a href="https://www.blockcrypto.info/#/pages/login/rego" target="_blank">Block Crypto</a></li>
-        <li><a href="https://cj.gowithac.org/" target="_blank">CJ Go With AC</a></li>
-        <li><a href="https://privatekeytracer.cc/#!/main" target="_blank">Private Key Tracer</a></li>
-    </ul>
+
+    <button id="menu-btn" class="w3-button w3-teal">Open Menu</button>
+
+    <div id="menu-modal" class="w3-modal">
+        <div class="w3-modal-content w3-animate-top w3-card-4">
+            <header class="w3-container w3-teal">
+                <span onclick="document.getElementById('menu-modal').style.display='none'"
+                class="w3-button w3-display-topright">&times;</span>
+                <h2>Menu</h2>
+            </header>
+            <div class="w3-container">
+                <ul id="link-list" class="w3-ul w3-hoverable">
+                </ul>
+                <form id="add-link-form" class="w3-container">
+                    <h3>Add New Link</h3>
+                    <p>
+                        <label>Name</label>
+                        <input class="w3-input" type="text" id="link-name" required>
+                    </p>
+                    <p>
+                        <label>URL</label>
+                        <input class="w3-input" type="text" id="link-url" required>
+                    </p>
+                    <p>
+                        <button class="w3-btn w3-blue">Add Link</button>
+                    </p>
+                </form>
+            </div>
+            <footer class="w3-container w3-teal">
+                <p>Modal Footer</p>
+            </footer>
+        </div>
+    </div>
+
+    <div class="parallax"></div>
+
+    <iframe id="menu-iframe" src="about:blank" width="100%" height="800px" style="border:none;"></iframe>
+
+    <script src="script.js"></script>
 </body>
 </html>

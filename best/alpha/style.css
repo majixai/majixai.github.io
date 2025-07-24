@@ -59,6 +59,9 @@ html, body {
 .user-list {
     flex-grow: 1;
     overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
 }
 
 .iframe-column {
@@ -221,4 +224,14 @@ html, body {
     display: flex;
     justify-content: center;
     align-items: center;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotateY(0deg);
+    }
+    to {
+        transform: rotateY(360deg);
+    }
 }

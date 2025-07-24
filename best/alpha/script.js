@@ -324,7 +324,11 @@
             try {
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
                 console.log("App: Fetched initial data:", initialData);
-                this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
+                if (initialData && initialData.users) {
+                    this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
+                } else {
+                    this.#allOnlineUsersData = [];
+                }
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
@@ -499,7 +503,14 @@
             if(buttonFilters.tag){filterTags=[buttonFilters.tag.toLowerCase()];if(this.filterTagsSelect)this.filterTagsSelect.value=buttonFilters.tag.toLowerCase()}
             else if(this.filterTagsSelect){filterTags=Array.from(this.filterTagsSelect.selectedOptions).map(o=>o.value.toLowerCase()).filter(t=>t!=='')}
             let filterAges=[];
-            if(buttonFilters.age){filterAges=[parseInt(buttonFilters.age)];if(this.filterAgeSelect)this.filterAgeSelect.value=String(buttonFilters.age)}
+            if(buttonFilters.age){
+                if (Array.isArray(buttonFilters.age)) {
+                    filterAges = buttonFilters.age;
+                } else {
+                    filterAges=[parseInt(buttonFilters.age)];
+                }
+                if(this.filterAgeSelect)this.filterAgeSelect.value=String(buttonFilters.age)
+            }
             else if(this.filterAgeSelect){filterAges=Array.from(this.filterAgeSelect.selectedOptions).map(o=>parseInt(o.value)).filter(a=>!isNaN(a)&&a>0)}
             
             if (buttonFilters.birthdayBanner) {
@@ -528,12 +539,6 @@
 
             // Sort by age if an age filter is active
             if (filterAges.length > 0) {
-                this.#lastFilteredUsers.sort((a, b) => {
-                    const ageA = typeof a.age === 'number' ? a.age : Infinity;
-                    const ageB = typeof b.age === 'number' ? b.age : Infinity;
-                    return ageA - ageB;
-                });
-            } else if (buttonFilters.age === 18) {
                 this.#lastFilteredUsers.sort((a, b) => {
                     const ageA = typeof a.age === 'number' ? a.age : Infinity;
                     const ageB = typeof b.age === 'number' ? b.age : Infinity;
@@ -839,6 +844,7 @@
             if (this.#previousUsers.length > maxHistorySize) this.#previousUsers.splice(maxHistorySize);
             try {
                 await this.storageManager.saveUsers("previousUsers", this.#previousUsers);
+                this.#displayHistorySlideshow();
             } catch (error) {
                 console.error(`Failed to save previous users after adding ${user.username}:`, error);
             }
@@ -925,6 +931,10 @@
             document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
             document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'deepthroat' }));
             document.getElementById("filterTagBigboobs")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'bigboobs' }));
+            const filterUnder24Button = document.getElementById("filterUnder24");
+            if (filterUnder24Button) {
+                filterUnder24Button.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: [18, 19, 20, 21, 22, 23] }));
+            }
             
             if (this.filterBirthdayBannerButton) {
                 this.filterBirthdayBannerButton.addEventListener('click', () => {
@@ -1327,17 +1337,60 @@
 
         #spinSlots() {
             const reels = document.querySelectorAll('.reel');
-            const symbols = ['🍒', '🍋', '🍊', '🍉', '🍇', '🍓'];
+            const symbolKeys = Object.keys(symbols);
             reels.forEach(reel => {
                 const interval = setInterval(() => {
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 100);
 
                 setTimeout(() => {
                     clearInterval(interval);
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                    reel.innerHTML = symbols[symbolKeys[Math.floor(Math.random() * symbolKeys.length)]];
                 }, 1000);
             });
+        }
+
+        #displayHistorySlideshow() {
+            const slideshowContainer = document.getElementById('historySlideshow');
+            if (!slideshowContainer) return;
+
+            slideshowContainer.innerHTML = '';
+
+            if (this.#previousUsers.length === 0) {
+                slideshowContainer.style.display = 'none';
+                return;
+            }
+
+            slideshowContainer.style.display = 'block';
+
+            this.#previousUsers.forEach((user, index) => {
+                const slide = document.createElement('div');
+                slide.classList.add('history-slide');
+                if (index === 0) {
+                    slide.classList.add('active');
+                }
+
+                const img = document.createElement('img');
+                img.src = user.image_url;
+                img.style.width = '100%';
+
+                slide.appendChild(img);
+                slideshowContainer.appendChild(slide);
+            });
+
+            let slideIndex = 0;
+            const showSlides = () => {
+                const slides = document.getElementsByClassName("history-slide");
+                for (let i = 0; i < slides.length; i++) {
+                    slides[i].style.display = "none";
+                }
+                slideIndex++;
+                if (slideIndex > slides.length) {slideIndex = 1}
+                slides[slideIndex-1].style.display = "block";
+                setTimeout(showSlides, 2000); // Change image every 2 seconds
+            }
+
+            showSlides();
         }
 
         #adjustLayoutHeights() {
@@ -1443,5 +1496,3 @@
     });
 
 })();
-
-[end of best/alpha/script.js]
