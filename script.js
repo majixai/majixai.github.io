@@ -1,136 +1,134 @@
-class MenuApp {
-    constructor() {
-        this.links = [];
-        this.db = null;
-        this.initDB();
-    }
-
-    initDB() {
-        const request = indexedDB.open('MenuDB', 1);
-
-        request.onupgradeneeded = (event) => {
-            this.db = event.target.result;
-            const objectStore = this.db.createObjectStore('links', { keyPath: 'id', autoIncrement: true });
-
-            const originalLinks = [
-                { name: 'The VAS Community', url: 'https://thevascommunity.com/' },
-                { name: 'HAI Community AI', url: 'https://haicommunityai.com/sign/' },
-                { name: 'The CAI Community', url: 'https://thecaicommunity.com/sign/' },
-                { name: 'Dirfn', url: 'https://dirfn.com/#/pages/home/home' },
-                { name: 'Bote Finance Institute', url: 'https://www.botefinanceinstitute.com/#/user/info' },
-                { name: 'AIAIIS', url: 'https://www.aiaiis.net/#/' },
-                { name: 'Lakshmi Finance', url: 'https://www.lakshmifinance.com/#/online-event' },
-                { name: 'Solid Rockes', url: 'https://www.solidrockes.com/#/' },
-                { name: 'EMXJ', url: 'https://www.emxj.com/#/luckdraw' },
-                { name: 'Full Force Cultures', url: 'https://fullforcecultures.com/pages/user/taskRecord' },
-                { name: 'BCBIT AI', url: 'https://m.bcbit-ai.cc/#/pages/mine/login' },
-                { name: 'Block Crypto', url: 'https://www.blockcrypto.info/#/pages/login/rego' },
-                { name: 'CJ Go With AC', url: 'https://cj.gowithac.org/' },
-                { name: 'Private Key Tracer', url: 'https://privatekeytracer.cc/#!/main' },
-            ];
-
-            originalLinks.forEach(link => {
-                objectStore.add(link);
-            });
-        };
-
-        request.onsuccess = (event) => {
-            this.db = event.target.result;
-            this.loadLinks();
-        };
-
-        request.onerror = (event) => {
-            console.error('Database error:', event.target.errorCode);
-        };
-    }
-
-    loadLinks() {
-        const transaction = this.db.transaction(['links'], 'readonly');
-        const objectStore = transaction.objectStore('links');
-        const request = objectStore.getAll();
-
-        request.onsuccess = (event) => {
-            this.links = event.target.result;
-            this.renderLinks();
-        };
-    }
-
-    addLink(name, url) {
-        const transaction = this.db.transaction(['links'], 'readwrite');
-        const objectStore = transaction.objectStore('links');
-        const newLink = { name, url };
-        const request = objectStore.add(newLink);
-
-        request.onsuccess = () => {
-            this.links.push({ ...newLink, id: request.result });
-            this.renderLinks();
-        };
-    }
-
-    renderLinks() {
-        const linkList = document.getElementById('link-list');
-        linkList.innerHTML = '';
-        this.links.forEach(link => {
-            const li = document.createElement('li');
-            li.innerHTML = `<a href="${link.url}">${link.name}</a>`;
-            linkList.appendChild(li);
-        });
-    }
+// Logger decorator
+function log(target, name, descriptor) {
+  const original = descriptor.value;
+  descriptor.value = function(...args) {
+    console.log(`Calling ${name} with`, args);
+    return original.apply(this, args);
+  };
+  return descriptor;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new MenuApp();
-
-    const modal = document.getElementById('menu-modal');
-    const btn = document.getElementById('menu-btn');
-    const span = document.getElementsByClassName('close')[0];
-
-    btn.onclick = () => {
-        modal.style.display = 'block';
-        btn.classList.add('spinning');
+    request.onsuccess = (event) => {
+      this.db = event.target.result;
+      this.displayUsers();
     };
 
-    span.onclick = () => {
-        modal.style.display = 'none';
-        btn.classList.remove('spinning');
+    request.onerror = (event) => {
+      console.error('IndexedDB error:', event.target.errorCode);
     };
+  }
 
-    window.onclick = (event) => {
-        if (event.target == modal) {
-            modal.style.display = 'none';
-            btn.classList.remove('spinning');
+  // Private method
+  _addUser(user) {
+    this._users.push(user);
+  }
+
+  // Public method
+  @log
+  addUser(name, email, skills) {
+    const user = { name, email, skills };
+    const transaction = this.db.transaction(['users'], 'readwrite');
+    const objectStore = transaction.objectStore('users');
+    const request = objectStore.add(user);
+
+    request.onsuccess = () => {
+      this.displayUsers();
+    };
+  }
+
+  // Static method
+  static get PI() {
+    return 3.14159;
+  }
+
+  // Generator
+  *userGenerator() {
+    for (const user of this._users) {
+      yield user;
+    }
+  }
+
+  // Iterator
+  [Symbol.iterator]() {
+    let index = 0;
+    return {
+      next: () => {
+        if (index < this._users.length) {
+          return { value: this._users[index++], done: false };
+        } else {
+          return { done: true };
         }
+      }
     };
+  }
 
-    const addLinkForm = document.getElementById('add-link-form');
-    addLinkForm.addEventListener('submit', (event) => {
+  // Async method
+  async fetchData() {
+    try {
+      const response = await fetch('https://jsonplaceholder.typicode.com/users');
+      const data = await response.json();
+      console.log('Fetched data:', data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  }
+
+  displayUsers() {
+    if (!this.db) return;
+    const userList = document.getElementById('job-seekers-list');
+    if (userList) {
+      userList.innerHTML = '';
+      const objectStore = this.db.transaction('users').objectStore('users');
+      objectStore.openCursor().onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          const userElement = document.createElement('div');
+          userElement.innerHTML = `
+            <p><strong>Name:</strong> ${cursor.value.name}</p>
+            <p><strong>Email:</strong> ${cursor.value.email}</p>
+            <p><strong>Skills:</strong> ${cursor.value.skills}</p>
+          `;
+          userList.appendChild(userElement);
+          cursor.continue();
+        }
+      };
+    }
+  }
+
+  init() {
+    const signupForm = document.getElementById('signup-form');
+    if (signupForm) {
+      signupForm.addEventListener('submit', (event) => {
         event.preventDefault();
-        const nameInput = document.getElementById('link-name');
-        const urlInput = document.getElementById('link-url');
-        app.addLink(nameInput.value, urlInput.value);
-        nameInput.value = '';
-        urlInput.value = '';
-    });
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const skills = document.getElementById('skills').value;
+        this.addUser(name, email, skills);
+      });
+    }
 
-    const linkList = document.getElementById('link-list');
-    const iframe = document.getElementById('menu-iframe');
+    const startButton = document.getElementById('start-animation');
+    const stopButton = document.getElementById('stop-animation');
+    const animatedRect = document.getElementById('animated-rect');
 
-    linkList.addEventListener('click', (event) => {
-        if (event.target.tagName === 'A') {
-            event.preventDefault();
-            iframe.classList.add('loading');
-            iframe.src = event.target.href;
-            modal.style.display = 'none';
-        }
-    });
+    if (startButton && stopButton && animatedRect) {
+      startButton.addEventListener('click', () => {
+        animatedRect.style.animationPlayState = 'running';
+      });
 
-    iframe.addEventListener('load', () => {
-        iframe.classList.remove('loading');
-    });
+      stopButton.addEventListener('click', () => {
+        animatedRect.style.animationPlayState = 'paused';
+      });
+    }
 
-    const parallax = document.querySelector('.parallax');
-    window.addEventListener('scroll', () => {
-        const offset = window.pageYOffset;
-        parallax.style.backgroundPositionY = offset * 0.7 + 'px';
-    });
-});
+    const getDataButton = document.getElementById('get-data');
+    if (getDataButton) {
+      getDataButton.addEventListener('click', () => {
+        google.script.run.withSuccessHandler((data) => {
+          document.getElementById('data-from-gas').innerText = data;
+        }).getUnreadEmails();
+      });
+    }
+
+    this.fetchData();
+  }
+}
