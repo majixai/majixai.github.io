@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>QUnit Tests</title>
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.16.0.css">
+</head>
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="https://code.jquery.com/qunit/qunit-2.16.0.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    QUnit.module('Playbook Classes', function() {
+      QUnit.test('Play class', function(assert) {
+        const play = new Play('Cover 2', '1st', '10', 'Own 20', 'Middle', '1st Quarter');
+        assert.equal(play.name, 'Cover 2', 'Play name is correct');
+      });
+
+      QUnit.test('Formation class', function(assert) {
+        const formation = new Formation('4-3');
+        const play = new Play('Cover 2', '1st', '10', 'Own 20', 'Middle', '1st Quarter');
+        formation.addPlay(play);
+        assert.equal(formation.name, '4-3', 'Formation name is correct');
+        assert.equal(formation.plays.length, 1, 'Play was added to formation');
+      });
+
+      QUnit.test('Playbook class', function(assert) {
+        const playbook = new Playbook();
+        const formation = new Formation('4-3');
+        playbook.addFormation(formation);
+        assert.equal(playbook.formations.length, 1, 'Formation was added to playbook');
+      });
+    });
+  </script>
+</body>
+</html>
