@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>49ers Interactive Playbook</title>
+
+    <!-- CDNs for Bootstrap and W3.CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+
+    <!-- Custom Styles -->
+    <style>
+        :root {
+            --primary-color: #AA0000; /* 49ers Red */
+            --secondary-color: #B3995D; /* 49ers Gold */
+            --dark-color: #111;
+            --light-color: #f4f4f4;
+        }
+
+        body {
+            background-color: var(--dark-color);
+            color: var(--light-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Parallax Background Effect */
+        .parallax-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: url('https://i.imgur.com/7b1w6N8.png'); /* Subtle football field texture */
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            opacity: 0.1;
+            transition: background-position 0.2s ease-out;
+        }
+
+        .header {
+            background-color: rgba(0, 0, 0, 0.7);
+            border-bottom: 4px solid var(--primary-color);
+            text-align: center;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            color: var(--secondary-color);
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            padding: 1rem;
+        }
+
+        @media (min-width: 992px) {
+            .main-content {
+                grid-template-columns: 3fr 1fr;
+            }
+        }
+
+        .w3-panel {
+            background-color: rgba(30, 30, 30, 0.8);
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        /* Flexbox for button containers */
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .btn-custom {
+            background-color: var(--primary-color);
+            color: var(--light-color);
+            border: 1px solid var(--secondary-color);
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover, .btn-custom.active {
+            background-color: var(--secondary-color);
+            color: var(--dark-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        /* SVG Play Diagram Styling */
+        #play-diagram-container {
+            background-color: #006A4E; /* Field Green */
+            border: 2px solid var(--secondary-color);
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
+        }
+
+        .player {
+            fill: #fff;
+            stroke: #000;
+            stroke-width: 1;
+        }
+
+        .player.qb { fill: var(--primary-color); }
+        .player.wr { fill: var(--secondary-color); }
+        .player.rb { fill: #007bff; }
+        .player.te { fill: #ffc107; }
+
+        .route-path {
+            fill: none;
+            stroke: yellow;
+            stroke-width: 3;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+        }
+
+        /* Animation Class */
+        .animate .route-path {
+            animation: draw-route 2s linear forwards;
+        }
+
+        @keyframes draw-route {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .status-light {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .status-light.online { background-color: #28a745; }
+        .status-light.offline { background-color: #dc3545; }
+
+    </style>
+</head>
+<body>
+    <div class="parallax-container"></div>
+
+    <header class="header">
+        <h1>49ers Offensive Playbook</h1>
+        <p class="lead">Interactive Madden 25 Play Viewer</p>
+        <div id="status-indicator">
+            <span class="status-light offline"></span>
+            <span id="status-text">Connecting to IndexedDB...</span>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="main-content">
+            <!-- Left Side: Play Diagram -->
+            <main>
+                <div class="w3-panel">
+                    <h2 id="selected-play-name">Select a Play</h2>
+                    <p>Choose a formation and then a play from the right panel to see the diagram here.</p>
+                </div>
+                <div id="play-diagram-container" class="w3-card-4">
+                    <!-- SVG will be injected here -->
+                </div>
+                <div class="mt-3 button-container">
+                    <button id="start-animation-btn" class="btn btn-success" disabled>Start Animation</button>
+                    <button id="stop-animation-btn" class="btn btn-danger" disabled>Stop Animation</button>
+                </div>
+            </main>
+
+            <!-- Right Side: Selections -->
+            <aside>
+                <div class="w3-panel">
+                    <h3>Formations</h3>
+                    <div id="formations-container" class="button-container">
+                        <p>Loading...</p>
+                    </div>
+                </div>
+                <div class="w3-panel">
+                    <h3>Plays</h3>
+                    <div id="plays-container" class="button-container">
+                        <p>Select a formation first.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script>
+        // --- DATA ---
+        // This data would normally come from a server via a real AJAX call.
+        const playbookJSON = {
+          "formations": [
+            {
+              "name": "Singleback Bunch X Nasty",
+              "plays": [
+                { "name": "HB Slash", "routes": [{ "type": "rb", "path": "M 250 300 L 280 270 L 350 270" }] },
+                { "name": "PA Boot", "routes": [{ "type": "wr", "path": "M 50 150 Q 150 50 450 150" }, { "type": "te", "path": "M 320 250 L 320 180 L 100 180" }] }
+              ]
+            },
+            {
+              "name": "Shotgun Deebo Package",
+              "plays": [
+                { "name": "WR Wheel", "routes": [{ "type": "wr", "path": "M 50 150 L 50 100 A 50 50 0 0 1 100 50 L 250 50" }] },
+                { "name": "Read Option", "routes": [{ "type": "qb", "path": "M 250 280 L 300 280" }, { "type": "rb", "path": "M 220 280 L 170 280" }] }
+              ]
+            },
+            {
+                "name": "Pistol Wing Flex Close",
+                "plays": [
+                    {"name": "HB Zone Wk", "routes": [{"type": "rb", "path": "M 250 320 L 200 280 L 150 280"}]},
+                    {"name": "PA Boot Y Sail", "routes": [{"type": "wr", "path": "M 450 150 L 450 50"}, {"type": "te", "path": "M 320 250 Q 380 180 450 250"}]}
+                ]
+            }
+          ]
+        };
+
+        // --- DECORATOR / WRAPPER ---
+        const logAnimation = (fn, playName) => {
+            return function(...args) {
+                console.log(`[Animation Decorator]: Starting animation for play "${playName}".`);
+                return fn.apply(this, args);
+            }
+        };
+
+        // --- INDEXEDDB MANAGER CLASS ---
+        class DBManager {
+            #dbName = 'PlaybookDB';
+            #storeName = 'playbooks';
+            #db = null;
+
+            async initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.#dbName, 1);
+
+                    request.onerror = (event) => reject("IndexedDB error: " + event.target.errorCode);
+
+                    request.onsuccess = (event) => {
+                        this.#db = event.target.result;
+                        $('#status-light').removeClass('offline').addClass('online');
+                        $('#status-text').text('Connected to IndexedDB (Online)');
+                        resolve(this.#db);
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        db.createObjectStore(this.#storeName, { keyPath: 'id' });
+                    };
+                });
+            }
+
+            async saveData(id, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.#db.transaction([this.#storeName], 'readwrite');
+                    const store = transaction.objectStore(this.#storeName);
+                    const request = store.put({ id, ...data });
+                    request.onsuccess = () => resolve();
+                    request.onerror = (event) => reject("Save error: " + event.target.error);
+                });
+            }
+
+            async loadData(id) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.#db.transaction([this.#storeName], 'readonly');
+                    const store = transaction.objectStore(this.#storeName);
+                    const request = store.get(id);
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = (event) => reject("Load error: " + event.target.error);
+                });
+            }
+        }
+
+        // --- OOP CLASSES ---
+        class Play {
+            #name;
+            #routes;
+            constructor(name, routes) {
+                this.#name = name;
+                this.#routes = routes || []; // protected
+            }
+            getName() { return this.#name; }
+
+            getSVG() {
+                let svgContent = `<svg viewBox="0 0 500 400" xmlns="http://www.w3.org/2000/svg">`;
+                // Offensive Line
+                for (let i = 0; i < 5; i++) {
+                    svgContent += `<circle class="player" cx="${180 + i * 35}" cy="250" r="10" />`;
+                }
+                // Skill positions
+                svgContent += `<circle class="player qb" cx="250" cy="280" r="10" />`; // QB
+                svgContent += `<circle class="player wr" cx="50" cy="150" r="10" />`; // WR
+                svgContent += `<circle class="player te" cx="320" cy="245" r="10" />`; // TE
+                svgContent += `<circle class="player rb" cx="220" cy="300" r="10" />`; // RB
+
+                this.#routes.forEach(route => {
+                    svgContent += `<path class="route-path" d="${route.path}" />`;
+                });
+                svgContent += `</svg>`;
+                return svgContent;
+            }
+        }
+
+        class Formation {
+            #name;
+            #plays; // Private member
+            constructor(name, playsData) {
+                this.#name = name;
+                this.#plays = playsData.map(p => new Play(p.name, p.routes));
+            }
+            getName() { return this.#name; }
+            getPlays() { return this.#plays; }
+        }
+
+        class Playbook {
+            #formations; // Private member
+            constructor(formationsData) {
+                this.#formations = formationsData.map(f => new Formation(f.name, f.plays));
+            }
+
+            // Generator for Iterator
+            *[Symbol.iterator]() {
+                for (const formation of this.#formations) {
+                    for (const play of formation.getPlays()) {
+                        yield play;
+                    }
+                }
+            }
+
+            getFormations() { return this.#formations; }
+
+            // Static factory method
+            static fromJSON(json) {
+                return new Playbook(json.formations);
+            }
+        }
+
+        // --- MAIN APPLICATION LOGIC ---
+        $(document).ready(function() {
+            let playbook;
+            const dbManager = new DBManager();
+
+            async function initializeApp() {
+                try {
+                    await dbManager.initDB();
+                    let data = await dbManager.loadData('49ers');
+
+                    if (data) {
+                        console.log("Playbook loaded from IndexedDB.");
+                        playbook = Playbook.fromJSON(data);
+                        populateUI(playbook);
+                    } else {
+                        console.log("No playbook in IndexedDB. Fetching via AJAX...");
+                        fetchDataWithAjax();
+                    }
+                } catch (error) {
+                    console.error("DB Initialization failed. Falling back to AJAX.", error);
+                    fetchDataWithAjax();
+                    $('#status-light').removeClass('online').addClass('offline');
+                    $('#status-text').text('DB Error. Running in volatile mode.');
+                }
+            }
+
+            function fetchDataWithAjax() {
+                $.ajax({
+                    url: "virtual-endpoint/playbook.json", // Simulated endpoint
+                    type: "GET",
+                    dataType: "json",
+                    // This is how you'd handle a real request. For this demo, we use beforeSend to mock it.
+                    beforeSend: function(xhr) {
+                        // Intercept and return our local JSON data
+                        xhr.done(function(data, status, jqXHR) {
+                            jqXHR.status = 200;
+                            jqXHR.responseText = JSON.stringify(playbookJSON);
+                        });
+                        console.log("Simulating AJAX call...");
+                    }
+                })
+                .done(function(data) {
+                    console.log("AJAX fetch successful.");
+                    playbook = Playbook.fromJSON(playbookJSON);
+                    populateUI(playbook);
+                    // Save to DB for next time
+                    dbManager.saveData('49ers', playbookJSON).catch(console.error);
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX call failed:", textStatus, errorThrown);
+                    // Fallback to local data if AJAX fails completely
+                    playbook = Playbook.fromJSON(playbookJSON);
+                    populateUI(playbook);
+                });
+            }
+
+            function populateUI(pb) {
+                const formationsContainer = $('#formations-container');
+                formationsContainer.empty();
+
+                pb.getFormations().forEach(formation => {
+                    const btn = $(`<button class="btn btn-custom">${formation.getName()}</button>`);
+                    btn.on('click', function() {
+                        $('.btn-custom.active').removeClass('active');
+                        $(this).addClass('active');
+                        displayPlaysForFormation(formation);
+                    });
+                    formationsContainer.append(btn);
+                });
+            }
+
+            function displayPlaysForFormation(formation) {
+                const playsContainer = $('#plays-container');
+                playsContainer.empty();
+
+                formation.getPlays().forEach(play => {
+                    const btn = $(`<button class="btn btn-secondary">${play.getName()}</button>`);
+                    btn.on('click', function() {
+                        displayPlay(play);
+                    });
+                    playsContainer.append(btn);
+                });
+            }
+
+            function displayPlay(play) {
+                $('#selected-play-name').text(play.getName());
+                const diagramContainer = $('#play-diagram-container');
+                diagramContainer.html(play.getSVG());
+
+                $('#start-animation-btn, #stop-animation-btn').prop('disabled', false);
+
+                // Using our wrapper to add logging
+                const animatePlay = () => {
+                    diagramContainer.children('svg').addClass('animate');
+                };
+
+                const decoratedAnimatePlay = logAnimation(animatePlay, play.getName());
+
+                $('#start-animation-btn').off('click').on('click', decoratedAnimatePlay);
+            }
+
+            $('#stop-animation-btn').on('click', function() {
+                $('#play-diagram-container svg').removeClass('animate');
+                // We restart the animation by removing and re-adding the element
+                const playSVG = $('#play-diagram-container').html();
+                $('#play-diagram-container').html(playSVG);
+            });
+
+            // Parallax Scroll Effect
+            $(window).on('scroll', function() {
+                const scrollTop = $(this).scrollTop();
+                $('.parallax-container').css('background-position', 'center ' + (-scrollTop * 0.2) + 'px');
+            });
+
+            // Let's test our iterator/generator!
+            function testIterator() {
+                console.log("--- Testing Playbook Iterator ---");
+                for(const play of playbook) {
+                    console.log(`Found play via iterator: ${play.getName()}`);
+                }
+                console.log("-------------------------------");
+            }
+
+            // Start the app
+            initializeApp().then(() => {
+                if(playbook) testIterator();
+            });
+
+        });
+    </script>
+</body>
+</html>
