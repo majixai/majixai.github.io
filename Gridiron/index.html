@@ -291,25 +291,6 @@
       }
     };
 
-    AnimationManager.prototype.draw = function(ctx, x, y) {
-      const animation = this.animations[this.currentAnimation];
-      if (animation) {
-        const frame = animation.frames[this.currentFrame];
-        const frameX = (frame % 10) * this.frameWidth;
-        const frameY = Math.floor(frame / 10) * this.frameHeight;
-        ctx.drawImage(
-          this.spriteSheet,
-          frameX,
-          frameY,
-          this.frameWidth,
-          this.frameHeight,
-          x,
-          y,
-          this.frameWidth,
-          this.frameHeight
-        );
-      }
-    };
 
     const playerElement = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
     playerElement.setAttribute('x', player.x);
@@ -353,6 +334,7 @@
         targets: playerElement,
         x: player.x,
         y: player.y,
+        rotate: player.angle,
         duration: 100,
         easing: 'linear'
       });
@@ -435,7 +417,7 @@
       }
 
       // Scoring
-      if (ball.x > canvas.width) {
+      if (ball.x > svg.width.baseVal.value) {
         score++;
         touchdownMessage = true;
         const details = {
@@ -458,78 +440,6 @@
       }
 
       animationManager.update(player.animation, 1 / 60);
-    }
-
-    function render() {
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Save the current context state
-      ctx.save();
-
-      // Translate the canvas to follow the player from a third-person perspective
-      const cameraX = player.x - canvas.width / 2;
-      const cameraY = player.y - canvas.height / 2 - 100;
-      ctx.translate(-cameraX, -cameraY);
-
-      // Draw field
-      ctx.fillStyle = '#006400';
-      ctx.fillRect(-1000, -500, 2000, 1000);
-
-      // Draw yard lines
-      ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < canvas.width; i += 50) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvas.height);
-        ctx.stroke();
-      }
-
-      // Draw player
-      animationManager.draw(ctx, player.x, player.y);
-
-      // Draw ball
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-      ctx.fillStyle = ball.color;
-      ctx.fill();
-      ctx.closePath();
-
-      // Draw opponents
-      ctx.fillStyle = '#FF0000';
-      opponents.forEach(function(opponent) {
-        ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
-      });
-
-      // Draw goalposts
-      ctx.fillStyle = '#FFFF00';
-      ctx.fillRect(-20, -100, 10, 200);
-      ctx.fillRect(10, -100, 10, 200);
-      ctx.fillRect(-20, -100, 40, 10);
-      ctx.fillRect(1970, -100, 10, 200);
-      ctx.fillRect(1980, -100, 10, 200);
-      ctx.fillRect(1970, -100, 20, 10);
-
-      // Restore the context state
-      ctx.restore();
-
-      // Draw score
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '24px Arial';
-      ctx.fillText('Score: ' + score, 10, 30);
-
-      // Draw game clock and quarter
-      const minutes = Math.floor(gameClock / 60);
-      const seconds = Math.floor(gameClock % 60);
-      ctx.fillText('Q' + quarter + ' ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds, canvas.width - 150, 30);
-
-      // Draw touchdown message
-      if (touchdownMessage) {
-        ctx.fillStyle = '#FFFF00';
-        ctx.font = '48px Arial';
-        ctx.fillText('Touchdown!', canvas.width / 2 - 150, canvas.height / 2);
-      }
     }
 
     function gameLoop() {
