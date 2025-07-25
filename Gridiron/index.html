@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Football Game</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      background-color: #008000;
+      color: #FFFFFF;
+      text-align: center;
+    }
+
+    .game-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    canvas {
+      background-color: rgba(0, 100, 0, 0.5);
+      border: 1px solid #FFFFFF;
+    }
+
+    #controller {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+    }
+
+    #d-pad {
+      position: relative;
+      width: 120px;
+      height: 120px;
+    }
+
+    .d-pad-button {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #555;
+      border: 1px solid #FFF;
+      transition: all 0.1s ease-in-out;
+    }
+
+    .d-pad-button:active {
+      transform: scale(0.9);
+    }
+
+    #up { top: 0; left: 40px; }
+    #down { bottom: 0; left: 40px; }
+    #left { top: 40px; left: 0; }
+    #right { top: 40px; right: 0; }
+
+    #action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 10px;
+      margin-left: 20px;
+    }
+
+    .action-button {
+      width: 50px;
+      height: 50px;
+      background-color: #555;
+      border: 1px solid #FFF;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      transition: all 0.1s ease-in-out;
+    }
+
+    .action-button:active {
+      transform: scale(0.9);
+    }
+
+    #shoulder-buttons {
+      position: absolute;
+      top: -30px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .shoulder-button {
+      width: 60px;
+      height: 30px;
+      background-color: #555;
+      border: 1px solid #FFF;
+    }
+
+    .selected-receiver {
+      border: 2px solid yellow;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>Football Game</h1>
+    <svg id="gameCanvas" width="800" height="400"></svg>
+    <div id="commentary"></div>
+    <div id="controller">
+      <div id="d-pad">
+        <div id="up" class="d-pad-button"></div>
+        <div id="down" class="d-pad-button"></div>
+        <div id="left" class="d-pad-button"></div>
+        <div id="right" class="d-pad-button"></div>
+      </div>
+      <div id="action-buttons">
+        <div id="a-button" class="action-button">A</div>
+        <div id="b-button" class="action-button">B</div>
+        <div id="c-button" class="action-button">C</div>
+        <div id="d-button" class="action-button">D</div>
+      </div>
+      <div id="shoulder-buttons">
+        <div id="l-button" class="shoulder-button">L</div>
+        <div id="r-button" class="shoulder-button">R</div>
+      </div>
+    </div>
+    <button id="startButton">Start</button>
+    <button id="stopButton">Stop</button>
+    <button id="saveButton">Save</button>
+    <button id="loadButton">Load</button>
+    <div id="playCallingPanel">
+      <h3>Play Calling</h3>
+      <button id="passPlayButton">Pass Play</button>
+      <button id="runPlayButton">Run Play</button>
+    </div>
+    <div id="statsPanel">
+      <h3>Stats</h3>
+      <p>Passing Yards: <span id="passingYards">0</span></p>
+      <p>Rushing Yards: <span id="rushingYards">0</span></p>
+      <p>Tackles: <span id="tackles">0</span></p>
+    </div>
+    <div id="settingsPanel">
+      <h3>Settings</h3>
+      <label for="playerSpeed">Player Speed:</label>
+      <input type="range" id="playerSpeed" min="1" max="10" value="5">
+      <br>
+      <label for="ballColor">Ball Color:</label>
+      <input type="color" id="ballColor" value="#FFFFFF">
+    </div>
+  </div>
+  <script>
+    const probabilities = {
+      kicking: {
+        extraPoint: 0.94,
+        fieldGoal: {
+          '20-29': 0.95,
+          '30-39': 0.90,
+          '40-49': 0.80,
+          '50+': 0.60,
+        },
+        onsideKick: 0.10,
+      },
+      fourthDown: {
+        '1': 0.69,
+        '2': 0.55,
+        '3': 0.46,
+        '4': 0.41,
+        '5': 0.38,
+        '6': 0.35,
+        '7': 0.33,
+        '8': 0.31,
+        '9': 0.29,
+        '10': 0.27,
+      },
+      twoPointConversion: {
+        pass: 0.476,
+        run: 0.565,
+        overall: 0.494,
+      },
+      driveOutcomes: {
+        score: 0.37,
+        touchdown: 0.217,
+        fieldGoal: 0.153,
+        punt: 0.373,
+        turnover: 0.109,
+      },
+      passing: {
+        completion: 0.64,
+        interception: 0.022,
+        sack: 0.065,
+      },
+      turnovers: {
+        fumbleRush: 0.01,
+      },
+      specialTeams: {
+        kickoffReturnTD: 0.004,
+        puntReturnTD: 0.007,
+      },
+      penalties: {
+        anyPlay: 0.0433,
+        offensive: 0.54,
+        defensive: 0.41,
+        specialTeams: 0.05,
+      },
+      other: {
+        driveStartInside10: 0.05,
+        scoreFirstWin: 0.625,
+        leadAtHalftimeWin: 0.775,
+        leadAtFourthQuarterWin: 0.825,
+      },
+    };
+
+    const svg = document.getElementById('gameCanvas');
+
+    let player = {
+      x: 50,
+      y: 200,
+      width: 20,
+      height: 20,
+      speed: 5,
+      animation: 'run',
+      angle: 0,
+    };
+
+    let ball = {
+      x: 400,
+      y: 200,
+      radius: 5,
+      dx: 0,
+      dy: 0,
+      speed: 10,
+      isThrown: false,
+      color: '#FFFFFF',
+    };
+
+    let opponents = [];
+    for (let i = 0; i < 11; i++) {
+      opponents.push({
+        x: Math.random() * 800,
+        y: Math.random() * 400,
+        width: 20,
+        height: 20,
+        speed: 2,
+      });
+    }
+
+    let score = 0;
+    let touchdownMessage = false;
+    let gameClock = 15 * 60;
+    let quarter = 1;
+    let currentPlay;
+    let selectedReceiver = 'A';
+
+    let passingYards = 0;
+    let rushingYards = 0;
+    let tackles = 0;
+
+    const spriteSheet = new Image();
+    spriteSheet.src = 'spritesheet.png';
+    function AnimationManager(spriteSheet, frameWidth, frameHeight) {
+      this.spriteSheet = spriteSheet;
+      this.frameWidth = frameWidth;
+      this.frameHeight = frameHeight;
+      this.animations = {};
+      this.currentAnimation = null;
+      this.currentFrame = 0;
+      this.frameTimer = 0;
+    }
+
+    AnimationManager.prototype.define = function(name, frames, frameRate) {
+      this.animations[name] = {
+        frames: frames,
+        frameRate: frameRate,
+      };
+    };
+
+    AnimationManager.prototype.update = function(animationName, dt) {
+      if (this.currentAnimation !== animationName) {
+        this.currentAnimation = animationName;
+        this.currentFrame = 0;
+        this.frameTimer = 0;
+      }
+
+      const animation = this.animations[this.currentAnimation];
+      if (animation) {
+        this.frameTimer += dt;
+        if (this.frameTimer >= 1 / animation.frameRate) {
+          this.currentFrame = (this.currentFrame + 1) % animation.frames.length;
+          this.frameTimer = 0;
+        }
+      }
+    };
+
+    AnimationManager.prototype.draw = function(ctx, x, y) {
+      const animation = this.animations[this.currentAnimation];
+      if (animation) {
+        const frame = animation.frames[this.currentFrame];
+        const frameX = (frame % 10) * this.frameWidth;
+        const frameY = Math.floor(frame / 10) * this.frameHeight;
+        ctx.drawImage(
+          this.spriteSheet,
+          frameX,
+          frameY,
+          this.frameWidth,
+          this.frameHeight,
+          x,
+          y,
+          this.frameWidth,
+          this.frameHeight
+        );
+      }
+    };
+
+    const playerElement = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+    playerElement.setAttribute('x', player.x);
+    playerElement.setAttribute('y', player.y);
+    playerElement.setAttribute('width', player.width);
+    playerElement.setAttribute('height', player.height);
+    playerElement.setAttribute('fill', 'white');
+    svg.appendChild(playerElement);
+
+    const ballElement = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
+    ballElement.setAttribute('cx', ball.x);
+    ballElement.setAttribute('cy', ball.y);
+    ballElement.setAttribute('r', ball.radius);
+    ballElement.setAttribute('fill', ball.color);
+    svg.appendChild(ballElement);
+
+    const opponentElements = opponents.map(opponent => {
+      const opponentElement = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
+      opponentElement.setAttribute('x', opponent.x);
+      opponentElement.setAttribute('y', opponent.y);
+      opponentElement.setAttribute('width', opponent.width);
+      opponentElement.setAttribute('height', opponent.height);
+      opponentElement.setAttribute('fill', 'red');
+      svg.appendChild(opponentElement);
+      return opponentElement;
+    });
+
+    function update() {
+      // Player movement
+      const lastX = player.x;
+      if (controller.up) player.y -= player.speed;
+      if (controller.down) player.y += player.speed;
+      if (controller.left) player.x -= player.speed;
+      if (controller.right) player.x += player.speed;
+      if (currentPlay === 'run') {
+        rushingYards += (player.x - lastX) / 10;
+        document.getElementById('rushingYards').textContent = rushingYards.toFixed(1);
+      }
+
+      anime({
+        targets: playerElement,
+        x: player.x,
+        y: player.y,
+        duration: 100,
+        easing: 'linear'
+      });
+
+      // Throw ball
+      if (controller.a && !ball.isThrown) {
+        ball.isThrown = true;
+        const angle = Math.atan2(200 - player.y, 400 - player.x);
+        ball.dx = Math.cos(angle) * ball.speed;
+        ball.dy = Math.sin(angle) * ball.speed;
+      }
+
+      // Ball movement
+      if (ball.isThrown) {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        anime({
+          targets: ballElement,
+          cx: ball.x,
+          cy: ball.y,
+          duration: 100,
+          easing: 'linear'
+        });
+
+        anime({
+          targets: ballElement,
+          rotate: '1turn',
+          loop: true,
+          duration: 500,
+          easing: 'linear'
+        });
+      }
+
+      // Opponent AI and collision
+      opponents.forEach((opponent, index) => {
+        if (currentPlay === 'pass') {
+          // Defenders cover receivers
+          const receiver = player; // Simple for now, should be a designated receiver
+          const angle = Math.atan2(receiver.y - opponent.y, receiver.x - opponent.x);
+          opponent.x += Math.cos(angle) * opponent.speed * 0.5;
+          opponent.y += Math.sin(angle) * opponent.speed * 0.5;
+        } else if (currentPlay === 'run') {
+          // Defenders attack the ball carrier
+          const angle = Math.atan2(player.y - opponent.y, player.x - opponent.x);
+          opponent.x += Math.cos(angle) * opponent.speed;
+          opponent.y += Math.sin(angle) * opponent.speed;
+        } else {
+            // Default behavior: move towards the ball
+            const angle = Math.atan2(ball.y - opponent.y, ball.x - opponent.x);
+            opponent.x += Math.cos(angle) * opponent.speed;
+            opponent.y += Math.sin(angle) * opponent.speed;
+        }
+
+        anime({
+          targets: opponentElements[index],
+          x: opponent.x,
+          y: opponent.y,
+          duration: 100,
+          easing: 'linear'
+        });
+
+        // Collision detection (opponent and player)
+        const distOpponentPlayer = Math.hypot(opponent.x - player.x, opponent.y - player.y);
+        if (distOpponentPlayer < opponent.width / 2 + player.width / 2) {
+          tackle(opponent);
+        }
+
+        // Collision detection (opponent and ball)
+        const distOpponentBall = Math.hypot(opponent.x - ball.x, opponent.y - ball.y);
+        if (distOpponentBall < opponent.width / 2 + ball.radius && ball.isThrown) {
+          // TODO: Implement interception
+        }
+      });
+
+      // Keep the ball with the player if not thrown
+      if (!ball.isThrown) {
+        ball.x = player.x + player.width / 2;
+        ball.y = player.y + player.height / 2;
+      }
+
+      // Scoring
+      if (ball.x > canvas.width) {
+        score++;
+        touchdownMessage = true;
+        const details = {
+          score: score,
+          gameClock: gameClock,
+          quarter: quarter,
+        };
+        showCommentary('touchdown', JSON.stringify(details));
+        setTimeout(() => {
+          touchdownMessage = false;
+          reset();
+        }, 2000);
+      }
+
+      // Update game clock
+      gameClock -= 1 / 60;
+      if (gameClock <= 0) {
+        quarter++;
+        gameClock = 15 * 60;
+      }
+
+      animationManager.update(player.animation, 1 / 60);
+    }
+
+    function render() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Save the current context state
+      ctx.save();
+
+      // Translate the canvas to follow the player from a third-person perspective
+      const cameraX = player.x - canvas.width / 2;
+      const cameraY = player.y - canvas.height / 2 - 100;
+      ctx.translate(-cameraX, -cameraY);
+
+      // Draw field
+      ctx.fillStyle = '#006400';
+      ctx.fillRect(-1000, -500, 2000, 1000);
+
+      // Draw yard lines
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+
+      // Draw player
+      animationManager.draw(ctx, player.x, player.y);
+
+      // Draw ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = ball.color;
+      ctx.fill();
+      ctx.closePath();
+
+      // Draw opponents
+      ctx.fillStyle = '#FF0000';
+      opponents.forEach(function(opponent) {
+        ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
+      });
+
+      // Draw goalposts
+      ctx.fillStyle = '#FFFF00';
+      ctx.fillRect(-20, -100, 10, 200);
+      ctx.fillRect(10, -100, 10, 200);
+      ctx.fillRect(-20, -100, 40, 10);
+      ctx.fillRect(1970, -100, 10, 200);
+      ctx.fillRect(1980, -100, 10, 200);
+      ctx.fillRect(1970, -100, 20, 10);
+
+      // Restore the context state
+      ctx.restore();
+
+      // Draw score
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '24px Arial';
+      ctx.fillText('Score: ' + score, 10, 30);
+
+      // Draw game clock and quarter
+      const minutes = Math.floor(gameClock / 60);
+      const seconds = Math.floor(gameClock % 60);
+      ctx.fillText('Q' + quarter + ' ' + minutes + ':' + (seconds < 10 ? '0' : '') + seconds, canvas.width - 150, 30);
+
+      // Draw touchdown message
+      if (touchdownMessage) {
+        ctx.fillStyle = '#FFFF00';
+        ctx.font = '48px Arial';
+        ctx.fillText('Touchdown!', canvas.width / 2 - 150, canvas.height / 2);
+      }
+    }
+
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    const controller = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      a: false,
+      b: false,
+      c: false,
+      d: false,
+      l: false,
+      r: false,
+    };
+
+    document.getElementById('up').addEventListener('mousedown', function() { controller.up = true; });
+    document.getElementById('up').addEventListener('mouseup', function() { controller.up = false; });
+    document.getElementById('down').addEventListener('mousedown', function() { controller.down = true; });
+    document.getElementById('down').addEventListener('mouseup', function() { controller.down = false; });
+    document.getElementById('left').addEventListener('mousedown', function() { controller.left = true; });
+    document.getElementById('left').addEventListener('mouseup', function() { controller.left = false; });
+    document.getElementById('right').addEventListener('mousedown', function() { controller.right = true; });
+    document.getElementById('right').addEventListener('mouseup', function() { controller.right = false; });
+    document.getElementById('a-button').addEventListener('mousedown', function() { controller.a = true; });
+    document.getElementById('a-button').addEventListener('mouseup', function() { controller.a = false; });
+    document.getElementById('b-button').addEventListener('mousedown', function() { controller.b = true; });
+    document.getElementById('b-button').addEventListener('mouseup', function() { controller.b = false; });
+    document.getElementById('c-button').addEventListener('mousedown', function() { controller.c = true; });
+    document.getElementById('c-button').addEventListener('mouseup', function() { controller.c = false; });
+    document.getElementById('d-button').addEventListener('mousedown', function() { controller.d = true; });
+    document.getElementById('d-button').addEventListener('mouseup', function() { controller.d = false; });
+    document.getElementById('l-button').addEventListener('mousedown', function() { controller.l = true; });
+    document.getElementById('l-button').addEventListener('mouseup', function() { controller.l = false; });
+    document.getElementById('r-button').addEventListener('mousedown', function() { controller.r = true; });
+    document.getElementById('r-button').addEventListener('mouseup', function() { controller.r = false; });
+
+    document.getElementById('playerSpeed').addEventListener('input', function(e) {
+      player.speed = e.target.value;
+    });
+
+    document.getElementById('ballColor').addEventListener('input', function(e) {
+      ball.color = e.target.value;
+    });
+
+    let gameLoopId;
+    document.getElementById('startButton').addEventListener('click', function() {
+      if (!gameLoopId) {
+        canvas.width = 800;
+        canvas.height = 400;
+        gameLoopId = requestAnimationFrame(gameLoop);
+      }
+    });
+
+    document.getElementById('stopButton').addEventListener('click', function() {
+      if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+        gameLoopId = null;
+      }
+    });
+
+    document.getElementById('passPlayButton').addEventListener('click', function() {
+      currentPlay = 'pass';
+    });
+
+    document.getElementById('runPlayButton').addEventListener('click', function() {
+      currentPlay = 'run';
+    });
+
+    function attemptFieldGoal(distance) {
+      let probability;
+      if (distance >= 50) {
+        probability = probabilities.kicking.fieldGoal['50+'];
+      } else if (distance >= 40) {
+        probability = probabilities.kicking.fieldGoal['40-49'];
+      } else if (distance >= 30) {
+        probability = probabilities.kicking.fieldGoal['30-39'];
+      } else {
+        probability = probabilities.kicking.fieldGoal['20-29'];
+      }
+
+      return Math.random() < probability;
+    }
+
+    function attemptFourthDown(distance) {
+      const probability = probabilities.fourthDown[distance];
+      return Math.random() < probability;
+    }
+
+    function attemptTwoPointConversion(type) {
+      const probability = probabilities.twoPointConversion[type];
+      return Math.random() < probability;
+    }
+
+    function getDriveOutcome() {
+      const rand = Math.random();
+      if (rand < probabilities.driveOutcomes.touchdown) {
+        return 'touchdown';
+      } else if (rand < probabilities.driveOutcomes.touchdown + probabilities.driveOutcomes.fieldGoal) {
+        return 'fieldGoal';
+      } else if (rand < probabilities.driveOutcomes.touchdown + probabilities.driveOutcomes.fieldGoal + probabilities.driveOutcomes.punt) {
+        return 'punt';
+      } else {
+        return 'turnover';
+      }
+    }
+
+    function attemptPass() {
+      const rand = Math.random();
+      if (rand < probabilities.passing.completion) {
+        return 'complete';
+      } else if (rand < probabilities.passing.interception) {
+        return 'interception';
+      } else if (rand < probabilities.passing.completion + probabilities.passing.interception + probabilities.passing.sack) {
+        return 'sack';
+      } else {
+        return 'incomplete';
+      }
+    }
+
+    function checkFumble() {
+      return Math.random() < probabilities.turnovers.fumbleRush;
+    }
+
+    function checkSpecialTeamsTD() {
+      const rand = Math.random();
+      if (rand < probabilities.specialTeams.kickoffReturnTD) {
+        return 'kickoff';
+      } else if (rand < probabilities.specialTeams.kickoffReturnTD + probabilities.specialTeams.puntReturnTD) {
+        return 'punt';
+      } else {
+        return 'none';
+      }
+    }
+
+    function checkPenalty() {
+      if (Math.random() < probabilities.penalties.anyPlay) {
+        const rand = Math.random();
+        if (rand < probabilities.penalties.offensive) {
+          return 'offensive';
+        } else if (rand < probabilities.penalties.offensive + probabilities.penalties.defensive) {
+          return 'defensive';
+        } else {
+          return 'specialTeams';
+        }
+      }
+      return 'none';
+    }
+
+    function reset() {
+      player.x = 50;
+      player.y = 200;
+      ball.isThrown = false;
+      opponents.forEach(opponent => {
+        opponent.x = Math.random() * 800;
+        opponent.y = Math.random() * 400;
+      });
+    }
+
+    function passTo(receiver) {
+      player.animation = 'pass';
+      // Implement pass logic here
+    }
+
+    function jump() {
+      player.animation = 'jump';
+      // Implement jump logic here
+    }
+
+    function spin() {
+      player.animation = 'spin';
+      // Implement spin logic here
+    }
+
+    function dive() {
+      player.animation = 'dive';
+      // Implement dive logic here
+    }
+
+    function tackle(opponent) {
+      tackles++;
+      document.getElementById('tackles').textContent = tackles;
+      reset();
+    }
+
+    function showCommentary(event, details) {
+      google.script.run.withSuccessHandler((update) => {
+        const commentaryDiv = document.getElementById('commentary');
+        commentaryDiv.innerHTML = update.commentary;
+
+        // You can also update the game state based on the other fields in the response,
+        // for example, by updating the opponent's behavior or the outcome of a play.
+        // For now, we'll just log them to the console.
+        console.log('Opponent behavior:', update.opponentBehavior);
+        console.log('Play outcome:', update.playOutcome);
+      }).getGameUpdate(event, details);
+    }
+  </script>
+</body>
+</html>
