@@ -164,37 +164,13 @@ function* formationIterator(playbook) {
     }
 }
 
-function displayFormations(playbook) {
-    const formationsList = document.getElementById('formations-list');
-    const iterator = formationIterator(playbook);
-    let result = iterator.next();
-    while (!result.done) {
-        const formation = result.value;
-        const formationEl = document.createElement('div');
-        formationEl.className = 'w3-container w3-hover-teal';
-        formationEl.style.cursor = 'pointer';
-        formationEl.innerHTML = `<h4>${formation.name}</h4>`;
-        formationEl.addEventListener('click', () => displayPlays(formation));
-        formationsList.appendChild(formationEl);
-        result = iterator.next();
-    }
-}
-
-function displayPlays(formation) {
-    const playDetails = document.getElementById('play-details');
-    playDetails.innerHTML = `
-        <div class="w3-container w3-teal">
-            <h2>${formation.name} Plays</h2>
-        </div>
-    `;
-    for (const play of formation.plays) {
-        const playEl = document.createElement('div');
-        playEl.className = 'w3-container';
-        playEl.innerHTML = `
-            <h3>${play.name}</h3>
-            <p>${play.getDetails()}</p>
-        `;
-        playDetails.appendChild(playEl);
+function displayPlaysGrid(playbook) {
+    const gridContainer = document.querySelector('.grid-container');
+    for (let i = 0; i < 150; i++) {
+        const gridItem = document.createElement('div');
+        gridItem.className = 'grid-item';
+        gridItem.innerHTML = `<h5>Play ${i + 1}</h5>`;
+        gridContainer.appendChild(gridItem);
     }
 }
 
@@ -202,36 +178,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initDB();
     const playbook = await fetchPlaybookData();
     populateDB(playbook);
-    displayFormations(playbook);
-
-    const svg = document.getElementById('animation-svg');
-    const startBtn = document.getElementById('start-animation');
-    const stopBtn = document.getElementById('stop-animation');
-    let animation;
-
-    function startAnimation() {
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', '50');
-        circle.setAttribute('cy', '50');
-        circle.setAttribute('r', '20');
-        circle.setAttribute('fill', 'blue');
-        svg.appendChild(circle);
-
-        let position = 50;
-        animation = setInterval(() => {
-            position += 5;
-            circle.setAttribute('cx', position);
-            if (position > 450) {
-                position = 50;
-            }
-        }, 100);
-    }
-
-    function stopAnimation() {
-        clearInterval(animation);
-        svg.innerHTML = '';
-    }
-
-    startBtn.addEventListener('click', startAnimation);
-    stopBtn.addEventListener('click', stopAnimation);
+    displayPlaysGrid(playbook);
 });
