@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NFL Offensive Playbook</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <style>
+    body {
+      background-image: url('https://www.transparenttextures.com/patterns/football.png');
+      background-attachment: fixed;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+    #play-list {
+      height: 100vh;
+      overflow-y: scroll;
+    }
+    #play-details {
+      height: 100vh;
+    }
+    #formation-container {
+      height: 60vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>NFL Offensive Playbook</h1>
+  </header>
+
+  <main class="container-fluid">
+    <div class="row">
+      <div class="col-md-4" id="play-list"></div>
+      <div class="col-md-8" id="play-details">
+        <div id="formation-container"></div>
+        <div id="play-description"></div>
+        <div id="play-recommendations"></div>
+        <button id="start-animation-button" class="w3-button w3-green">Start Animation</button>
+        <button id="stop-animation-button" class="w3-button w3-red">Stop Animation</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 NFL Offensive Playbook</p>
+  </footer>
+
+  <script>
+    class Playbook {
+      #plays = [];
+      constructor() {
+        this.db = null;
+        this.initDB();
+      }
+
+      async initDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open('PlaybookDB', 1);
+          request.onerror = (event) => {
+            console.error('Database error:', event.target.errorCode);
+            reject(event.target.errorCode);
+          };
+          request.onsuccess = (event) => {
+            this.db = event.target.result;
+            resolve();
+          };
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            const objectStore = db.createObjectStore('plays', { keyPath: 'play_name' });
+            objectStore.createIndex('formation', 'formation', { unique: false });
+          };
+        });
+      }
+
+      async fetchPlaybook() {
+        const response = await fetch('playbook.json');
+        const playbookData = await response.json();
+        this.#plays = playbookData;
+        const transaction = this.db.transaction(['plays'], 'readwrite');
+        const objectStore = transaction.objectStore('plays');
+        this.#plays.forEach(play => {
+          objectStore.put(play);
+        });
+      }
+
+      *getPlays() {
+        for (const play of this.#plays) {
+          yield play;
+        }
+      }
+    }
+
+    (async () => {
+      const playbook = new Playbook();
+      await playbook.initDB();
+      await playbook.fetchPlaybook();
+      const playList = document.getElementById('play-list');
+      const formationContainer = document.getElementById('formation-container');
+      const playDescription = document.getElementById('play-description');
+      const playRecommendations = document.getElementById('play-recommendations');
+
+      for (const play of playbook.getPlays()) {
+        const playButton = document.createElement('button');
+        playButton.textContent = play.play_name;
+        playButton.classList.add('w3-button', 'w3-block', 'w3-left-align');
+        playButton.addEventListener('click', () => {
+          displayPlay(play);
+        });
+        playList.appendChild(playButton);
+      });
+
+      function time(target, name, descriptor) {
+        const original = descriptor.value;
+        descriptor.value = function(...args) {
+          const start = performance.now();
+          const result = original.apply(this, args);
+          const end = performance.now();
+          console.log(`Execution time for ${name}: ${end - start} milliseconds`);
+          return result;
+        };
+        return descriptor;
+      }
+
+      class PlayDisplayer {
+        @time
+        displayPlay(play) {
+          playDescription.textContent = play.description;
+          playRecommendations.textContent = `Recommended on ${play.recommendations.down} and ${play.recommendations.distance} in the ${play.recommendations.time}.`;
+          drawFormation(play.formation);
+        }
+      }
+
+      const playDisplayer = new PlayDisplayer();
+
+      function displayPlay(play) {
+        playDisplayer.displayPlay(play);
+      }
+
+      window.addEventListener('scroll', () => {
+        const scrolled = window.pageYOffset;
+        const parallax = document.querySelector('body');
+        parallax.style.backgroundPositionY = -(scrolled * 0.5) + 'px';
+      });
+
+      function drawFormation(formation) {
+        formationContainer.innerHTML = '';
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.setAttribute('viewBox', '0 0 120 80');
+        formationContainer.appendChild(svg);
+
+        // Draw the offensive line
+        for (let i = 0; i < 5; i++) {
+          const x = 40 + i * 10;
+          const y = 40;
+          drawPlayer(svg, x, y, 'O');
+        }
+
+        // Draw the quarterback
+        drawPlayer(svg, 60, 45, 'O');
+
+        // Draw the running back
+        if (formation === 'I-Form') {
+          drawPlayer(svg, 60, 50, 'O');
+        } else if (formation === 'Single Back') {
+          drawPlayer(svg, 60, 50, 'O');
+        }
+
+        // Draw the receivers
+        if (formation === 'Shotgun') {
+          drawPlayer(svg, 20, 35, 'O');
+          drawPlayer(svg, 100, 35, 'O');
+          drawPlayer(svg, 30, 60, 'O');
+          drawPlayer(svg, 90, 60, 'O');
+        } else if (formation === 'Pistol') {
+            drawPlayer(svg, 20, 35, 'O');
+            drawPlayer(svg, 100, 35, 'O');
+        } else if (formation === 'I-Form') {
+            drawPlayer(svg, 20, 35, 'O');
+            drawPlayer(svg, 100, 35, 'O');
+        } else if (formation === 'Single Back') {
+            drawPlayer(svg, 20, 35, 'O');
+            drawPlayer(svg, 100, 35, 'O');
+        } else if (formation === 'Empty') {
+            drawPlayer(svg, 20, 35, 'O');
+            drawPlayer(svg, 100, 35, 'O');
+            drawPlayer(svg, 30, 60, 'O');
+            drawPlayer(svg, 90, 60, 'O');
+            drawPlayer(svg, 60, 20, 'O');
+        }
+      }
+
+      let animation;
+
+      document.getElementById('start-animation-button').addEventListener('click', () => {
+        const players = document.querySelectorAll('circle');
+        animation = anime({
+          targets: players,
+          translateX: 20,
+          duration: 1000,
+          loop: true,
+          direction: 'alternate',
+          easing: 'easeInOutSine'
+        });
+      });
+
+      document.getElementById('stop-animation-button').addEventListener('click', () => {
+        if (animation) {
+          animation.pause();
+        }
+      });
+
+      function drawPlayer(svg, x, y, type) {
+        const player = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        player.setAttribute('cx', x);
+        player.setAttribute('cy', y);
+        player.setAttribute('r', 2);
+        player.setAttribute('fill', 'white');
+        player.setAttribute('stroke', 'black');
+        svg.appendChild(player);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y + 1);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('font-size', '3');
+        text.textContent = type;
+        svg.appendChild(text);
+      }
+    })();
+  </script>
+
+</body>
+</html>
