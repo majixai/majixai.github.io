@@ -12,6 +12,12 @@
       text-align: center;
     }
 
+    @media (min-width: 1200px) {
+      .game-container {
+        width: 90%;
+      }
+    }
+
     .game-container {
       position: absolute;
       top: 50%;
@@ -20,6 +26,8 @@
     }
 
     canvas {
+      width: 100%;
+      height: auto;
       background-color: rgba(0, 100, 0, 0.5);
       border: 1px solid #FFFFFF;
     }
@@ -27,10 +35,11 @@
     #controller {
       position: absolute;
       bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      width: 100%;
       display: flex;
-      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      box-sizing: border-box;
     }
 
     #d-pad {
@@ -119,7 +128,7 @@
         <div id="left" class="d-pad-button"></div>
         <div id="right" class="d-pad-button"></div>
       </div>
-      <div id="action-buttons">
+      <div id="action-buttons" style="margin-left: auto;">
         <div id="d-button" class="action-button">D</div>
         <div id="c-button" class="action-button">C</div>
         <div id="b-button" class="action-button">B</div>
@@ -136,8 +145,7 @@
     <button id="loadButton">Load</button>
     <div id="playCallingPanel">
       <h3>Play Calling</h3>
-      <button id="passPlayButton">Pass Play</button>
-      <button id="runPlayButton">Run Play</button>
+    <button id="selectPlayButton">Select Play</button>
     </div>
     <div id="statsPanel">
       <h3>Stats</h3>
@@ -152,6 +160,13 @@
       <br>
       <label for="ballColor">Ball Color:</label>
       <input type="color" id="ballColor" value="#FFFFFF">
+    </div>
+  </div>
+  <div id="playbookModal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-button">&times;</span>
+      <h2>Select a Play</h2>
+      <div id="playbook"></div>
     </div>
   </div>
   <script>
@@ -525,8 +540,41 @@
       currentPlay = 'pass';
     });
 
-    document.getElementById('runPlayButton').addEventListener('click', function() {
-      currentPlay = 'run';
+    const playbookModal = document.getElementById('playbookModal');
+    const selectPlayButton = document.getElementById('selectPlayButton');
+    const closeButton = document.querySelector('.close-button');
+
+    selectPlayButton.addEventListener('click', () => {
+      playbookModal.style.display = 'block';
+    });
+
+    closeButton.addEventListener('click', () => {
+      playbookModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+      if (event.target == playbookModal) {
+        playbookModal.style.display = 'none';
+      }
+    });
+
+    const plays = [
+      { name: 'PA Boot', type: 'pass' },
+      { name: 'WR Wheel', type: 'pass' },
+      { name: 'Four Verticals', type: 'pass' },
+      { name: 'HB Dive', type: 'run' },
+      { name: 'FB Dive', type: 'run' },
+    ];
+
+    const playbookDiv = document.getElementById('playbook');
+    plays.forEach(play => {
+      const playButton = document.createElement('button');
+      playButton.textContent = play.name;
+      playButton.addEventListener('click', () => {
+        currentPlay = play.type;
+        playbookModal.style.display = 'none';
+      });
+      playbookDiv.appendChild(playButton);
     });
 
     function attemptFieldGoal(distance) {
