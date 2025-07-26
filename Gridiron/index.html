@@ -58,24 +58,30 @@
     #right { top: 40px; right: 0; }
 
     #action-buttons {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      grid-gap: 10px;
-      margin-left: 20px;
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin-left: 50px;
     }
 
     .action-button {
-      width: 50px;
-      height: 50px;
-      background-color: #555;
-      border: 1px solid #FFF;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 24px;
-      transition: all 0.1s ease-in-out;
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background-color: #555;
+        border: 1px solid #FFF;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        transition: all 0.1s ease-in-out;
     }
+
+    #c-button { top: 50%; left: 0; transform: translateY(-50%); }
+    #d-button { top: 0; left: 50%; transform: translateX(-50%); }
+    #b-button { top: 50%; right: 0; transform: translateY(-50%); }
+    #a-button { bottom: 0; left: 50%; transform: translateX(-50%); }
 
     .action-button:active {
       transform: scale(0.9);
@@ -114,10 +120,10 @@
         <div id="right" class="d-pad-button"></div>
       </div>
       <div id="action-buttons">
-        <div id="a-button" class="action-button">A</div>
-        <div id="b-button" class="action-button">B</div>
-        <div id="c-button" class="action-button">C</div>
         <div id="d-button" class="action-button">D</div>
+        <div id="c-button" class="action-button">C</div>
+        <div id="b-button" class="action-button">B</div>
+        <div id="a-button" class="action-button">A</div>
       </div>
       <div id="shoulder-buttons">
         <div id="l-button" class="shoulder-button">L</div>
@@ -246,7 +252,7 @@
 
     let score = 0;
     let touchdownMessage = false;
-    let gameClock = 15 * 60;
+    let gameClock = 5 * 60;
     let quarter = 1;
     let currentPlay;
     let selectedReceiver = 'A';
@@ -291,32 +297,32 @@
       }
     };
 
+    AnimationManager.prototype.draw = function(ctx, x, y, angle) {
+        if (!this.currentAnimation) return;
 
-    const playerElement = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
-    playerElement.setAttribute('x', player.x);
-    playerElement.setAttribute('y', player.y);
-    playerElement.setAttribute('width', player.width);
-    playerElement.setAttribute('height', player.height);
-    playerElement.setAttribute('fill', 'white');
-    svg.appendChild(playerElement);
+        const animation = this.animations[this.currentAnimation];
+        const frame = animation.frames[this.currentFrame];
+        const sx = frame * this.frameWidth;
+        const sy = 0; // Assuming all frames are in a single row
 
-    const ballElement = document.createElementNS("http://www.w3.org/2000/svg", 'circle');
-    ballElement.setAttribute('cx', ball.x);
-    ballElement.setAttribute('cy', ball.y);
-    ballElement.setAttribute('r', ball.radius);
-    ballElement.setAttribute('fill', ball.color);
-    svg.appendChild(ballElement);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.drawImage(
+            this.spriteSheet,
+            sx,
+            sy,
+            this.frameWidth,
+            this.frameHeight,
+            -this.frameWidth / 2,
+            -this.frameHeight / 2,
+            this.frameWidth,
+            this.frameHeight
+        );
+        ctx.restore();
+    };
 
-    const opponentElements = opponents.map(opponent => {
-      const opponentElement = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
-      opponentElement.setAttribute('x', opponent.x);
-      opponentElement.setAttribute('y', opponent.y);
-      opponentElement.setAttribute('width', opponent.width);
-      opponentElement.setAttribute('height', opponent.height);
-      opponentElement.setAttribute('fill', 'red');
-      svg.appendChild(opponentElement);
-      return opponentElement;
-    });
+
 
     function update() {
       // Player movement
@@ -330,14 +336,39 @@
         document.getElementById('rushingYards').textContent = rushingYards.toFixed(1);
       }
 
-      anime({
-        targets: playerElement,
-        x: player.x,
-        y: player.y,
-        rotate: player.angle,
-        duration: 100,
-        easing: 'linear'
-      });
+      const ctx = svg.getContext('2d');
+      ctx.clearRect(0, 0, svg.width.baseVal.value, svg.height.baseVal.value);
+
+      // Draw field
+      ctx.fillStyle = '#006400';
+      ctx.fillRect(0, 0, svg.width.baseVal.value, svg.height.baseVal.value);
+
+      // Draw yard lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 1;
+      for (let i = 10; i < 100; i += 10) {
+        const x = (i / 100) * svg.width.baseVal.value;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, svg.height.baseVal.value);
+        ctx.stroke();
+      }
+
+      // Draw hash marks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      for (let i = 1; i < 100; i++) {
+          if (i % 5 !== 0) {
+              const x = (i / 100) * svg.width.baseVal.value;
+              ctx.beginPath();
+              ctx.moveTo(x, 150);
+              ctx.lineTo(x, 160);
+              ctx.moveTo(x, 240);
+              ctx.lineTo(x, 250);
+              ctx.stroke();
+          }
+      }
+
+      animationManager.draw(ctx, player.x, player.y, player.angle);
 
       // Throw ball
       if (controller.a && !ball.isThrown) {
@@ -352,21 +383,11 @@
         ball.x += ball.dx;
         ball.y += ball.dy;
 
-        anime({
-          targets: ballElement,
-          cx: ball.x,
-          cy: ball.y,
-          duration: 100,
-          easing: 'linear'
-        });
-
-        anime({
-          targets: ballElement,
-          rotate: '1turn',
-          loop: true,
-          duration: 500,
-          easing: 'linear'
-        });
+        const ctx = svg.getContext('2d');
+        ctx.fillStyle = ball.color;
+        ctx.beginPath();
+        ctx.ellipse(ball.x, ball.y, ball.radius * 1.5, ball.radius, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       // Opponent AI and collision
@@ -389,13 +410,9 @@
             opponent.y += Math.sin(angle) * opponent.speed;
         }
 
-        anime({
-          targets: opponentElements[index],
-          x: opponent.x,
-          y: opponent.y,
-          duration: 100,
-          easing: 'linear'
-        });
+        const ctx = svg.getContext('2d');
+        ctx.fillStyle = 'red';
+        ctx.fillRect(opponent.x, opponent.y, opponent.width, opponent.height);
 
         // Collision detection (opponent and player)
         const distOpponentPlayer = Math.hypot(opponent.x - player.x, opponent.y - player.y);
@@ -435,8 +452,7 @@
       // Update game clock
       gameClock -= 1 / 60;
       if (gameClock <= 0) {
-        quarter++;
-        gameClock = 15 * 60;
+        gameClock = 5 * 60;
       }
 
       animationManager.update(player.animation, 1 / 60);
@@ -444,7 +460,6 @@
 
     function gameLoop() {
       update();
-      render();
       requestAnimationFrame(gameLoop);
     }
 
@@ -630,17 +645,26 @@
       reset();
     }
 
-    function showCommentary(event, details) {
-      google.script.run.withSuccessHandler((update) => {
-        const commentaryDiv = document.getElementById('commentary');
-        commentaryDiv.innerHTML = update.commentary;
+    async function showCommentary(event, details) {
+        try {
+            const update = await new Promise((resolve, reject) => {
+                google.script.run
+                    .withSuccessHandler(resolve)
+                    .withFailureHandler(reject)
+                    .getGameUpdate(event, details);
+            });
 
-        // You can also update the game state based on the other fields in the response,
-        // for example, by updating the opponent's behavior or the outcome of a play.
-        // For now, we'll just log them to the console.
-        console.log('Opponent behavior:', update.opponentBehavior);
-        console.log('Play outcome:', update.playOutcome);
-      }).getGameUpdate(event, details);
+            const commentaryDiv = document.getElementById('commentary');
+            commentaryDiv.innerHTML = update.commentary;
+
+            // You can also update the game state based on the other fields in the response,
+            // for example, by updating the opponent's behavior or the outcome of a play.
+            // For now, we'll just log them to the console.
+            console.log('Opponent behavior:', update.opponentBehavior);
+            console.log('Play outcome:', update.playOutcome);
+        } catch (error) {
+            console.error('Error getting game update:', error);
+        }
     }
   </script>
 </body>
