@@ -1,32 +1,10 @@
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index');
-}
-
 function getGameUpdate(event, details) {
-  const cache = CacheService.getScriptCache();
-  const now = new Date().getTime();
+  const apiKey = "AIzaSyAqAZ9i3L4dMtRAP8O-qDVNk7iPzrG5gsg";
+  const model = 'gemini-1.5-pro';
+  const api = 'streamGenerateContent';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${api}?key=${apiKey}`;
 
-  const eventCooldowns = {
-    'default': 5000,
-    'tackle': 2000,
-    'pass': 3000,
-    'touchdown': 10000,
-    'interception': 10000,
-  };
-
-  const cooldown = eventCooldowns[event] || eventCooldowns['default'];
-  const cacheKey = `lastCall_${event}`;
-  const lastCall = cache.get(cacheKey);
-
-  if (lastCall && now - lastCall < cooldown) {
-    return { commentary: `Commentary for ${event} is cooling down...` };
-  }
-
-  cache.put(cacheKey, now, 60); // Cache for 60 seconds
-
-  const apiKey = "YOUR_API_KEY"; // Replace with your actual API key
   let prompt;
-
   switch (event) {
     case 'update':
       prompt = `You are a football game AI. Generate challenging and realistic opponent behavior and play outcomes based on the following details: ${details}. Respond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary'.`;
@@ -38,18 +16,33 @@ function getGameUpdate(event, details) {
       prompt = `Generate a play-by-play commentary for the following event: ${event}. Details: ${details}`;
   }
 
-  const response = UrlFetchApp.fetch("https://api.generativeai.com/v1/game", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    payload: JSON.stringify({
-      prompt: prompt,
-      max_tokens: 500,
-    }),
-  });
+  const payload = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: prompt
+          },
+        ]
+      },
+    ],
+  };
 
-  const data = JSON.parse(response.getContentText());
-  return JSON.parse(data.choices[0].text.trim());
+  const options = {
+    method: 'POST',
+    contentType: 'application/json',
+    muteHttpExceptions: true,
+    payload: JSON.stringify(payload),
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const chunks = JSON.parse(response.getContentText());
+
+  let fullResponse = "";
+  for (const chunk of chunks) {
+    fullResponse += chunk.candidates[0].content.parts[0].text;
+  }
+
+  return JSON.parse(fullResponse);
 }
