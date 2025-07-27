@@ -1,296 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive NFL SVG Playbook</title>
-    <style>
-        /* CSS styles */
-        :root {
-            --field-color: #5c933f;
-            --line-color: #ffffff;
-            --player-color: #00338d; /* Blue for offense */
-            --player-text-color: #ffffff;
-            --route-color: #ffc627; /* Gold for routes */
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        header {
-            background-color: #333;
-            color: white;
-            text-align: center;
-            padding: 1rem;
-            flex-shrink: 0;
-        }
-
-        .playbook-container {
-            display: flex;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        .play-selection {
-            width: 320px;
-            flex-shrink: 0;
-            background-color: #fff;
-            border-right: 1px solid #ccc;
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .play-selection h2 {
-            margin-top: 0;
-            position: sticky;
-            top: -1rem; /* Adjust for padding */
-            background: #fff;
-            padding: 1rem 0;
-            z-index: 10;
-        }
-
-        .formation-group h4 {
-            background-color: #eee;
-            padding: 8px;
-            margin: 10px 0 5px 0;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .plays-list {
-            display: block;
-        }
-
-        .play-item {
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 0.9em;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background-color 0.2s;
-        }
-
-        .play-item:hover {
-            background-color: #e0eaf6;
-        }
-
-        .play-field-container {
-            flex-grow: 1;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #fafafa;
-        }
-
-        #play-name-display {
-            margin-bottom: 1rem;
-            font-size: 1.5em;
-            color: #333;
-            text-align: center;
-        }
-
-        #football-field {
-            width: 95%;
-            max-width: 1000px;
-            background-color: var(--field-color);
-            border: 2px solid var(--line-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .player circle {
-            fill: var(--player-color);
-            stroke: var(--line-color);
-            stroke-width: 2;
-        }
-
-        .player text {
-            fill: var(--player-text-color);
-            font-size: 12px;
-            font-weight: bold;
-            text-anchor: middle;
-            dominant-baseline: middle;
-            pointer-events: none; /* Make text non-interactive */
-        }
-
-        .route {
-            stroke: var(--route-color);
-            stroke-width: 3;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixAI Project Directory Menu</title>
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- W3CSS CDN -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <!-- Bootstrap Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      overflow-x: hidden;
+    }
+    .parallax {
+      background-image: url('https://www.transparenttextures.com/patterns/diamond-upholstery.png');
+      min-height: 300px;
+      background-attachment: fixed;
+      background-position: center;
+      background-repeat: repeat;
+      background-size: cover;
+    }
+    .project-card {
+      transition: transform 0.3s cubic-bezier(.25,.8,.25,1), box-shadow 0.3s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-radius: 1rem;
+      overflow: hidden;
+      background: #fff;
+      position: relative;
+    }
+    .project-card:hover {
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      z-index: 2;
+    }
+    .project-svg {
+      width: 100%;
+      height: 80px;
+      display: block;
+      background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+    }
+    .project-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0.5rem 0 0.2rem 0;
+      color: #2a3a4a;
+      text-align: center;
+    }
+    .project-desc {
+      font-size: 0.95rem;
+      color: #555;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+    .animated-bg {
+      animation: bgmove 8s linear infinite alternate;
+    }
+    @keyframes bgmove {
+      0% { background-position: 0 0; }
+      100% { background-position: 100px 100px; }
+    }
+    .menu-header {
+      background: rgba(44,62,80,0.95);
+      color: #fff;
+      padding: 2rem 0 1rem 0;
+      text-align: center;
+      letter-spacing: 0.1em;
+      font-size: 2.2rem;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .w3-animate-opacity { animation: opac 1.2s; }
+    @keyframes opac { from {opacity:0} to {opacity:1} }
+    .project-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      justify-content: center;
+      margin: 2rem auto;
+      max-width: 1400px;
+    }
+    .project-card {
+      flex: 1 1 260px;
+      min-width: 260px;
+      max-width: 320px;
+      margin: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      border: 1px solid #e0eafc;
+    }
+    .svg-anim {
+      cursor: pointer;
+      transition: filter 0.3s;
+    }
+    .svg-anim:hover {
+      filter: drop-shadow(0 0 8px #6ec6ff);
+    }
+    .footer {
+      text-align: center;
+      color: #888;
+      padding: 1.5rem 0 0.5rem 0;
+      font-size: 1rem;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>Interactive NFL SVG Playbook</h1>
-    </header>
-    <main class="playbook-container">
-        <aside class="play-selection">
-            <h2>Playbook</h2>
-            <div id="play-list-container"></div>
-        </aside>
-        <section class="play-field-container">
-            <h3 id="play-name-display">Select a Play from the Menu</h3>
-            <svg id="football-field" viewBox="0 0 1200 600"></svg>
-            <div>
-                <button id="save-play-button">Save Play</button>
-                <button id="load-play-button">Load Play</button>
-            </div>
-        </section>
-    </main>
-    <script src="plays.js"></script>
-    <script>
-        // JavaScript for play generation and interactivity
+  <div class="parallax w3-animate-opacity">
+    <div class="menu-header">MajixAI Project Directory Menu</div>
+  </div>
+  <main>
+    <div class="container-fluid">
+      <div id="projectGrid" class="project-grid"></div>
+    </div>
+  </main>
+  <div class="footer">&copy; 2025 MajixAI | <span id="projectCount"></span> Projects</div>
+  <script>
+    // --- OOP, Decorators, Iterators, Generators, Async, IndexedDB, SVG, Animations ---
+    // Directory/project data (static for now, could be loaded async from server or indexedDB)
+    const PROJECTS = [
+      { name: '7t', path: '7t/', desc: 'Experimental text and alpha tools' },
+      { name: 'best', path: 'best/', desc: 'Best strategies and alpha' },
+      { name: 'beta', path: 'beta/', desc: 'Beta features and scripts' },
+      { name: 'chat', path: 'chat/', desc: 'Chat and indicators' },
+      { name: 'chaturbate_app', path: 'chaturbate_app/', desc: 'Chaturbate event handlers' },
+      { name: 'church_school_lesson_plan', path: 'church_school_lesson_plan/', desc: 'Church school lesson plans' },
+      { name: 'csv', path: 'csv/', desc: 'Stock CSV data' },
+      { name: 'etrade_client', path: 'etrade_client/', desc: 'Etrade API client' },
+      { name: 'Gridiron', path: 'Gridiron/', desc: 'Football analytics' },
+      { name: 'jinx', path: 'jinx/', desc: 'Jinx core' },
+      { name: 'jinx_strategy', path: 'jinx_strategy/', desc: 'Jinx strategies' },
+      { name: 'jinxcasino', path: 'jinxcasino/', desc: 'Jinx casino' },
+      { name: 'json', path: 'json/', desc: 'JSON data' },
+      { name: 'link_indexer', path: 'link_indexer/', desc: 'Link indexer' },
+      { name: 'market', path: 'market/', desc: 'Market tools' },
+      { name: 'nfl', path: 'nfl/', desc: 'NFL data' },
+      { name: 'nfl_offensive_playbook', path: 'nfl_offensive_playbook/', desc: 'NFL playbook' },
+      { name: 'option', path: 'option/', desc: 'Options tools' },
+      { name: 'options', path: 'options/', desc: 'Options strategies' },
+      { name: 'pj', path: 'pj/', desc: 'PJ tools' },
+      { name: 'playbook', path: 'playbook/', desc: 'Football playbook' },
+      { name: 'playbook_app', path: 'playbook_app/', desc: 'Playbook app' },
+      { name: 'referrals', path: 'referrals/', desc: 'Referral system' },
+      { name: 'script', path: 'script/', desc: 'Scripts' },
+      { name: 'seventy', path: 'seventy/', desc: 'Seventy tools' },
+      { name: 'simple', path: 'simple/', desc: 'Simple tools' },
+      { name: 'stays', path: 'stays/', desc: 'Stay management' },
+      { name: 'stock', path: 'stock/', desc: 'Stock tools' },
+      { name: 'stock_analyzer', path: 'stock_analyzer/', desc: 'Stock analyzer' },
+      { name: 'stock_fetcher', path: 'stock_fetcher/', desc: 'Stock fetcher' },
+      { name: 'study', path: 'study/', desc: 'Study tools' },
+      { name: 'style', path: 'style/', desc: 'Style resources' },
+      { name: 'texas_holdem', path: 'texas_holdem/', desc: 'Texas Holdem' },
+      { name: 'ticker', path: 'ticker/', desc: 'Ticker tools' },
+      { name: 'tickers', path: 'tickers/', desc: 'Tickers' },
+      { name: 'Trades', path: 'Trades/', desc: 'Trade logs' },
+      { name: 'whatsapp_integration', path: 'whatsapp_integration/', desc: 'WhatsApp integration' },
+    ];
 
-        //=================================================//
-        //              APP LOGIC (script.js)              //
-        //=================================================//
-        document.addEventListener('DOMContentLoaded', () => {
-            const svgNS = "http://www.w3.org/2000/svg";
-            const field = document.getElementById('football-field');
-            const playListContainer = document.getElementById('play-list-container');
-            const playNameDisplay = document.getElementById('play-name-display');
+    // --- Decorator Example ---
+    function logMethod(target, key, descriptor) {
+      const original = descriptor.value;
+      descriptor.value = function(...args) {
+        console.log(`[LOG] ${key} called with`, args);
+        return original.apply(this, args);
+      };
+      return descriptor;
+    }
 
-            function drawField() {
-                // Yard lines
-                for (let i = 100; i <= 1100; i += 100) {
-                    const line = document.createElementNS(svgNS, 'line');
-                    line.setAttribute('x1', i);
-                    line.setAttribute('y1', 50);
-                    line.setAttribute('x2', i);
-                    line.setAttribute('y2', 550);
-                    line.setAttribute('stroke', 'rgba(255,255,255,0.4)');
-                    line.setAttribute('stroke-width', '2');
-                    field.appendChild(line);
-                }
-                 // Hash marks
-                for (let y of [200, 400]) {
-                     for (let x = 100; x <= 1100; x += 20) {
-                        const hash = document.createElementNS(svgNS, 'line');
-                        hash.setAttribute('x1', x);
-                        hash.setAttribute('y1', y);
-                        hash.setAttribute('x2', x);
-                        hash.setAttribute('y2', y+10);
-                        hash.setAttribute('stroke', 'rgba(255,255,255,0.4)');
-                        hash.setAttribute('stroke-width', '2');
-                        field.appendChild(hash);
-                     }
-                }
+    // --- IndexedDB Helper (Async, Static, Private) ---
+    class ProjectDB {
+      static #dbName = 'MajixAIProjects';
+      static #store = 'projects';
+      static #dbVersion = 1;
+      static #db = null;
+      static async open() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(ProjectDB.#dbName, ProjectDB.#dbVersion);
+          req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(ProjectDB.#store)) {
+              db.createObjectStore(ProjectDB.#store, { keyPath: 'name' });
             }
-
-            function drawPlay(play) {
-                field.innerHTML = ''; // Clear previous play
-                drawField();
-                playNameDisplay.textContent = play.name;
-
-                const formation = formations[play.formation];
-
-                // Draw players
-                for (const pos in formation) {
-                    const playerCoords = formation[pos];
-                    const playerGroup = document.createElementNS(svgNS, 'g');
-                    playerGroup.setAttribute('class', 'player');
-
-                    const circle = document.createElementNS(svgNS, 'circle');
-                    circle.setAttribute('cx', playerCoords.x);
-                    circle.setAttribute('cy', playerCoords.y);
-                    circle.setAttribute('r', '15');
-
-                    const text = document.createElementNS(svgNS, 'text');
-                    text.setAttribute('x', playerCoords.x);
-                    text.setAttribute('y', playerCoords.y);
-                    text.textContent = pos;
-
-                    playerGroup.appendChild(circle);
-                    playerGroup.appendChild(text);
-                    field.appendChild(playerGroup);
-                }
-
-                // Draw routes
-                for (const pos in play.routes) {
-                    if(formation[pos]){ // Ensure player exists in formation
-                        const routeFunc = play.routes[pos];
-                        const playerCoords = formation[pos];
-                        const path = document.createElementNS(svgNS, 'path');
-                        path.setAttribute('d', routeFunc(playerCoords));
-                        path.setAttribute('class', 'route');
-                        field.appendChild(path);
-                    }
-                }
-            }
-
-            // Populate play list, grouped by formation
-            const groupedPlays = playbook.reduce((acc, play) => {
-                (acc[play.formation] = acc[play.formation] || []).push(play);
-                return acc;
-            }, {});
-
-            for (const formName in groupedPlays) {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'formation-group';
-
-                const title = document.createElement('h4');
-                title.textContent = `${formName} (${groupedPlays[formName].length} plays)`;
-                groupDiv.appendChild(title);
-
-                const playsDiv = document.createElement('div');
-                playsDiv.className = 'plays-list';
-                playsDiv.style.display = 'none'; // Initially collapsed
-
-                groupedPlays[formName].forEach(play => {
-                    const playItem = document.createElement('div');
-                    playItem.className = 'play-item';
-                    playItem.textContent = play.name.replace(`${formName} - `, '');
-                    playItem.onclick = () => drawPlay(play);
-                    playsDiv.appendChild(playItem);
-                });
-
-                title.onclick = () => {
-                    const isHidden = playsDiv.style.display === 'none';
-                    playsDiv.style.display = isHidden ? 'block' : 'none';
-                };
-
-                groupDiv.appendChild(playsDiv);
-                playListContainer.appendChild(groupDiv);
-            }
-
-            drawField(); // Initial field drawing
-
-            document.getElementById('save-play-button').addEventListener('click', () => {
-                const playName = prompt("Enter a name for your play:");
-                if (playName) {
-                    const newPlay = {
-                        name: playName,
-                        formation: 'Custom',
-                        routes: {},
-                    };
-                    // TODO: Add logic to get the routes from the SVG
-                    playbook.push(newPlay);
-                    // TODO: Update the play list
-                }
-            });
-
-            document.getElementById('load-play-button').addEventListener('click', () => {
-                const playName = prompt("Enter the name of the play to load:");
-                if (playName) {
-                    const play = playbook.find(p => p.name === playName);
-                    if (play) {
-                        drawPlay(play);
-                    } else {
-                        alert("Play not found!");
-                    }
-                }
-            });
+          };
+          req.onsuccess = e => {
+            ProjectDB.#db = e.target.result;
+            resolve(ProjectDB.#db);
+          };
+          req.onerror = e => reject(e);
         });
+      }
+      static async saveProjects(projects) {
+        await ProjectDB.open();
+        return new Promise((resolve, reject) => {
+          const tx = ProjectDB.#db.transaction(ProjectDB.#store, 'readwrite');
+          const store = tx.objectStore(ProjectDB.#store);
+          projects.forEach(p => store.put(p));
+          tx.oncomplete = () => resolve();
+          tx.onerror = e => reject(e);
+        });
+      }
+      static async getProjects() {
+        await ProjectDB.open();
+        return new Promise((resolve, reject) => {
+          const tx = ProjectDB.#db.transaction(ProjectDB.#store, 'readonly');
+          const store = tx.objectStore(ProjectDB.#store);
+          const req = store.getAll();
+          req.onsuccess = e => resolve(e.target.result);
+          req.onerror = e => reject(e);
+        });
+      }
+    }
 
-    </script>
+    // --- Project Card Class (OOP, static, public/protected/private, iterator/generator) ---
+    class ProjectCard {
+      static svgIcons = [
+        // SVG icon strings
+        '<svg class="svg-anim" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="#6ec6ff"><animate attributeName="r" values="30;35;30" dur="2s" repeatCount="indefinite"/></circle></svg>',
+        '<svg class="svg-anim" viewBox="0 0 80 80"><rect x="15" y="15" width="50" height="50" rx="12" fill="#ffd166"><animate attributeName="rx" values="12;30;12" dur="2s" repeatCount="indefinite"/></rect></svg>',
+        '<svg class="svg-anim" viewBox="0 0 80 80"><polygon points="40,10 70,70 10,70" fill="#06d6a0"><animate attributeName="points" values="40,10 70,70 10,70;40,20 70,60 10,60;40,10 70,70 10,70" dur="2s" repeatCount="indefinite"/></polygon></svg>',
+      ];
+      #project;
+      #iconIdx;
+      constructor(project, iconIdx = 0) {
+        this.#project = project;
+        this.#iconIdx = iconIdx;
+      }
+      get name() { return this.#project.name; }
+      get path() { return this.#project.path; }
+      get desc() { return this.#project.desc; }
+      get icon() { return ProjectCard.svgIcons[this.#iconIdx % ProjectCard.svgIcons.length]; }
+      // --- Decorated method ---
+      @logMethod
+      render() {
+        const card = document.createElement('div');
+        card.className = 'project-card w3-animate-opacity';
+        card.innerHTML = `
+          <a href="${this.path}" style="text-decoration:none; color:inherit;">
+            <div class="project-svg animated-bg">${this.icon}</div>
+            <div class="project-title">${this.name}</div>
+            <div class="project-desc">${this.desc}</div>
+          </a>
+        `;
+        return card;
+      }
+      // --- Iterator for subprojects (if any) ---
+      *subprojects() {
+        if (this.#project.subprojects) {
+          for (const sp of this.#project.subprojects) yield sp;
+        }
+      }
+    }
+
+    // --- Generator for project cards ---
+    function* projectCardGenerator(projects) {
+      let idx = 0;
+      for (const p of projects) {
+        yield new ProjectCard(p, idx++);
+      }
+    }
+
+    // --- Async function to load projects (IndexedDB fallback) ---
+    async function loadProjects() {
+      let projects = await ProjectDB.getProjects().catch(() => []);
+      if (!projects || !projects.length) {
+        projects = PROJECTS;
+        await ProjectDB.saveProjects(projects);
+      }
+      return projects;
+    }
+
+    // --- Animation control (start/stop) ---
+    let animating = true;
+    function toggleAnimations() {
+      animating = !animating;
+      $(".svg-anim animate").each(function() {
+        this[animating ? 'beginElement' : 'endElement'] && this[animating ? 'beginElement' : 'endElement']();
+      });
+      $(".animated-bg").css('animation-play-state', animating ? 'running' : 'paused');
+    }
+
+    // --- Main render logic ---
+    $(async function() {
+      const projects = await loadProjects();
+      const grid = document.getElementById('projectGrid');
+      const gen = projectCardGenerator(projects);
+      for (const card of gen) {
+        grid.appendChild(card.render());
+      }
+      $('#projectCount').text(projects.length);
+      // Animation toggle on header click
+      $('.menu-header').on('click', toggleAnimations);
+    });
+  </script>
 </body>
 </html>

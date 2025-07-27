@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div id="flask-root">
+    <!-- The main menu UI will be rendered here by the static JS, or fallback to server-side rendering if JS is disabled -->
+    <h2>MajixAI Project Directory Menu (Flask Rendered)</h2>
+    <ul>
+      {% for project in projects %}
+        <li><a href="/{{ project.path }}">{{ project.name }}</a> - {{ project.desc }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}
