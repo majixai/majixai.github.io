@@ -9,6 +9,10 @@ ul {
 
 li {
     margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    animation: fadeIn 0.5s ease-in-out, slideDown 0.5s ease-in-out;
 }
 
 .link-container {
@@ -37,6 +41,7 @@ li {
     height: 100%;
     overflow: auto;
     background-color: rgba(0,0,0,0.4);
+    animation: fadeIn 0.3s ease-in-out;
 }
 
 #calendar-container {
@@ -48,7 +53,7 @@ li {
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
-    max-width: 300px;
+    max-w: 300px;
 }
 
 #calendar-header {
@@ -81,12 +86,4 @@ li {
 @keyframes slideDown {
     from { transform: translateY(-20px); }
     to { transform: translateY(0); }
-}
-
-li {
-    animation: fadeIn 0.5s ease-in-out, slideDown 0.5s ease-in-out;
-}
-
-#calendar-modal {
-    animation: fadeIn 0.3s ease-in-out;
 }
