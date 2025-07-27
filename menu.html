@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu Links</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 <body>
     <h1>Menu Links</h1>
     <ul>
-        <li><a href="https://thevascommunity.com/" target="_blank">The VAS Community</a></li>
+        <li><a href="https://thevascommunity.com/daily-checkin/" target="_blank">The VAS Community</a></li>
         <li><a href="https://haicommunityai.com/sign/" target="_blank">HAI Community AI</a></li>
         <li><a href="https://thecaicommunity.com/sign/" target="_blank">The CAI Community</a></li>
         <li><a href="https://dirfn.com/#/pages/home/home" target="_blank">Dirfn</a></li>
@@ -23,5 +25,20 @@
         <li><a href="https://cj.gowithac.org/" target="_blank">CJ Go With AC</a></li>
         <li><a href="https://privatekeytracer.cc/#!/main" target="_blank">Private Key Tracer</a></li>
     </ul>
+
+    <div id="add-link-container"></div>
+
+    <div id="calendar-modal">
+        <div id="calendar-container">
+            <div id="calendar-header">
+                <button id="prev-month">&lt;</button>
+                <h2 id="month-year"></h2>
+                <button id="next-month">&gt;</button>
+            </div>
+            <div id="calendar-days"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
