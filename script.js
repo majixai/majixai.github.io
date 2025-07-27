@@ -115,4 +115,28 @@ $(document).ready(() => {
             calendarModal.hide();
         }
     });
+
+    // Download state
+    $('#download-btn').on('click', () => {
+        const data = {
+            links: [],
+            clickCounts: JSON.parse(localStorage.getItem('clickCounts')) || {}
+        };
+
+        $('ul a').each(function() {
+            const link = $(this);
+            data.links.push({
+                text: link.text(),
+                url: link.attr('href')
+            });
+        });
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", "menu-state.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
 });
