@@ -28,8 +28,6 @@ $(document).ready(() => {
                 counter.text(menuData.clickCounts[linkData.url]);
                 localStorage.setItem('clickCounts', JSON.stringify(menuData.clickCounts));
                 window.open(linkData.url, '_blank');
-                calendarModal.show();
-                renderCalendar(currentMonth, currentYear);
             });
         });
     }

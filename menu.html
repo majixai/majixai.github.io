@@ -9,21 +9,22 @@
 </head>
 <body>
     <h1>Menu Links</h1>
-    <button id="load-btn">Load Links from File</button>
-    <ul id="menu-list"></ul>
-
-    <div id="add-link-container"></div>
-
-    <button id="download-btn">Download State</button>
-
-    <div id="calendar-modal">
-        <div id="calendar-container">
-            <div id="calendar-header">
-                <button id="prev-month">&lt;</button>
-                <h2 id="month-year"></h2>
-                <button id="next-month">&gt;</button>
+    <div class="container">
+        <div class="links-column">
+            <button id="load-btn">Load Links from File</button>
+            <ul id="menu-list"></ul>
+            <div id="add-link-container"></div>
+            <button id="download-btn">Download State</button>
+        </div>
+        <div class="calendar-column">
+            <div id="calendar-container">
+                <div id="calendar-header">
+                    <button id="prev-month">&lt;</button>
+                    <h2 id="month-year"></h2>
+                    <button id="next-month">&gt;</button>
+                </div>
+                <div id="calendar-days"></div>
             </div>
-            <div id="calendar-days"></div>
         </div>
     </div>
 
