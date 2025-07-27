@@ -41,7 +41,10 @@ li {
 
 #calendar-container {
     background-color: #fefefe;
-    margin: 15% auto;
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
     padding: 20px;
     border: 1px solid #888;
     width: 80%;
@@ -68,4 +71,22 @@ li {
 
 .calendar-day:hover {
     background-color: #eee;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-20px); }
+    to { transform: translateY(0); }
+}
+
+li {
+    animation: fadeIn 0.5s ease-in-out, slideDown 0.5s ease-in-out;
+}
+
+#calendar-modal {
+    animation: fadeIn 0.3s ease-in-out;
 }

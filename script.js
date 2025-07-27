@@ -1,4 +1,5 @@
 $(document).ready(() => {
+    const menuList = $('#menu-list');
     const addLinkContainer = $('#add-link-container');
     const calendarModal = $('#calendar-modal');
     const monthYear = $('#month-year');
@@ -7,15 +8,30 @@ $(document).ready(() => {
     let today = new Date();
     let currentMonth = today.getMonth();
     let currentYear = today.getFullYear();
+    let menuData = {
+        links: [],
+        clickCounts: {}
+    };
 
-    // Load click counts from local storage
-    let clickCounts = JSON.parse(localStorage.getItem('clickCounts')) || {};
-    let lastReset = localStorage.getItem('lastReset');
-    const todayString = today.toDateString();
+    // Function to render the menu
+    function renderMenu() {
+        menuList.empty();
+        menuData.links.forEach(linkData => {
+            const link = $('<a></a>').attr('href', linkData.url).attr('target', '_blank').text(linkData.text);
+            const counter = $('<span></span>').addClass('click-counter').text(menuData.clickCounts[linkData.url] || 0);
+            const listItem = $('<li></li>').append(link).append(counter);
+            menuList.append(listItem);
 
-    if (lastReset !== todayString) {
-        clickCounts = {};
-        localStorage.setItem('lastReset', todayString);
+            link.on('click', (e) => {
+                e.preventDefault();
+                menuData.clickCounts[linkData.url] = (menuData.clickCounts[linkData.url] || 0) + 1;
+                counter.text(menuData.clickCounts[linkData.url]);
+                localStorage.setItem('clickCounts', JSON.stringify(menuData.clickCounts));
+                window.open(linkData.url, '_blank');
+                calendarModal.show();
+                renderCalendar(currentMonth, currentYear);
+            });
+        });
     }
 
     // Function to render the calendar
@@ -58,24 +74,6 @@ $(document).ready(() => {
         renderCalendar(currentMonth, currentYear);
     });
 
-    // Add click counters and event listeners to links
-    $('ul a').each(function() {
-        const link = $(this);
-        const url = link.attr('href');
-        const counter = $('<span></span>').addClass('click-counter').text(clickCounts[url] || 0);
-        link.parent().append(counter);
-
-        link.on('click', (e) => {
-            e.preventDefault();
-            clickCounts[url] = (clickCounts[url] || 0) + 1;
-            counter.text(clickCounts[url]);
-            localStorage.setItem('clickCounts', JSON.stringify(clickCounts));
-            window.open(url, '_blank');
-            calendarModal.show();
-            renderCalendar(currentMonth, currentYear);
-        });
-    });
-
     // Add new link form
     addLinkContainer.html(`
         <h3>Add New Link</h3>
@@ -89,21 +87,8 @@ $(document).ready(() => {
         const url = $('#link-url').val();
 
         if (text && url) {
-            const newLink = $('<a></a>').attr('href', url).attr('target', '_blank').text(text);
-            const counter = $('<span></span>').addClass('click-counter').text(0);
-            const newListItem = $('<li></li>').append(newLink).append(counter);
-            $('ul').append(newListItem);
-
-            newLink.on('click', (e) => {
-                e.preventDefault();
-                clickCounts[url] = (clickCounts[url] || 0) + 1;
-                counter.text(clickCounts[url]);
-                localStorage.setItem('clickCounts', JSON.stringify(clickCounts));
-                window.open(url, '_blank');
-                calendarModal.show();
-                renderCalendar(currentMonth, currentYear);
-            });
-
+            menuData.links.push({ text, url });
+            renderMenu();
             $('#link-text').val('');
             $('#link-url').val('');
         }
@@ -115,4 +100,46 @@ $(document).ready(() => {
             calendarModal.hide();
         }
     });
+
+    // Download state
+    $('#download-btn').on('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(menuData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", "menu-state.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    });
+
+    // Load links from file
+    $('#load-btn').on('click', async () => {
+        try {
+            const [fileHandle] = await window.showOpenFilePicker();
+            const file = await fileHandle.getFile();
+            const contents = await file.text();
+            menuData = JSON.parse(contents);
+            renderMenu();
+        } catch (error) {
+            console.error('Error loading file:', error);
+        }
+    });
+
+    // Function to load menu data
+    function loadMenuData(url) {
+        $.ajax({
+            url: url,
+            dataType: 'json',
+            success: function(data) {
+                menuData = data;
+                renderMenu();
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error loading menu data:', textStatus, errorThrown);
+            }
+        });
+    }
+
+    // Initial load
+    loadMenuData('json/menu.json');
 });
