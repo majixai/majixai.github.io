@@ -2,12 +2,7 @@ $(document).ready(() => {
     const menuList = $('#menu-list');
     const addLinkContainer = $('#add-link-container');
     const calendarModal = $('#calendar-modal');
-    const monthYear = $('#month-year');
-    const calendarDays = $('#calendar-days');
 
-    let today = new Date();
-    let currentMonth = today.getMonth();
-    let currentYear = today.getFullYear();
     let menuData = {
         links: [],
         clickCounts: {}
@@ -29,50 +24,9 @@ $(document).ready(() => {
                 localStorage.setItem('clickCounts', JSON.stringify(menuData.clickCounts));
                 window.open(linkData.url, '_blank');
                 calendarModal.show();
-                renderCalendar(currentMonth, currentYear);
             });
         });
     }
-
-    // Function to render the calendar
-    function renderCalendar(month, year) {
-        calendarDays.empty();
-        monthYear.text(`${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`);
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        for (let i = 0; i < firstDay; i++) {
-            calendarDays.append('<div></div>');
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dayCell = $('<div></div>').addClass('calendar-day').text(i);
-            dayCell.on('click', () => {
-                console.log(`Clicked on ${i}/${month + 1}/${year}`);
-                calendarModal.hide();
-            });
-            calendarDays.append(dayCell);
-        }
-    }
-
-    // Event listeners for calendar navigation
-    $('#prev-month').on('click', () => {
-        currentMonth--;
-        if (currentMonth < 0) {
-            currentMonth = 11;
-            currentYear--;
-        }
-        renderCalendar(currentMonth, currentYear);
-    });
-
-    $('#next-month').on('click', () => {
-        currentMonth++;
-        if (currentMonth > 11) {
-            currentMonth = 0;
-            currentYear++;
-        }
-        renderCalendar(currentMonth, currentYear);
-    });
 
     // Add new link form
     addLinkContainer.html(`
