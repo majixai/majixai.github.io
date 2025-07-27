@@ -18,16 +18,21 @@ $(document).ready(() => {
         menuList.empty();
         menuData.links.forEach(linkData => {
             const link = $('<a></a>').attr('href', linkData.url).attr('target', '_blank').text(linkData.text);
-            const counter = $('<span></span>').addClass('click-counter').text(menuData.clickCounts[linkData.url] || 0);
+            const counter = $('<span></span>').addClass('click-counter').text(linkData.click_count || 0);
             const listItem = $('<li></li>').append(link).append(counter);
             menuList.append(listItem);
 
             link.on('click', (e) => {
                 e.preventDefault();
-                menuData.clickCounts[linkData.url] = (menuData.clickCounts[linkData.url] || 0) + 1;
-                counter.text(menuData.clickCounts[linkData.url]);
-                localStorage.setItem('clickCounts', JSON.stringify(menuData.clickCounts));
-                window.open(linkData.url, '_blank');
+                $.ajax({
+                    url: `/api/links/${linkData.id}/click`,
+                    type: 'POST',
+                    success: function() {
+                        linkData.click_count++;
+                        counter.text(linkData.click_count);
+                        window.open(linkData.url, '_blank');
+                    }
+                });
             });
         });
     }
@@ -47,7 +52,6 @@ $(document).ready(() => {
             const dayCell = $('<div></div>').addClass('calendar-day').text(i);
             dayCell.on('click', () => {
                 console.log(`Clicked on ${i}/${month + 1}/${year}`);
-                calendarModal.hide();
             });
             calendarDays.append(dayCell);
         }
@@ -85,17 +89,18 @@ $(document).ready(() => {
         const url = $('#link-url').val();
 
         if (text && url) {
-            menuData.links.push({ text, url });
-            renderMenu();
-            $('#link-text').val('');
-            $('#link-url').val('');
-        }
-    });
-
-    // Close modal
-    $(window).on('click', (e) => {
-        if (e.target === calendarModal[0]) {
-            calendarModal.hide();
+            $.ajax({
+                url: '/api/links',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ text, url }),
+                success: function(newLink) {
+                    menuData.links.push(newLink);
+                    renderMenu();
+                    $('#link-text').val('');
+                    $('#link-url').val('');
+                }
+            });
         }
     });
 
@@ -116,20 +121,33 @@ $(document).ready(() => {
             const [fileHandle] = await window.showOpenFilePicker();
             const file = await fileHandle.getFile();
             const contents = await file.text();
-            menuData = JSON.parse(contents);
-            renderMenu();
+            const loadedData = JSON.parse(contents);
+            // Assuming the loaded data has the same structure as menuData
+            // You might want to do some validation here
+            loadedData.links.forEach(link => {
+                $.ajax({
+                    url: '/api/links',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(link),
+                    success: function(newLink) {
+                        menuData.links.push(newLink);
+                        renderMenu();
+                    }
+                });
+            });
         } catch (error) {
             console.error('Error loading file:', error);
         }
     });
 
     // Function to load menu data
-    function loadMenuData(url) {
+    function loadMenuData() {
         $.ajax({
-            url: url,
+            url: '/api/links',
             dataType: 'json',
             success: function(data) {
-                menuData = data;
+                menuData.links = data;
                 renderMenu();
             },
             error: function(jqXHR, textStatus, errorThrown) {
@@ -139,5 +157,6 @@ $(document).ready(() => {
     }
 
     // Initial load
-    loadMenuData('json/menu.json');
+    loadMenuData();
+    renderCalendar(currentMonth, currentYear);
 });
