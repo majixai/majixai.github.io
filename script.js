@@ -140,6 +140,25 @@ $(document).ready(() => {
         });
     }
 
+    // Function to run the python animation script
+    function runAnimation() {
+        $.ajax({
+            url: 'animate.py',
+            type: 'GET',
+            success: function() {
+                loadMenuData('json/menu.json');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error running animation script:', textStatus, errorThrown);
+            }
+        });
+    }
+
+    // Add animation button
+    const animateBtn = $('<button>Animate</button>');
+    animateBtn.on('click', runAnimation);
+    $('body').append(animateBtn);
+
     // Initial load
     loadMenuData('json/menu.json');
 });
