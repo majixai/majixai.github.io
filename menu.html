@@ -5,23 +5,185 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menu Links</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #232526 0%, #414345 100%);
+            color: #f5f5f5;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 2.5em;
+            letter-spacing: 2px;
+            color: #ffb347;
+            text-shadow: 2px 2px 8px #222;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            margin: 40px auto;
+            max-width: 1100px;
+        }
+        .links-column, .calendar-column {
+            background: rgba(34, 34, 34, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            padding: 32px 28px 28px 28px;
+            min-width: 340px;
+            min-height: 420px;
+            position: relative;
+        }
+        .links-column {
+            flex: 1;
+        }
+        .calendar-column {
+            flex: 1;
+        }
+        #menu-list {
+            list-style: none;
+            padding: 0;
+            margin: 24px 0 0 0;
+        }
+        #menu-list li {
+            background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+            color: #232526;
+            margin-bottom: 14px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        #menu-list li:hover {
+            transform: scale(1.04);
+            box-shadow: 0 4px 16px #ffb34755;
+            background: linear-gradient(90deg, #ffe29f 0%, #ffc107 100%);
+        }
+        #menu-list li i {
+            margin-right: 12px;
+            color: #ff9800;
+            font-size: 1.2em;
+        }
+        #load-btn, #download-btn {
+            background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+            color: #232526;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1em;
+            font-weight: bold;
+            margin: 8px 0;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #ffb34733;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+        }
+        #load-btn:hover, #download-btn:hover {
+            background: linear-gradient(90deg, #ffe29f 0%, #ffc107 100%);
+            box-shadow: 0 4px 16px #ffb34755;
+            transform: translateY(-2px) scale(1.03);
+        }
+        #add-link-container {
+            margin-top: 18px;
+        }
+        /* Calendar Styles */
+        #calendar-container {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0002;
+            padding: 18px 12px 24px 12px;
+        }
+        #calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        #calendar-header h2 {
+            margin: 0 18px;
+            font-size: 1.3em;
+            color: #ffb347;
+            letter-spacing: 1px;
+        }
+        #calendar-header button {
+            background: #ffb347;
+            color: #232526;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 2px 8px #ffb34733;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+        }
+        #calendar-header button:hover {
+            background: #ffc107;
+            transform: scale(1.08);
+        }
+        #calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+        #calendar-days div {
+            background: linear-gradient(90deg, #232526 0%, #414345 100%);
+            color: #ffb347;
+            border-radius: 6px;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 1em;
+            transition: background 0.2s, color 0.2s;
+            cursor: pointer;
+        }
+        #calendar-days .today {
+            background: linear-gradient(90deg, #ffb347 0%, #ffcc33 100%);
+            color: #232526;
+            font-weight: bold;
+            box-shadow: 0 2px 8px #ffb34755;
+        }
+        #calendar-days .selected {
+            border: 2px solid #ffb347;
+            background: #232526;
+            color: #ffb347;
+        }
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 24px;
+            }
+            .links-column, .calendar-column {
+                min-width: unset;
+                width: 100%;
+            }
+        }
+    </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 </head>
 <body>
-    <h1>Menu Links</h1>
+    <h1><i class="fas fa-link"></i> Menu Links</h1>
     <div class="container">
         <div class="links-column">
-            <button id="load-btn">Load Links from File</button>
+            <button id="load-btn"><i class="fas fa-folder-open"></i> Load Links from File</button>
             <ul id="menu-list"></ul>
             <div id="add-link-container"></div>
-            <button id="download-btn">Download State</button>
+            <button id="download-btn"><i class="fas fa-download"></i> Download State</button>
         </div>
         <div class="calendar-column">
             <div id="calendar-container">
                 <div id="calendar-header">
-                    <button id="prev-month">&lt;</button>
+                    <button id="prev-month"><i class="fas fa-chevron-left"></i></button>
                     <h2 id="month-year"></h2>
-                    <button id="next-month">&gt;</button>
+                    <button id="next-month"><i class="fas fa-chevron-right"></i></button>
                 </div>
                 <div id="calendar-days"></div>
             </div>
@@ -29,5 +191,15 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+    // Add icons to menu items dynamically for visual polish
+    $(function() {
+        $('#menu-list').on('DOMNodeInserted', 'li', function() {
+            if (!$(this).find('i').length) {
+                $(this).prepend('<i class="fas fa-link"></i> ');
+            }
+        });
+    });
+    </script>
 </body>
 </html>
