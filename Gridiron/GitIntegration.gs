@@ -51,4 +51,19 @@ function gameplayFromGridironSource() {
   };
 }
 
+
+/**
+ * doGet() webapp endpoint to serve Gridiron source files as JSON.
+ * Allows the webapp to fetch the simulated git directory and file contents.
+ * Usage: Deploy as webapp, then GET to this endpoint returns JSON.
+ */
+function doGet(e) {
+  var output = {
+    status: 'ok',
+    data: fetchGridironSource()
+  };
+  return ContentService.createTextOutput(JSON.stringify(output))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
 // --- End of GitIntegration.gs ---
