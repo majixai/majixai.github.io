@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Links</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <h1><i class="fas fa-link"></i> Menu Links</h1>
+    <div class="container">
+        <div class="links-column">
+            <ul id="menu-list">
+                <!-- Original menu links -->
+                <li data-url="index.html"><i class="fas fa-home"></i> Home</li>
+                <li data-url="script.js"><i class="fas fa-code"></i> Script</li>
+                <li data-url="config.js"><i class="fas fa-cog"></i> Config</li>
+                <li data-url="api.js"><i class="fas fa-server"></i> API</li>
+                <li data-url="storage.js"><i class="fas fa-database"></i> Storage</li>
+                <li data-url="ui.js"><i class="fas fa-paint-brush"></i> UI</li>
+                <li data-url="style.css"><i class="fas fa-palette"></i> Style</li>
+            </ul>
+            <div id="add-link-container">
+                <input type="text" id="new-link-name" placeholder="Link Name">
+                <input type="text" id="new-link-url" placeholder="Link URL">
+                <button id="add-link-btn">Add Link</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    // IndexedDB helpers
+    function saveLinkToIndexedDB(link) {
+        if (!window.indexedDB) return;
+        const request = indexedDB.open('MenuLinksDB', 1);
+        request.onupgradeneeded = function(e) {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('links')) {
+                db.createObjectStore('links', { keyPath: 'url' });
+            }
+        };
+        request.onsuccess = function(e) {
+            const db = e.target.result;
+            const tx = db.transaction('links', 'readwrite');
+            const store = tx.objectStore('links');
+            store.put(link);
+        };
+    }
+    function saveLinkToSession(link) {
+        let links = JSON.parse(sessionStorage.getItem('menuLinks') || '[]');
+        links.push(link);
+        sessionStorage.setItem('menuLinks', JSON.stringify(links));
+    }
+    function saveLinkToCookies(link) {
+        let links = [];
+        try { links = JSON.parse(decodeURIComponent(document.cookie.replace(/(?:(?:^|.*;\s*)menuLinks\s*\=\s*([^;]*).*$)|^.*$/, "$1"))) || []; } catch(e) {}
+        links.push(link);
+        document.cookie = 'menuLinks=' + encodeURIComponent(JSON.stringify(links)) + ';path=/;max-age=31536000';
+    }
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Copied to clipboard!');
+        });
+    }
+    // Add new link
+    $('#add-link-btn').on('click', function() {
+        const name = $('#new-link-name').val().trim();
+        const url = $('#new-link-url').val().trim();
+        if (!name || !url) return alert('Please enter both name and URL.');
+        const formatted = `[${name}](${url})`;
+        const link = { name, url, formatted };
+        // Add to menu
+        $('#menu-list').append(`<li data-url="${url}"><i class="fas fa-link"></i> ${name}</li>`);
+        // Save to all storage
+        saveLinkToIndexedDB(link);
+        saveLinkToSession(link);
+        saveLinkToCookies(link);
+        // Copy to clipboard
+        copyToClipboard(formatted);
+        // Clear inputs
+        $('#new-link-name').val('');
+        $('#new-link-url').val('');
+    });
+    // Click to copy formatted source
+    $('#menu-list').on('click', 'li', function() {
+        const name = $(this).text().trim();
+        const url = $(this).data('url');
+        if (name && url) {
+            const formatted = `[${name}](${url})`;
+            copyToClipboard(formatted);
+        }
+    });
+    </script>
+</body>
+</html>
