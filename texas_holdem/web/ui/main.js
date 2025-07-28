@@ -8,6 +8,7 @@ window.startGame = async function() {
     const names = prompt('Enter player names (comma separated):', 'Alice,Bob,Charlie').split(',').map(s => s.trim()).filter(Boolean);
     game = new Game(names);
     await game.start();
+    let currentViewerIdx = 0; // 3rd person: which player is the viewer
     render();
 };
 
@@ -31,6 +32,12 @@ function render() {
     playersDiv.innerHTML = '';
     for (let p of game.players) {
         playersDiv.innerHTML += `<div class="w3-card w3-padding w3-margin">
+
+    window.nextPlayer = function() {
+        // 3rd person: cycle through players as viewer
+        currentViewerIdx = (currentViewerIdx + 1) % game.players.length;
+        render();
+    };
             <b>${p.name}</b> (${p.chips} chips) ${p.inGame ? '' : '<span class="w3-text-red">(Folded)</span>'}<br>
             Hand: ${p.hand.map(card => card ? card.toString() : '').join(' ')}
         </div>`;
