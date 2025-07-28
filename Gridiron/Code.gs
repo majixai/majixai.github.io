@@ -1,20 +1,33 @@
 // --- Football Game AI Integration for Google Apps Script ---
 // Modular, extensible, and robust for advanced gameplay and analytics
+// Integrates with GitIntegration.gs to fetch Gridiron source files for gameplay logic
 
 /**
  * Main entry for all game AI and commentary requests.
+ * Optionally uses Gridiron source files for advanced gameplay logic.
  * @param {string} event - The event type (e.g., 'update', 'play-analysis', 'drive-summary', etc.)
  * @param {string|Object} details - JSON string or object with event details
+ * @param {boolean} [useGitSource] - If true, fetch Gridiron source files for gameplay context
  * @return {Object} - JSON with AI-generated results
  */
-function getGameUpdate(event, details) {
+function getGameUpdate(event, details, useGitSource) {
   const apiKey = "AIzaSyAqAZ9i3L4dMtRAP8O-qDVNk7iPzrG5gsg";
   const model = 'gemini-1.5-pro';
   const api = 'streamGenerateContent';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${api}?key=${apiKey}`;
 
+  // --- Optionally fetch Gridiron source files for gameplay context ---
+  var gitSourceContext = null;
+  if (useGitSource) {
+    if (typeof fetchGridironSource === 'function') {
+      gitSourceContext = fetchGridironSource();
+    } else {
+      gitSourceContext = null;
+    }
+  }
+
   // --- Prompt Engineering ---
-  let prompt = buildPrompt(event, details);
+  let prompt = buildPrompt(event, details, gitSourceContext);
 
   // --- API Call ---
   const payload = {
@@ -58,42 +71,49 @@ function getGameUpdate(event, details) {
     event: event,
     timestamp: new Date().toISOString(),
     prompt: prompt.substring(0, 500),
-    apiModel: model
+    apiModel: model,
+    gitSourceUsed: !!gitSourceContext,
+    gitSourceFiles: gitSourceContext ? gitSourceContext.map(f => f.name) : null
   };
   return result;
 }
 
 /**
- * Build a prompt for the AI based on event type and details.
+ * Build a prompt for the AI based on event type, details, and optional git source context.
  * @param {string} event
  * @param {string|Object} details
+ * @param {Array} [gitSourceContext]
  * @return {string}
  */
-function buildPrompt(event, details) {
+function buildPrompt(event, details, gitSourceContext) {
   let d = (typeof details === 'string') ? details : JSON.stringify(details);
+  let gitContext = '';
+  if (gitSourceContext && gitSourceContext.length) {
+    gitContext = '\n\nGridiron Source Files:\n' + gitSourceContext.map(f => `File: ${f.name}\nContent:\n${f.content.substring(0, 200)}...`).join('\n---\n');
+  }
   switch (event) {
     case 'update':
-      return `You are a football game AI. Generate challenging and realistic opponent behavior and play outcomes based on the following details: ${d}. Respond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary', 'suggestedPlays', 'playerStats', 'momentum', 'injuries', 'weather'.`;
+      return `You are a football game AI. Generate challenging and realistic opponent behavior and play outcomes based on the following details: ${d}.${gitContext}\nRespond in JSON format with the following keys: 'opponentBehavior', 'playOutcome', 'commentary', 'suggestedPlays', 'playerStats', 'momentum', 'injuries', 'weather'.`;
     case 'play-analysis':
-      return `You are a football analyst. Provide a detailed analysis of the following play: ${d}. Include keys: 'breakdown', 'keyPlayers', 'successFactors', 'improvementSuggestions', 'commentary'.`;
+      return `You are a football analyst. Provide a detailed analysis of the following play: ${d}.${gitContext}\nInclude keys: 'breakdown', 'keyPlayers', 'successFactors', 'improvementSuggestions', 'commentary'.`;
     case 'drive-summary':
-      return `Summarize the drive with advanced analytics. Details: ${d}. Include keys: 'driveResult', 'keyMoments', 'playerOfDrive', 'statSummary', 'commentary'.`;
+      return `Summarize the drive with advanced analytics. Details: ${d}.${gitContext}\nInclude keys: 'driveResult', 'keyMoments', 'playerOfDrive', 'statSummary', 'commentary'.`;
     case 'game-summary':
-      return `Provide a full game summary and advanced stats. Details: ${d}. Include keys: 'finalScore', 'topPerformers', 'turningPoints', 'statLeaders', 'commentary'.`;
+      return `Provide a full game summary and advanced stats. Details: ${d}.${gitContext}\nInclude keys: 'finalScore', 'topPerformers', 'turningPoints', 'statLeaders', 'commentary'.`;
     case 'injury-update':
-      return `You are a team doctor. Analyze the following injury event: ${d}. Include keys: 'injuryType', 'severity', 'expectedReturn', 'impact', 'commentary'.`;
+      return `You are a team doctor. Analyze the following injury event: ${d}.${gitContext}\nInclude keys: 'injuryType', 'severity', 'expectedReturn', 'impact', 'commentary'.`;
     case 'weather-update':
-      return `You are a meteorologist. Give a weather update for the game: ${d}. Include keys: 'conditions', 'impactOnGame', 'advice', 'commentary'.`;
+      return `You are a meteorologist. Give a weather update for the game: ${d}.${gitContext}\nInclude keys: 'conditions', 'impactOnGame', 'advice', 'commentary'.`;
     case 'momentum-shift':
-      return `Analyze the momentum shift in the game. Details: ${d}. Include keys: 'cause', 'effect', 'momentumScore', 'commentary'.`;
+      return `Analyze the momentum shift in the game. Details: ${d}.${gitContext}\nInclude keys: 'cause', 'effect', 'momentumScore', 'commentary'.`;
     case 'penalty':
-      return `Analyze the impact of this penalty: ${d}. Include keys: 'penaltyType', 'yardage', 'effect', 'commentary'.`;
+      return `Analyze the impact of this penalty: ${d}.${gitContext}\nInclude keys: 'penaltyType', 'yardage', 'effect', 'commentary'.`;
     case 'timeout':
-      return `Analyze the use of this timeout: ${d}. Include keys: 'reason', 'effect', 'strategy', 'commentary'.`;
+      return `Analyze the use of this timeout: ${d}.${gitContext}\nInclude keys: 'reason', 'effect', 'strategy', 'commentary'.`;
     case 'challenge':
-      return `Analyze the coach's challenge: ${d}. Include keys: 'callOnField', 'challengeReason', 'result', 'impact', 'commentary'.`;
+      return `Analyze the coach's challenge: ${d}.${gitContext}\nInclude keys: 'callOnField', 'challengeReason', 'result', 'impact', 'commentary'.`;
     default:
-      return `Generate a play-by-play commentary for the following event: ${event}. Details: ${d}`;
+      return `Generate a play-by-play commentary for the following event: ${event}. Details: ${d}${gitContext}`;
   }
 }
 
