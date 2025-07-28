@@ -199,6 +199,65 @@
                 $(this).prepend('<i class="fas fa-link"></i> ');
             }
         });
+
+        // Calendar rendering logic
+        function renderCalendar(month, year) {
+            const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+            ];
+            const today = new Date();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDay = firstDay.getDay();
+            let html = '';
+            // Weekday headers
+            const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            for (let wd of weekdays) {
+                html += `<div style='font-weight:bold;opacity:0.7;'>${wd}</div>`;
+            }
+            // Empty cells before first day
+            for (let i = 0; i < startDay; i++) {
+                html += '<div></div>';
+            }
+            // Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                let classes = [];
+                if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                    classes.push('today');
+                }
+                html += `<div class='${classes.join(' ')}' data-day='${d}'>${d}</div>`;
+            }
+            $('#calendar-days').html(html);
+            $('#month-year').text(`${monthNames[month]} ${year}`);
+        }
+
+        // Calendar navigation
+        let currentMonth = (new Date()).getMonth();
+        let currentYear = (new Date()).getFullYear();
+        renderCalendar(currentMonth, currentYear);
+        $('#prev-month').click(function() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar(currentMonth, currentYear);
+        });
+        $('#next-month').click(function() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar(currentMonth, currentYear);
+        });
+        // Click to select a day
+        $('#calendar-days').on('click', 'div', function() {
+            $('#calendar-days div').removeClass('selected');
+            $(this).addClass('selected');
+        });
     });
     </script>
 </body>
