@@ -2,12 +2,7 @@ $(document).ready(() => {
     const menuList = $('#menu-list');
     const addLinkContainer = $('#add-link-container');
     const calendarModal = $('#calendar-modal');
-    const monthYear = $('#month-year');
-    const calendarDays = $('#calendar-days');
 
-    let today = new Date();
-    let currentMonth = today.getMonth();
-    let currentYear = today.getFullYear();
     let menuData = {
         links: [],
         clickCounts: {}
@@ -24,6 +19,7 @@ $(document).ready(() => {
 
             link.on('click', (e) => {
                 e.preventDefault();
+
                 $.ajax({
                     url: `/api/links/${linkData.id}/click`,
                     type: 'POST',
@@ -75,6 +71,15 @@ $(document).ready(() => {
         }
         renderCalendar(currentMonth, currentYear);
     });
+
+                menuData.clickCounts[linkData.url] = (menuData.clickCounts[linkData.url] || 0) + 1;
+                counter.text(menuData.clickCounts[linkData.url]);
+                localStorage.setItem('clickCounts', JSON.stringify(menuData.clickCounts));
+                window.open(linkData.url, '_blank');
+                calendarModal.show();
+            });
+        });
+    }
 
     // Add new link form
     addLinkContainer.html(`
@@ -155,6 +160,25 @@ $(document).ready(() => {
             }
         });
     }
+
+    // Function to run the python animation script
+    function runAnimation() {
+        $.ajax({
+            url: 'animate.py',
+            type: 'GET',
+            success: function() {
+                loadMenuData('json/menu.json');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error running animation script:', textStatus, errorThrown);
+            }
+        });
+    }
+
+    // Add animation button
+    const animateBtn = $('<button>Animate</button>');
+    animateBtn.on('click', runAnimation);
+    $('body').append(animateBtn);
 
     // Initial load
     loadMenuData();
