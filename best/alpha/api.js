@@ -68,4 +68,5 @@ class ApiService {
 
 // If not using ES modules, ApiService will be available on the window if this file is included.
 // To make it explicitly global (though not always recommended if not needed):
+
 window.ApiService = ApiService;
