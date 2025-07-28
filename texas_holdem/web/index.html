@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Texas Hold'em - Pure JS</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="w3-container">
+    <h1 class="w3-center">Texas Hold'em (Advanced JS)</h1>
+    <div id="game-area" class="w3-card w3-padding w3-margin">
+        <div id="players" class="w3-section"></div>
+        <div id="community-cards" class="w3-section"></div>
+        <div id="pot" class="w3-section"></div>
+        <div id="probabilities" class="w3-section"></div>
+        <div id="controls" class="w3-section">
+            <button class="w3-button w3-green" onclick="deal()">Deal</button>
+            <button class="w3-button w3-blue" onclick="bet()">Bet</button>
+            <button class="w3-button w3-red" onclick="fold()">Fold</button>
+            <button class="w3-button w3-grey" onclick="startGame()">Restart</button>
+        </div>
+    </div>
+    <script type="module" src="ui/main.js"></script>
+</body>
+</html>
