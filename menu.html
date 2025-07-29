@@ -192,6 +192,24 @@
 
     <script src="script.js"></script>
     <script>
+        $(document).ready(function() {
+            const links = [
+                { name: "cai", url: "https://thecaicommunity.com/sign/" },
+                { name: "vauLTXEXCHANGE", url: "https://m.vaultxexchange.com/#/pages/asset/index" },
+                { name: "Stradx", url: "https://app.stradxmodule.com/#/" },
+                { name: "Jucoin", url: "https://www.jucoin-trade.com/#/currencyAccount" },
+                { name: "Blockcrypto", url: "https://www.blockcrypto.info/#/pages/bitapp/jiaoyi?symbol=3-BTC" },
+                { name: "Trading Masters", url: "https://tradingmasters2025.com/h5/#/" },
+                { name: "Quaxs", url: "https://m.quaxs.top/#/pages/futures/index" },
+                { name: "USAQTA", url: "https://usaqta.net/" }
+            ];
+
+            const menuList = $('#menu-list');
+            links.forEach(link => {
+                const listItem = `<li><a href="${link.url}" target="_blank">${link.name}</a></li>`;
+                menuList.append(listItem);
+            });
+        });
     // Add icons to menu items dynamically for visual polish
     $(function() {
         $('#menu-list').on('DOMNodeInserted', 'li', function() {
