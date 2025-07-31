@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from transformers import pipeline
 import database
+from app.controllers import git_action_controller
 
 app = Flask(__name__)
 database.init_app(app)
@@ -35,6 +36,11 @@ def generate_text():
     prompt = request.get_json()['prompt']
     generated_text = generator(prompt, max_length=50, num_return_sequences=1)
     return jsonify({'generated_text': generated_text[0]['generated_text']})
+
+@app.route('/api/git-action', methods=['POST'])
+def trigger_git_action():
+    git_action_controller.run_git_action()
+    return jsonify({'message': 'Git action triggered'})
 
 if __name__ == '__main__':
     app.run(debug=True)

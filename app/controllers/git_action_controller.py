@@ -1,10 +1,10 @@
-from flask import Blueprint, request, jsonify
+import os
 
-git_action_bp = Blueprint('git_action', __name__)
+def run_git_action():
+    """
+    This function is triggered by the Git action.
+    """
+    print("Git action triggered!")
 
-# Endpoint for GitHub Action or lightweight server
-@git_action_bp.route('/git-action/trigger', methods=['POST'])
-def trigger_action():
-    data = request.json
-    # TODO: Implement git action logic
-    return jsonify({'status': 'Git action triggered', 'data': data})
+if __name__ == "__main__":
+    run_git_action()
