@@ -5,6 +5,11 @@ export class ContactUIManager {
         this.connectionForm = document.getElementById('connection-form');
         this.contactSelect1 = document.getElementById('contact-select-1');
         this.contactSelect2 = document.getElementById('contact-select-2');
+        this.attachmentTypeInput = document.getElementById('contact-attachment-type');
+        this.attachmentValueInput = document.getElementById('contact-attachment-value');
+        this.addAttachmentBtn = document.getElementById('add-contact-attachment-btn');
+        this.attachmentsList = document.getElementById('contact-attachments-list');
+        this.attachments = [];
     }
 
     renderContacts(contacts) {
@@ -26,11 +31,34 @@ export class ContactUIManager {
             return connectedContact ? connectedContact.name : 'Unknown';
         }).join(', ');
 
+        const attachmentsHTML = contact.attachments.map(attachment => `
+            <div class="attachment-item">
+                <strong>${attachment.type}:</strong> ${attachment.value}
+            </div>
+        `).join('');
+
         contactElement.innerHTML = `
             <p><strong>${contact.name}</strong></p>
             <p>Connections: ${connections || 'None'}</p>
+            <div class="attachments">${attachmentsHTML}</div>
         `;
         return contactElement;
+    }
+
+    renderAttachments() {
+        this.attachmentsList.innerHTML = '';
+        this.attachments.forEach((attachment, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${attachment.type}: ${attachment.value}`;
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = () => {
+                this.attachments.splice(index, 1);
+                this.renderAttachments();
+            };
+            li.appendChild(removeBtn);
+            this.attachmentsList.appendChild(li);
+        });
     }
 
     populateConnectionSelects(contacts) {

@@ -11,6 +11,10 @@ export class UIManager {
         this.tradesPerDayInput = document.getElementById('trades-per-day');
         this.tradesSlider = document.getElementById('trades-slider');
         this.notesInput = document.getElementById('notes');
+        this.attachmentTypeInput = document.getElementById('attachment-type');
+        this.attachmentValueInput = document.getElementById('attachment-value');
+        this.addAttachmentBtn = document.getElementById('add-attachment-btn');
+        this.attachmentsList = document.getElementById('attachments-list');
         this.modal = document.getElementById('actions-modal');
         this.iframe = document.getElementById('link-iframe');
         this.ledgerContainer = document.getElementById('ledger-container');
@@ -18,6 +22,7 @@ export class UIManager {
         this.ledgerForm = document.getElementById('ledger-form');
         this.currentLinkId = null;
         this.currentLedgerLinkId = null;
+        this.attachments = [];
     }
 
     showLedger(link) {
@@ -167,10 +172,17 @@ export class UIManager {
             `;
         }
 
+        const attachmentsHTML = link.attachments.map(attachment => `
+            <div class="attachment-item">
+                <strong>${attachment.type}:</strong> ${attachment.value}
+            </div>
+        `).join('');
+
         linkElement.innerHTML = `
             <div class="link-info">
                 <a href="${link.link}" target="_blank">${link.name}</a>
                 <p class="notes">${link.notes}</p>
+                <div class="attachments">${attachmentsHTML}</div>
                 ${investingInfo}
             </div>
             <div class="controls">
@@ -182,6 +194,22 @@ export class UIManager {
             </div>
         `;
         return linkElement;
+    }
+
+    renderAttachments() {
+        this.attachmentsList.innerHTML = '';
+        this.attachments.forEach((attachment, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${attachment.type}: ${attachment.value}`;
+            const removeBtn = document.createElement('button');
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = () => {
+                this.attachments.splice(index, 1);
+                this.renderAttachments();
+            };
+            li.appendChild(removeBtn);
+            this.attachmentsList.appendChild(li);
+        });
     }
 
     setupSectionToggle() {
@@ -207,6 +235,8 @@ export class UIManager {
         this.linkForm.reset();
         this.editingIdInput.value = '';
         this.notesInput.value = '';
+        this.attachments = [];
+        this.renderAttachments();
         this.tradesPerDayInput.value = 1;
         this.tradesSlider.value = 1;
         this.toggleInvestingOptions(false);
@@ -219,6 +249,8 @@ export class UIManager {
         document.getElementById('link').value = link.link;
         this.sectionSelect.value = link.section;
         this.notesInput.value = link.notes;
+        this.attachments = [...link.attachments];
+        this.renderAttachments();
 
         const isInvesting = link.section === 'investing';
         this.toggleInvestingOptions(isInvesting);
