@@ -35,6 +35,10 @@ class App {
                     const linkItem = event.target.closest('.link-item');
                     const linkId = Number(linkItem.getAttribute('data-id'));
                     this.uiManager.openModal(linkId);
+                } else if (event.target.classList.contains('ledger-btn')) {
+                    const linkItem = event.target.closest('.link-item');
+                    const linkId = Number(linkItem.getAttribute('data-id'));
+                    this.handleViewLedgerClick(linkId);
                 } else if (event.target.tagName === 'A') {
                     event.preventDefault();
                     const linkItem = event.target.closest('.link-item');
@@ -50,6 +54,11 @@ class App {
 
         this.uiManager.modal.addEventListener('click', (event) => {
             this.handleModalClick(event);
+        });
+
+        this.uiManager.ledgerForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.handleLedgerFormSubmit();
         });
     }
 
@@ -102,6 +111,31 @@ class App {
                     NotificationService.showError('Unknown section.');
             }
         }
+    }
+
+    handleViewLedgerClick(linkId) {
+        const link = this.linkManager.getLinkById(linkId);
+        if (link) {
+            this.uiManager.showLedger(link);
+        }
+    }
+
+    async handleLedgerFormSubmit() {
+        const linkId = this.uiManager.currentLedgerLinkId;
+        if (!linkId) return;
+
+        const date = document.getElementById('ledger-date').value;
+        const description = document.getElementById('ledger-description').value;
+        const amount = document.getElementById('ledger-amount').value;
+
+        if (!date || !description || !amount) {
+            NotificationService.showError('All ledger fields are required.');
+            return;
+        }
+
+        const entry = { date, description, amount: parseFloat(amount) };
+        await this.linkManager.addLedgerEntry(linkId, entry);
+        this.uiManager.ledgerForm.reset();
     }
 
     handleModalClick(event) {
