@@ -117,8 +117,56 @@ $(document).ready(() => {
         });
     }
 
+    // Actions
+    $('#python-action-btn').on('click', () => {
+        $.ajax({
+            url: '/api/python-action',
+            type: 'POST',
+            success: function(response) {
+                console.log(response.message);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering Python action:', textStatus, errorThrown);
+            }
+        });
+    });
+
+    $('#genai-action-btn').on('click', () => {
+        const prompt = 'Hello, GenAI!';
+        $.ajax({
+            url: '/api/genai-action',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ prompt }),
+            success: function(response) {
+                console.log(response.generated_text);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering GenAI action:', textStatus, errorThrown);
+            }
+        });
+    });
+
+    $('#data-storage-action-btn').on('click', () => {
+        const newLink = {
+            text: 'New Link from Action',
+            url: 'https://www.newlinkfromaction.com'
+        };
+        $.ajax({
+            url: '/api/data-storage-action',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(newLink),
+            success: function() {
+                loadMenuData();
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering Data Storage action:', textStatus, errorThrown);
+            }
+        });
+    });
+
     // Initial load
     loadMenuData();
-    renderCalendar(currentMonth, currentYear);
     triggerGitAction();
 });
