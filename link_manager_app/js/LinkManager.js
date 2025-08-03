@@ -70,4 +70,14 @@ export class LinkManager {
             }
         }
     }
+
+    async addLedgerEntry(linkId, entry) {
+        const link = this.getLinkById(linkId);
+        if (link) {
+            link.ledger.push(entry);
+            await StorageService.save(this.storageKey, this.#links);
+            this.uiManager.renderLedger(link);
+            NotificationService.showSuccess('Ledger entry added successfully!');
+        }
+    }
 }

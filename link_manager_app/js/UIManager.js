@@ -13,7 +13,47 @@ export class UIManager {
         this.notesInput = document.getElementById('notes');
         this.modal = document.getElementById('actions-modal');
         this.iframe = document.getElementById('link-iframe');
+        this.ledgerContainer = document.getElementById('ledger-container');
+        this.ledgerEntriesContainer = document.getElementById('ledger-entries');
+        this.ledgerForm = document.getElementById('ledger-form');
         this.currentLinkId = null;
+        this.currentLedgerLinkId = null;
+    }
+
+    showLedger(link) {
+        this.currentLedgerLinkId = link.id;
+        this.renderLedger(link);
+    }
+
+    renderLedger(link) {
+        this.ledgerContainer.style.display = 'block';
+        this.ledgerEntriesContainer.innerHTML = '';
+        if (link.ledger.length === 0) {
+            this.ledgerEntriesContainer.innerHTML = '<p>No ledger entries yet.</p>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.classList.add('w3-table-all');
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${link.ledger.map(entry => `
+                    <tr>
+                        <td>${entry.date}</td>
+                        <td>${entry.description}</td>
+                        <td>${entry.amount}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+        this.ledgerEntriesContainer.appendChild(table);
     }
 
     loadUrlInIframe(url) {
@@ -102,6 +142,7 @@ export class UIManager {
                 ${toggles}
                 <div class="actions">
                     <button class="actions-btn w3-button w3-blue">Actions</button>
+                    <button class="ledger-btn w3-button w3-green">Ledger</button>
                 </div>
             </div>
         `;
