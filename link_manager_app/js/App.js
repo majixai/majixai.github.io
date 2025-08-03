@@ -2,18 +2,23 @@ import { UIManager } from './UIManager.js';
 import { LinkManager } from './LinkManager.js';
 import { CalendarManager } from './CalendarManager.js';
 import { NotificationService } from './NotificationService.js';
+import { ContactManager } from './ContactManager.js';
+import { ContactUIManager } from './ContactUIManager.js';
 
 class App {
     constructor() {
         this.uiManager = new UIManager();
         this.linkManager = new LinkManager(this.uiManager);
         this.calendarManager = new CalendarManager(document.getElementById('calendar'));
+        this.contactUIManager = new ContactUIManager();
+        this.contactManager = new ContactManager(this.contactUIManager);
     }
 
     async initialize() {
         this.uiManager.setupSectionToggle();
         this.setupEventListeners();
         await this.linkManager.loadLinks();
+        await this.contactManager.loadContacts();
         await this.calendarManager.initialize();
     }
 
@@ -21,6 +26,16 @@ class App {
         this.uiManager.linkForm.addEventListener('submit', (event) => {
             event.preventDefault();
             this.handleFormSubmit();
+        });
+
+        this.contactUIManager.contactForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.handleContactFormSubmit();
+        });
+
+        this.contactUIManager.connectionForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            this.handleConnectionFormSubmit();
         });
 
         const linkContainers = [
@@ -169,6 +184,30 @@ class App {
         } else if (event.target.classList.contains('ip-toggle')) {
             await this.linkManager.toggleLinkProperty(linkId, 'ip');
             NotificationService.showInfo('IP status toggled.');
+        }
+    }
+
+    async handleContactFormSubmit() {
+        const nameInput = document.getElementById('contact-name');
+        const name = nameInput.value;
+        if (name) {
+            await this.contactManager.addContact({ name });
+            nameInput.value = '';
+            NotificationService.showSuccess('Contact added successfully!');
+        } else {
+            NotificationService.showError('Contact name is required.');
+        }
+    }
+
+    async handleConnectionFormSubmit() {
+        const contact1Id = this.contactUIManager.contactSelect1.value;
+        const contact2Id = this.contactUIManager.contactSelect2.value;
+        if (contact1Id && contact2Id && contact1Id !== contact2Id) {
+            await this.contactManager.addConnection(Number(contact1Id), Number(contact2Id));
+            await this.contactManager.addConnection(Number(contact2Id), Number(contact1Id));
+            NotificationService.showSuccess('Connection added successfully!');
+        } else {
+            NotificationService.showError('Please select two different contacts.');
         }
     }
 }
