@@ -166,6 +166,56 @@ $(document).ready(() => {
         });
     });
 
+    // GenAI Actions
+    $('#summarize-btn').on('click', () => {
+        const text = "Paris is the capital and most populous city of France, with an estimated population of 2,148,271 residents as of 2020, in an area of 105 square kilometres (41 square miles). Since the 17th century, Paris has been one of Europe's major centres of finance, diplomacy, commerce, fashion, science and arts. The City of Paris is the centre and seat of government of the Île-de-France, or Paris Region, which has an estimated official 2020 population of 12,278,210, or about 18 percent of the population of France.";
+        $.ajax({
+            url: '/api/summarize',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ text }),
+            success: function(response) {
+                console.log(response.summary);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering Summarize action:', textStatus, errorThrown);
+            }
+        });
+    });
+
+    $('#translate-btn').on('click', () => {
+        const text = "Hello, world!";
+        $.ajax({
+            url: '/api/translate',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ text }),
+            success: function(response) {
+                console.log(response.translation);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering Translate action:', textStatus, errorThrown);
+            }
+        });
+    });
+
+    $('#qa-btn').on('click', () => {
+        const question = "What is the capital of France?";
+        const context = "Paris is the capital and most populous city of France.";
+        $.ajax({
+            url: '/api/qa',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ question, context }),
+            success: function(response) {
+                console.log(response.answer);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('Error triggering Q&A action:', textStatus, errorThrown);
+            }
+        });
+    });
+
     // Initial load
     loadMenuData();
     triggerGitAction();
