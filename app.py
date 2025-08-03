@@ -42,5 +42,25 @@ def trigger_git_action():
     git_action_controller.run_git_action()
     return jsonify({'message': 'Git action triggered'})
 
+@app.route('/api/python-action', methods=['POST'])
+def python_action():
+    # In a real application, you would have some python logic here
+    return jsonify({'message': 'Python action triggered'})
+
+@app.route('/api/genai-action', methods=['POST'])
+def genai_action():
+    prompt = request.get_json()['prompt']
+    generated_text = generator(prompt, max_length=50, num_return_sequences=1)
+    return jsonify({'generated_text': generated_text[0]['generated_text']})
+
+@app.route('/api/data-storage-action', methods=['POST'])
+def data_storage_action():
+    new_link = request.get_json()
+    db = database.get_db()
+    db.execute('INSERT INTO links (text, url) VALUES (?, ?)',
+               [new_link['text'], new_link['url']])
+    db.commit()
+    return jsonify(new_link)
+
 if __name__ == '__main__':
     app.run(debug=True)
