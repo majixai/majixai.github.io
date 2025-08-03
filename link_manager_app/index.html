@@ -8,35 +8,44 @@
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 </head>
 <body>
-    <h1>Link Manager</h1>
+    <div class="container">
+        <h1>Link Manager</h1>
 
-    <div id='calendar'></div>
+        <div id='calendar'></div>
 
-    <h2>Links</h2>
-    <form id="link-form">
-        <label for="name">Name:</label>
-        <input type="text" id="name" required>
-        <br>
-        <label for="link">Link:</label>
-        <input type="url" id="link" required>
-        <br>
-        <label for="section">Section:</label>
-        <select id="section">
-            <option value="chat">Chat</option>
-            <option value="online">Online</option>
-            <option value="investing">Investing</option>
-        </select>
-        <br>
-        <div id="investing-options" style="display: none;">
-            <label for="trades-per-day">Trades per day:</label>
-            <input type="number" id="trades-per-day" min="1">
+        <div class="form-container">
+            <h2>Add/Edit Link</h2>
+            <form id="link-form">
+                <div class="form-group">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="link">Link:</label>
+                    <input type="url" id="link" required>
+                </div>
+                <div class="form-group">
+                    <label for="section">Section:</label>
+                    <select id="section">
+                        <option value="chat">Chat</option>
+                        <option value="online">Online</option>
+                        <option value="investing">Investing</option>
+                    </select>
+                </div>
+                <div id="investing-options" class="form-group" style="display: none;">
+                    <label for="trades-per-day">Trades per day:</label>
+                    <input type="number" id="trades-per-day" min="1">
+                </div>
+                <input type="hidden" id="editingId">
+                <button type="submit">Add Link</button>
+            </form>
         </div>
-        <br>
-        <input type="hidden" id="editingId">
-        <button type="submit">Add Link</button>
-    </form>
 
-    <div id="links-container"></div>
+        <div id="links-container">
+            <h2>Links</h2>
+            <div id="link-list"></div>
+        </div>
+    </div>
 
     <script type="module" src="js/App.js"></script>
 </body>
