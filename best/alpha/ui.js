@@ -251,6 +251,40 @@ class UIManager {
     }
 }
 
+    showGeneralNotification(message, type = 'info', duration = 3000) {
+        let notificationDiv = document.getElementById('general-notification');
+        if (!notificationDiv) {
+            notificationDiv = document.createElement('div');
+            notificationDiv.id = 'general-notification';
+            notificationDiv.style.position = 'fixed';
+            notificationDiv.style.bottom = '20px';
+            notificationDiv.style.left = '50%';
+            notificationDiv.style.transform = 'translateX(-50%)';
+            notificationDiv.style.padding = '10px 20px';
+            notificationDiv.style.borderRadius = '5px';
+            notificationDiv.style.zIndex = '10000';
+            notificationDiv.style.transition = 'opacity 0.5s';
+            notificationDiv.style.opacity = '0';
+            document.body.appendChild(notificationDiv);
+        }
+
+        notificationDiv.textContent = message;
+        if (type === 'error') {
+            notificationDiv.style.backgroundColor = 'rgba(244, 67, 54, 0.9)';
+            notificationDiv.style.color = 'white';
+        } else {
+            notificationDiv.style.backgroundColor = 'rgba(76, 175, 80, 0.9)';
+            notificationDiv.style.color = 'white';
+        }
+
+        notificationDiv.style.opacity = '1';
+
+        setTimeout(() => {
+            notificationDiv.style.opacity = '0';
+        }, duration - 500);
+    }
+}
+
 // To make UIManager available if not using modules:
 // window.UIManager = UIManager;
 // However, script.js will instantiate it directly.
