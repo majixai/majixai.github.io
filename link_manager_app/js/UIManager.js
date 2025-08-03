@@ -17,12 +17,33 @@ export class UIManager {
         this.attachmentsList = document.getElementById('attachments-list');
         this.modal = document.getElementById('actions-modal');
         this.iframe = document.getElementById('link-iframe');
+        this.iframeContainer = document.getElementById('iframe-container');
         this.ledgerContainer = document.getElementById('ledger-container');
         this.ledgerEntriesContainer = document.getElementById('ledger-entries');
         this.ledgerForm = document.getElementById('ledger-form');
+        this.calendarContainer = document.getElementById('calendar');
+        this.contactsContainer = document.getElementById('contacts-container');
         this.currentLinkId = null;
         this.currentLedgerLinkId = null;
         this.attachments = [];
+    }
+
+    switchView(view) {
+        this.calendarContainer.style.display = 'none';
+        this.iframeContainer.style.display = 'none';
+        this.contactsContainer.style.display = 'none';
+
+        switch (view) {
+            case 'calendar':
+                this.calendarContainer.style.display = 'block';
+                break;
+            case 'iframe':
+                this.iframeContainer.style.display = 'block';
+                break;
+            case 'contacts':
+                this.contactsContainer.style.display = 'block';
+                break;
+        }
     }
 
     showLedger(link) {
