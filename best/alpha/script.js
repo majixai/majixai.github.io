@@ -1,23 +1,4 @@
 (function() {
-    // Global error collection (remains global for now)
-    let collectedJsErrors = []; 
-    window.onerror = function(message, source, lineno, colno, error) {
-        const errorDetails = {
-            message: message,
-            source: source,
-            lineno: lineno,
-            colno: colno,
-            error: error ? error.stack : 'N/A',
-            timestamp: new Date().toISOString()
-        };
-        collectedJsErrors.push(errorDetails);
-        console.error("Collected JS Error:", errorDetails);
-        if (collectedJsErrors.length > 100) {
-            collectedJsErrors.shift();
-        }
-        return false;
-    };
-
     class App {
         // Service and Manager instances
         apiService;
@@ -51,6 +32,7 @@
         #previousUsers = [];
         #allOnlineUsersData = [];
         #lastFilteredUsers = [];
+        #collectedJsErrors = [];
         #fetchInterval = null;
         #initialIframesSet = false;
 
@@ -117,6 +99,32 @@
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
             window.storageType = this.#storageType; 
+        }
+
+        #handleGlobalError(message, source, lineno, colno, error) {
+            const errorDetails = {
+                message: message,
+                source: source,
+                lineno: lineno,
+                colno: colno,
+                error: error ? error.stack : 'N/A',
+                timestamp: new Date().toISOString()
+            };
+            this.#collectedJsErrors.push(errorDetails);
+            console.error("Collected JS Error:", errorDetails);
+            if (this.#collectedJsErrors.length > 100) {
+                this.#collectedJsErrors.shift();
+            }
+
+            // Automatically copy to clipboard
+            const errStr = `T: ${errorDetails.timestamp}\nM: ${errorDetails.message}\nS: ${errorDetails.source}\nL: ${errorDetails.lineno}, C: ${errorDetails.colno}\nStack: ${errorDetails.error}`;
+            navigator.clipboard.writeText(errStr).then(() => {
+                this.uiManager.showGeneralNotification('Error copied to clipboard!', 'error');
+            }).catch(err => {
+                console.error('Failed to copy error to clipboard:', err);
+            });
+
+            return false; // Prevent default browser error handling
         }
 
         #isBirthday(birthday) {
@@ -985,11 +993,22 @@
             
             if (this.copyJsErrorsButton) {
                 this.copyJsErrorsButton.addEventListener('click', async () => {
-                    if(collectedJsErrors.length===0){this.#showSnippetStatus('No JS errors collected.','info');return}
-                    let errStr="Collected JS Errors:\n\n";collectedJsErrors.forEach(e=>{errStr+=`T: ${e.timestamp}\nM: ${e.message}\nS: ${e.source}\nL: ${e.lineno}, C: ${e.colno}\nStack: ${e.error}\n----\n`});
-                    try{await navigator.clipboard.writeText(errStr);this.#showSnippetStatus('JS errors copied!','success')}catch(e){this.#showSnippetStatus('Failed to copy JS errors.','error')}
+                    if(this.#collectedJsErrors.length===0){
+                        this.uiManager.showGeneralNotification('No JS errors collected.', 'info');
+                        return;
+                    }
+                    let errStr="Collected JS Errors:\n\n";
+                    this.#collectedJsErrors.forEach(e=>{errStr+=`T: ${e.timestamp}\nM: ${e.message}\nS: ${e.source}\nL: ${e.lineno}, C: ${e.colno}\nStack: ${e.error}\n----\n`});
+                    try {
+                        await navigator.clipboard.writeText(errStr);
+                        this.uiManager.showGeneralNotification('JS errors copied to clipboard!', 'success');
+                    } catch(e) {
+                        this.uiManager.showGeneralNotification('Failed to copy JS errors.', 'error');
+                    }
                 });
             }
+
+            window.onerror = this.#handleGlobalError.bind(this);
 
             this.settingsButton?.addEventListener('click', () => {
                 if (this.settingsModal) this.settingsModal.style.display = 'flex';
