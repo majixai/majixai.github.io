@@ -35,6 +35,11 @@ class App {
                     const linkItem = event.target.closest('.link-item');
                     const linkId = Number(linkItem.getAttribute('data-id'));
                     this.uiManager.openModal(linkId);
+                } else if (event.target.tagName === 'A') {
+                    event.preventDefault();
+                    const linkItem = event.target.closest('.link-item');
+                    const linkId = Number(linkItem.getAttribute('data-id'));
+                    this.handleLinkClick(linkId);
                 }
             });
 
@@ -81,6 +86,21 @@ class App {
         } catch (error) {
             NotificationService.showError('An error occurred.');
             console.error(error);
+        }
+    }
+
+    handleLinkClick(linkId) {
+        const link = this.linkManager.getLinkById(linkId);
+        if (link) {
+            switch (link.section) {
+                case 'chat':
+                case 'online':
+                case 'investing':
+                    this.uiManager.loadUrlInIframe(link.link);
+                    break;
+                default:
+                    NotificationService.showError('Unknown section.');
+            }
         }
     }
 

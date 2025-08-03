@@ -12,7 +12,12 @@ export class UIManager {
         this.tradesSlider = document.getElementById('trades-slider');
         this.notesInput = document.getElementById('notes');
         this.modal = document.getElementById('actions-modal');
+        this.iframe = document.getElementById('link-iframe');
         this.currentLinkId = null;
+    }
+
+    loadUrlInIframe(url) {
+        this.iframe.src = url;
     }
 
     openModal(linkId) {
