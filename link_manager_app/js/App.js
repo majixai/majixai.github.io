@@ -31,12 +31,20 @@ class App {
 
         linkContainers.forEach(container => {
             container.addEventListener('click', (event) => {
-                this.handleLinkItemClick(event);
+                if (event.target.classList.contains('actions-btn')) {
+                    const linkItem = event.target.closest('.link-item');
+                    const linkId = Number(linkItem.getAttribute('data-id'));
+                    this.uiManager.openModal(linkId);
+                }
             });
 
             container.addEventListener('change', (event) => {
                 this.handleToggleClick(event);
             });
+        });
+
+        this.uiManager.modal.addEventListener('click', (event) => {
+            this.handleModalClick(event);
         });
     }
 
@@ -46,7 +54,8 @@ class App {
             const name = document.getElementById('name').value;
             const link = document.getElementById('link').value;
             const section = this.uiManager.sectionSelect.value;
-            const tradesPerDay = document.getElementById('trades-per-day').value;
+            const tradesPerDay = this.uiManager.tradesPerDayInput.value;
+            const notes = this.uiManager.notesInput.value;
 
             if (!name || !link) {
                 NotificationService.showError('Name and link are required.');
@@ -58,7 +67,8 @@ class App {
                 name,
                 link,
                 section,
-                tradesPerDay
+                tradesPerDay,
+                notes
             };
 
             if (editingId) {
@@ -74,19 +84,19 @@ class App {
         }
     }
 
-    handleLinkItemClick(event) {
-        const linkItem = event.target.closest('.link-item');
-        if (!linkItem) return;
+    handleModalClick(event) {
+        const linkId = this.uiManager.currentLinkId;
+        if (!linkId) return;
 
-        const linkId = Number(linkItem.getAttribute('data-id'));
-
-        if (event.target.classList.contains('edit-btn')) {
+        if (event.target.id === 'modal-edit-btn') {
             const link = this.linkManager.getLinkById(linkId);
             if (link) {
                 this.uiManager.populateFormForEdit(link);
+                this.uiManager.closeModal();
             }
-        } else if (event.target.classList.contains('delete-btn')) {
+        } else if (event.target.id === 'modal-delete-btn') {
             this.linkManager.deleteLink(linkId);
+            this.uiManager.closeModal();
         }
     }
 
