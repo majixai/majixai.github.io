@@ -75,6 +75,10 @@ class App {
             event.preventDefault();
             this.handleLedgerFormSubmit();
         });
+
+        document.getElementById('show-entire-ledger-btn').addEventListener('click', () => {
+            this.handleShowEntireLedger();
+        });
     }
 
     async handleFormSubmit() {
@@ -209,6 +213,11 @@ class App {
         } else {
             NotificationService.showError('Please select two different contacts.');
         }
+    }
+
+    handleShowEntireLedger() {
+        const allLinks = this.linkManager.getAllLinks();
+        this.uiManager.renderEntireLedger(allLinks);
     }
 }
 
