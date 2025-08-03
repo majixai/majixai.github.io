@@ -2,11 +2,19 @@ from flask import Flask, jsonify, request
 from transformers import pipeline
 import database
 from app.controllers import git_action_controller
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
 
 app = Flask(__name__)
 database.init_app(app)
 
 generator = pipeline('text-generation', model='gpt2')
+summarizer = pipeline("summarization")
+translator = pipeline("translation_en_to_de")
+qa = pipeline("question-answering")
 
 @app.route('/api/links', methods=['GET'])
 def get_links():
@@ -61,6 +69,25 @@ def data_storage_action():
                [new_link['text'], new_link['url']])
     db.commit()
     return jsonify(new_link)
+
+@app.route('/api/summarize', methods=['POST'])
+def summarize_text():
+    text = request.get_json()['text']
+    summary = summarizer(text, max_length=100, min_length=30, do_sample=False)
+    return jsonify({'summary': summary[0]['summary_text']})
+
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    text = request.get_json()['text']
+    translation = translator(text)
+    return jsonify({'translation': translation[0]['translation_text']})
+
+@app.route('/api/qa', methods=['POST'])
+def answer_question():
+    question = request.get_json()['question']
+    context = request.get_json()['context']
+    answer = qa(question=question, context=context)
+    return jsonify({'answer': answer['answer']})
 
 if __name__ == '__main__':
     app.run(debug=True)
