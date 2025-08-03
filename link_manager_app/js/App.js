@@ -99,6 +99,18 @@ class App {
         document.getElementById('show-entire-ledger-btn').addEventListener('click', () => {
             this.handleShowEntireLedger();
         });
+
+        document.getElementById('toggle-calendar-btn').addEventListener('click', () => {
+            this.handleViewToggle('calendar');
+        });
+
+        document.getElementById('toggle-iframe-btn').addEventListener('click', () => {
+            this.handleViewToggle('iframe');
+        });
+
+        document.getElementById('toggle-contacts-btn').addEventListener('click', () => {
+            this.handleViewToggle('contacts');
+        });
     }
 
     async handleFormSubmit() {
@@ -243,6 +255,10 @@ class App {
     handleShowEntireLedger() {
         const allLinks = this.linkManager.getAllLinks();
         this.uiManager.renderEntireLedger(allLinks);
+    }
+
+    handleViewToggle(view) {
+        this.uiManager.switchView(view);
     }
 }
 
