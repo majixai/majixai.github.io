@@ -24,6 +24,13 @@
             </div>
             <ul id="menu-list"></ul>
             <div id="add-link-container"></div>
+            <div id="edit-link-container" style="margin-top: 18px;">
+                <h3>Edit Link</h3>
+                <select id="link-to-edit"></select>
+                <input type="text" id="new-link-text" placeholder="New Link Text">
+                <input type="text" id="new-link-url" placeholder="New Link URL">
+                <button id="edit-link-btn">Edit Link</button>
+            </div>
             <button id="download-btn"><i class="fas fa-download"></i> Download State</button>
             <div id="actions-container" style="margin-top: 18px;">
                 <h3>Actions</h3>
@@ -48,6 +55,9 @@
                 <div id="calendar-days"></div>
             </div>
         </div>
+    </div>
+    <div id="iframe-container" style="margin-top: 18px;">
+        <iframe id="link-iframe" style="width: 100%; height: 500px; border: 1px solid #ccc;"></iframe>
     </div>
 
     <script src="script.js"></script>

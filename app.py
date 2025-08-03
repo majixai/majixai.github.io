@@ -32,11 +32,15 @@ def add_link():
     db.commit()
     return jsonify(new_link)
 
-@app.route('/api/links/<int:link_id>/click', methods=['POST'])
-def increment_click_count(link_id):
-    db = database.get_db()
-    db.execute('UPDATE links SET click_count = click_count + 1 WHERE id = ?', [link_id])
-    db.commit()
+@app.route('/api/links/click', methods=['POST'])
+def increment_click_count():
+    link_url = request.get_json()['url']
+    with open('menu/clicks.json', 'r+') as f:
+        clicks = json.load(f)
+        clicks[link_url] = clicks.get(link_url, 0) + 1
+        f.seek(0)
+        json.dump(clicks, f, indent=4)
+        f.truncate()
     return jsonify({'message': 'Click count incremented'})
 
 @app.route('/api/generate', methods=['POST'])
