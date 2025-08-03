@@ -46,6 +46,15 @@ export class LinkManager {
         }
     }
 
+    async toggleLinkProperty(id, property) {
+        const link = this.getLinkById(id);
+        if (link && typeof link[property] === 'boolean') {
+            link[property] = !link[property];
+            await StorageService.save(this.storageKey, this.#links);
+            this.uiManager.renderLinks(this.#links);
+        }
+    }
+
     getLinkById(id) {
         return this.#links.find(link => link.id === id);
     }

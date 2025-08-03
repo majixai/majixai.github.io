@@ -14,10 +14,6 @@ class App {
         this.setupEventListeners();
         await this.linkManager.loadLinks();
         await this.calendarManager.initialize();
-
-        // Example of using the generator
-        const investingLinks = this.linkManager.getLinksBySection('investing');
-        console.log('Investing links:', ...investingLinks);
     }
 
     setupEventListeners() {
@@ -26,14 +22,20 @@ class App {
             this.handleFormSubmit();
         });
 
-        this.uiManager.linksContainer.addEventListener('click', (event) => {
-            this.handleLinkItemClick(event);
-        });
+        const linkContainers = [
+            this.uiManager.chatLinksContainer,
+            this.uiManager.investingLinksContainer,
+            this.uiManager.onlineLinksContainer
+        ];
 
-        this.uiManager.linksContainer.addEventListener('change', (event) => {
-            if (event.target.classList.contains('toggle-switch')) {
+        linkContainers.forEach(container => {
+            container.addEventListener('click', (event) => {
+                this.handleLinkItemClick(event);
+            });
+
+            container.addEventListener('change', (event) => {
                 this.handleToggleClick(event);
-            }
+            });
         });
     }
 
@@ -80,8 +82,16 @@ class App {
     handleToggleClick(event) {
         const linkItem = event.target.closest('.link-item');
         if (!linkItem) return;
+
         const linkId = Number(linkItem.getAttribute('data-id'));
-        this.linkManager.toggleLink(linkId);
+
+        if (event.target.classList.contains('toggle-switch')) {
+            this.linkManager.toggleLink(linkId);
+        } else if (event.target.classList.contains('complete-toggle')) {
+            this.linkManager.toggleLinkProperty(linkId, 'complete');
+        } else if (event.target.classList.contains('ip-toggle')) {
+            this.linkManager.toggleLinkProperty(linkId, 'ip');
+        }
     }
 }
 
