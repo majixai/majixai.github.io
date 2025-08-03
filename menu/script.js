@@ -12,23 +12,77 @@ $(document).ready(() => {
     // Function to render the menu
     function renderMenu(filter = 'all') {
         menuList.empty();
-        const filteredLinks = menuData.links.filter(link => filter === 'all' || link.type === filter);
+        $('#link-to-edit').empty();
 
-        filteredLinks.forEach(linkData => {
-            const link = $('<a></a>').attr('href', linkData.url).attr('target', '_blank').text(linkData.text);
-            const counter = $('<span></span>').addClass('click-counter').text(menuData.clickCounts[linkData.url] || 0);
-            const listItem = $('<li></li>').append(link).append(counter);
-            menuList.append(listItem);
+        const groupedLinks = {
+            "check-in-online": [],
+            "check-in-chat": [],
+            "investing": []
+        };
 
-            link.on('click', (e) => {
-                e.preventDefault();
-                menuData.clickCounts[linkData.url] = (menuData.clickCounts[linkData.url] || 0) + 1;
-                localStorage.setItem('menuData', JSON.stringify(menuData));
-                counter.text(menuData.clickCounts[linkData.url]);
-                window.open(linkData.url, '_blank');
-            });
+        menuData.links.forEach(link => {
+            if (link.type === "check-in-online") {
+                groupedLinks["check-in-online"].push(link);
+            } else if (link.type === "check-in-chat") {
+                groupedLinks["check-in-chat"].push(link);
+            } else if (link.type === "investing") {
+                groupedLinks["investing"].push(link);
+            }
         });
+
+        for (const group in groupedLinks) {
+            if (groupedLinks[group].length > 0) {
+                const header = $('<h3></h3>').text(group.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+                menuList.append(header);
+                groupedLinks[group].forEach((linkData, index) => {
+                    const link = $('<a></a>').attr('href', linkData.url).attr('target', '_blank').text(linkData.text);
+                    const counter = $('<span></span>').addClass('click-counter').text(menuData.clickCounts[linkData.url] || 0);
+                    const listItem = $('<li></li>').append(link).append(counter);
+                    menuList.append(listItem);
+
+                    $('#link-to-edit').append($('<option>', {
+                        value: menuData.links.indexOf(linkData),
+                        text: linkData.text
+                    }));
+
+                    link.on('click', (e) => {
+                        e.preventDefault();
+                const url = linkData.url;
+                $.ajax({
+                    url: '/api/links/click',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ url }),
+                    success: function() {
+                        $.getJSON('menu/clicks.json', function(data) {
+                            counter.text(data[url] || 0);
+                        });
+                    }
+                });
+                $('#link-iframe').attr('src', url);
+                    });
+                });
+            }
+        }
     }
+
+    $('#edit-link-btn').on('click', () => {
+        const index = $('#link-to-edit').val();
+        const newText = $('#new-link-text').val();
+        const newUrl = $('#new-link-url').val();
+
+        if (newText) {
+            menuData.links[index].text = newText;
+        }
+        if (newUrl) {
+            menuData.links[index].url = newUrl;
+        }
+
+        localStorage.setItem('menuData', JSON.stringify(menuData));
+        renderMenu();
+        $('#new-link-text').val('');
+        $('#new-link-url').val('');
+    });
 
     $('#link-type-filter').on('change', function() {
         renderMenu($(this).val());
