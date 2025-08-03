@@ -10,9 +10,11 @@ $(document).ready(() => {
     };
 
     // Function to render the menu
-    function renderMenu() {
+    function renderMenu(filter = 'all') {
         menuList.empty();
-        menuData.links.forEach(linkData => {
+        const filteredLinks = menuData.links.filter(link => filter === 'all' || link.type === filter);
+
+        filteredLinks.forEach(linkData => {
             const link = $('<a></a>').attr('href', linkData.url).attr('target', '_blank').text(linkData.text);
             const counter = $('<span></span>').addClass('click-counter').text(menuData.clickCounts[linkData.url] || 0);
             const listItem = $('<li></li>').append(link).append(counter);
@@ -28,47 +30,10 @@ $(document).ready(() => {
         });
     }
 
-    // Function to render the calendar
-    function renderCalendar(month, year) {
-        calendarDays.empty();
-        monthYear.text(`${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`);
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        for (let i = 0; i < firstDay; i++) {
-            calendarDays.append('<div></div>');
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dayCell = $('<div></div>').addClass('calendar-day').text(i);
-            dayCell.on('click', () => {
-                console.log(`Clicked on ${i}/${month + 1}/${year}`);
-            });
-            calendarDays.append(dayCell);
-        }
-    }
-
-    let currentMonth = new Date().getMonth();
-    let currentYear = new Date().getFullYear();
-
-    // Event listeners for calendar navigation
-    $('#prev-month').on('click', () => {
-        currentMonth--;
-        if (currentMonth < 0) {
-            currentMonth = 11;
-            currentYear--;
-        }
-        renderCalendar(currentMonth, currentYear);
+    $('#link-type-filter').on('change', function() {
+        renderMenu($(this).val());
     });
 
-    $('#next-month').on('click', () => {
-        currentMonth++;
-        if (currentMonth > 11) {
-            currentMonth = 0;
-            currentYear++;
-        }
-        renderCalendar(currentMonth, currentYear);
-    });
 
     // Add new link form
     addLinkContainer.html(`
