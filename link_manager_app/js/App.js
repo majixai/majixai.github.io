@@ -1,5 +1,5 @@
 import { UIManager } from './UIManager.js';
-import { LinkManager } from './LinkManager.js';
+import { EntityManager } from './EntityManager.js';
 import { CalendarManager } from './CalendarManager.js';
 import { NotificationService } from './NotificationService.js';
 import { ContactManager } from './ContactManager.js';
@@ -8,7 +8,7 @@ import { ContactUIManager } from './ContactUIManager.js';
 class App {
     constructor() {
         this.uiManager = new UIManager();
-        this.linkManager = new LinkManager(this.uiManager);
+        this.entityManager = new EntityManager(this.uiManager);
         this.calendarManager = new CalendarManager(document.getElementById('calendar'));
         this.contactUIManager = new ContactUIManager();
         this.contactManager = new ContactManager(this.contactUIManager);
@@ -17,7 +17,7 @@ class App {
     async initialize() {
         this.uiManager.setupSectionToggle();
         this.setupEventListeners();
-        await this.linkManager.loadLinks();
+        await this.entityManager.loadEntities();
         await this.contactManager.loadContacts();
         await this.calendarManager.initialize();
     }
@@ -36,44 +36,6 @@ class App {
         this.contactUIManager.connectionForm.addEventListener('submit', (event) => {
             event.preventDefault();
             this.handleConnectionFormSubmit();
-        });
-
-        const linkContainers = [
-            this.uiManager.chatLinksContainer,
-            this.uiManager.investingLinksContainer,
-            this.uiManager.onlineLinksContainer
-        ];
-
-        linkContainers.forEach(container => {
-            container.addEventListener('click', (event) => {
-                if (event.target.classList.contains('actions-btn')) {
-                    const linkItem = event.target.closest('.link-item');
-                    const linkId = Number(linkItem.getAttribute('data-id'));
-                    this.uiManager.openModal(linkId);
-                } else if (event.target.classList.contains('ledger-btn')) {
-                    const linkItem = event.target.closest('.link-item');
-                    const linkId = Number(linkItem.getAttribute('data-id'));
-                    this.handleViewLedgerClick(linkId);
-                } else if (event.target.tagName === 'A') {
-                    event.preventDefault();
-                    const linkItem = event.target.closest('.link-item');
-                    const linkId = Number(linkItem.getAttribute('data-id'));
-                    this.handleLinkClick(linkId);
-                }
-            });
-
-            container.addEventListener('change', (event) => {
-                this.handleToggleClick(event);
-            });
-        });
-
-        this.uiManager.modal.addEventListener('click', (event) => {
-            this.handleModalClick(event);
-        });
-
-        this.uiManager.ledgerForm.addEventListener('submit', (event) => {
-            event.preventDefault();
-            this.handleLedgerFormSubmit();
         });
 
         this.uiManager.addAttachmentBtn.addEventListener('click', () => {
@@ -96,10 +58,6 @@ class App {
             }
         });
 
-        document.getElementById('show-entire-ledger-btn').addEventListener('click', () => {
-            this.handleShowEntireLedger();
-        });
-
         document.getElementById('toggle-calendar-btn').addEventListener('click', () => {
             this.handleViewToggle('calendar');
         });
@@ -115,7 +73,6 @@ class App {
 
     async handleFormSubmit() {
         try {
-            const editingId = this.uiManager.editingIdInput.value;
             const name = document.getElementById('name').value;
             const link = document.getElementById('link').value;
             const section = this.uiManager.sectionSelect.value;
@@ -129,99 +86,17 @@ class App {
             }
 
             const linkData = {
-                id: editingId ? Number(editingId) : null,
-                name,
                 link,
-                section,
-                tradesPerDay,
                 notes,
-                attachments
+                attachments,
+                tradesPerDay: section === 'investing' ? tradesPerDay : undefined,
             };
 
-            if (editingId) {
-                await this.linkManager.updateLink(linkData);
-            } else {
-                await this.linkManager.addLink(linkData);
-            }
-
+            await this.entityManager.addLinkToEntity(name, section, linkData);
             this.uiManager.resetForm();
         } catch (error) {
             NotificationService.showError('An error occurred.');
             console.error(error);
-        }
-    }
-
-    handleLinkClick(linkId) {
-        const link = this.linkManager.getLinkById(linkId);
-        if (link) {
-            switch (link.section) {
-                case 'chat':
-                case 'online':
-                case 'investing':
-                    this.uiManager.loadUrlInIframe(link.link);
-                    break;
-                default:
-                    NotificationService.showError('Unknown section.');
-            }
-        }
-    }
-
-    handleViewLedgerClick(linkId) {
-        const link = this.linkManager.getLinkById(linkId);
-        if (link) {
-            this.uiManager.showLedger(link);
-        }
-    }
-
-    async handleLedgerFormSubmit() {
-        const linkId = this.uiManager.currentLedgerLinkId;
-        if (!linkId) return;
-
-        const date = document.getElementById('ledger-date').value;
-        const description = document.getElementById('ledger-description').value;
-        const amount = document.getElementById('ledger-amount').value;
-
-        if (!date || !description || !amount) {
-            NotificationService.showError('All ledger fields are required.');
-            return;
-        }
-
-        const entry = { date, description, amount: parseFloat(amount) };
-        await this.linkManager.addLedgerEntry(linkId, entry);
-        this.uiManager.ledgerForm.reset();
-    }
-
-    handleModalClick(event) {
-        const linkId = this.uiManager.currentLinkId;
-        if (!linkId) return;
-
-        if (event.target.id === 'modal-edit-btn') {
-            const link = this.linkManager.getLinkById(linkId);
-            if (link) {
-                this.uiManager.populateFormForEdit(link);
-                this.uiManager.closeModal();
-            }
-        } else if (event.target.id === 'modal-delete-btn') {
-            this.linkManager.deleteLink(linkId);
-            this.uiManager.closeModal();
-        }
-    }
-
-    async handleToggleClick(event) {
-        const linkItem = event.target.closest('.link-item');
-        if (!linkItem) return;
-
-        const linkId = Number(linkItem.getAttribute('data-id'));
-
-        if (event.target.classList.contains('toggle-switch')) {
-            await this.linkManager.toggleLink(linkId);
-            NotificationService.showInfo('Link toggled.');
-        } else if (event.target.classList.contains('complete-toggle')) {
-            await this.linkManager.toggleLinkProperty(linkId, 'complete');
-            NotificationService.showInfo('Complete status toggled.');
-        } else if (event.target.classList.contains('ip-toggle')) {
-            await this.linkManager.toggleLinkProperty(linkId, 'ip');
-            NotificationService.showInfo('IP status toggled.');
         }
     }
 
@@ -250,11 +125,6 @@ class App {
         } else {
             NotificationService.showError('Please select two different contacts.');
         }
-    }
-
-    handleShowEntireLedger() {
-        const allLinks = this.linkManager.getAllLinks();
-        this.uiManager.renderEntireLedger(allLinks);
     }
 
     handleViewToggle(view) {
