@@ -9,6 +9,20 @@ export class UIManager {
         this.editingIdInput = document.getElementById('editingId');
         this.submitButton = this.linkForm.querySelector('button[type="submit"]');
         this.tradesPerDayInput = document.getElementById('trades-per-day');
+        this.tradesSlider = document.getElementById('trades-slider');
+        this.notesInput = document.getElementById('notes');
+        this.modal = document.getElementById('actions-modal');
+        this.currentLinkId = null;
+    }
+
+    openModal(linkId) {
+        this.currentLinkId = linkId;
+        this.modal.style.display = 'block';
+    }
+
+    closeModal() {
+        this.currentLinkId = null;
+        this.modal.style.display = 'none';
     }
 
     renderLinks(links) {
@@ -63,18 +77,26 @@ export class UIManager {
             `;
         }
 
+        let investingInfo = '';
+        if (link.section === 'investing') {
+            investingInfo = `
+                <div class="investing-info">
+                    <span>Trades: ${link.tradesPerDay}</span>
+                    <input type="range" min="1" max="10" value="${link.tradesPerDay}" class="trade-slider" disabled>
+                </div>
+            `;
+        }
+
         linkElement.innerHTML = `
             <div class="link-info">
                 <a href="${link.link}" target="_blank">${link.name}</a>
-                <span class="section-info">
-                    ${link.section === 'investing' ? ` - Trades: ${link.tradesPerDay}` : ''}
-                </span>
+                <p class="notes">${link.notes}</p>
+                ${investingInfo}
             </div>
             <div class="controls">
                 ${toggles}
                 <div class="actions">
-                    <button class="edit-btn">Edit</button>
-                    <button class="delete-btn">Delete</button>
+                    <button class="actions-btn w3-button w3-blue">Actions</button>
                 </div>
             </div>
         `;
@@ -86,6 +108,14 @@ export class UIManager {
             const isInvesting = this.sectionSelect.value === 'investing';
             this.toggleInvestingOptions(isInvesting);
         });
+
+        this.tradesSlider.addEventListener('input', () => {
+            this.tradesPerDayInput.value = this.tradesSlider.value;
+        });
+
+        this.tradesPerDayInput.addEventListener('input', () => {
+            this.tradesSlider.value = this.tradesPerDayInput.value;
+        });
     }
 
     toggleInvestingOptions(show) {
@@ -95,7 +125,9 @@ export class UIManager {
     resetForm() {
         this.linkForm.reset();
         this.editingIdInput.value = '';
+        this.notesInput.value = '';
         this.tradesPerDayInput.value = 1;
+        this.tradesSlider.value = 1;
         this.toggleInvestingOptions(false);
         this.submitButton.textContent = 'Add Link';
     }
@@ -105,11 +137,13 @@ export class UIManager {
         document.getElementById('name').value = link.name;
         document.getElementById('link').value = link.link;
         this.sectionSelect.value = link.section;
+        this.notesInput.value = link.notes;
 
         const isInvesting = link.section === 'investing';
         this.toggleInvestingOptions(isInvesting);
         if (isInvesting) {
-            document.getElementById('trades-per-day').value = link.tradesPerDay;
+            this.tradesPerDayInput.value = link.tradesPerDay;
+            this.tradesSlider.value = link.tradesPerDay;
         }
         this.submitButton.textContent = 'Update Link';
     }
