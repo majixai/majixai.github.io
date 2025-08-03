@@ -28,7 +28,7 @@ class Calendar {
 
     loadCalendarData() {
         $.ajax({
-            url: `json/calendar.json`,
+            url: `menu/calendar.json`,
             dataType: 'json',
             success: (data) => {
                 this.renderCalendar(data);
