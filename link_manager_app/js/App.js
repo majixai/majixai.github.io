@@ -76,6 +76,26 @@ class App {
             this.handleLedgerFormSubmit();
         });
 
+        this.uiManager.addAttachmentBtn.addEventListener('click', () => {
+            const type = this.uiManager.attachmentTypeInput.value;
+            const value = this.uiManager.attachmentValueInput.value;
+            if (value) {
+                this.uiManager.attachments.push({ type, value });
+                this.uiManager.renderAttachments();
+                this.uiManager.attachmentValueInput.value = '';
+            }
+        });
+
+        this.contactUIManager.addAttachmentBtn.addEventListener('click', () => {
+            const type = this.contactUIManager.attachmentTypeInput.value;
+            const value = this.contactUIManager.attachmentValueInput.value;
+            if (value) {
+                this.contactUIManager.attachments.push({ type, value });
+                this.contactUIManager.renderAttachments();
+                this.contactUIManager.attachmentValueInput.value = '';
+            }
+        });
+
         document.getElementById('show-entire-ledger-btn').addEventListener('click', () => {
             this.handleShowEntireLedger();
         });
@@ -89,6 +109,7 @@ class App {
             const section = this.uiManager.sectionSelect.value;
             const tradesPerDay = this.uiManager.tradesPerDayInput.value;
             const notes = this.uiManager.notesInput.value;
+            const attachments = this.uiManager.attachments;
 
             if (!name || !link) {
                 NotificationService.showError('Name and link are required.');
@@ -101,7 +122,8 @@ class App {
                 link,
                 section,
                 tradesPerDay,
-                notes
+                notes,
+                attachments
             };
 
             if (editingId) {
@@ -194,9 +216,12 @@ class App {
     async handleContactFormSubmit() {
         const nameInput = document.getElementById('contact-name');
         const name = nameInput.value;
+        const attachments = this.contactUIManager.attachments;
         if (name) {
-            await this.contactManager.addContact({ name });
+            await this.contactManager.addContact({ name, attachments });
             nameInput.value = '';
+            this.contactUIManager.attachments = [];
+            this.contactUIManager.renderAttachments();
             NotificationService.showSuccess('Contact added successfully!');
         } else {
             NotificationService.showError('Contact name is required.');

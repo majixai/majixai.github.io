@@ -1,5 +1,5 @@
 export class Link {
-    constructor({ id, name, link, section, isEnabled, tradesPerDay, complete, ip, notes, ledger }) {
+    constructor({ id, name, link, section, isEnabled, tradesPerDay, complete, ip, notes, ledger, attachments }) {
         this.id = id || Date.now();
         this.name = name;
         this.link = link;
@@ -9,6 +9,7 @@ export class Link {
         this.ip = ip || false;
         this.notes = notes || '';
         this.ledger = ledger || [];
+        this.attachments = attachments || [];
         if (this.section === 'investing') {
             this.tradesPerDay = tradesPerDay || 1;
         }
