@@ -1,0 +1,23 @@
+name: GenAI Action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Install dependencies
+      run: pip install transformers
+    - name: Run script
+      run: python -c "from transformers import pipeline; generator = pipeline('text-generation', model='gpt2'); generated_text = generator('Hello, GenAI!', max_length=50, num_return_sequences=1); print(generated_text[0]['generated_text'])"
+      env:
+        API_KEY: ${{ secrets.API_KEY }}

@@ -1,0 +1,19 @@
+name: Data Storage Action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+    - name: Run script
+      run: python -c "import json; new_link = {'text': 'New Link from Action', 'url': 'https://www.newlinkfromaction.com'}; with open('menu/menu.json', 'r+') as f: data = json.load(f); data['links'].append(new_link); f.seek(0); json.dump(data, f, indent=4); f.truncate()"
