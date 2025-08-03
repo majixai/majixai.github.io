@@ -1,18 +1,34 @@
 export class UIManager {
     constructor() {
         this.linkForm = document.getElementById('link-form');
-        this.linksContainer = document.getElementById('link-list'); // Changed to link-list
+        this.chatLinksContainer = document.getElementById('chat-links');
+        this.investingLinksContainer = document.getElementById('investing-links');
+        this.onlineLinksContainer = document.getElementById('online-links');
         this.sectionSelect = document.getElementById('section');
         this.investingOptions = document.getElementById('investing-options');
         this.editingIdInput = document.getElementById('editingId');
         this.submitButton = this.linkForm.querySelector('button[type="submit"]');
+        this.tradesPerDayInput = document.getElementById('trades-per-day');
     }
 
     renderLinks(links) {
-        this.linksContainer.innerHTML = '';
+        this.chatLinksContainer.innerHTML = '';
+        this.investingLinksContainer.innerHTML = '';
+        this.onlineLinksContainer.innerHTML = '';
+
         for (const link of links) {
             const linkElement = this.createLinkElement(link);
-            this.linksContainer.appendChild(linkElement);
+            switch (link.section) {
+                case 'chat':
+                    this.chatLinksContainer.appendChild(linkElement);
+                    break;
+                case 'investing':
+                    this.investingLinksContainer.appendChild(linkElement);
+                    break;
+                case 'online':
+                    this.onlineLinksContainer.appendChild(linkElement);
+                    break;
+            }
         }
     }
 
@@ -22,20 +38,40 @@ export class UIManager {
         linkElement.setAttribute('data-id', link.id);
 
         const isEnabled = link.isEnabled === undefined ? true : link.isEnabled;
+        const isComplete = link.complete;
+        const isIp = link.ip;
+
+        let toggles = `
+            <label class="switch">
+                <input type="checkbox" class="toggle-switch" ${isEnabled ? 'checked' : ''}>
+                <span class="slider round"></span>
+            </label>
+        `;
+
+        if (link.section === 'chat' || link.section === 'online') {
+            toggles += `
+                <label class="switch">
+                    <span>Complete</span>
+                    <input type="checkbox" class="complete-toggle" ${isComplete ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+                <label class="switch">
+                    <span>IP</span>
+                    <input type="checkbox" class="ip-toggle" ${isIp ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+            `;
+        }
 
         linkElement.innerHTML = `
             <div class="link-info">
                 <a href="${link.link}" target="_blank">${link.name}</a>
                 <span class="section-info">
-                    (${link.section})
                     ${link.section === 'investing' ? ` - Trades: ${link.tradesPerDay}` : ''}
                 </span>
             </div>
             <div class="controls">
-                <label class="switch">
-                    <input type="checkbox" class="toggle-switch" ${isEnabled ? 'checked' : ''}>
-                    <span class="slider round"></span>
-                </label>
+                ${toggles}
                 <div class="actions">
                     <button class="edit-btn">Edit</button>
                     <button class="delete-btn">Delete</button>
@@ -47,7 +83,8 @@ export class UIManager {
 
     setupSectionToggle() {
         this.sectionSelect.addEventListener('change', () => {
-            this.toggleInvestingOptions(this.sectionSelect.value === 'investing');
+            const isInvesting = this.sectionSelect.value === 'investing';
+            this.toggleInvestingOptions(isInvesting);
         });
     }
 
@@ -58,6 +95,7 @@ export class UIManager {
     resetForm() {
         this.linkForm.reset();
         this.editingIdInput.value = '';
+        this.tradesPerDayInput.value = 1;
         this.toggleInvestingOptions(false);
         this.submitButton.textContent = 'Add Link';
     }
