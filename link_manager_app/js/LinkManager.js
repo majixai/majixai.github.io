@@ -1,5 +1,6 @@
 import { StorageService } from './StorageService.js';
 import { Link } from './Link.js';
+import { NotificationService } from './NotificationService.js';
 
 export class LinkManager {
     #links;
@@ -21,6 +22,7 @@ export class LinkManager {
         this.#links.push(newLink);
         await StorageService.save(this.storageKey, this.#links);
         this.uiManager.renderLinks(this.#links);
+        NotificationService.showSuccess('Link added successfully!');
     }
 
     async updateLink(data) {
@@ -29,6 +31,7 @@ export class LinkManager {
             this.#links[linkIndex] = new Link({ ...this.#links[linkIndex], ...data });
             await StorageService.save(this.storageKey, this.#links);
             this.uiManager.renderLinks(this.#links);
+            NotificationService.showSuccess('Link updated successfully!');
         }
     }
 
@@ -36,6 +39,7 @@ export class LinkManager {
         this.#links = this.#links.filter(link => link.id !== id);
         await StorageService.save(this.storageKey, this.#links);
         this.uiManager.renderLinks(this.#links);
+        NotificationService.showSuccess('Link deleted successfully!');
     }
 
     async toggleLink(id) {

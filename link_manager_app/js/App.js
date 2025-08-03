@@ -1,6 +1,7 @@
 import { UIManager } from './UIManager.js';
 import { LinkManager } from './LinkManager.js';
 import { CalendarManager } from './CalendarManager.js';
+import { NotificationService } from './NotificationService.js';
 
 class App {
     constructor() {
@@ -39,28 +40,38 @@ class App {
         });
     }
 
-    handleFormSubmit() {
-        const editingId = this.uiManager.editingIdInput.value;
-        const name = document.getElementById('name').value;
-        const link = document.getElementById('link').value;
-        const section = this.uiManager.sectionSelect.value;
-        const tradesPerDay = document.getElementById('trades-per-day').value;
+    async handleFormSubmit() {
+        try {
+            const editingId = this.uiManager.editingIdInput.value;
+            const name = document.getElementById('name').value;
+            const link = document.getElementById('link').value;
+            const section = this.uiManager.sectionSelect.value;
+            const tradesPerDay = document.getElementById('trades-per-day').value;
 
-        const linkData = {
-            id: editingId ? Number(editingId) : null,
-            name,
-            link,
-            section,
-            tradesPerDay
-        };
+            if (!name || !link) {
+                NotificationService.showError('Name and link are required.');
+                return;
+            }
 
-        if (editingId) {
-            this.linkManager.updateLink(linkData);
-        } else {
-            this.linkManager.addLink(linkData);
+            const linkData = {
+                id: editingId ? Number(editingId) : null,
+                name,
+                link,
+                section,
+                tradesPerDay
+            };
+
+            if (editingId) {
+                await this.linkManager.updateLink(linkData);
+            } else {
+                await this.linkManager.addLink(linkData);
+            }
+
+            this.uiManager.resetForm();
+        } catch (error) {
+            NotificationService.showError('An error occurred.');
+            console.error(error);
         }
-
-        this.uiManager.resetForm();
     }
 
     handleLinkItemClick(event) {
@@ -79,18 +90,21 @@ class App {
         }
     }
 
-    handleToggleClick(event) {
+    async handleToggleClick(event) {
         const linkItem = event.target.closest('.link-item');
         if (!linkItem) return;
 
         const linkId = Number(linkItem.getAttribute('data-id'));
 
         if (event.target.classList.contains('toggle-switch')) {
-            this.linkManager.toggleLink(linkId);
+            await this.linkManager.toggleLink(linkId);
+            NotificationService.showInfo('Link toggled.');
         } else if (event.target.classList.contains('complete-toggle')) {
-            this.linkManager.toggleLinkProperty(linkId, 'complete');
+            await this.linkManager.toggleLinkProperty(linkId, 'complete');
+            NotificationService.showInfo('Complete status toggled.');
         } else if (event.target.classList.contains('ip-toggle')) {
-            this.linkManager.toggleLinkProperty(linkId, 'ip');
+            await this.linkManager.toggleLinkProperty(linkId, 'ip');
+            NotificationService.showInfo('IP status toggled.');
         }
     }
 }
