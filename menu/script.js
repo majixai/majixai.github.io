@@ -48,6 +48,19 @@ $(document).ready(() => {
                     link.on('click', (e) => {
                         e.preventDefault();
                 const url = linkData.url;
+                const now = new Date();
+                const dateStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+                let clicks = JSON.parse(localStorage.getItem('clicks') || '{}');
+                if (!clicks[dateStr]) {
+                    clicks[dateStr] = [];
+                }
+                clicks[dateStr].push({
+                    url: url,
+                    text: linkData.text,
+                    time: now.toLocaleTimeString()
+                });
+                localStorage.setItem('clicks', JSON.stringify(clicks));
+
                 $.ajax({
                     url: '/api/links/click',
                     type: 'POST',
@@ -171,6 +184,17 @@ $(document).ready(() => {
         });
     }
 
+
+    // Modal
+    $('.close').on('click', () => {
+        $('#calendar-modal').hide();
+    });
+
+    $(window).on('click', (event) => {
+        if (event.target == $('#calendar-modal')[0]) {
+            $('#calendar-modal').hide();
+        }
+    });
 
     // Initial load
     loadMenuData();

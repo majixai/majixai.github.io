@@ -50,8 +50,19 @@ class Calendar {
                 } else {
                     const dayCell = $('<div></div>').addClass('calendar-day').text(day);
                     dayCell.on('click', () => {
-                        console.log(`Clicked on ${day}/${data.month}/${data.year}`);
-                        this.container.hide();
+                        const dateStr = `${data.year}-${data.month}-${day}`;
+                        const clicks = JSON.parse(localStorage.getItem('clicks') || '{}');
+                        const clickedLinks = clicks[dateStr] || [];
+                        const clickedLinksList = $('#clicked-links-list');
+                        clickedLinksList.empty();
+                        if (clickedLinks.length > 0) {
+                            clickedLinks.forEach(click => {
+                                clickedLinksList.append(`<li>${click.text} at ${click.time}</li>`);
+                            });
+                        } else {
+                            clickedLinksList.append('<li>No links clicked on this day.</li>');
+                        }
+                        $('#calendar-modal').show();
                     });
                     this.calendarDays.append(dayCell);
                 }
