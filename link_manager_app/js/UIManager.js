@@ -1,7 +1,7 @@
 export class UIManager {
     constructor() {
         this.linkForm = document.getElementById('link-form');
-        this.linksContainer = document.getElementById('links-container');
+        this.linksContainer = document.getElementById('link-list'); // Changed to link-list
         this.sectionSelect = document.getElementById('section');
         this.investingOptions = document.getElementById('investing-options');
         this.editingIdInput = document.getElementById('editingId');
@@ -22,16 +22,25 @@ export class UIManager {
         linkElement.setAttribute('data-id', link.id);
 
         const isEnabled = link.isEnabled === undefined ? true : link.isEnabled;
+
         linkElement.innerHTML = `
-            <label class="switch">
-                <input type="checkbox" class="toggle-switch" ${isEnabled ? 'checked' : ''}>
-                <span class="slider round"></span>
-            </label>
-            <a href="${link.link}" target="_blank">${link.name}</a>
-            <span>(${link.section})</span>
-            ${link.section === 'investing' ? ` - Trades: ${link.tradesPerDay}` : ''}
-            <button class="edit-btn">Edit</button>
-            <button class="delete-btn">Delete</button>
+            <div class="link-info">
+                <a href="${link.link}" target="_blank">${link.name}</a>
+                <span class="section-info">
+                    (${link.section})
+                    ${link.section === 'investing' ? ` - Trades: ${link.tradesPerDay}` : ''}
+                </span>
+            </div>
+            <div class="controls">
+                <label class="switch">
+                    <input type="checkbox" class="toggle-switch" ${isEnabled ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+                <div class="actions">
+                    <button class="edit-btn">Edit</button>
+                    <button class="delete-btn">Delete</button>
+                </div>
+            </div>
         `;
         return linkElement;
     }
