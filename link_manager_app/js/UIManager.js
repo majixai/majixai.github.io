@@ -56,6 +56,41 @@ export class UIManager {
         this.ledgerEntriesContainer.appendChild(table);
     }
 
+    renderEntireLedger(links) {
+        this.ledgerContainer.style.display = 'block';
+        this.ledgerEntriesContainer.innerHTML = '';
+        const allEntries = links.flatMap(link => link.ledger.map(entry => ({ ...entry, linkName: link.name })));
+
+        if (allEntries.length === 0) {
+            this.ledgerEntriesContainer.innerHTML = '<p>No ledger entries yet.</p>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.classList.add('w3-table-all');
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Link</th>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${allEntries.map(entry => `
+                    <tr>
+                        <td>${entry.linkName}</td>
+                        <td>${entry.date}</td>
+                        <td>${entry.description}</td>
+                        <td>${entry.amount}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        `;
+        this.ledgerEntriesContainer.appendChild(table);
+    }
+
     loadUrlInIframe(url) {
         this.iframe.src = url;
     }

@@ -80,4 +80,8 @@ export class LinkManager {
             NotificationService.showSuccess('Ledger entry added successfully!');
         }
     }
+
+    getAllLinks() {
+        return this.#links;
+    }
 }
