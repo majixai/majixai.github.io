@@ -14,7 +14,11 @@ export class EntityManager {
 
     async loadEntities() {
         const entitiesData = await StorageService.get(this.storageKey);
-        this.#entities = entitiesData.map(data => new NamedEntity(data));
+        this.loadFromData(entitiesData);
+    }
+
+    loadFromData(data) {
+        this.#entities = data.map(d => new NamedEntity(d));
         this.uiManager.renderEntities(this.#entities);
     }
 

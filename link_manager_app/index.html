@@ -18,6 +18,13 @@
             <button id="toggle-calendar-btn" class="w3-button w3-blue">Calendar</button>
             <button id="toggle-iframe-btn" class="w3-button w3-green">Iframe</button>
             <button id="toggle-contacts-btn" class="w3-button w3-orange">Contacts</button>
+            <button id="slot-machine-btn" class="w3-button w3-red">Slot Machine</button>
+        </div>
+
+        <div id="file-api-buttons">
+            <button id="download-btn" class="w3-button w3-blue">Download Data</button>
+            <input type="file" id="upload-input" style="display: none;">
+            <button id="upload-btn" class="w3-button w3-green">Upload Data</button>
         </div>
 
         <div id='calendar'></div>
@@ -144,6 +151,17 @@
                 <h2>Actions</h2>
                 <button id="modal-edit-btn" class="w3-button w3-blue">Edit</button>
                 <button id="modal-delete-btn" class="w3-button w3-red">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="slot-machine-modal" class="w3-modal">
+        <div class="w3-modal-content">
+            <div class="w3-container">
+                <span onclick="document.getElementById('slot-machine-modal').style.display='none'"
+                      class="w3-button w3-display-topright">&times;</span>
+                <h2>Slot Machine</h2>
+                <iframe src="../jinxcasino/index.html" width="100%" height="500px" style="border:none;"></iframe>
             </div>
         </div>
     </div>

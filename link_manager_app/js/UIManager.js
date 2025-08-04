@@ -13,6 +13,7 @@ export class UIManager {
         this.addAttachmentBtn = document.getElementById('add-attachment-btn');
         this.attachmentsList = document.getElementById('attachments-list');
         this.modal = document.getElementById('actions-modal');
+        this.slotMachineModal = document.getElementById('slot-machine-modal');
         this.iframeContainer = document.getElementById('iframe-container');
         this.ledgerContainer = document.getElementById('ledger-container');
         this.ledgerEntriesContainer = document.getElementById('ledger-entries');
@@ -22,6 +23,14 @@ export class UIManager {
         this.currentLinkId = null;
         this.currentLedgerLinkId = null;
         this.attachments = [];
+    }
+
+    openSlotMachineModal() {
+        this.slotMachineModal.style.display = 'block';
+    }
+
+    closeSlotMachineModal() {
+        this.slotMachineModal.style.display = 'none';
     }
 
     switchView(view) {
