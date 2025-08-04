@@ -69,6 +69,22 @@ class App {
         document.getElementById('toggle-contacts-btn').addEventListener('click', () => {
             this.handleViewToggle('contacts');
         });
+
+        document.getElementById('slot-machine-btn').addEventListener('click', () => {
+            this.uiManager.openSlotMachineModal();
+        });
+
+        document.getElementById('download-btn').addEventListener('click', () => {
+            this.handleDownload();
+        });
+
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            document.getElementById('upload-input').click();
+        });
+
+        document.getElementById('upload-input').addEventListener('change', (event) => {
+            this.handleUpload(event);
+        });
     }
 
     async handleFormSubmit() {
@@ -129,6 +145,43 @@ class App {
 
     handleViewToggle(view) {
         this.uiManager.switchView(view);
+    }
+
+    handleDownload() {
+        const data = {
+            entities: this.entityManager.getAllEntities(),
+            contacts: this.contactManager.getAllContacts(),
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "link_manager_data.json");
+        document.body.appendChild(downloadAnchorNode); // required for firefox
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    handleUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.entities) {
+                        this.entityManager.loadFromData(data.entities);
+                    }
+                    if (data.contacts) {
+                        this.contactManager.loadFromData(data.contacts);
+                    }
+                    NotificationService.showSuccess('Data loaded successfully!');
+                } catch (error) {
+                    NotificationService.showError('Error parsing file.');
+                    console.error(error);
+                }
+            };
+            reader.readAsText(file);
+        }
     }
 }
 

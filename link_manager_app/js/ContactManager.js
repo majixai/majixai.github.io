@@ -12,7 +12,11 @@ export class ContactManager {
 
     async loadContacts() {
         const contactsData = await StorageService.get(this.storageKey);
-        this.#contacts = contactsData.map(data => new Contact(data));
+        this.loadFromData(contactsData);
+    }
+
+    loadFromData(data) {
+        this.#contacts = data.map(d => new Contact(d));
         this.uiManager.renderContacts(this.#contacts);
     }
 
