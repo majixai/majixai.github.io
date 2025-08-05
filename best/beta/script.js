@@ -1,4 +1,23 @@
 (function() {
+    // Global error collection (remains global for now)
+    let collectedJsErrors = []; 
+    window.onerror = function(message, source, lineno, colno, error) {
+        const errorDetails = {
+            message: message,
+            source: source,
+            lineno: lineno,
+            colno: colno,
+            error: error ? error.stack : 'N/A',
+            timestamp: new Date().toISOString()
+        };
+        collectedJsErrors.push(errorDetails);
+        console.error("Collected JS Error:", errorDetails);
+        if (collectedJsErrors.length > 100) {
+            collectedJsErrors.shift();
+        }
+        return false;
+    };
+
     class App {
         // Service and Manager instances
         apiService;
@@ -26,31 +45,30 @@
         bigTipperAppIframe;
         copyJsErrorsButton;
         filterBirthdayBannerButton;
-
+            
         // Private State Variables
         #storageType;
         #previousUsers = [];
         #allOnlineUsersData = [];
         #lastFilteredUsers = [];
-        #collectedJsErrors = [];
         #fetchInterval = null;
         #initialIframesSet = false;
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
-        #hasMoreOnlineUsersToLoad = true;
+        #hasMoreOnlineUsersToLoad = true; 
 
         #previousUsersDisplayOffset = 0;
-        #previousUsersPageSize = 25;
+        #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
-
+        
         constructor() {
             // Instantiate services and managers
             // Config variables (apiUrlBase, etc.) are globally available from config.js
             this.apiService = new ApiService(apiUrlBase, apiLimit, maxApiFetchLimit, apiFetchTimeout);
             this.uiManager = new UIManager();
-            this.storageManager = new StorageManager();
+            this.storageManager = new StorageManager(); 
 
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
@@ -61,11 +79,11 @@
             this.filterTagsSelect = document.getElementById("filterTags");
             this.filterAgeSelect = document.getElementById("filterAge");
             this.sendReportButton = document.getElementById("sendReportButton");
-
+            
             this.newSnippetInput = document.getElementById('newSnippetInput');
             this.saveSnippetButton = document.getElementById('saveSnippetButton');
             this.currentSnippetDisplay = document.getElementById('currentSnippetDisplay');
-            this.snippetStatusMessage = document.getElementById('snippetStatusMessage');
+            this.snippetStatusMessage = document.getElementById('snippetStatusMessage'); 
 
             this.mainTextArea = document.getElementById('mainTextArea');
             this.autocompleteSuggestionsContainer = document.getElementById('autocompleteSuggestionsContainer');
@@ -84,47 +102,10 @@
             this.storageModal = document.getElementById('storageModal');
             this.closeSettingsModal = document.getElementById('closeSettingsModal');
             this.closeStorageModal = document.getElementById('closeStorageModal');
-            this.scrollSpeed = document.getElementById('scrollSpeed');
-            this.autoIframeChange = document.getElementById('autoIframeChange');
-            this.iframeChangeInterval = document.getElementById('iframeChangeInterval');
-            this.faceApiEnabled = document.getElementById('faceApiEnabled');
-            this.iframeRecognitionEnabled = document.getElementById('iframeRecognitionEnabled');
-            this.ocrEnabled = document.getElementById('ocrEnabled');
-            this.controlsModal = document.getElementById('controlsModal');
-            this.closeControlsModal = document.getElementById('closeControlsModal');
-            this.slotsModal = document.getElementById('slotsModal');
-            this.closeSlotsModal = document.getElementById('closeSlotsModal');
-            this.spinButton = document.getElementById('spinButton');
-
+            
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
-            window.storageType = this.#storageType;
-        }
-
-        #handleGlobalError(message, source, lineno, colno, error) {
-            const errorDetails = {
-                message: message,
-                source: source,
-                lineno: lineno,
-                colno: colno,
-                error: error ? error.stack : 'N/A',
-                timestamp: new Date().toISOString()
-            };
-            this.#collectedJsErrors.push(errorDetails);
-            console.error("Collected JS Error:", errorDetails);
-            if (this.#collectedJsErrors.length > 100) {
-                this.#collectedJsErrors.shift();
-            }
-
-            // Automatically copy to clipboard
-            const errStr = `T: ${errorDetails.timestamp}\nM: ${errorDetails.message}\nS: ${errorDetails.source}\nL: ${errorDetails.lineno}, C: ${errorDetails.colno}\nStack: ${errorDetails.error}`;
-            navigator.clipboard.writeText(errStr).then(() => {
-                this.uiManager.showGeneralNotification('Error copied to clipboard!', 'error');
-            }).catch(err => {
-                console.error('Failed to copy error to clipboard:', err);
-            });
-
-            return false; // Prevent default browser error handling
+            window.storageType = this.#storageType; 
         }
 
         #isBirthday(birthday) {
@@ -145,7 +126,7 @@
                     return false;
                 }
                 const birthDate = new Date(Date.UTC(year, month - 1, day));
-                if (isNaN(birthDate.getTime()) ||
+                if (isNaN(birthDate.getTime()) || 
                     birthDate.getUTCFullYear() !== year ||
                     birthDate.getUTCMonth() !== (month - 1) ||
                     birthDate.getUTCDate() !== day) {
@@ -156,50 +137,6 @@
             } catch (e) {
                  console.error("Error checking birthday for:", birthday, e);
                  return false;
-            }
-        }
-
-        async #toggleOcr() {
-            if (this.ocrEnabled.checked && !this.#tesseractWorker) {
-                this.uiManager.showOnlineLoadingIndicator("Loading OCR models...");
-                try {
-                    this.#tesseractWorker = await Tesseract.createWorker('eng');
-                    this.uiManager.hideOnlineLoadingIndicator();
-                    this.#processVisibleUserImagesWithOcr();
-                } catch (error) {
-                    console.error("Error loading Tesseract.js models:", error);
-                    this.uiManager.showOnlineErrorDisplay("Failed to load OCR models.");
-                }
-            } else {
-                this.#processVisibleUserImagesWithOcr();
-            }
-        }
-
-        #processVisibleUserImagesWithOcr() {
-            const userImages = document.querySelectorAll('.user-image-container img');
-            userImages.forEach(img => {
-                this.#processImageWithOcr(img);
-            });
-        }
-
-        async #processImageWithOcr(imgElement) {
-            if (!this.ocrEnabled.checked || !this.#tesseractWorker) {
-                return;
-            }
-
-            try {
-                const { data: { text } } = await this.#tesseractWorker.recognize(imgElement);
-                const socialMedia = this.#extractSocialMedia(text);
-                if (Object.keys(socialMedia).length > 0) {
-                    const username = imgElement.closest('.user-info').dataset.username;
-                    const user = this.#allOnlineUsersData.find(u => u.username === username);
-                    if (user) {
-                        user.socialMedia = { ...(user.socialMedia || {}), ...socialMedia };
-                        this.#displayOnlineUsersList(this.#lastFilteredUsers);
-                    }
-                }
-            } catch (error) {
-                console.error("Error processing image with OCR:", error);
             }
         }
 
@@ -231,10 +168,10 @@
                 const currentYear = today.getUTCFullYear();
                 const birthdayThisYear = new Date(Date.UTC(currentYear, birthMonth - 1, birthDay));
                 birthdayThisYear.setUTCHours(0,0,0,0);
-
+                
                 if (birthdayThisYear.getUTCMonth() !== (birthMonth - 1) || birthdayThisYear.getUTCDate() !== birthDay) {
                     console.warn("Birthday month/day mismatch after constructing for current year (e.g. Feb 29 on non-leap):", birthdayString, birthdayThisYear);
-                    return "";
+                    return ""; 
                 }
 
                 const diffTime = birthdayThisYear.getTime() - today.getTime();
@@ -303,17 +240,17 @@
                  .replace(/"/g, "&quot;")
                  .replace(/'/g, "&#039;");
         }
-
+        
         #showSnippetStatus(message, type = 'info') {
             if (!this.snippetStatusMessage) return;
             this.snippetStatusMessage.textContent = message;
-            this.snippetStatusMessage.className = '';
-            this.snippetStatusMessage.classList.add('status-message', type);
+            this.snippetStatusMessage.className = ''; 
+            this.snippetStatusMessage.classList.add('status-message', type); 
             if (type === 'success') this.snippetStatusMessage.style.color = 'green';
             else if (type === 'error') this.snippetStatusMessage.style.color = 'red';
             else this.snippetStatusMessage.style.color = 'blue';
             this.snippetStatusMessage.style.display = 'block';
-
+            
             setTimeout(() => {
                 if (this.snippetStatusMessage) this.snippetStatusMessage.style.display = 'none';
             }, 3000);
@@ -331,11 +268,10 @@
 
             try {
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                console.log("App: Fetched initial data:", initialData);
-                this.#allOnlineUsersData = initialData.users.map(u => ({...u, image_urls: [u.image_url]}));
+                this.#allOnlineUsersData = initialData.users;
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
-
+                
                 // this.#lastFilteredUsers = []; // Kept for filter logic, applyFiltersAndDisplay will repopulate
 
                 if (this.#allOnlineUsersData.length > 0) {
@@ -368,7 +304,7 @@
                 console.warn("Autocomplete target or suggestions container not found.");
                 return;
             }
-            if (!inputText || inputText.length < 2) {
+            if (!inputText || inputText.length < 2) { 
                 suggestionsContainer.innerHTML = '';
                 suggestionsContainer.style.display = 'none';
                 return;
@@ -441,7 +377,7 @@
                         try {
                             await this.storageManager.deleteTextSnippet(snippetText);
                             const updatedSnippets = await this.storageManager.loadAllTextSnippets();
-                            this.#displaySnippetsList(updatedSnippets);
+                            this.#displaySnippetsList(updatedSnippets); 
                             this.#showSnippetStatus('Snippet deleted successfully!', 'success');
                         } catch (err) {
                             console.error("Error deleting snippet:", err);
@@ -461,12 +397,12 @@
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
             const topUser1 = femaleUsers[0];
             const topUser2 = femaleUsers[1];
-            if (this.mainIframe && topUser1 && topUser1.username) {
+            if (this.mainIframe && topUser1) {
                 this.mainIframe.src = `https://chaturbate.com/embed/${topUser1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             }
-            if (this.mainIframe2 && topUser2 && topUser2.username) {
+            if (this.mainIframe2 && topUser2) {
                 this.mainIframe2.src = `https://chaturbate.com/embed/${topUser2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            } else if (this.mainIframe2 && topUser1 && topUser1.username && !topUser2) {
+            } else if (this.mainIframe2 && topUser1 && !topUser2) {
                  console.log("Only one top female user found. mainIframe2 not changed or cleared.");
             }
             this.#initialIframesSet = true;
@@ -509,13 +445,13 @@
             let filterAges=[];
             if(buttonFilters.age){filterAges=[parseInt(buttonFilters.age)];if(this.filterAgeSelect)this.filterAgeSelect.value=String(buttonFilters.age)}
             else if(this.filterAgeSelect){filterAges=Array.from(this.filterAgeSelect.selectedOptions).map(o=>parseInt(o.value)).filter(a=>!isNaN(a)&&a>0)}
-
+            
             if (buttonFilters.birthdayBanner) {
                 filterTags = [];
                 filterAges = [];
             }
 
-            this.#lastFilteredUsers=this.#allOnlineUsersData.filter(u=>{
+            this.#lastFilteredUsers=this.#allOnlineUsersData.filter(u=>{ 
                 if(!u||!u.username)return false;
                 const isPublic=u.current_show==='public';
                 let hasTags=true;
@@ -525,10 +461,10 @@
                 }
                 let isAgeMatch=true;
                 if(filterAges.length>0){isAgeMatch=(u.age&&typeof u.age==='number')?filterAges.includes(u.age):false}
-
-                let matchesBirthdayFilter = true;
+                
+                let matchesBirthdayFilter = true; 
                 if (buttonFilters.birthdayBanner) {
-                    matchesBirthdayFilter = this.#isBirthday(u.birthday);
+                    matchesBirthdayFilter = this.#isBirthday(u.birthday); 
                 }
 
                 return isPublic && hasTags && isAgeMatch && matchesBirthdayFilter;
@@ -537,18 +473,13 @@
             // Sort by age if an age filter is active
             if (filterAges.length > 0) {
                 this.#lastFilteredUsers.sort((a, b) => {
-                    const ageA = typeof a.age === 'number' ? a.age : Infinity;
-                    const ageB = typeof b.age === 'number' ? b.age : Infinity;
-                    return ageA - ageB;
-                });
-            } else if (buttonFilters.age === 18) {
-                this.#lastFilteredUsers.sort((a, b) => {
+                    // Ensure ages are numbers and handle cases where age might be missing
                     const ageA = typeof a.age === 'number' ? a.age : Infinity;
                     const ageB = typeof b.age === 'number' ? b.age : Infinity;
                     return ageA - ageB;
                 });
             }
-            this.#displayOnlineUsersList(this.#lastFilteredUsers);
+            this.#displayOnlineUsersList(this.#lastFilteredUsers); 
         }
 
         #displayOnlineUsersList(usersToDisplay) {
@@ -560,7 +491,7 @@
             }
             const fragment = document.createDocumentFragment();
             usersToDisplay.forEach(user => {
-                if (!user || !user.image_urls || user.image_urls.length === 0 || !user.username) return;
+                if (!user || !user.image_url || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
                     user,
@@ -573,8 +504,7 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this),
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia, // Add the new socialMedia object here
-                    this.#handleScanUser.bind(this)
+                    socialMedia // Add the new socialMedia object here
                 );
                 fragment.appendChild(userElement);
             });
@@ -592,24 +522,23 @@
                 if (!user || !user.image_url || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
-                    user,
-                    'online',
-                    this.#handleUserClick.bind(this),
-                    this.#removeFromPreviousUsers.bind(this),
-                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
-                    this.#isBirthday.bind(this),
+                    user, 
+                    'online', 
+                    this.#handleUserClick.bind(this), 
+                    this.#removeFromPreviousUsers.bind(this), 
+                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
+                    this.#isBirthday.bind(this), 
                     this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
-                    this.#displayPreviousUsers.bind(this),
+                    this.#displayPreviousUsers.bind(this), 
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia, // Add the new socialMedia object here
-                    this.#handleScanUser.bind(this)
+                    socialMedia // Add the new socialMedia object here
                 );
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
         }
-
+        
         async #fetchMoreOnlineUsers() {
             if (this.#isLoadingOnlineUsers || !this.#hasMoreOnlineUsersToLoad) {
                 console.log("App: Not fetching more users. isLoading:", this.#isLoadingOnlineUsers, "hasMore:", this.#hasMoreOnlineUsersToLoad);
@@ -623,7 +552,7 @@
 
             try {
                 const nextPageData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-
+                
                 if (nextPageData && nextPageData.users) {
                     console.log(`App: Fetched ${nextPageData.users.length} more users.`);
                     this.#allOnlineUsersData = this.#allOnlineUsersData.concat(nextPageData.users);
@@ -636,7 +565,7 @@
                     // you might call #applyFiltersAndDisplay() which would re-render the whole list.
                     // For this step, we will append directly.
                     await this.#appendOnlineUsersList(nextPageData.users);
-
+                    
                     if (!this.#hasMoreOnlineUsersToLoad) {
                         console.log("App: No more online users to load.");
                         // Optionally: Display a "no more users" message.
@@ -660,11 +589,11 @@
 
         async #displayPreviousUsers() {
             if (!this.previousUsersDiv) return;
-
+            
             // a. Handle Concurrent Loads
             if (this.#isLoadingMorePreviousUsers && this.#previousUsersDisplayOffset > 0) { // Only skip if it's a subsequent load
                 console.log("App: Already loading more previous users. Skipping.");
-                return;
+                return; 
             }
             this.#isLoadingMorePreviousUsers = true;
             console.log("App: Starting #displayPreviousUsers. Offset:", this.#previousUsersDisplayOffset);
@@ -730,12 +659,12 @@
             // d. Determine Batch to Process
             const currentBatch = this.#previousUsers.slice(this.#previousUsersDisplayOffset, this.#previousUsersDisplayOffset + this.#previousUsersPageSize);
             console.log(`App: Processing batch of ${currentBatch.length} previous users. From offset ${this.#previousUsersDisplayOffset}`);
-
+            
             // Advance offset by how many were sliced for the NEXT potential load.
             // This is done before filtering for online, as we've "consumed" this part of the #previousUsers array.
-            this.#previousUsersDisplayOffset += currentBatch.length;
+            this.#previousUsersDisplayOffset += currentBatch.length; 
             if (this.#previousUsersDisplayOffset >= this.#previousUsers.length) {
-                 this.#hasMorePreviousUsersToLoad = false;
+                 this.#hasMorePreviousUsersToLoad = false; 
                  console.log("App: Reached end of #previousUsers array.");
             }
 
@@ -759,7 +688,7 @@
                 } else {
                     console.log("App: No users from the current history batch are online.");
                     // If we want to try loading next batch automatically if this one was empty of online users:
-                    if (this.#hasMorePreviousUsersToLoad) {
+                    if (this.#hasMorePreviousUsersToLoad) { 
                         console.log("App: Trying to display next batch of previous users as this one was empty of online users.");
                         // Before recursing, ensure loading indicator for current attempt is removed
                         if (loadingMoreIndicatorAdded) {
@@ -781,35 +710,34 @@
                     if (!user || !user.image_url || !user.username) return;
                     const socialMedia = this.#extractSocialMedia(user.description);
                     const userElement = this.uiManager.createUserElement(
-                        user,
-                        'previous',
-                        this.#handleUserClick.bind(this),
-                        this.#removeFromPreviousUsers.bind(this),
-                        (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
-                        this.#isBirthday.bind(this),
-                        this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
-                        this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
+                        user, 
+                        'previous', 
+                        this.#handleUserClick.bind(this), 
+                        this.#removeFromPreviousUsers.bind(this), 
+                        (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
+                        this.#isBirthday.bind(this), 
+                        this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager), 
+                        this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), 
                         this.#displayPreviousUsers.bind(this),
                         (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                        socialMedia, // Add the new socialMedia object here
-                        this.#handleScanUser.bind(this)
+                        socialMedia // Add the new socialMedia object here
                     );
                     fragment.appendChild(userElement);
                 });
                 this.previousUsersDiv.appendChild(fragment);
             }
-
+            
             // Remove initial "Loading history..." or other generic messages if users are now shown
             const loadingMsg = this.previousUsersDiv.querySelector('p.text-muted');
             if (loadingMsg && this.previousUsersDiv.querySelectorAll('.user-info').length > 0) {
-                 if (loadingMsg.textContent.includes('Loading history...') ||
+                 if (loadingMsg.textContent.includes('Loading history...') || 
                      loadingMsg.textContent.includes('History loaded. Fetch online status for users...') ||
                      loadingMsg.textContent.includes('None of your saved users from the first batch are online & public.')) {
                     // Only remove if it's one of these specific messages and actual users are present
                     loadingMsg.remove();
                 }
             }
-
+            
             // g. Finalize (moved to finally block) and handle "All history checked" message
             if (!this.#hasMorePreviousUsersToLoad && this.previousUsersDiv.querySelector('.user-info')) {
                  // Ensure no other message is clobbering this one, and it's not already there
@@ -868,24 +796,12 @@
             }
         }
 
-        async #handleScanUser(username) {
-            if (!username) return;
-            const userElement = document.querySelector(`.user-info[data-username="${username}"]`);
-            if (!userElement) return;
-            const img = userElement.querySelector('img');
-            if (!img) return;
-
-            this.uiManager.showGeneralNotification(`Scanning ${username}...`, 'info', 2000);
-            await this.#processImage(img);
-            await this.#processImageWithOcr(img);
-        }
-
         async #clearPreviousUsers() {
             if (!confirm("Are you sure you want to clear your entire viewing history?")) return;
             this.uiManager.showOnlineLoadingIndicator("Clearing history...");
             this.#previousUsers = [];
             try {
-                await this.storageManager.saveUsers("previousUsers", []);
+                await this.storageManager.saveUsers("previousUsers", []); 
                 if (this.#storageType === "indexedClicked" || this.#storageType?.startsWith('IndexedDB:')) {
                     // This assumes saveUsers with an empty array effectively clears it or an explicit delete might be needed.
                 }
@@ -919,7 +835,7 @@
 
         #validateDOMReferences() {
             const critical = [this.onlineUsersDiv, this.previousUsersDiv, this.mainIframe, this.mainIframe2, this.storageTypeSelector, this.filterTagsSelect, this.filterAgeSelect];
-            if (critical.some(el => !el)) {
+            if (critical.some(el => !el)) { 
                 const missing = critical.map((el,i)=>el?null:["onlineUsersDiv","previousUsersDiv","mainIframe","mainIframe2","storageTypeSelector","filterTagsSelect","filterAgeSelect"][i]).filter(Boolean).join(', ');
                 console.error(`CRITICAL ERROR: Missing essential DOM elements: ${missing}. App might not function.`);
                 this.uiManager.showOnlineErrorDisplay(`Initialization failed: Missing elements (${missing}).`);
@@ -933,7 +849,7 @@
                 const newStorageType = event.target.value;
                 if (newStorageType !== this.#storageType) {
                     this.#storageType = newStorageType;
-                    window.storageType = newStorageType;
+                    window.storageType = newStorageType; 
                     this.uiManager.showOnlineLoadingIndicator("Loading history from new source...");
                     this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
                     await this.#displayPreviousUsers();
@@ -948,7 +864,7 @@
             document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
             document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'deepthroat' }));
             document.getElementById("filterTagBigboobs")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'bigboobs' }));
-
+            
             if (this.filterBirthdayBannerButton) {
                 this.filterBirthdayBannerButton.addEventListener('click', () => {
                     if (this.filterTagsSelect) this.filterTagsSelect.value = "";
@@ -990,7 +906,7 @@
                     setTimeout(() => { if (this.autocompleteSuggestionsContainer) this.autocompleteSuggestionsContainer.style.display = 'none'; }, 150);
                 });
             }
-
+            
             if (this.bigTipperPopupButton && this.bigTipperAppModal && this.closeBigTipperAppModal && this.bigTipperAppIframe) {
                 this.bigTipperPopupButton.addEventListener('click', () => {
                     this.bigTipperAppIframe.src = 'https://chaturbate.com/app/a78a1e8e-Big-Tipper/';
@@ -1005,25 +921,14 @@
                     }
                 });
             }
-
+            
             if (this.copyJsErrorsButton) {
                 this.copyJsErrorsButton.addEventListener('click', async () => {
-                    if(this.#collectedJsErrors.length===0){
-                        this.uiManager.showGeneralNotification('No JS errors collected.', 'info');
-                        return;
-                    }
-                    let errStr="Collected JS Errors:\n\n";
-                    this.#collectedJsErrors.forEach(e=>{errStr+=`T: ${e.timestamp}\nM: ${e.message}\nS: ${e.source}\nL: ${e.lineno}, C: ${e.colno}\nStack: ${e.error}\n----\n`});
-                    try {
-                        await navigator.clipboard.writeText(errStr);
-                        this.uiManager.showGeneralNotification('JS errors copied to clipboard!', 'success');
-                    } catch(e) {
-                        this.uiManager.showGeneralNotification('Failed to copy JS errors.', 'error');
-                    }
+                    if(collectedJsErrors.length===0){this.#showSnippetStatus('No JS errors collected.','info');return}
+                    let errStr="Collected JS Errors:\n\n";collectedJsErrors.forEach(e=>{errStr+=`T: ${e.timestamp}\nM: ${e.message}\nS: ${e.source}\nL: ${e.lineno}, C: ${e.colno}\nStack: ${e.error}\n----\n`});
+                    try{await navigator.clipboard.writeText(errStr);this.#showSnippetStatus('JS errors copied!','success')}catch(e){this.#showSnippetStatus('Failed to copy JS errors.','error')}
                 });
             }
-
-            window.onerror = this.#handleGlobalError.bind(this);
 
             this.settingsButton?.addEventListener('click', () => {
                 if (this.settingsModal) this.settingsModal.style.display = 'flex';
@@ -1048,39 +953,50 @@
                 if (event.target === this.storageModal) {
                     this.storageModal.style.display = 'none';
                 }
-                if (event.target === this.controlsModal) {
-                    this.controlsModal.style.display = 'none';
-                }
             });
 
-            const toggleBtn = document.getElementById('toggleControlsButton');
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', () => {
-                    if (this.controlsModal) this.controlsModal.style.display = 'flex';
+            if (typeof $ !== 'undefined') {
+                const $toggleButton = $('#toggleControlsButton');
+                const $sectionsToToggle = $('#snippetManagerContainer, #mainTextAreaContainer');
+
+                $toggleButton.on('click', () => {
+                    $sectionsToToggle.slideToggle(function() { 
+                        if ($('#snippetManagerContainer').is(':visible')) {
+                            $toggleButton.text('Hide Controls');
+                        } else {
+                            $toggleButton.text('Show Controls');
+                        }
+                    });
                 });
-            }
-
-            this.closeControlsModal?.addEventListener('click', () => {
-                if (this.controlsModal) this.controlsModal.style.display = 'none';
-            });
-
-            this.closeSlotsModal?.addEventListener('click', () => {
-                if (this.slotsModal) this.slotsModal.style.display = 'none';
-            });
-
-            let lastTap = 0;
-            document.addEventListener('touchend', (event) => {
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-                if (tapLength < 500 && tapLength > 0) {
-                    if (this.slotsModal) this.slotsModal.style.display = 'flex';
+                if (!$('#snippetManagerContainer').is(':visible')) {
+                    $toggleButton.text('Show Controls');
+                } else {
+                     $toggleButton.text('Hide Controls');
                 }
-                lastTap = currentTime;
-            });
+            } else {
+                const toggleBtn = document.getElementById('toggleControlsButton');
+                const snippetManager = document.getElementById('snippetManagerContainer');
+                const mainTextArea = document.getElementById('mainTextAreaContainer');
 
-            this.spinButton?.addEventListener('click', () => {
-                this.#spinSlots();
-            });
+                if (toggleBtn && snippetManager && mainTextArea) {
+                    const toggleAllSections = () => {
+                        const isHidden = snippetManager.style.display === 'none' || snippetManager.style.display === '';
+                        
+                        snippetManager.style.display = isHidden ? 'block' : 'none'; 
+                        mainTextArea.style.display = isHidden ? 'block' : 'none'; 
+                        
+                        toggleBtn.textContent = isHidden ? 'Hide Controls' : 'Show Controls';
+                    };
+
+                    toggleBtn.addEventListener('click', toggleAllSections);
+
+                    if (snippetManager.style.display === 'none' || snippetManager.style.display === '') {
+                        toggleBtn.textContent = 'Show Controls';
+                    } else {
+                        toggleBtn.textContent = 'Hide Controls';
+                    }
+                }
+            }
 
             // Listen for window resize events to adjust layout
             let resizeTimeout;
@@ -1093,291 +1009,101 @@
 
             // Infinite scroll for online users list
             if (this.onlineUsersDiv) {
+                let scrollTimeout;
                 this.onlineUsersDiv.addEventListener('scroll', () => {
-                    const element = this.onlineUsersDiv;
-                    const threshold = 100; // Pixels from bottom to trigger
-
-                    if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
-                        if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                            this.#fetchMoreOnlineUsers();
+                    clearTimeout(scrollTimeout);
+                    scrollTimeout = setTimeout(() => {
+                        const element = this.onlineUsersDiv;
+                        const threshold = 100; // Pixels from bottom to trigger
+                        
+                        // Check if scrolled to near the bottom and if we should fetch more
+                        if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
+                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                                console.log('App: Scrolled near bottom of online users list. Fetching more...');
+                                this.#fetchMoreOnlineUsers();
+                            }
                         }
-                    }
+                    }, 150); // Debounce delay of 150ms
                 });
             }
 
             // Infinite scroll for previous users list
             if (this.previousUsersDiv) {
+                let previousUsersScrollTimeout;
                 this.previousUsersDiv.addEventListener('scroll', () => {
-                    const element = this.previousUsersDiv;
-                    const threshold = 100;
+                    clearTimeout(previousUsersScrollTimeout);
+                    previousUsersScrollTimeout = setTimeout(() => {
+                        // Ensure 'this' correctly references the App instance
+                        const appInstance = this; 
+                        const element = appInstance.previousUsersDiv;
+                        const threshold = 100; 
 
-                    if (this.#hasMorePreviousUsersToLoad && !this.#isLoadingMorePreviousUsers) {
-                        if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                            this.#displayPreviousUsers();
+                        if (appInstance.#hasMorePreviousUsersToLoad && !appInstance.#isLoadingMorePreviousUsers) {
+                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                                console.log('App: Scrolled near bottom of previous users list. Loading more...');
+                                appInstance.#displayPreviousUsers(); // Call the updated method
+                            }
                         }
-                    }
+                    }, 150); // Debounce delay of 150ms
                 });
             }
-
-            this.scrollSpeed?.addEventListener('input', (event) => {
-                this.#startAutoScroll(event.target.value);
-            });
-
-            this.autoIframeChange?.addEventListener('change', () => {
-                this.#toggleAutoIframeChange();
-            });
-
-            this.iframeChangeInterval?.addEventListener('change', () => {
-                this.#toggleAutoIframeChange();
-            });
-
-            this.faceApiEnabled?.addEventListener('change', () => {
-                this.#toggleFaceApi();
-            });
-
-            this.iframeRecognitionEnabled?.addEventListener('change', () => {
-                this.#toggleIframeRecognition();
-            });
-
-            this.ocrEnabled?.addEventListener('change', () => {
-                this.#toggleOcr();
-            });
-
-            document.getElementById('scanAllButton')?.addEventListener('click', () => {
-                this.uiManager.showGeneralNotification('Scanning all visible users...', 'info', 2000);
-                this.#processVisibleUserImages();
-                this.#processVisibleUserImagesWithOcr();
-            });
         }
 
-        #autoScrollInterval = null;
-        #autoIframeChangeInterval = null;
-        #faceApiLoaded = false;
-        #tesseractWorker = null;
-
-        #startAutoScroll(speed) {
-            clearInterval(this.#autoScrollInterval);
-            if (speed > 0) {
-                this.#autoScrollInterval = setInterval(() => {
-                    if (this.onlineUsersDiv) {
-                        this.onlineUsersDiv.scrollTop += speed / 10;
-                    }
-                    if (this.previousUsersDiv) {
-                        this.previousUsersDiv.scrollTop += speed / 10;
-                    }
-                }, 20);
-            }
-        }
-
-        #toggleAutoIframeChange() {
-            clearInterval(this.#autoIframeChangeInterval);
-            if (this.autoIframeChange.checked) {
-                const interval = (this.iframeChangeInterval.value || 15) * 1000;
-                this.#autoIframeChangeInterval = setInterval(() => {
-                    this.#changeIframes();
-                }, interval);
-            }
-        }
-
-        #changeIframes() {
-            const mostClickedUsers = this.#previousUsers
-                .slice()
-                .sort((a, b) => this.storageManager.getUserClickCount(b.username, this.#previousUsers) - this.storageManager.getUserClickCount(a.username, this.#previousUsers));
-
-            if (mostClickedUsers.length > 0) {
-                const user1 = mostClickedUsers[0];
-                const user2 = mostClickedUsers[1] || mostClickedUsers[0];
-
-                if (this.mainIframe) {
-                    this.mainIframe.src = `https://chaturbate.com/embed/${user1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-                }
-                if (this.mainIframe2) {
-                    this.mainIframe2.src = `https://chaturbate.com/embed/${user2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-                }
-            }
-        }
-
-        async start() {
+        async start() { 
             console.log("App: Initializing application...");
-            if (!this.#validateDOMReferences()) return;
-
+            if (!this.#validateDOMReferences()) return; 
+            
             await this.storageManager.init().catch(error => {
                 console.error("StorageManager initialization failed during App.start:", error);
                 this.uiManager.showOnlineErrorDisplay("Critical error: Failed to initialize storage. Application may not function correctly.");
-                throw error;
+                throw error; 
             });
 
             await this.storageManager.populateStorageOptions();
-            this.#storageType = window.storageType;
+            this.#storageType = window.storageType; 
 
-            this.#setupEventListeners();
-
+            this.#setupEventListeners(); 
+            
             if (this.currentSnippetDisplay) {
                 this.storageManager.loadAllTextSnippets()
-                    .then(snippets => this.#displaySnippetsList(snippets))
+                    .then(snippets => this.#displaySnippetsList(snippets)) 
                     .catch(err => {
                         console.error("Error loading initial snippets:", err);
                         this.currentSnippetDisplay.innerHTML = '<p>Error loading snippets.</p>';
-                        this.#showSnippetStatus('Error loading snippets.', 'error');
+                        this.#showSnippetStatus('Error loading snippets.', 'error'); 
                     });
             }
-
+            
             this.uiManager.showOnlineLoadingIndicator("Loading initial history...");
             this.#previousUsers = await this.storageManager.loadUsers("previousUsers");
             console.log(`Initial load: Found ${this.#previousUsers.length} users in history.`);
 
-            if (this.storageManager && this.storageManager.isIndexedDBFailed) {
+            // Add this block after storageManager.init and loadUsers
+            if (this.storageManager && this.storageManager.isIndexedDBFailed) { // Check the getter
                 this.uiManager.showOnlineErrorDisplay(
                     "Main database failed to load. Your browsing history and some settings might not be saved reliably. Using temporary storage. If issues persist, try clearing site data or using a different browser.",
-                    true
+                    true // Pass true to indicate it's a warning
                 );
             }
-
-            await this.#fetchDataAndUpdateUI();
-
-            this.#startFetchInterval();
+            
+            await this.#fetchDataAndUpdateUI(); 
+            
+            this.#startFetchInterval(); 
 
             if (typeof window.initializeAllUsers === 'function') window.initializeAllUsers();
-            window.initializeAllUsersFromScriptJS = (cb) => { if (typeof cb === 'function') cb() };
-
-            this.#adjustLayoutHeights();
+            window.initializeAllUsersFromScriptJS = (cb) => { if(typeof cb==='function')cb() };
+            
+            this.#adjustLayoutHeights(); // Adjust heights after initial load
 
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
         }
 
-        async #toggleFaceApi() {
-            if (this.faceApiEnabled.checked && !this.#faceApiLoaded) {
-                this.uiManager.showOnlineLoadingIndicator("Loading facial recognition models...");
-                try {
-                    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-                    await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-                    await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-                    await faceapi.nets.faceExpressionNet.loadFromUri('/models');
-                    await faceapi.nets.ageGenderNet.loadFromUri('/models');
-                    this.#faceApiLoaded = true;
-                    this.uiManager.hideOnlineLoadingIndicator();
-                    this.#processVisibleUserImages();
-                } catch (error) {
-                    console.error("Error loading face-api.js models:", error);
-                    this.uiManager.showOnlineErrorDisplay("Failed to load facial recognition models.");
-                }
-            } else {
-                this.#processVisibleUserImages();
-            }
-        }
-
-        #processVisibleUserImages() {
-            const userImageContainers = document.querySelectorAll('.user-image-container');
-            userImageContainers.forEach(container => {
-                const img = container.querySelector('img');
-                if (img) {
-                    this.#processImage(img);
-                }
-            });
-        }
-
-        async #processImage(imgElement) {
-            if (!this.faceApiEnabled.checked || !this.#faceApiLoaded) {
-                const canvas = imgElement.nextElementSibling;
-                if (canvas && canvas.tagName === 'CANVAS') {
-                    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-                }
-                return;
-            }
-
-            const detections = await faceapi.detectAllFaces(imgElement, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions().withAgeAndGender();
-            const canvas = imgElement.nextElementSibling;
-            if (canvas && canvas.tagName === 'CANVAS') {
-                const displaySize = { width: imgElement.width, height: imgElement.height };
-                faceapi.matchDimensions(canvas, displaySize);
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                faceapi.draw.drawDetections(canvas, resizedDetections);
-                faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-                faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-                resizedDetections.forEach(result => {
-                    const { age, gender, genderProbability } = result;
-                    new faceapi.draw.DrawTextField(
-                        [
-                            `${faceapi.utils.round(age, 0)} years`,
-                            `${gender} (${faceapi.utils.round(genderProbability)})`
-                        ],
-                        result.detection.box.bottomLeft
-                    ).draw(canvas);
-                });
-            }
-        }
-
-        async #toggleIframeRecognition() {
-            if (this.iframeRecognitionEnabled.checked) {
-                try {
-                    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    video.play();
-
-                    const canvas = document.createElement('canvas');
-                    document.body.appendChild(canvas);
-                    canvas.style.position = 'absolute';
-                    canvas.style.top = '0';
-                    canvas.style.left = '0';
-                    canvas.style.zIndex = '1000';
-
-                    const processFrame = async () => {
-                        if (!this.iframeRecognitionEnabled.checked) {
-                            stream.getTracks().forEach(track => track.stop());
-                            document.body.removeChild(canvas);
-                            return;
-                        }
-
-                        canvas.width = this.mainIframe.clientWidth;
-                        canvas.height = this.mainIframe.clientHeight;
-                        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions().withAgeAndGender();
-                        const displaySize = { width: canvas.width, height: canvas.height };
-                        const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                        faceapi.draw.drawDetections(canvas, resizedDetections);
-                        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-                        faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-                        resizedDetections.forEach(result => {
-                            const { age, gender, genderProbability } = result;
-                            new faceapi.draw.DrawTextField(
-                                [
-                                    `${faceapi.utils.round(age, 0)} years`,
-                                    `${gender} (${faceapi.utils.round(genderProbability)})`
-                                ],
-                                result.detection.box.bottomLeft
-                            ).draw(canvas);
-                        });
-                        requestAnimationFrame(processFrame);
-                    };
-                    processFrame();
-                } catch (error) {
-                    console.error("Error starting iframe recognition:", error);
-                    this.uiManager.showOnlineErrorDisplay("Failed to start iframe recognition.");
-                }
-            }
-        }
-
         #startFetchInterval() {
-            if (this.#fetchInterval) clearInterval(this.#fetchInterval);
-            this.#fetchInterval = setInterval(async () => {
-                await this.#fetchDataAndUpdateUI();
-            }, fetchIntervalDuration);
-        }
-
-        #spinSlots() {
-            const reels = document.querySelectorAll('.reel');
-            const symbols = ['🍒', '🍋', '🍊', '🍉', '🍇', '🍓'];
-            reels.forEach(reel => {
-                const interval = setInterval(() => {
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-                }, 100);
-
-                setTimeout(() => {
-                    clearInterval(interval);
-                    reel.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-                }, 1000);
-            });
+            if (this.#fetchInterval) clearInterval(this.#fetchInterval); 
+            this.#fetchInterval = setInterval(async () => { 
+                await this.#fetchDataAndUpdateUI(); 
+            }, fetchIntervalDuration); 
         }
 
         #adjustLayoutHeights() {
@@ -1483,5 +1209,3 @@
     });
 
 })();
-
-[end of best/alpha/script.js]
