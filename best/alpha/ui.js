@@ -22,17 +22,18 @@ class UIManager {
      * @returns {HTMLElement} The created user div element.
      */
     createUserElement(
-        user, 
-        listType, 
-        handleUserClickCallback, 
-        removeFromPreviousUsersCallback, 
+        user,
+        listType,
+        handleUserClickCallback,
+        removeFromPreviousUsersCallback,
         getUserClickCountCallback,
         isBirthdayCallback,
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
         getDaysSinceOrUntil18thBirthdayCallback, // Existing new callback
-        socialMediaData // Add new parameter for social media
+        socialMediaData, // Add new parameter for social media
+        handleScanUserCallback
     ) {
         const userElement = document.createElement("div");
         userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
@@ -97,17 +98,26 @@ class UIManager {
                 ${birthdayProximityHTMLString}
                 ${socialMediaHTML}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
+                <button class="scan-user-btn w3-button w3-tiny w3-blue w3-hover-dark-grey" title="Scan user image">Scan</button>
                 ${birthdayBanner}
             </div>
         `;
 
         userElement.addEventListener("click", function(event) {
-            if (event.target.closest('.remove-user-btn')) {
+            if (event.target.closest('.remove-user-btn') || event.target.closest('.scan-user-btn')) {
                 return;
             }
             event.preventDefault();
             handleUserClickCallback(user);
         });
+
+        const scanBtn = userElement.querySelector('.scan-user-btn');
+        if (scanBtn) {
+            scanBtn.addEventListener("click", function(event) {
+                event.stopPropagation();
+                handleScanUserCallback(user.username);
+            });
+        }
 
         // const toggleBtn = userElement.querySelector('.toggle-view-btn');
         // if (toggleBtn) {

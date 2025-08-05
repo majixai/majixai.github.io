@@ -573,7 +573,8 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this),
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia // Add the new socialMedia object here
+                    socialMedia, // Add the new socialMedia object here
+                    this.#handleScanUser.bind(this)
                 );
                 fragment.appendChild(userElement);
             });
@@ -601,7 +602,8 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this), 
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia // Add the new socialMedia object here
+                    socialMedia, // Add the new socialMedia object here
+                    this.#handleScanUser.bind(this)
                 );
                 fragment.appendChild(userElement);
             });
@@ -789,7 +791,8 @@
                         this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager), 
                         this.#displayPreviousUsers.bind(this),
                         (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                        socialMedia // Add the new socialMedia object here
+                        socialMedia, // Add the new socialMedia object here
+                        this.#handleScanUser.bind(this)
                     );
                     fragment.appendChild(userElement);
                 });
@@ -863,6 +866,18 @@
                     console.error(`Failed to save previous users after removing ${username}:`, error);
                 }
             }
+        }
+
+        async #handleScanUser(username) {
+            if (!username) return;
+            const userElement = document.querySelector(`.user-info[data-username="${username}"]`);
+            if (!userElement) return;
+            const img = userElement.querySelector('img');
+            if (!img) return;
+
+            this.uiManager.showGeneralNotification(`Scanning ${username}...`, 'info', 2000);
+            await this.#processImage(img);
+            await this.#processImageWithOcr(img);
         }
 
         async #clearPreviousUsers() {
@@ -1126,6 +1141,12 @@
 
             this.ocrEnabled?.addEventListener('change', () => {
                 this.#toggleOcr();
+            });
+
+            document.getElementById('scanAllButton')?.addEventListener('click', () => {
+                this.uiManager.showGeneralNotification('Scanning all visible users...', 'info', 2000);
+                this.#processVisibleUserImages();
+                this.#processVisibleUserImagesWithOcr();
             });
         }
 
