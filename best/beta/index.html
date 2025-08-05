@@ -6,8 +6,6 @@
     <title>Room Viewer</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/face-api.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 </head>
 <body>
     <div class="app-container">
@@ -20,14 +18,10 @@
             </div>
         </div>
 
-        <!-- Controls Modal -->
-        <div id="controlsModal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close-button" id="closeControlsModal">&times;</span>
-                <h2>Controls</h2>
-                <div id="snippetManagerContainer">
-                    <fieldset>
-                        <legend>Text Snippet Manager</legend>
+        <!-- Snippet Manager Section -->
+        <div class="snippet-manager-container" id="snippetManagerContainer" style="display: none;">
+            <fieldset>
+                <legend>Text Snippet Manager</legend>
                 <div class="control-group">
                     <label for="newSnippetInput">Add New Snippet:</label>
                     <textarea id="newSnippetInput" rows="3"></textarea>
@@ -40,14 +34,14 @@
                 <div id="snippetStatusMessage" style="display: none;"></div>
             </fieldset>
         </div>
-        <div id="mainTextAreaContainer">
+
+        <!-- Main Text Area with Autocomplete -->
+        <div class="main-text-area-container" id="mainTextAreaContainer" style="display: none;">
             <fieldset>
                 <legend>Main Text Area (with Snippet Autocomplete)</legend>
                 <textarea id="mainTextArea" rows="6" placeholder="Type here... try '{{' to trigger snippets"></textarea>
                 <div id="autocompleteSuggestionsContainer" class="autocomplete-suggestions" style="display: none;"></div>
             </fieldset>
-        </div>
-        </div>
         </div>
 
         <!-- Main Content Area -->
@@ -115,48 +109,6 @@
                         </div>
                     </fieldset>
                     <fieldset>
-                        <legend>Auto-Scroll</legend>
-                        <div class="control-group">
-                            <label for="scrollSpeed">Scroll Speed:</label>
-                            <input type="range" id="scrollSpeed" min="0" max="10" value="0">
-                        </div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Auto-Iframe Change</legend>
-                        <div class="control-group">
-                            <label for="autoIframeChange">Enable:</label>
-                            <input type="checkbox" id="autoIframeChange">
-                        </div>
-                        <div class="control-group">
-                            <label for="iframeChangeInterval">Interval (seconds):</label>
-                            <input type="number" id="iframeChangeInterval" min="15" value="15">
-                        </div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Facial Recognition</legend>
-                        <div class="control-group">
-                            <label for="faceApiEnabled">Enable:</label>
-                            <input type="checkbox" id="faceApiEnabled">
-                        </div>
-                        <div class="control-group">
-                            <button id="scanAllButton">Scan All Visible</button>
-                        </div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Iframe Recognition</legend>
-                        <div class="control-group">
-                            <label for="iframeRecognitionEnabled">Enable:</label>
-                            <input type="checkbox" id="iframeRecognitionEnabled">
-                        </div>
-                    </fieldset>
-                    <fieldset>
-                        <legend>Image OCR</legend>
-                        <div class="control-group">
-                            <label for="ocrEnabled">Enable:</label>
-                            <input type="checkbox" id="ocrEnabled">
-                        </div>
-                    </fieldset>
-                    <fieldset>
                         <legend>Reporting</legend>
                         <div class="control-group report-controls">
                             <button id="sendReportButton">Send Report</button>
@@ -199,19 +151,6 @@
                 <span class="close-button" id="closeBigTipperAppModal">&times;</span>
                 <h2>Big Tipper App</h2>
                 <iframe id="bigTipperAppIframe" src="about:blank"></iframe>
-            </div>
-        </div>
-
-        <!-- Slots Machine Modal -->
-        <div id="slotsModal" class="modal" style="display:none;">
-            <div class="modal-content fullscreen">
-                <span class="close-button" id="closeSlotsModal">&times;</span>
-                <div class="slots-container">
-                    <div class="reel"></div>
-                    <div class="reel"></div>
-                    <div class="reel"></div>
-                </div>
-                <button id="spinButton">Spin</button>
             </div>
         </div>
     </div>
