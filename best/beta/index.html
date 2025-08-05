@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Viewer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/face-api.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header-controls">
+            <h1>Room Viewer</h1>
+            <div class="control-buttons">
+                <button id="settingsButton">Settings</button>
+                <button id="storageButton">Chat Storage</button>
+                <button id="toggleControlsButton">Toggle Controls</button>
+            </div>
+        </div>
+
+        <!-- Controls Modal -->
+        <div id="controlsModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeControlsModal">&times;</span>
+                <h2>Controls</h2>
+                <div id="snippetManagerContainer">
+                    <fieldset>
+                        <legend>Text Snippet Manager</legend>
+                <div class="control-group">
+                    <label for="newSnippetInput">Add New Snippet:</label>
+                    <textarea id="newSnippetInput" rows="3"></textarea>
+                </div>
+                <button id="saveSnippetButton">Add Snippet</button>
+                <p>Saved Snippets (click to copy):</p>
+                <div id="currentSnippetDisplay">
+                    <p>Loading snippets...</p>
+                </div>
+                <div id="snippetStatusMessage" style="display: none;"></div>
+            </fieldset>
+        </div>
+        <div id="mainTextAreaContainer">
+            <fieldset>
+                <legend>Main Text Area (with Snippet Autocomplete)</legend>
+                <textarea id="mainTextArea" rows="6" placeholder="Type here... try '{{' to trigger snippets"></textarea>
+                <div id="autocompleteSuggestionsContainer" class="autocomplete-suggestions" style="display: none;"></div>
+            </fieldset>
+        </div>
+        </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Previous Users Column -->
+            <div class="user-column" id="previousUsers">
+                <h2>History (Online Now)</h2>
+                <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
+                <div class="user-list">
+                    <p class="text-muted w3-center">Loading history...</p>
+                </div>
+            </div>
+
+            <!-- Main Viewing Column -->
+            <div class="iframe-column">
+                <div class="iframe-selector">
+                    <label><input type="radio" name="iframeChoice" value="mainIframe" checked> Viewport 1</label>
+                    <label><input type="radio" name="iframeChoice" value="mainIframe2"> Viewport 2</label>
+                </div>
+                <div class="iframe-container">
+                    <iframe id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never" title="Main Viewer" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                </div>
+                <div class="iframe-container">
+                    <iframe id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never" title="Secondary Viewer" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                </div>
+            </div>
+
+            <!-- Online Users Column -->
+            <div class="user-column" id="onlineUsers">
+                <h2>Online Users</h2>
+                <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
+                <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
+                <div class="user-list"></div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeSettingsModal">&times;</span>
+                <h2>Settings</h2>
+                <div class="controls-bar" id="controlsBarContainer">
+                    <fieldset>
+                        <legend>Filters & Settings</legend>
+                        <div class="control-group">
+                            <label for="filterTags">Filter by Tag(s):</label>
+                            <select id="filterTags" multiple size="3">
+                                <option value="">-- All Tags --</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="filterAge">Filter by Age(s):</label>
+                            <select id="filterAge" multiple size="3">
+                                <option value="">-- All Ages --</option>
+                            </select>
+                        </div>
+                        <div class="control-group quick-filters">
+                            <span>Quick Filters:</span>
+                            <button id="filterAge18" class="quick-filter-btn">Age 18</button>
+                            <button id="filterTagAsian" class="quick-filter-btn">Asian</button>
+                            <button id="filterTagBlonde" class="quick-filter-btn">Blonde</button>
+                            <button id="filterTagDeepthroat" class="quick-filter-btn">Deepthroat</button>
+                            <button id="filterTagBigboobs" class="quick-filter-btn">bigboobs</button>
+                            <button id="filterBirthdayBanner" class="quick-filter-btn">Birthday Banners</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Auto-Scroll</legend>
+                        <div class="control-group">
+                            <label for="scrollSpeed">Scroll Speed:</label>
+                            <input type="range" id="scrollSpeed" min="0" max="10" value="0">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Auto-Iframe Change</legend>
+                        <div class="control-group">
+                            <label for="autoIframeChange">Enable:</label>
+                            <input type="checkbox" id="autoIframeChange">
+                        </div>
+                        <div class="control-group">
+                            <label for="iframeChangeInterval">Interval (seconds):</label>
+                            <input type="number" id="iframeChangeInterval" min="15" value="15">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Facial Recognition</legend>
+                        <div class="control-group">
+                            <label for="faceApiEnabled">Enable:</label>
+                            <input type="checkbox" id="faceApiEnabled">
+                        </div>
+                        <div class="control-group">
+                            <button id="scanAllButton">Scan All Visible</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Iframe Recognition</legend>
+                        <div class="control-group">
+                            <label for="iframeRecognitionEnabled">Enable:</label>
+                            <input type="checkbox" id="iframeRecognitionEnabled">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Image OCR</legend>
+                        <div class="control-group">
+                            <label for="ocrEnabled">Enable:</label>
+                            <input type="checkbox" id="ocrEnabled">
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Reporting</legend>
+                        <div class="control-group report-controls">
+                            <button id="sendReportButton">Send Report</button>
+                            <span id="reportLoadingIndicator" class="loading-indicator" style="display: none;">Sending...</span>
+                            <div id="reportStatusDisplay" class="report-status" style="display: none;"></div>
+                        </div>
+                        <div class="control-group">
+                            <button id="bigTipperPopupButton">Open Big Tipper App</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Debug</legend>
+                        <div class="control-group">
+                            <button id="copyJsErrorsButton">Copy JS Errors</button>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Storage Modal -->
+        <div id="storageModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeStorageModal">&times;</span>
+                <h2>Chat Storage</h2>
+                <div class="control-group">
+                    <label for="storageType">History Storage:</label>
+                    <select id="storageType">
+                        <option value="local">Local Storage</option>
+                        <option value="session">Session Storage</option>
+                        <option value="indexedClicked">IndexedDB (Default History)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Big Tipper App Modal -->
+        <div id="bigTipperAppModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeBigTipperAppModal">&times;</span>
+                <h2>Big Tipper App</h2>
+                <iframe id="bigTipperAppIframe" src="about:blank"></iframe>
+            </div>
+        </div>
+
+        <!-- Slots Machine Modal -->
+        <div id="slotsModal" class="modal" style="display:none;">
+            <div class="modal-content fullscreen">
+                <span class="close-button" id="closeSlotsModal">&times;</span>
+                <div class="slots-container">
+                    <div class="reel"></div>
+                    <div class="reel"></div>
+                    <div class="reel"></div>
+                </div>
+                <button id="spinButton">Spin</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <script src="storage.js"></script>
+    <script src="ui.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
