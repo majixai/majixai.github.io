@@ -249,7 +249,6 @@ class UIManager {
             reportStatusDisplay.className = 'report-status';
         }
     }
-}
 
     showGeneralNotification(message, type = 'info', duration = 3000) {
         let notificationDiv = document.getElementById('general-notification');
