@@ -22,18 +22,17 @@ class UIManager {
      * @returns {HTMLElement} The created user div element.
      */
     createUserElement(
-        user,
-        listType,
-        handleUserClickCallback,
-        removeFromPreviousUsersCallback,
+        user, 
+        listType, 
+        handleUserClickCallback, 
+        removeFromPreviousUsersCallback, 
         getUserClickCountCallback,
         isBirthdayCallback,
         showOnlineLoadingIndicatorCallback,
         hideOnlineLoadingIndicatorCallback,
         displayPreviousUsersCallback,
         getDaysSinceOrUntil18thBirthdayCallback, // Existing new callback
-        socialMediaData, // Add new parameter for social media
-        handleScanUserCallback
+        socialMediaData // Add new parameter for social media
     ) {
         const userElement = document.createElement("div");
         userElement.className = `user-info w3-card w3-margin-bottom ${listType}-list-item`;
@@ -78,18 +77,13 @@ class UIManager {
             socialMediaHTML += links.join(' | ') + '</p>';
         }
 
-        const slideshowControls = user.image_urls.length > 1 ? `
-            <div class="slideshow-controls">
-                <button class="prev-btn">&lt;</button>
-                <button class="next-btn">&gt;</button>
-            </div>
-        ` : '';
-
         userElement.innerHTML = `
             <div class="user-image-container">
-                <img src="${user.image_urls[0]}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
-                <canvas></canvas>
-                ${slideshowControls}
+                <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image">
+                <!-- div class="iframe-preview-container">
+                    <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
+                </div>
+                <button class="toggle-view-btn">Show Preview</button -->
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -98,26 +92,17 @@ class UIManager {
                 ${birthdayProximityHTMLString}
                 ${socialMediaHTML}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
-                <button class="scan-user-btn w3-button w3-tiny w3-blue w3-hover-dark-grey" title="Scan user image">Scan</button>
                 ${birthdayBanner}
             </div>
         `;
 
         userElement.addEventListener("click", function(event) {
-            if (event.target.closest('.remove-user-btn') || event.target.closest('.scan-user-btn')) {
+            if (event.target.closest('.remove-user-btn')) {
                 return;
             }
             event.preventDefault();
             handleUserClickCallback(user);
         });
-
-        const scanBtn = userElement.querySelector('.scan-user-btn');
-        if (scanBtn) {
-            scanBtn.addEventListener("click", function(event) {
-                event.stopPropagation();
-                handleScanUserCallback(user.username);
-            });
-        }
 
         // const toggleBtn = userElement.querySelector('.toggle-view-btn');
         // if (toggleBtn) {
@@ -134,7 +119,7 @@ class UIManager {
         //         }
         //     });
         // }
-//
+// 
         const removeBtn = userElement.querySelector('.remove-user-btn');
         if (removeBtn) {
             removeBtn.addEventListener("click", async function(event) {
@@ -152,24 +137,6 @@ class UIManager {
                 }
             });
         }
-
-        const prevBtn = userElement.querySelector('.prev-btn');
-        const nextBtn = userElement.querySelector('.next-btn');
-        const img = userElement.querySelector('img');
-        let currentImageIndex = 0;
-
-        prevBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            currentImageIndex = (currentImageIndex - 1 + user.image_urls.length) % user.image_urls.length;
-            img.src = user.image_urls[currentImageIndex];
-        });
-
-        nextBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            currentImageIndex = (currentImageIndex + 1) % user.image_urls.length;
-            img.src = user.image_urls[currentImageIndex];
-        });
-
         return userElement;
     }
 
@@ -258,39 +225,6 @@ class UIManager {
             reportStatusDisplay.textContent = '';
             reportStatusDisplay.className = 'report-status';
         }
-    }
-
-    showGeneralNotification(message, type = 'info', duration = 3000) {
-        let notificationDiv = document.getElementById('general-notification');
-        if (!notificationDiv) {
-            notificationDiv = document.createElement('div');
-            notificationDiv.id = 'general-notification';
-            notificationDiv.style.position = 'fixed';
-            notificationDiv.style.bottom = '20px';
-            notificationDiv.style.left = '50%';
-            notificationDiv.style.transform = 'translateX(-50%)';
-            notificationDiv.style.padding = '10px 20px';
-            notificationDiv.style.borderRadius = '5px';
-            notificationDiv.style.zIndex = '10000';
-            notificationDiv.style.transition = 'opacity 0.5s';
-            notificationDiv.style.opacity = '0';
-            document.body.appendChild(notificationDiv);
-        }
-
-        notificationDiv.textContent = message;
-        if (type === 'error') {
-            notificationDiv.style.backgroundColor = 'rgba(244, 67, 54, 0.9)';
-            notificationDiv.style.color = 'white';
-        } else {
-            notificationDiv.style.backgroundColor = 'rgba(76, 175, 80, 0.9)';
-            notificationDiv.style.color = 'white';
-        }
-
-        notificationDiv.style.opacity = '1';
-
-        setTimeout(() => {
-            notificationDiv.style.opacity = '0';
-        }, duration - 500);
     }
 }
 
