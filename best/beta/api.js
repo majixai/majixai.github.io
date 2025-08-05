@@ -20,7 +20,7 @@ class ApiService {
     async getOnlineRooms(requestedOffset = 0) {
         console.log(`ApiService: Fetching page (limit ${this.#apiLimit}, offset ${requestedOffset}).`);
         const apiUrl = `${this.#apiUrlBase}&limit=${this.#apiLimit}&offset=${requestedOffset}`;
-
+        
         let usersForThisPage = [];
         let hasMoreData = false;
 
@@ -55,7 +55,7 @@ class ApiService {
         } catch (error) {
             console.error(`ApiService: Error during fetch for offset ${requestedOffset}:`, error);
             // Rethrow the error to be handled by the caller in script.js
-            throw error;
+            throw error; 
         }
 
         return {
@@ -68,5 +68,4 @@ class ApiService {
 
 // If not using ES modules, ApiService will be available on the window if this file is included.
 // To make it explicitly global (though not always recommended if not needed):
-
-window.ApiService = ApiService;
+// window.ApiService = ApiService;
