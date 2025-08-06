@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <title>Golf Simulator</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="parallax">
+        <div class="w3-container w3-teal">
+          <h1>Golf Simulator</h1>
+        </div>
+
+        <div class="container-fluid" style="background-color: rgba(255,255,255,0.8);">
+          <div class="row">
+            <div class="col-md-6">
+              <h2 class="text-center">Camera View</h2>
+              <video id="video" width="100%" autoplay class="w3-card-4"></video>
+            </div>
+            <div class="col-md-6">
+              <h2 class="text-center">Golf Course</h2>
+              <svg id="golf-course" width="100%" height="400px" class="w3-card-4">
+                <rect width="100%" height="100%" fill="#228B22" />
+                <circle id="hole" cx="90%" cy="50%" r="15" fill="black" />
+                <circle id="ball" cx="10%" cy="50%" r="8" fill="white" />
+              </svg>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12 text-center">
+                <h3>Score: <span id="score">0</span> | High Score: <span id="high-score">0</span></h3>
+                <button id="start-button" class="w3-button w3-green w3-large">Start</button>
+                <button id="stop-button" class="w3-button w3-red w3-large">Stop</button>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div style="height:400px;background-color:#003300;color:white;font-size:24px;text-align:center;padding: 50px;">
+        <h2 class="w3-xxlarge">About this Project</h2>
+        <p class="w3-large">This golf simulator uses your camera to detect motion and simulate a golf swing.</p>
+        <p class="w3-large">It's built with a variety of advanced JavaScript concepts, including Object-Oriented Programming, IndexedDB for score persistence, and modern ES6+ features.</p>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
