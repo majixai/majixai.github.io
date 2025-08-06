@@ -17,6 +17,7 @@ class ApiService {
      * @param {number} requestedOffset - The offset to use for fetching the page. Defaults to 0.
      * @returns {Promise<Object>} A promise that resolves with an object: { users: Array, nextOffset: number, hasMore: boolean }.
      */
+    @logExecutionTime
     async getOnlineRooms(requestedOffset = 0) {
         console.log(`ApiService: Fetching page (limit ${this.#apiLimit}, offset ${requestedOffset}).`);
         const apiUrl = `${this.#apiUrlBase}&limit=${this.#apiLimit}&offset=${requestedOffset}`;
@@ -54,8 +55,14 @@ class ApiService {
             }
         } catch (error) {
             console.error(`ApiService: Error during fetch for offset ${requestedOffset}:`, error);
-            // Rethrow the error to be handled by the caller in script.js
-            throw error; 
+            // Instead of re-throwing, we now handle it by returning a default "empty" state.
+            // This prevents the promise from rejecting and allows the caller to handle it gracefully.
+            return {
+                users: [],
+                nextOffset: requestedOffset,
+                hasMore: false,
+                error: error // Optionally include the error object for logging by the caller
+            };
         }
 
         return {

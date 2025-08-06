@@ -33,6 +33,12 @@ html, body {
     font-size: 0.9em;
 }
 
+.autoscroll-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
 .main-content {
     display: flex;
     flex-grow: 1;
@@ -59,6 +65,28 @@ html, body {
 .user-list {
     flex-grow: 1;
     overflow-y: auto;
+}
+
+.iframes-expanded .main-content {
+    flex-direction: column;
+}
+
+.iframes-expanded .user-columns-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    height: 300px; /* Or some other fixed height */
+}
+
+.iframes-expanded .user-column {
+    width: 49%;
+    height: 100%;
+}
+
+.iframes-expanded .iframe-column {
+    flex-grow: 1;
+    height: auto;
 }
 
 .iframe-column {
