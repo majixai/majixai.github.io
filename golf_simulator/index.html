@@ -448,13 +448,47 @@
 
           getTipButton.addEventListener('click', () => {
               tipDisplay.style.display = 'block';
-              tipDisplay.textContent = 'Analyzing your swing...';
+              tipDisplay.textContent = ''; // Clear previous tip
+              let fullText = '';
+
+              const thinkingMessages = ['Analyzing your swing...', 'Consulting the pros...', 'Checking the wind...', 'Lining up the shot...'];
+              let thinkingInterval = setInterval(() => {
+                  tipDisplay.textContent = thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)];
+              }, 1500);
 
               google.script.run
-                  .withSuccessHandler(tip => {
-                      tipDisplay.textContent = tip;
+                  .withSuccessHandler(jsonResponse => {
+                      clearInterval(thinkingInterval);
+                      tipDisplay.textContent = '';
+
+                      try {
+                          const chunks = JSON.parse(jsonResponse);
+                          if (chunks.error) {
+                              tipDisplay.textContent = chunks.error;
+                              return;
+                          }
+
+                          let i = 0;
+                          function processChunk() {
+                              if (i < chunks.length) {
+                                  const chunk = chunks[i];
+                                  if (chunk.candidates && chunk.candidates[0].content.parts[0].text) {
+                                      fullText += chunk.candidates[0].content.parts[0].text;
+                                      tipDisplay.textContent = fullText;
+                                  }
+                                  i++;
+                                  setTimeout(processChunk, 100); // Adjust delay for typing speed
+                              }
+                          }
+                          processChunk();
+
+                      } catch (e) {
+                          console.error("Error parsing streamed response:", e);
+                          tipDisplay.textContent = "Error: Could not parse the tip from the AI Coach.";
+                      }
                   })
                   .withFailureHandler(err => {
+                      clearInterval(thinkingInterval);
                       tipDisplay.textContent = `Error: ${err.message}`;
                   })
                   .getGolfTip(game.lastSwingData);

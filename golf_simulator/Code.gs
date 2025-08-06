@@ -39,11 +39,14 @@ function getApiKey_() {
  */
 function setAppProperties() {
   const properties = {
-    GEMINI_MODEL: 'gemini-pro',
-    GEMINI_PROMPT_TEMPLATE: 'I am a golf coach. A student just swung a golf club. The motion detection system registered a power of {power} and an angle of {angle}. Give me a short, encouraging tip for the student based on this data. Keep the tip to 2-3 sentences.',
-    // Add other dynamic properties here
+    GEMINI_MODEL: 'gemini-1.5-pro',
+    GEMINI_API: 'streamGenerateContent',
+    GEMINI_PROMPT_TEMPLATE: 'I am a golf coach. A student just swung a golf club. The motion detection system registered a power of {power} and an angle of {angle}. Give me a short, encouraging tip for the student based on this data. Keep the tip to 2-3 sentences. You can use Google Search to find relevant information if needed.',
+    MOTION_THRESHOLD_DIVISOR: 1000,
+    SWING_POWER_MULTIPLIER: 0.05,
+    MAX_SWING_POWER: 20
   };
-  PropertiesService.getScriptProperties().setProperties(properties, true); // `true` deletes other properties
+  PropertiesService.getScriptProperties().setProperties(properties, true);
   console.log("Application properties have been set.");
 }
 
@@ -51,16 +54,17 @@ function setAppProperties() {
 /**
  * Calls the generative AI to get a golf tip based on swing data.
  * @param {object} swingData - An object with power and angle of the swing.
- * @returns {string} A golf tip from the AI.
+ * @returns {string} A JSON string containing the streamed response from the AI.
  */
 function getGolfTip(swingData) {
   try {
     const apiKey = getApiKey_();
     const scriptProperties = PropertiesService.getScriptProperties();
     const model = scriptProperties.getProperty('GEMINI_MODEL');
+    const api = scriptProperties.getProperty('GEMINI_API');
     const promptTemplate = scriptProperties.getProperty('GEMINI_PROMPT_TEMPLATE');
 
-    if (!model || !promptTemplate) {
+    if (!model || !api || !promptTemplate) {
         throw new Error("Application properties not set. Please run setAppProperties() from the editor.");
     }
 
@@ -68,18 +72,18 @@ function getGolfTip(swingData) {
         .replace('{power}', swingData.power.toFixed(2))
         .replace('{angle}', swingData.angle.toFixed(2));
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${api}?key=${apiKey}`;
 
     const requestBody = {
       contents: [{
-        parts: [{
-          text: prompt
-        }]
-      }]
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      tools: [{ googleSearch: {} }],
     };
 
     const options = {
-      method: 'post',
+      method: 'POST',
       contentType: 'application/json',
       payload: JSON.stringify(requestBody),
       muteHttpExceptions: true
@@ -90,21 +94,16 @@ function getGolfTip(swingData) {
     const responseBody = response.getContentText();
 
     if (responseCode === 200) {
-      const data = JSON.parse(responseBody);
-      // Add more robust error handling for API response structure
-      if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-        return data.candidates[0].content.parts[0].text;
-      } else {
-        console.error("Unexpected API response structure:", responseBody);
-        return "The AI Coach is thinking... please try again.";
-      }
+      // We return the full JSON string and simulate the stream on the client,
+      // as google.script.run does not support true streaming.
+      return responseBody;
     } else {
       console.error(`API Error: ${responseCode} ${responseBody}`);
-      return `Error from AI Coach: Could not get a tip at this time. (Code: ${responseCode})`;
+      return JSON.stringify([{ error: `Error from AI Coach: Could not get a tip at this time. (Code: ${responseCode})` }]);
     }
   } catch (e) {
     console.error(`Error in getGolfTip: ${e.toString()}`);
-    return `An error occurred while contacting the AI Coach: ${e.message}`;
+    return JSON.stringify([{ error: `An error occurred while contacting the AI Coach: ${e.message}` }]);
   }
 }
 
