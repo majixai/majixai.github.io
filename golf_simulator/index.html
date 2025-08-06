@@ -9,28 +9,15 @@
       body {
           font-family: Arial, sans-serif;
       }
-
       #golf-course {
           background-color: #228B22; /* Forest Green */
           border: 1px solid #000;
       }
-
-      .ball {
-          fill: white;
-      }
-
-      .hole {
-          fill: black;
-      }
-
+      .ball { fill: white; }
+      .hole { fill: black; }
       .parallax {
-        /* The image used */
         background-image: url("https://www.w3schools.com/howto/img_parallax.jpg");
-
-        /* Set a specific height */
         min-height: 500px;
-
-        /* Create the parallax scrolling effect */
         background-attachment: fixed;
         background-position: center;
         background-repeat: no-repeat;
@@ -39,48 +26,86 @@
     </style>
   </head>
   <body>
-    <div class="parallax">
-        <div class="w3-container w3-teal">
-          <h1>Golf Simulator</h1>
-        </div>
 
-        <div class="container-fluid" style="background-color: rgba(255,255,255,0.8);">
-          <div class="row">
-            <div class="col-md-6">
-              <h2 class="text-center">Camera View</h2>
-              <video id="video" width="100%" autoplay class="w3-card-4"></video>
-            </div>
-            <div class="col-md-6">
-              <h2 class="text-center">Golf Course</h2>
-              <svg id="golf-course" width="100%" height="400px" class="w3-card-4">
-                <rect width="100%" height="100%" fill="#228B22" />
-                <circle id="hole" cx="90%" cy="50%" r="15" fill="black" />
-                <circle id="ball" cx="10%" cy="50%" r="8" fill="white" />
-              </svg>
-            </div>
-          </div>
-          <div class="row mt-3">
-            <div class="col-12 text-center">
-                <h3>Score: <span id="score">0</span> | High Score: <span id="high-score">0</span></h3>
-                <button id="start-button" class="w3-button w3-green w3-large">Start</button>
-                <button id="stop-button" class="w3-button w3-red w3-large">Stop</button>
-            </div>
-          </div>
+    <!-- Sidebar -->
+    <div class="w3-sidebar w3-bar-block w3-card w3-animate-left" style="display:none;z-index:5" id="mySidebar">
+      <button class="w3-bar-item w3-button w3-large" onclick="w3_close()">Close &times;</button>
+      <div class="w3-container">
+        <h3 class="w3-center">Controls</h3>
+        <div class="w3-center">
+            <h4>Score: <span id="score">0</span> | High Score: <span id="high-score">0</span></h4>
+            <button id="start-button" class="w3-button w3-green w3-margin-bottom">Start</button>
+            <button id="stop-button" class="w3-button w3-red w3-margin-bottom">Stop</button>
         </div>
+        <hr>
+        <div id="ai-section">
+            <h3 class="w3-center">AI Golf Coach</h3>
+            <button id="get-tip-button" class="w3-button w3-blue w3-block">Get a Swing Tip</button>
+            <div id="tip-display" class="w3-panel w3-light-grey w3-padding" style="display:none;"></div>
+        </div>
+      </div>
     </div>
 
-    <div style="height:400px;background-color:#003300;color:white;font-size:24px;text-align:center;padding: 50px;">
-        <h2 class="w3-xxlarge">About this Project</h2>
-        <p class="w3-large">This golf simulator uses your camera to detect motion and simulate a golf swing.</p>
-        <p class="w3-large">It's built with a variety of advanced JavaScript concepts, including Object-Oriented Programming, IndexedDB for score persistence, and modern ES6+ features.</p>
+    <!-- Page Content -->
+    <div id="main">
+        <div class="w3-teal">
+          <button id="openNav" class="w3-button w3-teal w3-xlarge" onclick="w3_open()">&#9776;</button>
+          <div class="w3-container">
+            <h1>Golf Simulator</h1>
+          </div>
+        </div>
+
+        <div class="parallax">
+            <div class="container-fluid" style="background-color: rgba(255,255,255,0.8); padding: 20px;">
+              <div class="row">
+                <div class="col-md-6">
+                  <h2 class="text-center">Camera View</h2>
+                  <video id="video" width="100%" autoplay class="w3-card-4"></video>
+                </div>
+                <div class="col-md-6">
+                  <h2 class="text-center">Golf Course</h2>
+                  <svg id="golf-course" width="100%" height="400px" class="w3-card-4">
+                    <rect width="100%" height="100%" fill="#228B22" />
+                    <circle id="hole" cx="90%" cy="50%" r="15" fill="black" />
+                    <circle id="ball" cx="10%" cy="50%" r="8" fill="white" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        <div style="height:400px;background-color:#003300;color:white;font-size:24px;text-align:center;padding: 50px;">
+            <h2 class="w3-xxlarge">About this Project</h2>
+            <p class="w3-large">This golf simulator uses your camera to detect motion and simulate a golf swing.</p>
+            <p class="w3-large">It's built with a variety of advanced JavaScript concepts, including Object-Oriented Programming, IndexedDB for score persistence, and modern ES6+ features.</p>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
+      function w3_open() {
+        document.getElementById("main").style.marginLeft = "25%";
+        document.getElementById("mySidebar").style.width = "25%";
+        document.getElementById("mySidebar").style.display = "block";
+        document.getElementById("openNav").style.display = 'none';
+      }
+      function w3_close() {
+        document.getElementById("main").style.marginLeft = "0%";
+        document.getElementById("mySidebar").style.display = "none";
+        document.getElementById("openNav").style.display = "inline-block";
+      }
+
       (function() {
           // IIFE for private scope
+
+          // --- App Configuration ---
+          let config = {
+              motionThresholdDivisor: 1000,
+              swingPowerMultiplier: 0.05,
+              maxSwingPower: 20
+          };
 
           // --- JSDoc "Interfaces" ---
           /**
@@ -214,6 +239,8 @@
               #status; // Private field
               #animationFrameId;
 
+              lastSwingData = { power: 0, angle: 0 };
+
               constructor(ball, dbHelper, options = {}) {
                   /** @type {IBall} */
                   this.ball = ball;
@@ -254,6 +281,8 @@
 
                   this.score++;
                   this.updateScoreUI();
+
+                  this.lastSwingData = { power, angle };
 
                   console.log(`Swinging with power ${power} and angle ${angle}`);
                   const swingPower = Math.min(power * this.options.swingPowerMultiplier, this.options.maxSwingPower);
@@ -316,7 +345,7 @@
 
           const dbHelper = new DBHelper('GolfSimulatorDB', 'scores');
           const ball = new Ball(ballSVG);
-          const game = new Game(ball, dbHelper, { swingPowerMultiplier: 0.05 });
+          const game = new Game(ball, dbHelper, config);
 
 
           // --- Motion Detection ---
@@ -344,7 +373,7 @@
                       if (diff > 50) motionAmount++;
                   }
 
-                  const motionThreshold = (canvas.width * canvas.height) / 1000;
+                  const motionThreshold = (canvas.width * canvas.height) / config.motionThresholdDivisor;
                   if (motionAmount > motionThreshold) {
                       onMotion(motionAmount);
                   }
@@ -374,6 +403,25 @@
 
           async function startGame() {
               console.log("Starting game...");
+
+              await new Promise(resolve => {
+                  google.script.run
+                      .withSuccessHandler(props => {
+                          if (props) {
+                              config.motionThresholdDivisor = parseFloat(props.MOTION_THRESHOLD_DIVISOR) || config.motionThresholdDivisor;
+                              config.swingPowerMultiplier = parseFloat(props.SWING_POWER_MULTIPLIER) || config.swingPowerMultiplier;
+                              config.maxSwingPower = parseFloat(props.MAX_SWING_POWER) || config.maxSwingPower;
+                              console.log("Remote config loaded:", config);
+                          }
+                          resolve();
+                      })
+                      .withFailureHandler(err => {
+                          console.error("Could not load remote config:", err);
+                          resolve(); // Resolve anyway to let the game start
+                      })
+                      .getAppProperties();
+              });
+
               await game.loadGame();
               initCamera();
               motionDetectionLoop();
@@ -393,6 +441,25 @@
               video.srcObject = null;
               lastImageData = null;
           }
+
+          // --- AI Tip ---
+          const getTipButton = document.getElementById('get-tip-button');
+          const tipDisplay = document.getElementById('tip-display');
+
+          getTipButton.addEventListener('click', () => {
+              tipDisplay.style.display = 'block';
+              tipDisplay.textContent = 'Analyzing your swing...';
+
+              google.script.run
+                  .withSuccessHandler(tip => {
+                      tipDisplay.textContent = tip;
+                  })
+                  .withFailureHandler(err => {
+                      tipDisplay.textContent = `Error: ${err.message}`;
+                  })
+                  .getGolfTip(game.lastSwingData);
+          });
+
 
           // --- Event Listeners ---
           startButton.addEventListener('click', startGame);
