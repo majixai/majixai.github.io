@@ -15,11 +15,6 @@
                 <button id="settingsButton">Settings</button>
                 <button id="storageButton">Chat Storage</button>
                 <button id="toggleControlsButton">Toggle Controls</button>
-                <button id="expandIframesButton">Expand</button>
-                <div class="autoscroll-controls">
-                    <button id="autoscrollPlayPauseButton">Play</button>
-                    <input type="range" id="autoscrollSpeedSlider" min="1" max="10" value="5">
-                </div>
             </div>
         </div>
 
@@ -51,22 +46,12 @@
 
         <!-- Main Content Area -->
         <div class="main-content">
-            <div class="user-columns-container">
-                <!-- Previous Users Column -->
-                <div class="user-column" id="previousUsers">
-                    <h2>History (Online Now)</h2>
-                    <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
-                    <div class="user-list">
-                        <p class="text-muted w3-center">Loading history...</p>
-                    </div>
-                </div>
-
-                <!-- Online Users Column -->
-                <div class="user-column" id="onlineUsers">
-                    <h2>Online Users</h2>
-                    <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
-                    <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
-                    <div class="user-list"></div>
+            <!-- Previous Users Column -->
+            <div class="user-column" id="previousUsers">
+                <h2>History (Online Now)</h2>
+                <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
+                <div class="user-list">
+                    <p class="text-muted w3-center">Loading history...</p>
                 </div>
             </div>
 
@@ -82,6 +67,14 @@
                 <div class="iframe-container">
                     <iframe id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never" title="Secondary Viewer" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
                 </div>
+            </div>
+
+            <!-- Online Users Column -->
+            <div class="user-column" id="onlineUsers">
+                <h2>Online Users</h2>
+                <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
+                <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
+                <div class="user-list"></div>
             </div>
         </div>
 
@@ -163,12 +156,9 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="decorators.js"></script>
     <script src="api.js"></script>
     <script src="storage.js"></script>
     <script src="ui.js"></script>
-    <script src="mappers.js"></script>
-    <script src="autoscroller.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
