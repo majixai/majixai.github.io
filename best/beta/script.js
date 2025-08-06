@@ -1,5 +1,7 @@
 (function() {
-    // Global error collection (remains global for now)
+    // IIFE to encapsulate the entire application and avoid polluting the global namespace.
+
+    // Global error collection for debugging purposes.
     let collectedJsErrors = []; 
     window.onerror = function(message, source, lineno, colno, error) {
         const errorDetails = {
@@ -18,6 +20,11 @@
         return false;
     };
 
+    /**
+     * The main application class.
+     * This class is responsible for initializing the application, setting up event listeners,
+     * and coordinating the different parts of the application.
+     */
     class App {
         // Service and Manager instances
         apiService;
@@ -68,7 +75,13 @@
             // Config variables (apiUrlBase, etc.) are globally available from config.js
             this.apiService = new ApiService(apiUrlBase, apiLimit, maxApiFetchLimit, apiFetchTimeout);
             this.uiManager = new UIManager();
-            this.storageManager = new StorageManager(); 
+            this.storageManager = new StorageManager();
+            this.autoscroller = new Autoscroller(
+                document.getElementById("onlineUsers")?.querySelector('.user-list'),
+                document.getElementById("previousUsers")?.querySelector('.user-list'),
+                document.getElementById('autoscrollPlayPauseButton'),
+                document.getElementById('autoscrollSpeedSlider')
+            );
 
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
@@ -95,6 +108,9 @@
 
             this.copyJsErrorsButton = document.getElementById('copyJsErrorsButton');
             this.filterBirthdayBannerButton = document.getElementById('filterBirthdayBanner');
+            this.expandIframesButton = document.getElementById('expandIframesButton');
+            this.autoscrollPlayPauseButton = document.getElementById('autoscrollPlayPauseButton');
+            this.autoscrollSpeedSlider = document.getElementById('autoscrollSpeedSlider');
 
             this.settingsButton = document.getElementById('settingsButton');
             this.storageButton = document.getElementById('storageButton');
@@ -268,7 +284,7 @@
 
             try {
                 const initialData = await this.apiService.getOnlineRooms(this.#currentOnlineUsersOffset);
-                this.#allOnlineUsersData = initialData.users;
+                this.#allOnlineUsersData = initialData.users.map(user => UserMapper.toViewModel(user));
                 this.#currentOnlineUsersOffset = initialData.nextOffset;
                 this.#hasMoreOnlineUsersToLoad = initialData.hasMore;
                 
@@ -555,7 +571,7 @@
                 
                 if (nextPageData && nextPageData.users) {
                     console.log(`App: Fetched ${nextPageData.users.length} more users.`);
-                    this.#allOnlineUsersData = this.#allOnlineUsersData.concat(nextPageData.users);
+                    this.#allOnlineUsersData = this.#allOnlineUsersData.concat(nextPageData.users.map(user => UserMapper.toViewModel(user)));
                     this.#currentOnlineUsersOffset = nextPageData.nextOffset;
                     this.#hasMoreOnlineUsersToLoad = nextPageData.hasMore;
 
@@ -929,6 +945,20 @@
                     try{await navigator.clipboard.writeText(errStr);this.#showSnippetStatus('JS errors copied!','success')}catch(e){this.#showSnippetStatus('Failed to copy JS errors.','error')}
                 });
             }
+
+            this.expandIframesButton?.addEventListener('click', () => {
+                const appContainer = document.querySelector('.app-container');
+                appContainer.classList.toggle('iframes-expanded');
+                this.#adjustLayoutHeights();
+            });
+
+            this.autoscrollPlayPauseButton?.addEventListener('click', () => {
+                this.autoscroller.toggle();
+            });
+
+            this.autoscrollSpeedSlider?.addEventListener('input', () => {
+                this.autoscroller.onSpeedChange();
+            });
 
             this.settingsButton?.addEventListener('click', () => {
                 if (this.settingsModal) this.settingsModal.style.display = 'flex';
