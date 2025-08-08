@@ -45,6 +45,15 @@ export class EntityManager {
         return this.#entities.find(entity => entity.name === name);
     }
 
+    async updateEntity(entityName, data) {
+        const entityIndex = this.#entities.findIndex(e => e.name === entityName);
+        if (entityIndex > -1) {
+            this.#entities[entityIndex] = new NamedEntity(data);
+            await StorageService.save(this.storageKey, this.#entities);
+            this.uiManager.renderEntities(this.#entities);
+        }
+    }
+
     getAllEntities() {
         return this.#entities;
     }

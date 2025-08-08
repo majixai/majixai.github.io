@@ -62,7 +62,15 @@ export class UIManager {
     createEntityElement(entity) {
         const entityElement = document.createElement('div');
         entityElement.classList.add('entity-item');
-        entityElement.innerHTML = `<h3>${entity.name}</h3>`;
+        entityElement.setAttribute('data-name', entity.name);
+        entityElement.innerHTML = `
+            <h3>${entity.name}</h3>
+            <div class="entity-actions">
+                <button class="download-entity-btn w3-button w3-blue">Download</button>
+                <input type="file" class="upload-entity-input" style="display: none;">
+                <button class="upload-entity-btn w3-button w3-green">Upload</button>
+            </div>
+        `;
 
         for (const sectionName in entity.sections) {
             const sectionElement = document.createElement('div');

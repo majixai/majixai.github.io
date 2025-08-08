@@ -74,16 +74,18 @@ class App {
             this.uiManager.openSlotMachineModal();
         });
 
-        document.getElementById('download-btn').addEventListener('click', () => {
-            this.handleDownload();
-        });
-
-        document.getElementById('upload-btn').addEventListener('click', () => {
-            document.getElementById('upload-input').click();
-        });
-
-        document.getElementById('upload-input').addEventListener('change', (event) => {
-            this.handleUpload(event);
+        this.uiManager.entitiesContainer.addEventListener('click', (event) => {
+            if (event.target.classList.contains('download-entity-btn')) {
+                const entityElement = event.target.closest('.entity-item');
+                const entityName = entityElement.getAttribute('data-name');
+                this.handleDownload(entityName);
+            } else if (event.target.classList.contains('upload-entity-btn')) {
+                const entityElement = event.target.closest('.entity-item');
+                const entityName = entityElement.getAttribute('data-name');
+                const uploadInput = entityElement.querySelector('.upload-entity-input');
+                uploadInput.onchange = (e) => this.handleUpload(e, entityName);
+                uploadInput.click();
+            }
         });
     }
 
@@ -147,33 +149,27 @@ class App {
         this.uiManager.switchView(view);
     }
 
-    handleDownload() {
-        const data = {
-            entities: this.entityManager.getAllEntities(),
-            contacts: this.contactManager.getAllContacts(),
-        };
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "link_manager_data.json");
-        document.body.appendChild(downloadAnchorNode); // required for firefox
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
+    handleDownload(entityName) {
+        const entity = this.entityManager.getEntityByName(entityName);
+        if (entity) {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(entity, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `${entityName}_data.json`);
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
     }
 
-    handleUpload(event) {
+    handleUpload(event, entityName) {
         const file = event.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (data.entities) {
-                        this.entityManager.loadFromData(data.entities);
-                    }
-                    if (data.contacts) {
-                        this.contactManager.loadFromData(data.contacts);
-                    }
+                    await this.entityManager.updateEntity(entityName, data);
                     NotificationService.showSuccess('Data loaded successfully!');
                 } catch (error) {
                     NotificationService.showError('Error parsing file.');
