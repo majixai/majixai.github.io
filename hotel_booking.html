@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking (Offline, Frontend Only)</title>
+    <!-- W3CSS & Bootstrap CDN -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { min-height: 100vh; background: linear-gradient(#e0eafc, #cfdef3); }
+        .parallax {
+            background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80');
+            min-height: 300px; background-attachment: fixed; background-position: center; background-repeat: no-repeat; background-size: cover;
+        }
+        .hotel-card { transition: transform 0.3s; }
+        .hotel-card:hover { transform: scale(1.03); box-shadow: 0 8px 24px #0002; }
+        .svg-anim { width: 60px; height: 60px; display: block; margin: auto; }
+        .booking-anim { animation: spin 2s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="parallax w3-display-container w3-center">
+        <h1 class="w3-xxlarge w3-text-white w3-padding-64">Hotel Booking</h1>
+    </div>
+    <div class="container py-4">
+        <form id="searchForm" class="row g-3 mb-4">
+            <div class="col-md-4"><input type="text" id="searchInput" class="form-control" placeholder="Search hotels/city..."></div>
+            <div class="col-md-3"><input type="date" id="checkinInput" class="form-control"></div>
+            <div class="col-md-3"><input type="date" id="checkoutInput" class="form-control"></div>
+            <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Search</button></div>
+        </form>
+        <div id="hotelList" class="row row-cols-1 row-cols-md-3 g-4"></div>
+        <h3 class="mt-5">My Bookings</h3>
+        <div id="bookingList" class="row row-cols-1 row-cols-md-2 g-3"></div>
+        <div class="mt-4">
+            <button id="startAnimBtn" class="btn btn-success">Start Animation</button>
+            <button id="stopAnimBtn" class="btn btn-danger">Stop Animation</button>
+            <svg id="svgAnim" class="svg-anim" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" stroke="#2196f3" stroke-width="8" fill="none" />
+                <circle cx="50" cy="50" r="30" stroke="#4caf50" stroke-width="6" fill="none" />
+            </svg>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // IIFE for encapsulation
+    (function() {
+        // Interface-like pattern for Hotel
+        class IHotel {
+            getName() { throw 'Not implemented'; }
+            getCity() { throw 'Not implemented'; }
+            getPrice() { throw 'Not implemented'; }
+        }
+        // Struct-like object for Room
+        function Room(type, beds, price) {
+            return { type, beds, price };
+        }
+        // Decorator example
+        function logMethod(target, key, descriptor) {
+            const orig = descriptor.value;
+            descriptor.value = function(...args) {
+                console.log(`Calling ${key} with`, args);
+                return orig.apply(this, args);
+            };
+            return descriptor;
+        }
+        // Hotel class with OOP features
+        class Hotel extends IHotel {
+            static #allHotels = [];
+            #rooms = [];
+            constructor(name, city, price, rooms) {
+                super(); this._name = name; this._city = city; this._price = price; this.#rooms = rooms;
+                Hotel.#allHotels.push(this);
+            }
+            getName() { return this._name; }
+            getCity() { return this._city; }
+            getPrice() { return this._price; }
+            getRooms() { return this.#rooms; }
+            static getAllHotels() { return Hotel.#allHotels; }
+            // Bitwise: hotel features (wifi=1, pool=2, gym=4, spa=8)
+            static featuresToString(flags) {
+                let f = [];
+                if (flags & 1) f.push('WiFi');
+                if (flags & 2) f.push('Pool');
+                if (flags & 4) f.push('Gym');
+                if (flags & 8) f.push('Spa');
+                return f.join(', ');
+            }
+        }
+        // Iterator for hotels
+        class HotelIterator {
+            constructor(hotels) { this._hotels = hotels; this._index = 0; }
+            [Symbol.iterator]() { return this; }
+            next() {
+                if (this._index < this._hotels.length) {
+                    return { value: this._hotels[this._index++], done: false };
+                } else { return { done: true }; }
+            }
+        }
+        // Generator for bookings
+        function* bookingGenerator(bookings) {
+            for (let b of bookings) yield b;
+        }
+        // Booking class
+        class Booking {
+            constructor(hotel, room, checkin, checkout, guest) {
+                this.hotel = hotel; this.room = room; this.checkin = checkin; this.checkout = checkout; this.guest = guest;
+                this._id = Math.random().toString(36).slice(2);
+            }
+            get id() { return this._id; }
+        }
+        // IndexedDB wrapper (async)
+        class DB {
+            static dbName = 'hotelBookingDB';
+            static dbVersion = 1;
+            static db = null;
+            static async open() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(DB.dbName, DB.dbVersion);
+                    req.onupgradeneeded = e => {
+                        let db = e.target.result;
+                        if (!db.objectStoreNames.contains('bookings')) db.createObjectStore('bookings', { keyPath: 'id' });
+                    };
+                    req.onsuccess = e => { DB.db = e.target.result; resolve(DB.db); };
+                    req.onerror = e => reject(e);
+                });
+            }
+            static async addBooking(booking) {
+                await DB.open();
+                return new Promise((resolve, reject) => {
+                    let tx = DB.db.transaction('bookings', 'readwrite');
+                    tx.objectStore('bookings').add(booking);
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = e => reject(e);
+                });
+            }
+            static async getBookings() {
+                await DB.open();
+                return new Promise((resolve, reject) => {
+                    let tx = DB.db.transaction('bookings', 'readonly');
+                    let req = tx.objectStore('bookings').getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = e => reject(e);
+                });
+            }
+        }
+        // Demo hotel data (object mapping)
+        const hotelData = [
+            { name: 'Grand Palace', city: 'New York', price: 220, rooms: [Room('Suite', 2, 350), Room('Deluxe', 1, 220)], features: 1|2|4 },
+            { name: 'Sea Breeze', city: 'Miami', price: 180, rooms: [Room('Standard', 2, 180), Room('Suite', 2, 300)], features: 1|2 },
+            { name: 'Mountain View', city: 'Denver', price: 150, rooms: [Room('Standard', 1, 150), Room('Deluxe', 2, 200)], features: 1|4|8 },
+        ];
+        // Map to Hotel objects
+        const hotels = hotelData.map(h => new Hotel(h.name, h.city, h.price, h.rooms));
+        // Parallax scroll effect
+        window.addEventListener('scroll', () => {
+            document.querySelector('.parallax').style.backgroundPositionY = `${window.scrollY * 0.5}px`;
+        });
+        // Render hotels
+        function renderHotels(list) {
+            const el = document.getElementById('hotelList');
+            el.innerHTML = '';
+            for (let hotel of new HotelIterator(list)) {
+                el.innerHTML += `<div class="col">
+                    <div class="card hotel-card">
+                        <div class="card-body">
+                            <h5 class="card-title">${hotel.getName()}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">${hotel.getCity()}</h6>
+                            <p class="card-text">From $${hotel.getPrice()} per night</p>
+                            <p class="card-text"><small>Features: ${Hotel.featuresToString(hotelData.find(h=>h.name===hotel.getName()).features)}</small></p>
+                            <button class="btn btn-outline-primary" onclick="window.bookHotel('${hotel.getName()}')">Book</button>
+                        </div>
+                    </div>
+                </div>`;
+            }
+        }
+        // Expose booking function globally for button
+        window.bookHotel = async function(hotelName) {
+            const hotel = hotels.find(h => h.getName() === hotelName);
+            if (!hotel) return alert('Hotel not found');
+            const room = hotel.getRooms()[0];
+            const checkin = document.getElementById('checkinInput').value || '2025-08-08';
+            const checkout = document.getElementById('checkoutInput').value || '2025-08-09';
+            const guest = prompt('Enter guest name:','John Doe');
+            if (!guest) return;
+            const booking = new Booking(hotel.getName(), room.type, checkin, checkout, guest);
+            await DB.addBooking(booking);
+            renderBookings();
+        };
+        // Render bookings
+        async function renderBookings() {
+            const bookings = await DB.getBookings();
+            const el = document.getElementById('bookingList');
+            el.innerHTML = '';
+            for (let b of bookingGenerator(bookings)) {
+                el.innerHTML += `<div class="col">
+                    <div class="card border-success">
+                        <div class="card-body">
+                            <h5 class="card-title">${b.hotel}</h5>
+                            <p class="card-text">Room: ${b.room}</p>
+                            <p class="card-text">${b.checkin} to ${b.checkout}</p>
+                            <p class="card-text">Guest: ${b.guest}</p>
+                        </div>
+                    </div>
+                </div>`;
+            }
+        }
+        // Search hotels
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            renderHotels(hotels.filter(h => h.getName().toLowerCase().includes(q) || h.getCity().toLowerCase().includes(q)));
+        });
+        // Animation controls
+        const svgAnim = document.getElementById('svgAnim');
+        document.getElementById('startAnimBtn').onclick = () => svgAnim.classList.add('booking-anim');
+        document.getElementById('stopAnimBtn').onclick = () => svgAnim.classList.remove('booking-anim');
+        // Initial render
+        renderHotels(hotels);
+        renderBookings();
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking App</title>
+    <!-- W3CSS & Bootstrap CDN -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            overflow-x: hidden;
+        }
+        .parallax {
+            background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80');
+            min-height: 300px;
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        .svg-anim {
+            width: 100px;
+            height: 100px;
+            margin: 1rem auto;
+            display: block;
+        }
+        .hotel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .booking-card {
+            transition: transform 0.3s;
+        }
+        .booking-card:hover {
+            transform: scale(1.03);
+        }
+    </style>
+</head>
+<body>
+    <div class="parallax w3-container w3-center w3-padding-64">
+        <h1 class="w3-xxxlarge w3-text-white">Hotel Booking</h1>
+        <svg class="svg-anim" viewBox="0 0 100 100">
+            <circle id="svgCircle" cx="50" cy="50" r="40" stroke="#2196F3" stroke-width="4" fill="none" />
+        </svg>
+        <button class="w3-button w3-blue" onclick="toggleAnimation()">Start/Stop Animation</button>
+    </div>
+    <div class="container py-5">
+        <form id="bookingForm" class="w3-card w3-padding w3-white mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="guestName" placeholder="Guest Name" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="date" class="form-control" id="checkIn" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="date" class="form-control" id="checkOut" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" class="form-control" id="roomCount" placeholder="Rooms" min="1" max="5" required>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" id="roomType" required>
+                        <option value="">Room Type</option>
+                        <option value="single">Single</option>
+                        <option value="double">Double</option>
+                        <option value="suite">Suite</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Book</button>
+                </div>
+            </div>
+        </form>
+        <div class="hotel-grid" id="bookingList"></div>
+        <div class="mt-4">
+            <h3>GenAI Assistant</h3>
+            <form id="genaiForm" class="d-flex gap-2">
+                <input type="text" id="genaiPrompt" class="form-control" placeholder="Ask the AI..." required>
+                <button type="submit" class="btn btn-success">Ask</button>
+            </form>
+            <div id="genaiResponse" class="mt-2"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // IndexedDB setup (object mapping, struct-like)
+    const dbName = 'HotelBookingDB';
+    let db;
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(dbName, 1);
+            req.onupgradeneeded = e => {
+                db = e.target.result;
+                if (!db.objectStoreNames.contains('bookings')) {
+                    db.createObjectStore('bookings', { keyPath: 'id', autoIncrement: true });
+                }
+            };
+            req.onsuccess = e => { db = e.target.result; resolve(db); };
+            req.onerror = e => reject(e);
+        });
+    }
+    function addBooking(booking) {
+        return openDB().then(db => {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('bookings', 'readwrite');
+                tx.objectStore('bookings').add(booking);
+                tx.oncomplete = () => resolve();
+                tx.onerror = e => reject(e);
+            });
+        });
+    }
+    function getBookings() {
+        return openDB().then(db => {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('bookings', 'readonly');
+                const req = tx.objectStore('bookings').getAll();
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = e => reject(e);
+            });
+        });
+    }
+    // OOP: Class, static, private, protected, public, iterator, generator, interface (via JSDoc)
+    /**
+     * @interface
+     */
+    class IBooking {
+        getSummary() {}
+    }
+    class Booking extends IBooking {
+        static #count = 0; // private static
+        #id; // private
+        _guestName; // protected (by convention)
+        roomType;
+        checkIn;
+        checkOut;
+        roomCount;
+        constructor(guestName, checkIn, checkOut, roomCount, roomType) {
+            super();
+            this.#id = ++Booking.#count;
+            this._guestName = guestName;
+            this.checkIn = checkIn;
+            this.checkOut = checkOut;
+            this.roomCount = roomCount;
+            this.roomType = roomType;
+        }
+        get id() { return this.#id; }
+        get guestName() { return this._guestName; }
+        getSummary() {
+            return `${this.guestName} booked ${this.roomCount} ${this.roomType} room(s) from ${this.checkIn} to ${this.checkOut}`;
+        }
+        static *all(bookingsArr) { // generator
+            for (const b of bookingsArr) yield b;
+        }
+        static getCount() { return Booking.#count; }
+    }
+    // Decorator (IIFE)
+    const logDecorator = (fn => {
+        return function(...args) {
+            console.log('Booking:', ...args);
+            return fn.apply(this, args);
+        }
+    })
+    // Bitwise operation example
+    function roomTypeBitmask(type) {
+        return type === 'single' ? 1 : type === 'double' ? 2 : 4;
+    }
+    // Animation
+    let animInterval, animating = false;
+    function toggleAnimation() {
+        const circle = document.getElementById('svgCircle');
+        if (!animating) {
+            let angle = 0;
+            animInterval = setInterval(() => {
+                angle = (angle + 5) % 360;
+                circle.setAttribute('stroke-dasharray', 251);
+                circle.setAttribute('stroke-dashoffset', 251 - (angle / 360) * 251);
+            }, 30);
+        } else {
+            clearInterval(animInterval);
+            document.getElementById('svgCircle').setAttribute('stroke-dashoffset', 0);
+        }
+        animating = !animating;
+    }
+    // Parallax effect (simple)
+    window.addEventListener('scroll', () => {
+        document.querySelector('.parallax').style.backgroundPositionY = `${window.scrollY * 0.5}px`;
+    });
+    // Booking form
+    document.getElementById('bookingForm').onsubmit = logDecorator(async function(e) {
+        e.preventDefault();
+        const guestName = document.getElementById('guestName').value;
+        const checkIn = document.getElementById('checkIn').value;
+        const checkOut = document.getElementById('checkOut').value;
+        const roomCount = document.getElementById('roomCount').value;
+        const roomType = document.getElementById('roomType').value;
+        const booking = new Booking(guestName, checkIn, checkOut, roomCount, roomType);
+        await addBooking({
+            id: booking.id,
+            guestName: booking.guestName,
+            checkIn, checkOut, roomCount, roomType,
+            bitmask: roomTypeBitmask(roomType)
+        });
+        renderBookings();
+        this.reset();
+    });
+    async function renderBookings() {
+        const bookings = await getBookings();
+        const grid = document.getElementById('bookingList');
+        grid.innerHTML = '';
+        for (const b of Booking.all(bookings)) {
+            grid.innerHTML += `<div class="booking-card w3-card w3-padding w3-white">
+                <h5>${b.guestName}</h5>
+                <p>${b.roomType} | ${b.roomCount} room(s)</p>
+                <p>${b.checkIn} to ${b.checkOut}</p>
+                <small>Bitmask: ${b.bitmask}</small>
+            </div>`;
+        }
+    }
+    renderBookings();
+    // GenAI form (rate-limited, only works if Flask server is running)
+    document.getElementById('genaiForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const prompt = document.getElementById('genaiPrompt').value;
+        try {
+            const res = await fetch('/genai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            if (res.status === 429) {
+                document.getElementById('genaiResponse').innerText = 'Rate limit exceeded. Try again later.';
+                return;
+            }
+            const data = await res.json();
+            document.getElementById('genaiResponse').innerText = data.response;
+        } catch {
+            document.getElementById('genaiResponse').innerText = 'GenAI unavailable (server offline).';
+        }
+    }
+    </script>
+</body>
+</html>

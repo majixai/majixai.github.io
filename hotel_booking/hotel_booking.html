@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Booking (GenAI Enhanced)</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            overflow-x: hidden;
+        }
+        .parallax {
+            background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80');
+            min-height: 300px;
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        .svg-anim {
+            width: 100px;
+            height: 100px;
+            margin: 1rem auto;
+            display: block;
+        }
+        .hotel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .booking-form {
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="parallax w3-container w3-center w3-padding-64">
+        <h1 class="w3-xxlarge w3-text-white">Hotel Booking</h1>
+        <svg class="svg-anim" id="svgAnim" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" stroke="#2196F3" stroke-width="4" fill="none" />
+            <circle id="pulse" cx="50" cy="50" r="20" stroke="#4CAF50" stroke-width="4" fill="none" />
+        </svg>
+        <button class="w3-button w3-blue" onclick="toggleAnimation()">Start/Stop Animation</button>
+    </div>
+    <div class="container py-5">
+        <div class="hotel-grid">
+            <div class="booking-form">
+                <h2>Book a Room</h2>
+                <form id="bookingForm">
+                    <div class="mb-3">
+                        <label for="nameInput" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="nameInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dateInput" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="dateInput" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="roomTypeInput" class="form-label">Room Type</label>
+                        <select class="form-control" id="roomTypeInput" required>
+                            <option value="single">Single</option>
+                            <option value="double">Double</option>
+                            <option value="suite">Suite</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Book</button>
+                </form>
+                <div id="bookingResult" class="mt-3"></div>
+            </div>
+            <div class="booking-form">
+                <h2>GenAI Assistant</h2>
+                <form id="genaiForm">
+                    <div class="mb-3">
+                        <label for="genaiPrompt" class="form-label">Ask GenAI</label>
+                        <input type="text" class="form-control" id="genaiPrompt" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Ask</button>
+                </form>
+                <div id="genaiResult" class="mt-3"></div>
+            </div>
+        </div>
+        <div class="mt-5">
+            <h3>Bookings (Offline IndexedDB)</h3>
+            <ul id="bookingList" class="list-group"></ul>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="hotel_booking.js"></script>
+</body>
+</html>
