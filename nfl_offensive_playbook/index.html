@@ -113,20 +113,7 @@
         playList.appendChild(playButton);
       });
 
-      function time(target, name, descriptor) {
-        const original = descriptor.value;
-        descriptor.value = function(...args) {
-          const start = performance.now();
-          const result = original.apply(this, args);
-          const end = performance.now();
-          console.log(`Execution time for ${name}: ${end - start} milliseconds`);
-          return result;
-        };
-        return descriptor;
-      }
-
       class PlayDisplayer {
-        @time
         displayPlay(play) {
           playDescription.textContent = play.description;
           playRecommendations.textContent = `Recommended on ${play.recommendations.down} and ${play.recommendations.distance} in the ${play.recommendations.time}.`;
@@ -137,7 +124,10 @@
       const playDisplayer = new PlayDisplayer();
 
       function displayPlay(play) {
+        const start = performance.now();
         playDisplayer.displayPlay(play);
+        const end = performance.now();
+        console.log(`Execution time for displayPlay: ${end - start} milliseconds`);
       }
 
       window.addEventListener('scroll', () => {
