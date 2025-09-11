@@ -1,5 +1,6 @@
 import json
 
+
 def animate_menu():
     with open('json/menu.json', 'r') as f:
         menu_data = json.load(f)
