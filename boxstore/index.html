@@ -19,6 +19,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         header h1 {
             margin: 0;
@@ -46,6 +47,20 @@
         main {
             padding: 2rem;
         }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        #search-input {
+            width: 100%;
+            max-width: 500px;
+            padding: 0.8rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
         #product-list {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -63,6 +78,11 @@
             flex-direction: column;
             justify-content: space-between;
             padding-bottom: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
         .product-card img {
             max-width: 100%;
@@ -301,6 +321,10 @@
     </header>
 
     <main>
+        <div class="controls">
+            <input type="text" id="search-input" placeholder="Search products by name or description..." />
+        </div>
+
         <section id="product-list">
             <!-- Product cards will be loaded here by JavaScript -->
         </section>
@@ -337,14 +361,46 @@
     </div>
 
     <script>
-        // Simulate data/products001.csv content
-        const csvContent = `id,name,price,description,image
-1,Laptop Pro,1200.00,"Powerful laptop for professionals. Features a high-resolution display, fast processor, and ample storage.","https://via.placeholder.com/250x200/0000FF/FFFFFF?text=Laptop+Pro"
-2,Mechanical Keyboard,95.50,"Tactile and durable keyboard with customizable RGB lighting. Perfect for gaming and typing.","https://via.placeholder.com/250x200/FF0000/FFFFFF?text=Mech+Keyboard"
-3,Wireless Mouse,30.00,"Ergonomic and precise wireless mouse with long battery life. Ideal for everyday use.","https://via.placeholder.com/250x200/00FF00/FFFFFF?text=Wireless+Mouse"
-4,USB-C Hub,50.00,"Expand your connectivity with this multi-port USB-C hub, including HDMI, USB 3.0, and SD card slots.","https://via.placeholder.com/250x200/FFFF00/000000?text=USB-C+Hub"
-5,External SSD 1TB,150.00,"Fast and compact 1TB external SSD for all your storage needs. USB 3.1 compatible.","https://via.placeholder.com/250x200/8A2BE2/FFFFFF?text=External+SSD"
-6,Webcam Full HD,60.00,"Full HD 1080p webcam with built-in microphone. Great for video calls and streaming.","https://via.placeholder.com/250x200/FFD700/000000?text=FullHD+Webcam"`;
+        // Global variable to store all products loaded from CSV
+        let allProductsData = [];
+
+        const productListDiv = document.getElementById('product-list');
+        const cartCountSpan = document.getElementById('cart-count');
+        const cartButton = document.getElementById('cart-button');
+
+        const productDetailModal = document.getElementById('product-detail-modal');
+        const detailCloseButton = document.getElementById('detail-close-button');
+        const detailImage = document.getElementById('detail-image');
+        const detailName = document.getElementById('detail-name');
+        const detailDescription = document.getElementById('detail-description');
+        const detailPrice = document.getElementById('detail-price');
+        const addToCartDetailButton = document.getElementById('add-to-cart-detail-button');
+
+        const cartModal = document.getElementById('cart-modal');
+        const cartCloseButton = document.getElementById('cart-close-button');
+        const cartItemsList = document.getElementById('cart-items');
+        const cartTotalSpan = document.getElementById('cart-total');
+        const cartEmptyMessage = document.getElementById('cart-empty-message');
+        const cartSummary = document.getElementById('cart-summary');
+        const checkoutButton = document.getElementById('checkout-button');
+
+        const searchInput = document.getElementById('search-input');
+
+        let cart = JSON.parse(localStorage.getItem('cart')) || []; // Load cart from local storage
+
+        // --- Utility Functions ---
+        function formatPrice(price) {
+            return `$${price.toFixed(2)}`;
+        }
+
+        function updateCartCount() {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCountSpan.textContent = totalItems;
+        }
+
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
 
         // Function to parse CSV data into an array of objects
         function parseCSV(csvString) {
@@ -356,6 +412,8 @@
 
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
+                if (!line.trim()) continue; // Skip empty lines
+
                 const values = [];
                 let inQuote = false;
                 let currentField = '';
@@ -363,9 +421,13 @@
                 for (let j = 0; j < line.length; j++) {
                     const char = line[j];
                     if (char === '"') {
-                        inQuote = !inQuote; // Toggle quote state
-                        // This simple parser assumes quotes are only for encapsulating fields, not escaping internal quotes.
-                        // For example, "field with ""quote""" would be treated as "field with quote".
+                        // Handle escaped quotes within a field (e.g., "This is a ""quoted"" field")
+                        if (j + 1 < line.length && line[j+1] === '"' && inQuote) {
+                            currentField += '"';
+                            j++; // Skip the next quote as it's an escaped one
+                        } else {
+                            inQuote = !inQuote; // Toggle quote state
+                        }
                     } else if (char === ',' && !inQuote) {
                         values.push(currentField.trim());
                         currentField = '';
@@ -389,48 +451,16 @@
             return products;
         }
 
-        const productsData = parseCSV(csvContent);
-
-        const productListDiv = document.getElementById('product-list');
-        const cartCountSpan = document.getElementById('cart-count');
-        const cartButton = document.getElementById('cart-button');
-
-        const productDetailModal = document.getElementById('product-detail-modal');
-        const detailCloseButton = document.getElementById('detail-close-button');
-        const detailImage = document.getElementById('detail-image');
-        const detailName = document.getElementById('detail-name');
-        const detailDescription = document.getElementById('detail-description');
-        const detailPrice = document.getElementById('detail-price');
-        const addToCartDetailButton = document.getElementById('add-to-cart-detail-button');
-
-        const cartModal = document.getElementById('cart-modal');
-        const cartCloseButton = document.getElementById('cart-close-button');
-        const cartItemsList = document.getElementById('cart-items');
-        const cartTotalSpan = document.getElementById('cart-total');
-        const cartEmptyMessage = document.getElementById('cart-empty-message');
-        const cartSummary = document.getElementById('cart-summary');
-        const checkoutButton = document.getElementById('checkout-button');
-
-        let cart = JSON.parse(localStorage.getItem('cart')) || []; // Load cart from local storage
-
-        // --- Utility Functions ---
-        function formatPrice(price) {
-            return `$${price.toFixed(2)}`;
-        }
-
-        function updateCartCount() {
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCountSpan.textContent = totalItems;
-        }
-
-        function saveCart() {
-            localStorage.setItem('cart', JSON.stringify(cart));
-        }
-
         // --- Product List Rendering ---
-        function renderProducts() {
+        function renderProducts(productsToDisplay) {
             productListDiv.innerHTML = ''; // Clear existing products
-            productsData.forEach(product => {
+
+            if (productsToDisplay.length === 0) {
+                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: #555;">No products found matching your criteria.</p>';
+                return;
+            }
+
+            productsToDisplay.forEach(product => {
                 const productCard = document.createElement('div');
                 productCard.classList.add('product-card');
                 productCard.innerHTML = `
@@ -449,7 +479,10 @@
             document.querySelectorAll('.product-card .details').forEach(button => {
                 button.addEventListener('click', (event) => {
                     const productId = parseInt(event.target.dataset.id);
-                    showProductDetail(productId);
+                    const product = allProductsData.find(p => p.id === productId);
+                    if (product) {
+                        showProductDetail(product);
+                    }
                 });
             });
 
@@ -461,9 +494,23 @@
             });
         }
 
+        // --- Search and Filter Logic ---
+        function performSearchAndFilter() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            let filteredProducts = allProductsData.filter(product => {
+                // Search by name and description
+                return product.name.toLowerCase().includes(searchTerm) ||
+                       product.description.toLowerCase().includes(searchTerm);
+            });
+            renderProducts(filteredProducts);
+        }
+
+        // Attach event listener to search input
+        searchInput.addEventListener('input', performSearchAndFilter);
+
         // --- Product Detail Modal Logic ---
-        function showProductDetail(productId) {
-            const product = productsData.find(p => p.id === productId);
+        function showProductDetail(product) { // Accepts product object directly
             if (product) {
                 detailImage.src = product.image;
                 detailImage.alt = product.name;
@@ -494,7 +541,7 @@
 
         // --- Cart Logic ---
         function addToCart(productId, quantity) {
-            const product = productsData.find(p => p.id === productId);
+            const product = allProductsData.find(p => p.id === productId); // Always find from allProductsData
             if (!product) return;
 
             const existingCartItem = cart.find(item => item.id === productId);
@@ -610,16 +657,33 @@
                 saveCart();
                 hideCart();
                 updateCartCount();
+                renderCart(); // Update cart display after checkout
             } else {
                 alert('Your cart is empty. Please add items before checking out.');
             }
         });
 
 
+        // --- CSV Data Loading ---
+        async function loadProducts() {
+            try {
+                const response = await fetch('data/products001.csv');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                allProductsData = parseCSV(csvText); // Store all products
+                performSearchAndFilter(); // Render products based on initial search (empty, so all products)
+                updateCartCount(); // Ensure cart count is updated
+            } catch (error) {
+                console.error('Error loading products:', error);
+                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: red;">Error loading products. Please ensure "data/products001.csv" exists and is accessible. Details: ' + error.message + '</p>';
+            }
+        }
+
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
-            renderProducts();
-            updateCartCount();
+            loadProducts(); // Start by loading the products
         });
 
     </script>
