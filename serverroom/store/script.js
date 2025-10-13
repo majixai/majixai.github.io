@@ -1,65 +1,124 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const productGrid = document.getElementById('product-grid');
+class ProductRenderer {
+    constructor(productGrid) {
+        this.productGrid = productGrid;
+    }
 
-    fetch('files.json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    renderProduct(product) {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-4';
+
+        const card = document.createElement('a');
+        card.className = 'card product-card text-decoration-none text-dark';
+        card.href = `product.html?product=${new ProductService().getProductId(product)}`;
+
+        const cardBody = document.createElement('div');
+        cardBody.className = 'card-body d-flex flex-column';
+
+        const name = document.createElement('h5');
+        name.className = 'card-title';
+        name.textContent = product.name;
+        cardBody.appendChild(name);
+
+        const price = document.createElement('p');
+        price.className = 'card-text price';
+        price.textContent = `$${Number(product.price).toFixed(2)}`;
+        cardBody.appendChild(price);
+
+        if (product.category) {
+            const category = document.createElement('p');
+            category.className = 'card-text category';
+            category.textContent = `Category: ${product.category}`;
+            cardBody.appendChild(category);
+        }
+
+        const description = document.createElement('p');
+        description.className = 'card-text description';
+        description.textContent = product.description;
+        cardBody.appendChild(description);
+
+        card.appendChild(cardBody);
+        col.appendChild(card);
+        this.productGrid.appendChild(col);
+    }
+
+    render(products) {
+        this.productGrid.innerHTML = '';
+        products.forEach(product => this.renderProduct(product));
+    }
+}
+
+class App {
+    constructor() {
+        this.productService = new ProductService();
+        this.productGrid = document.getElementById('product-grid');
+        this.productRenderer = new ProductRenderer(this.productGrid);
+        this.sortBy = document.getElementById('sort-by');
+        this.filterByCategory = document.getElementById('filter-by-category');
+        this.search = document.getElementById('search');
+        this.products = [];
+    }
+
+    async init() {
+        this.products = await this.productService.getAllProducts();
+        this.populateCategoryFilter();
+        this.renderProducts();
+        this.addEventListeners();
+    }
+
+    populateCategoryFilter() {
+        const categories = [...new Set(this.products.map(p => p.category).filter(Boolean))];
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            this.filterByCategory.appendChild(option);
+        });
+    }
+
+    addEventListeners() {
+        this.sortBy.addEventListener('change', () => this.renderProducts());
+        this.filterByCategory.addEventListener('change', () => this.renderProducts());
+        this.search.addEventListener('input', () => this.renderProducts());
+    }
+
+    searchProducts(products) {
+        const searchTerm = this.search.value.toLowerCase();
+        if (!searchTerm) {
+            return products;
+        }
+        return products.filter(p =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    sortProducts(products) {
+        const [sortBy, order] = this.sortBy.value.split('-');
+        return [...products].sort((a, b) => {
+            if (sortBy === 'name') {
+                return order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
             }
-            return response.json();
-        })
-        .then(dataFiles => {
-            dataFiles.forEach(file => {
-                fetch(file)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.text();
-                    })
-                    .then(textData => {
-                        try {
-                            // The file content itself is a JSON string.
-                            const fileData = JSON.parse(textData);
+            return order === 'asc' ? a.price - b.price : b.price - a.price;
+        });
+    }
 
-                            // The actual product information is in the 'value' field, which is a stringified JSON.
-                            const product = JSON.parse(fileData.value);
+    filterProducts(products) {
+        const category = this.filterByCategory.value;
+        if (category === 'all') {
+            return products;
+        }
+        return products.filter(p => p.category === category);
+    }
 
-                            // Check for essential product fields before creating a card.
-                            if (product.name && product.price && product.description) {
-                                const card = document.createElement('div');
-                                card.className = 'product-card';
+    renderProducts() {
+        let productsToRender = this.searchProducts(this.products);
+        productsToRender = this.filterProducts(productsToRender);
+        productsToRender = this.sortProducts(productsToRender);
+        this.productRenderer.render(productsToRender);
+    }
+}
 
-                                const name = document.createElement('h2');
-                                name.textContent = product.name;
-                                card.appendChild(name);
-
-                                const price = document.createElement('div');
-                                price.className = 'price';
-                                // Format to 2 decimal places and add a dollar sign.
-                                price.textContent = `$${Number(product.price).toFixed(2)}`;
-                                card.appendChild(price);
-
-                                if (product.category) {
-                                    const category = document.createElement('div');
-                                    category.className = 'category';
-                                    category.textContent = `Category: ${product.category}`;
-                                    card.appendChild(category);
-                                }
-
-                                const description = document.createElement('p');
-                                description.className = 'description';
-                                description.textContent = product.description;
-                                card.appendChild(description);
-
-                                productGrid.appendChild(card);
-                            }
-                        } catch (e) {
-                            console.error(`Skipping file ${file} because it does not contain valid product data.`, e);
-                        }
-                    })
-                    .catch(error => console.error(`Error fetching individual product file ${file}:`, error));
-            });
-        })
-        .catch(error => console.error('Error fetching the product list `files.json`:', error));
+document.addEventListener('DOMContentLoaded', () => {
+    const app = new App();
+    app.init();
 });
