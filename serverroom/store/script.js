@@ -1,53 +1,3 @@
-class ProductService {
-    constructor() {
-        this.productCache = new Map();
-    }
-
-    async fetchProductFiles() {
-        try {
-            const response = await fetch('files.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Error fetching the product list `files.json`:', error);
-            return [];
-        }
-    }
-
-    async fetchProductData(file) {
-        if (this.productCache.has(file)) {
-            return this.productCache.get(file);
-        }
-
-        try {
-            const response = await fetch(file);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const textData = await response.text();
-            const fileData = JSON.parse(textData);
-            const product = JSON.parse(fileData.value);
-
-            if (product.name && product.price && product.description) {
-                this.productCache.set(file, product);
-                return product;
-            }
-        } catch (e) {
-            console.error(`Skipping file ${file} because it does not contain valid product data.`, e);
-        }
-        return null;
-    }
-
-    async getAllProducts() {
-        const productFiles = await this.fetchProductFiles();
-        const productPromises = productFiles.map(file => this.fetchProductData(file));
-        const products = await Promise.all(productPromises);
-        return products.filter(p => p !== null);
-    }
-}
-
 class ProductRenderer {
     constructor(productGrid) {
         this.productGrid = productGrid;
@@ -57,8 +7,9 @@ class ProductRenderer {
         const col = document.createElement('div');
         col.className = 'col-md-4 mb-4';
 
-        const card = document.createElement('div');
-        card.className = 'card product-card';
+        const card = document.createElement('a');
+        card.className = 'card product-card text-decoration-none text-dark';
+        card.href = `product.html?product=${new ProductService().getProductId(product)}`;
 
         const cardBody = document.createElement('div');
         cardBody.className = 'card-body d-flex flex-column';
@@ -103,6 +54,7 @@ class App {
         this.productRenderer = new ProductRenderer(this.productGrid);
         this.sortBy = document.getElementById('sort-by');
         this.filterByCategory = document.getElementById('filter-by-category');
+        this.search = document.getElementById('search');
         this.products = [];
     }
 
@@ -126,6 +78,18 @@ class App {
     addEventListeners() {
         this.sortBy.addEventListener('change', () => this.renderProducts());
         this.filterByCategory.addEventListener('change', () => this.renderProducts());
+        this.search.addEventListener('input', () => this.renderProducts());
+    }
+
+    searchProducts(products) {
+        const searchTerm = this.search.value.toLowerCase();
+        if (!searchTerm) {
+            return products;
+        }
+        return products.filter(p =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description.toLowerCase().includes(searchTerm)
+        );
     }
 
     sortProducts(products) {
@@ -147,7 +111,8 @@ class App {
     }
 
     renderProducts() {
-        let productsToRender = this.filterProducts(this.products);
+        let productsToRender = this.searchProducts(this.products);
+        productsToRender = this.filterProducts(productsToRender);
         productsToRender = this.sortProducts(productsToRender);
         this.productRenderer.render(productsToRender);
     }
