@@ -22,7 +22,6 @@ def run(playwright):
 
         # Go to cart
         page.goto('http://localhost:8000/cart.html')
-        page.wait_for_load_state('networkidle')
         page.wait_for_selector('#cart-items .card')
         expect(page.locator('#cart-items .card')).to_have_count(1)
         expect(page.locator('#cart-items h5')).to_have_text('AuraGlow Smart Mirror')

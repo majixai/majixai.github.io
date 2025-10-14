@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionStorage.setItem('orderId', orderId);
         sessionStorage.setItem('orderSummary', JSON.stringify(orderData.cart));
 
-        await cartService.clearCart();
+        cartService.clearCart();
         window.location.href = 'confirmation.html';
     });
 });

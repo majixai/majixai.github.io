@@ -20,14 +20,12 @@
                 cart.push({ ...product, quantity: 1 });
             }
             this.saveCart(cart);
-            return cart;
         }
 
         removeProduct(productId) {
             let cart = this.getCart();
             cart = cart.filter(item => item.id !== productId);
             this.saveCart(cart);
-            return cart;
         }
 
         updateQuantity(productId, quantity) {
@@ -37,7 +35,6 @@
                 product.quantity = quantity;
             }
             this.saveCart(cart);
-            return cart;
         }
 
         clearCart() {
