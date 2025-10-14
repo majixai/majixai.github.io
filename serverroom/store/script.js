@@ -56,6 +56,8 @@ class App {
         this.filterByCategory = document.getElementById('filter-by-category');
         this.search = document.getElementById('search');
         this.products = [];
+        this.currentPage = 1;
+        this.itemsPerPage = 6;
     }
 
     async init() {
@@ -80,7 +82,26 @@ class App {
     addEventListeners() {
         this.sortBy.addEventListener('change', () => this.renderProducts());
         this.filterByCategory.addEventListener('change', () => this.renderProducts());
-        this.search.addEventListener('input', () => this.renderProducts());
+        this.search.addEventListener('input', () => {
+            this.currentPage = 1;
+            this.renderProducts();
+        });
+        document.getElementById('previous-page').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.renderProducts();
+            }
+        });
+        document.getElementById('next-page').addEventListener('click', (e) => {
+            e.preventDefault();
+            const totalItems = this.searchProducts(this.filterProducts(this.products)).length;
+            const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+            if (this.currentPage < totalPages) {
+                this.currentPage++;
+                this.renderProducts();
+            }
+        });
     }
 
     searchProducts(products) {
@@ -113,10 +134,25 @@ class App {
     }
 
     renderProducts() {
-        let productsToRender = this.searchProducts(this.products);
-        productsToRender = this.filterProducts(productsToRender);
-        productsToRender = this.sortProducts(productsToRender);
+        let filteredProducts = this.searchProducts(this.products);
+        filteredProducts = this.filterProducts(filteredProducts);
+        filteredProducts = this.sortProducts(filteredProducts);
+
+        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+        const endIndex = startIndex + this.itemsPerPage;
+        const productsToRender = filteredProducts.slice(startIndex, endIndex);
+
         this.productRenderer.render(productsToRender);
+        this.renderPagination(filteredProducts.length);
+    }
+
+    renderPagination(totalItems) {
+        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+        const prevPage = document.getElementById('previous-page');
+        const nextPage = document.getElementById('next-page');
+
+        this.currentPage === 1 ? prevPage.classList.add('disabled') : prevPage.classList.remove('disabled');
+        this.currentPage === totalPages ? nextPage.classList.add('disabled') : nextPage.classList.remove('disabled');
     }
 }
 
