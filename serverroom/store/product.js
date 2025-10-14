@@ -67,13 +67,14 @@ class RecentlyViewed {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const productService = new ProductService();
-    productService.updateCartCount();
+    const cartService = new CartService();
+    cartService.updateCartCount();
 
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('product');
 
     if (productId) {
+        const productService = new ProductService();
         const product = await productService.getProduct(productId);
 
         if (product) {
@@ -88,9 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             recentlyViewed.render(document.getElementById('recently-viewed'), productId);
 
             document.querySelector('.btn-primary').addEventListener('click', () => {
-                const cartService = new CartService();
-                const cart = cartService.addProduct(product);
-                cartService.updateCartCount();
+                cartService.addProduct(product);
             });
         } else {
             // Handle product not found

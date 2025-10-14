@@ -5,8 +5,8 @@ class CartRenderer {
         this.cartService = new CartService();
     }
 
-    render(cart) {
-        cart = cart || this.cartService.getCart();
+    render() {
+        const cart = this.cartService.getCart();
         if (cart.length === 0) {
             this.cartItemsContainer.innerHTML = '<p>Your cart is empty.</p>';
             this.cartTotalEl.textContent = '0.00';
@@ -41,16 +41,16 @@ class CartRenderer {
             input.addEventListener('change', (e) => {
                 const id = e.target.dataset.id;
                 const quantity = parseInt(e.target.value);
-                const cart = this.cartService.updateQuantity(id, quantity);
-                this.render(cart);
+                this.cartService.updateQuantity(id, quantity);
+                this.render();
             });
         });
 
         document.querySelectorAll('.remove-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const id = e.target.dataset.id;
-                const cart = this.cartService.removeProduct(id);
-                this.render(cart);
+                this.cartService.removeProduct(id);
+                this.render();
             });
         });
     }

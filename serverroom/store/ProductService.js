@@ -57,11 +57,6 @@
         getProductId(product) {
             return product.name.toLowerCase().replace(/\s+/g, '-');
         }
-
-    async updateCartCount() {
-        const cartService = new CartService();
-        await cartService.updateCartCount();
-    }
     }
 
     window.ProductService = ProductService;

@@ -59,7 +59,8 @@ class App {
     }
 
     async init() {
-        this.productService.updateCartCount();
+        const cartService = new CartService();
+        cartService.updateCartCount();
         this.products = await this.productService.getAllProducts();
         this.populateCategoryFilter();
         this.renderProducts();
