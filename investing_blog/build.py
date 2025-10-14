@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import sqlite3
 
 def main():
     print("Building investing blog...")
@@ -13,32 +14,31 @@ def main():
     # Copy static files
     shutil.copytree("investing_blog/static", "dist/static", dirs_exist_ok=True)
 
+    # Connect to the database
+    conn = sqlite3.connect('blog.db')
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
 
-    # Read posts
-    posts = []
+    # Read published posts
+    c.execute("SELECT * FROM posts WHERE status = 'published' ORDER BY created_at DESC")
+    posts = c.fetchall()
     all_tags = set()
-    for filename in os.listdir("investing_blog/posts"):
-        if filename.endswith(".json"):
-            with open(os.path.join("investing_blog/posts", filename)) as f:
-                post = json.load(f)
-                posts.append(post)
-                if "tags" in post:
-                    all_tags.update(post["tags"])
+    for post in posts:
+        if post['tags']:
+            all_tags.update(json.loads(post['tags']))
 
-    # Sort posts by date
-    posts.sort(key=lambda x: x["date"], reverse=True)
 
     # Generate HTML for posts
     posts_html = ""
     for post in posts:
         tags_html = ""
-        if "tags" in post:
-            for tag in post["tags"]:
+        if post['tags']:
+            for tag in json.loads(post['tags']):
                 tags_html += f'<span class="tag">{tag}</span>'
         posts_html += f"""
         <div class="blog-post">
             <h2 class="blog-post-title">{post['title']}</h2>
-            <p class="blog-post-meta">{post['date']} by {post['author']}</p>
+            <p class="blog-post-meta">{post['created_at']} by Jules</p>
             <div>{tags_html}</div>
             <p>{post['content']}</p>
         </div>
@@ -60,6 +60,8 @@ def main():
 
     with open("dist/index.html", "w") as f:
         f.write(html)
+
+    conn.close()
 
     print("Blog built successfully!")
 
