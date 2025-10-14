@@ -1,31 +1,57 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+}
+
+header {
+    background-color: #333;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+}
+
+main {
+    padding: 2rem;
+}
+
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
 .product-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    height: 100%;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
 }
 
-.product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-.product-card .card-title {
-    font-size: 1.2rem;
-    font-weight: bold;
+.product-card h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+    color: #333;
 }
 
 .product-card .price {
     font-size: 1.5rem;
     font-weight: bold;
     color: #007bff;
+    margin-bottom: 1rem;
 }
 
 .product-card .category {
     font-size: 0.9rem;
-    color: #6c757d;
+    color: #666;
+    margin-bottom: 1rem;
 }
 
-@media (max-width: 768px) {
-    .form-group {
-        margin-bottom: 1rem;
-    }
+.product-card .description {
+    font-size: 1rem;
+    color: #555;
+    flex-grow: 1;
 }
