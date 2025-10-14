@@ -1,8 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
-import PyPDF2
 import sqlite3
-import json
+from investing_blog.processing import add_post_to_db
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'investing_blog/pdfs'
@@ -13,28 +12,6 @@ def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
-
-def process_pdf(pdf_path):
-    """
-    Extracts text from a PDF and generates a summary and tags.
-    This is a placeholder for a real AI model.
-    """
-    try:
-        with open(pdf_path, 'rb') as f:
-            reader = PyPDF2.PdfReader(f)
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text()
-
-        # Placeholder for AI summarization and tagging
-        summary = text[:200] + "..." if len(text) > 200 else text
-        tags = ["pdf", "generated", "draft", "bullish", "tech", "economy"]
-
-        return {"content": summary, "tags": tags}
-    except Exception as e:
-        print(f"Error processing PDF: {e}")
-        return None
-
 
 @app.route("/")
 def index():
@@ -54,16 +31,7 @@ def upload_page():
             file.save(filepath)
 
             # Process the PDF to generate a blog post
-            post_data = process_pdf(filepath)
-            if post_data:
-                conn = get_db()
-                c = conn.cursor()
-                c.execute(
-                    'INSERT INTO posts (title, content, tags) VALUES (?, ?, ?)',
-                    (os.path.splitext(filename)[0], post_data['content'], json.dumps(post_data['tags']))
-                )
-                conn.commit()
-                conn.close()
+            add_post_to_db(filepath)
 
             return redirect(url_for('drafts_page'))
     return render_template("upload.html")
