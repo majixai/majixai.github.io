@@ -46,6 +46,7 @@ def update_readme(commits):
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
+    # Main execution
     recent_commits = get_recent_commits()
     if recent_commits:
         update_readme(recent_commits)
