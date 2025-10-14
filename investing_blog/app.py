@@ -4,10 +4,11 @@ import sqlite3
 from processing import add_post_to_db
 
 print("Starting Flask app...")
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../dist/static', template_folder='templates')
 UPLOAD_FOLDER = 'investing_blog/pdfs'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DATABASE = 'blog.db'
+DIST_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist'))
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -16,11 +17,11 @@ def get_db():
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('../dist', 'index.html')
+    return send_from_directory(DIST_DIR, 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory('../dist', path)
+    return send_from_directory(DIST_DIR, path)
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_page():
@@ -51,7 +52,4 @@ def drafts_page():
     return render_template("drafts.html", posts=posts)
 
 if __name__ == "__main__":
-    if not os.path.exists('../dist'):
-        print("The 'dist' directory does not exist. Please run the build script first.")
-    else:
-        app.run(debug=True, port=5001, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False)
