@@ -70,3 +70,20 @@ The root directory contains various scripts and configuration files, including:
 - `deploy.sh`: A script to deploy the Texas Hold'em application using Docker.
 - `requirements.txt`: Python dependencies for the Texas Hold'em application.
 - Other miscellaneous scripts and files.
+
+## Click Tracking and Analytics
+
+This repository uses a simple system to track clicks on the project links in this `README.md` file.
+
+### How it Works
+
+1.  **Redirection:** All project links in this file point to the `redirect.html` page.
+2.  **Logging:** When a user clicks a link, the `redirect.js` script sends a beacon with the click data (target URL, timestamp, etc.) to a Google Apps Script endpoint.
+3.  **Data Storage:** The Google Apps Script then logs this information into a private Google Sheet.
+4.  **Reporting:** A daily GitHub Action, defined in `.github/workflows/click-analytics.yml`, runs the `generate_report.py` script. This script fetches the data from the Google Sheet, processes it, and generates a summary report at `CLICK_ANALYTICS.md`.
+
+### Modifying the System
+
+-   **Redirect Logic:** The client-side tracking and redirection logic can be modified in `redirect.js`.
+-   **Reporting Workflow:** The GitHub Action that generates the daily report can be configured in `.github/workflows/click-analytics.yml`.
+-   **Report Generation:** The Python script that processes the data and creates the markdown report is `generate_report.py`.
