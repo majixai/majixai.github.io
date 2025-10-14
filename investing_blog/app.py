@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 import os
 import sqlite3
-from investing_blog.processing import add_post_to_db
+from processing import add_post_to_db
 
+print("Starting Flask app...")
 app = Flask(__name__)
 UPLOAD_FOLDER = 'investing_blog/pdfs'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -13,9 +14,13 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.route("/")
-def index():
-    return "Investing Blog Backend is running!"
+@app.route('/')
+def serve_index():
+    return send_from_directory('../dist', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('../dist', path)
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_page():
@@ -46,4 +51,7 @@ def drafts_page():
     return render_template("drafts.html", posts=posts)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    if not os.path.exists('../dist'):
+        print("The 'dist' directory does not exist. Please run the build script first.")
+    else:
+        app.run(debug=True, port=5001, use_reloader=False)
