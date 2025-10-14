@@ -59,6 +59,7 @@ class App {
     }
 
     async init() {
+        this.productService.updateCartCount();
         this.products = await this.productService.getAllProducts();
         this.populateCategoryFilter();
         this.renderProducts();
@@ -118,7 +119,51 @@ class App {
     }
 }
 
+class Autocomplete {
+    constructor(searchEl, resultsEl, productService) {
+        this.searchEl = searchEl;
+        this.resultsEl = resultsEl;
+        this.productService = productService;
+        this.products = [];
+    }
+
+    async init() {
+        this.products = await this.productService.getAllProducts();
+        this.searchEl.addEventListener('input', () => this.render());
+        document.addEventListener('click', (e) => {
+            if (!this.searchEl.contains(e.target)) {
+                this.resultsEl.innerHTML = '';
+            }
+        });
+    }
+
+    render() {
+        const searchTerm = this.searchEl.value.toLowerCase();
+        if (!searchTerm) {
+            this.resultsEl.innerHTML = '';
+            return;
+        }
+
+        const matchingProducts = this.products.filter(p =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description.toLowerCase().includes(searchTerm)
+        ).slice(0, 5); // Limit to 5 suggestions
+
+        this.resultsEl.innerHTML = matchingProducts.map(p => `
+            <a href="product.html?product=${this.productService.getProductId(p)}" class="list-group-item list-group-item-action">
+                ${p.name}
+            </a>
+        `).join('');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const app = new App();
     app.init();
+
+    const searchEl = document.getElementById('search');
+    const resultsEl = document.getElementById('autocomplete-results');
+    const productService = new ProductService();
+    const autocomplete = new Autocomplete(searchEl, resultsEl, productService);
+    autocomplete.init();
 });

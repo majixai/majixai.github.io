@@ -32,6 +32,7 @@
                 const product = JSON.parse(fileData.value);
 
                 if (product.name && product.price && product.description) {
+                    product.id = this.getProductId(product);
                     this.productCache.set(file, product);
                     return product;
                 }
@@ -56,6 +57,11 @@
         getProductId(product) {
             return product.name.toLowerCase().replace(/\s+/g, '-');
         }
+
+    async updateCartCount() {
+        const cartService = new CartService();
+        await cartService.updateCartCount();
+    }
     }
 
     window.ProductService = ProductService;
