@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const card = document.createElement('div');
         card.className = 'performer-card';
-        card.innerHTML = `<h3>${name}</h3>`;
+
+        const imageUrl = performer.image_url || performer.profile_pic_url;
+        if (imageUrl) {
+            card.innerHTML += `<img src="${imageUrl}" alt="${name}" style="width:100%">`;
+        }
+
+        card.innerHTML += `<h3>${name}</h3>`;
 
         // Add more details if they exist
         if(performer.age) card.innerHTML += `<p>Age: ${performer.age}</p>`;
@@ -43,11 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         card.addEventListener('click', () => {
-            console.log('Clicked performer:', performer);
-            // Update the iframe src with a placeholder URL.
-            // This URL should be updated to point to the correct performer page.
-            if (performer.username) {
-                mainIframe.src = `https://some-service.com/performer/${performer.username}`;
+            const iframeUrl = performer.iframe_embed;
+            if (iframeUrl) {
+                mainIframe.src = iframeUrl;
             }
         });
         return card;
