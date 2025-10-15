@@ -1,206 +1,97 @@
-class ProductRenderer {
-    constructor(productGrid) {
-        this.productGrid = productGrid;
-    }
-
-    renderProduct(product) {
-        const col = document.createElement('div');
-        col.className = 'col-md-4 mb-4';
-
-        const card = document.createElement('a');
-        card.className = 'card product-card text-decoration-none text-dark';
-        card.href = `product.html?product=${new ProductService().getProductId(product)}`;
-
-        const cardBody = document.createElement('div');
-        cardBody.className = 'card-body d-flex flex-column';
-
-        const name = document.createElement('h5');
-        name.className = 'card-title';
-        name.textContent = product.name;
-        cardBody.appendChild(name);
-
-        const price = document.createElement('p');
-        price.className = 'card-text price';
-        price.textContent = `$${Number(product.price).toFixed(2)}`;
-        cardBody.appendChild(price);
-
-        if (product.category) {
-            const category = document.createElement('p');
-            category.className = 'card-text category';
-            category.textContent = `Category: ${product.category}`;
-            cardBody.appendChild(category);
-        }
-
-        const description = document.createElement('p');
-        description.className = 'card-text description';
-        description.textContent = product.description;
-        cardBody.appendChild(description);
-
-        card.appendChild(cardBody);
-        col.appendChild(card);
-        this.productGrid.appendChild(col);
-    }
-
-    render(products) {
-        this.productGrid.innerHTML = '';
-        products.forEach(product => this.renderProduct(product));
-    }
-}
-
-class App {
-    constructor() {
-        this.productService = new ProductService();
-        this.productGrid = document.getElementById('product-grid');
-        this.productRenderer = new ProductRenderer(this.productGrid);
-        this.sortBy = document.getElementById('sort-by');
-        this.filterByCategory = document.getElementById('filter-by-category');
-        this.search = document.getElementById('search');
-        this.products = [];
-        this.currentPage = 1;
-        this.itemsPerPage = 6;
-    }
-
-    async init() {
-        const cartService = new CartService();
-        cartService.updateCartCount();
-        this.products = await this.productService.getAllProducts();
-        this.populateCategoryFilter();
-        this.renderProducts();
-        this.addEventListeners();
-    }
-
-    populateCategoryFilter() {
-        const categories = [...new Set(this.products.map(p => p.category).filter(Boolean))];
-        categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category;
-            this.filterByCategory.appendChild(option);
-        });
-    }
-
-    addEventListeners() {
-        this.sortBy.addEventListener('change', () => this.renderProducts());
-        this.filterByCategory.addEventListener('change', () => this.renderProducts());
-        this.search.addEventListener('input', () => {
-            this.currentPage = 1;
-            this.renderProducts();
-        });
-        document.getElementById('previous-page').addEventListener('click', (e) => {
-            e.preventDefault();
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.renderProducts();
-            }
-        });
-        document.getElementById('next-page').addEventListener('click', (e) => {
-            e.preventDefault();
-            const totalItems = this.searchProducts(this.filterProducts(this.products)).length;
-            const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-            if (this.currentPage < totalPages) {
-                this.currentPage++;
-                this.renderProducts();
-            }
-        });
-    }
-
-    searchProducts(products) {
-        const searchTerm = this.search.value.toLowerCase();
-        if (!searchTerm) {
-            return products;
-        }
-        return products.filter(p =>
-            p.name.toLowerCase().includes(searchTerm) ||
-            p.description.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    sortProducts(products) {
-        const [sortBy, order] = this.sortBy.value.split('-');
-        return [...products].sort((a, b) => {
-            if (sortBy === 'name') {
-                return order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-            }
-            return order === 'asc' ? a.price - b.price : b.price - a.price;
-        });
-    }
-
-    filterProducts(products) {
-        const category = this.filterByCategory.value;
-        if (category === 'all') {
-            return products;
-        }
-        return products.filter(p => p.category === category);
-    }
-
-    renderProducts() {
-        let filteredProducts = this.searchProducts(this.products);
-        filteredProducts = this.filterProducts(filteredProducts);
-        filteredProducts = this.sortProducts(filteredProducts);
-
-        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-        const endIndex = startIndex + this.itemsPerPage;
-        const productsToRender = filteredProducts.slice(startIndex, endIndex);
-
-        this.productRenderer.render(productsToRender);
-        this.renderPagination(filteredProducts.length);
-    }
-
-    renderPagination(totalItems) {
-        const totalPages = Math.ceil(totalItems / this.itemsPerPage);
-        const prevPage = document.getElementById('previous-page');
-        const nextPage = document.getElementById('next-page');
-
-        this.currentPage === 1 ? prevPage.classList.add('disabled') : prevPage.classList.remove('disabled');
-        this.currentPage === totalPages ? nextPage.classList.add('disabled') : nextPage.classList.remove('disabled');
-    }
-}
-
-class Autocomplete {
-    constructor(searchEl, resultsEl, productService) {
-        this.searchEl = searchEl;
-        this.resultsEl = resultsEl;
-        this.productService = productService;
-        this.products = [];
-    }
-
-    async init() {
-        this.products = await this.productService.getAllProducts();
-        this.searchEl.addEventListener('input', () => this.render());
-        document.addEventListener('click', (e) => {
-            if (!this.searchEl.contains(e.target)) {
-                this.resultsEl.innerHTML = '';
-            }
-        });
-    }
-
-    render() {
-        const searchTerm = this.searchEl.value.toLowerCase();
-        if (!searchTerm) {
-            this.resultsEl.innerHTML = '';
-            return;
-        }
-
-        const matchingProducts = this.products.filter(p =>
-            p.name.toLowerCase().includes(searchTerm) ||
-            p.description.toLowerCase().includes(searchTerm)
-        ).slice(0, 5); // Limit to 5 suggestions
-
-        this.resultsEl.innerHTML = matchingProducts.map(p => `
-            <a href="product.html?product=${this.productService.getProductId(p)}" class="list-group-item list-group-item-action">
-                ${p.name}
-            </a>
-        `).join('');
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new App();
-    app.init();
+    const productGrid = document.getElementById('product-grid');
+    const prevPage = document.getElementById('previous-page');
+    const nextPage = document.getElementById('next-page');
+    let products = [];
+    let currentPage = 1;
+    const itemsPerPage = 6;
 
-    const searchEl = document.getElementById('search');
-    const resultsEl = document.getElementById('autocomplete-results');
-    const productService = new ProductService();
-    const autocomplete = new Autocomplete(searchEl, resultsEl, productService);
-    autocomplete.init();
+    function renderProducts() {
+        productGrid.innerHTML = '';
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const productsToRender = products.slice(startIndex, endIndex);
+
+        productsToRender.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+
+            const name = document.createElement('h2');
+            name.textContent = product.name;
+            card.appendChild(name);
+
+            const price = document.createElement('div');
+            price.className = 'price';
+            price.textContent = `$${Number(product.price).toFixed(2)}`;
+            card.appendChild(price);
+
+            if (product.category) {
+                const category = document.createElement('div');
+                category.className = 'category';
+                category.textContent = `Category: ${product.category}`;
+                card.appendChild(category);
+            }
+
+            const description = document.createElement('p');
+            description.className = 'description';
+            description.textContent = product.description;
+            card.appendChild(description);
+
+            productGrid.appendChild(card);
+        });
+
+        renderPagination();
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(products.length / itemsPerPage);
+        currentPage === 1 ? prevPage.classList.add('disabled') : prevPage.classList.remove('disabled');
+        currentPage === totalPages ? nextPage.classList.add('disabled') : nextPage.classList.remove('disabled');
+    }
+
+    prevPage.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+            currentPage--;
+            renderProducts();
+        }
+    });
+
+    nextPage.addEventListener('click', (e) => {
+        e.preventDefault();
+        const totalPages = Math.ceil(products.length / itemsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderProducts();
+        }
+    });
+
+    fetch('files.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(dataFiles => {
+            const productPromises = dataFiles.map(file =>
+                fetch(file)
+                    .then(response => response.text())
+                    .then(textData => {
+                        try {
+                            const fileData = JSON.parse(textData);
+                            return JSON.parse(fileData.value);
+                        } catch (e) {
+                            console.error(`Skipping file ${file} because it does not contain valid product data.`, e);
+                            return null;
+                        }
+                    })
+            );
+            return Promise.all(productPromises);
+        })
+        .then(productData => {
+            products = productData.filter(p => p && p.name && p.price && p.description);
+            renderProducts();
+        })
+        .catch(error => console.error('Error fetching the product list `files.json`:', error));
 });
