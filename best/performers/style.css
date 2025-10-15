@@ -1,0 +1,115 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: sans-serif;
+    background-color: #f0f0f0;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.header-controls {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+}
+
+.header-controls h1 {
+    margin: 0;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+.main-content {
+    display: flex;
+    flex-grow: 1;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.iframe-column {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+}
+
+.iframe-container {
+    flex-grow: 1;
+    position: relative;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.iframe-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.performers-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: 5px;
+    padding: 10px;
+    min-width: 280px;
+    max-width: 350px;
+}
+
+.performers-column h2 {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+    text-align: center;
+}
+
+.performers-list-container {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-grow: 1;
+    padding-bottom: 15px; /* For scrollbar visibility */
+    scrollbar-width: thin;
+    scrollbar-color: #ccc #f0f0f0;
+}
+
+.performer-card {
+    flex: 0 0 150px;
+    width: 150px;
+    margin-right: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    cursor: pointer;
+    background-color: #f9f9f9;
+    transition: transform 0.2s;
+}
+
+.performer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.performer-card h3 {
+    margin: 0 0 5px 0;
+    font-size: 1em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.performer-card p {
+    margin: 0;
+    font-size: 0.8em;
+    color: #555;
+}
