@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performers</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header-controls">
+            <h1>Performers</h1>
+        </div>
+
+        <div class="main-content">
+            <!-- Main Viewing Column -->
+            <div class="iframe-column">
+                <div class="iframe-container">
+                    <iframe id="mainIframe" src="about:blank" title="Main Viewer"></iframe>
+                </div>
+            </div>
+
+            <!-- Performers Column -->
+            <div class="performers-column" id="performersContainer">
+                <h2>Performers</h2>
+                <div class="performers-list-container">
+                    <!-- Performer cards will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
