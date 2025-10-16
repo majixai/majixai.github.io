@@ -1,0 +1,41 @@
+<script>
+document.getElementById('visa-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const responseDiv = document.getElementById('response');
+  responseDiv.style.display = 'none';
+
+  const paymentData = {
+    cardHolder: document.getElementById('card-holder').value,
+    cardNumber: document.getElementById('card-number').value,
+    expiryDate: document.getElementById('expiry-date').value,
+    cvv: document.getElementById('cvv').value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      responseDiv.style.display = 'block';
+      if (response.success) {
+        responseDiv.className = 'alert alert-success';
+        let content = `<strong>Success!</strong> ${response.message}<br>Transaction ID: ${response.transactionId}`;
+        if(response.fraudAnalysis) {
+            content += `<br>Fraud Risk Score: ${response.fraudAnalysis.riskScore}/100`;
+            content += `<br>Explanation: ${response.fraudAnalysis.explanation}`;
+        }
+        responseDiv.innerHTML = content;
+      } else {
+        responseDiv.className = 'alert alert-danger';
+        responseDiv.innerHTML = `<strong>Error!</strong> ${response.error}`;
+      }
+    })
+    .withFailureHandler(function(error) {
+      responseDiv.style.display = 'block';
+      responseDiv.className = 'alert alert-danger';
+      responseDiv.innerHTML = '<strong>Error!</strong> ' + error.message;
+    })
+    .doPost(paymentData);
+});
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+</script>
