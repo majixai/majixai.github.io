@@ -1,10 +1,10 @@
-# Visa API Integration with GenAI Fraud Analysis & Reporting
+# Payment API Integration with GenAI Fraud Analysis & Reporting
 
-This directory contains a Google Apps Script project that provides a mock Visa payment integration with generative AI-powered fraud analysis. It also includes a reporting system that logs all transaction attempts to a Google Sheet and generates a daily summary report.
+This directory contains a Google Apps Script project that provides a mock payment integration with support for Visa and Google Pay, along with generative AI-powered fraud analysis. It also includes a reporting system that logs all transaction attempts to a Google Sheet and generates a daily summary report.
 
 ## Features
 
--   **Payment Form:** A simple HTML form for users to enter their payment details.
+-   **Payment Form:** A tabbed HTML form for users to pay with a credit card or Google Pay.
 -   **Google Apps Script Backend:** A `code.gs` script that:
     -   Serves the payment form.
     -   Receives payment data from the form.
@@ -30,7 +30,7 @@ To use this project, you need to set up a Google Sheet for logging and configure
 1.  Create a new Google Sheet in your Google Drive.
 2.  Name the sheet "Visa Transaction Logs" or something similar.
 3.  The first row of the sheet should be a header row with the following columns:
-    `Timestamp`, `Card Holder`, `Card Number (Last 4)`, `Status`, `Transaction ID`, `Fraud Score`, `Fraud Explanation`, `Error Message`
+    `Timestamp`, `Card Holder`, `Card Number (Last 4)`, `Payment Method`, `Status`, `Transaction ID`, `Fraud Score`, `Fraud Explanation`, `Error Message`
 
 ### 2. Configure the Google Apps Script Project
 

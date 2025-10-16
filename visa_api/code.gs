@@ -61,12 +61,13 @@ function logTransaction(paymentData, response, fraudAnalysis) {
       return;
     }
     const sheet = SpreadsheetApp.openById(logSheetId).getSheets()[0];
-    const lastFourDigits = paymentData.cardNumber ? paymentData.cardNumber.slice(-4) : 'N/A';
+    const lastFourDigits = paymentData.cardNumber ? paymentData.cardNumber.slice(-4) : (paymentData.cardDescription || 'N/A');
 
     sheet.appendRow([
       new Date(),
       paymentData.cardHolder || 'N/A',
       lastFourDigits,
+      paymentData.paymentMethod,
       response.success ? 'Success' : 'Failed',
       response.transactionId || 'N/A',
       fraudAnalysis ? fraudAnalysis.riskScore : 'N/A',
