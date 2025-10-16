@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Summarizer Blog</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="w3-container w3-center w3-padding-32">
+        <h1><b>PDF Summarizer Blog</b></h1>
+        <p>Welcome to the blog of <span class="w3-tag">Jules</span></p>
+    </header>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8">
+                <div id="blog-posts">
+                    <!-- Blog posts will be dynamically inserted here -->
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="w3-card w3-margin">
+                    <div class="w3-container w3-padding">
+                        <h4>Upload PDF</h4>
+                    </div>
+                    <div class="w3-container">
+                        <button onclick="window.pdfUploader.showModal()" class="w3-button w3-block w3-theme-l1 w3-left-align"><i class="fa fa-upload"></i> Upload PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for PDF upload -->
+    <div id="uploadModal" class="w3-modal">
+        <div class="w3-modal-content w3-card-4 w3-animate-zoom" style="max-width:600px">
+            <div class="w3-center"><br>
+                <span onclick="document.getElementById('uploadModal').style.display='none'" class="w3-button w3-xlarge w3-transparent w3-display-topright" title="Close Modal">×</span>
+                <img src="https://www.w3schools.com/w3images/avatar2.png" alt="Avatar" style="width:30%" class="w3-circle w3-margin-top">
+            </div>
+
+            <form class="w3-container" action="/action_page.php">
+                <div class="w3-section">
+                    <label><b>PDF File</b></label>
+                    <input class="w3-input w3-border w3-margin-bottom" type="file" placeholder="Select a PDF file" required>
+                    <button class="w3-button w3-block w3-green w3-section w3-padding" type="submit">Upload</button>
+                </div>
+            </form>
+
+            <div class="w3-container w3-border-top w3-padding-16 w3-light-grey">
+                <button onclick="document.getElementById('uploadModal').style.display='none'" type="button" class="w3-button w3-red">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+name: Process Uploaded PDFs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  process-pdfs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+      with:
+        # We need to fetch the full history to be able to push back to the repo
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyPDF2
+
+    - name: Create uploads directory if it doesn't exist
+      run: mkdir -p pdf_summarizer_blog/uploads
+
+    - name: Run PDF processing script
+      run: python pdf_summarizer_blog/process_pdfs.py
+
+    - name: Update posts.json manifest
+      run: python pdf_summarizer_blog/generate_manifest.py
+
+    - name: Commit and push changes
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add pdf_summarizer_blog/posts/*.dat pdf_summarizer_blog/posts/posts.json
+        # Only commit if there are changes
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Add processed blog posts" && git push)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
