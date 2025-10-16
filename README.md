@@ -94,3 +94,13 @@ This repository uses a simple system to track clicks on the project links in thi
 -   **Redirect Logic:** The client-side tracking and redirection logic can be modified in `redirect.js`.
 -   **Reporting Workflow:** The GitHub Action that generates the daily report can be configured in `.github/workflows/click-analytics.yml`.
 -   **Report Generation:** The Python script that processes the data and creates the markdown report is `generate_report.py`.
+
+## Visa Transaction Reporting
+
+This repository includes a mock Visa payment integration with GenAI-powered fraud analysis and automated reporting. For more details, see the [`visa_api/README.md`](visa_api/README.md) file.
+
+### How it Works
+
+1.  **Payment Form:** A simple payment form in the `visa_api` directory allows users to enter their payment details.
+2.  **Fraud Analysis & Logging:** When a payment is submitted, a Google Apps Script (`visa_api/code.gs`) calls the Gemini API to analyze the transaction for fraud. It then logs every attempt to a private Google Sheet.
+3.  **Automated Reporting:** A daily GitHub Action, defined in `.github/workflows/transaction_report.yml`, runs the `visa_api/generate_transaction_report.py` script. This script fetches the transaction data, generates a summary, and creates a report at `visa_api/TRANSACTION_REPORT.md`.

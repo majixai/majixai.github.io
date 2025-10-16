@@ -4,38 +4,77 @@
  * @return {HtmlOutput} The HTML output for the page.
  */
 function doGet(e) {
+  if (e.parameter.page === 'report') {
+    const template = HtmlService.createTemplateFromFile('report');
+    template.repoUrl = PropertiesService.getScriptProperties().getProperty('REPO_URL');
+    return template.evaluate();
+  }
   return HtmlService.createTemplateFromFile('index').evaluate();
 }
 
 /**
  * Handles POST requests from the client-side script.
  * @param {Object} paymentData The payment data from the form.
- * @return {ContentService.TextOutput} The response to the request.
+ * @return {Object} A response object.
  */
 function doPost(paymentData) {
   try {
-    const requestData = paymentData;
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const fraudRiskThreshold = parseInt(scriptProperties.getProperty('FRAUD_RISK_THRESHOLD'), 10) || 75;
 
-    const fraudAnalysis = analyzeFraud(requestData);
-    if (fraudAnalysis.riskScore > 75) {
-      return ContentService.createTextOutput(JSON.stringify({ success: false, error: `High fraud risk detected (${fraudAnalysis.riskScore}/100). Payment rejected. Explanation: ${fraudAnalysis.explanation}` }))
-        .setMimeType(ContentService.MimeType.JSON);
+    const fraudAnalysis = analyzeFraud(paymentData);
+
+    if (fraudAnalysis.riskScore > fraudRiskThreshold) {
+      const errorResponse = {
+        success: false,
+        error: `High fraud risk detected (${fraudAnalysis.riskScore}/${fraudRiskThreshold}). Payment rejected. Explanation: ${fraudAnalysis.explanation}`
+      };
+      logTransaction(paymentData, errorResponse, fraudAnalysis);
+      return errorResponse;
     }
 
-    // In a real application, you would get a payment token from the client-side
-    // and use it to make a payment request to the Visa API here.
-    // For this example, we'll just simulate a successful payment.
-
-    const paymentResponse = processPayment(requestData);
+    const paymentResponse = processPayment(paymentData);
     paymentResponse.fraudAnalysis = fraudAnalysis;
 
-    return ContentService.createTextOutput(JSON.stringify(paymentResponse))
-      .setMimeType(ContentService.MimeType.JSON);
+    logTransaction(paymentData, paymentResponse, fraudAnalysis);
+    return paymentResponse;
 
   } catch (error) {
     Logger.log('Error processing payment: ' + error.message);
-    return ContentService.createTextOutput(JSON.stringify({ success: false, error: error.message }))
-      .setMimeType(ContentService.MimeType.JSON);
+    const errorResponse = { success: false, error: error.message };
+    logTransaction(paymentData, errorResponse, null);
+    return errorResponse;
+  }
+}
+
+/**
+ * Logs a transaction attempt to the configured Google Sheet.
+ * @param {Object} paymentData The payment data from the form.
+ * @param {Object} response The response from the payment processing.
+ * @param {Object} fraudAnalysis The fraud analysis result.
+ */
+function logTransaction(paymentData, response, fraudAnalysis) {
+  try {
+    const logSheetId = PropertiesService.getScriptProperties().getProperty('LOG_SHEET_ID');
+    if (!logSheetId) {
+      Logger.log('LOG_SHEET_ID is not configured. Skipping transaction log.');
+      return;
+    }
+    const sheet = SpreadsheetApp.openById(logSheetId).getSheets()[0];
+    const lastFourDigits = paymentData.cardNumber ? paymentData.cardNumber.slice(-4) : 'N/A';
+
+    sheet.appendRow([
+      new Date(),
+      paymentData.cardHolder || 'N/A',
+      lastFourDigits,
+      response.success ? 'Success' : 'Failed',
+      response.transactionId || 'N/A',
+      fraudAnalysis ? fraudAnalysis.riskScore : 'N/A',
+      fraudAnalysis ? fraudAnalysis.explanation : 'N/A',
+      response.error || ''
+    ]);
+  } catch (error) {
+    Logger.log('Error logging transaction: ' + error.message);
   }
 }
 
@@ -120,4 +159,19 @@ function setApiCredentials(visaApiKey, visaApiSecret, geminiApiKey) {
   properties.setProperty('VISA_API_SECRET', visaApiSecret);
   properties.setProperty('GEMINI_API_KEY', geminiApiKey);
   Logger.log('API credentials set.');
+}
+
+/**
+ * Sets the configuration for the transaction logging.
+ * This should be run once from the script editor.
+ * @param {string} sheetId The ID of the Google Sheet for logging.
+ * @param {number} threshold The fraud risk threshold.
+ * @param {string} repoUrl The repository URL (e.g., 'owner/repo').
+ */
+function setConfiguration(sheetId, threshold, repoUrl) {
+  const properties = PropertiesService.getScriptProperties();
+  properties.setProperty('LOG_SHEET_ID', sheetId);
+  properties.setProperty('FRAUD_RISK_THRESHOLD', threshold);
+  properties.setProperty('REPO_URL', repoUrl);
+  Logger.log('Configuration set.');
 }
