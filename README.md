@@ -97,7 +97,7 @@ This repository uses a simple system to track clicks on the project links in thi
 
 ## Visa Transaction Reporting
 
-This repository includes a mock Visa payment integration with GenAI-powered fraud analysis and automated reporting. For more details, see the [`visa_api/README.md`](visa_api/README.md) file.
+This repository includes a mock payment integration with support for Visa and Google Pay, GenAI-powered fraud analysis, and automated reporting. For more details, see the [`visa_api/README.md`](visa_api/README.md) file.
 
 ### How it Works
 
