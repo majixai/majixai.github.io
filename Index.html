@@ -1,126 +1,155 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Jinx Finance Email Service</title>
+    <base target="_top">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
+        :root {
+            --primary-color: #00539B;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            background-color: #f8f9fa;
         }
         .container {
-            background-color: #ffffff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
+            padding-top: 20px;
         }
-        h1 {
-            color: #333;
-            text-align: center;
+        .header {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
             margin-bottom: 20px;
         }
-        .form-group {
-            margin-bottom: 15px;
+        .table thead th {
+            background-color: #e9ecef;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-        input[type="email"], input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #00539B; /* Updated Color */
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        button:hover {
-            background-color: #003f7a; /* Darker shade for hover */
-        }
-        #status {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: 500;
-        }
-        .status-success {
-            background-color: #e7f5e7;
-            color: #28a745;
-            border: 1px solid #b8e0b8;
-        }
-        .status-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .status-info {
+        .alert-info {
             background-color: #e2f3ff;
             color: #004085;
-            border: 1px solid #b8daff;
+            border-color: #b8daff;
+        }
+        .signal-buy {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .signal-sell {
+            color: #dc3545;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Jinx Finance Email</h1>
-        <div class="form-group">
-            <label for="email">Recipient Email</label>
-            <input type="email" id="email" placeholder="Enter recipient's email">
+        <h2 class="header">TradingView Alert Dashboard</h2>
+        <div id="status-container">
+            <div class="alert alert-info">Loading alerts from GitHub...</div>
         </div>
-        <div class="form-group">
-            <label for="ticker">Stock Ticker</label>
-            <input type="text" id="ticker" placeholder="e.g., SPY">
+        <div id="table-container" style="display: none;">
+            <table class="table table-striped table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Ticker</th>
+                        <th>Signal</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-tbody">
+                    <!-- Data will be injected here by JavaScript -->
+                </tbody>
+            </table>
         </div>
-        <button onclick="sendEmail()">Send Email</button>
-        <div id="status"></div>
     </div>
 
     <script>
-        function sendEmail() {
-            const email = document.getElementById('email').value;
-            const ticker = document.getElementById('ticker').value.toUpperCase();
-            const statusDiv = document.getElementById('status');
+        /**
+         * Formats an ISO string or other date string into a more readable format.
+         * @param {string} dateString The date string to format.
+         * @returns {string} A formatted date and time string.
+         */
+        function formatTimestamp(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                // Check if the date is valid
+                if (isNaN(date.getTime())) {
+                    return dateString; // Return original string if parsing fails
+                }
+                return date.toLocaleString();
+            } catch (e) {
+                return dateString; // Return original string on error
+            }
+        }
 
-            if (!email || !ticker) {
-                statusDiv.textContent = 'Please fill in all fields.';
-                statusDiv.className = 'status-error';
+        /**
+         * Renders the fetched alerts into the table.
+         * @param {Array<Object>} alerts An array of alert objects.
+         */
+        function renderAlerts(alerts) {
+            const tbody = document.getElementById('alerts-tbody');
+            const statusContainer = document.getElementById('status-container');
+            const tableContainer = document.getElementById('table-container');
+
+            tbody.innerHTML = ''; // Clear previous data
+            statusContainer.style.display = 'none';
+            tableContainer.style.display = 'block';
+
+            if (!alerts || alerts.length === 0) {
+                statusContainer.innerHTML = '<div class="alert alert-secondary">No alerts found in the GitHub repository.</div>';
+                statusContainer.style.display = 'block';
+                tableContainer.style.display = 'none';
                 return;
             }
 
-            statusDiv.textContent = 'Sending...';
-            statusDiv.className = 'status-info';
+            alerts.forEach(alert => {
+                const row = tbody.insertRow();
+                const signalType = alert.signal_type || 'N/A';
+                let signalClass = '';
+                if (signalType.toLowerCase().includes('buy')) {
+                    signalClass = 'signal-buy';
+                } else if (signalType.toLowerCase().includes('sell')) {
+                    signalClass = 'signal-sell';
+                }
 
+                row.innerHTML = `
+                    <td>${formatTimestamp(alert.time)}</td>
+                    <td>${alert.ticker || 'N/A'}</td>
+                    <td class="${signalClass}">${signalType}</td>
+                    <td>${alert.price || 'N/A'}</td>
+                `;
+            });
+        }
+
+        /**
+         * Displays an error message to the user.
+         * @param {string} message The error message to display.
+         */
+        function showError(message) {
+            const statusContainer = document.getElementById('status-container');
+            statusContainer.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+        }
+
+        /**
+         * Main function to fetch and render data on page load.
+         */
+        function loadDashboard() {
             google.script.run
-                .withSuccessHandler(response => {
-                    statusDiv.textContent = response;
-                    statusDiv.className = 'status-success';
+                .withSuccessHandler(alerts => {
+                    renderAlerts(alerts);
                 })
                 .withFailureHandler(error => {
-                    statusDiv.textContent = 'Error: ' + error.message;
-                    statusDiv.className = 'status-error';
+                    console.error("Error fetching alerts:", error);
+                    let userMessage = `Failed to load alerts: ${error.message}`;
+                    if (error.message.includes("not configured")) {
+                        userMessage += '<br>Please open the sidebar in Google Sheets to configure your GitHub settings.';
+                    }
+                    showError(userMessage);
                 })
-                .sendEmail(email, ticker);
+                .getGitHubAlerts();
         }
+
+        // Run the dashboard loader when the page is ready.
+        window.onload = loadDashboard;
     </script>
 </body>
 </html>

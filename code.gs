@@ -1,6 +1,15 @@
 /**
  * =================================================================
- * SPREADSHEET UI & TRIGGERS
+ * CONSTANTS
+ * =================================================================
+ */
+const SETTINGS_KEY = 'APP_SETTINGS';
+const SCHEDULES_KEY = 'schedules';
+const GITHUB_API_URL = 'https://api.github.com';
+
+/**
+ * =================================================================
+ * PRIMARY TRIGGERS (onOpen, doGet, doPost)
  * =================================================================
  */
 
@@ -11,36 +20,35 @@ function onOpen(e) {
       .addToUi();
 }
 
-function showSidebar() {
-  const html = HtmlService.createHtmlOutputFromFile('Sidebar').setTitle('Jinx Finance Manager');
-  SpreadsheetApp.getUi().showSidebar(html);
-}
-
-// Web App entry point for the simple email form
-function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index').setTitle("Jinx Finance Email Service");
+/**
+ * Handles GET requests to the web app, acting as a URL router.
+ * @param {Object} e The event object from the GET request.
+ * @returns {HtmlOutput} The HTML page to serve.
+ */
+function doGet(e) {
+  const page = e.parameter.page;
+  if (page === 'email') {
+    return HtmlService.createHtmlOutputFromFile('Email').setTitle("Jinx Finance - Send Email");
+  }
+  // Default to the main dashboard
+  return HtmlService.createHtmlOutputFromFile('Index').setTitle("Jinx Finance - Alert Dashboard");
 }
 
 /**
- * Webhook entry point for POST requests from services like TradingView.
+ * Handles POST requests, serving as the webhook receiver.
  * @param {Object} e The event object from the POST request.
  */
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+    console.log("Webhook received: " + JSON.stringify(payload, null, 2));
 
-    // Log the incoming data for debugging
-    console.log("Webhook payload received: " + JSON.stringify(payload, null, 2));
+    const githubResult = gitHub_createFile(payload);
 
-    // Handle the GitHub interaction
-    const githubResult = GitHubService.createFileFromWebhook(payload);
-
-    // Return a success response to the webhook sender
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Webhook received and processed.', githubResponse: githubResult }))
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', githubResponse: githubResult }))
       .setMimeType(ContentService.MimeType.JSON);
-
   } catch (error) {
-    console.error("Error in doPost: " + error.toString());
+    console.error("doPost Error: " + error.toString());
     return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
@@ -48,143 +56,168 @@ function doPost(e) {
 
 /**
  * =================================================================
- * SERVICE CLASSES (OOP Refactor)
+ * UI & SIDEBAR FUNCTIONS
  * =================================================================
  */
 
-/**
- * Manages all settings stored in PropertiesService.
- */
-class SettingsManager {
-  static SETTINGS_KEY = 'APP_SETTINGS';
+function showSidebar() {
+  const html = HtmlService.createHtmlOutputFromFile('Sidebar').setTitle('Jinx Finance Manager');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
 
-  /**
-   * Saves a settings object to script properties.
-   * @param {Object} settings The settings object to save.
-   * @returns {Object} A result object.
-   */
-  static saveSettings(settings) {
-    if (!settings) {
-      return { success: false, message: 'No settings provided.' };
-    }
-    try {
-      // Never store empty passwords, keep the old one if an empty string is passed
-      const currentSettings = this.getSettings() || {};
-      if (!settings.githubPat) settings.githubPat = currentSettings.githubPat;
-      if (!settings.fmpApiKey) settings.fmpApiKey = currentSettings.fmpApiKey;
-      if (!settings.geminiApiKey) settings.geminiApiKey = currentSettings.geminiApiKey;
-
-      PropertiesService.getScriptProperties().setProperty(this.SETTINGS_KEY, JSON.stringify(settings));
-      return { success: true, message: 'Settings saved successfully.' };
-    } catch (e) {
-      console.error("Error saving settings: " + e.toString());
-      return { success: false, message: 'Failed to save settings.' };
-    }
-  }
-
-  /**
-   * Retrieves the settings object from script properties.
-   * @returns {Object|null} The settings object or null.
-   */
-  static getSettings() {
-    try {
-      const settingsJson = PropertiesService.getScriptProperties().getProperty(this.SETTINGS_KEY);
-      return settingsJson ? JSON.parse(settingsJson) : null;
-    } catch (e) {
-      console.error("Error getting settings: " + e.toString());
-      return null;
-    }
-  }
+function getServerTimezone() {
+  return Session.getScriptTimeZone();
 }
 
 /**
- * Handles interactions with the GitHub API.
+ * =================================================================
+ * SETTINGS MANAGEMENT FUNCTIONS
+ * =================================================================
  */
-class GitHubService {
-  static API_URL = 'https://api.github.com';
 
-  /**
-   * Creates a new file in a GitHub repository with content from a webhook.
-   * @param {Object} payload The data from the TradingView webhook.
-   * @returns {Object} The response from the GitHub API.
-   */
-  static createFileFromWebhook(payload) {
-    const settings = SettingsManager.getSettings();
-    if (!settings || !settings.githubPat || !settings.githubRepo) {
-      throw new Error("GitHub settings (PAT and Repo) are not configured.");
-    }
-
-    const { githubPat, githubRepo } = settings;
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
-    const fileName = `tv_alert_${timestamp}.json`;
-    const path = `tradingview-alerts/${fileName}`;
-    const url = `${this.API_URL}/repos/${githubRepo}/contents/${path}`;
-
-    const fileContent = JSON.stringify(payload, null, 2);
-    const encodedContent = Utilities.base64Encode(fileContent);
-
-    const options = {
-      method: 'put',
-      headers: {
-        'Authorization': `token ${githubPat}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Google-Apps-Script-Jinx-Finance'
-      },
-      payload: JSON.stringify({
-        message: `TradingView Alert: ${payload.signal || 'Signal'} for ${payload.ticker || 'N/A'}`,
-        content: encodedContent
-      }),
-      contentType: 'application/json',
-      muteHttpExceptions: true // Important to catch errors
+function saveSettings(settings) {
+  try {
+    const currentSettings = getSettings() || {};
+    // Retain existing passwords if new ones are not provided
+    const newSettings = {
+      githubPat: settings.githubPat || currentSettings.githubPat,
+      githubRepo: settings.githubRepo || currentSettings.githubRepo,
+      fmpApiKey: settings.fmpApiKey || currentSettings.fmpApiKey,
+      geminiApiKey: settings.geminiApiKey || currentSettings.geminiApiKey,
     };
-
-    const response = UrlFetchApp.fetch(url, options);
-    const responseCode = response.getResponseCode();
-    const responseBody = response.getContentText();
-
-    console.log(`GitHub API Response Code: ${responseCode}`);
-    console.log(`GitHub API Response Body: ${responseBody}`);
-
-    if (responseCode >= 200 && responseCode < 300) {
-      return JSON.parse(responseBody);
-    } else {
-      throw new Error(`GitHub API Error (${responseCode}): ${responseBody}`);
-    }
+    PropertiesService.getScriptProperties().setProperty(SETTINGS_KEY, JSON.stringify(newSettings));
+    return { success: true, message: 'Settings saved.' };
+  } catch (e) {
+    console.error("saveSettings Error: " + e.toString());
+    return { success: false, message: 'Failed to save settings.' };
   }
+}
+
+function getSettings() {
+  try {
+    const settingsJson = PropertiesService.getScriptProperties().getProperty(SETTINGS_KEY);
+    return settingsJson ? JSON.parse(settingsJson) : null;
+  } catch (e) {
+    console.error("getSettings Error: " + e.toString());
+    return null;
+  }
+}
+
+// Exposed to client, but only returns non-sensitive info
+function getClientSettings() {
+  const settings = getSettings();
+  return settings ? { githubRepo: settings.githubRepo } : null;
+}
+
+function checkApiKeys() {
+  const settings = getSettings();
+  return !!(settings && settings.fmpApiKey && settings.geminiApiKey);
 }
 
 /**
  * =================================================================
- * GLOBALLY EXPOSED FUNCTIONS (for client-side `google.script.run`)
+ * GITHUB INTEGRATION FUNCTIONS
  * =================================================================
  */
 
-// --- Settings ---
-function saveSettings(settings) { return SettingsManager.saveSettings(settings); }
-function getSettings() {
-  const settings = SettingsManager.getSettings();
-  // Only return non-sensitive info to the client
-  if (settings) {
-    return { githubRepo: settings.githubRepo };
+function gitHub_createFile(payload) {
+  const settings = getSettings();
+  if (!settings || !settings.githubPat || !settings.githubRepo) {
+    throw new Error("GitHub PAT and Repo not configured in Settings.");
   }
-  return null;
+
+  const timestamp = new Date().toISOString().replace(/:/g, '-');
+  const path = `tradingview-alerts/alert_${timestamp}.json`;
+  const url = `${GITHUB_API_URL}/repos/${settings.githubRepo}/contents/${path}`;
+
+  const options = {
+    method: 'put',
+    headers: {
+      'Authorization': `token ${settings.githubPat}`,
+      'Accept': 'application/vnd.github.v3+json',
+    },
+    payload: JSON.stringify({
+      message: `TV Alert: ${payload.signal || 'Signal'} for ${payload.ticker || 'N/A'}`,
+      content: Utilities.base64Encode(JSON.stringify(payload, null, 2))
+    }),
+    contentType: 'application/json',
+    muteHttpExceptions: true
+  };
+
+  const response = UrlFetchApp.fetch(url, options);
+  const responseBody = response.getContentText();
+  if (response.getResponseCode() >= 300) {
+    throw new Error(`GitHub API Error: ${responseBody}`);
+  }
+  return JSON.parse(responseBody);
 }
 
-// --- Schedules ---
-const SCRIPT_PROPERTY_SCHEDULES = 'schedules';
+function getGitHubAlerts() {
+  const settings = getSettings();
+  if (!settings || !settings.githubRepo) {
+    throw new Error("GitHub Repo not configured in Settings.");
+  }
+
+  const url = `${GITHUB_API_URL}/repos/${settings.githubRepo}/contents/tradingview-alerts`;
+  const options = {
+    headers: { 'Accept': 'application/vnd.github.v3+json' },
+    muteHttpExceptions: true
+  };
+  // Add auth header if PAT is available, for private repos
+  if (settings.githubPat) {
+    options.headers['Authorization'] = `token ${settings.githubPat}`;
+  }
+
+  const response = UrlFetchApp.fetch(url, options);
+  const responseCode = response.getResponseCode();
+  const responseText = response.getContentText();
+
+  if (responseCode === 404) {
+    return []; // Directory doesn't exist yet, return empty array
+  } else if (responseCode >= 300) {
+    throw new Error(`GitHub API Error (${responseCode}): ${responseText}`);
+  }
+
+  const files = JSON.parse(responseText);
+  const alerts = files
+    .filter(file => file.type === 'file' && file.name.endsWith('.json'))
+    .map(file => {
+      try {
+        const contentResponse = UrlFetchApp.fetch(file.download_url, options);
+        return JSON.parse(contentResponse.getContentText());
+      } catch (e) {
+        console.error(`Failed to fetch or parse ${file.name}: ${e.toString()}`);
+        return null; // Skip corrupted files
+      }
+    })
+    .filter(alert => alert !== null); // Filter out any nulls from failed fetches
+
+  return alerts.reverse(); // Show most recent first
+}
+
+
+/**
+ * =================================================================
+ * SCHEDULE MANAGEMENT FUNCTIONS
+ * =================================================================
+ */
+
 function getSchedules() {
-  const schedulesJson = PropertiesService.getScriptProperties().getProperty(SCRIPT_PROPERTY_SCHEDULES);
-  return schedulesJson ? JSON.parse(schedulesJson) : [];
+  const json = PropertiesService.getScriptProperties().getProperty(SCHEDULES_KEY);
+  return json ? JSON.parse(json) : [];
 }
+
 function saveSchedules(schedules) {
-  PropertiesService.getScriptProperties().setProperty(SCRIPT_PROPERTY_SCHEDULES, JSON.stringify(schedules));
+  PropertiesService.getScriptProperties().setProperty(SCHEDULES_KEY, JSON.stringify(schedules));
 }
-function addSchedule(newSchedule) {
+
+function addSchedule(schedule) {
   const schedules = getSchedules();
-  schedules.push({ id: new Date().getTime().toString(), ...newSchedule });
+  schedules.push({ id: new Date().getTime().toString(), ...schedule });
   saveSchedules(schedules);
   return { success: true, message: 'Schedule added.', schedules: getSchedules() };
 }
+
 function deleteSchedule(scheduleId) {
   let schedules = getSchedules();
   schedules = schedules.filter(s => s.id !== scheduleId);
@@ -192,49 +225,23 @@ function deleteSchedule(scheduleId) {
   return { success: true, message: 'Schedule deleted.', schedules: getSchedules() };
 }
 
-// --- Simple Email Form ---
+/**
+ * =================================================================
+ * LEGACY & PLACEHOLDER FUNCTIONS
+ * =================================================================
+ */
+
 function sendEmail(to, ticker) {
-  const subject = `Market Phase for ${ticker} - Jinx Finance`;
-  const htmlBody = `<p>Analysis for ${ticker}.</p>`; // Simple body
-  GmailApp.sendEmail(to, subject, "", { htmlBody });
+  GmailApp.sendEmail(to, `Analysis for ${ticker}`, `This is the analysis for ${ticker}.`);
   return `Email sent to ${to} for ${ticker}.`;
 }
 
-// --- Other ---
-function getServerTimezone() { return Session.getScriptTimeZone(); }
 function runManualPortAnalysis() {
   console.log("Manual analysis run triggered.");
   return { success: true, message: 'Manual analysis completed successfully.' };
 }
-function checkApiKeys() {
-  const settings = SettingsManager.getSettings();
-  return !!(settings && settings.fmpApiKey && settings.geminiApiKey);
-}
 
-/**
- * =================================================================
- * TIME-DRIVEN TRIGGER WORKFLOW
- * =================================================================
- */
 function runScheduledImportAndEmail() {
-  const schedules = getSchedules();
-  if (schedules.length === 0) return;
-
-  const currentTime = new Date();
-  const currentHour = currentTime.getHours();
-  const currentMinute = currentTime.getMinutes();
-
-  const emailsToSend = new Set();
-  schedules.forEach(schedule => {
-    const [scheduleHour, scheduleMinute] = schedule.time.split(':').map(Number);
-    if (currentHour === scheduleHour && currentMinute === scheduleMinute) {
-      schedule.email.split(',').forEach(email => emailsToSend.add(email.trim()));
-    }
-  });
-
-  if (emailsToSend.size > 0) {
-    const recipientList = Array.from(emailsToSend).join(',');
-    console.log(`Running scheduled task for: ${recipientList}`);
-    // GmailApp.sendEmail(recipientList, "Scheduled Report", "Here is your report.");
-  }
+  // Placeholder for time-driven trigger logic
+  console.log("Scheduled import/email task is running.");
 }
