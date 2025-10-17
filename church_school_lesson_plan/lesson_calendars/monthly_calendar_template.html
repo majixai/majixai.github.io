@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monthly Calendar Template</title>
+    <title>Interactive Monthly Calendar</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
         :root {
@@ -12,23 +12,23 @@
             --theme-color-dark-accent: #701111;
             --text-color-on-main: white;
             --text-color-on-light: #333;
-            --day-cell-height: 120px; /* Adjustable height for day cells */
-            --day-header-bg: #f0f0f0; /* Light grey for day names */
+            --day-cell-height: 140px; /* Increased height for better display */
+            --day-header-bg: #f0f0f0;
         }
-        body { font-family: sans-serif; background-color: #fff9f9; } /* Very light red background */
+        body { font-family: sans-serif; background-color: #fff9f9; }
         .calendar-container { max-width: 1200px; margin: auto; }
         .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
-        .calendar-header { text-align: center; padding: 10px 0; }
-        .calendar-header h2 { color: var(--theme-color-dark-accent); margin: 5px 0; }
-        .calendar-header .nav-arrow { text-decoration: none; color: var(--theme-color-main); font-weight: bold; padding: 0 15px; }
+        .calendar-header { text-align: center; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .calendar-header h2 { color: var(--theme-color-dark-accent); margin: 0; }
+        .calendar-header .nav-arrow { text-decoration: none; color: var(--theme-color-main); font-weight: bold; padding: 0 15px; cursor: pointer; font-size: 1.5em; }
         .calendar-table { width: 100%; border-collapse: collapse; }
         .calendar-table th, .calendar-table td {
             border: 1px solid var(--theme-color-light-accent);
             text-align: left;
             vertical-align: top;
-            padding: 5px;
+            padding: 8px;
         }
-        .calendar-table th { /* Day names: Sun, Mon, etc. */
+        .calendar-table th {
             background-color: var(--day-header-bg);
             color: var(--theme-color-dark-accent);
             height: 40px;
@@ -36,42 +36,28 @@
         }
         .calendar-table td {
             height: var(--day-cell-height);
-            position: relative; /* For day number positioning */
+            position: relative;
+            transition: background-color 0.3s;
         }
-        .day-number {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            font-size: 0.9em;
-            color: var(--theme-color-dark-accent);
-        }
-        .other-month .day-number { color: #bbb; } /* Dim numbers for days not in current month */
-        .other-month { background-color: #fdf5f5; } /* Slightly different bg for other month days */
-        .lesson-title { font-weight: bold; font-size: 0.9em; color: var(--theme-color-main); margin-bottom: 3px; display: block; }
-        .lesson-link { font-size: 0.8em; display: block; margin-bottom: 3px; }
-        .event-note { font-size: 0.8em; color: #555; font-style: italic; }
-        .editable-area {
-            background-color: #fff;
-            border: none;
-            width: 100%;
-            height: calc(var(--day-cell-height) - 25px); /* Adjust based on padding and day number */
-            padding: 3px;
-            box-sizing: border-box;
-            resize: none; /* Prevent manual resize */
-            font-size: 0.85em;
-            color: #333;
-        }
-        .editable-area:focus { outline: 1px solid var(--theme-color-main); background-color: #fff;}
+        .day-content { height: 100%; display: flex; flex-direction: column; }
+        .day-number { font-weight: bold; color: var(--theme-color-dark-accent); align-self: flex-end; }
+        .other-month .day-number { color: #bbb; }
+        .other-month { background-color: #fdf5f5; }
+        .lesson-title { font-weight: bold; font-size: 0.9em; color: var(--theme-color-main); margin-bottom: 4px; }
+        .lesson-details { font-size: 0.8em; line-height: 1.4; }
+        .event-note { font-size: 0.8em; color: #555; font-style: italic; margin-top: auto; }
+        .clickable { cursor: pointer; }
+        .clickable:hover { background-color: var(--theme-color-light-accent); }
+        .today { background-color: #fff0b3; }
 
         @media print {
-            body { background-color: #fff; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none; }
+            .calendar-header { justify-content: center; }
             .calendar-table th { background-color: var(--day-header-bg) !important; color: #000 !important; }
-            .calendar-table td, .calendar-table th { border: 1px solid #ccc !important; }
+            .calendar-table td { border: 1px solid #ccc !important; height: auto; }
             .other-month { background-color: #f0f0f0 !important; }
             .lesson-title { color: #000 !important; }
-            .editable-area { background-color: #fff !important; border: none !important; height: auto; }
-            .page-header { display: none; }
             @page { size: landscape; margin: 0.5in; }
         }
     </style>
@@ -80,98 +66,152 @@
 
 <div class="w3-container">
     <header class="w3-container main-page-header w3-center no-print">
-        <h1>Monthly Lesson Calendar</h1>
+        <h1>Interactive Lesson Calendar</h1>
     </header>
 
     <div class="calendar-container w3-card-4 w3-margin-top" style="background-color: white;">
         <div class="calendar-header w3-padding">
-            <!-- Mrs. Scott will manually change Month and Year -->
-            <a href="#" class="nav-arrow no-print">&laquo; Previous Month</a>
-            <h2 style="display:inline-block; margin:0 20px;"><span contenteditable="true">Month</span> <span contenteditable="true">Year</span></h2>
-            <a href="#" class="nav-arrow no-print">Next Month &raquo;</a>
+            <span id="prev-month-btn" class="nav-arrow no-print">&laquo;</span>
+            <h2 id="month-year-header"></h2>
+            <span id="next-month-btn" class="nav-arrow no-print">&raquo;</span>
         </div>
 
         <table class="calendar-table">
             <thead>
                 <tr>
-                    <th>Sun</th>
-                    <th>Mon</th>
-                    <th>Tue</th>
-                    <th>Wed</th>
-                    <th>Thu</th>
-                    <th>Fri</th>
-                    <th>Sat</th>
+                    <th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th>
                 </tr>
             </thead>
-            <tbody>
-                <!-- Generate 5 or 6 rows for a typical month -->
-                <!-- Week 1 -->
-                <tr>
-                    <td class="other-month"><span class="day-number">28</span><textarea class="editable-area" placeholder="Notes..."></textarea></td>
-                    <td class="other-month"><span class="day-number">29</span><textarea class="editable-area" placeholder="Notes..."></textarea></td>
-                    <td class="other-month"><span class="day-number">30</span><textarea class="editable-area" placeholder="Notes..."></textarea></td>
-                    <td><span class="day-number">1</span><textarea class="editable-area" placeholder="Lesson Title/Summary&#10;Link: [path/to/plan.html]&#10;Event: Holiday"></textarea></td>
-                    <td><span class="day-number">2</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">3</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">4</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                </tr>
-                <!-- Week 2 -->
-                <tr>
-                    <td><span class="day-number">5</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">6</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">7</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">8</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">9</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">10</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">11</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                </tr>
-                <!-- Week 3 -->
-                <tr>
-                    <td><span class="day-number">12</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">13</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">14</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">15</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">16</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">17</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">18</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                </tr>
-                <!-- Week 4 -->
-                <tr>
-                    <td><span class="day-number">19</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">20</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">21</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">22</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">23</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">24</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">25</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                </tr>
-                <!-- Week 5 (Potentially) -->
-                <tr>
-                    <td><span class="day-number">26</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">27</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">28</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">29</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td><span class="day-number">30</span><textarea class="editable-area" placeholder="Lesson Title/Summary..."></textarea></td>
-                    <td class="other-month"><span class="day-number">1</span><textarea class="editable-area" placeholder="Notes..."></textarea></td>
-                    <td class="other-month"><span class="day-number">2</span><textarea class="editable-area" placeholder="Notes..."></textarea></td>
-                </tr>
-                <!-- Week 6 (If needed for some month layouts) -->
-                 <tr>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                    <td class="other-month"><span class="day-number"></span><textarea class="editable-area" placeholder=""></textarea></td>
-                </tr>
+            <tbody id="calendar-body">
+                <!-- Calendar days will be generated by JavaScript -->
             </tbody>
         </table>
     </div>
     <footer class="w3-container w3-center w3-margin-top no-print" style="padding: 10px 0;">
-        <p class="w3-small">To use: Save a copy of this template (e.g., "September_2024_Calendar.html"), then edit the Month/Year and day cell contents. Add links to your detailed daily lesson plans.</p>
+        <p class="w3-small">Click on a lesson day to view the detailed plan. Use the arrows to navigate between months.</p>
     </footer>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarBody = document.getElementById('calendar-body');
+    const monthYearHeader = document.getElementById('month-year-header');
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+
+    let currentDate = new Date();
+    let lessonData = {};
+
+    function getQueryParameters() {
+        const params = new URLSearchParams(window.location.search);
+        const year = params.get('year');
+        const month = params.get('month');
+        if (year && month) {
+            currentDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+        }
+    }
+
+    async function fetchLessonData() {
+        try {
+            const response = await fetch('lessons.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            lessonData = await response.json();
+        } catch (error) {
+            console.error("Could not fetch lesson data:", error);
+            lessonData = {}; // Ensure lessonData is an empty object on failure
+        }
+    }
+
+    function generateCalendar(date) {
+        calendarBody.innerHTML = '';
+        const year = date.getFullYear();
+        const month = date.getMonth();
+
+        monthYearHeader.textContent = `${date.toLocaleString('default', { month: 'long' })} ${year}`;
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const daysInMonth = lastDayOfMonth.getDate();
+        const startDayOfWeek = firstDayOfMonth.getDay(); // 0=Sun, 1=Mon,...
+
+        const today = new Date();
+        const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        let currentDay = 1;
+        for (let i = 0; i < 6; i++) { // Max 6 weeks in a month view
+            const row = document.createElement('tr');
+            for (let j = 0; j < 7; j++) {
+                const cell = document.createElement('td');
+                if (i === 0 && j < startDayOfWeek) {
+                    // Previous month's days
+                    const prevMonthLastDay = new Date(year, month, 0).getDate();
+                    const dayNum = prevMonthLastDay - startDayOfWeek + j + 1;
+                    cell.innerHTML = `<div class="day-content"><span class="day-number">${dayNum}</span></div>`;
+                    cell.classList.add('other-month');
+                } else if (currentDay > daysInMonth) {
+                    // Next month's days
+                    const dayNum = currentDay - daysInMonth;
+                    cell.innerHTML = `<div class="day-content"><span class="day-number">${dayNum}</span></div>`;
+                    cell.classList.add('other-month');
+                    currentDay++;
+                } else {
+                    // Current month's days
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+                    const lesson = lessonData[dateString];
+
+                    let content = `<div class="day-content">
+                                     <span class="day-number">${currentDay}</span>`;
+                    if (lesson) {
+                        content += `<div class="lesson-details">
+                                        <span class="lesson-title">${lesson.title}</span>
+                                    </div>`;
+                        if (lesson.event) {
+                             content += `<span class="event-note">${lesson.event}</span>`;
+                        }
+                        cell.classList.add('clickable');
+                        cell.onclick = () => {
+                            if (lesson.link && lesson.link !== "#") {
+                                window.location.href = lesson.link;
+                            }
+                        };
+                    }
+                     content += `</div>`;
+                    cell.innerHTML = content;
+
+                    if (dateString === todayString) {
+                        cell.classList.add('today');
+                    }
+
+                    currentDay++;
+                }
+                row.appendChild(cell);
+            }
+            calendarBody.appendChild(row);
+            if (currentDay > daysInMonth) break; // Stop if we've passed the last day
+        }
+    }
+
+    prevMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        generateCalendar(currentDate);
+    });
+
+    nextMonthBtn.addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        generateCalendar(currentDate);
+    });
+
+    async function initializeCalendar() {
+        getQueryParameters();
+        await fetchLessonData();
+        generateCalendar(currentDate);
+    }
+
+    initializeCalendar();
+});
+</script>
 
 </body>
 </html>

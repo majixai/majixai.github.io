@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yearly Overview Template</title>
+    <title>Yearly Overview</title>
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <style>
         :root {
@@ -11,110 +11,88 @@
             --theme-color-light-accent: #f8e1e1;
             --theme-color-dark-accent: #701111;
             --text-color-on-main: white;
-            --table-header-bg: #ececec; /* Light grey for month headers */
+            --table-header-bg: #ececec;
         }
         body { font-family: sans-serif; background-color: #fff9f9; }
         .main-container { max-width: 1200px; margin: auto; }
         .main-page-header { background-color: var(--theme-color-main); color: var(--text-color-on-main); }
         .year-header { text-align: center; padding: 10px 0; }
         .year-header h2 { color: var(--theme-color-dark-accent); margin: 5px 0; }
-
         .term-card { margin-bottom: 25px; }
         .term-header { background-color: var(--theme-color-dark-accent); color: var(--text-color-on-main); padding: 10px; font-size: 1.3em;}
-
-        .month-table { width: 100%; border-collapse: collapse; margin-top: 0px;}
+        .month-table { width: 100%; border-collapse: collapse; }
         .month-table th, .month-table td {
             border: 1px solid var(--theme-color-light-accent);
             padding: 8px;
             text-align: left;
             vertical-align: top;
         }
-        .month-table th { /* Month Name */
+        .month-table th {
             background-color: var(--table-header-bg);
             color: var(--theme-color-dark-accent);
             font-weight: bold;
-            width: 120px; /* Fixed width for month name */
+            width: 120px;
         }
-        .month-table td ul { list-style-type: disc; margin-left:20px; padding-left:0;}
-        .month-table td li { margin-bottom: 3px;}
-
-        .editable-area {
-            background-color: #f7f7f7;
-            border: 1px dotted #ccc;
-            width: 100%;
-            min-height: 30px;
-            padding: 5px;
-            box-sizing: border-box;
-            font-size: 0.9em;
-            color: #333;
-            margin-top: 2px;
-            display: block;
+        .month-table td ul { list-style-type: disc; margin: 0; padding-left: 20px;}
+        .month-table td li { margin-bottom: 5px;}
+        .view-calendar-link a {
+            font-weight: bold;
+            color: var(--theme-color-main);
+            text-decoration: none;
         }
-         .editable-inline { background-color: #f7f7f7; border-bottom: 1px dotted #ccc; padding: 2px 4px; display: inline-block;}
-
-
-        @media print {
-            body { background-color: #fff; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact;}
-            .no-print { display: none; }
-            .term-header { background-color: #ccc !important; color: #000 !important; }
-            .month-table th { background-color: #e0e0e0 !important; color: #000 !important; }
-            .month-table td, .month-table th { border: 1px solid #bbb !important; }
-            .editable-area, .editable-inline { background-color: #fff !important; border: 1px dotted #ccc !important; }
-            .main-page-header { display:none; }
-            @page { size: A4 portrait; margin: 0.75in; }
-        }
+        .view-calendar-link a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div class="w3-container">
-    <header class="w3-container main-page-header w3-center no-print">
+    <header class="w3-container main-page-header w3-center">
         <h1>Yearly Lesson Overview</h1>
     </header>
 
     <div class="main-container w3-card-4 w3-margin-top" style="background-color: white;">
         <div class="year-header w3-padding">
-            <h2>School Year: <span class="editable-inline" contenteditable="true">YYYY - YYYY</span></h2>
+            <h2>School Year: 2024 - 2025</h2>
         </div>
 
         <!-- Term 1 Card -->
         <div class="term-card">
             <header class="w3-container term-header">
-                <h3>Term 1: <span class="editable-inline" contenteditable="true" style="background-color: var(--theme-color-main); color:white;">e.g., Fall (September - December)</span></h3>
+                <h3>Term 1: Fall (September - December)</h3>
             </header>
             <table class="month-table">
-                <tr><th>Month</th><th>Overall Theme(s)</th><th>Major Bible Stories/Units</th><th>Key Values Focus</th><th>Holidays/Events</th><th>Link to Monthly Calendar</th></tr>
+                <tr><th>Month</th><th>Overall Theme(s)</th><th>Major Bible Stories/Units</th><th>Key Values Focus</th><th>Holidays/Events</th><th>View Calendar</th></tr>
                 <tr>
                     <th>September</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., God's Creation"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Creation Week&#10;- Adam & Eve&#10;- Noah's Ark"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Stewardship&#10;- Obedience"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Welcome Back Sunday"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Sept_Calendar.html]"></span></td>
+                    <td>God's Big Story Begins</td>
+                    <td><ul><li>Creation</li><li>Adam & Eve</li><li>Noah's Ark</li><li>Tower of Babel</li></ul></td>
+                    <td><ul><li>Stewardship</li><li>Obedience</li></ul></td>
+                    <td>Welcome Back Sunday</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2024&month=9">View Details</a></td>
                 </tr>
                 <tr>
                     <th>October</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Patriarchs & God's Promises"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Abraham&#10;- Joseph"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Faith&#10;- Forgiveness"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Harvest Festival"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Oct_Calendar.html]"></span></td>
+                    <td>Patriarchs & God's Promises</td>
+                    <td><ul><li>The Story of Abraham</li><li>Jacob and Esau</li><li>Joseph's Colorful Coat</li><li>Joseph in Egypt</li></ul></td>
+                    <td><ul><li>Faith</li><li>Forgiveness</li></ul></td>
+                    <td>Harvest Festival</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2024&month=10">View Details</a></td>
                 </tr>
                 <tr>
                     <th>November</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Moses & Deliverance / Advent Begins"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Baby Moses&#10;- Burning Bush&#10;- Plagues (simplified)&#10;- Advent Theme: Hope"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Courage&#10;- God's Power&#10;- Hope"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Thanksgiving Service"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Nov_Calendar.html]"></span></td>
+                    <td>Moses & Deliverance</td>
+                    <td><ul><li>The Birth of Moses</li><li>The Burning Bush</li><li>The Ten Plagues</li><li>Crossing the Red Sea</li></ul></td>
+                    <td><ul><li>Courage</li><li>God's Power</li></ul></td>
+                    <td>Thanksgiving Service</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2024&month=11">View Details</a></td>
                 </tr>
                 <tr>
                     <th>December</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Advent & Christmas"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Advent Themes: Peace, Joy, Love&#10;- Birth of Jesus (Nativity)"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Peace&#10;- Joy&#10;- Love"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Christmas Pageant&#10;- Class Party"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Dec_Calendar.html]"></span></td>
+                    <td>Advent & Christmas</td>
+                    <td><ul><li>Advent Themes: Hope, Peace, Joy, Love</li><li>Birth of Jesus (Nativity)</li></ul></td>
+                    <td><ul><li>Hope & Joy</li><li>Love</li></ul></td>
+                    <td>Christmas Pageant</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2024&month=12">View Details</a></td>
                 </tr>
             </table>
         </div>
@@ -122,89 +100,47 @@
         <!-- Term 2 Card -->
         <div class="term-card">
             <header class="w3-container term-header">
-                <h3>Term 2: <span class="editable-inline" contenteditable="true" style="background-color: var(--theme-color-main); color:white;">e.g., Winter/Spring (January - May)</span></h3>
+                <h3>Term 2: Winter/Spring (January - May)</h3>
             </header>
             <table class="month-table">
-                <tr><th>Month</th><th>Overall Theme(s)</th><th>Major Bible Stories/Units</th><th>Key Values Focus</th><th>Holidays/Events</th><th>Link to Monthly Calendar</th></tr>
+                 <tr><th>Month</th><th>Overall Theme(s)</th><th>Major Bible Stories/Units</th><th>Key Values Focus</th><th>Holidays/Events</th><th>View Calendar</th></tr>
                 <tr>
                     <th>January</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Jesus's Early Life & Ministry"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Jesus as a Boy&#10;- Calling Disciples&#10;- First Miracles"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Listening to God&#10;- Following Jesus"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- New Year Blessings"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Jan_Calendar.html]"></span></td>
+                    <td>Jesus's Early Life & Ministry</td>
+                    <td><ul><li>Jesus as a Boy</li><li>Calling Disciples</li></ul></td>
+                    <td><ul><li>Listening to God</li><li>Following Jesus</li></ul></td>
+                    <td>New Year Blessings</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2025&month=1">View Details</a></td>
                 </tr>
-                <tr>
+                 <tr>
                     <th>February</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Jesus Teaches"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Parables (Good Samaritan, Prodigal Son)&#10;- Sermon on the Mount (simplified)"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Love for Neighbors&#10;- Forgiveness"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Valentine's - God's Love"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Feb_Calendar.html]"></span></td>
+                    <td>Jesus the Teacher</td>
+                    <td><ul><li>Parable: Good Samaritan</li><li>Parable: Prodigal Son</li></ul></td>
+                    <td><ul><li>Love for Neighbors</li><li>Kindness</li></ul></td>
+                    <td>Valentine's - God's Love</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2025&month=2">View Details</a></td>
                 </tr>
                 <tr>
                     <th>March</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Journey to the Cross (Lent)"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Jesus's Miracles (Healing)&#10;- Last Supper (simplified)&#10;- Events of Holy Week (age-appropriate)"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Sacrifice&#10;- Remembrance"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Lent Activities"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Mar_Calendar.html]"></span></td>
-                </tr>
-                <tr>
-                    <th>April</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Easter & New Life"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Resurrection Story&#10;- Jesus Appears to Disciples&#10;- Pentecost (simplified)"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- New Life in Christ&#10;- Joy&#10;- The Holy Spirit"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Easter Celebration"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Apr_Calendar.html]"></span></td>
+                    <td>Journey to the Cross (Lent)</td>
+                     <td><ul><li>Jesus's Miracles</li><li>Last Supper (simplified)</li></ul></td>
+                    <td><ul><li>Sacrifice</li><li>Remembrance</li></ul></td>
+                    <td>Lent Activities</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2025&month=3">View Details</a></td>
                 </tr>
                  <tr>
-                    <th>May</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Living as God's Children / Year Review"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Early Church Stories (simplified)&#10;- Review Favorite Stories/Verses"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- Being Part of God's Family&#10;- Sharing Faith"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- End of Year Program"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to May_Calendar.html]"></span></td>
-                </tr>
-            </table>
-        </div>
-
-        <!-- Summer Term Card (Optional) -->
-        <div class="term-card">
-            <header class="w3-container term-header">
-                 <h3>Summer Term (Optional): <span class="editable-inline" contenteditable="true" style="background-color: var(--theme-color-main); color:white;">e.g., June - August</span></h3>
-            </header>
-            <table class="month-table">
-                <tr><th>Month</th><th>Overall Theme(s)</th><th>Major Bible Stories/Units</th><th>Key Values Focus</th><th>Holidays/Events</th><th>Link to Monthly Calendar</th></tr>
-                <tr>
-                    <th>June</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., VBS Theme or Fun Bible Heroes"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="- VBS"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Jun_Calendar.html]"></span></td>
-                </tr>
-                <tr>
-                    <th>July</th>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Jul_Calendar.html]"></span></td>
-                </tr>
-                <tr>
-                    <th>August</th>
-                    <td><span class="editable-area" contenteditable="true" placeholder="e.g., Getting Ready for Next Year"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true"></span></td>
-                    <td><span class="editable-area" contenteditable="true" placeholder="[Link to Aug_Calendar.html]"></span></td>
+                    <th>April</th>
+                    <td>Easter & New Life</td>
+                    <td><ul><li>Resurrection Story</li><li>Jesus Appears to Disciples</li></ul></td>
+                    <td><ul><li>New Life in Christ</li><li>Joy</li></ul></td>
+                    <td>Easter Celebration</td>
+                    <td class="view-calendar-link"><a href="monthly_calendar_template.html?year=2025&month=4">View Details</a></td>
                 </tr>
             </table>
         </div>
     </div>
-    <footer class="w3-container w3-center w3-margin-top no-print" style="padding: 10px 0;">
-        <p class="w3-small">This overview helps map out the entire year. Remember to link to specific monthly calendars once they are populated.</p>
+     <footer class="w3-container w3-center w3-margin-top" style="padding: 10px 0;">
+        <a href="../index.html" class="w3-button w3-round-large" style="background-color: var(--theme-color-main); color: var(--text-color-on-main);">Back to Main Hub</a>
     </footer>
 </div>
 
