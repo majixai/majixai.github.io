@@ -198,3 +198,171 @@ function writeDataToSheet(dataToWrite) {
     return `Error writing to sheet with fixed mapping: ${e.toString()}`;
   }
 }
+
+// --- Settings Management Functions ---
+
+/**
+ * Saves the Calendar ID to user properties.
+ * @param {string} calendarId The ID of the calendar to save.
+ * @return {object} An object indicating success or failure.
+ */
+function saveCalendarId(calendarId) {
+  try {
+    if (!calendarId || typeof calendarId !== 'string' || calendarId.trim() === '') {
+      throw new Error('Calendar ID cannot be empty.');
+    }
+    PropertiesService.getUserProperties().setProperty('calendarId', calendarId);
+    Logger.log('Calendar ID saved: ' + calendarId);
+    return { success: true, message: 'Calendar ID updated successfully.' };
+  } catch (e) {
+    Logger.log('Error saving Calendar ID: ' + e.message);
+    return { success: false, message: 'Error saving Calendar ID: ' + e.message };
+  }
+}
+
+/**
+ * Retrieves the saved Calendar ID from user properties.
+ * @return {object} An object containing the calendarId or an error.
+ */
+function getCalendarIdConfig() {
+  try {
+    const calendarId = PropertiesService.getUserProperties().getProperty('calendarId');
+    if (calendarId) {
+      return { success: true, calendarId: calendarId };
+    } else {
+      return { success: false, message: 'Calendar ID not found.' };
+    }
+  } catch (e) {
+    Logger.log('Error retrieving Calendar ID: ' + e.message);
+    return { success: false, message: 'Error retrieving Calendar ID: ' + e.message };
+  }
+}
+
+/**
+ * Saves the Drive Folder ID to user properties.
+ * @param {string} driveFolderId The ID of the Drive folder to save.
+ * @return {object} An object indicating success or failure.
+ */
+function saveDriveFolderId(driveFolderId) {
+  try {
+    if (!driveFolderId || typeof driveFolderId !== 'string' || driveFolderId.trim() === '') {
+      throw new Error('Drive Folder ID cannot be empty.');
+    }
+    PropertiesService.getUserProperties().setProperty('driveFolderId', driveFolderId);
+    Logger.log('Drive Folder ID saved: ' + driveFolderId);
+    return { success: true, message: 'Drive Folder ID updated successfully.' };
+  } catch (e) {
+    Logger.log('Error saving Drive Folder ID: ' + e.message);
+    return { success: false, message: 'Error saving Drive Folder ID: ' + e.message };
+  }
+}
+
+/**
+ * Retrieves the saved Drive Folder ID from user properties.
+ * @return {object} An object containing the driveFolderId or an error.
+ */
+function getDriveFolderIdConfig() {
+  try {
+    const driveFolderId = PropertiesService.getUserProperties().getProperty('driveFolderId');
+    if (driveFolderId) {
+      return { success: true, driveFolderId: driveFolderId };
+    } else {
+      return { success: false, message: 'Drive Folder ID not found.' };
+    }
+  } catch (e) {
+    Logger.log('Error retrieving Drive Folder ID: ' + e.message);
+    return { success: false, message: 'Error retrieving Drive Folder ID: ' + e.message };
+  }
+}
+
+/**
+ * Saves the Target Spreadsheet ID to user properties.
+ * @param {string} targetSheetId The ID of the target spreadsheet to save.
+ * @return {object} An object indicating success or failure.
+ */
+function saveTargetSheetId(targetSheetId) {
+  try {
+    if (!targetSheetId || typeof targetSheetId !== 'string' || targetSheetId.trim() === '') {
+      throw new Error('Target Sheet ID cannot be empty.');
+    }
+    PropertiesService.getUserProperties().setProperty('targetSheetId', targetSheetId);
+    Logger.log('Target Sheet ID saved: ' + targetSheetId);
+    return { success: true, message: 'Target Spreadsheet ID updated successfully.' };
+  } catch (e) {
+    Logger.log('Error saving Target Sheet ID: ' + e.message);
+    return { success: false, message: 'Error saving Target Sheet ID: ' + e.message };
+  }
+}
+
+/**
+ * Retrieves the saved Target Spreadsheet ID from user properties.
+ * @return {object} An object containing the targetSheetId or an error.
+ */
+function getTargetSheetIdConfig() {
+  try {
+    const targetSheetId = PropertiesService.getUserProperties().getProperty('targetSheetId');
+    if (targetSheetId) {
+      return { success: true, targetSheetId: targetSheetId };
+    } else {
+      return { success: false, message: 'Target Sheet ID not found.' };
+    }
+  } catch (e) {
+    Logger.log('Error retrieving Target Sheet ID: ' + e.message);
+    return { success: false, message: 'Error retrieving Target Sheet ID: ' + e.message };
+  }
+}
+
+/**
+ * Saves all client-provided settings.
+ *
+ * @param {object} settings An object containing settings like calendarId, driveFolderId, targetSheetId.
+ * @return {object} An object summarizing the success of each operation and an overall status.
+ */
+function saveAllClientSettings(settings) {
+  const results = [];
+  let overallSuccess = true;
+  let consolidatedMessageParts = [];
+
+  // Save Calendar ID
+  if (settings && settings.hasOwnProperty('calendarId')) {
+    const calendarResult = saveCalendarId(settings.calendarId);
+    results.push({ setting: 'Calendar ID', success: calendarResult.success, message: calendarResult.message });
+    if (!calendarResult.success) overallSuccess = false;
+    consolidatedMessageParts.push(`Calendar ID: ${calendarResult.success ? 'Updated' : 'Error'}`);
+  } else {
+    // Handle case where calendarId might not be provided, or log if it's considered mandatory
+     results.push({ setting: 'Calendar ID', success: false, message: 'Calendar ID not provided in settings.' });
+     overallSuccess = false;
+     consolidatedMessageParts.push('Calendar ID: Not provided');
+  }
+
+  // Save Drive Folder ID
+  if (settings && settings.hasOwnProperty('driveFolderId')) {
+    const driveFolderResult = saveDriveFolderId(settings.driveFolderId);
+    results.push({ setting: 'Drive Folder ID', success: driveFolderResult.success, message: driveFolderResult.message });
+    if (!driveFolderResult.success) overallSuccess = false;
+    consolidatedMessageParts.push(`Drive Folder ID: ${driveFolderResult.success ? 'Updated' : 'Error'}`);
+  } else {
+     results.push({ setting: 'Drive Folder ID', success: false, message: 'Drive Folder ID not provided in settings.' });
+     overallSuccess = false;
+     consolidatedMessageParts.push('Drive Folder ID: Not provided');
+  }
+
+  // Save Target Sheet ID
+  if (settings && settings.hasOwnProperty('targetSheetId')) {
+    const sheetResult = saveTargetSheetId(settings.targetSheetId);
+    results.push({ setting: 'Target Sheet ID', success: sheetResult.success, message: sheetResult.message });
+    if (!sheetResult.success) overallSuccess = false;
+    consolidatedMessageParts.push(`Target Sheet ID: ${sheetResult.success ? 'Updated' : 'Error'}`);
+  } else {
+     results.push({ setting: 'Target Sheet ID', success: false, message: 'Target Sheet ID not provided in settings.' });
+     overallSuccess = false;
+     consolidatedMessageParts.push('Target Sheet ID: Not provided');
+  }
+
+  return {
+    overallSuccess: overallSuccess,
+    results: results,
+    consolidatedMessage: 'Processed all settings. ' + consolidatedMessageParts.join('. ') + '.'
+  };
+}
