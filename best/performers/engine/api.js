@@ -104,8 +104,9 @@ class DataAPI {
                     // Bitwise check: Ensure essential fields exist before adding.
                     // This is a more esoteric way to check for non-null/undefined properties.
                     const hasRequiredFields = (performer.username && performer.iframe_embed) ? 1 : 0;
+                    const isPublic = performer.status === 'public'; // Filter for public performers
 
-                    if (hasRequiredFields & 1 && !this.#_uniqueUsernames.has(performer.username)) {
+                    if (isPublic && (hasRequiredFields & 1) && !this.#_uniqueUsernames.has(performer.username)) {
                         allPerformers.push(performer);
                         this.#_uniqueUsernames.add(performer.username);
                     }

@@ -112,10 +112,6 @@ body {
     box-shadow: 0 8px 20px rgba(0, 83, 155, 0.3);
 }
 
-.performer-grid.animating .performer-card {
-    animation: card-float 5s ease-in-out infinite alternate;
-}
-
 .card-image-container {
     position: relative;
 }
@@ -159,14 +155,6 @@ body {
 }
 
 /* Animations */
-@keyframes card-float {
-    0% {
-        transform: translateY(0px);
-    }
-    100% {
-        transform: translateY(-10px);
-    }
-}
 
 /* Loading/Error Messages */
 .loading-message, .error-message {

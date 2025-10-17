@@ -10,10 +10,7 @@ class UIManager {
     // Private fields to hold DOM element references and state.
     #_gridContainer;
     #_iframeViewer;
-    #_startButton;
-    #_stopButton;
     #_onPerformerSelectCallback; // A hook to communicate with the main engine.
-    #_isAnimating = true; // Default state for animations.
 
     /**
      * Represents a single performer in the UI.
@@ -32,14 +29,12 @@ class UIManager {
      */
     constructor(selectors, onPerformerSelect) {
         // Object destructuring for cleaner access to selectors.
-        const { grid, iframe, start, stop } = selectors;
+        const { grid, iframe } = selectors;
         this.#_gridContainer = document.querySelector(grid);
         this.#_iframeViewer = document.querySelector(iframe);
-        this.#_startButton = document.querySelector(start);
-        this.#_stopButton = document.querySelector(stop);
         this.#_onPerformerSelectCallback = onPerformerSelect;
 
-        if (!this.#_gridContainer || !this.#_iframeViewer || !this.#_startButton || !this.#_stopButton) {
+        if (!this.#_gridContainer || !this.#_iframeViewer) {
             throw new Error("UIManager could not find all required elements in the DOM.");
         }
 
@@ -52,9 +47,6 @@ class UIManager {
      * This demonstrates encapsulation of the component's behavior.
      */
     #_initEventListeners() {
-        this.#_startButton.addEventListener('click', () => this.startAnimations());
-        this.#_stopButton.addEventListener('click', () => this.stopAnimations());
-
         // Use event delegation for the performer cards for better performance.
         this.#_gridContainer.addEventListener('click', (event) => {
             const card = event.target.closest('.performer-card');
@@ -103,9 +95,6 @@ class UIManager {
      */
     renderPerformers(performers) {
         this.#_gridContainer.innerHTML = ''; // Clear previous content
-        if (this.#_isAnimating) {
-            this.#_gridContainer.classList.add('animating');
-        }
         const fragment = document.createDocumentFragment();
         performers.forEach(performer => {
             fragment.appendChild(this.#_createPerformerCard(performer));
@@ -130,25 +119,6 @@ class UIManager {
         }
     }
 
-    /**
-     * Starts the CSS animations on the performer cards.
-     */
-    startAnimations() {
-        this.#_isAnimating = true;
-        this.#_gridContainer.classList.add('animating');
-        this.#_startButton.disabled = true;
-        this.#_stopButton.disabled = false;
-    }
-
-    /**
-     * Stops the CSS animations on the performer cards.
-     */
-    stopAnimations() {
-        this.#_isAnimating = false;
-        this.#_gridContainer.classList.remove('animating');
-        this.#_startButton.disabled = false;
-        this.#_stopButton.disabled = true;
-    }
 
     /**
      * Displays a loading message in the grid.
