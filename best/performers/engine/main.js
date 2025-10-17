@@ -65,9 +65,7 @@ class PerformerEngine {
         this.#_uiManager = new UIManager(
             {
                 grid: '#performerGrid',
-                iframe: '#mainIframe',
-                start: '#startAnimationBtn',
-                stop: '#stopAnimationBtn'
+                iframe: '#mainIframe'
             },
             // The callback "hook" allows the UI to communicate back to the engine
             // without being tightly coupled.
