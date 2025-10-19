@@ -4,7 +4,7 @@
         #productStore;
 
         constructor() {
-            this.#cacheService = new CacheService('JinxGenProductCache');
+            this.#cacheService = new CacheService('JinxGenProductCache', 2);
             this.#productStore = 'products';
         }
 
@@ -35,11 +35,13 @@
                 const textData = await response.text();
                 const fileData = JSON.parse(textData);
                 const rawProduct = JSON.parse(fileData.value);
-                const product = ProductMapper.map(rawProduct);
 
-                if (product.name && product.price && product.description) {
+                if (rawProduct && rawProduct.name) {
+                    const product = ProductMapper.map(rawProduct);
                     await this.#cacheService.set(this.#productStore, file, product);
                     return product;
+                } else {
+                    console.error(`Skipping file ${file} because it does not contain a valid product object.`);
                 }
             } catch (e) {
                 console.error(`Skipping file ${file} because it does not contain valid product data.`, e);

@@ -11,26 +11,32 @@
             this.updateCartCount();
         }
 
-        addProduct(product) {
+        addProduct(product, options = {}) {
             const cart = this.#getCart();
-            const existingProduct = cart.find(item => item.id === product.id);
+            const { size = null, quantity = 1 } = options;
+
+            // Create a unique ID for products with sizes
+            const cartItemId = size ? `${product.id}-${size}` : product.id;
+
+            const existingProduct = cart.find(item => item.cartItemId === cartItemId);
+
             if (existingProduct) {
-                existingProduct.quantity++;
+                existingProduct.quantity += quantity;
             } else {
-                cart.push({ ...product, quantity: 1 });
+                cart.push({ ...product, size, quantity, cartItemId });
             }
             this.#saveCart(cart);
         }
 
-        removeProduct(productId) {
+        removeProduct(cartItemId) {
             let cart = this.#getCart();
-            cart = cart.filter(item => item.id !== productId);
+            cart = cart.filter(item => item.cartItemId !== cartItemId);
             this.#saveCart(cart);
         }
 
-        updateQuantity(productId, quantity) {
+        updateQuantity(cartItemId, quantity) {
             const cart = this.#getCart();
-            const product = cart.find(item => item.id === productId);
+            const product = cart.find(item => item.cartItemId === cartItemId);
             if (product) {
                 product.quantity = quantity;
             }

@@ -11,10 +11,11 @@ class CacheService {
 
             request.onupgradeneeded = (event) => {
                 this.db = event.target.result;
-                stores.forEach(store => {
-                    if (!this.db.objectStoreNames.contains(store)) {
-                        this.db.createObjectStore(store);
+                stores.forEach(storeName => {
+                    if (this.db.objectStoreNames.contains(storeName)) {
+                        this.db.deleteObjectStore(storeName);
                     }
+                    this.db.createObjectStore(storeName);
                 });
             };
 
