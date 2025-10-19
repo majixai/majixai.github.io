@@ -15,7 +15,7 @@ class ProductMapper {
             featureFlags |= FEATURE_FLAG_SALE;
         }
 
-        return {
+        const product = {
             id: ProductService.getProductId(rawProduct),
             name: rawProduct.name,
             price: Number(rawProduct.price),
@@ -23,5 +23,11 @@ class ProductMapper {
             category: rawProduct.category,
             featureFlags: featureFlags
         };
+
+        if (product.category === 'Apparel') {
+            product.sizes = ['S', 'M', 'L', 'XL'];
+        }
+
+        return product;
     }
 }

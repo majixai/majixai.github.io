@@ -18,12 +18,12 @@ class CartRenderer {
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h5>${item.name}</h5>
+                            <h5>${item.name} ${item.size ? `(${item.size})` : ''}</h5>
                             <p>$${Number(item.price).toFixed(2)}</p>
                         </div>
                         <div>
-                            <input type="number" value="${item.quantity}" min="1" class="form-control quantity-input" data-id="${item.id}">
-                            <button class="btn btn-danger btn-sm remove-btn" data-id="${item.id}">Remove</button>
+                            <input type="number" value="${item.quantity}" min="1" class="form-control quantity-input" data-id="${item.cartItemId}">
+                            <button class="btn btn-danger btn-sm remove-btn" data-id="${item.cartItemId}">Remove</button>
                         </div>
                     </div>
                 </div>
