@@ -2,8 +2,12 @@ from flask import Flask, jsonify, request, render_template
 import sqlite3
 import os
 import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, template_folder='templates')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
 
 # --- Database Setup ---
 _basedir = os.path.abspath(os.path.dirname(__file__))
