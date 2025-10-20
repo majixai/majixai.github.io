@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <!-- Using Bootstrap for components and styling -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        :root {
+            --primary-color: #00539B;
+            --primary-color-dark: #003f7a;
+        }
+        body {
+            padding: 15px;
+            font-size: 0.95rem;
+            background-color: #f8f9fa;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-color-dark);
+            border-color: var(--primary-color-dark);
+        }
+        .btn-success {
+            background-color: #28a745;
+        }
+        section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        section:last-child {
+            border-bottom: none;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-text { font-weight: 500; min-height: 20px; font-size: 0.9em; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .warning { color: #ffc107; }
+        .schedule-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .schedule-list-item:last-child { border-bottom: none; }
+        .schedule-email { font-weight: 500; }
+        .schedule-time { color: #6c757d; font-size: 0.9em; margin-left: 5px;}
+        .modal-body h5 { color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        .modal-body p, .modal-body li { font-size: 0.9rem; }
+        .code-block {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with Buttons -->
+    <div class="header mb-3">
+        <h4 class="mb-0">Jinx Manager</h4>
+        <div>
+            <button class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#instructionsModal">?</button>
+            <button class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#settingsModal">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Manual Run Section -->
+    <section>
+        <h5>Manual Run</h5>
+        <p class="small text-muted">Manually trigger the analysis and data processing workflow.</p>
+        <button class="btn btn-primary btn-sm" id="fetchButton" onclick="runManualFetch()">Run Analysis</button>
+        <div id="status" class="status-text mt-2"></div>
+    </section>
+
+    <!-- Schedule Management Section -->
+    <section>
+        <h5>Schedule Manager</h5>
+        <p class="small text-muted">Add or remove automated analysis schedules.</p>
+        <div class="form-group">
+            <label for="emailList" class="small font-weight-bold">Email Recipient(s)</label>
+            <input type="text" class="form-control form-control-sm" id="emailList" placeholder="user@example.com, team@example.com">
+        </div>
+        <div class="form-group">
+            <label for="scheduleTime" class="small font-weight-bold">Time (HH:MM)</label>
+            <input type="time" class="form-control form-control-sm" id="scheduleTime">
+            <small id="scheduleTimeZone" class="form-text text-muted">Loading timezone...</small>
+        </div>
+        <button id="addScheduleButton" class="btn btn-success btn-sm" onclick="addSchedule()">Add Schedule</button>
+        <div id="scheduleStatus" class="status-text mt-2"></div>
+    </section>
+
+    <!-- Current Schedules Section -->
+    <section>
+        <h5>Current Schedules</h5>
+        <div id="scheduleList">
+            <div id="loadingSchedules" class="text-muted small">Loading schedules...</div>
+        </div>
+    </section>
+
+    <!-- *********************************************************************** -->
+    <!--                            MODALS                                       -->
+    <!-- *********************************************************************** -->
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Settings & API Keys</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Keys are stored securely in script properties, not in the code.</p>
+                    <div id="settingsStatus" class="status-text mb-3"></div>
+                    <div class="form-group">
+                        <label for="githubPat">GitHub Personal Access Token (PAT)</label>
+                        <input type="password" class="form-control" id="githubPat" placeholder="Enter GitHub PAT">
+                    </div>
+                    <div class="form-group">
+                        <label for="githubRepo">GitHub Repository (e.g., user/repo)</label>
+                        <input type="text" class="form-control" id="githubRepo" placeholder="your-username/your-repo-name">
+                    </div>
+                    <div class="form-group">
+                        <label for="fmpApiKey">Financial Modeling Prep API Key</label>
+                        <input type="password" class="form-control" id="fmpApiKey" placeholder="Enter FMP API Key">
+                    </div>
+                    <div class="form-group">
+                        <label for="geminiApiKey">Google Gemini API Key</label>
+                        <input type="password" class="form-control" id="geminiApiKey" placeholder="Enter Gemini API Key">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div class="modal fade" id="instructionsModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Instructions</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <h5>TradingView Webhook Setup</h5>
+                    <ol>
+                        <li>In TradingView, create an alert from a chart or Pine Script.</li>
+                        <li>Go to the "Notifications" tab of the alert setup.</li>
+                        <li>Check the "Webhook URL" box.</li>
+                        <li>Paste your script's deployment URL into the webhook field.</li>
+                        <li>In the "Message" box, you **must** provide a JSON payload. Use this template:
+                            <div class="code-block">{"ticker": "{{ticker}}", "price": "{{close}}", "signal": "Buy Signal"}</div>
+                        </li>
+                    </ol>
+
+                    <h5>GitHub Integration Setup</h5>
+                    <ol>
+                        <li>Create a GitHub Personal Access Token (PAT).
+                            <ul>
+                                <li>Go to GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic).</li>
+                                <li>Generate a new token with the <strong>`repo`</strong> scope.</li>
+                                <li>Copy the token. You will not see it again.</li>
+                            </ul>
+                        </li>
+                        <li>Click the <strong>⚙️ Settings</strong> button in this sidebar.</li>
+                        <li>Paste your PAT into the "GitHub Personal Access Token" field.</li>
+                        <li>Enter your target repository in the format `username/reponame`.</li>
+                        <li>Click "Save Settings". The webhook will now write alert data to this repository.</li>
+                    </ol>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Required JS for Bootstrap Modals -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+    // --- Client-Side Controller ---
+    class SidebarController {
+        constructor() {
+            // Bind all methods to the instance to maintain `this` context
+            this.runManualFetch = this.runManualFetch.bind(this);
+            this.addSchedule = this.addSchedule.bind(this);
+            this.deleteSchedule = this.deleteSchedule.bind(this);
+            this.saveSettings = this.saveSettings.bind(this);
+            this.loadInitialData = this.loadInitialData.bind(this);
+        }
+
+        setStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            if(el) {
+              el.textContent = message;
+              el.className = `status-text mt-2 ${type}`;
+            }
+        }
+
+        disableButtons(disabled) {
+            document.getElementById('fetchButton').disabled = disabled;
+            document.getElementById('addScheduleButton').disabled = disabled;
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.disabled = disabled);
+        }
+
+        runManualFetch() {
+            this.setStatus('status', 'Running analysis...', 'info');
+            this.disableButtons(true);
+            google.script.run
+                .withSuccessHandler(result => {
+                    this.setStatus('status', result.message, result.success ? 'success' : 'error');
+                    this.disableButtons(false);
+                })
+                .withFailureHandler(err => {
+                    this.setStatus('status', `Error: ${err.message}`, 'error');
+                    this.disableButtons(false);
+                })
+                .runManualPortAnalysis();
+        }
+
+        addSchedule() {
+            const email = document.getElementById('emailList').value.trim();
+            const time = document.getElementById('scheduleTime').value;
+            if (!email || !time) {
+                this.setStatus('scheduleStatus', 'Email(s) and time required.', 'error');
+                return;
+            }
+            this.setStatus('scheduleStatus', 'Adding...', 'info');
+            this.disableButtons(true);
+            google.script.run
+                .withSuccessHandler(result => {
+                    this.setStatus('scheduleStatus', result.message, result.success ? 'success' : 'error');
+                    if (result.success) {
+                        this.renderSchedules(result.schedules);
+                        document.getElementById('emailList').value = '';
+                    }
+                    this.disableButtons(false);
+                })
+                .withFailureHandler(err => {
+                    this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error');
+                    this.disableButtons(false);
+                })
+                .addSchedule({ email, time });
+        }
+
+        deleteSchedule(scheduleId) {
+            if (!confirm('Are you sure?')) return;
+            this.setStatus('scheduleStatus', 'Deleting...', 'info');
+            this.disableButtons(true);
+            google.script.run
+                .withSuccessHandler(result => {
+                    this.setStatus('scheduleStatus', result.message, result.success ? 'success' : 'error');
+                    if (result.success) this.renderSchedules(result.schedules);
+                    this.disableButtons(false);
+                })
+                .withFailureHandler(err => {
+                    this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error');
+                    this.disableButtons(false);
+                })
+                .deleteSchedule(scheduleId);
+        }
+
+        renderSchedules(schedules) {
+            const listDiv = document.getElementById('scheduleList');
+            listDiv.innerHTML = '';
+            if (schedules && schedules.length > 0) {
+                schedules.forEach(schedule => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'schedule-list-item';
+                    itemDiv.innerHTML = `
+                        <div class="schedule-details">
+                            <span class="schedule-email" title="${schedule.email}">${schedule.email.length > 25 ? schedule.email.substring(0,22)+'...' : schedule.email}</span>
+                            <span class="schedule-time">at ${schedule.time}</span>
+                        </div>
+                        <button class="btn btn-danger btn-sm delete-btn" onclick="app.deleteSchedule('${schedule.id}')">X</button>
+                    `;
+                    listDiv.appendChild(itemDiv);
+                });
+            } else {
+                listDiv.innerHTML = '<p class="text-muted small">No schedules added yet.</p>';
+            }
+        }
+
+        saveSettings() {
+            this.setStatus('settingsStatus', 'Saving...', 'info');
+            const settings = {
+                githubPat: document.getElementById('githubPat').value,
+                githubRepo: document.getElementById('githubRepo').value,
+                fmpApiKey: document.getElementById('fmpApiKey').value,
+                geminiApiKey: document.getElementById('geminiApiKey').value,
+            };
+            google.script.run
+                .withSuccessHandler(result => {
+                    this.setStatus('settingsStatus', result.message, result.success ? 'success' : 'error');
+                    // Hide password fields after saving
+                    document.getElementById('githubPat').value = '';
+                    document.getElementById('fmpApiKey').value = '';
+                    document.getElementById('geminiApiKey').value = '';
+                    setTimeout(() => { $('#settingsModal').modal('hide'); this.setStatus('settingsStatus', '', 'info'); }, 1500);
+                })
+                .withFailureHandler(err => {
+                    this.setStatus('settingsStatus', `Error: ${err.message}`, 'error');
+                })
+                .saveSettings(settings);
+        }
+
+        loadInitialData() {
+            // Get timezone
+            google.script.run
+                .withSuccessHandler(tz => document.getElementById('scheduleTimeZone').textContent = `Timezone: ${tz}`)
+                .getServerTimezone();
+
+            // Get schedules
+            google.script.run
+                .withSuccessHandler(schedules => this.renderSchedules(schedules))
+                .getSchedules();
+
+            // Get settings to populate repo field
+            google.script.run
+                .withSuccessHandler(settings => {
+                    if (settings && settings.githubRepo) {
+                        document.getElementById('githubRepo').value = settings.githubRepo;
+                    }
+                })
+                .getSettings();
+        }
+    }
+
+    const app = new SidebarController();
+
+    // Make methods globally accessible for onclick attributes
+    window.runManualFetch = app.runManualFetch;
+    window.addSchedule = app.addSchedule;
+    window.deleteSchedule = app.deleteSchedule;
+    window.saveSettings = app.saveSettings;
+
+    // Load initial data when the sidebar opens
+    window.onload = app.loadInitialData;
+    </script>
+</body>
+</html>

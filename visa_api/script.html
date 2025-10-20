@@ -1,0 +1,119 @@
+<script>
+let googlePayClient;
+
+function onGooglePayLoaded() {
+  googlePayClient = new google.payments.api.PaymentsClient({
+    environment: 'TEST' // Or 'PRODUCTION'
+  });
+
+  const button = googlePayClient.createButton({
+    onClick: onGooglePayClicked,
+    allowedPaymentMethods: ['CARD', 'TOKENIZED_CARD']
+  });
+
+  document.getElementById('google-pay-button-container').appendChild(button);
+}
+
+function onGooglePayClicked() {
+  const paymentDataRequest = {
+    apiVersion: 2,
+    apiVersionMinor: 0,
+    allowedPaymentMethods: [
+      {
+        type: 'CARD',
+        parameters: {
+          allowedAuthMethods: ['PAN_ONLY', 'CRYPTOGRAM_3DS'],
+          allowedCardNetworks: ['MASTERCARD', 'VISA']
+        },
+        tokenizationSpecification: {
+          type: 'PAYMENT_GATEWAY',
+          parameters: {
+            'gateway': 'example',
+            'gatewayMerchantId': 'exampleGatewayMerchantId'
+          }
+        }
+      }
+    ],
+    merchantInfo: {
+      merchantId: '12345678901234567890',
+      merchantName: 'Demo Merchant'
+    },
+    transactionInfo: {
+      totalPriceStatus: 'FINAL',
+      totalPrice: '1.00',
+      currencyCode: 'USD'
+    }
+  };
+
+  googlePayClient.loadPaymentData(paymentDataRequest)
+    .then(function(paymentData){
+      processGooglePay(paymentData);
+    }).catch(function(err){
+      console.error(err);
+    });
+}
+
+function processGooglePay(paymentData) {
+  const paymentToken = paymentData.paymentMethodData.tokenizationData.token;
+  const paymentDetails = {
+    paymentMethod: 'GOOGLE_PAY',
+    paymentToken: paymentToken,
+    cardDescription: paymentData.paymentMethodData.description
+  };
+
+  processPayment(paymentDetails);
+}
+
+document.getElementById('visa-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const paymentDetails = {
+    paymentMethod: 'CARD',
+    cardHolder: document.getElementById('card-holder').value,
+    cardNumber: document.getElementById('card-number').value,
+    expiryDate: document.getElementById('expiry-date').value,
+    cvv: document.getElementById('cvv').value
+  };
+
+  processPayment(paymentDetails);
+});
+
+function processPayment(paymentData) {
+    const responseDiv = document.getElementById('response');
+    responseDiv.style.display = 'none';
+
+    google.script.run
+        .withSuccessHandler(function(response) {
+            responseDiv.style.display = 'block';
+            if (response.success) {
+                responseDiv.className = 'alert alert-success';
+                let content = `<strong>Success!</strong> ${response.message}<br>Transaction ID: ${response.transactionId}`;
+                if(response.fraudAnalysis) {
+                    content += `<br>Fraud Risk Score: ${response.fraudAnalysis.riskScore}/100`;
+                    content += `<br>Explanation: ${response.fraudAnalysis.explanation}`;
+                }
+                responseDiv.innerHTML = content;
+            } else {
+                responseDiv.className = 'alert alert-danger';
+                responseDiv.innerHTML = `<strong>Error!</strong> ${response.error}`;
+            }
+        })
+        .withFailureHandler(function(error) {
+            responseDiv.style.display = 'block';
+            responseDiv.className = 'alert alert-danger';
+            responseDiv.innerHTML = '<strong>Error!</strong> ' + error.message;
+        })
+        .doPost(paymentData);
+}
+
+// Load the Google Pay client library
+const script = document.createElement('script');
+script.src = 'https://pay.google.com/gp/p/js/pay.js';
+script.async = true;
+script.onload = onGooglePayLoaded;
+document.head.appendChild(script);
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+</script>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="bg-dark text-white py-3 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="/serverroom/" class="text-white text-decoration-none h1">Jinx Gen</a>
+            <nav>
+                <a href="index.html" class="text-white me-3">Home</a>
+                <a href="cart.html" class="text-white">
+                    <i class="fas fa-shopping-cart"></i> Cart
+                    <span id="cart-count" class="badge bg-danger">0</span>
+                </a>
+            </nav>
+        </div>
+    </header>
+    <div class="container">
+        <h1>Checkout</h1>
+        <form id="checkout-form">
+            <h2>Shipping Information</h2>
+            <div class="mb-3">
+                <label for="name" class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="address" class="form-label">Address</label>
+                <input type="text" class="form-control" id="address" required>
+            </div>
+            <div class="mb-3">
+                <label for="city" class="form-label">City</label>
+                <input type="text" class="form-control" id="city" required>
+            </div>
+            <div class="mb-3">
+                <label for="state" class="form-label">State</label>
+                <input type="text" class="form-control" id="state" required>
+            </div>
+            <div class="mb-3">
+                <label for="zip" class="form-label">Zip Code</label>
+                <input type="text" class="form-control" id="zip" required>
+            </div>
+            <h2>Shipping Method</h2>
+            <div class="mb-3">
+                <select id="shipping-method" class="form-select">
+                    <option value="pickup">In-Store Pickup</option>
+                    <option value="delivery">Local Delivery</option>
+                    <option value="shipping">Standard Shipping</option>
+                </select>
+                <div class="form-text">
+                    <a href="shipping/index.html" target="_blank">Learn more about our shipping options</a>
+                </div>
+            </div>
+            <h2>Payment Information</h2>
+            <div class="mb-3">
+                <label for="card-number" class="form-label">Card Number</label>
+                <input type="text" class="form-control" id="card-number" required>
+            </div>
+            <div class="mb-3">
+                <label for="expiry" class="form-label">Expiry (MM/YY)</label>
+                <input type="text" class="form-control" id="expiry" required>
+            </div>
+            <div class="mb-3">
+                <label for="cvv" class="form-label">CVV</label>
+                <input type="text" class="form-control" id="cvv" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Place Order</button>
+        </form>
+    </div>
+    <script src="ProductService.js"></script>
+    <script src="CartService.js"></script>
+    <script src="checkout.js"></script>
+</body>
+</html>

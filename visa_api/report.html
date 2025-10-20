@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        padding: 20px;
+      }
+      #report-container {
+        max-width: 800px;
+        margin: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="report-container">
+      <h1 class="text-center">Transaction Report</h1>
+      <div id="report-content"></div>
+    </div>
+
+    <script>
+      // Dynamically determine the repository URL from the window location.
+      const repoUrl = new URL(window.location.href).searchParams.get('repoUrl');
+      const reportUrl = `https://raw.githubusercontent.com/${repoUrl}/main/visa_api/TRANSACTION_REPORT.md`;
+
+      fetch(reportUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
+        })
+        .then(text => {
+          document.getElementById('report-content').innerHTML = marked.parse(text);
+        })
+        .catch(error => {
+          console.error('Error fetching the report:', error);
+          document.getElementById('report-content').innerHTML = '<div class="alert alert-danger">Could not load the transaction report.</div>';
+        });
+    </script>
+  </body>
+</html>
