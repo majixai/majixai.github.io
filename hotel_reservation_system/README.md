@@ -10,6 +10,22 @@ This project is a full-stack web application that provides a hotel reservation s
 *   A responsive frontend using a mix of W3.CSS and Bootstrap.
 *   Advanced frontend features like parallax scrolling, layout toggling (Flexbox/Grid), and animations.
 
+## Configuration
+
+This application uses a `.env` file for managing secrets and configuration.
+
+1.  **Create a `.env` file:**
+    Copy the example file to a new `.env` file in the `hotel_reservation_system` directory:
+    ```bash
+    cp .env.example .env
+    ```
+
+2.  **Set your secrets:**
+    Open the `.env` file and replace the placeholder values with your actual secrets. For example:
+    ```
+    SECRET_KEY="a_very_long_and_secure_random_string"
+    ```
+
 ## Running the Application
 
 To run the application, follow these steps:
