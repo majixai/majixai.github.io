@@ -1,0 +1,131 @@
+name: Hourly Index Price Data Collector (Runs for 24 Hours)
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  # Runs the workflow at the top of every hour
+  schedule:
+    - cron: '0 * * * *'
+
+# Sets permissions for the GITHUB_TOKEN to allow workflow modifications and content writes.
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  run_yfinance_and_commit:
+    runs-on: ${runner}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # A Personal Access Token (PAT) with 'repo' and 'workflow' scopes is required.
+          # Store it as a secret named GH_PAT in your repository settings.
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install zstd for better compression
+        run: sudo apt-get update && sudo apt-get install -y zstd
+
+      - name: Install Python dependencies
+        run: pip install yfinance pandas
+
+      - name: Prepare file paths
+        id: paths
+        run: |
+          DATA_DIR="data/$(date +'%Y-%m-%d')"
+          mkdir -p $DATA_DIR
+          FILENAME_BASE="$(date +'%H-%M-%S')"
+          RAW_FILE="$DATA_DIR/$FILENAME_BASE.dat"
+          COMPRESSED_FILE="$RAW_FILE.zst"
+          echo "raw_file=$RAW_FILE" >> $GITHUB_OUTPUT
+          echo "compressed_file=$COMPRESSED_FILE" >> $GITHUB_OUTPUT
+
+      - name: Run Python script to generate data file
+        env:
+          OUTPUT_FILE: ${{ steps.paths.outputs.raw_file }}
+        run: |
+          python -c "
+          import yfinance as yf
+          import pandas as pd
+          import os
+          
+          indices = {
+              '^GSPC': 'S&P 500',
+              '^DJI': 'Dow Jones Industrial Average',
+              '^IXIC': 'NASDAQ Composite',
+              '^FTSE': 'FTSE 100 (UK)',
+              '^N225': 'Nikkei 225 (Japan)',
+              '^GDAXI': 'DAX (Germany)'
+          }
+          
+          price_data = []
+          for ticker, name in indices.items():
+              try:
+                  data = yf.Ticker(ticker).history(period='2d', interval='1d')
+                  if not data.empty:
+                      price = data['Close'].iloc[-1]
+                      price_data.append(f'{name}|{ticker}|{price:.2f}')
+                  else:
+                      price_data.append(f'{name}|{ticker}|N/A')
+              except Exception as e:
+                  price_data.append(f'{name}|{ticker}|Error')
+
+          output_file_path = os.environ['OUTPUT_FILE']
+          with open(output_file_path, 'w') as f:
+              for line in price_data:
+                  f.write(f'{line}\n')
+          
+          print(f'Data successfully written to {output_file_path}')
+          "
+
+      - name: Compress data file with zstd
+        run: |
+          zstd -f --rm ${{ steps.paths.outputs.raw_file }}
+          echo "File compressed to ${{ steps.paths.outputs.compressed_file }}"
+
+      - name: Commit data and manage execution count
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          COMPRESSED_FILE: ${{ steps.paths.outputs.compressed_file }}
+        run: |
+          # Initialize or increment the counter
+          if [ -f .run_count ]; then
+            count=$(cat .run_count)
+          else
+            count=0
+          fi
+          
+          count=$((count + 1))
+          echo "This is run number $count of 24."
+          echo $count > .run_count
+
+          # Configure git
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Add new data file and the counter
+          git add "$COMPRESSED_FILE"
+          git add .run_count
+          
+          # Commit if there are changes
+          if ! git diff --staged --quiet; then
+            git commit -m "data: Add price data for $(date +'%Y-%m-%d %H:%M:%S')" -m "Workflow run $count/24."
+            git push
+          else
+            echo "No new data or counter change to commit."
+          fi
+          
+          # If it's the 24th run or later, disable the workflow
+          if [ $count -ge 24 ]; then
+            echo "24 runs completed. Disabling workflow."
+            WORKFLOW_FILE=$(basename "$WORKFLOW_REF" | cut -d '@' -f 1)
+            gh workflow disable "$WORKFLOW_FILE"
+            echo "Workflow '$WORKFLOW_FILE' has been successfully disabled."
+          fi
