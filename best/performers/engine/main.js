@@ -58,8 +58,6 @@ class PerformerEngine {
     #_uiManager;
     #_dataAPI;
     #_performers = []; // This will hold Performer class instances.
-    #_currentPage = 1;
-    #_itemsPerPage = 10; // Default items per page
 
     constructor() {
         // The engine is composed of the other modules, a key OOP principle.
@@ -67,16 +65,11 @@ class PerformerEngine {
         this.#_uiManager = new UIManager(
             {
                 grid: '#performerGrid',
-                iframe: '#mainIframe',
-                refresh: '#refreshBtn',
-                pagination: '#paginationControls'
+                iframe: '#mainIframe'
             },
-            // Callbacks for UI events
-            {
-                onPerformerSelect: (performer) => this.#_handlePerformerSelection(performer),
-                onPageChange: (page) => this.goToPage(page),
-                onRefresh: () => this.forceRefresh()
-            }
+            // The callback "hook" allows the UI to communicate back to the engine
+            // without being tightly coupled.
+            (performer) => this.#_handlePerformerSelection(performer)
         );
     }
 
@@ -94,60 +87,24 @@ class PerformerEngine {
      * The main initialization method for the application.
      * @public
      */
-    async init(forceRefresh = false) {
+    async init() {
         this.#_uiManager.showLoading();
         try {
-            const performerData = await this.#_dataAPI.getPerformers(forceRefresh);
+            // The "async/await" syntax makes asynchronous code read like synchronous code.
+            const performerData = await this.#_dataAPI.getPerformers();
             this.#_performers = Performer.createMany(performerData);
-            this.#_currentPage = 1; // Reset to first page on load
-            this.#_renderCurrentPage();
+
+            if (this.#_performers.length > 0) {
+                this.#_uiManager.renderPerformers(this.#_performers);
+                // Automatically select the first performer to display in the viewer.
+                this.#_handlePerformerSelection(this.#_performers[0]);
+            } else {
+                this.#_uiManager.showError(); // Or a "no performers found" message
+            }
         } catch (error) {
             console.error("Failed to initialize PerformerEngine:", error);
             this.#_uiManager.showError();
         }
-    }
-
-    /**
-     * Navigates to a specific page number.
-     * @param {number} page - The page number to navigate to.
-     */
-    goToPage(page) {
-        const totalPages = Math.ceil(this.#_performers.length / this.#_itemsPerPage);
-        if (page >= 1 && page <= totalPages) {
-            this.#_currentPage = page;
-            this.#_renderCurrentPage();
-        }
-    }
-
-    /**
-     * Forces a refresh of the data from the network.
-     */
-    forceRefresh() {
-        console.log("Forcing data refresh...");
-        this.init(true);
-    }
-
-    /**
-     * @private
-     * Renders the performers for the current page and updates pagination UI.
-     */
-    #_renderCurrentPage() {
-        const startIndex = (this.#_currentPage - 1) * this.#_itemsPerPage;
-        const endIndex = startIndex + this.#_itemsPerPage;
-        const pagePerformers = this.#_performers.slice(startIndex, endIndex);
-
-        if (pagePerformers.length > 0) {
-            this.#_uiManager.renderPerformers(pagePerformers);
-            // Select the first performer of the page, if not already viewing one.
-            if (this.#_uiManager.isViewerEmpty()) {
-                 this.#_handlePerformerSelection(pagePerformers[0]);
-            }
-        } else if (this.#_currentPage === 1) {
-            this.#_uiManager.showError("No public performers found.");
-        }
-
-        const totalPages = Math.ceil(this.#_performers.length / this.#_itemsPerPage);
-        this.#_uiManager.renderPagination(this.#_currentPage, totalPages);
     }
 }
 

@@ -1,10 +1,14 @@
 (function(window) {
     class ProductService {
+        #cacheService;
+        #productStore;
+
         constructor() {
-            this.productCache = new Map();
+            this.#cacheService = new CacheService('JinxGenProductCache', 2);
+            this.#productStore = 'products';
         }
 
-        async fetchProductFiles() {
+        async #fetchProductFiles() {
             try {
                 const response = await fetch('files.json');
                 if (!response.ok) {
@@ -17,9 +21,10 @@
             }
         }
 
-        async fetchProductData(file) {
-            if (this.productCache.has(file)) {
-                return this.productCache.get(file);
+        async #fetchProductData(file) {
+            const cachedProduct = await this.#cacheService.get(this.#productStore, file);
+            if (cachedProduct) {
+                return cachedProduct;
             }
 
             try {
@@ -29,12 +34,14 @@
                 }
                 const textData = await response.text();
                 const fileData = JSON.parse(textData);
-                const product = JSON.parse(fileData.value);
+                const rawProduct = JSON.parse(fileData.value);
 
-                if (product.name && product.price && product.description) {
-                    product.id = this.getProductId(product);
-                    this.productCache.set(file, product);
+                if (rawProduct && rawProduct.name) {
+                    const product = ProductMapper.map(rawProduct);
+                    await this.#cacheService.set(this.#productStore, file, product);
                     return product;
+                } else {
+                    console.error(`Skipping file ${file} because it does not contain a valid product object.`);
                 }
             } catch (e) {
                 console.error(`Skipping file ${file} because it does not contain valid product data.`, e);
@@ -43,18 +50,25 @@
         }
 
         async getAllProducts() {
-            const productFiles = await this.fetchProductFiles();
-            const productPromises = productFiles.map(file => this.fetchProductData(file));
+            const productFiles = await this.#fetchProductFiles();
+            const productPromises = productFiles.map(file => this.#fetchProductData(file));
             const products = await Promise.all(productPromises);
             return products.filter(p => p !== null);
         }
 
-        async getProduct(productId) {
+        async *getProductGenerator() {
             const products = await this.getAllProducts();
-            return products.find(p => this.getProductId(p) === productId);
+            for (const product of products) {
+                yield product;
+            }
         }
 
-        getProductId(product) {
+        async getProduct(productId) {
+            const products = await this.getAllProducts();
+            return products.find(p => p.id === productId);
+        }
+
+        static getProductId(product) {
             return product.name.toLowerCase().replace(/\s+/g, '-');
         }
     }

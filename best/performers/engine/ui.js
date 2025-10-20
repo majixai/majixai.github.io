@@ -10,9 +10,7 @@ class UIManager {
     // Private fields to hold DOM element references and state.
     #_gridContainer;
     #_iframeViewer;
-    #_refreshButton;
-    #_paginationContainer;
-    #_callbacks; // A single object for all callbacks
+    #_onPerformerSelectCallback; // A hook to communicate with the main engine.
 
     /**
      * Represents a single performer in the UI.
@@ -29,16 +27,14 @@ class UIManager {
      * @param {object} selectors - A map of CSS selectors for required elements.
      * @param {function(Performer): void} onPerformerSelect - A callback function to execute when a performer is selected.
      */
-    constructor(selectors, callbacks) {
+    constructor(selectors, onPerformerSelect) {
         // Object destructuring for cleaner access to selectors.
-        const { grid, iframe, refresh, pagination } = selectors;
+        const { grid, iframe } = selectors;
         this.#_gridContainer = document.querySelector(grid);
         this.#_iframeViewer = document.querySelector(iframe);
-        this.#_refreshButton = document.querySelector(refresh);
-        this.#_paginationContainer = document.querySelector(pagination);
-        this.#_callbacks = callbacks;
+        this.#_onPerformerSelectCallback = onPerformerSelect;
 
-        if (!this.#_gridContainer || !this.#_iframeViewer || !this.#_refreshButton || !this.#_paginationContainer) {
+        if (!this.#_gridContainer || !this.#_iframeViewer) {
             throw new Error("UIManager could not find all required elements in the DOM.");
         }
 
@@ -48,27 +44,16 @@ class UIManager {
     /**
      * @private
      * Sets up all necessary event listeners for the UI controls.
+     * This demonstrates encapsulation of the component's behavior.
      */
     #_initEventListeners() {
-        this.#_refreshButton.addEventListener('click', () => this.#_callbacks.onRefresh());
-
-        // Event delegation for performer cards
+        // Use event delegation for the performer cards for better performance.
         this.#_gridContainer.addEventListener('click', (event) => {
             const card = event.target.closest('.performer-card');
-            if (card && this.#_callbacks.onPerformerSelect) {
+            if (card && this.#_onPerformerSelectCallback) {
+                // The performer data is retrieved from the element itself.
                 const performerData = JSON.parse(card.dataset.performer);
-                this.#_callbacks.onPerformerSelect(performerData);
-            }
-        });
-
-        // Event delegation for pagination controls
-        this.#_paginationContainer.addEventListener('click', (event) => {
-            if (event.target.tagName === 'A') {
-                event.preventDefault();
-                const page = parseInt(event.target.dataset.page, 10);
-                if (!isNaN(page) && this.#_callbacks.onPageChange) {
-                    this.#_callbacks.onPageChange(page);
-                }
+                this.#_onPerformerSelectCallback(performerData);
             }
         });
     }
@@ -145,36 +130,7 @@ class UIManager {
     /**
      * Displays an error message in the grid.
      */
-    showError(message = "Could not load performers. Please try again later.") {
-        this.#_gridContainer.innerHTML = `<p class="error-message">${message}</p>`;
-    }
-
-    /**
-     * Renders the pagination controls.
-     * @param {number} currentPage - The current active page.
-     * @param {number} totalPages - The total number of pages.
-     */
-    renderPagination(currentPage, totalPages) {
-        this.#_paginationContainer.innerHTML = '';
-        if (totalPages <= 1) return;
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLink = document.createElement('a');
-            pageLink.href = '#';
-            pageLink.dataset.page = i;
-            pageLink.textContent = i;
-            if (i === currentPage) {
-                pageLink.className = 'active';
-            }
-            this.#_paginationContainer.appendChild(pageLink);
-        }
-    }
-
-    /**
-     * Checks if the main viewer is empty (on its initial blank page).
-     * @returns {boolean}
-     */
-    isViewerEmpty() {
-        return this.#_iframeViewer.src === 'about:blank';
+    showError() {
+        this.#_gridContainer.innerHTML = '<p class="error-message">Could not load performers. Please try again later.</p>';
     }
 }

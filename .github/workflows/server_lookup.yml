@@ -1,0 +1,42 @@
+name: Server Lookup Workflow
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight
+  workflow_dispatch:
+
+jobs:
+  server-lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run Server Lookup Script
+        id: server_check
+        run: |
+          # In a real scenario, this script would read a list of servers
+          # from a config file and check their status.
+          echo "Checking server statuses..."
+          # We'll simulate checking a few servers.
+          servers=("server1.example.com" "server2.example.com" "server3.example.com")
+          for server in "${servers[@]}"; do
+            # Simulate a health check
+            if (( RANDOM % 5 == 0 )); then
+              echo "$server is down!"
+              echo "status_server1=down" >> $GITHUB_OUTPUT
+            else
+              echo "$server is up and running."
+              echo "status_$server=up" >> $GITHUB_OUTPUT
+            fi
+          done

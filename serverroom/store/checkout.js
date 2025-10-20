@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             city: document.getElementById('city').value,
             state: document.getElementById('state').value,
             zip: document.getElementById('zip').value,
+            shippingMethod: document.getElementById('shipping-method').value,
             cardNumber: document.getElementById('card-number').value,
             expiry: document.getElementById('expiry').value,
             cvv: document.getElementById('cvv').value,

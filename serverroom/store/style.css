@@ -4,6 +4,19 @@ body {
     background-color: #f4f4f4;
 }
 
+.parallax {
+    background-image: url("https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80");
+    min-height: 200px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.cart-icon {
+    vertical-align: middle;
+}
+
 header {
     background-color: #333;
     color: white;
@@ -54,4 +67,17 @@ main {
     font-size: 1rem;
     color: #555;
     flex-grow: 1;
+}
+
+.w3-theme {
+    background-color: #00539B !important;
+    color: white !important;
+}
+
+.product-card.animated {
+    transition: transform 0.3s ease-in-out;
+}
+
+.product-card.animated:hover {
+    transform: scale(1.05);
 }

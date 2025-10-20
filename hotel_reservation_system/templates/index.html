@@ -225,16 +225,7 @@
         };
     })();
 
-    // --- UI Controller (Decorator Pattern for logging) ---
-    const logInteraction = (target, key, descriptor) => {
-        const originalMethod = descriptor.value;
-        descriptor.value = function(...args) {
-            Logger.log(`UI Interaction: ${key} called with`, args);
-            return originalMethod.apply(this, args);
-        };
-        return descriptor;
-    };
-
+    // --- UI Controller ---
     class UIController {
         constructor() {
             Object.assign(this, {
@@ -255,8 +246,8 @@
             });
         }
 
-        @logInteraction
         renderRooms(rooms) {
+            Logger.log('Rendering rooms');
             this.roomsContainer.empty();
             const roomElements = rooms.map(this.createRoomCard.bind(this));
             this.roomsContainer.append(roomElements);
@@ -276,8 +267,8 @@
             `);
         }
 
-        @logInteraction
         showBookingForm(roomId, roomName) {
+            Logger.log(`Showing booking form for room ${roomId}`);
             this.bookingRoomName.text(roomName);
             this.roomIdInput.val(roomId);
             this.bookingSection.slideDown();

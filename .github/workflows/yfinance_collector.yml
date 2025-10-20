@@ -1,0 +1,170 @@
+name: Hourly Index Price Data Collector (Runs for 24 Hours)
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  # Runs the workflow at the top of every hour
+  schedule:
+    - cron: '0 * * * *'
+
+# Sets permissions for the GITHUB_TOKEN to allow workflow modifications and content writes.
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  run_yfinance_and_commit:
+    runs-on: ${runner}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # A Personal Access Token (PAT) with 'repo' and 'workflow' scopes is required.
+          # Store it as a secret named GH_PAT in your repository settings.
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install zstd for better compression
+        run: |
+          echo "INFO: Updating package lists and installing zstd..."
+          sudo apt-get update && sudo apt-get install -y zstd
+          echo "SUCCESS: zstd installed."
+
+      - name: Install Python dependencies
+        run: |
+          echo "INFO: Installing Python packages yfinance and pandas..."
+          pip install yfinance pandas
+          echo "SUCCESS: Python dependencies installed."
+
+      - name: Prepare file paths
+        id: paths
+        run: |
+          echo "INFO: Generating directory and file paths..."
+          DATA_DIR="data/$(date +'%Y-%m-%d')"
+          mkdir -p $DATA_DIR
+          echo "INFO: Data directory is $DATA_DIR"
+          FILENAME_BASE="$(date +'%H-%M-%S')"
+          RAW_FILE="$DATA_DIR/$FILENAME_BASE.dat"
+          COMPRESSED_FILE="$RAW_FILE.zst"
+          echo "INFO: Raw file path: $RAW_FILE"
+          echo "INFO: Compressed file path: $COMPRESSED_FILE"
+          echo "raw_file=$RAW_FILE" >> $GITHUB_OUTPUT
+          echo "compressed_file=$COMPRESSED_FILE" >> $GITHUB_OUTPUT
+          echo "SUCCESS: Paths prepared."
+
+      - name: Run Python script to generate data file
+        env:
+          OUTPUT_FILE: ${{ steps.paths.outputs.raw_file }}
+        run: |
+          echo "INFO: Starting Python script to fetch financial data."
+          python -c "
+          import yfinance as yf
+          import pandas as pd
+          import os
+          import logging
+
+          logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+          
+          indices = {
+              '^GSPC': 'S&P 500',
+              '^DJI': 'Dow Jones Industrial Average',
+              '^IXIC': 'NASDAQ Composite',
+              '^FTSE': 'FTSE 100 (UK)',
+              '^N225': 'Nikkei 225 (Japan)',
+              '^GDAXI': 'DAX (Germany)'
+          }
+          
+          price_data = []
+          logging.info(f'Fetching data for {len(indices)} indices...')
+          for ticker, name in indices.items():
+              try:
+                  logging.info(f'--> Fetching {name} ({ticker})')
+                  data = yf.Ticker(ticker).history(period='2d', interval='1d')
+                  if not data.empty:
+                      price = data['Close'].iloc[-1]
+                      price_data.append(f'{name}|{ticker}|{price:.2f}')
+                      logging.info(f'--> Success. Price: {price:.2f}')
+                  else:
+                      price_data.append(f'{name}|{ticker}|N/A')
+                      logging.warning(f'--> No data returned for {ticker}.')
+              except Exception as e:
+                  price_data.append(f'{name}|{ticker}|Error')
+                  logging.error(f'--> An error occurred fetching {ticker}: {e}')
+
+          output_file_path = os.environ.get('OUTPUT_FILE')
+          if not output_file_path:
+              raise ValueError('OUTPUT_FILE environment variable not set.')
+
+          logging.info(f'Writing data to {output_file_path}...')
+          with open(output_file_path, 'w') as f:
+              for line in price_data:
+                  f.write(f'{line}\n')
+          
+          logging.info(f'Data successfully written to {output_file_path}.')
+          "
+          echo "SUCCESS: Python script finished."
+
+      - name: Compress data file with zstd
+        run: |
+          echo "INFO: Compressing ${{ steps.paths.outputs.raw_file }} with zstd..."
+          zstd -f --rm ${{ steps.paths.outputs.raw_file }}
+          echo "SUCCESS: File compressed to ${{ steps.paths.outputs.compressed_file }}"
+
+      - name: Commit data and manage execution count
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          COMPRESSED_FILE: ${{ steps.paths.outputs.compressed_file }}
+        run: |
+          echo "--- Commit and Workflow Management ---"
+          
+          # Initialize or increment the counter
+          if [ -f .run_count ]; then
+            count=$(cat .run_count)
+            echo "INFO: Found existing run count: $count"
+          else
+            count=0
+            echo "INFO: No run count file found. Initializing to 0."
+          fi
+          
+          count=$((count + 1))
+          echo "INFO: This is run number $count of 24."
+          echo $count > .run_count
+
+          # Configure git
+          echo "INFO: Configuring git user..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          echo "INFO: Git user configured."
+
+          # Add new data file and the counter
+          echo "INFO: Staging files for commit..."
+          git add "$COMPRESSED_FILE"
+          git add .run_count
+          
+          # Commit if there are changes
+          if ! git diff --staged --quiet; then
+            echo "INFO: Changes detected. Committing..."
+            git commit -m "data: Add price data for $(date +'%Y-%m-%d %H:%M:%S')" -m "Workflow run $count/24."
+            echo "INFO: Pushing changes..."
+            git push
+            echo "SUCCESS: Commit pushed."
+          else
+            echo "INFO: No new data or counter change to commit. Skipping commit."
+          fi
+          
+          # If it's the 24th run or later, disable the workflow
+          if [ $count -ge 24 ]; then
+            echo "CRITICAL: 24 runs completed. Disabling workflow to prevent further runs."
+            WORKFLOW_FILE=$(basename "$WORKFLOW_REF" | cut -d '@' -f 1)
+            gh workflow disable "$WORKFLOW_FILE"
+            echo "SUCCESS: Workflow '$WORKFLOW_FILE' has been successfully disabled."
+          else
+            echo "INFO: Workflow will continue to run. ($count/24)"
+          fi
+          echo "--- End of job ---"
