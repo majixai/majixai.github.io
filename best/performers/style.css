@@ -1,122 +1,222 @@
-html, body {
-    height: 100%;
+/*
+ * @file Main stylesheet for the Performer Application.
+ * @author Jules
+ * @description Implements a modern, responsive design with the requested color scheme.
+ * Uses advanced CSS like Grid, Flexbox, custom properties, and animations.
+ */
+
+:root {
+    --primary-color: #00539B; /* The requested primary color */
+    --light-background: #f4f7fa;
+    --dark-text: #333;
+    --card-background: #ffffff;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --border-color: #dee2e6;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--light-background);
+    color: var(--dark-text);
     margin: 0;
-    padding: 0;
-    overflow: hidden;
-    font-family: sans-serif;
-    background-color: #f0f0f0;
+    height: 100vh;
+    overflow: hidden; /* Prevent body scroll */
 }
 
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    padding: 10px;
-    box-sizing: border-box;
+    height: 100%;
 }
 
-.header-controls {
+/* Header Styling */
+.app-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     flex-shrink: 0;
-    margin-bottom: 10px;
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
-.header-controls h1 {
+.app-header h1 {
     margin: 0;
-    font-size: 1.5em;
-    text-align: center;
+    font-size: 1.5rem;
 }
 
+/* Main Content Layout */
 .main-content {
     display: flex;
     flex-grow: 1;
-    gap: 10px;
     overflow: hidden;
+    height: calc(100% - 70px); /* Adjust based on header height */
 }
 
-.iframe-column {
-    flex: 3;
+.viewer-panel {
+    flex: 3; /* Takes up 3/4 of the space */
+    padding: 1rem;
     display: flex;
-    flex-direction: column;
+    /* Parallax background effect */
+    background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 
 .iframe-container {
-    flex-grow: 1;
-    position: relative;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
     overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 83, 155, 0.2);
 }
 
-.iframe-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
+#mainIframe {
     width: 100%;
     height: 100%;
     border: none;
 }
 
-.performers-column {
-    flex: 1;
+.grid-panel {
+    flex: 1; /* Takes up 1/4 of the space */
+    min-width: 300px;
+    max-width: 400px;
     display: flex;
     flex-direction: column;
-    background-color: #fff;
-    border-radius: 5px;
-    padding: 10px;
-    min-width: 280px;
-    max-width: 350px;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: #e9ecef;
 }
 
-.performers-column h2 {
-    margin: 0 0 10px 0;
-    font-size: 1.2em;
-    text-align: center;
-}
-
-.performers-list-container {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
+.performer-grid {
     flex-grow: 1;
-    padding-bottom: 15px; /* For scrollbar visibility */
-    scrollbar-width: thin;
-    scrollbar-color: #ccc #f0f0f0;
+}
+
+/* Performer Grid Styling */
+.performer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
 }
 
 .performer-card {
-    flex: 0 0 150px;
-    width: 150px;
-    margin-right: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px;
+    background: var(--card-background);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px var(--shadow-color);
+    overflow: hidden;
     cursor: pointer;
-    background-color: #f9f9f9;
-    transition: transform 0.2s;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 2px solid transparent;
 }
 
-.performer-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.performer-card.selected {
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+    box-shadow: 0 8px 20px rgba(0, 83, 155, 0.3);
 }
 
-.performer-card img {
+.card-image-container {
+    position: relative;
+}
+
+.card-image-container img {
     width: 100%;
-    height: 120px;
+    height: 180px;
     object-fit: cover;
-    border-radius: 5px 5px 0 0;
+    display: block;
 }
 
-.performer-card h3 {
-    margin: 10px 0 5px 0;
-    font-size: 1em;
+.card-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 83, 155, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.performer-card:hover .card-overlay {
+    opacity: 1;
+}
+
+.card-content {
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.card-content h3 {
+    margin: 0;
+    font-size: 1rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.performer-card p {
-    margin: 0;
-    font-size: 0.8em;
-    color: #555;
+/* Animations */
+
+/* Loading/Error Messages */
+.loading-message, .error-message {
+    color: var(--dark-text);
+    text-align: center;
+    width: 100%;
+    padding: 2rem;
+}
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+}
+
+.pagination a {
+    color: var(--primary-color);
+    padding: 8px 16px;
+    text-decoration: none;
+    transition: background-color .3s;
+    border: 1px solid #ddd;
+    margin: 0 4px;
+}
+
+.pagination a.active {
+    background-color: var(--primary-color);
+    color: white;
+    border: 1px solid var(--primary-color);
+}
+
+.pagination a:hover:not(.active) {
+    background-color: #ddd;
+}
+
+/* Media Queries for Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .viewer-panel {
+        min-height: 50vh;
+    }
+
+    .grid-panel {
+        max-width: 100%;
+        max-height: 50vh;
+    }
+
+    .app-header {
+        flex-direction: column;
+        padding-bottom: 0.5rem;
+    }
+    .app-header h1 {
+        margin-bottom: 0.5rem;
+    }
 }

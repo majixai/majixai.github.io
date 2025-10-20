@@ -3,34 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Performers</title>
+    <title>Jinx Gen | Performers Engine</title>
+
+    <!-- CDNs for Frameworks -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+
+    <!-- Main Stylesheet -->
     <link rel="stylesheet" href="style.css">
+
+    <!-- Pako Decompression Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 </head>
 <body>
+
     <div class="app-container">
-        <div class="header-controls">
-            <h1>Performers</h1>
-        </div>
+        <header class="app-header w3-container">
+            <h1>Jinx Gen Performers</h1>
+            <div class="controls w3-bar">
+                <button id="refreshBtn" class="w3-button w3-blue">Refresh</button>
+            </div>
+        </header>
 
-        <div class="main-content">
-            <!-- Main Viewing Column -->
-            <div class="iframe-column">
+        <main class="main-content">
+            <section class="viewer-panel">
                 <div class="iframe-container">
-                    <iframe id="mainIframe" src="about:blank" title="Main Viewer"></iframe>
+                    <iframe id="mainIframe" src="about:blank" title="Main Viewer" sandbox="allow-scripts allow-same-origin"></iframe>
                 </div>
-            </div>
+            </section>
 
-            <!-- Performers Column -->
-            <div class="performers-column" id="performersContainer">
-                <h2>Performers</h2>
-                <div class="performers-list-container">
-                    <!-- Performer cards will be inserted here by JavaScript -->
+            <aside class="grid-panel">
+                <div id="performerGrid" class="performer-grid">
+                    <!-- Performer cards will be dynamically inserted here -->
                 </div>
-            </div>
-        </div>
+                <div id="paginationControls" class="pagination">
+                    <!-- Pagination links will be inserted here -->
+                </div>
+            </aside>
+        </main>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Engine Scripts -->
+    <script src="engine/config.js"></script>
+    <script src="engine/cache.js"></script>
+    <script src="engine/api.js"></script>
+    <script src="engine/ui.js"></script>
+    <script src="engine/main.js"></script>
+
 </body>
 </html>
