@@ -1,12 +1,26 @@
 body {
     font-family: sans-serif;
-    margin: 2em;
+    margin: 0;
     background-color: #f4f4f4;
     color: #333;
 }
 
 h1 {
     text-align: center;
+    color: white;
+    text-shadow: 2px 2px 4px #000000;
+}
+
+.parallax {
+    background-image: url("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=2070&auto=format&fit=crop");
+    min-height: 200px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 #loader {
@@ -17,26 +31,19 @@ h1 {
 
 #data-container {
     margin: 0 auto;
-    width: 80%;
+    width: 90%;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1em;
+    animation: fadeIn 1s;
 }
 
-th, td {
-    padding: 0.75em;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-thead {
-    background-color: #007bff;
-    color: white;
-}
-
-tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+body.animations-off table {
+    animation: none;
 }
