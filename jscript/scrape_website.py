@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import sqlite3
-import zstandard
+import gzip
 import json
 import sys
 from datetime import datetime
@@ -110,7 +110,7 @@ TICKERS = [
 ]
 
 DB_FILE = 'finance.db'
-COMPRESSED_DB_FILE = 'finance.db.zst'
+COMPRESSED_DB_FILE = 'finance.db.gz'
 CONFIG_FILE = 'jscript/config.json'
 BASE_URL = "https://www.google.com/finance/quote/"
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
@@ -196,11 +196,10 @@ def display_latest_data(conn):
         print(f"{row[0]:<8} {row[1]:<40} {row[2]:<15} {row[3]:<25}")
 
 def compress_database():
-    """Compresses the SQLite database file using zstandard."""
+    """Compresses the SQLite database file using gzip."""
     log(f"Compressing database to {COMPRESSED_DB_FILE}", 'verbose')
-    cctx = zstandard.ZstdCompressor()
-    with open(DB_FILE, 'rb') as f_in, open(COMPRESSED_DB_FILE, 'wb') as f_out:
-        f_out.write(cctx.compress(f_in.read()))
+    with open(DB_FILE, 'rb') as f_in, gzip.open(COMPRESSED_DB_FILE, 'wb') as f_out:
+        f_out.writelines(f_in)
     log("Compression complete.", 'normal')
 
 def main():
