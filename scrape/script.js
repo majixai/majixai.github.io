@@ -1,6 +1,62 @@
 const DB_URL = 'finance.db.gz';
 const LOADER = document.getElementById('loader');
 const DATA_CONTAINER = document.getElementById('data-container');
+let priceChart;
+
+/**
+ * @async
+ * @function displayPriceChart
+ * @description Queries the database for the price history of a given ticker
+ * and displays it as a line chart.
+ * @param {import('sql.js').Database} db - The SQL.js database instance.
+ * @param {string} ticker - The stock ticker to display the chart for.
+ */
+async function displayPriceChart(db, ticker) {
+    const stmt = db.prepare(`
+        SELECT scraped_at, price
+        FROM prices
+        WHERE ticker = :ticker
+        ORDER BY scraped_at
+    `);
+    stmt.bind({ ':ticker': ticker });
+
+    const labels = [];
+    const data = [];
+    while (stmt.step()) {
+        const row = stmt.getAsObject();
+        labels.push(new Date(row.scraped_at).toLocaleTimeString());
+        data.push(row.price);
+    }
+    stmt.free();
+
+    const chartData = {
+        labels: labels,
+        datasets: [{
+            label: `${ticker} Price History`,
+            data: data,
+            fill: false,
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+        }]
+    };
+
+    if (priceChart) {
+        priceChart.destroy();
+    }
+
+    priceChart = new Chart(document.getElementById('price-chart'), {
+        type: 'line',
+        data: chartData,
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+}
+
 
 /**
  * @async
@@ -57,6 +113,15 @@ async function main() {
         // Display the table
         DATA_CONTAINER.innerHTML = tableHtml;
         LOADER.style.display = 'none';
+
+        // Add event listeners to table rows
+        const tableRows = DATA_CONTAINER.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('click', () => {
+                const ticker = row.cells[0].textContent;
+                displayPriceChart(db, ticker);
+            });
+        });
 
     } catch (error) {
         LOADER.textContent = `Error: ${error.message}`;
