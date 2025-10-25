@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Scraping</title>
+    <title>Scraped Financial Data</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Web Scraping</h1>
-    </header>
-    <main>
-        <p>Web scraping is the process of automatically extracting data from websites. It involves fetching the web page and then parsing the HTML to extract the desired information. This data can then be used for various purposes, such as data analysis, price comparison, or lead generation.</p>
-    </main>
-    <footer>
-        <p>&copy; 2025 Web Scraping</p>
-    </footer>
+    <h1>Scraped Financial Data</h1>
+    <div id="loader">Loading and decompressing data...</div>
+    <div id="data-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
