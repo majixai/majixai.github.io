@@ -25,3 +25,9 @@ jobs:
 
     - name: Run scraper
       run: python jscript/scrape_website.py
+
+    - name: Upload database artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: financial-data
+        path: finance.db.zst
