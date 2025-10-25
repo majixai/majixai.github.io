@@ -2,6 +2,17 @@ const DB_URL = 'finance.db.gz';
 const LOADER = document.getElementById('loader');
 const DATA_CONTAINER = document.getElementById('data-container');
 
+/**
+ * @async
+ * @function main
+ * @description Main function to fetch, decompress, and display financial data.
+ * It initializes SQL.js, fetches a compressed database file,
+ * decompresses it using pako, loads the database, queries the latest
+ * price for each stock ticker, and dynamically generates an HTML table
+ * to display the results.
+ * @throws {Error} If there is an issue with fetching the database,
+ * decompressing the data, or executing the SQL query.
+ */
 async function main() {
     try {
         // Initialize the SQL.js library
