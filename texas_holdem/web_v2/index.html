@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texas Hold'em</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="header w3-container w3-teal">
+            <h1>Texas Hold'em</h1>
+        </div>
+        <div id="game-table" class="d-flex flex-column align-items-center">
+            <div id="community-cards" class="w3-panel w3-border">
+                <h2>Community Cards</h2>
+                <div id="community-card-container" class="d-flex"></div>
+            </div>
+            <div id="players" class="d-flex justify-content-around w-100"></div>
+            <div id="pot" class="w3-panel w3-border">
+                <h2>Pot: <span id="pot-amount">0</span></h2>
+            </div>
+        </div>
+        <div id="controls" class="w3-container">
+            <button id="bet-btn" class="w3-button w3-blue">Bet</button>
+            <button id="fold-btn" class="w3-button w3-red">Fold</button>
+            <button id="next-round-btn" class="w3-button w3-green">Next Round</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+name: Texas Hold'em E2E Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backend server
+        run: python -m texas_holdem.app &
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Playwright
+        run: npm install -D @playwright/test
+
+      - name: Run E2E tests
+        run: npx playwright test texas_holdem/web_v2/e2e.spec.js
