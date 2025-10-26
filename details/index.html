@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Details Viewer</title>
+    <!-- W3.CSS CDN -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <!-- Bootstrap CDN -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="parallax">
+        <div class="w3-container w3-center w3-padding-64" style="color: white;">
+            <h1>Advanced Data Details Viewer</h1>
+            <p>A demonstration of advanced frontend concepts.</p>
+        </div>
+    </div>
+
+    <div class="w3-container w3-padding-32">
+        <div class="w3-bar w3-border">
+            <button class="w3-bar-item w3-button" onclick="app.loadData('json')">Load JSON Data</button>
+            <button class="w3-bar-item w3-button" onclick="app.loadData('sqlite')">Load SQLite Data</button>
+            <button id="toggle-animation" class="w3-bar-item w3-button">Stop Animations</button>
+        </div>
+    </div>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <h2>Controls</h2>
+                <div id="controls">
+                    <!-- Dynamic controls will be inserted here -->
+                </div>
+                <hr>
+                <h2>Inline SVG Demo</h2>
+                <svg width="100" height="100">
+                  <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" class="animated-svg" />
+                </svg>
+            </div>
+            <div class="col-md-9">
+                <h2>Data Output</h2>
+                <div id="output" class="w3-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+                    <!-- Data will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w3-container w3-center w3-padding-16 w3-light-grey mt-5">
+        <p>&copy; 2024 Advanced Details Viewer</p>
+    </footer>
+
+    <!-- JS CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.3/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.5.0/sql-wasm.js"></script>
+
+    <!-- Custom JS -->
+    <script type="module" src="js/app.js"></script>
+
+</body>
+</html>

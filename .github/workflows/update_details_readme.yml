@@ -1,0 +1,34 @@
+name: Update Details README
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'details/**'
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run README generator
+        id: generate
+        run: python scripts/generate_details_readme.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add details/README.md
+          git diff --staged --quiet || git commit -m "docs: auto-update details README"
+          git push
+        # This last step will fail if there are no changes, which is acceptable.
+        # A more robust version would check the output of the generate step.
