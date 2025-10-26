@@ -1,0 +1,33 @@
+name: Node.js CI for NFL Project
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'nfl/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'nfl/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Install Dependencies and Build
+      working-directory: ./nfl
+      run: |
+        npm install
+        npm run build
