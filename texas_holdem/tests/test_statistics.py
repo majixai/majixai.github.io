@@ -26,7 +26,7 @@ class TestStatistics(unittest.TestCase):
         self.assertEqual(evaluate_hand(hand)[0], 3)
 
     def test_evaluate_hand_straight(self):
-        hand = [Card('♠', 'A'), Card('♥', 'K'), Card('♦', 'Q'), Card('♣', 'J'), Card('♠', 'T'), Card('♥', '7'), Card('♦', '2')]
+        hand = [Card('♠', 'A'), Card('♥', 'K'), Card('♦', 'Q'), Card('♣', 'J'), Card('♠', '10'), Card('♥', '7'), Card('♦', '2')]
         self.assertEqual(evaluate_hand(hand)[0], 4)
 
     def test_evaluate_hand_flush(self):
@@ -42,7 +42,7 @@ class TestStatistics(unittest.TestCase):
         self.assertEqual(evaluate_hand(hand)[0], 7)
 
     def test_evaluate_hand_straight_flush(self):
-        hand = [Card('♠', 'A'), Card('♠', 'K'), Card('♠', 'Q'), Card('♠', 'J'), Card('♠', 'T'), Card('♥', '7'), Card('♦', '2')]
+        hand = [Card('♠', 'A'), Card('♠', 'K'), Card('♠', 'Q'), Card('♠', 'J'), Card('♠', '10'), Card('♥', '7'), Card('♦', '2')]
         self.assertEqual(evaluate_hand(hand)[0], 8)
 
 if __name__ == '__main__':

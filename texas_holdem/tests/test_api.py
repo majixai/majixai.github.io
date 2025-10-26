@@ -10,10 +10,11 @@ class TestApi(unittest.TestCase):
         app.config['TESTING'] = True
         app.config['DATABASE'] = 'test.db'
         self.app = app.test_client()
-        init_db()
-        Player("Alice").save()
-        Player("Bob").save()
-        Game([]).save()
+        with app.app_context():
+            init_db()
+            Player("Alice").save()
+            Player("Bob").save()
+            Game([]).save()
 
 
     def test_game_state(self):
