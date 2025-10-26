@@ -6,7 +6,7 @@ def evaluate_hand(hand):
     Evaluates a 7-card hand and returns its rank.
     The hand is a list of 7 Card objects.
     """
-    ranks = '23456789TJQKA'
+    ranks = '2345678910JQKA'
     suits = '♠♥♦♣'
 
     # Convert hand to a more usable format
@@ -37,9 +37,17 @@ def evaluate_hand(hand):
     if is_straight and is_flush:
         flush_cards = sorted([ranks.index(c.rank) for c in hand if c.suit == flush_suit], reverse=True)
         if len(flush_cards) >= 5:
+            # Check for ace-low straight flush
+            if set([12, 0, 1, 2, 3]).issubset(set(flush_cards)):
+                is_straight_flush = True
+                straight_flush_rank = 3
             for i in range(len(flush_cards) - 4):
                 if flush_cards[i] - flush_cards[i+4] == 4:
-                    return (8, flush_cards[i]) # Straight flush
+                    is_straight_flush = True
+                    straight_flush_rank = flush_cards[i]
+                    break
+            if is_straight_flush:
+                return (8, straight_flush_rank)
 
     # Four of a kind
     rank_counts = Counter(hand_ranks)

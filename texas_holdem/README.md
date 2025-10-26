@@ -2,6 +2,25 @@
 
 A simple Texas Hold'em game written in Python.
 
+## Features
+- A RESTful API to manage the game state.
+- Real-time game updates through a web interface.
+- Player actions including betting and folding.
+- Automated hand evaluation to determine the winner.
+
+## Project Structure
+- **/cards**: Contains the `Card` and `Deck` classes, which represent the game's cards.
+- **/game**: Includes the `Game` class, which manages the game logic, including dealing cards and determining the winner.
+- **/player**: Defines the `Player` class, which handles player-specific actions and state.
+- **/statistics**: Provides hand evaluation and odds calculation functionalities.
+- **/web**: Contains the frontend components for the web-based user interface.
+
+## API Overview
+- `GET /game_state`: Retrieves the current state of the game, including players, community cards, and the pot.
+- `POST /bet`: Allows a player to place a bet.
+- `POST /fold`: Allows a player to fold their hand.
+- `GET /next_round`: Advances the game to the next round.
+
 ## How to Run with Docker
 
 To run the game using Docker, execute the following command from the root directory:
