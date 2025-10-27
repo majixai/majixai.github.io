@@ -1,0 +1,44 @@
+name: Deploy Showcase Project to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Generate commit info
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          COMMIT_DATE=$(git log -1 --pretty=%ci)
+          DIRECTORIES=$(git diff-tree --no-commit-id --name-only -r HEAD | xargs -n 1 dirname | sort -u | grep -vE '^\.$|^\.github$' | jq -R . | jq -s .)
+          COMMIT_MSG_JSON=$(echo "$COMMIT_MSG" | jq -Rrs '.')
+
+          cat <<EOF > showcase/assets/commit-info.json
+          {
+            "sha": "$COMMIT_SHA",
+            "message": $COMMIT_MSG_JSON,
+            "author": "$COMMIT_AUTHOR",
+            "date": "$COMMIT_DATE",
+            "directories": $DIRECTORIES
+          }
+          EOF
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./showcase
