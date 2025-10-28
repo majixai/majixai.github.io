@@ -1,5 +1,6 @@
 import asyncio
 
+
 async def receive_messages(reader):
     while True:
         data = await reader.read(1024)
@@ -7,6 +8,7 @@ async def receive_messages(reader):
             print("Connection closed by server.")
             break
         print(data.decode(), end="")
+
 
 async def main():
     reader, writer = await asyncio.open_connection('127.0.0.1', 8888)
