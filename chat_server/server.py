@@ -1,6 +1,8 @@
 import asyncio
 
+
 clients = {}
+
 
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -12,7 +14,10 @@ async def handle_client(reader, writer):
     username = username_data.decode().strip()
 
     while username in clients.values():
-        writer.write(f"Username '{username}' is already taken. Please choose another: ".encode())
+        writer.write(
+            f"Username '{username}' is already taken. Please choose another: "
+            .encode()
+        )
         await writer.drain()
         username_data = await reader.read(100)
         username = username_data.decode().strip()
@@ -47,6 +52,7 @@ async def handle_client(reader, writer):
             await client_writer.drain()
         writer.close()
         await writer.wait_closed()
+
 
 async def main():
     server = await asyncio.start_server(
