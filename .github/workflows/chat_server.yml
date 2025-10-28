@@ -23,3 +23,15 @@ jobs:
       run: pip install -r chat_server/requirements.txt
     - name: Lint with flake8
       run: flake8 chat_server/
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.x'
+    - name: Run integration test
+      run: python chat_server/test_logging.py

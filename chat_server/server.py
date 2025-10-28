@@ -1,11 +1,20 @@
 import asyncio
+import logging
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='chat_server.log',
+    filemode='a'
+)
 
 clients = {}
 
 
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
+    logging.info(f"New connection from {addr}")
     print(f"New connection from {addr}")
 
     writer.write("Please enter your username: ".encode())
