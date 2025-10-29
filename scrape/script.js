@@ -119,7 +119,7 @@ async function main() {
         tableRows.forEach(row => {
             row.addEventListener('click', () => {
                 const ticker = row.cells[0].textContent;
-                displayPriceChart(db, ticker);
+                window.location.href = `details/index.html?ticker=${ticker}`;
             });
         });
 
