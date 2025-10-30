@@ -1,9 +1,9 @@
-from texas_holdem.cards.card import Deck, Card
-from texas_holdem.player.player import Player
-from database import get_db as get_db_connection
+from cards.card import Deck, Card
+from player.player import Player
+from database import get_db_connection
 import json
-from texas_holdem.statistics.hand_evaluator import evaluate_hand
-from texas_holdem.statistics.odds import calculate_pot_odds
+from statistics.hand_evaluator import evaluate_hand
+from statistics.odds import calculate_pot_odds
 
 class Game:
     def __init__(self, players, id=None):

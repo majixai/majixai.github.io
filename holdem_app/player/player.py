@@ -1,4 +1,4 @@
-from database import get_db as get_db_connection
+from database import get_db_connection
 
 class Player:
     def __init__(self, name, chips=1000, id=None):

@@ -1,5 +1,5 @@
 from collections import Counter
-from texas_holdem.cards.card import Card
+from cards.card import Card
 
 def evaluate_hand(hand):
     """

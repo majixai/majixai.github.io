@@ -22,7 +22,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run backend server
-        run: python -m texas_holdem.app &
+        run: python holdem_app/app.py &
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -34,5 +34,8 @@ jobs:
       - name: Install Playwright
         run: npm install -D @playwright/test
 
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
       - name: Run E2E tests
-        run: npx playwright test texas_holdem/web_v2/e2e.spec.js
+        run: npx playwright test holdem_app/web_v2/e2e.spec.js
