@@ -28,7 +28,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-
+      - name: Install Playwright browsers
+        run: npx playwright install
+      
       - name: Install Playwright
         run: npm install -D @playwright/test
 
