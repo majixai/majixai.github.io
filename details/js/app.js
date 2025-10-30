@@ -3,14 +3,8 @@
 (function() {
     'use strict';
     /**
-     * @file Manages the ticker details page, including data fetching, caching, and UI rendering.
+     * @file Manages the generic details page, including data fetching, caching, and UI rendering.
      * @author Jules
-     */
-
-    /**
-     * @typedef {Object} PriceData
-     * @property {string} scraped_at
-     * @property {number} price
      */
 
     /**
@@ -19,41 +13,48 @@
      */
 
     // --- Bitwise Operations for Feature Flags ---
-    const FeatureFlags = {
-        ANIMATIONS_ENABLED: 1 << 0, // 1
-        CHART_ENABLED: 1 << 1,      // 2
-        TABLE_ENABLED: 1 << 2,      // 4
-    };
     window.FeatureFlags = {
         ANIMATIONS_ENABLED: 1 << 0, // 1
-        CHART_ENABLED: 1 << 1,      // 2
-        TABLE_ENABLED: 1 << 2,      // 4
+        CHART_ENABLED: 1 << 1, // 2
+        TABLE_ENABLED: 1 << 2, // 4
     };
-    window.appFeatures = FeatureFlags.ANIMATIONS_ENABLED | FeatureFlags.CHART_ENABLED | FeatureFlags.TABLE_ENABLED;
+    window.appFeatures = window.FeatureFlags.ANIMATIONS_ENABLED | window.FeatureFlags.CHART_ENABLED | window.FeatureFlags.TABLE_ENABLED;
 
 
     async function main() {
+        console.log("Details page loaded.");
         const urlParams = new URLSearchParams(window.location.search);
-        const ticker = urlParams.get('ticker');
-        if (!ticker) {
-            console.error("No ticker specified.");
+        const dbPath = urlParams.get('dbPath');
+        const query = urlParams.get('query');
+        const params = JSON.parse(urlParams.get('params') || '{}');
+        const title = urlParams.get('title');
+        const xCol = urlParams.get('xCol');
+        const yCol = urlParams.get('yCol');
+
+        console.log({ dbPath, query, params, title, xCol, yCol });
+
+        if (!dbPath || !query || !title || !xCol || !yCol) {
+            document.body.innerHTML = '<h1 style="color: red;">Error: Missing required URL parameters.</h1>';
+            console.error("Missing required URL parameters.", { dbPath, query, title, xCol, yCol });
             return;
         }
 
+
         try {
-            const dataManager = await DataManager.getInstance();
+            const dataManager = await DataManager.getInstance(dbPath);
             const uiManager = new UIManager();
 
             uiManager.registerAnimationHook((isRunning) => {
                 // Re-render chart with new animation setting
-                dataManager.getTickerData(ticker).then(data => uiManager.renderChart(data));
+                dataManager.executeQuery(query, params).then(data => uiManager.renderChart(data, xCol, yCol));
             });
 
-            const tickerData = await dataManager.getTickerData(ticker);
-            uiManager.render(ticker, tickerData);
+            const data = await dataManager.executeQuery(query, params);
+            uiManager.render(title, data, xCol, yCol);
 
         } catch (error) {
-            console.error("Failed to load ticker details:", error);
+            console.error("Failed to load details:", error);
+            document.body.innerHTML = `<h1 style="color: red;">Error: ${error.message}</h1>`;
         }
     }
 

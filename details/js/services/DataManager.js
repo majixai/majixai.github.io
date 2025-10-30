@@ -4,64 +4,73 @@
     'use strict';
     class DataManager {
         #db = null;
-        static #instance = null;
+        static #instances = new Map();
 
         /**
          * @private
          */
         constructor() {
-            if (DataManager.#instance) {
-                return DataManager.#instance;
-            }
-            DataManager.#instance = this;
+            // Private constructor
         }
 
         /**
+         * @param {string} dbPath - The path to the database file.
          * @returns {Promise<DataManager>}
          */
-        static async getInstance() {
-            if (!DataManager.#instance) {
-                DataManager.#instance = new DataManager();
-                await DataManager.#instance.#init();
+        static async getInstance(dbPath) {
+            if (!DataManager.#instances.has(dbPath)) {
+                const instance = new DataManager();
+                await instance.#init(dbPath);
+                DataManager.#instances.set(dbPath, instance);
             }
-            return DataManager.#instance;
+            return DataManager.#instances.get(dbPath);
         }
 
-        async #init() {
+        async #init(dbPath) {
             try {
                 const SQL = await initSqlJs({
                     locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/${file}`
                 });
-                const response = await fetch('/scrape/finance.db.gz');
+                const response = await fetch(dbPath);
                 const compressedData = new Uint8Array(await response.arrayBuffer());
                 const decompressedData = pako.inflate(compressedData);
                 this.#db = new SQL.Database(decompressedData);
             } catch (error) {
-                console.error("Failed to initialize DataManager:", error);
+                console.error(`Failed to initialize DataManager for ${dbPath}:`, error);
                 throw error;
             }
         }
 
         /**
-         * @param {string} ticker
-         * @returns {Promise<PriceData[]>}
+         * @param {string} query
+         * @param {Object} params
+         * @returns {Promise<Object[]>}
          */
-        async getTickerData(ticker) {
-            console.log(`Calling getTickerData with args:`, [ticker]);
+        async executeQuery(query, params = {}) {
+            console.log(`Executing query:`, query, `with params:`, params);
             const result = await new Promise((resolve, reject) => {
                 if (!this.#db) return reject("Database not initialized.");
-                const stmt = this.#db.prepare("SELECT scraped_at, price FROM prices WHERE ticker = :ticker ORDER BY scraped_at");
-                stmt.bind({ ':ticker': ticker });
-                const data = [];
-                while (stmt.step()) {
-                    const row = stmt.getAsObject();
-                    row.price = Number(row.price);
-                    data.push(row);
+                try {
+                    const stmt = this.#db.prepare(query);
+                    stmt.bind(params);
+                    const data = [];
+                    while (stmt.step()) {
+                        const row = stmt.getAsObject();
+                        // Convert numeric values
+                        for (const key in row) {
+                            if (typeof row[key] === 'string' && !isNaN(row[key])) {
+                                row[key] = Number(row[key]);
+                            }
+                        }
+                        data.push(row);
+                    }
+                    stmt.free();
+                    resolve(data);
+                } catch (e) {
+                    reject(e);
                 }
-                stmt.free();
-                resolve(data);
             });
-            console.log(`Called getTickerData, result:`, result);
+            console.log(`Query result:`, result);
             return result;
         }
     }
