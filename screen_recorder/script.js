@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const startButton = document.getElementById('start-button');
   const stopButton = document.getElementById('stop-button');
   const downloadLink = document.getElementById('download-link');
+  const errorMessage = document.getElementById('error-message');
   const urlInput = document.getElementById('url-input');
   const urlSuggestions = document.getElementById('url-suggestions');
   const loadButton = document.getElementById('load-button');
@@ -106,26 +107,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   startButton.addEventListener('click', async () => {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true
-    });
-    video.srcObject = stream;
-    recorder = RecordRTC(stream, {
-      type: 'video'
-    });
-    recorder.startRecording();
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true
+      });
+      video.srcObject = stream;
+      recorder = RecordRTC(stream, {
+        type: 'video'
+      });
+      recorder.startRecording();
+    } catch (err) {
+      if (err.name === 'NotSupportedError') {
+        errorMessage.textContent = 'Screen recording is not supported in this browser or environment.';
+        errorMessage.style.display = 'block';
+        startButton.disabled = true;
+        stopButton.disabled = true;
+      } else {
+        errorMessage.textContent = `Error: ${err.message}`;
+        errorMessage.style.display = 'block';
+      }
+    }
   });
 
   stopButton.addEventListener('click', () => {
-    recorder.stopRecording(() => {
-      const blob = recorder.getBlob();
-      const videoURL = URL.createObjectURL(blob);
-      downloadLink.href = videoURL;
-      downloadLink.style.display = 'block';
-      downloadLink.download = 'recording.webm';
-      video.srcObject.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-    });
+    if (recorder) {
+      recorder.stopRecording(() => {
+        const blob = recorder.getBlob();
+        const videoURL = URL.createObjectURL(blob);
+        downloadLink.href = videoURL;
+        downloadLink.style.display = 'block';
+        downloadLink.download = 'recording.webm';
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+        recorder = null;
+      });
+    }
   });
 
   initDB();
