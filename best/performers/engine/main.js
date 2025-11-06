@@ -111,33 +111,6 @@ class PerformerEngine {
 // Entry point for the application.
 // We wait for the DOM to be fully loaded before initializing the engine.
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Visit Tracking ---
-    const LOGGING_SERVICE_URL = 'https://script.google.com/macros/s/AKfycbzr5jBpyz_6w94lOZotEoYpVa9kDY603A_6QAB4FLRSnI5GDlgzfRb8FOCR8uTdoGGc/exec';
-
-    function logVisit() {
-        const data = {
-            timestamp: new Date().toISOString(),
-            target: window.location.href,
-            referrer: document.referrer,
-            userAgent: navigator.userAgent,
-            event_type: 'page_visit' // Differentiate from link clicks
-        };
-
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(LOGGING_SERVICE_URL, JSON.stringify(data));
-        } else {
-            fetch(LOGGING_SERVICE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-                keepalive: true
-            }).catch(error => console.error('Error logging visit:', error));
-        }
-    }
-
-    logVisit();
-    // --- End Visit Tracking ---
-
     const engine = new PerformerEngine();
     engine.init();
 });
