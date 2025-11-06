@@ -21,7 +21,7 @@
         <header class="app-header w3-container">
             <h1>Jinx Gen Performers</h1>
             <div class="controls w3-bar">
-                <!-- Animation buttons removed as per new requirements -->
+                <button id="refreshButton" class="w3-button w3-blue w3-round-large">Refresh</button>
             </div>
         </header>
 
@@ -36,9 +36,14 @@
                 <div id="performerGrid" class="performer-grid">
                     <!-- Performer cards will be dynamically inserted here -->
                 </div>
+                <div id="paginationControls" class="pagination-controls">
+                    <!-- Pagination buttons will be dynamically inserted here -->
+                </div>
             </aside>
         </main>
     </div>
+
+    <button id="goToTopButton" class="w3-button w3-circle w3-blue" title="Go to top">&uarr;</button>
 
     <!-- Engine Scripts -->
     <script src="engine/config.js"></script>

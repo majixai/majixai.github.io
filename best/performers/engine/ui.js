@@ -11,6 +11,9 @@ class UIManager {
     #_gridContainer;
     #_iframeViewer;
     #_onPerformerSelectCallback; // A hook to communicate with the main engine.
+    #_paginationControls;
+    #_goToTopButton;
+    #_gridPanel;
 
     /**
      * Represents a single performer in the UI.
@@ -29,12 +32,15 @@ class UIManager {
      */
     constructor(selectors, onPerformerSelect) {
         // Object destructuring for cleaner access to selectors.
-        const { grid, iframe } = selectors;
+        const { grid, iframe, pagination, goToTop, gridPanel } = selectors;
         this.#_gridContainer = document.querySelector(grid);
         this.#_iframeViewer = document.querySelector(iframe);
+        this.#_paginationControls = document.querySelector(pagination);
+        this.#_goToTopButton = document.querySelector(goToTop);
+        this.#_gridPanel = document.querySelector(gridPanel);
         this.#_onPerformerSelectCallback = onPerformerSelect;
 
-        if (!this.#_gridContainer || !this.#_iframeViewer) {
+        if (!this.#_gridContainer || !this.#_iframeViewer || !this.#_paginationControls || !this.#_goToTopButton || !this.#_gridPanel) {
             throw new Error("UIManager could not find all required elements in the DOM.");
         }
 
@@ -54,6 +60,18 @@ class UIManager {
                 // The performer data is retrieved from the element itself.
                 const performerData = JSON.parse(card.dataset.performer);
                 this.#_onPerformerSelectCallback(performerData);
+            }
+        });
+
+        this.#_goToTopButton.addEventListener('click', () => {
+            this.#_gridPanel.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        this.#_gridPanel.addEventListener('scroll', () => {
+            if (this.#_gridPanel.scrollTop > 200) {
+                this.#_goToTopButton.style.display = 'block';
+            } else {
+                this.#_goToTopButton.style.display = 'none';
             }
         });
     }
@@ -100,6 +118,45 @@ class UIManager {
             fragment.appendChild(this.#_createPerformerCard(performer));
         });
         this.#_gridContainer.appendChild(fragment);
+        this.#_gridPanel.scrollTop = 0; // Scroll to top of grid on page change
+    }
+
+    /**
+     * Renders the pagination controls.
+     * @param {number} currentPage - The current active page.
+     * @param {number} totalPages - The total number of pages.
+     * @param {function(number): void} onPageChange - Callback for when a page button is clicked.
+     */
+    renderPagination(currentPage, totalPages, onPageChange) {
+        this.#_paginationControls.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        const fragment = document.createDocumentFragment();
+
+        // Previous Button
+        const prevButton = document.createElement('button');
+        prevButton.textContent = '«';
+        prevButton.disabled = currentPage === 1;
+        prevButton.addEventListener('click', () => onPageChange(currentPage - 1));
+        fragment.appendChild(prevButton);
+
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.textContent = i;
+            pageButton.disabled = i === currentPage;
+            pageButton.addEventListener('click', () => onPageChange(i));
+            fragment.appendChild(pageButton);
+        }
+
+        // Next Button
+        const nextButton = document.createElement('button');
+        nextButton.textContent = '»';
+        nextButton.disabled = currentPage === totalPages;
+        nextButton.addEventListener('click', () => onPageChange(currentPage + 1));
+        fragment.appendChild(nextButton);
+
+        this.#_paginationControls.appendChild(fragment);
     }
 
     /**

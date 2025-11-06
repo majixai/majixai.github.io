@@ -164,6 +164,57 @@ body {
     padding: 2rem;
 }
 
+/* New Styles for Refresh Button, Pagination, and Go to Top Button */
+#refreshButton {
+    transition: transform 0.2s ease;
+}
+
+#refreshButton:hover {
+    transform: scale(1.05);
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem 0;
+    gap: 0.5rem;
+}
+
+.pagination-controls button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+    background-color: #003d7a;
+}
+
+.pagination-controls button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+#goToTopButton {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: none; /* Hidden by default */
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#goToTopButton:hover {
+    background-color: #003d7a;
+}
+
+
 /* Media Queries for Responsive Design */
 @media (max-width: 768px) {
     .main-content {

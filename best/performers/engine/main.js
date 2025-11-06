@@ -58,6 +58,8 @@ class PerformerEngine {
     #_uiManager;
     #_dataAPI;
     #_performers = []; // This will hold Performer class instances.
+    #_currentPage = 1;
+    #_performersPerPage = 10;
 
     constructor() {
         // The engine is composed of the other modules, a key OOP principle.
@@ -65,12 +67,17 @@ class PerformerEngine {
         this.#_uiManager = new UIManager(
             {
                 grid: '#performerGrid',
-                iframe: '#mainIframe'
+                iframe: '#mainIframe',
+                pagination: '#paginationControls',
+                goToTop: '#goToTopButton',
+                gridPanel: '.grid-panel'
             },
             // The callback "hook" allows the UI to communicate back to the engine
             // without being tightly coupled.
             (performer) => this.#_handlePerformerSelection(performer)
         );
+
+        document.getElementById('refreshButton').addEventListener('click', () => this.refreshData());
     }
 
     /**
@@ -87,15 +94,15 @@ class PerformerEngine {
      * The main initialization method for the application.
      * @public
      */
-    async init() {
+    async init(forceRefresh = false) {
         this.#_uiManager.showLoading();
         try {
             // The "async/await" syntax makes asynchronous code read like synchronous code.
-            const performerData = await this.#_dataAPI.getPerformers();
+            const performerData = await this.#_dataAPI.getPerformers(forceRefresh);
             this.#_performers = Performer.createMany(performerData);
 
             if (this.#_performers.length > 0) {
-                this.#_uiManager.renderPerformers(this.#_performers);
+                this.#_renderCurrentPage();
                 // Automatically select the first performer to display in the viewer.
                 this.#_handlePerformerSelection(this.#_performers[0]);
             } else {
@@ -105,6 +112,36 @@ class PerformerEngine {
             console.error("Failed to initialize PerformerEngine:", error);
             this.#_uiManager.showError();
         }
+    }
+
+    /**
+     * @private
+     * Renders the performers for the current page.
+     */
+    #_renderCurrentPage() {
+        const start = (this.#_currentPage - 1) * this.#_performersPerPage;
+        const end = start + this.#_performersPerPage;
+        const paginatedPerformers = this.#_performers.slice(start, end);
+
+        this.#_uiManager.renderPerformers(paginatedPerformers);
+        this.#_uiManager.renderPagination(
+            this.#_currentPage,
+            Math.ceil(this.#_performers.length / this.#_performersPerPage),
+            (page) => {
+                this.#_currentPage = page;
+                this.#_renderCurrentPage();
+            }
+        );
+    }
+
+    /**
+     * Forces a refresh of the performer data from the network.
+     * @public
+     */
+    async refreshData() {
+        console.log("Refreshing data...");
+        this.#_currentPage = 1; // Reset to first page
+        await this.init(true); // Pass true to force network fetch
     }
 }
 
