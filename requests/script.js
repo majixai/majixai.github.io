@@ -45,7 +45,7 @@ function displayTablePage(page) {
             const xCol = 'scraped_at';
             const yCol = 'price,MA_50';
 
-            const url = `/details/index.html?dbPath=${encodeURIComponent(dbPath)}&query=${encodeURIComponent(query)}&params=${encodeURIComponent(params)}&title=${encodeURIComponent(title)}&xCol=${encodeURIComponent(xCol)}&yCol=${encodeURIComponent(yCol)}`;
+            const url = `../details/index.html?dbPath=${encodeURIComponent(dbPath)}&query=${encodeURIComponent(query)}&params=${encodeURIComponent(params)}&title=${encodeURIComponent(title)}&xCol=${encodeURIComponent(xCol)}&yCol=${encodeURIComponent(yCol)}`;
             window.location.href = url;
         });
     });

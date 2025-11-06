@@ -4,48 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ticker Details</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="parallax">
-        <div class="w3-container w3-center w3-padding-64">
-            <h1 data-title class="w3-xxxlarge"></h1>
-        </div>
+    <h1 id="title">Ticker Details</h1>
+    <div id="loader">Loading and processing data...</div>
+    <div id="chart-container">
+        <canvas id="price-chart"></canvas>
     </div>
-
-    <div class="w3-container w3-padding-32">
-        <div class="w3-row-padding">
-            <div class="w3-col l6 m12">
-                <div id="chart-container">
-                    <canvas data-price-chart></canvas>
-                </div>
-            </div>
-            <div class="w3-col l6 m12">
-                <h2>Price History</h2>
-                <div data-data-table class="table-responsive"></div>
-                <button data-toggle-animation class="w3-button w3-blue">Stop Animations</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="w3-container w3-padding-32">
-        <div id="additional-info" class="w3-card-4">
-            <header class="w3-container w3-blue">
-                <h2>Additional Info</h2>
-            </header>
-            <div class="w3-container">
-                <p>Placeholder for more advanced data visualizations.</p>
-            </div>
-        </div>
+    <div id="analysis-container">
+        <h2>Regression Analysis</h2>
+        <div id="regression-results"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/services/DataManager.js"></script>
-    <script src="js/ui/UIManager.js"></script>
-    <script src="js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-statistics/7.7.0/simple-statistics.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
