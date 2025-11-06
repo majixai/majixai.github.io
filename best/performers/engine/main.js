@@ -65,11 +65,14 @@ class PerformerEngine {
         this.#_uiManager = new UIManager(
             {
                 grid: '#performerGrid',
-                iframe: '#mainIframe'
+                iframe: '#mainIframe',
+                searchInput: '#searchInput',
+                refreshButton: '#refreshButton'
             },
             // The callback "hook" allows the UI to communicate back to the engine
             // without being tightly coupled.
-            (performer) => this.#_handlePerformerSelection(performer)
+            (performer) => this.#_handlePerformerSelection(performer),
+            () => this.init(true) // Pass true to force a refresh
         );
     }
 
@@ -86,12 +89,13 @@ class PerformerEngine {
     /**
      * The main initialization method for the application.
      * @public
+     * @param {boolean} forceRefresh - If true, bypass the cache and fetch fresh data.
      */
-    async init() {
+    async init(forceRefresh = false) {
         this.#_uiManager.showLoading();
         try {
             // The "async/await" syntax makes asynchronous code read like synchronous code.
-            const performerData = await this.#_dataAPI.getPerformers();
+            const performerData = await this.#_dataAPI.getPerformers(forceRefresh);
             this.#_performers = Performer.createMany(performerData);
 
             if (this.#_performers.length > 0) {

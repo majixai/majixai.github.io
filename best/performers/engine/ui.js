@@ -10,7 +10,10 @@ class UIManager {
     // Private fields to hold DOM element references and state.
     #_gridContainer;
     #_iframeViewer;
+    #_searchInput;
+    #_refreshButton;
     #_onPerformerSelectCallback; // A hook to communicate with the main engine.
+    #_onRefreshCallback;
 
     /**
      * Represents a single performer in the UI.
@@ -26,15 +29,20 @@ class UIManager {
      * The constructor for the UIManager.
      * @param {object} selectors - A map of CSS selectors for required elements.
      * @param {function(Performer): void} onPerformerSelect - A callback function to execute when a performer is selected.
+     * @param {function(): void} onRefresh - A callback function to execute when the refresh button is clicked.
      */
-    constructor(selectors, onPerformerSelect) {
+    constructor(selectors, onPerformerSelect, onRefresh) {
         // Object destructuring for cleaner access to selectors.
-        const { grid, iframe } = selectors;
+        const { grid, iframe, searchInput, refreshButton } = selectors;
         this.#_gridContainer = document.querySelector(grid);
         this.#_iframeViewer = document.querySelector(iframe);
+        this.#_searchInput = document.querySelector(searchInput);
+        this.#_refreshButton = document.querySelector(refreshButton);
         this.#_onPerformerSelectCallback = onPerformerSelect;
+        this.#_onRefreshCallback = onRefresh;
 
-        if (!this.#_gridContainer || !this.#_iframeViewer) {
+
+        if (!this.#_gridContainer || !this.#_iframeViewer || !this.#_searchInput || !this.#_refreshButton) {
             throw new Error("UIManager could not find all required elements in the DOM.");
         }
 
@@ -54,6 +62,16 @@ class UIManager {
                 // The performer data is retrieved from the element itself.
                 const performerData = JSON.parse(card.dataset.performer);
                 this.#_onPerformerSelectCallback(performerData);
+            }
+        });
+
+        this.#_searchInput.addEventListener('input', (event) => {
+            this.filterPerformers(event.target.value);
+        });
+
+        this.#_refreshButton.addEventListener('click', () => {
+            if (this.#_onRefreshCallback) {
+                this.#_onRefreshCallback();
             }
         });
     }
@@ -132,5 +150,23 @@ class UIManager {
      */
     showError() {
         this.#_gridContainer.innerHTML = '<p class="error-message">Could not load performers. Please try again later.</p>';
+    }
+
+    /**
+     * Filters the displayed performers based on the search query.
+     * @param {string} query - The search query.
+     */
+    filterPerformers(query) {
+        const lowerCaseQuery = query.toLowerCase();
+        const cards = this.#_gridContainer.querySelectorAll('.performer-card');
+        cards.forEach(card => {
+            const performerData = JSON.parse(card.dataset.performer);
+            const name = (performerData.display_name || performerData.username).toLowerCase();
+            if (name.includes(lowerCaseQuery)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
     }
 }
