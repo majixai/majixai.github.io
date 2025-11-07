@@ -1,0 +1,26 @@
+name: Update yfinance data
+
+on:
+  push:
+    paths:
+      - 'yfinance_data/**'
+  workflow_dispatch:
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install -r yfinance_data/requirements.txt
+      - name: Run data fetching script
+        run: python yfinance_data/fetch_data.py
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update yfinance data"
+          file_pattern: "yfinance_data/yfinance.dat"
