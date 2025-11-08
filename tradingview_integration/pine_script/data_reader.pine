@@ -1,0 +1,46 @@
+//@version=5
+indicator("External Data Reader", overlay=true)
+
+import TickerQ/_stdlib/src/stdlib.pinescript as std
+
+// This script demonstrates how to read external data from a GitHub repository
+// using the request.seed() function.
+
+// This URL should point to the raw `.dat` file in your GitHub repository.
+// Replace 'your-username', 'your-repository', and 'main' with your actual repository details.
+var string dataUrl = "https://raw.githubusercontent.com/your-username/your-repository/main/data/my_data.dat"
+
+// The request.seed() function fetches the content of the URL.
+// The content is expected to be a string. We use `na` as the seed and only call it once.
+var string csvData = request.seed(dataUrl, "")
+
+// We need to parse the CSV data. We'll split the string into an array of lines.
+var string[] lines = str.split(csvData, "\\n")
+
+// Let's create an array to hold the close prices.
+var float[] closePrices = array.new_float()
+
+// We loop through each line of the CSV (skipping the header line).
+// This is a simplified parser and assumes a "date,price,volume" format.
+if (array.size(lines) > 1)
+    for i = 1 to array.size(lines) - 1
+        string line = array.get(lines, i)
+        if str.length(line) > 0 // Ensure the line is not empty
+            string[] values = str.split(line, ",")
+            if array.size(values) == 3
+                // The price is the second value in our CSV
+                float price = std.str_to_float(array.get(values, 1))
+                array.push(closePrices, price)
+
+// Now we can use the data. For this example, we'll just plot the last price from our data.
+// In a real script, you might want to find the price corresponding to the current bar's timestamp.
+if array.size(closePrices) > 0
+    // Plot the most recent price from the external data as a horizontal line.
+    float lastPrice = array.get(closePrices, array.size(closePrices) - 1)
+    plot(lastPrice, title="External Data Last Price", color=color.blue, style=plot.style_circles)
+    label.new(bar_index, lastPrice, "Last External Price: " + str.tostring(lastPrice),
+              color=color.blue, textcolor=color.white, style=label.style_label_left)
+
+// Note: This is a basic example. A more robust solution would involve:
+// - Parsing dates and aligning the external data with the chart's bars.
+// - More sophisticated error handling for the HTTP request and data parsing.

@@ -1,0 +1,20 @@
+name: Update TradingView Data
+
+on:
+  schedule:
+    # This example runs the workflow every day at midnight UTC.
+    # You can customize the schedule to your needs.
+    - cron: '0 0 * * *'
+  workflow_dispatch: # This allows you to manually run the workflow from the Actions tab.
+
+jobs:
+  trigger-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Google Apps Script Web App
+        run: |
+          # This step sends a GET request to your deployed Google Apps Script web app URL.
+          # You need to store the web app URL as a secret in your GitHub repository.
+          # Go to your repository's "Settings" > "Secrets and variables" > "Actions" and create a new secret named "APPS_SCRIPT_WEB_APP_URL".
+          # The value should be the URL of your deployed Google Apps Script web app.
+          curl -L "${{ secrets.APPS_SCRIPT_WEB_APP_URL }}"
