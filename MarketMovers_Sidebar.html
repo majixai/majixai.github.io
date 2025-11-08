@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+      body { font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif; padding:10px; }
+      label { margin-right:8px; display:inline-block; min-width:70px; font-weight:500; }
+      select, input[type=time], input[type=email] { padding:6px; margin-right:10px; margin-bottom:10px; max-width:220px; border:1px solid #ccc; border-radius:3px; }
+      button { padding: 7px 14px; cursor: pointer; margin-top: 5px; background-color: #0d6efd; color: white; border: 1px solid #0d6efd; border-radius: 4px; }
+      button:hover:not(:disabled) { background-color: #0b5ed7; border-color: #0a58ca; }
+      button:disabled { cursor:not-allowed; opacity:0.6; }
+      .status-box { margin-top: 10px; padding: 8px; border-radius: 3px; display: none; font-size: 12px; }
+      .info { color:#055160; background-color:#cff4fc; border:1px solid #b6effb; display:block; }
+      .success { color:#0f5132; background-color:#d1e7dd; border:1px solid #badbcc; display:block; }
+      .error { color:#842029; background-color:#f8d7da; border:1px solid #f5c6cb; display:block; }
+      #resultsTable { margin-top:15px; border-collapse:collapse; width:100%; font-size:12px; }
+      #resultsTable th, #resultsTable td { border:1px solid #dee2e6; padding:8px; text-align:left; vertical-align:middle; }
+      #resultsTable th { font-weight:bold; }
+      #emailOptionsDiv, #dailyTimeDiv { display:none; border-top:1px solid #eee; padding-top:10px; border-bottom:1px solid #eee; padding-bottom:10px; margin-top:10px; }
+      #emailSchedulingDiv label { min-width:140px; }
+      /* Modal Styles */
+      .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+      .modal-content { background-color: #fefefe; position:relative; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 90%; max-width:800px; box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19); }
+      .modal-close-btn { color: #aaa; position: absolute; top: 5px; right: 15px; font-size: 28px; font-weight: bold; cursor: pointer; line-height:1; }
+      .modal-close-btn:hover, .modal-close-btn:focus { color: black; text-decoration: none; }
+      .detail-item { margin-bottom:8px; font-size:12px; border-bottom:1px dotted #eee; padding-bottom:4px; display:flex; justify-content:space-between; }
+      .detail-label { font-weight:bold; min-width:130px; display:inline-block; color:#333; }
+      .detail-status { margin-bottom:15px; }
+    </style>
+</head>
+<body>
+    <h3>TradingView Market Movers</h3>
+
+    <!-- Fetch Controls -->
+    <div>
+        <label for="moverType">Select List:</label>
+        <select id="moverType"></select>
+        <div id="customUrlDiv" style="display:none; margin-top: 8px;">
+            <label for="customUrl">Custom URL:</label>
+            <input type="text" id="customUrl" style="width:100%;" placeholder="https://www.tradingview.com/markets/..."/>
+        </div>
+        <button id="fetchButton">Fetch Now</button>
+        <div id="status" class="status-box"></div>
+    </div>
+
+    <!-- Interval Controls -->
+    <div class="control-section">
+        <label id="intervalLabel">Auto-Fetch:</label>
+        <select id="intervalSelect">
+            <!-- Options populated by JS -->
+        </select>
+        <span id="intervalStatus" style="font-size: smaller; color: #555;"></span>
+    </div>
+
+    <!-- Email Controls -->
+    <div class="control-section">
+        <input type="checkbox" id="emailEnableCheckbox" />
+        <label for="emailEnableCheckbox">Send Email Report</label>
+
+        <div id="emailOptionsDiv" style="display:none;">
+            <label for="recipientEmailInput">To Email:</label>
+            <input type="email" id="recipientEmailInput" placeholder="your.email@example.com" style="width: calc(100% - 85px);">
+
+            <label for="emailFrequencySelect">Frequency:</label>
+            <select id="emailFrequencySelect">
+                <option value="once">Send Once (with 'Fetch Now')</option>
+                <option value="daily">Send Daily</option>
+            </select>
+        </div>
+
+        <div id="dailyTimeDiv" style="display:none;">
+            <label for="emailTimeInput">Daily Time:</label>
+            <input type="time" id="emailTimeInput" value="06:30"> <!-- Default time -->
+
+            <label for="includeDetailsCheckbox" style="margin-left: 15px; min-width: 65px;"><input type="checkbox" id="includeDetailsCheckbox"> Include Calc Details (Top 3)</label>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <button id="scheduleButton">Schedule</button>
+            <button id="cancelButton">Cancel Schedule</button>
+        </div>
+        <div id="scheduleStatus" class="status-box"></div> <!-- Status for Send Once -->
+    </div>
+
+    <!-- Results Table -->
+    <div id="resultsTableDiv" style="display:none;">
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Chg %</th>
+                    <th>Volume</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data rows added by JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close-btn">&times;</span>
+            <h4 id="detailsTickerTitle"></h4>
+            <div id="detailsStatus" class="status-box"></div>
+            <div id="detailsChartContainer"><img id="detailsChart" src="" alt="Price Chart" style="display:none;"/></div>
+            <div id="detailsCalculations"><p>Calculation results added by JS...</p></div>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        <p><strong>Disclaimer:</strong> Data scraped from TradingView, may be inaccurate/delayed. Scraping is fragile & may violate ToS. Calculations use GOOGLEFINANCE data. Not financial advice.</p>
+    </div>
+
+    <script>
+      // Use jQuery's document ready function
+      $(document).ready(function() {
+        class MarketMoverUI {
+          constructor() {
+            this.elements = {
+              fetchButton: $('#fetchButton'),
+              resultsTable: $('#resultsTable'),
+              resultsTableBody: $('#resultsTable tbody'),
+              statusDiv: $('#status'),
+              moverTypeSelect: $('#moverType'),
+              customUrlDiv: $('#customUrlDiv'),
+              customUrlInput: $('#customUrlInput'),
+              intervalSelect: $('#intervalSelect'),
+              intervalStatusSpan: $('#intervalStatus'),
+
+              emailEnableCheckbox: $('#emailEnableCheckbox'),
+              emailOptionsDiv: $('#emailOptionsDiv'),
+              recipientEmailInput: $('#recipientEmailInput'),
+              emailFrequencySelect: $('#emailFrequencySelect'),
+              dailyTimeDiv: $('#dailyTimeDiv'),
+              includeDetailsCheckbox: $('#includeDetailsCheckbox'),
+              scheduleButton: $('#scheduleButton'),
+              cancelButton: $('#cancelButton'),
+              scheduleStatus: $('#scheduleStatus'),
+
+              detailsModal: $('#detailsModal'),
+              detailsModalContent: $('#detailsModal .modal-content'),
+              detailsCloseBtn: $('.modal-close-btn'),
+              detailsTickerTitle: $('#detailsTickerTitle'),
+              detailsStatus: $('#detailsStatus'),
+              detailsChartContainer: $('#detailsChartContainer'),
+              detailsChart: $('#detailsChart'),
+              detailsCalculations: $('#detailsCalculations'),
+            };
+
+            this.intervalId = null;
+            this._bindEvents();
+            this._loadInitialStatus();
+          }
+
+          _bindEvents() {
+            this.elements.fetchButton.on('click', this._handleFetchClick.bind(this));
+            this.elements.moverTypeSelect.on('change', this._handleMoverTypeChange.bind(this));
+            this.elements.emailEnableCheckbox.on('change', this._handleEmailEnableChange.bind(this));
+            this.elements.emailFrequencySelect.on('change', this._handleEmailFrequencyChange.bind(this));
+            this.elements.scheduleButton.on('click', this._handleScheduleClick.bind(this));
+            this.elements.cancelButton.on('click', this._handleCancelClick.bind(this));
+            this.elements.detailsCloseBtn.on('click', this._hideModal.bind(this));
+            // Event listener for dynamically created buttons
+            this.elements.resultsTableBody.on('click', '.details-btn', this._handleDetailsClick.bind(this));
+          }
+
+          _loadInitialStatus() {
+            this._populateSelectOptions();
+            this._populateIntervals();
+            this._showStatus('#scheduleStatus', 'Loading schedule...', 'info');
+            google.script.run
+                .withSuccessHandler(this._updateScheduleUI.bind(this))
+                .withFailureHandler(error => this._showStatus('#scheduleStatus', 'Error loading schedule: ' + error.message, 'error'))
+                .getDailyEmailStatus();
+          }
+
+          _populateSelectOptions() {
+            const types = {
+              preMarketGainers: "Pre-Mkt Gainers",
+              preMarketGappers: "Pre-Mkt Gappers",
+              afterHoursActive: "Aft-Hrs Active",
+              afterHoursGainers: "Aft-Hrs Gainers",
+              dailyGainers: "Daily Gainers",
+              unusualVolume: "Unusual Volume",
+              custom: "Custom URL"
+            };
+            Object.keys(types).forEach(key => {
+              this.elements.moverTypeSelect.append($('<option>', { value: key, text: types[key] }));
+            });
+          }
+
+          _populateIntervals() {
+            const intervals = {
+              0: 'Off',
+              1: '1 Minute',
+              5: '5 Minutes',
+              15: '15 Minutes'
+            };
+            Object.keys(intervals).forEach(key => {
+              this.elements.intervalSelect.append($('<option>', { value: key, text: intervals[key] }));
+            });
+          }
+
+          _handleEmailEnableChange(event) {
+            const isChecked = $(event.target).is(':checked');
+            this.elements.emailOptionsDiv.toggle(isChecked);
+            if (!isChecked) {
+              this.elements.dailyTimeDiv.hide(); // Also hide daily time if main is unchecked
+            } else {
+                this._handleEmailFrequencyChange(); // Trigger check for daily options visibility
+            }
+          }
+
+          _handleEmailFrequencyChange() {
+            const isDaily = this.elements.emailFrequencySelect.val() === 'daily';
+            this.elements.dailyTimeDiv.toggle(this.elements.emailEnableCheckbox.is(':checked') && isDaily);
+          }
+
+          _handleFetchClick() {
+            const identifier = this._getSelectedItemIdentifier();
+            if(!identifier) return;
+
+            const sendEmailOnce = this.elements.emailEnableCheckbox.is(':checked') && this.elements.emailFrequencySelect.val() === 'once';
+            const recipient = this.elements.recipientEmailInput.val();
+
+            if (sendEmailOnce && !this._isValidEmail(recipient)) {
+                this._showStatus('#status', 'Valid recipient email required for "Send Once".', 'error');
+                return;
+            }
+
+            this.elements.fetchButton.prop('disabled', true);
+            this._showStatus('#status', 'Fetching data...', 'info');
+            this._clearResults();
+
+            google.script.run
+                .withSuccessHandler(this._onFetchSuccess.bind(this))
+                .withFailureHandler(this._onFetchFailure.bind(this))
+                .fetchTradingViewData(identifier, sendEmailOnce, recipient);
+          }
+
+          _handleScheduleClick() {
+            const identifier = this._getSelectedItemIdentifier();
+            if (!identifier) return;
+
+            const timeString = this.elements.emailTimeInput.val();
+            const recipient = this.elements.recipientEmailInput.val();
+            const includeDetails = this.elements.includeDetailsCheckbox.is(':checked');
+
+            if(!this._isValidEmail(recipient)) { this._showStatus('#scheduleStatus', 'Valid recipient email required.', 'error'); return; }
+            if(!timeString) { this._showStatus('#scheduleStatus', 'Valid time required.', 'error'); return; }
+
+            this._setScheduleButtonsDisabled(true);
+            this._showStatus('#scheduleStatus', 'Scheduling...', 'info');
+
+            google.script.run
+                .withSuccessHandler(this._updateScheduleUI.bind(this))
+                .withFailureHandler(error => this._showStatus('#scheduleStatus', 'Error scheduling: ' + error.message, 'error'))
+                .scheduleDailyEmailTrigger(identifier, timeString, recipient, includeDetails);
+          }
+
+          _handleCancelClick() {
+            this._setScheduleButtonsDisabled(true);
+            this._showStatus('#scheduleStatus', 'Cancelling...', 'info');
+            google.script.run
+                .withSuccessHandler(this._updateScheduleUI.bind(this))
+                .withFailureHandler(error => this._showStatus('#scheduleStatus', 'Error cancelling: ' + error.message, 'error'))
+                .cancelDailyEmailTrigger();
+          }
+
+          _onFetchSuccess(response) {
+            this.elements.fetchButton.prop('disabled', false);
+            if (response.success) {
+              this._showStatus('#status', 'Data fetched successfully.', 'success');
+              this._renderTable(response.data);
+            } else {
+              this._showStatus('#status', `Error: ${response.message}`, 'error');
+            }
+          }
+
+          _onFetchFailure(error) {
+            this.elements.fetchButton.prop('disabled', false);
+            this._showStatus('#status', `Error: ${error.message}`, 'error');
+          }
+
+          _renderTable(data) {
+            this.elements.resultsTableBody.empty();
+            if (data && data.length > 0) {
+              data.forEach(item => {
+                const row = `<tr>
+                  <td>${item.ticker}</td>
+                  <td>${item.chg}</td>
+                  <td>${item.volume}</td>
+                  <td><button class="btn btn-sm btn-info details-btn" data-ticker="${item.ticker}">Details</button></td>
+                </tr>`;
+                this.elements.resultsTableBody.append(row);
+              });
+              $('#resultsTableDiv').show();
+            } else {
+              $('#resultsTableDiv').hide();
+              this._showStatus('#status', 'No data returned.', 'info');
+            }
+          }
+
+          _updateScheduleUI(response) {
+            this._setScheduleButtonsDisabled(false);
+            if (response.success) {
+              this._showStatus('#scheduleStatus', response.message || 'Schedule updated.', 'success');
+              const status = response.status;
+              if (status.enabled) {
+                this.elements.recipientEmailInput.val(status.recipient);
+                this.elements.emailTimeInput.val(status.time);
+                this.elements.emailEnableCheckbox.prop('checked', true);
+                this.elements.emailOptionsDiv.show();
+                this.elements.dailyTimeDiv.show();
+              } else {
+                this.elements.recipientEmailInput.val('');
+                this.elements.emailTimeInput.val('06:30');
+                this.elements.emailEnableCheckbox.prop('checked', false);
+                this.elements.emailOptionsDiv.hide();
+                this.elements.dailyTimeDiv.hide();
+              }
+            } else {
+              this._showStatus('#scheduleStatus', `Error: ${response.message}`, 'error');
+            }
+          }
+
+          _getSelectedItemIdentifier() {
+            return this.elements.moverTypeSelect.val();
+          }
+
+          _isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+          }
+
+          _clearResults() {
+            this.elements.resultsTableBody.empty();
+            $('#resultsTableDiv').hide();
+          }
+
+          _setScheduleButtonsDisabled(disabled) {
+            this.elements.scheduleButton.prop('disabled', disabled);
+            this.elements.cancelButton.prop('disabled', disabled);
+          }
+
+          _hideModal() {
+            this.elements.detailsModal.hide();
+          }
+
+          _handleMoverTypeChange() {
+            if (this.elements.moverTypeSelect.val() === 'custom') {
+              this.elements.customUrlDiv.show();
+            } else {
+              this.elements.customUrlDiv.hide();
+            }
+          }
+
+          _handleDetailsClick(event) {
+            const ticker = $(event.target).data('ticker');
+            this.elements.detailsTickerTitle.text(ticker);
+            this.elements.detailsCalculations.html('<p>Loading...</p>');
+            this.elements.detailsModal.show();
+
+            google.script.run
+              .withSuccessHandler(response => {
+                if (response.success) {
+                  const details = response.details;
+                  const html = `
+                    <div class="detail-item">
+                      <span class="detail-label">Last Close:</span>
+                      <span>${details.lastClose.toFixed(2)}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">SMA (${details.smaPeriod}-day):</span>
+                      <span>${details.sma.toFixed(2)}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">MACD:</span>
+                      <span>${details.macd.toFixed(4)}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">RSI:</span>
+                      <span>${details.rsi.toFixed(2)}</span>
+                    </div>
+                  `;
+                  this.elements.detailsCalculations.html(html);
+                } else {
+                  this.elements.detailsCalculations.html(`<p class="error">${response.message}</p>`);
+                }
+              })
+              .withFailureHandler(error => {
+                this.elements.detailsCalculations.html(`<p class="error">${error.message}</p>`);
+              })
+              .getTickerDetails(ticker);
+          }
+        }
+
+        new MarketMoverUI();
+      });
+    </script>
+</body>
+</html>
