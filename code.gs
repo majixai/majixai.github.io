@@ -8,6 +8,8 @@ function onOpen(e) {
   SpreadsheetApp.getUi()
       .createMenu('Jinx Finance')
       .addItem('Open Manager', 'showSidebar')
+      .addSeparator()
+      .addItem('Market Movers', 'showMarketMoversSidebar')
       .addToUi();
 }
 
