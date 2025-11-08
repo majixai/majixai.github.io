@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <h1>Welcome to the Google Apps Script Project</h1>
+    <p>This is a simple web app.</p>
+
+    <hr>
+    <h2>Client-Server Callback</h2>
+    <button id="myButton">Call Server</button>
+    <div id="response"></div>
+
+    <hr>
+    <h2>GZIP Compression</h2>
+    <button id="compressButton">Compress and Save Data</button>
+    <div id="compressResponse"></div>
+    <br>
+    <button id="decompressButton">Read and Decompress Data</button>
+    <pre id="decompressResponse" style="background-color: #f0f0f0; padding: 10px; border: 1px solid #ccc;"></pre>
+
+    <script>
+      // Simple callback
+      document.getElementById("myButton").addEventListener("click", function() {
+        google.script.run.withSuccessHandler(function(response) {
+          document.getElementById("response").innerText = response;
+        }).getServerResponse("Hello from the client!");
+      });
+
+      // GZIP Compression
+      document.getElementById("compressButton").addEventListener("click", function() {
+        document.getElementById("compressResponse").innerText = "Compressing...";
+        google.script.run.withSuccessHandler(function(response) {
+          document.getElementById("compressResponse").innerText = response;
+        }).compressAndSaveData();
+      });
+
+      // GZIP Decompression
+      document.getElementById("decompressButton").addEventListener("click", function() {
+        document.getElementById("decompressResponse").innerText = "Reading...";
+        google.script.run.withSuccessHandler(function(response) {
+          // Pretty-print the JSON object
+          document.getElementById("decompressResponse").innerText = JSON.stringify(response, null, 2);
+        }).readAndDecompressData();
+      });
+    </script>
+  </body>
+</html>
