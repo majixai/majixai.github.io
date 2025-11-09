@@ -25,8 +25,9 @@ class GitHubService {
     async getLatestCommits() {
         try {
             const cachedData = await this.#cache.getCachedCommits();
-            if (cachedData) {
+            if (cachedData && cachedData.length > 0) {
                 console.log("Loading commits from cache.");
+                // The cached data is already raw, so we can pass it directly
                 return Commit.fromApiData(cachedData);
             }
 
@@ -37,7 +38,7 @@ class GitHubService {
             }
             const data = await response.json();
 
-            // Cache the raw data to be used by the Commit class later
+            // The data from the API is what we want to cache
             await this.#cache.cacheCommits(data);
 
             return Commit.fromApiData(data);

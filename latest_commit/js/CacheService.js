@@ -6,11 +6,10 @@ class CacheService {
     #storeName = 'commits';
     #dbVersion = 1;
     #db = null;
+    #initPromise = null;
 
     constructor() {
-        this.#openDB().then(db => {
-            this.#db = db;
-        });
+        this.#initPromise = this.#openDB();
     }
 
     /**
@@ -18,7 +17,7 @@ class CacheService {
      * @private
      * @returns {Promise<IDBDatabase>} A promise that resolves with the database instance.
      */
-    #openDB() {
+    async #openDB() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(this.#dbName, this.#dbVersion);
 
@@ -30,7 +29,8 @@ class CacheService {
             };
 
             request.onsuccess = (event) => {
-                resolve(event.target.result);
+                this.#db = event.target.result;
+                resolve(this.#db);
             };
 
             request.onerror = (event) => {
@@ -41,13 +41,22 @@ class CacheService {
     }
 
     /**
+     * Ensures the database is initialized before proceeding.
+     * @private
+     */
+    async #ensureDb() {
+        if (!this.#db) {
+            await this.#initPromise;
+        }
+    }
+
+
+    /**
      * Retrieves cached commits from the database.
      * @returns {Promise<Array<CommitData>|null>} A promise that resolves with the cached data, or null if not found.
      */
     async getCachedCommits() {
-        if (!this.#db) {
-            this.#db = await this.#openDB();
-        }
+        await this.#ensureDb();
         return new Promise((resolve, reject) => {
             const transaction = this.#db.transaction([this.#storeName], 'readonly');
             const store = transaction.objectStore(this.#storeName);
@@ -73,9 +82,7 @@ class CacheService {
      * @returns {Promise<void>} A promise that resolves when the data has been cached.
      */
     async cacheCommits(commits) {
-        if (!this.#db) {
-            this.#db = await this.#openDB();
-        }
+        await this.#ensureDb();
         return new Promise((resolve, reject) => {
             const transaction = this.#db.transaction([this.#storeName], 'readwrite');
             const store = transaction.objectStore(this.#storeName);
