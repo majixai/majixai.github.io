@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grand Tortuga Inn - Room Reservations</title>
+    <!-- CDNs for W3.CSS, Bootstrap, and Font Awesome -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .parallax {
+            background-image: url('https://images.unsplash.com/photo-1566073771259-6a8506099945?fit=crop&w=1500&q=80');
+            min-height: 400px;
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            position: relative;
+        }
+        .parallax-caption {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            text-align: center;
+            color: #000;
+        }
+        .parallax-caption span.border {
+            background-color: #111;
+            color: #fff;
+            padding: 18px;
+            font-size: 25px;
+            letter-spacing: 10px;
+            opacity: 0.8;
+        }
+        .room-card {
+            transition: transform .2s;
+            flex: 1 1 300px; /* Flex properties */
+            margin: 15px;
+        }
+        .room-card:hover {
+            transform: scale(1.05);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .flex-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .start-animation, .stop-animation {
+            cursor: pointer;
+            color: #007bff;
+        }
+        .w3-spin {
+            animation: w3-spin 2s infinite linear;
+        }
+        @keyframes w3-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(359deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="w3-container w3-teal w3-center w3-padding-32">
+        <h1>The Grand Tortuga Inn 🏴‍☠️</h1>
+        <p>Your Oasis on the Digital Seas</p>
+    </header>
+
+    <!-- Parallax Section -->
+    <div class="parallax">
+        <div class="parallax-caption">
+            <span class="border">RESERVE YOUR BOOTY</span>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <!-- Room Selection -->
+        <h2 class="w3-center">Choose Your Cabin</h2>
+        <p class="w3-center">
+            <i id="anim-icon" class="fas fa-ship"></i>
+            <span class="start-animation">Start Animation</span> |
+            <span class="stop-animation">Stop Animation</span>
+        </p>
+
+        <!-- Layout Toggle -->
+        <div class="w3-center w3-padding-16">
+            <button id="toggle-layout" class="btn btn-primary">Switch to Grid Layout</button>
+        </div>
+
+        <div id="rooms-container" class="flex-container">
+            <!-- Room cards will be inserted here by JavaScript -->
+        </div>
+
+        <!-- Booking Form (Initially Hidden) -->
+        <div id="booking-section" class="w3-card-4 w3-margin-top" style="display:none;">
+            <div class="w3-container w3-teal">
+                <h2>Book Room: <span id="booking-room-name"></span></h2>
+            </div>
+            <form id="booking-form" class="w3-container w3-padding-16">
+                <input type="hidden" id="room-id" name="room_id">
+                <div class="form-group">
+                    <label for="guest-name">Guest Name</label>
+                    <input type="text" class="form-control" id="guest-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="guest-email">Email</label>
+                    <input type="email" class="form-control" id="guest-email" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="start-date">Check-in Date</label>
+                        <input type="date" class="form-control" id="start-date" required>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="end-date">Check-out Date</label>
+                        <input type="date" class="form-control" id="end-date" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Confirm Booking</button>
+                <button type="button" id="cancel-booking" class="btn btn-danger">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Confirmation Section (Initially Hidden) -->
+        <div id="confirmation-section" class="w3-panel w3-pale-green w3-padding-16 w3-center" style="display:none;">
+            <h3>Booking Confirmed!</h3>
+            <p id="confirmation-message"></p>
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130.2 130.2" width="50" height="50">
+                <circle class="path circle" fill="none" stroke="#73AF55" stroke-width="6" stroke-miterlimit="10" cx="65.1" cy="65.1" r="62.1"/>
+                <polyline class="path check" fill="none" stroke="#73AF55" stroke-width="6" stroke-linecap="round" stroke-miterlimit="10" points="100.2,40.2 51.5,88.8 29.8,67.5 "/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="w3-container w3-teal w3-center w3-margin-top w3-padding-16">
+        <p>&copy; 2025 Grand Tortuga Inn. All rights reserved, savvy?</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+// --- Immediately Invoked Function Expression (IIFE) ---
+(function() {
+    "use strict";
+
+    // --- Configuration Object ---
+    const AppConfig = {
+        API_BASE_URL: '/api',
+    };
+
+    // --- Logger Class (Public Static Members) ---
+    class Logger {
+        static log(message, ...args) { console.log(`[LOG] ${new Date().toISOString()}: ${message}`, ...args); }
+        static error(message, ...args) { console.error(`[ERROR] ${new Date().toISOString()}: ${message}`, ...args); }
+    }
+
+    // --- Interfaces & Structs (using Classes for structure) ---
+    class Room {
+        constructor({ id, name, description, price, image_url }) {
+            this.id = id;
+            this.name = name;
+            this.description = description;
+            this.price = price;
+            this.imageUrl = image_url;
+        }
+    }
+
+    // --- API Service (Singleton & Async) ---
+    const ApiService = (() => {
+        let instance;
+        const get = async (endpoint) => {
+            const response = await fetch(`${AppConfig.API_BASE_URL}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        };
+        const post = async (endpoint, data) => {
+            const response = await fetch(`${AppConfig.API_BASE_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        };
+        return { getInstance: () => (instance || (instance = {
+            getRooms: () => get('/rooms').then(data => data.map(r => new Room(r))),
+            createBooking: (data) => post('/bookings', data),
+        })) };
+    })();
+
+    // --- IndexedDB Service (Caching) ---
+    const CacheService = (() => {
+        const dbPromise = new Promise((resolve, reject) => {
+            const request = indexedDB.open('HotelCacheDB', 1);
+            request.onupgradeneeded = e => e.target.result.createObjectStore('bookings', { keyPath: 'id' });
+            request.onsuccess = e => resolve(e.target.result);
+            request.onerror = e => reject(e.target.errorCode);
+        });
+        const withStore = async (type, callback) => {
+            const db = await dbPromise;
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('bookings', type);
+                tx.oncomplete = () => resolve();
+                tx.onerror = e => reject(e.target.error);
+                callback(tx.objectStore('bookings'));
+            });
+        };
+        return {
+            addBooking: async booking => withStore('readwrite', store => store.put(booking)),
+        };
+    })();
+
+    // --- UI Controller ---
+    class UIController {
+        constructor() {
+            Object.assign(this, {
+                roomsContainer: $('#rooms-container'),
+                bookingSection: $('#booking-section'),
+                bookingForm: $('#booking-form'),
+                confirmationSection: $('#confirmation-section'),
+                bookingRoomName: $('#booking-room-name'),
+                roomIdInput: $('#room-id'),
+                guestNameInput: $('#guest-name'),
+                guestEmailInput: $('#guest-email'),
+                startDateInput: $('#start-date'),
+                endDateInput: $('#end-date'),
+                confirmationMessage: $('#confirmation-message'),
+                animIcon: $('#anim-icon'),
+                toggleLayoutButton: $('#toggle-layout'),
+                isGridLayout: false,
+            });
+        }
+
+        renderRooms(rooms) {
+            Logger.log('Rendering rooms');
+            this.roomsContainer.empty();
+            const roomElements = rooms.map(this.createRoomCard.bind(this));
+            this.roomsContainer.append(roomElements);
+        }
+
+        createRoomCard(room) {
+            return $(`
+                <div class="w3-card-4 m-3 room-card" style="width: 300px;">
+                    <img src="${room.imageUrl}" alt="${room.name}" style="width:100%">
+                    <div class="w3-container w3-center">
+                        <h3>${room.name}</h3>
+                        <p>${room.description}</p>
+                        <p><strong>$${room.price.toFixed(2)} / night</strong></p>
+                        <button class="w3-button w3-teal w3-margin-bottom book-btn" data-room-id="${room.id}" data-room-name="${room.name}">Book Now</button>
+                    </div>
+                </div>
+            `);
+        }
+
+        showBookingForm(roomId, roomName) {
+            Logger.log(`Showing booking form for room ${roomId}`);
+            this.bookingRoomName.text(roomName);
+            this.roomIdInput.val(roomId);
+            this.bookingSection.slideDown();
+            $('html, body').animate({ scrollTop: this.bookingSection.offset().top }, 1000);
+        }
+
+        hideBookingForm() { this.bookingSection.slideUp(); this.bookingForm[0].reset(); }
+
+        showConfirmation(booking) {
+            const { guestName, startDate, endDate, guestEmail, id } = booking;
+            this.confirmationMessage.text(`Ahoy, ${guestName}! Your booking for ${this.bookingRoomName.text()} from ${startDate} to ${endDate} is confirmed. A parrot will be dispatched with the details to ${guestEmail}. Your booking ID is ${id}.`);
+            this.confirmationSection.fadeIn();
+        }
+
+        toggleAnimation(start) { this.animIcon.toggleClass('w3-spin', start); }
+
+        toggleLayout() {
+            this.isGridLayout = !this.isGridLayout;
+            this.roomsContainer.toggleClass('flex-container grid-container');
+            this.toggleLayoutButton.text(this.isGridLayout ? 'Switch to Flexbox Layout' : 'Switch to Grid Layout');
+        }
+    }
+
+    // --- Main App Controller ---
+    class App {
+        constructor(apiService, uiController, cacheService) {
+            this.apiService = apiService;
+            this.uiController = uiController;
+            this.cacheService = cacheService;
+            this.rooms = [];
+        }
+
+        async init() {
+            Logger.log('App initializing...');
+            try {
+                this.rooms = await this.apiService.getRooms();
+                this.uiController.renderRooms(this.rooms);
+                this.addEventListeners();
+            } catch (e) {
+                Logger.error('Failed to initialize app.', e);
+                this.uiController.roomsContainer.html('<p class="w3-text-red w3-center">Could not load rooms. Please try again later.</p>');
+            }
+        }
+
+        addEventListeners() {
+            this.uiController.roomsContainer.on('click', '.book-btn', e => {
+                const { roomId, roomName } = $(e.currentTarget).data();
+                this.uiController.showBookingForm(roomId, roomName);
+            });
+
+            this.uiController.bookingForm.on('submit', this.handleBookingSubmit.bind(this));
+            $('#cancel-booking').on('click', () => this.uiController.hideBookingForm());
+            $('.start-animation').on('click', () => this.uiController.toggleAnimation(true));
+            $('.stop-animation').on('click', () => this.uiController.toggleAnimation(false));
+            this.uiController.toggleLayoutButton.on('click', () => this.uiController.toggleLayout());
+        }
+
+        async handleBookingSubmit(e) {
+            e.preventDefault();
+            const bookingData = {
+                room_id: parseInt(this.uiController.roomIdInput.val()),
+                guest_name: this.uiController.guestNameInput.val(),
+                guest_email: this.uiController.guestEmailInput.val(),
+                check_in_date: this.uiController.startDateInput.val(),
+                check_out_date: this.uiController.endDateInput.val(),
+            };
+
+            const FLAGS = { EMAIL_VALID: 1, DATES_VALID: 2 };
+            let status = 0;
+            if (/.+@.+\..+/.test(bookingData.guest_email)) status |= FLAGS.EMAIL_VALID;
+            if (new Date(bookingData.start_date) < new Date(bookingData.end_date)) status |= FLAGS.DATES_VALID;
+
+            if ((status & (FLAGS.EMAIL_VALID | FLAGS.DATES_VALID)) !== (FLAGS.EMAIL_VALID | FLAGS.DATES_VALID)) {
+                alert('Invalid form data. Please check email and dates.');
+                return;
+            }
+
+            try {
+                const newBooking = await this.apiService.createBooking(bookingData);
+                this.runBookingSuccessFlow(newBooking, () => {
+                     Logger.log(`Booking ${newBooking.id} successfully processed and cached.`);
+                });
+            } catch (error) {
+                Logger.error('Booking failed:', error);
+                alert(`Booking failed: ${error.message}`);
+            }
+        }
+
+        // Callback example
+        runBookingSuccessFlow(booking, onCompleteCallback) {
+            this.uiController.hideBookingForm();
+            this.uiController.showConfirmation(booking);
+            this.cacheService.addBooking(booking).then(onCompleteCallback).catch(Logger.error);
+        }
+    }
+
+    // --- Generator Function Example ---
+    function* idGenerator() { let id = 1; while (true) yield id++; }
+    const bookingIdGenerator = idGenerator();
+
+    // --- App Bootstrap ---
+    $(document).ready(() => {
+        const app = new App(ApiService.getInstance(), new UIController(), CacheService);
+        app.init();
+    });
+
+})();
+    </script>
+</body>
+</html>

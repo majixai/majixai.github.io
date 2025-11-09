@@ -1,0 +1,31 @@
+name: Instance Tracking Workflow
+
+on:
+  pull_request:
+    types: [opened, labeled]
+
+jobs:
+  track-instance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log Instance Details
+        run: |
+          echo "Tracking new instance from PR..."
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "PR Author: ${{ github.event.pull_request.user.login }}"
+          # In a real scenario, you might use this data to update a dashboard,
+          # create a deployment preview, or notify a team.
+
+      - name: Label-based Action
+        if: github.event.action == 'labeled'
+        run: |
+          echo "PR was labeled: ${{ github.event.label.name }}"
+          # Here, you could add logic to trigger different actions based on the label.
+          if [ "${{ github.event.label.name }}" == "urgent" ]; then
+            echo "This is an urgent PR! Notifying the team."
+            # Add notification logic here (e.g., send a Slack message).
+          fi

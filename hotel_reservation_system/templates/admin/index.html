@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Grand Tortuga Inn</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: "Segoe UI", Arial, sans-serif; }
+        .container { padding: 0.01em 16px; }
+        .card { box-shadow: 0 4px 10px 0 rgba(0,0,0,0.2), 0 4px 20px 0 rgba(0,0,0,0.19); }
+        table { width: 100%; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #4CAF50; color: white; }
+        .timestamp { min-width: 160px; }
+        .ip-address { min-width: 120px; }
+    </style>
+</head>
+<body class="w3-light-grey">
+
+    <!-- Header -->
+    <header class="w3-container w3-center w3-padding-32 w3-teal">
+        <h1 class="w3-xxxlarge">Grand Tortuga Inn - Admin Panel 🏴‍☠️</h1>
+        <p>Ship's Log & Monitoring</p>
+        <button id="refresh-btn" class="w3-button w3-white w3-round-large">Refresh All Logs</button>
+    </header>
+
+    <div class="w3-container w3-margin-top">
+        <!-- Visitor Logs -->
+        <div class="w3-card-4 w3-white w3-margin-bottom">
+            <header class="w3-container w3-blue">
+                <h2>Recent Visitors</h2>
+            </header>
+            <div class="container w3-padding">
+                <table id="visitor-log-table" class="w3-table-all w3-hoverable">
+                    <thead>
+                        <tr>
+                            <th class="timestamp">Timestamp</th>
+                            <th class="ip-address">IP Address</th>
+                            <th>Request Path</th>
+                            <th>User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody><!-- Data will be injected here --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Interaction Logs -->
+        <div class="w3-card-4 w3-white w3-margin-bottom">
+            <header class="w3-container w3-amber">
+                <h2>User Interactions</h2>
+            </header>
+            <div class="container w3-padding">
+                <table id="interaction-log-table" class="w3-table-all w3-hoverable">
+                    <thead>
+                        <tr>
+                            <th class="timestamp">Timestamp</th>
+                            <th class="ip-address">IP Address</th>
+                            <th>Interaction Type</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody><!-- Data will be injected here --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Booking Logs -->
+        <div class="w3-card-4 w3-white">
+            <header class="w3-container w3-red">
+                <h2>All Bookings</h2>
+            </header>
+            <div class="container w3-padding">
+                <table id="booking-log-table" class="w3-table-all w3-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Booking ID</th>
+                            <th>Guest Name</th>
+                            <th>Room Name</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                        </tr>
+                    </thead>
+                    <tbody><!-- Data will be injected here --></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        "use strict";
+
+        const API_BASE = '/api/admin/logs';
+        const visitorLogTbody = document.querySelector('#visitor-log-table tbody');
+        const interactionLogTbody = document.querySelector('#interaction-log-table tbody');
+        const bookingLogTbody = document.querySelector('#booking-log-table tbody');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        const fetchData = async (endpoint, tbody, rowRenderer) => {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+
+                tbody.innerHTML = ''; // Clear existing rows
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="100%" class="w3-center">No data available.</td></tr>';
+                } else {
+                    data.forEach(item => tbody.appendChild(rowRenderer(item)));
+                }
+            } catch (error) {
+                console.error(`Failed to fetch ${endpoint}:`, error);
+                tbody.innerHTML = `<tr><td colspan="100%" class="w3-center w3-text-red">Failed to load data.</td></tr>`;
+            }
+        };
+
+        const renderVisitorRow = (log) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${log.ip_address}</td>
+                <td>${log.request_path}</td>
+                <td>${log.user_agent}</td>
+            `;
+            return tr;
+        };
+
+        const renderInteractionRow = (log) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${log.ip_address}</td>
+                <td>${log.interaction_type}</td>
+                <td>${log.details}</td>
+            `;
+            return tr;
+        };
+
+        const renderBookingRow = (log) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${log.id}</td>
+                <td>${log.guest_name}</td>
+                <td>${log.room_name}</td>
+                <td>${log.check_in_date}</td>
+                <td>${log.check_out_date}</td>
+            `;
+            return tr;
+        };
+
+        const fetchAllLogs = () => {
+            fetchData('/visitors', visitorLogTbody, renderVisitorRow);
+            fetchData('/interactions', interactionLogTbody, renderInteractionRow);
+            fetchData('/bookings', bookingLogTbody, renderBookingRow);
+        };
+
+        refreshBtn.addEventListener('click', fetchAllLogs);
+
+        // Initial fetch on page load
+        document.addEventListener('DOMContentLoaded', fetchAllLogs);
+    })();
+    </script>
+</body>
+</html>
