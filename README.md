@@ -51,6 +51,10 @@ A stock projection analysis application built with TypeScript and esbuild.
 
 A simple Texas Hold'em game written in Python, which can be run locally or with Docker.
 
+### [Latest Commits](redirect.html?url=https://majixai.github.io/latest_commit/) (`latest_commit/`)
+
+A UI showcase that demonstrates advanced JavaScript and modern UI techniques. It fetches and displays the latest commits from this repository.
+
 ## Data Scrapers
 
 ### Bedpage Scraper (`bedpage_scraper/`)
