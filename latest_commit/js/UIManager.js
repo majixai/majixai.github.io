@@ -1,95 +1,122 @@
 /**
  * Manages the user interface, including DOM manipulation, animations, and event listeners.
+ * This class is state-driven and subscribes to the StateManager.
  */
 class UIManager {
     #commitListEl;
     #loaderEl;
     #startAnimationBtn;
     #stopAnimationBtn;
-    #animationInterval = null;
+    #searchInput;
+    #stateManager;
+    #animationGenerator = null;
+    #isAnimating = false;
 
     constructor() {
         this.#commitListEl = document.getElementById("commit-list");
         this.#loaderEl = document.getElementById("loader");
         this.#startAnimationBtn = document.getElementById("start-animation");
         this.#stopAnimationBtn = document.getElementById("stop-animation");
+        this.#searchInput = document.getElementById("search-input");
+
+        this.#stateManager = StateManager.getInstance();
+        this.#stateManager.subscribe(() => this.render());
 
         this.#startAnimationBtn.addEventListener("click", () => this.startAnimation());
         this.#stopAnimationBtn.addEventListener("click", () => this.stopAnimation());
+        this.#searchInput.addEventListener("input", (e) => this.#handleSearch(e));
     }
 
     /**
-     * Toggles the visibility of the loading spinner.
-     * @param {boolean} show - Whether to show or hide the loader.
+     * Handles the search input event.
+     * @private
+     * @param {Event} e - The input event.
      */
-    toggleLoader(show) {
-        this.#loaderEl.style.display = show ? "block" : "none";
+    #handleSearch(e) {
+        this.#stateManager.setState({ searchQuery: e.target.value });
     }
 
     /**
-     * Renders the list of commits to the UI.
+     * Renders the entire UI based on the current state.
+     */
+    render() {
+        const state = this.#stateManager.getState();
+        const filteredCommits = this.#stateManager.getFilteredCommits();
+
+        this.#loaderEl.style.display = state.isLoading ? "block" : "none";
+
+        if (state.error) {
+            this.#commitListEl.innerHTML = `<div class="w3-panel w3-red"><p>${state.error}</p></div>`;
+            return;
+        }
+
+        if (!state.isLoading) {
+            this.#renderCommitTimeline(filteredCommits.slice(0, 5));
+        }
+    }
+
+    /**
+     * Renders the commit timeline.
+     * @private
      * @param {Array<Commit>} commits - An array of Commit instances to display.
      */
-    renderCommits(commits) {
+    #renderCommitTimeline(commits) {
         this.#commitListEl.innerHTML = ""; // Clear existing content
-        commits.slice(0, 5).forEach(commit => {
-            const commitEl = this.#createCommitElement(commit);
-            this.#commitListEl.appendChild(commitEl);
+        if (commits.length === 0) {
+            this.#commitListEl.innerHTML = "<p>No commits found.</p>";
+            return;
+        }
+
+        commits.forEach((commit, index) => {
+            const item = document.createElement("div");
+            item.className = `timeline-item ${index % 2 === 0 ? 'left' : 'right'}`;
+            item.innerHTML = `
+                <div class="timeline-content">
+                    <h5>${commit.message}</h5>
+                    <p><small>${commit.author.name} - ${commit.author.date.toLocaleString()}</small></p>
+                    <a href="${commit.url}" target="_blank" class="w3-button w3-small w3-light-grey">View Commit</a>
+                </div>
+            `;
+            this.#commitListEl.appendChild(item);
         });
     }
 
     /**
-     * Creates an HTML element for a single commit.
+     * A generator function to control the staggered animation of timeline items.
      * @private
-     * @param {Commit} commit - The commit object.
-     * @returns {HTMLElement} The created commit element.
      */
-    #createCommitElement(commit) {
-        const item = document.createElement("div");
-        item.className = "w3-panel w3-card-2 w3-light-grey commit-item";
-        item.innerHTML = `
-            <p><strong>SHA:</strong> <a href="${commit.url}" target="_blank">${commit.sha.substring(0, 7)}</a></p>
-            <p><strong>Author:</strong> ${commit.author.name}</p>
-            <p><strong>Message:</strong> ${commit.message}</p>
-            <p><strong>Date:</strong> ${commit.author.date.toLocaleString()}</p>
-        `;
-        return item;
+    *#animationPlayer() {
+        const commits = Array.from(this.#commitListEl.children);
+        for (const commit of commits) {
+            commit.classList.add("visible");
+            yield; // Pause execution until the next frame
+        }
     }
 
     /**
      * Starts the commit list animation.
      */
     startAnimation() {
-        this.stopAnimation(); // Stop any existing animation
-        const commits = Array.from(this.#commitListEl.children);
-        let i = 0;
-        this.#animationInterval = setInterval(() => {
-            if (i < commits.length) {
-                commits[i].classList.add("visible");
-                i++;
+        if (this.#isAnimating) return;
+        this.#isAnimating = true;
+        this.#animationGenerator = this.#animationPlayer();
+        const animate = () => {
+            if (this.#animationGenerator && !this.#animationGenerator.next().done) {
+                setTimeout(() => requestAnimationFrame(animate), 300);
             } else {
-                // Reset for the next loop
-                i = 0;
-                commits.forEach(c => c.classList.remove("visible"));
+                this.#isAnimating = false;
             }
-        }, 600);
+        };
+        requestAnimationFrame(animate);
     }
 
     /**
      * Stops the commit list animation.
      */
     stopAnimation() {
-        if (this.#animationInterval) {
-            clearInterval(this.#animationInterval);
-            this.#animationInterval = null;
-        }
-    }
-
-    /**
-     * Displays an error message to the user.
-     * @param {string} message - The error message to display.
-     */
-    displayError(message) {
-        this.#commitListEl.innerHTML = `<div class="w3-panel w3-red"><p>${message}</p></div>`;
+        this.#animationGenerator = null;
+        this.#isAnimating = false;
+        // Optionally remove visible classes to reset the animation
+        Array.from(this.#commitListEl.children).forEach(c => c.classList.remove("visible"));
     }
 }

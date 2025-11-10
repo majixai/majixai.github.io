@@ -6,6 +6,7 @@ class GitHubService {
     #repo;
     #url;
     #cache;
+    #stateManager;
 
     /**
      * @param {string} owner - The owner of the repository.
@@ -16,19 +17,21 @@ class GitHubService {
         this.#repo = repo;
         this.#url = `https://api.github.com/repos/${this.#owner}/${this.#repo}/commits`;
         this.#cache = new CacheService();
+        this.#stateManager = StateManager.getInstance();
     }
 
     /**
-     * Fetches the latest commits, using the cache if available.
-     * @returns {Promise<Array<Commit>>} A promise that resolves with an array of Commit instances.
+     * Fetches the latest commits and updates the central state.
      */
-    async getLatestCommits() {
+    async fetchLatestCommits() {
+        this.#stateManager.setState({ isLoading: true, error: null });
         try {
             const cachedData = await this.#cache.getCachedCommits();
             if (cachedData && cachedData.length > 0) {
                 console.log("Loading commits from cache.");
-                // The cached data is already raw, so we can pass it directly
-                return Commit.fromApiData(cachedData);
+                const commits = Commit.fromApiData(cachedData);
+                this.#stateManager.setState({ commits, isLoading: false });
+                return; // Exit early if we have cached data
             }
 
             console.log("Fetching fresh data from the GitHub API.");
@@ -38,13 +41,13 @@ class GitHubService {
             }
             const data = await response.json();
 
-            // The data from the API is what we want to cache
             await this.#cache.cacheCommits(data);
+            const commits = Commit.fromApiData(data);
+            this.#stateManager.setState({ commits, isLoading: false });
 
-            return Commit.fromApiData(data);
         } catch (error) {
             console.error("Error fetching or caching commits:", error);
-            throw error;
+            this.#stateManager.setState({ isLoading: false, error: "Failed to fetch commits. Please try again later." });
         }
     }
 }

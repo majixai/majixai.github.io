@@ -5,20 +5,16 @@
         const owner = "majixai";
         const repo = "majixai.github.io";
 
-        const uiManager = new UIManager();
+        // Initialize the singleton StateManager
+        const stateManager = StateManager.getInstance();
+
+        // UIManager will subscribe to the StateManager and render automatically
+        new UIManager();
+
+        // GitHubService will fetch data and update the StateManager
         const githubService = new GitHubService(owner, repo);
 
-        uiManager.toggleLoader(true);
-
-        githubService.getLatestCommits()
-            .then(commits => {
-                uiManager.toggleLoader(false);
-                uiManager.renderCommits(commits);
-            })
-            .catch(error => {
-                uiManager.toggleLoader(false);
-                uiManager.displayError("Failed to fetch commits. Please try again later.");
-                console.error(error);
-            });
+        // Initial data fetch
+        githubService.fetchLatestCommits();
     });
 })();
