@@ -30,9 +30,10 @@ class GitHubService {
     async #getCommitDetails(sha) {
         const cachedCommit = await this.#cache.getCachedCommits(sha);
         if (cachedCommit) {
+            console.log(`Loading commit ${sha.substring(0,7)} from cache.`);
             return cachedCommit;
         }
-
+        console.log(`Fetching details for commit ${sha.substring(0,7)} from API.`);
         const response = await fetch(`${this.#baseUrl}/commits/${sha}`);
         if (!response.ok) {
             throw new Error(`GitHub API error for commit ${sha}: ${response.status}`);
@@ -48,8 +49,12 @@ class GitHubService {
     async fetchLatestCommits() {
         this.#stateManager.setState({ isLoading: true, error: null });
         try {
-            // Step 1: Fetch the list of recent commit SHAs
-            const response = await fetch(`${this.#baseUrl}/commits?per_page=5`);
+            // Step 1: Fetch the list of recent commit SHAs with a cache-busting parameter.
+            const timestamp = new Date().getTime();
+            const url = `${this.#baseUrl}/commits?per_page=5&t=${timestamp}`;
+            console.log("Fetching latest commit list from:", url);
+
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`GitHub API error: ${response.status}`);
             }
