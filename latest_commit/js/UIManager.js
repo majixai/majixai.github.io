@@ -51,29 +51,36 @@ class UIManager {
         }
 
         if (!state.isLoading) {
-            this.#renderCommitTimeline(filteredCommits.slice(0, 5));
+            this.#renderCommitTimeline(filteredCommits);
         }
     }
 
     /**
-     * Renders the commit timeline.
+     * Renders the commit timeline, including links to affected directories.
      * @private
      * @param {Array<Commit>} commits - An array of Commit instances to display.
      */
     #renderCommitTimeline(commits) {
         this.#commitListEl.innerHTML = ""; // Clear existing content
         if (commits.length === 0) {
-            this.#commitListEl.innerHTML = "<p>No commits found.</p>";
+            this.#commitListEl.innerHTML = "<p>No commits found matching your search.</p>";
             return;
         }
 
         commits.forEach((commit, index) => {
+            const directoryLinks = commit.affectedDirectories
+                .map(dir => `<a href="https://majixai.github.io/${dir}/" class="badge badge-primary mr-1">${dir}</a>`)
+                .join('');
+
             const item = document.createElement("div");
             item.className = `timeline-item ${index % 2 === 0 ? 'left' : 'right'}`;
             item.innerHTML = `
                 <div class="timeline-content">
                     <h5>${commit.message}</h5>
-                    <p><small>${commit.author.name} - ${commit.author.date.toLocaleString()}</small></p>
+                    <p class="mb-2"><small>${commit.author.name} - ${commit.author.date.toLocaleString()}</small></p>
+                    <div class="mb-2">
+                        ${directoryLinks}
+                    </div>
                     <a href="${commit.url}" target="_blank" class="w3-button w3-small w3-light-grey">View Commit</a>
                 </div>
             `;

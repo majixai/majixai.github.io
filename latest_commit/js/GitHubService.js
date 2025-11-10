@@ -4,7 +4,7 @@
 class GitHubService {
     #owner;
     #repo;
-    #url;
+    #baseUrl;
     #cache;
     #stateManager;
 
@@ -15,39 +15,58 @@ class GitHubService {
     constructor(owner, repo) {
         this.#owner = owner;
         this.#repo = repo;
-        this.#url = `https://api.github.com/repos/${this.#owner}/${this.#repo}/commits`;
+        this.#baseUrl = `https://api.github.com/repos/${this.#owner}/${this.#repo}`;
         this.#cache = new CacheService();
         this.#stateManager = StateManager.getInstance();
     }
 
     /**
-     * Fetches the latest commits and updates the central state.
+     * Fetches the details for a single commit.
+     * Checks the cache first, otherwise fetches from the API.
+     * @private
+     * @param {string} sha - The SHA of the commit to fetch.
+     * @returns {Promise<object>} A promise that resolves with the detailed commit data.
+     */
+    async #getCommitDetails(sha) {
+        const cachedCommit = await this.#cache.getCachedCommits(sha);
+        if (cachedCommit) {
+            return cachedCommit;
+        }
+
+        const response = await fetch(`${this.#baseUrl}/commits/${sha}`);
+        if (!response.ok) {
+            throw new Error(`GitHub API error for commit ${sha}: ${response.status}`);
+        }
+        const commitData = await response.json();
+        await this.#cache.cacheCommits(sha, commitData);
+        return commitData;
+    }
+
+    /**
+     * Fetches the latest commits, gets their details, and updates the central state.
      */
     async fetchLatestCommits() {
         this.#stateManager.setState({ isLoading: true, error: null });
         try {
-            const cachedData = await this.#cache.getCachedCommits();
-            if (cachedData && cachedData.length > 0) {
-                console.log("Loading commits from cache.");
-                const commits = Commit.fromApiData(cachedData);
-                this.#stateManager.setState({ commits, isLoading: false });
-                return; // Exit early if we have cached data
-            }
-
-            console.log("Fetching fresh data from the GitHub API.");
-            const response = await fetch(this.#url);
+            // Step 1: Fetch the list of recent commit SHAs
+            const response = await fetch(`${this.#baseUrl}/commits?per_page=5`);
             if (!response.ok) {
                 throw new Error(`GitHub API error: ${response.status}`);
             }
-            const data = await response.json();
+            const commitsOverview = await response.json();
+            const shas = commitsOverview.map(c => c.sha);
 
-            await this.#cache.cacheCommits(data);
-            const commits = Commit.fromApiData(data);
+            // Step 2: Fetch detailed data for each commit concurrently
+            const commitDetailsPromises = shas.map(sha => this.#getCommitDetails(sha));
+            const detailedCommitsData = await Promise.all(commitDetailsPromises);
+
+            // Step 3: Create Commit instances and update state
+            const commits = Commit.fromApiData(detailedCommitsData);
             this.#stateManager.setState({ commits, isLoading: false });
 
         } catch (error) {
             console.error("Error fetching or caching commits:", error);
-            this.#stateManager.setState({ isLoading: false, error: "Failed to fetch commits. Please try again later." });
+            this.#stateManager.setState({ isLoading: false, error: "Failed to fetch commit details. Please try again later." });
         }
     }
 }

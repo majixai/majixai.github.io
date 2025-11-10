@@ -1,10 +1,12 @@
 /**
  * A service class for caching data in IndexedDB.
+ * Manages caching both the list of latest commit SHAs and individual commit details.
  */
 class CacheService {
     #dbName = 'CommitCacheDB';
-    #storeName = 'commits';
-    #dbVersion = 1;
+    #dbVersion = 2; // Incremented version to handle schema change
+    #commitStoreName = 'commit_details';
+    #listStoreName = 'commit_list';
     #db = null;
     #initPromise = null;
 
@@ -23,8 +25,12 @@ class CacheService {
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains(this.#storeName)) {
-                    db.createObjectStore(this.#storeName, { keyPath: 'sha' });
+                if (!db.objectStoreNames.contains(this.#commitStoreName)) {
+                    db.createObjectStore(this.#commitStoreName, { keyPath: 'sha' });
+                }
+                if (!db.objectStoreNames.contains(this.#listStoreName)) {
+                    // This store will hold the list of latest commit SHAs
+                    db.createObjectStore(this.#listStoreName, { keyPath: 'id' });
                 }
             };
 
@@ -50,24 +56,20 @@ class CacheService {
         }
     }
 
-
     /**
-     * Retrieves cached commits from the database.
-     * @returns {Promise<Array<CommitData>|null>} A promise that resolves with the cached data, or null if not found.
+     * Retrieves a cached commit from the database by its SHA.
+     * @param {string} sha - The SHA of the commit to retrieve.
+     * @returns {Promise<object|null>} A promise that resolves with the cached commit data, or null if not found.
      */
-    async getCachedCommits() {
+    async getCachedCommits(sha) {
         await this.#ensureDb();
         return new Promise((resolve, reject) => {
-            const transaction = this.#db.transaction([this.#storeName], 'readonly');
-            const store = transaction.objectStore(this.#storeName);
-            const request = store.getAll();
+            const transaction = this.#db.transaction([this.#commitStoreName], 'readonly');
+            const store = transaction.objectStore(this.#commitStoreName);
+            const request = store.get(sha);
 
             request.onsuccess = (event) => {
-                if (event.target.result && event.target.result.length > 0) {
-                    resolve(event.target.result);
-                } else {
-                    resolve(null);
-                }
+                resolve(event.target.result || null);
             };
 
             request.onerror = (event) => {
@@ -77,24 +79,20 @@ class CacheService {
     }
 
     /**
-     * Caches an array of commits in the database.
-     * @param {Array<CommitData>} commits - The commits to cache.
-     * @returns {Promise<void>} A promise that resolves when the data has been cached.
+     * Caches a single commit's detailed data.
+     * @param {string} sha - The SHA of the commit.
+     * @param {object} commitData - The detailed commit data to cache.
+     * @returns {Promise<void>}
      */
-    async cacheCommits(commits) {
+    async cacheCommits(sha, commitData) {
         await this.#ensureDb();
         return new Promise((resolve, reject) => {
-            const transaction = this.#db.transaction([this.#storeName], 'readwrite');
-            const store = transaction.objectStore(this.#storeName);
-            commits.forEach(commit => store.put(commit));
+            const transaction = this.#db.transaction([this.#commitStoreName], 'readwrite');
+            const store = transaction.objectStore(this.#commitStoreName);
+            store.put(commitData);
 
-            transaction.oncomplete = () => {
-                resolve();
-            };
-
-            transaction.onerror = (event) => {
-                reject(event.target.error);
-            };
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = (event) => reject(event.target.error);
         });
     }
 }
