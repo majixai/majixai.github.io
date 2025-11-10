@@ -1,0 +1,99 @@
+<script>
+const baseRequest = {
+  apiVersion: 2,
+  apiVersionMinor: 0
+};
+
+const tokenizationSpecification = {
+  type: 'PAYMENT_GATEWAY',
+  parameters: {
+    'gateway': 'example',
+    'gatewayMerchantId': 'exampleGatewayMerchantId'
+  }
+};
+
+const allowedCardNetworks = ["AMEX", "DISCOVER", "INTERAC", "JCB", "MASTERCARD", "VISA"];
+const allowedCardAuthMethods = ["PAN_ONLY", "CRYPTOGRAM_3DS"];
+
+function getGooglePaymentsClient() {
+  return (new google.payments.api.PaymentsClient({
+    environment: 'TEST'
+  }));
+}
+
+function onGooglePayLoaded() {
+  const paymentsClient = getGooglePaymentsClient();
+  paymentsClient.isReadyToPay({
+      apiVersion: 2,
+      apiVersionMinor: 0,
+      allowedPaymentMethods: [{
+        type: 'CARD',
+        parameters: {
+          allowedAuthMethods: allowedCardAuthMethods,
+          allowedCardNetworks: allowedCardNetworks
+        }
+      }]
+    })
+    .then(function(response) {
+      if (response.result) {
+        googlePayButton(paymentsClient);
+      }
+    })
+    .catch(function(err) {
+      console.error("Error checking Google Pay readiness: ", err);
+    });
+}
+
+function googlePayButton(paymentsClient) {
+  const googlePayButton = paymentsClient.createButton({
+    onClick: onGooglePaymentButtonClicked
+  });
+  document.getElementById('google-pay-container').appendChild(googlePayButton);
+}
+
+function getGoogleTransactionInfo() {
+  return {
+    currencyCode: 'USD',
+    totalPriceStatus: 'FINAL',
+    totalPrice: '1.00' // This will be dynamic
+  };
+}
+
+function onGooglePaymentButtonClicked() {
+  const paymentDataRequest = Object.assign({}, baseRequest);
+  paymentDataRequest.allowedPaymentMethods = [{
+    type: 'CARD',
+    parameters: {
+      allowedAuthMethods: allowedCardAuthMethods,
+      allowedCardNetworks: allowedCardNetworks
+    },
+    tokenizationSpecification: tokenizationSpecification
+  }];
+  paymentDataRequest.transactionInfo = getGoogleTransactionInfo();
+  paymentDataRequest.merchantInfo = {
+    merchantId: '12345678901234567890',
+    merchantName: 'Demo Merchant'
+  };
+
+  const paymentsClient = getGooglePaymentsClient();
+  paymentsClient.loadPaymentData(paymentDataRequest)
+    .then(function(paymentData) {
+      processGooglePay(paymentData);
+    })
+    .catch(function(err) {
+      console.error("Error loading payment data: ", err);
+    });
+}
+
+function processGooglePay(paymentData) {
+  const paymentToken = paymentData.paymentMethodData.tokenizationData.token;
+  const paymentDetails = {
+    paymentMethod: 'GOOGLE_PAY',
+    paymentToken: paymentToken,
+    cardDescription: paymentData.paymentMethodData.description,
+    shippingAddress: paymentData.shippingAddress
+  };
+
+  processPayment(paymentDetails);
+}
+</script>
