@@ -1,0 +1,26 @@
+name: Jump Product Generator
+
+on:
+  workflow_dispatch:
+    inputs:
+      product_count:
+        description: 'Number of products to generate'
+        required: true
+        default: '100'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Generate CSVs
+        run: node jump/generate-csvs.js ${{ github.event.inputs.product_count }}
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: product-csvs
+          path: jump/products/
