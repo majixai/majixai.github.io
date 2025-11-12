@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Chart</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; }
+        .container { display: flex; flex-direction: column; min-height: 100vh; }
+        header { background-color: #f0f0f0; padding: 1em; text-align: center; }
+        main { flex-grow: 1; padding: 1em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Company Stock Chart</h1>
+        </header>
+        <main>
+            <!-- TradingView Widget BEGIN -->
+            <div class="tradingview-widget-container" style="height: 600px; width: 100%;">
+                <div id="tradingview_12345" style="height:100%;width:100%"></div>
+                <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="blue-text">Track all markets on TradingView</span></a></div>
+            </div>
+            <!-- TradingView Widget END -->
+        </main>
+    </div>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+      <script type="text/javascript">
+      new TradingView.widget(
+      {
+      "autosize": true,
+      "symbol": "NASDAQ:GOOGL",
+      "interval": "D",
+      "timezone": "Etc/UTC",
+      "theme": "light",
+      "style": "1",
+      "locale": "en",
+      "enable_publishing": false,
+      "allow_symbol_change": true,
+      "container_id": "tradingview_12345"
+    }
+      );
+      </script>
+    </div>
+    <!-- TradingView Widget END -->
+</body>
+</html>
