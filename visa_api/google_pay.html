@@ -30,7 +30,10 @@ function onGooglePayLoaded() {
         type: 'CARD',
         parameters: {
           allowedAuthMethods: allowedCardAuthMethods,
-          allowedCardNetworks: allowedCardNetworks
+          allowedCardNetworks: allowedCardNetworks,
+          allowPrepaidCards: true,
+          allowCreditCards: true,
+          assuranceDetailsRequired: true
         }
       }]
     })
@@ -65,7 +68,11 @@ function onGooglePaymentButtonClicked() {
     type: 'CARD',
     parameters: {
       allowedAuthMethods: allowedCardAuthMethods,
-      allowedCardNetworks: allowedCardNetworks
+      allowedCardNetworks: allowedCardNetworks,
+      allowPrepaidCards: true,
+      allowCreditCards: true,
+      assuranceDetailsRequired: true,
+      blockedIssuerCountryCodes: ["US", "CA"]
     },
     tokenizationSpecification: tokenizationSpecification
   }];
@@ -73,6 +80,10 @@ function onGooglePaymentButtonClicked() {
   paymentDataRequest.merchantInfo = {
     merchantId: '12345678901234567890',
     merchantName: 'Demo Merchant'
+  };
+  paymentDataRequest.shippingAddressRequired = true;
+  paymentDataRequest.shippingAddressParameters = {
+    phoneNumberRequired: true
   };
 
   const paymentsClient = getGooglePaymentsClient();
