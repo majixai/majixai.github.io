@@ -24,7 +24,7 @@
         header h1 {
             margin: 0;
         }
-        .cart-icon {
+        .user-actions button, .cart-icon {
             background: none;
             border: none;
             color: #fff;
@@ -50,11 +50,13 @@
         .controls {
             display: flex;
             justify-content: center;
+            gap: 1rem;
             margin-bottom: 2rem;
+            align-items: center;
         }
-        #search-input {
+        #search-input, #sort-select {
             width: 100%;
-            max-width: 500px;
+            max-width: 400px;
             padding: 0.8rem 1rem;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -124,6 +126,34 @@
         }
         .product-card .actions button.details:hover {
             background-color: #5a6268;
+        }
+         .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+        }
+        .pagination button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            margin: 0 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+        }
+        .pagination button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .pagination button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        .pagination-info {
+            font-size: 1rem;
+            margin: 0 1rem;
         }
 
         /* Modal styles */
@@ -310,64 +340,114 @@
             padding: 2rem;
             color: #777;
         }
+         .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .auth-form input {
+            padding: 0.8rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .auth-form button {
+            padding: 1rem;
+            font-size: 1.1rem;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .auth-form .error-message {
+            color: red;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>My Awesome Store</h1>
-        <button class="cart-icon" id="cart-button">
-            🛒 <span class="cart-count" id="cart-count">0</span>
-        </button>
+        <div class="user-actions">
+             <span id="user-status" style="margin-right: 1rem;"></span>
+            <button id="auth-button">Login</button>
+            <button class="cart-icon" id="cart-button">
+                🛒 <span class="cart-count" id="cart-count">0</span>
+            </button>
+        </div>
     </header>
 
     <main>
         <div class="controls">
-            <input type="text" id="search-input" placeholder="Search products by name or description..." />
+            <input type="text" id="search-input" placeholder="Search products..." />
+            <select id="sort-select">
+                <option value="title-asc">Sort by Name (A-Z)</option>
+                <option value="title-desc">Sort by Name (Z-A)</option>
+                <option value="price-asc">Sort by Price (Low to High)</option>
+                <option value="price-desc">Sort by Price (High to Low)</option>
+            </select>
         </div>
 
         <section id="product-list">
-            <!-- Product cards will be loaded here by JavaScript -->
+            <p>Loading products...</p>
         </section>
+
+        <div class="pagination">
+            <button id="prev-page-button" disabled>Previous</button>
+            <span id="pagination-info">Page 1 of 1</span>
+            <button id="next-page-button" disabled>Next</button>
+        </div>
     </main>
 
-    <!-- Product Detail Modal -->
-    <div id="product-detail-modal" class="modal">
+    <!-- Modals -->
+    <div id="product-detail-modal" class="modal">...</div>
+    <div id="cart-modal" class="modal">...</div>
+    <div id="auth-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="detail-close-button">&times;</span>
-            <img id="detail-image" src="" alt="Product Image">
-            <h2 id="detail-name"></h2>
-            <p id="detail-description"></p>
-            <p id="detail-price"></p>
-            <div id="detail-actions">
-                <button id="add-to-cart-detail-button">Add to Cart</button>
+            <span class="close-button" id="auth-close-button">&times;</span>
+            <div id="login-view">
+                <h2>Login</h2>
+                <form id="login-form" class="auth-form">
+                    <input type="text" id="login-username" placeholder="Username" required>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                    <p class="error-message" id="login-error"></p>
+                    <p>Don't have an account? <a href="#" id="show-register">Register here</a></p>
+                </form>
+            </div>
+            <div id="register-view" style="display:none;">
+                <h2>Register</h2>
+                <form id="register-form" class="auth-form">
+                    <input type="text" id="register-username" placeholder="Username" required>
+                    <input type="password" id="register-password" placeholder="Password" required>
+                    <button type="submit">Register</button>
+                    <p class="error-message" id="register-error"></p>
+                    <p>Already have an account? <a href="#" id="show-login">Login here</a></p>
+                </form>
             </div>
         </div>
     </div>
 
-    <!-- Cart Modal -->
-    <div id="cart-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="cart-close-button">&times;</span>
-            <h2>Your Cart</h2>
-            <ul id="cart-items">
-                <!-- Cart items will be loaded here by JavaScript -->
-            </ul>
-            <p id="cart-empty-message" style="display: none;">Your cart is empty.</p>
-            <div id="cart-summary">
-                <p id="cart-total">Total: $0.00</p>
-                <button id="checkout-button">Checkout</button>
-            </div>
-        </div>
-    </div>
 
     <script>
-        // Global variable to store all products loaded from CSV
-        let allProductsData = [];
+        // --- State Management ---
+        const appState = {
+            products: [],
+            currentPage: 1,
+            totalPages: 1,
+            searchTerm: '',
+            sortBy: 'title',
+            sortOrder: 'asc',
+            productsPerPage: 20,
+            isLoggedIn: false,
+            authToken: null
+        };
 
+        // --- DOM Element References ---
         const productListDiv = document.getElementById('product-list');
         const cartCountSpan = document.getElementById('cart-count');
         const cartButton = document.getElementById('cart-button');
-
         const productDetailModal = document.getElementById('product-detail-modal');
         const detailCloseButton = document.getElementById('detail-close-button');
         const detailImage = document.getElementById('detail-image');
@@ -375,7 +455,6 @@
         const detailDescription = document.getElementById('detail-description');
         const detailPrice = document.getElementById('detail-price');
         const addToCartDetailButton = document.getElementById('add-to-cart-detail-button');
-
         const cartModal = document.getElementById('cart-modal');
         const cartCloseButton = document.getElementById('cart-close-button');
         const cartItemsList = document.getElementById('cart-items');
@@ -383,207 +462,306 @@
         const cartEmptyMessage = document.getElementById('cart-empty-message');
         const cartSummary = document.getElementById('cart-summary');
         const checkoutButton = document.getElementById('checkout-button');
-
         const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+        const prevPageButton = document.getElementById('prev-page-button');
+        const nextPageButton = document.getElementById('next-page-button');
+        const paginationInfo = document.getElementById('pagination-info');
+        const authButton = document.getElementById('auth-button');
+        const userStatus = document.getElementById('user-status');
+        const authModal = document.getElementById('auth-modal');
+        const authCloseButton = document.getElementById('auth-close-button');
+        const loginView = document.getElementById('login-view');
+        const registerView = document.getElementById('register-view');
+        const showRegister = document.getElementById('show-register');
+        const showLogin = document.getElementById('show-login');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const loginError = document.getElementById('login-error');
+        const registerError = document.getElementById('register-error');
 
-        let cart = JSON.parse(localStorage.getItem('cart')) || []; // Load cart from local storage
+        let cart = [];
 
         // --- Utility Functions ---
         function formatPrice(price) {
-            return `$${price.toFixed(2)}`;
+            if (typeof price === 'string') {
+                const priceMatch = price.match(/[\d\.]+/);
+                price = priceMatch ? parseFloat(priceMatch[0]) : NaN;
+            }
+            return typeof price === 'number' && !isNaN(price) ? `$${price.toFixed(2)}` : '$0.00';
         }
 
         function updateCartCount() {
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCountSpan.textContent = totalItems;
+            cartCountSpan.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
         }
 
-        function saveCart() {
-            localStorage.setItem('cart', JSON.stringify(cart));
-        }
-
-        // Function to parse CSV data into an array of objects
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            if (lines.length < 2) return []; // Need at least header and one data row
-
-            const headers = lines[0].split(',').map(h => h.trim());
-            const products = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue; // Skip empty lines
-
-                const values = [];
-                let inQuote = false;
-                let currentField = '';
-
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') {
-                        // Handle escaped quotes within a field (e.g., "This is a ""quoted"" field")
-                        if (j + 1 < line.length && line[j+1] === '"' && inQuote) {
-                            currentField += '"';
-                            j++; // Skip the next quote as it's an escaped one
-                        } else {
-                            inQuote = !inQuote; // Toggle quote state
-                        }
-                    } else if (char === ',' && !inQuote) {
-                        values.push(currentField.trim());
-                        currentField = '';
-                    } else {
-                        currentField += char;
-                    }
-                }
-                values.push(currentField.trim()); // Add the last field
-
-                const product = {};
-                headers.forEach((header, index) => {
-                    let value = values[index];
-                    if (header === 'id' || header === 'price') {
-                        product[header] = parseFloat(value);
-                    } else {
-                        product[header] = value;
-                    }
-                });
-                products.push(product);
+        // --- Authentication ---
+        function updateAuthUI() {
+            if (appState.isLoggedIn) {
+                authButton.textContent = 'Logout';
+                userStatus.textContent = `Welcome, ${localStorage.getItem('username')}!`;
+            } else {
+                authButton.textContent = 'Login';
+                userStatus.textContent = '';
             }
-            return products;
         }
 
-        // --- Product List Rendering ---
-        function renderProducts(productsToDisplay) {
-            productListDiv.innerHTML = ''; // Clear existing products
+        async function login(username, password) {
+            try {
+                const response = await fetch('http://localhost:5000/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    appState.authToken = data.access_token;
+                    appState.isLoggedIn = true;
+                    localStorage.setItem('authToken', appState.authToken);
+                    localStorage.setItem('username', username);
+                    updateAuthUI();
+                    hideAuthModal();
+                    loadCart();
+                } else {
+                    loginError.textContent = 'Invalid credentials';
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                loginError.textContent = 'An error occurred during login.';
+            }
+        }
 
-            if (productsToDisplay.length === 0) {
-                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: #555;">No products found matching your criteria.</p>';
+        async function register(username, password) {
+            try {
+                const response = await fetch('http://localhost:5000/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (response.ok) {
+                    login(username, password);
+                } else {
+                    registerError.textContent = 'Username already exists';
+                }
+            } catch (error) {
+                console.error("Registration error:", error);
+                registerError.textContent = 'An error occurred during registration.';
+            }
+        }
+
+        function logout() {
+            appState.authToken = null;
+            appState.isLoggedIn = false;
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('username');
+            cart = [];
+            updateCartCount();
+            updateAuthUI();
+        }
+
+        function showAuthModal() {
+            authModal.classList.add('active');
+        }
+
+        function hideAuthModal() {
+            authModal.classList.remove('active');
+        }
+
+        // --- Cart ---
+        async function loadCart() {
+            if (!appState.isLoggedIn) return;
+            try {
+                const response = await fetch('http://localhost:5000/api/cart', {
+                    headers: { 'Authorization': `Bearer ${appState.authToken}` }
+                });
+                if (response.ok) {
+                    cart = await response.json();
+                    updateCartCount();
+                }
+            } catch (error) {
+                console.error("Error loading cart:", error);
+            }
+        }
+
+        async function addToCart(productId, quantity) {
+            if (!appState.isLoggedIn) {
+                showAuthModal();
                 return;
             }
+            try {
+                await fetch('http://localhost:5000/api/cart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${appState.authToken}`
+                    },
+                    body: JSON.stringify({ product_id: productId, quantity })
+                });
+                loadCart();
+            } catch (error) {
+                console.error("Error adding to cart:", error);
+            }
+        }
 
-            productsToDisplay.forEach(product => {
+        async function removeFromCart(productId) {
+            if (!appState.isLoggedIn) return;
+            try {
+                await fetch(`http://localhost:5000/api/cart/${productId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${appState.authToken}` }
+                });
+                loadCart();
+            } catch (error) {
+                console.error("Error removing from cart:", error);
+            }
+        }
+
+        // --- Product Rendering and UI Updates ---
+        // ... (renderProducts, updatePaginationControls - no changes)
+        function renderProducts(products) {
+            productListDiv.innerHTML = '';
+            if (!products || products.length === 0) {
+                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: #555;">No products found.</p>';
+                return;
+            }
+            products.forEach(product => {
                 const productCard = document.createElement('div');
                 productCard.classList.add('product-card');
                 productCard.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}">
-                    <h2>${product.name}</h2>
+                    <img src="${product['image link']}" alt="${product.title}">
+                    <h2>${product.title}</h2>
                     <p class="price">${formatPrice(product.price)}</p>
                     <div class="actions">
                         <button class="details" data-id="${product.id}">View Details</button>
                         <button class="add-to-cart" data-id="${product.id}">Add to Cart</button>
-                    </div>
-                `;
+                    </div>`;
                 productListDiv.appendChild(productCard);
             });
+        }
+        function updatePaginationControls() {
+            paginationInfo.textContent = `Page ${appState.currentPage} of ${appState.totalPages}`;
+            prevPageButton.disabled = !appState.has_prev;
+            nextPageButton.disabled = !appState.has_next;
+        }
 
-            // Add event listeners for buttons in product cards
-            document.querySelectorAll('.product-card .details').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    const product = allProductsData.find(p => p.id === productId);
-                    if (product) {
-                        showProductDetail(product);
-                    }
-                });
+        // --- Event Handlers ---
+        function setupEventListeners() {
+            // ... (search, sort, pagination, product list clicks - no changes)
+            searchInput.addEventListener('input', () => {
+                appState.searchTerm = searchInput.value;
+                appState.currentPage = 1;
+                loadProducts();
             });
 
-            document.querySelectorAll('.product-card .add-to-cart').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+            sortSelect.addEventListener('change', () => {
+                const [sortBy, sortOrder] = sortSelect.value.split('-');
+                appState.sortBy = sortBy;
+                appState.sortOrder = sortOrder;
+                loadProducts();
+            });
+
+            prevPageButton.addEventListener('click', () => {
+                if (appState.currentPage > 1) {
+                    appState.currentPage--;
+                    loadProducts();
+                }
+            });
+
+            nextPageButton.addEventListener('click', () => {
+                if (appState.currentPage < appState.totalPages) {
+                    appState.currentPage++;
+                    loadProducts();
+                }
+            });
+
+            productListDiv.addEventListener('click', event => {
+                const button = event.target.closest('button');
+                if (!button) return;
+
+                const productId = button.dataset.id;
+                const product = appState.products.find(p => p.id === productId);
+
+                if (button.classList.contains('details') && product) {
+                    showProductDetail(product);
+                } else if (button.classList.contains('add-to-cart') && product) {
                     addToCart(productId, 1);
-                });
+                }
+            });
+
+            authButton.addEventListener('click', () => {
+                if (appState.isLoggedIn) {
+                    logout();
+                } else {
+                    showAuthModal();
+                }
+            });
+
+            authCloseButton.addEventListener('click', hideAuthModal);
+            authModal.addEventListener('click', e => e.target === authModal && hideAuthModal());
+            showRegister.addEventListener('click', e => {
+                e.preventDefault();
+                loginView.style.display = 'none';
+                registerView.style.display = 'block';
+            });
+            showLogin.addEventListener('click', e => {
+                e.preventDefault();
+                registerView.style.display = 'none';
+                loginView.style.display = 'block';
+            });
+            loginForm.addEventListener('submit', e => {
+                e.preventDefault();
+                login(e.target.elements['login-username'].value, e.target.elements['login-password'].value);
+            });
+            registerForm.addEventListener('submit', e => {
+                e.preventDefault();
+                register(e.target.elements['register-username'].value, e.target.elements['register-password'].value);
             });
         }
 
-        // --- Search and Filter Logic ---
-        function performSearchAndFilter() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
+        // --- API Interaction ---
+        async function loadProducts() {
+            console.log("Loading products...");
+            const { currentPage, productsPerPage, searchTerm, sortBy, sortOrder } = appState;
+            const url = new URL('http://localhost:5000/api/products');
+            url.searchParams.append('page', currentPage);
+            url.searchParams.append('limit', productsPerPage);
+            if (searchTerm) url.searchParams.append('search', searchTerm);
+            url.searchParams.append('sort_by', sortBy);
+            url.searchParams.append('order', sortOrder);
 
-            let filteredProducts = allProductsData.filter(product => {
-                // Search by name and description
-                return product.name.toLowerCase().includes(searchTerm) ||
-                       product.description.toLowerCase().includes(searchTerm);
-            });
-            renderProducts(filteredProducts);
-        }
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-        // Attach event listener to search input
-        searchInput.addEventListener('input', performSearchAndFilter);
+                const data = await response.json();
+                appState.products = data.products;
+                appState.totalPages = data.pagination.total_pages;
+                appState.has_next = data.pagination.has_next;
+                appState.has_prev = data.pagination.has_prev;
 
-        // --- Product Detail Modal Logic ---
-        function showProductDetail(product) { // Accepts product object directly
-            if (product) {
-                detailImage.src = product.image;
-                detailImage.alt = product.name;
-                detailName.textContent = product.name;
-                detailDescription.textContent = product.description;
-                detailPrice.textContent = formatPrice(product.price);
-                addToCartDetailButton.dataset.id = product.id; // Store ID for add to cart
-                productDetailModal.classList.add('active');
+                renderProducts(appState.products);
+                updatePaginationControls();
+                console.log("Products loaded successfully.");
+            } catch (error) {
+                console.error('Error loading products:', error);
+                productListDiv.innerHTML = `<p style="text-align: center; color: red;">Error: ${error.message}</p>`;
             }
         }
 
+        // --- Product Detail Modal ---
+        // ... (no changes)
+        function showProductDetail(product) {
+            detailImage.src = product['image link'];
+            detailImage.alt = product.title;
+            detailName.textContent = product.title;
+            detailDescription.textContent = product.description;
+            detailPrice.textContent = formatPrice(product.price);
+            addToCartDetailButton.dataset.id = product.id;
+            productDetailModal.classList.add('active');
+        }
         function hideProductDetail() {
             productDetailModal.classList.remove('active');
         }
-
-        detailCloseButton.addEventListener('click', hideProductDetail);
-        productDetailModal.addEventListener('click', (event) => {
-            if (event.target === productDetailModal) {
-                hideProductDetail();
-            }
-        });
-
-        addToCartDetailButton.addEventListener('click', (event) => {
-            const productId = parseInt(event.target.dataset.id);
-            addToCart(productId, 1);
-            hideProductDetail(); // Optionally close detail view after adding to cart
-        });
-
-        // --- Cart Logic ---
-        function addToCart(productId, quantity) {
-            const product = allProductsData.find(p => p.id === productId); // Always find from allProductsData
-            if (!product) return;
-
-            const existingCartItem = cart.find(item => item.id === productId);
-
-            if (existingCartItem) {
-                existingCartItem.quantity += quantity;
-            } else {
-                cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    quantity: quantity
-                });
-            }
-            saveCart();
-            updateCartCount();
-            renderCart();
-            // alert(`${product.name} added to cart!`); // Simple feedback, uncomment if desired
-        }
-
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id !== productId);
-            saveCart();
-            updateCartCount();
-            renderCart();
-        }
-
-        function updateCartItemQuantity(productId, newQuantity) {
-            const cartItem = cart.find(item => item.id === productId);
-            if (cartItem) {
-                if (newQuantity <= 0) {
-                    removeFromCart(productId);
-                } else {
-                    cartItem.quantity = newQuantity;
-                    saveCart();
-                    updateCartCount();
-                    renderCart();
-                }
-            }
-        }
-
         function renderCart() {
             cartItemsList.innerHTML = ''; // Clear existing cart items
             let total = 0;
@@ -609,7 +787,14 @@
                         </div>
                     `;
                     cartItemsList.appendChild(listItem);
-                    total += item.price * item.quantity;
+                    let price = item.price;
+                    if (typeof price === 'string') {
+                        const priceMatch = price.match(/[\d\.]+/);
+                        if (priceMatch) {
+                            price = parseFloat(priceMatch[0]);
+                        }
+                    }
+                    total += price * item.quantity;
                 });
             }
 
@@ -618,7 +803,7 @@
             // Add event listeners for quantity changes and remove buttons
             document.querySelectorAll('#cart-items input[type="number"]').forEach(input => {
                 input.addEventListener('change', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     const newQuantity = parseInt(event.target.value);
                     updateCartItemQuantity(productId, newQuantity);
                 });
@@ -626,13 +811,11 @@
 
             document.querySelectorAll('#cart-items .cart-item-controls button').forEach(button => {
                 button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     removeFromCart(productId);
                 });
             });
         }
-
-        // --- Cart Modal Logic ---
         function showCart() {
             renderCart();
             cartModal.classList.add('active');
@@ -642,50 +825,19 @@
             cartModal.classList.remove('active');
         }
 
-        cartButton.addEventListener('click', showCart);
-        cartCloseButton.addEventListener('click', hideCart);
-        cartModal.addEventListener('click', (event) => {
-            if (event.target === cartModal) {
-                hideCart();
-            }
-        });
-
-        checkoutButton.addEventListener('click', () => {
-            if (cart.length > 0) {
-                alert('Proceeding to checkout! (This is a demo, no actual checkout takes place.)');
-                cart = []; // Empty cart after checkout
-                saveCart();
-                hideCart();
-                updateCartCount();
-                renderCart(); // Update cart display after checkout
-            } else {
-                alert('Your cart is empty. Please add items before checking out.');
-            }
-        });
-
-
-        // --- CSV Data Loading ---
-        async function loadProducts() {
-            try {
-                const response = await fetch('data/products001.csv');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const csvText = await response.text();
-                allProductsData = parseCSV(csvText); // Store all products
-                performSearchAndFilter(); // Render products based on initial search (empty, so all products)
-                updateCartCount(); // Ensure cart count is updated
-            } catch (error) {
-                console.error('Error loading products:', error);
-                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: red;">Error loading products. Please ensure "data/products001.csv" exists and is accessible. Details: ' + error.message + '</p>';
-            }
-        }
-
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadProducts(); // Start by loading the products
+            console.log("DOM content loaded. Initializing app.");
+            appState.authToken = localStorage.getItem('authToken');
+            if (appState.authToken) {
+                appState.isLoggedIn = true;
+                loadCart();
+            }
+            updateAuthUI();
+            setupEventListeners();
+            loadProducts();
+            updateCartCount();
         });
-
     </script>
 </body>
 </html>
