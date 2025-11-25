@@ -24,14 +24,19 @@
         header h1 {
             margin: 0;
         }
-        .cart-icon {
+        .user-actions button, .cart-icon {
             background: none;
             border: none;
             color: #fff;
-            font-size: 1.5rem;
+            font-size: 1rem;
             cursor: pointer;
             position: relative;
-            padding: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+        }
+        .user-actions button:hover {
+            background-color: #555;
         }
         .cart-count {
             background-color: red;
@@ -50,11 +55,13 @@
         .controls {
             display: flex;
             justify-content: center;
+            gap: 1rem;
             margin-bottom: 2rem;
+            align-items: center;
         }
-        #search-input {
+        #search-input, #sort-select {
             width: 100%;
-            max-width: 500px;
+            max-width: 400px;
             padding: 0.8rem 1rem;
             border: 1px solid #ccc;
             border-radius: 5px;
@@ -94,11 +101,6 @@
             font-size: 1.5rem;
             margin: 1rem 0.5rem 0.5rem;
         }
-        .product-card p {
-            font-size: 1.1rem;
-            color: #555;
-            margin: 0.5rem;
-        }
         .product-card .price {
             font-size: 1.3rem;
             font-weight: bold;
@@ -119,24 +121,27 @@
         .product-card .actions button:hover {
             background-color: #0056b3;
         }
-        .product-card .actions button.details {
-            background-color: #6c757d;
+         .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
         }
-        .product-card .actions button.details:hover {
-            background-color: #5a6268;
+        .pagination button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
-
         /* Modal styles */
         .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
+            display: none;
+            position: fixed;
+            z-index: 1000;
             left: 0;
             top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
             align-items: center;
             justify-content: center;
         }
@@ -147,545 +152,292 @@
             background-color: #fefefe;
             margin: auto;
             padding: 2rem;
-            border: 1px solid #888;
             border-radius: 10px;
             width: 80%;
-            max-width: 600px;
+            max-width: 700px;
             position: relative;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
         }
         .close-button {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
-            position: absolute;
-            top: 10px;
-            right: 20px;
             cursor: pointer;
         }
-        .close-button:hover,
-        .close-button:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        /* Product Detail Modal Specifics */
-        #product-detail-modal .modal-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            text-align: center;
-        }
-        #detail-image {
-            max-width: 80%;
-            height: auto;
-            border-radius: 5px;
-            margin: 0 auto;
-        }
-        #detail-name {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-        #detail-description {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #666;
-        }
-        #detail-price {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #007bff;
-            margin-top: 1rem;
-        }
-        #detail-actions button {
-            background-color: #28a745;
-            color: #fff;
-            border: none;
-            padding: 1rem 2rem;
-            margin-top: 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: background-color 0.2s ease;
-        }
-        #detail-actions button:hover {
-            background-color: #218838;
-        }
-
-        /* Cart Modal Specifics */
-        #cart-modal .modal-content {
-            max-width: 700px;
-        }
-        #cart-items {
+        /* Cart & Order History Modals */
+        #cart-items, #order-history-list {
             list-style: none;
             padding: 0;
-            margin-bottom: 1rem;
             max-height: 400px;
             overflow-y: auto;
         }
-        .cart-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .cart-item, .order {
             padding: 1rem 0;
             border-bottom: 1px solid #eee;
         }
-        .cart-item:last-child {
-            border-bottom: none;
+        .order h3 {
+            margin-top: 0;
         }
-        .cart-item img {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-right: 1rem;
-        }
-        .cart-item-info {
-            flex-grow: 1;
-        }
-        .cart-item-info h3 {
-            margin: 0 0 0.5rem 0;
-            font-size: 1.2rem;
-        }
-        .cart-item-info p {
-            margin: 0;
-            color: #666;
-        }
-        .cart-item-controls {
+        .order-item {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            justify-content: space-between;
         }
-        .cart-item-controls input {
-            width: 50px;
-            padding: 0.5rem;
-            text-align: center;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .cart-item-controls button {
-            background-color: #dc3545;
-            color: #fff;
-            border: none;
-            padding: 0.5rem 0.8rem;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .cart-item-controls button:hover {
-            background-color: #c82333;
-        }
-        #cart-total {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: right;
-            margin-top: 1rem;
-            border-top: 1px solid #eee;
-            padding-top: 1rem;
-        }
-        #checkout-button {
-            background-color: #28a745;
-            color: #fff;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: background-color 0.2s ease;
-            width: 100%;
-            margin-top: 1rem;
-        }
-        #checkout-button:hover {
-            background-color: #218838;
-        }
-        #cart-empty-message {
-            text-align: center;
-            padding: 2rem;
-            color: #777;
+        #checkout-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
     </style>
 </head>
 <body>
     <header>
         <h1>My Awesome Store</h1>
-        <button class="cart-icon" id="cart-button">
-            🛒 <span class="cart-count" id="cart-count">0</span>
-        </button>
+        <div class="user-actions">
+            <span id="user-status" style="margin-right: 1rem;"></span>
+            <button id="orders-button" style="display:none;">My Orders</button>
+            <button id="auth-button">Login</button>
+            <button class="cart-icon" id="cart-button">
+                🛒 <span class="cart-count" id="cart-count">0</span>
+            </button>
+        </div>
     </header>
 
     <main>
         <div class="controls">
-            <input type="text" id="search-input" placeholder="Search products by name or description..." />
+            <input type="text" id="search-input" placeholder="Search products..." />
+            <select id="sort-select">
+                <option value="title-asc">Sort by Name (A-Z)</option>
+                <option value="title-desc">Sort by Name (Z-A)</option>
+                <option value="price-asc">Sort by Price (Low to High)</option>
+                <option value="price-desc">Sort by Price (High to Low)</option>
+            </select>
         </div>
-
-        <section id="product-list">
-            <!-- Product cards will be loaded here by JavaScript -->
-        </section>
+        <section id="product-list"></section>
+        <div class="pagination">
+            <button id="prev-page-button" disabled>Previous</button>
+            <span id="pagination-info">Page 1 of 1</span>
+            <button id="next-page-button" disabled>Next</button>
+        </div>
     </main>
 
-    <!-- Product Detail Modal -->
-    <div id="product-detail-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="detail-close-button">&times;</span>
-            <img id="detail-image" src="" alt="Product Image">
-            <h2 id="detail-name"></h2>
-            <p id="detail-description"></p>
-            <p id="detail-price"></p>
-            <div id="detail-actions">
-                <button id="add-to-cart-detail-button">Add to Cart</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cart Modal -->
+    <!-- Modals -->
     <div id="cart-modal" class="modal">
         <div class="modal-content">
             <span class="close-button" id="cart-close-button">&times;</span>
             <h2>Your Cart</h2>
-            <ul id="cart-items">
-                <!-- Cart items will be loaded here by JavaScript -->
-            </ul>
-            <p id="cart-empty-message" style="display: none;">Your cart is empty.</p>
-            <div id="cart-summary">
-                <p id="cart-total">Total: $0.00</p>
-                <button id="checkout-button">Checkout</button>
+            <ul id="cart-items"></ul>
+            <p id="cart-total">Total: $0.00</p>
+            <button id="checkout-button">Checkout</button>
+        </div>
+    </div>
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="checkout-close-button">&times;</span>
+            <h2>Checkout</h2>
+            <form id="checkout-form">
+                <input type="text" id="shipping-address" placeholder="Shipping Address" required>
+                <button type="submit">Place Order</button>
+            </form>
+        </div>
+    </div>
+    <div id="orders-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="orders-close-button">&times;</span>
+            <h2>My Orders</h2>
+            <ul id="order-history-list"></ul>
+        </div>
+    </div>
+    <div id="auth-modal" class="modal">
+         <div class="modal-content">
+            <span class="close-button" id="auth-close-button">&times;</span>
+            <div id="login-view">
+                <h2>Login</h2>
+                <form id="login-form" class="auth-form">
+                    <input type="text" id="login-username" placeholder="Username" required>
+                    <input type="password" id="login-password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                    <p>Don't have an account? <a href="#" id="show-register">Register here</a></p>
+                </form>
+            </div>
+            <div id="register-view" style="display:none;">
+                <h2>Register</h2>
+                <form id="register-form" class="auth-form">
+                    <input type="text" id="register-username" placeholder="Username" required>
+                    <input type="password" id="register-password" placeholder="Password" required>
+                    <button type="submit">Register</button>
+                    <p>Already have an account? <a href="#" id="show-login">Login here</a></p>
+                </form>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variable to store all products loaded from CSV
-        let allProductsData = [];
+        const appState = { products: [], currentPage: 1, isLoggedIn: false, authToken: null };
+        const dom = {
+            productList: document.getElementById('product-list'),
+            cartButton: document.getElementById('cart-button'),
+            cartModal: document.getElementById('cart-modal'),
+            cartItems: document.getElementById('cart-items'),
+            cartTotal: document.getElementById('cart-total'),
+            checkoutButton: document.getElementById('checkout-button'),
+            checkoutModal: document.getElementById('checkout-modal'),
+            checkoutForm: document.getElementById('checkout-form'),
+            ordersButton: document.getElementById('orders-button'),
+            ordersModal: document.getElementById('orders-modal'),
+            orderHistoryList: document.getElementById('order-history-list'),
+            authButton: document.getElementById('auth-button'),
+            authModal: document.getElementById('auth-modal'),
+            userStatus: document.getElementById('user-status'),
+        };
 
-        const productListDiv = document.getElementById('product-list');
-        const cartCountSpan = document.getElementById('cart-count');
-        const cartButton = document.getElementById('cart-button');
-
-        const productDetailModal = document.getElementById('product-detail-modal');
-        const detailCloseButton = document.getElementById('detail-close-button');
-        const detailImage = document.getElementById('detail-image');
-        const detailName = document.getElementById('detail-name');
-        const detailDescription = document.getElementById('detail-description');
-        const detailPrice = document.getElementById('detail-price');
-        const addToCartDetailButton = document.getElementById('add-to-cart-detail-button');
-
-        const cartModal = document.getElementById('cart-modal');
-        const cartCloseButton = document.getElementById('cart-close-button');
-        const cartItemsList = document.getElementById('cart-items');
-        const cartTotalSpan = document.getElementById('cart-total');
-        const cartEmptyMessage = document.getElementById('cart-empty-message');
-        const cartSummary = document.getElementById('cart-summary');
-        const checkoutButton = document.getElementById('checkout-button');
-
-        const searchInput = document.getElementById('search-input');
-
-        let cart = JSON.parse(localStorage.getItem('cart')) || []; // Load cart from local storage
-
-        // --- Utility Functions ---
         function formatPrice(price) {
-            return `$${price.toFixed(2)}`;
+            return `$${parseFloat(price.replace(' USD', '')).toFixed(2)}`;
         }
 
-        function updateCartCount() {
-            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-            cartCountSpan.textContent = totalItems;
-        }
-
-        function saveCart() {
-            localStorage.setItem('cart', JSON.stringify(cart));
-        }
-
-        // Function to parse CSV data into an array of objects
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            if (lines.length < 2) return []; // Need at least header and one data row
-
-            const headers = lines[0].split(',').map(h => h.trim());
-            const products = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue; // Skip empty lines
-
-                const values = [];
-                let inQuote = false;
-                let currentField = '';
-
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') {
-                        // Handle escaped quotes within a field (e.g., "This is a ""quoted"" field")
-                        if (j + 1 < line.length && line[j+1] === '"' && inQuote) {
-                            currentField += '"';
-                            j++; // Skip the next quote as it's an escaped one
-                        } else {
-                            inQuote = !inQuote; // Toggle quote state
-                        }
-                    } else if (char === ',' && !inQuote) {
-                        values.push(currentField.trim());
-                        currentField = '';
-                    } else {
-                        currentField += char;
-                    }
-                }
-                values.push(currentField.trim()); // Add the last field
-
-                const product = {};
-                headers.forEach((header, index) => {
-                    let value = values[index];
-                    if (header === 'id' || header === 'price') {
-                        product[header] = parseFloat(value);
-                    } else {
-                        product[header] = value;
-                    }
-                });
-                products.push(product);
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (appState.authToken) {
+                headers['Authorization'] = `Bearer ${appState.authToken}`;
             }
-            return products;
-        }
-
-        // --- Product List Rendering ---
-        function renderProducts(productsToDisplay) {
-            productListDiv.innerHTML = ''; // Clear existing products
-
-            if (productsToDisplay.length === 0) {
-                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: #555;">No products found matching your criteria.</p>';
-                return;
+            const options = { method, headers };
+            if (body) {
+                options.body = JSON.stringify(body);
             }
-
-            productsToDisplay.forEach(product => {
-                const productCard = document.createElement('div');
-                productCard.classList.add('product-card');
-                productCard.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}">
-                    <h2>${product.name}</h2>
-                    <p class="price">${formatPrice(product.price)}</p>
-                    <div class="actions">
-                        <button class="details" data-id="${product.id}">View Details</button>
-                        <button class="add-to-cart" data-id="${product.id}">Add to Cart</button>
-                    </div>
-                `;
-                productListDiv.appendChild(productCard);
-            });
-
-            // Add event listeners for buttons in product cards
-            document.querySelectorAll('.product-card .details').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    const product = allProductsData.find(p => p.id === productId);
-                    if (product) {
-                        showProductDetail(product);
-                    }
-                });
-            });
-
-            document.querySelectorAll('.product-card .add-to-cart').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    addToCart(productId, 1);
-                });
-            });
+            const response = await fetch(`http://localhost:5000${endpoint}`, options);
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
         }
 
-        // --- Search and Filter Logic ---
-        function performSearchAndFilter() {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-
-            let filteredProducts = allProductsData.filter(product => {
-                // Search by name and description
-                return product.name.toLowerCase().includes(searchTerm) ||
-                       product.description.toLowerCase().includes(searchTerm);
-            });
-            renderProducts(filteredProducts);
+        function renderProducts() {
+            dom.productList.innerHTML = appState.products.map(p => `
+                <div class="product-card">
+                    <img src="${p['image link']}" alt="${p.title}">
+                    <h2>${p.title}</h2>
+                    <p class="price">${formatPrice(p.price)}</p>
+                    <button class="add-to-cart" data-id="${p.id}">Add to Cart</button>
+                </div>
+            `).join('');
         }
 
-        // Attach event listener to search input
-        searchInput.addEventListener('input', performSearchAndFilter);
-
-        // --- Product Detail Modal Logic ---
-        function showProductDetail(product) { // Accepts product object directly
-            if (product) {
-                detailImage.src = product.image;
-                detailImage.alt = product.name;
-                detailName.textContent = product.name;
-                detailDescription.textContent = product.description;
-                detailPrice.textContent = formatPrice(product.price);
-                addToCartDetailButton.dataset.id = product.id; // Store ID for add to cart
-                productDetailModal.classList.add('active');
-            }
-        }
-
-        function hideProductDetail() {
-            productDetailModal.classList.remove('active');
-        }
-
-        detailCloseButton.addEventListener('click', hideProductDetail);
-        productDetailModal.addEventListener('click', (event) => {
-            if (event.target === productDetailModal) {
-                hideProductDetail();
-            }
-        });
-
-        addToCartDetailButton.addEventListener('click', (event) => {
-            const productId = parseInt(event.target.dataset.id);
-            addToCart(productId, 1);
-            hideProductDetail(); // Optionally close detail view after adding to cart
-        });
-
-        // --- Cart Logic ---
-        function addToCart(productId, quantity) {
-            const product = allProductsData.find(p => p.id === productId); // Always find from allProductsData
-            if (!product) return;
-
-            const existingCartItem = cart.find(item => item.id === productId);
-
-            if (existingCartItem) {
-                existingCartItem.quantity += quantity;
-            } else {
-                cart.push({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    quantity: quantity
-                });
-            }
-            saveCart();
-            updateCartCount();
-            renderCart();
-            // alert(`${product.name} added to cart!`); // Simple feedback, uncomment if desired
-        }
-
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id !== productId);
-            saveCart();
-            updateCartCount();
-            renderCart();
-        }
-
-        function updateCartItemQuantity(productId, newQuantity) {
-            const cartItem = cart.find(item => item.id === productId);
-            if (cartItem) {
-                if (newQuantity <= 0) {
-                    removeFromCart(productId);
-                } else {
-                    cartItem.quantity = newQuantity;
-                    saveCart();
-                    updateCartCount();
-                    renderCart();
-                }
-            }
-        }
-
-        function renderCart() {
-            cartItemsList.innerHTML = ''; // Clear existing cart items
-            let total = 0;
-
-            if (cart.length === 0) {
-                cartEmptyMessage.style.display = 'block';
-                cartSummary.style.display = 'none';
-            } else {
-                cartEmptyMessage.style.display = 'none';
-                cartSummary.style.display = 'block';
-                cart.forEach(item => {
-                    const listItem = document.createElement('li');
-                    listItem.classList.add('cart-item');
-                    listItem.innerHTML = `
-                        <img src="${item.image}" alt="${item.name}">
-                        <div class="cart-item-info">
-                            <h3>${item.name}</h3>
-                            <p>${formatPrice(item.price)}</p>
-                        </div>
-                        <div class="cart-item-controls">
-                            <input type="number" min="1" value="${item.quantity}" data-id="${item.id}">
-                            <button data-id="${item.id}">Remove</button>
-                        </div>
-                    `;
-                    cartItemsList.appendChild(listItem);
-                    total += item.price * item.quantity;
-                });
-            }
-
-            cartTotalSpan.textContent = `Total: ${formatPrice(total)}`;
-
-            // Add event listeners for quantity changes and remove buttons
-            document.querySelectorAll('#cart-items input[type="number"]').forEach(input => {
-                input.addEventListener('change', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    const newQuantity = parseInt(event.target.value);
-                    updateCartItemQuantity(productId, newQuantity);
-                });
-            });
-
-            document.querySelectorAll('#cart-items .cart-item-controls button').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
-                    removeFromCart(productId);
-                });
-            });
-        }
-
-        // --- Cart Modal Logic ---
-        function showCart() {
-            renderCart();
-            cartModal.classList.add('active');
-        }
-
-        function hideCart() {
-            cartModal.classList.remove('active');
-        }
-
-        cartButton.addEventListener('click', showCart);
-        cartCloseButton.addEventListener('click', hideCart);
-        cartModal.addEventListener('click', (event) => {
-            if (event.target === cartModal) {
-                hideCart();
-            }
-        });
-
-        checkoutButton.addEventListener('click', () => {
-            if (cart.length > 0) {
-                alert('Proceeding to checkout! (This is a demo, no actual checkout takes place.)');
-                cart = []; // Empty cart after checkout
-                saveCart();
-                hideCart();
-                updateCartCount();
-                renderCart(); // Update cart display after checkout
-            } else {
-                alert('Your cart is empty. Please add items before checking out.');
-            }
-        });
-
-
-        // --- CSV Data Loading ---
         async function loadProducts() {
-            try {
-                const response = await fetch('data/products001.csv');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const csvText = await response.text();
-                allProductsData = parseCSV(csvText); // Store all products
-                performSearchAndFilter(); // Render products based on initial search (empty, so all products)
-                updateCartCount(); // Ensure cart count is updated
-            } catch (error) {
-                console.error('Error loading products:', error);
-                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: red;">Error loading products. Please ensure "data/products001.csv" exists and is accessible. Details: ' + error.message + '</p>';
+            const data = await apiCall('/api/products');
+            appState.products = data.products;
+            renderProducts();
+        }
+
+        async function handleAuth() {
+            if (appState.isLoggedIn) {
+                appState.isLoggedIn = false;
+                appState.authToken = null;
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('username');
+                updateAuthUI();
+            } else {
+                dom.authModal.classList.add('active');
             }
         }
 
-        // --- Initial Load ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadProducts(); // Start by loading the products
-        });
+        function updateAuthUI() {
+            if (appState.isLoggedIn) {
+                dom.authButton.textContent = 'Logout';
+                dom.ordersButton.style.display = 'inline-block';
+                dom.userStatus.textContent = `Welcome, ${localStorage.getItem('username')}!`;
+            } else {
+                dom.authButton.textContent = 'Login';
+                dom.ordersButton.style.display = 'none';
+                dom.userStatus.textContent = '';
+            }
+        }
 
+        async function loadCart() {
+            if (!appState.isLoggedIn) return;
+            const cart = await apiCall('/api/cart');
+            dom.cartItems.innerHTML = cart.map(item => `<li>${item.title} - ${item.quantity} x ${formatPrice(item.price)}</li>`).join('');
+            const total = cart.reduce((sum, item) => sum + parseFloat(item.price.replace(' USD', '')) * item.quantity, 0);
+            dom.cartTotal.textContent = `Total: ${formatPrice(total.toString())}`;
+        }
+
+        async function showOrders() {
+            const orders = await apiCall('/api/orders');
+            dom.orderHistoryList.innerHTML = orders.map(order => `
+                <li class="order">
+                    <h3>Order #${order.id} - ${new Date(order.order_date).toLocaleDateString()}</h3>
+                    <p>Total: ${formatPrice(order.total_price.toString())}</p>
+                    <ul>${order.items.map(item => `<li>${item.title} (${item.quantity} x ${formatPrice(item.price.toString())})</li>`).join('')}</ul>
+                </div>
+            `).join('');
+            dom.ordersModal.classList.add('active');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            appState.authToken = localStorage.getItem('authToken');
+            if (appState.authToken) {
+                appState.isLoggedIn = true;
+                loadCart();
+            }
+            updateAuthUI();
+            loadProducts();
+
+            dom.authButton.addEventListener('click', handleAuth);
+            document.getElementById('show-register').addEventListener('click', () => {
+                document.getElementById('login-view').style.display = 'none';
+                document.getElementById('register-view').style.display = 'block';
+            });
+            document.getElementById('show-login').addEventListener('click', () => {
+                document.getElementById('register-view').style.display = 'none';
+                document.getElementById('login-view').style.display = 'block';
+            });
+            document.getElementById('login-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                const data = await apiCall('/api/login', 'POST', {
+                    username: e.target.elements['login-username'].value,
+                    password: e.target.elements['login-password'].value
+                });
+                appState.authToken = data.access_token;
+                appState.isLoggedIn = true;
+                localStorage.setItem('authToken', appState.authToken);
+                localStorage.setItem('username', e.target.elements['login-username'].value);
+                updateAuthUI();
+                dom.authModal.classList.remove('active');
+                loadCart();
+            });
+            document.getElementById('register-form').addEventListener('submit', async e => {
+                e.preventDefault();
+                await apiCall('/api/register', 'POST', {
+                    username: e.target.elements['register-username'].value,
+                    password: e.target.elements['register-password'].value
+                });
+                // Automatically log in after registration
+                const data = await apiCall('/api/login', 'POST', {
+                    username: e.target.elements['register-username'].value,
+                    password: e.target.elements['register-password'].value
+                });
+                appState.authToken = data.access_token;
+                appState.isLoggedIn = true;
+                localStorage.setItem('authToken', appState.authToken);
+                localStorage.setItem('username', e.target.elements['register-username'].value);
+                updateAuthUI();
+                dom.authModal.classList.remove('active');
+                loadCart();
+            });
+            dom.cartButton.addEventListener('click', () => { loadCart(); dom.cartModal.classList.add('active'); });
+            dom.checkoutButton.addEventListener('click', () => { dom.cartModal.classList.remove('active'); dom.checkoutModal.classList.add('active'); });
+            dom.checkoutForm.addEventListener('submit', async e => {
+                e.preventDefault();
+                await apiCall('/api/checkout', 'POST', { shipping_address: e.target.elements['shipping-address'].value });
+                dom.checkoutModal.classList.remove('active');
+                alert('Order placed successfully!');
+            });
+            dom.ordersButton.addEventListener('click', showOrders);
+            document.querySelectorAll('.close-button').forEach(btn => btn.addEventListener('click', () => btn.closest('.modal').classList.remove('active')));
+            dom.productList.addEventListener('click', async e => {
+                if (e.target.classList.contains('add-to-cart')) {
+                    await apiCall('/api/cart', 'POST', { product_id: e.target.dataset.id, quantity: 1 });
+                    loadCart();
+                }
+            });
+        });
     </script>
 </body>
 </html>
