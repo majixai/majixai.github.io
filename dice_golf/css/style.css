@@ -1,0 +1,87 @@
+/**
+ * @fileoverview Custom styles for the Dice Golf application.
+ */
+
+/* --- Color Scheme --- */
+/* The user requested #00539B as the primary theme color. */
+.w3-theme-l5 {color:#f0f6fc; background-color:#00539B}
+.w3-theme-l4 {color:#deebf7; background-color:#00539B}
+.w3-theme-l3 {color:#beddf0; background-color:#00539B}
+.w3-theme-l2 {color:#9ecfe8; background-color:#00539B}
+.w3-theme-l1 {color:#7ec1e1; background-color:#00539B}
+.w3-theme-d1 {color:#3b8bc9; background-color:#ffffff}
+.w3-theme-d2 {color:#2d7cc1; background-color:#ffffff}
+.w3-theme-d3 {color:#246cb6; background-color:#ffffff}
+.w3-theme-d4 {color:#1e5aa9; background-color:#ffffff}
+.w3-theme-d5 {color:#194b8f; background-color:#ffffff}
+
+.w3-theme-light {color:#000 !important; background-color:#f0f6fc !important}
+.w3-theme-dark {color:#fff !important; background-color:#194b8f !important}
+.w3-theme-action {color:#fff !important; background-color:#194b8f !important}
+
+.w3-theme {color:#fff !important; background-color:#00539B !important}
+.w3-text-theme {color:#00539B !important}
+.w3-border-theme {border-color:#00539B !important}
+
+/* --- Parallax Effect --- */
+.parallax {
+  position: relative;
+  background-image: url('https://images.unsplash.com/photo-1500932382214-c32f79be886c?q=80&w=2070&auto=format&fit=crop');
+  min-height: 300px;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.parallax::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* --- Dice & Animations --- */
+#dice-container svg {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border-radius: 10px;
+}
+
+/* A simple animation for the dice roll */
+@keyframes roll {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.dice-rolling {
+  animation: roll 0.5s ease-in-out;
+}
+
+
+/* --- Layout & Responsiveness --- */
+body {
+    background-color: #f4f4f4;
+}
+
+.container {
+    max-width: 960px;
+}
+
+/* Media queries for smaller screens */
+@media (max-width: 768px) {
+  .parallax {
+    min-height: 200px;
+  }
+  .w3-jumbo {
+      font-size: 48px !important;
+  }
+  .col-md-4, .col-md-8 {
+      margin-bottom: 2rem;
+  }
+}
