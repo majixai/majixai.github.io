@@ -1,0 +1,88 @@
+/**
+ * @fileoverview Custom styles for the strategic Dice Golf application.
+ */
+
+/* --- Color Scheme --- */
+.w3-theme {color:#fff !important; background-color:#00539B !important}
+.w3-text-theme {color:#00539B !important}
+.w3-border-theme {border-color:#00539B !important}
+/* (Other theme colors can be kept for W3.CSS compatibility) */
+
+/* --- Parallax Effect --- */
+.parallax {
+  position: relative;
+  background-image: url('https://images.unsplash.com/photo-1500932382214-c32f79be886c?q=80&w=2070&auto=format&fit=crop');
+  min-height: 300px;
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.parallax::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+.parallax .w3-display-middle {
+    z-index: 2;
+}
+
+
+/* --- New UI Elements --- */
+
+/* Dice Animation */
+@keyframes roll {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.dice-rolling {
+  animation: roll 0.5s ease-in-out;
+}
+
+/* Club Selector */
+#club-selector .club-btn {
+    text-align: left;
+    font-weight: bold;
+}
+
+/* Shot Mechanic */
+#shot-mechanic {
+    cursor: pointer;
+    user-select: none;
+    background-color: #f8f9fa;
+}
+#shot-slider-container {
+    height: 30px;
+    border: 1px solid #ccc;
+}
+#shot-slider-bar {
+    height: 100%;
+    background-color: #00539B;
+    width: 0%; /* Start at 0 */
+}
+
+/* Terrain Tags */
+.terrain-fairway { background-color: #28a745; color: white; }
+.terrain-rough   { background-color: #17a2b8; color: white; }
+.terrain-sand    { background-color: #ffc107; color: black; }
+.terrain-green   { background-color: #6f42c1; color: white; }
+
+
+/* --- General Layout & Responsiveness --- */
+body {
+    background-color: #f4f4f4;
+}
+.container {
+    max-width: 960px;
+}
+@media (max-width: 768px) {
+  .parallax { min-height: 200px; }
+  .w3-jumbo { font-size: 48px !important; }
+  .col-md-4, .col-md-8 { margin-bottom: 2rem; }
+}
