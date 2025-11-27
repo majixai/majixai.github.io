@@ -1,53 +1,43 @@
+/**
+ * @fileoverview Custom styles for the Scraped Financial Data Engine.
+ */
+
+/* --- Theme --- */
+.w3-theme {
+    color: #fff !important;
+    background-color: #00539B !important;
+}
+.w3-text-theme {
+    color: #00539B !important;
+}
+
+/* --- General Layout --- */
 body {
-    font-family: sans-serif;
-    margin: 2em;
     background-color: #f4f4f4;
-    color: #333;
 }
 
-h1 {
-    text-align: center;
+h1, h2 {
+    font-weight: 300;
 }
 
-#loader {
-    text-align: center;
-    font-size: 1.2em;
-    margin: 2em;
+/* --- Summary Statistics --- */
+#summary-stats p {
+    margin-bottom: 0.5rem;
+}
+#summary-stats b {
+    color: #00539B;
 }
 
-#data-container {
-    margin: 0 auto;
-    width: 80%;
+/* --- Table --- */
+#data-container table {
+    margin-top: 1rem;
 }
-
-#chart-container {
-    margin: 2em auto;
-    width: 80%;
-    max-width: 800px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1em;
-}
-
-th, td {
-    padding: 0.75em;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-thead {
-    background-color: #007bff;
-    color: white;
-}
-
-tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-tbody tr:hover {
-    background-color: #f1f1f1;
+#data-container tr {
     cursor: pointer;
+}
+
+/* --- Loader --- */
+#loader {
+    font-size: 1.2em;
+    color: #666;
 }
