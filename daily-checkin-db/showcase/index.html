@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Check-in DB Showcase</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="w3-container w3-teal">
+        <h1>Daily Check-in DB Showcase</h1>
+    </div>
+
+    <div class="parallax"></div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Animations</h2>
+                <div class="animation-container">
+                    <svg class="animated-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="40" stroke="green" stroke-width="4" fill="yellow" />
+                    </svg>
+                </div>
+                <button id="toggleAnimation" class="btn btn-primary mt-2">Start/Stop Animation</button>
+            </div>
+            <div class="col-md-6">
+                <h2>Data</h2>
+                <div id="data-output" class="w3-card w3-padding">
+                    <p>Data will be loaded here...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- To enable Firebase, uncomment these lines and configure your project -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script> -->
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script> -->
+    <script src="app.js"></script>
+</body>
+</html>

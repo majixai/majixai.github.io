@@ -1,0 +1,33 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.parallax {
+    background-image: url("https://via.placeholder.com/1500x800");
+    min-height: 500px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.animation-container {
+    width: 100px;
+    height: 100px;
+}
+
+.animated-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.rotating {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
