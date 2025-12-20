@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AlphaNexus | Advanced System Directory</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { background: #050505; color: #00ffcc; font-family: 'Courier New', monospace; }
+        .struct-card { background: #111; border: 1px solid #00ffcc; padding: 20px; margin: 10px 0; }
+        .hidden { display: none; }
+        .pulse { border-left: 4px solid #00ffcc; padding-left: 15px; animation: glow 2s infinite; }
+        @keyframes glow { 0% { border-color: #003322; } 50% { border-color: #00ffcc; } 100% { border-color: #003322; } }
+    </pre>
+</head>
+<body class="w3-container">
+
+    <header class="w3-padding-32">
+        <h1 class="w3-text-cyan fw-bold">NEXUS_DIRECTORY_v2.5</h1>
+        <p class="w3-opacity">Protocol: Gzip-Ubiquitous | Mode: Advanced OOP Browser</p>
+    </header>
+
+    <div id="settings-panel" class="struct-card pulse">
+        <h3>[SYSTEM_SETTINGS]</h3>
+        <div id="settings-display"></div>
+    </div>
+
+    <div id="file-explorer" class="struct-card">
+        <h3>[DAT_PERSISTENCE_LAYER]</h3>
+        <div id="file-list"></div>
+    </div>
+
+    <!-- Advanced UI Logic -->
+    <script type="module">
+        /**
+         * @interface ISystemConfig
+         * Standard structure for system settings
+         */
+        const SettingsStruct = (key, val) => ({ key, val, timestamp: Date.now() });
+
+        /**
+         * @class NexusExplorer
+         * Uses Advanced OOP: Private members, Static methods, Iterators.
+         */
+        class NexusExplorer {
+            #token = "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";
+            #repo = "alpha-nexus-db";
+            #owner = "YOUR_GITHUB_USERNAME";
+
+            constructor() {
+                console.log("Initializing Nexus Explorer Protocol...");
+            }
+
+            /**
+             * Static Wrapper for Bitwise Decryption
+             */
+            static resolvePermissions(bits) {
+                const map = { 1: 'READ', 2: 'WRITE', 4: 'EXEC', 8: 'ADMIN' };
+                return Object.keys(map)
+                    .filter(key => bits & key)
+                    .map(key => map[key]);
+            }
+
+            /**
+             * Generator for Iterating over Directory Files
+             */
+            async *getFileGenerator() {
+                const url = `https://api.github.com/repos/${this.#owner}/${this.#repo}/contents/db`;
+                const res = await fetch(url, { headers: { "Authorization": `token ${this.#token}` } });
+                const files = await res.json();
+                
+                for (const file of files) {
+                    yield file;
+                }
+            }
+
+            /**
+             * Public Method to Render Directory
+             */
+            async render() {
+                const list = document.getElementById('file-list');
+                const gen = this.getFileGenerator();
+
+                for await (const file of gen) {
+                    const div = document.createElement('div');
+                    div.className = 'w3-panel w3-border-bottom w3-border-dark-grey p-2';
+                    div.innerHTML = `
+                        <span class="w3-text-yellow">> ${file.name}</span>
+                        <span class="w3-right small w3-opacity">${(file.size / 1024).toFixed(2)} KB [GZIP]</span>
+                    `;
+                    list.appendChild(div);
+                }
+            }
+        }
+
+        // IIFE Initialization with Advanced Hooks
+        (function() {
+            const explorer = new NexusExplorer();
+            explorer.render();
+
+            // Display Interactive Settings Data
+            const settings = [
+                SettingsStruct("COMPRESSION", "GZIP_UBC"),
+                SettingsStruct("AUTH_GATE", "REGEX_STRICT"),
+                SettingsStruct("SYNC_INTERVAL", "HIGH_FREQ")
+            ];
+
+            const setDisp = document.getElementById('settings-display');
+            settings.forEach(s => {
+                setDisp.innerHTML += `<div class="w3-small text-white">KEY: ${s.key} | VAL: ${s.val}</div>`;
+            });
+        })();
+    </script>
+</body>
+</html>
