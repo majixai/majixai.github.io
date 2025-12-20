@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlphaNexus | Walleye Capital Protocol</title>
+  
+  <!-- PWA Metadata -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0e11">
+  <link rel="canonical" href="https://your-username.github.io/alpha-nexus-db/">
+
+  <!-- UI Frameworks -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
+  <style>
+    :root { --nexus-cyan: #00f2fe; --nexus-blue: #4facfe; --dark-bg: #0b0e11; --card-bg: #161a1e; }
+    body { background-color: var(--dark-bg); color: #e1e1e1; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+    
+    /* Parallax & Visuals */
+    .parallax-header {
+      background: linear-gradient(rgba(11, 14, 17, 0.8), rgba(11, 14, 17, 0.8)), 
+                  url('https://images.unsplash.com/photo-1639762681485-074b7f938ba0?q=80&w=2000');
+      height: 300px; background-attachment: fixed; background-size: cover; background-position: center;
+      display: flex; align-items: center; justify-content: center; border-bottom: 2px solid #333;
+    }
+
+    /* SVG Status Pulse */
+    #status-pulse { fill: var(--nexus-cyan); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { opacity: 1; r: 4; } 100% { opacity: 0; r: 12; } }
+
+    /* Layout */
+    .sidebar { width: 260px; height: 100vh; position: fixed; background: var(--card-bg); z-index: 100; border-right: 1px solid #2d333b; }
+    .main-content { margin-left: 260px; padding: 40px; transition: 0.3s; }
+    
+    /* Regex Validation Classes */
+    .regex-valid { border: 2px solid #00c853 !important; box-shadow: 0 0 5px #00c853; }
+    .regex-invalid { border: 2px solid #ff1744 !important; }
+    
+    .nexus-card { background: var(--card-bg); border-radius: 12px; padding: 25px; border: 1px solid #30363d; margin-bottom: 20px; }
+    @media (max-width: 992px) { .sidebar { display: none; } .main-content { margin-left: 0; } }
+  </style>
+</head>
+<body>
+
+<!-- Regex Auth Gate -->
+<div id="auth-gate" class="w3-modal" style="display:block">
+  <div class="w3-modal-content w3-animate-zoom w3-card-4" style="max-width:450px; background:#000; border-radius:20px; padding:40px;">
+    <div class="text-center mb-4">
+      <svg width="60" height="60" viewBox="0 0 40 40">
+        <circle id="status-pulse" cx="20" cy="20" r="6" />
+        <circle cx="20" cy="20" r="8" fill="none" stroke="var(--nexus-cyan)" stroke-width="1" />
+      </svg>
+      <h2 class="fw-bold w3-text-cyan">DECRYPT ACCESS</h2>
+      <p class="small text-muted">Strict Member Validation Required</p>
+    </div>
+    
+    <div class="mb-3">
+      <label class="form-label small">Member ID (ANX-0000-XX)</label>
+      <input type="text" id="mem_id" class="form-control bg-dark text-white border-secondary" 
+             placeholder="ANX-XXXX-XX" oninput="Nexus.validate(this, /^ANX-\d{4}-[A-Z]{2}$/)">
+    </div>
+    <div class="mb-4">
+      <label class="form-label small">Protocol Email</label>
+      <input type="email" id="mem_email" class="form-control bg-dark text-white border-secondary" 
+             placeholder="member@walleye.com" oninput="Nexus.validate(this, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)">
+    </div>
+    
+    <button class="btn btn-primary w-100 py-3 fw-bold shadow" onclick="Nexus.login()">INITIALIZE INTERFACE</button>
+  </div>
+</div>
+
+<!-- Application Shell -->
+<div id="app" style="display:none;">
+  <nav class="sidebar w3-bar-block">
+    <div class="p-4 border-bottom border-secondary mb-3">
+      <h4 class="w3-text-cyan fw-bold">ALPHA NEXUS</h4>
+      <div class="small text-muted">Core Engine v2.5</div>
+    </div>
+    <a href="#" class="w3-bar-item w3-button py-3" onclick="Nexus.route('dash')"><i class="material-icons align-middle me-2">dashboard</i> Dashboard</a>
+    <a href="#" class="w3-bar-item w3-button py-3" onclick="Nexus.route('feed')"><i class="material-icons align-middle me-2">trending_up</i> Market Feed</a>
+    <a href="#" class="w3-bar-item w3-button py-3" onclick="Nexus.route('upload')"><i class="material-icons align-middle me-2">cloud_upload</i> Data Ingest</a>
+    <a href="#" class="w3-bar-item w3-button py-3" onclick="Nexus.route('settings')"><i class="material-icons align-middle me-2">settings</i> Settings</a>
+  </nav>
+
+  <main class="main-content">
+    <div class="parallax-header w3-round-xlarge shadow-lg mb-5">
+      <div class="text-center">
+        <h1 class="display-4 fw-bold text-white">SYSTEM ONLINE</h1>
+        <span class="badge bg-info text-dark">GZIP PROTOCOL ACTIVE</span>
+      </div>
+    </div>
+
+    <div id="view-container">
+      <!-- Dynamic Content Injected Here -->
+    </div>
+  </main>
+</div>
+
+<script>
+/**
+ * @namespace Nexus
+ * High-performance PWA Controller
+ */
+const Nexus = (() => {
+  const GAS_URL = "YOUR_GAS_WEBAPP_URL"; // Replace with your GAS URL
+  let currentUser = null;
+
+  return {
+    validate: (el, regex) => {
+      el.classList.toggle('regex-valid', regex.test(el.value));
+      el.classList.toggle('regex-invalid', !regex.test(el.value));
+    },
+
+    login: () => {
+      const id = document.getElementById('mem_id').value;
+      const email = document.getElementById('mem_email').value;
+      if (/^ANX-\d{4}-[A-Z]{2}$/.test(id) && email.includes('@')) {
+        currentUser = { id, email };
+        document.getElementById('auth-gate').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        Nexus.route('dash');
+      }
+    },
+
+    route: async (view) => {
+      const container = document.getElementById('view-container');
+      container.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-info"></div></div>';
+      
+      if (view === 'dash') {
+        container.innerHTML = `
+          <div class="row">
+            <div class="col-md-6">
+              <div class="nexus-card">
+                <h3>Member Profile</h3>
+                <p>ID: <span class="text-info">${currentUser.id}</span></p>
+                <div class="d-grid mt-3">
+                  <button class="btn btn-outline-info" onclick="Nexus.checkIn()">Daily Check-In (12/20)</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="nexus-card">
+                <h3>System Status</h3>
+                <p>Date: Dec 20, 2025</p>
+                <p>Database: GitHub Pages Persistent</p>
+              </div>
+            </div>
+          </div>`;
+      } else if (view === 'feed') {
+        // Mock data representing the Walleye Group extraction from video
+        const data = [
+          { t: 'RKLB', a: 'BUY', r: '56.50-57.50', n: 'Support @ 56.40' },
+          { t: 'BTC', a: 'HOLD', r: '88k-95k', n: 'Fear Index: 16 (Extreme Fear)' },
+          { t: 'MU', a: 'REBOUND', r: 'Earnings Cycle', n: 'Up 7% recently' }
+        ];
+        container.innerHTML = `<h3>Market Feed (Walleye Extracted)</h3>` + data.map(i => `
+          <div class="nexus-card">
+            <div class="d-flex justify-content-between">
+              <h4 class="w3-text-cyan">${i.t}</h4>
+              <span class="badge bg-success">${i.a}</span>
+            </div>
+            <p class="mb-1">Target Range: ${i.r}</p>
+            <small class="text-muted">${i.n}</small>
+          </div>`).join('');
+      }
+    },
+
+    checkIn: () => {
+      const dateStr = "12/20"; // Dynamically derived from video context
+      Nexus.callGAS('CHECKIN', { email: currentUser.email, dateString: dateStr })
+           .then(res => alert(res));
+    },
+
+    callGAS: async (action, payload) => {
+      // In production, use JSONP or CORS proxy if needed for GAS
+      // This is a placeholder for the fetch call to the GAS Gateway
+      console.log(`Executing Protocol: ${action}`, payload);
+      return `Protocol Executed: ${action} for ${payload.email}`;
+    }
+  };
+})();
+
+// Service Worker Registration for PWA functionality
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log("Nexus Service Worker Registered"));
+}
+
+window.onload = () => Nexus.init && Nexus.init();
+</script>
+</body>
+</html>
