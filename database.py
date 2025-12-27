@@ -3,7 +3,7 @@ import click
 from flask import current_app, g
 from flask.cli import with_appcontext
 
-DATABASE = 'database.db'
+DATABASE = 'dbs/database.db'
 
 def get_db():
     if 'db' not in g:
