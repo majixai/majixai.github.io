@@ -31,3 +31,21 @@ Once deployed, the web app's URL will serve an HTML page containing detailed doc
   "forwardUrl": "OPTIONAL_WEBHOOK_URL"
 }
 ```
+
+## Git-Based Triggering via GitHub Actions
+
+This project includes a GitHub Action workflow that automatically triggers the webhook whenever the `google_script_project/trigger.json` file is updated on the `main` branch.
+
+### How it Works
+
+1.  **Update `trigger.json`**: Modify the `trigger.json` file in this directory with the Google Drive `fileId` of the compressed file you want to process.
+2.  **Commit and Push**: Commit and push the change to the `main` branch.
+3.  **Action Executes**: The GitHub Action will automatically detect the change, read the `fileId` from the file, and send a POST request to the webhook.
+
+### Setup
+
+To enable this functionality, you must configure a secret in your GitHub repository settings:
+
+1.  Go to `Settings` > `Secrets and variables` > `Actions`.
+2.  Create a new repository secret named `GAS_WEBHOOK_URL`.
+3.  Set the value to the deployment URL of your Google Apps Script web app.

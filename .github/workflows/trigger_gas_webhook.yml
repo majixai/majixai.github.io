@@ -1,0 +1,29 @@
+name: Trigger Google Apps Script Webhook
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'google_script_project/trigger.json'
+
+jobs:
+  trigger-webhook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Read fileId from trigger.json
+        id: get_file_id
+        run: |
+          FILE_ID=$(jq -r .fileId google_script_project/trigger.json)
+          echo "::set-output name=file_id::$FILE_ID"
+
+      - name: Send POST request to Google Apps Script
+        run: |
+          curl -L -X POST "${{ secrets.GAS_WEBHOOK_URL }}" \
+          -H "Content-Type: application/json" \
+          --data-raw '{
+              "fileId": "${{ steps.get_file_id.outputs.file_id }}"
+          }'
