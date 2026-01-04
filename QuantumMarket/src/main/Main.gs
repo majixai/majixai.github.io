@@ -98,20 +98,20 @@ function processEmailIntel() {
  * --------------------------------------------------------------------------
  */
 function showSettings() {
-  const html = HtmlService.createTemplateFromFile('ui/Settings').evaluate().setWidth(500).setHeight(650);
+  const html = HtmlService.createTemplateFromFile('Settings').evaluate().setWidth(500).setHeight(650);
   SpreadsheetApp.getUi().showModalDialog(html, 'System Configuration');
 }
 
 function showSidebar() {
-  const html = HtmlService.createTemplateFromFile('ui/index').evaluate().setTitle('Market Control').setWidth(300);
+  const html = HtmlService.createTemplateFromFile('index').evaluate().setTitle('Market Control').setWidth(300);
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
 function showHelp() {
-  const html = HtmlService.createTemplateFromFile('ui/Help').evaluate().setWidth(600).setHeight(600);
+  const html = HtmlService.createTemplateFromFile('Help').evaluate().setWidth(600).setHeight(600);
   SpreadsheetApp.getUi().showModalDialog(html, 'Guide');
 }
 
 function doGet(e) {
-  return HtmlService.createTemplateFromFile('ui/index').evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return HtmlService.createTemplateFromFile('index').evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }

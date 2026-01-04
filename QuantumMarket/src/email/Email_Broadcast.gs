@@ -51,11 +51,7 @@ const Email_Broadcast = {
       const files = mainFolder.getFiles();
       const fileList = [];
       while (files.hasNext()) {
-        const file = files.next();
-        // Ensure we only get files, not folders that might be in the directory
-        if (file.getMimeType() !== MimeType.GOOGLE_APPS_SCRIPT) { // A simple check for files
-             fileList.push(file);
-        }
+        fileList.push(files.next());
       }
       return fileList;
     } catch (e) {
@@ -154,10 +150,12 @@ const Email_Broadcast = {
     const totalShards = shards.length;
     const labelName = "UNPROCESSED_DATA";
 
-    // Ensure the Gmail label exists
-    if (!GmailApp.getUserLabelByName(labelName)) {
-      GmailApp.createLabel(labelName);
+    // Ensure the Gmail label exists and get it ONCE to be efficient.
+    let label = GmailApp.getUserLabelByName(labelName);
+    if (!label) {
+      label = GmailApp.createLabel(labelName);
     }
+    const labelId = label.getId();
 
     for (let i = 0; i < totalShards; i++) {
       const shardNum = i + 1;
@@ -165,7 +163,7 @@ const Email_Broadcast = {
       const body = `This is part ${shardNum}/${totalShards} of a multi-part data transmission.\n\n---BEGIN SHARD---\n${shards[i]}\n---END SHARD---`;
 
       GmailApp.sendEmail(recipient, subject, body, {
-        labelIds: [GmailApp.getUserLabelByName(labelName).getId()]
+        labelIds: [labelId]
       });
       Utilities.sleep(2500); // Avoid hitting Gmail rate limits
     }

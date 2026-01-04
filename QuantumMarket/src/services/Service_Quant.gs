@@ -149,14 +149,25 @@ const Service_Quant = {
     const folder = DriveApp.getFoldersByName(folderName).next();
     const files = folder.getFiles();
     const prices = [];
-    let processed = 0;
-    while(files.hasNext() && processed < count) {
-      const file = files.next();
+
+    // Convert FileIterator to Array and sort by date descending
+    const fileList = [];
+    while(files.hasNext()) {
+      fileList.push(files.next());
+    }
+    fileList.sort((a, b) => b.getDateCreated() - a.getDateCreated());
+
+    // Process the most recent files up to the desired count
+    for (let i = 0; i < fileList.length && i < count; i++) {
+      const file = fileList[i];
       if (file.getName().startsWith('snapshot_')) {
-        const data = JSON.parse(Utilities.unzip(file.getBlob()).getDataAsString());
-        const stockData = data.find(s => s.ticker === ticker);
-        if (stockData) prices.unshift(stockData.price); // unshift to keep chronological order
-        processed++;
+        try {
+          const data = JSON.parse(Utilities.unzip(file.getBlob()).getDataAsString());
+          const stockData = data.find(s => s.ticker === ticker);
+          if (stockData) {
+            prices.unshift(stockData.price); // unshift to maintain chronological order
+          }
+        } catch(e) { /* Ignore corrupted files */ }
       }
     }
     return prices;
