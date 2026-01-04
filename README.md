@@ -108,3 +108,30 @@ This repository includes a mock payment integration with support for Visa and Go
 1.  **Payment Form:** A simple payment form in the `visa_api` directory allows users to enter their payment details.
 2.  **Fraud Analysis & Logging:** When a payment is submitted, a Google Apps Script (`visa_api/code.gs`) calls the Gemini API to analyze the transaction for fraud. It then logs every attempt to a private Google Sheet.
 3.  **Automated Reporting:** A daily GitHub Action, defined in `.github/workflows/transaction_report.yml`, runs the `visa_api/generate_transaction_report.py` script. This script fetches the transaction data, generates a summary, and creates a report at `visa_api/TRANSACTION_REPORT.md`.
+
+## File Integrity Management
+
+This repository includes a system for verifying the integrity of all files using SHA-256 hashes. This helps to ensure that files have not been corrupted or unintentionally modified.
+
+### How it Works
+
+The `integrity/` directory contains two Python scripts:
+
+-   `generate_hashes.py`: This script traverses the entire repository, calculates the SHA-256 hash for each file (while respecting the rules in `.gitignore`), and stores the results in a file named `integrity/hashes.json`.
+-   `verify_hashes.py`: This script reads the `integrity/hashes.json` file and compares the stored hashes against the current hashes of the files in the repository. It will report any new, modified, or deleted files.
+
+### Usage
+
+1.  **Generating the Hashes:**
+    To create an initial manifest of file hashes, run the following command from the root of the repository:
+    ```bash
+    python integrity/generate_hashes.py
+    ```
+    This will create the `integrity/hashes.json` file. This file is ignored by Git and should not be committed to the repository.
+
+2.  **Verifying File Integrity:**
+    To check for any changes since the last time the hashes were generated, run:
+    ```bash
+    python integrity/verify_hashes.py
+    ```
+    The script will print a report detailing any discrepancies found.
