@@ -1,4 +1,15 @@
 /**
+ * Handles HTTP GET requests to the web app.
+ * This function serves the index.html documentation page.
+ *
+ * @param {Object} e The event parameter for a GET request.
+ * @return {HtmlService.HtmlOutput} The HTML page.
+ */
+function doGet(e) {
+  return HtmlService.createHtmlOutputFromFile('index');
+}
+
+/**
  * Handles HTTP POST requests to the web app.
  * This function acts as a webhook endpoint.
  *
@@ -65,7 +76,7 @@ function readAndDecompressFileById(fileId) {
   try {
     const file = DriveApp.getFileById(fileId);
     const blob = file.getBlob();
-    const unzippedBlob = Utilities.unzip(blob);
+    const unzippedBlob = Utilities.ungzip(blob);
     const text = unzippedBlob.getDataAsString();
 
     // Try to parse as JSON, but return raw text if it fails.

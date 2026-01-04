@@ -18,7 +18,7 @@ jobs:
         id: get_file_id
         run: |
           FILE_ID=$(jq -r .fileId google_script_project/trigger.json)
-          echo "::set-output name=file_id::$FILE_ID"
+          echo "file_id=$FILE_ID" >> $GITHUB_OUTPUT
 
       - name: Send POST request to Google Apps Script
         run: |
