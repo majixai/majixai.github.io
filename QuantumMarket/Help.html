@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 25px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .container { max-width: 100%; }
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 8px;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+    h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #34495e;
+      margin-top: 25px;
+    }
+    p { margin-bottom: 15px; }
+    code {
+      background-color: #ecf0f1;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      color: #c0392b;
+    }
+    .section {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    ul {
+      list-style-type: disc;
+      padding-left: 25px;
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    strong {
+      color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Quantum Market: Interactive Guide</h2>
+
+    <div class="section">
+      <h3>Welcome to the Quantum Market Engine</h3>
+      <p>
+        This system is a powerful, automated market analysis tool. It uses a combination of quantitative modeling and generative AI to fetch, analyze, and predict market movements for a user-defined watchlist.
+      </p>
+    </div>
+
+    <div class="section">
+      <h3>Core Concepts</h3>
+      <ul>
+        <li>
+          <strong>The Heartbeat (<code>minutelyHeartbeat</code>):</strong> This is the main engine cycle. Every minute, it fetches live data, runs a Monte Carlo simulation to project future prices, analyzes its own error, and saves the results.
+        </li>
+        <li>
+          <strong>The Daily Oracle (<code>runDailyPredictionRoutine</code>):</strong> Before the market opens, this process uses AI to analyze the previous day's entire data log and make specific OPEN and CLOSE predictions for the day ahead.
+        </li>
+        <li>
+          <strong>Email Data Loop:</strong> An advanced feature for extreme data payloads. It can package gigabytes of historical data into a compressed, multi-part email series (called "Data Shards") and then reassemble it, ensuring data integrity with a cryptographic hash. This allows the system to move massive datasets between different environments or for backup.
+        </li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>How to Get Started</h3>
+      <ol>
+        <li><strong>Initial Setup:</strong> Go to <strong>⚡ Quantum Market > ⚙️ Settings & Logs</strong>. Enter your Gemini API Key and an email for error alerts. Click Save. The system will automatically create the necessary Google Sheet and Drive folder.</li>
+        <li><strong>Build a Watchlist:</strong>
+          <ul>
+            <li>Manually add tickers using the form in the <strong>🚀 Launch Dashboard</strong> sidebar.</li>
+            <li>Use the AI aggregator via <strong>⚡ Quantum Market > 🧠 AI: Aggregate New Watchlist</strong>. Give it a theme like "Semiconductor Stocks" or "Layer 2 Crypto" to automatically populate your list.</li>
+          </ul>
+        </li>
+        <li><strong>Set Triggers:</strong> This is crucial for automation. Go to the Apps Script editor, click the "Triggers" (alarm clock) icon, and set up the four required triggers as described in the setup documentation.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h3>Understanding the Data</h3>
+      <ul>
+        <li><strong>Price:</strong> The last fetched price from Google Finance.</li>
+        <li><strong>Projected:</strong> The price projection for the next ~15 minutes based on the Monte Carlo simulation.</li>
+        <li><strong>Sigma (σ):</strong> A measure of historical volatility. Higher sigma means the asset is more unpredictable.</li>
+        <li><strong>Error:</strong> How wrong the last projection was. The system uses this to learn and become more accurate over time.</li>
+      </ul>
+    </div>
+
+  </div>
+</body>
+</html>
