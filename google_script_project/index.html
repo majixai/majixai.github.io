@@ -2,48 +2,59 @@
 <html>
   <head>
     <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <title>Webhook Decompression Service</title>
   </head>
   <body>
-    <h1>Welcome to the Google Apps Script Project</h1>
-    <p>This is a simple web app.</p>
+    <h1>Webhook Decompression Service</h1>
+    <p>
+      This Google Apps Script provides a webhook endpoint to decompress files stored in Google Drive.
+    </p>
 
-    <hr>
-    <h2>Client-Server Callback</h2>
-    <button id="myButton">Call Server</button>
-    <div id="response"></div>
+    <h2>Endpoint URL</h2>
+    <p>
+      To use this service, you must first deploy this script as a web app. Once deployed, you will receive a unique URL. Send HTTP POST requests to this URL with a JSON payload.
+    </p>
 
-    <hr>
-    <h2>GZIP Compression</h2>
-    <button id="compressButton">Compress and Save Data</button>
-    <div id="compressResponse"></div>
-    <br>
-    <button id="decompressButton">Read and Decompress Data</button>
-    <pre id="decompressResponse" style="background-color: #f0f0f0; padding: 10px; border: 1px solid #ccc;"></pre>
+    <h2>JSON Payload</h2>
+    <p>The POST request must contain a JSON body with the following structure:</p>
+    <pre><code>{
+  "fileId": "YOUR_GOOGLE_DRIVE_FILE_ID",
+  "logSheetId": "OPTIONAL_GOOGLE_SHEET_ID",
+  "forwardUrl": "OPTIONAL_WEBHOOK_URL"
+}</code></pre>
+    <ul>
+      <li><code>fileId</code> (Required): The ID of the compressed file in Google Drive that you want to decompress.</li>
+      <li><code>logSheetId</code> (Optional): The ID of a Google Sheet where the decompressed content will be logged. A new row with the timestamp, file ID, and content will be appended.</li>
+      <li><code>forwardUrl</code> (Optional): A URL to which the decompressed content will be forwarded as a POST request.</li>
+    </ul>
 
-    <script>
-      // Simple callback
-      document.getElementById("myButton").addEventListener("click", function() {
-        google.script.run.withSuccessHandler(function(response) {
-          document.getElementById("response").innerText = response;
-        }).getServerResponse("Hello from the client!");
-      });
+    <h2>Example Usage (cURL)</h2>
+    <p>
+      Here is an example of how to call the webhook using cURL. Replace <code>YOUR_DEPLOYMENT_URL</code> with the actual URL of your deployed web app.
+    </p>
+    <pre><code>curl -L -X POST 'YOUR_DEPLOYMENT_URL' \
+-H 'Content-Type: application/json' \
+--data-raw '{
+    "fileId": "1aBcDeFgHiJkLmNoPqRsTuVwXyZ_12345",
+    "logSheetId": "1aBcDeFgHiJkLmNoPqRsTuVwXyZ_54321",
+    "forwardUrl": "https://your-other-webhook.com/endpoint"
+}'</code></pre>
 
-      // GZIP Compression
-      document.getElementById("compressButton").addEventListener("click", function() {
-        document.getElementById("compressResponse").innerText = "Compressing...";
-        google.script.run.withSuccessHandler(function(response) {
-          document.getElementById("compressResponse").innerText = response;
-        }).compressAndSaveData();
-      });
+    <h2>Success Response</h2>
+    <p>A successful request will return a JSON object with the decompressed content:</p>
+    <pre><code>{
+  "success": true,
+  "fileId": "1aBcDeFgHiJkLmNoPqRsTuVwXyZ_12345",
+  "content": "This is the decompressed text from the file."
+}</code></pre>
 
-      // GZIP Decompression
-      document.getElementById("decompressButton").addEventListener("click", function() {
-        document.getElementById("decompressResponse").innerText = "Reading...";
-        google.script.run.withSuccessHandler(function(response) {
-          // Pretty-print the JSON object
-          document.getElementById("decompressResponse").innerText = JSON.stringify(response, null, 2);
-        }).readAndDecompressData();
-      });
-    </script>
+    <h2>Error Response</h2>
+    <p>If the request fails (e.g., due to a missing <code>fileId</code>), you will receive a JSON error message:</p>
+    <pre><code>{
+  "success": false,
+  "error": "Missing required parameter: fileId"
+}</code></pre>
+
   </body>
 </html>

@@ -1,17 +1,33 @@
-# Google Apps Script Project
+# Google Apps Script Webhook Decompression Service
 
-This project is a web app built with Google Apps Script. It demonstrates two key features:
+This project provides a Google Apps Script web app that acts as a webhook endpoint to decompress files stored in Google Drive. It can also log the decompressed content to a Google Sheet and forward it to another webhook.
 
-1.  **Client-Server Communication:** The web app can send messages to the server-side Google Apps Script and receive responses.
-2.  **GZIP Compression:** The web app can compress and save data to a `.dat` file in the user's Google Drive, and then read and decompress the data from that file.
+## Features
+
+1.  **Webhook Endpoint**: Receives a JSON payload with a Google Drive file ID.
+2.  **File Decompression**: Retrieves the specified file from Google Drive and decompresses it.
+3.  **Google Sheets Logging**: Optionally logs the decompressed content to a specified Google Sheet.
+4.  **Webhook Forwarding**: Optionally forwards the decompressed content to another URL.
 
 ## How to Use
 
 1.  **Deploy the script as a web app.**
-2.  **Open the web app in your browser.**
-3.  **Client-Server Communication:**
-    *   Click the "Call Server" button to send a message to the server.
-    *   The server will respond with a message, which will be displayed on the page.
-4.  **GZIP Compression:**
-    *   Click the "Compress and Save Data" button to compress a sample JSON object and save it to a file named `data.dat` in your Google Drive.
-    *   Click the "Read and Decompress Data" button to read the `data.dat` file from your Google Drive, decompress it, and display the original JSON object on the page.
+    *   In the Apps Script editor, click `Deploy` > `New deployment`.
+    *   Select `Web app` as the deployment type.
+    *   Configure the web app, ensuring you grant access to "Anyone" if you intend to call it from an external service.
+    *   Copy the generated web app URL.
+2.  **Send a POST Request**: Send an HTTP POST request to the deployed web app URL with a JSON payload.
+
+## Live Documentation
+
+Once deployed, the web app's URL will serve an HTML page containing detailed documentation on the webhook's usage, including the required JSON payload structure and `curl` examples.
+
+### Example Payload
+
+```json
+{
+  "fileId": "YOUR_GOOGLE_DRIVE_FILE_ID",
+  "logSheetId": "OPTIONAL_GOOGLE_SHEET_ID",
+  "forwardUrl": "OPTIONAL_WEBHOOK_URL"
+}
+```
