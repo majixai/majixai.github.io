@@ -47,7 +47,9 @@ To deploy this application, follow these steps:
     - Click **Deploy**.
 
 4.  **Authorize Permissions:**
-    - Google will prompt you to authorize the script's permissions. It needs access to Google Sheets to create and delete the temporary files. Review and grant the permissions.
+    - Google will prompt you to authorize the script's permissions. Review and grant the permissions. The script requires access to:
+        - **Google Sheets:** To create the temporary sheet where the `=GOOGLEFINANCE` formula is run.
+        - **Google Drive:** To send the temporary sheet to the trash after the data has been retrieved. This is essential for keeping your Drive clean.
 
 5.  **Get the URL:**
     - After deployment, you will be given a **Web app URL**. This is the public link to your new application.
