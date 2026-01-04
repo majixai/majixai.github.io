@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      input[type="text"] {
+        padding: 8px;
+        width: 200px;
+      }
+      button {
+        padding: 8px 12px;
+      }
+      #result, #error {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+      #loader {
+        display: none;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Google Finance Ticker Fetcher</h1>
+    <p>Enter a stock ticker symbol to get the latest price.</p>
+
+    <input type="text" id="tickerInput" placeholder="e.g., NASDAQ:GOOGL">
+    <button onclick="fetchTickerData()">Fetch Data</button>
+
+    <div id="loader">Loading...</div>
+    <div id="result"></div>
+    <div id="error"></div>
+
+    <script>
+      function fetchTickerData() {
+        const ticker = document.getElementById('tickerInput').value;
+        if (!ticker) {
+          document.getElementById('error').innerText = 'Please enter a ticker symbol.';
+          return;
+        }
+
+        // Clear previous results and show loader
+        document.getElementById('result').innerText = '';
+        document.getElementById('error').innerText = '';
+        document.getElementById('loader').style.display = 'block';
+
+        google.script.run
+          .withSuccessHandler(onSuccess)
+          .withFailureHandler(onFailure)
+          .getTickerData(ticker);
+      }
+
+      function onSuccess(response) {
+        document.getElementById('loader').style.display = 'none';
+        if (response.success) {
+          document.getElementById('result').innerText = 'Price: ' + response.data;
+        } else {
+          document.getElementById('error').innerText = 'Error: ' + response.error;
+        }
+      }
+
+      function onFailure(error) {
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('error').innerText = 'An unexpected script error occurred: ' + error.message;
+      }
+    </script>
+  </body>
+</html>
