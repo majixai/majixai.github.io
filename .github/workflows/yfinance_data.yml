@@ -17,8 +17,10 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: pip install -r yfinance_data/requirements.txt
+      - name: Test with unittest
+        run: python -m unittest yfinance_data/test_fetch_data.py
       - name: Run data fetching script
-        run: python yfinance_data/fetch_data.py
+        run: python yfinance_data/fetch_data.py --webhook-url "${{ secrets.YFINANCE_WEBHOOK_URL }}"
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
