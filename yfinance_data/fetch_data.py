@@ -3,6 +3,9 @@ import pandas as pd
 import sqlite3
 import gzip
 import os
+import argparse
+import requests
+import json
 
 TICKERS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "JPM", "V", "JNJ", "WMT", "PG"
@@ -59,7 +62,31 @@ def compress_database():
     print(f"Database compressed to {COMPRESSED_DB_NAME}")
     os.remove(DB_NAME)
 
+def send_webhook_notification(url):
+    """Sends a POST request to the specified webhook URL."""
+    if not url:
+        return
+    try:
+        payload = {
+            "content": "Yfinance data update complete.",
+            "username": "Yfinance Bot",
+        }
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(url, data=json.dumps(payload), headers=headers)
+        response.raise_for_status()
+        print(f"Successfully sent webhook notification to {url}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to send webhook notification: {e}", file=sys.stderr)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Fetch yfinance data and optionally send a webhook.")
+    parser.add_argument("--webhook-url", help="The webhook URL to send a notification to.")
+    args = parser.parse_args()
+
     create_database()
     fetch_and_store_data()
     compress_database()
+
+    if args.webhook_url:
+        send_webhook_notification(args.webhook_url)
