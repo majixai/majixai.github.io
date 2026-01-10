@@ -7,9 +7,7 @@ import argparse
 import requests
 import json
 
-TICKERS = [
-    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "JPM", "V", "JNJ", "WMT", "PG"
-]
+TICKERS = ["^SPX"]
 
 DB_NAME = "yfinance.db"
 COMPRESSED_DB_NAME = "yfinance_data/yfinance.dat"
@@ -20,7 +18,7 @@ def create_database():
     c.execute("DROP TABLE IF EXISTS prices")
     c.execute("""
         CREATE TABLE prices (
-            Date TEXT,
+            Datetime TEXT,
             Open REAL,
             High REAL,
             Low REAL,
@@ -36,20 +34,22 @@ def fetch_and_store_data():
     conn = sqlite3.connect(DB_NAME)
     for ticker in TICKERS:
         print(f"Fetching data for {ticker}...")
-        data = yf.download(ticker, period="1y", interval="1d")
-        data.reset_index(inplace=True)
-        data['Ticker'] = ticker
+        # Fetch 1-minute data for the last 5 days
+        data = yf.download(ticker, period="5d", interval="1m")
+        data = data.reset_index()
 
-        data['Date'] = data['Date'].astype(str)
-
-        data_to_store = pd.DataFrame()
-        data_to_store['Date'] = data['Date']
-        data_to_store['Open'] = data['Open']
-        data_to_store['High'] = data['High']
-        data_to_store['Low'] = data['Low']
-        data_to_store['Close'] = data['Close']
-        data_to_store['Volume'] = data['Volume']
-        data_to_store['Ticker'] = data['Ticker']
+        # yfinance can return a DataFrame with multi-level columns, which causes issues.
+        # We create a new, clean DataFrame.
+        # Using .values.flatten() ensures we get a 1D array for each column.
+        data_to_store = pd.DataFrame({
+            'Datetime': data['Datetime'].astype(str),
+            'Open': data['Open'].values.flatten(),
+            'High': data['High'].values.flatten(),
+            'Low': data['Low'].values.flatten(),
+            'Close': data['Close'].values.flatten(),
+            'Volume': data['Volume'].values.flatten(),
+            'Ticker': ticker
+        })
 
         data_to_store.to_sql('prices', conn, if_exists='append', index=False)
     conn.close()
