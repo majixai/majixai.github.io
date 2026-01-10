@@ -141,8 +141,9 @@ def main():
 
     logger.info(f"Preparing to fetch {len(tickers_to_fetch)} tickers...")
 
-    # Create controller
-    controller = DataController(data_dir="yfinance_data")
+    # Create controller - use current directory for data storage when run from yfinance_data dir
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    controller = DataController(data_dir=script_dir)
 
     # Configure notifications from environment or command line
     smtp_server = args.smtp_server or os.environ.get("SMTP_SERVER")

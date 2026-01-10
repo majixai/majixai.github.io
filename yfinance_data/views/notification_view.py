@@ -19,6 +19,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Constants for display limits
+MAX_TICKERS_IN_PLAIN_EMAIL = 50
+MAX_TICKERS_IN_HTML_EMAIL = 100
+WEBHOOK_SUCCESS_COLOR = 5025616  # Green color for Discord embeds
+
 
 class NotificationView:
     """View class for handling notifications (email and webhook)."""
@@ -104,10 +109,10 @@ class NotificationView:
             return True
 
         except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP authentication failed: {e}")
+            logger.error(f"SMTP authentication failed for server {self.smtp_server}: {e}")
             return False
         except smtplib.SMTPException as e:
-            logger.error(f"SMTP error occurred: {e}")
+            logger.error(f"SMTP error occurred with server {self.smtp_server}: {e}")
             return False
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
@@ -180,7 +185,7 @@ Total Records: {total_records}
 Output File: {output_file}
 
 Tickers Fetched:
-{', '.join(tickers[:50])}{'...' if len(tickers) > 50 else ''}
+{', '.join(tickers[:MAX_TICKERS_IN_PLAIN_EMAIL])}{'...' if len(tickers) > MAX_TICKERS_IN_PLAIN_EMAIL else ''}
 
 This is an automated notification from the YFinance Data Fetcher.
 """
@@ -210,7 +215,7 @@ This is an automated notification from the YFinance Data Fetcher.
             <p><strong>Output File:</strong> {output_file}</p>
         </div>
         <h3>Tickers Fetched:</h3>
-        <p class="ticker-list">{', '.join(tickers[:100])}{'...' if len(tickers) > 100 else ''}</p>
+        <p class="ticker-list">{', '.join(tickers[:MAX_TICKERS_IN_HTML_EMAIL])}{'...' if len(tickers) > MAX_TICKERS_IN_HTML_EMAIL else ''}</p>
         <div class="footer">
             <p>This is an automated notification from the YFinance Data Fetcher.</p>
         </div>
@@ -238,7 +243,7 @@ This is an automated notification from the YFinance Data Fetcher.
             "embeds": [
                 {
                     "title": "Data Fetch Summary",
-                    "color": 5025616,  # Green color
+                    "color": WEBHOOK_SUCCESS_COLOR,
                     "fields": [
                         {
                             "name": "Total Tickers",

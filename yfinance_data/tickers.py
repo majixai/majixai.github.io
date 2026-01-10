@@ -123,7 +123,7 @@ REITS = [
 COMMUNICATION = [
     "T", "VZ", "TMUS", "CMCSA", "DIS", "NFLX", "CHTR", "PARA",
     "WBD", "FOX", "FOXA", "LUMN", "LBRDA", "LBRDK", "LYV", "IMAX",
-    "MTCH", "ZG", "Z", "YELP", "SNAP", "PINS", "TWTR",
+    "MTCH", "ZG", "Z", "YELP", "SNAP", "PINS",
 ]
 
 # Retail & E-commerce

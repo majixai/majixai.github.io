@@ -5,6 +5,7 @@ Handles database operations and data compression to .dat files.
 import sqlite3
 import gzip
 import os
+import shutil
 import logging
 from datetime import datetime
 from typing import List, Dict, Optional, Any
@@ -199,7 +200,7 @@ class DataModel:
 
         with open(self.db_name, "rb") as f_in:
             with gzip.open(output_path, "wb") as f_out:
-                f_out.writelines(f_in)
+                shutil.copyfileobj(f_in, f_out)
 
         logger.info(f"Database compressed to {output_path}")
 

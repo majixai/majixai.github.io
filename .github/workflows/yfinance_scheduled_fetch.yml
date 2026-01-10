@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "INFO: Running unit tests..."
           python -m unittest yfinance_data/test_fetch_data.py -v
-          python -m unittest yfinance_data/tests/test_mvc.py -v
+          python -m unittest discover -s yfinance_data/tests -p 'test_*.py' -v
           echo "SUCCESS: All tests passed."
 
       - name: Run YFinance Data Fetcher
