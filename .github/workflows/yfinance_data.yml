@@ -6,6 +6,10 @@ on:
       - 'yfinance_data/**'
   workflow_dispatch:
 
+# Grant write access to push changes
+permissions:
+  contents: write
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
