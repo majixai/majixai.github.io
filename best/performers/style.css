@@ -1,26 +1,38 @@
 /*
- * @file Main stylesheet for the Performer Application.
- * @author Jules
- * @description Implements a modern, responsive design with the requested color scheme.
- * Uses advanced CSS like Grid, Flexbox, custom properties, and animations.
+ * @file Main stylesheet for the Best Performers Application.
+ * @author Enhanced for multi-iframe support and advanced filtering
+ * @description Modern, responsive design with multi-viewer grid support.
  */
 
 :root {
-    --primary-color: #00539B; /* The requested primary color */
+    --primary-color: #00539B;
+    --primary-dark: #003d73;
+    --primary-light: #0077cc;
+    --accent-color: #ff6b35;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
     --light-background: #f4f7fa;
+    --dark-background: #1a1a2e;
     --dark-text: #333;
+    --light-text: #f0f0f0;
     --card-background: #ffffff;
-    --shadow-color: rgba(0, 0, 0, 0.1);
+    --shadow-color: rgba(0, 0, 0, 0.15);
     --border-color: #dee2e6;
+    --online-color: #28a745;
 }
 
-body {
+* {
+    box-sizing: border-box;
+}
+
+html, body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--light-background);
-    color: var(--dark-text);
+    background-color: var(--dark-background);
+    color: var(--light-text);
     margin: 0;
     height: 100vh;
-    overflow: hidden; /* Prevent body scroll */
+    overflow: hidden;
 }
 
 .app-container {
@@ -31,19 +43,239 @@ body {
 
 /* Header Styling */
 .app-header {
-    background-color: var(--primary-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.header-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-shrink: 0;
-    box-shadow: 0 2px 4px var(--shadow-color);
+    margin-bottom: 0.5rem;
 }
 
 .app-header h1 {
     margin: 0;
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.search-container {
+    width: 100%;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: none;
+    font-size: 0.9rem;
+}
+
+/* Filters Panel */
+.filters-panel {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.filter-group input,
+.filter-group select {
+    min-width: 100px;
+}
+
+.filter-actions {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 0.5rem !important;
+}
+
+.quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    align-items: center;
+}
+
+.quick-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.quick-filter-btn {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: transparent;
+    color: white;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-filter-btn:hover,
+.quick-filter-btn.active {
+    background: var(--primary-light);
+    border-color: var(--primary-light);
+}
+
+/* Snippets Panel */
+.snippets-panel {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.snippet-input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.snippet-input-group textarea {
+    flex: 1;
+    resize: none;
+}
+
+.snippets-list h6 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#snippetsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.snippet-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.snippet-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.snippet-item .delete-btn {
+    color: var(--danger-color);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.snippet-status {
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+.snippet-status.success { background: rgba(40, 167, 69, 0.2); color: var(--success-color); }
+.snippet-status.error { background: rgba(220, 53, 69, 0.2); color: var(--danger-color); }
+
+.main-text-area-container {
+    margin-top: 1rem;
+    position: relative;
+}
+
+.main-text-area-container label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.main-text-area-container code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--card-background);
+    color: var(--dark-text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.autocomplete-suggestions div {
+    padding: 0.5rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.autocomplete-suggestions div:hover {
+    background: var(--light-background);
+}
+
+.autocomplete-suggestions div:last-child {
+    border-bottom: none;
+}
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.4rem 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.online-indicator {
+    color: var(--online-color);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* Main Content Layout */
@@ -51,76 +283,231 @@ body {
     display: flex;
     flex-grow: 1;
     overflow: hidden;
-    height: calc(100% - 70px); /* Adjust based on header height */
+    gap: 0.5rem;
+    padding: 0.5rem;
 }
 
+/* Viewer Panel - Multi-iframe grid */
 .viewer-panel {
-    flex: 3; /* Takes up 3/4 of the space */
-    padding: 1rem;
+    flex: 3;
     display: flex;
-    /* Parallax background effect */
-    background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
-    background-attachment: fixed;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
+    min-width: 0;
 }
 
-.iframe-container {
+.iframe-grid {
+    display: grid;
     width: 100%;
     height: 100%;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 83, 155, 0.2);
+    padding: 4px;
 }
 
-#mainIframe {
+/* Grid layouts */
+.iframe-grid.layout-1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.iframe-grid.layout-2 {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: 1fr;
+}
+
+.iframe-grid.layout-3 {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 1fr;
+}
+
+.iframe-grid.layout-4 {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+}
+
+.iframe-grid.layout-6 {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+}
+
+.iframe-grid.layout-9 {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+}
+
+.iframe-wrapper {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+}
+
+.iframe-wrapper.hidden {
+    display: none;
+}
+
+.iframe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.7);
+    font-size: 0.75rem;
+}
+
+.slot-number {
+    font-weight: bold;
+    color: var(--accent-color);
+}
+
+.performer-name {
+    flex: 1;
+    margin-left: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.close-iframe-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+
+.close-iframe-btn:hover {
+    color: var(--danger-color);
+}
+
+.iframe-wrapper iframe {
+    flex: 1;
     width: 100%;
-    height: 100%;
     border: none;
 }
 
+/* Grid Panel - Performer list */
 .grid-panel {
-    flex: 1; /* Takes up 1/4 of the space */
-    min-width: 300px;
-    max-width: 400px;
-    overflow-y: auto;
-    padding: 1rem;
-    background-color: #e9ecef;
+    flex: 1;
+    min-width: 280px;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.grid-header {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.grid-header h5 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.slot-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.slot-selector label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.slot-selector select {
+    width: auto;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
 }
 
 /* Performer Grid Styling */
 .performer-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    align-content: start;
 }
 
 .performer-card {
     background: var(--card-background);
-    border-radius: 8px;
-    box-shadow: 0 2px 5px var(--shadow-color);
+    border-radius: 6px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     border: 2px solid transparent;
 }
 
+.performer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 .performer-card.selected {
-    border-color: var(--primary-color);
-    transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(0, 83, 155, 0.3);
+    border-color: var(--accent-color);
+}
+
+.performer-card.in-viewer {
+    border-color: var(--success-color);
 }
 
 .card-image-container {
     position: relative;
+    padding-top: 75%; /* 4:3 aspect ratio */
 }
 
 .card-image-container img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 180px;
+    height: 100%;
     object-fit: cover;
-    display: block;
+}
+
+.card-badges {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 600;
+}
+
+.badge-new {
+    background: var(--danger-color);
+    color: white;
+}
+
+.badge-rank {
+    background: var(--accent-color);
+    color: white;
+}
+
+.badge-viewers {
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
 }
 
 .card-overlay {
@@ -129,62 +516,146 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 83, 155, 0.5);
+    background: rgba(0, 83, 155, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s ease;
 }
 
 .performer-card:hover .card-overlay {
     opacity: 1;
 }
 
+.card-overlay svg {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
 .card-content {
-    padding: 0.75rem;
-    text-align: center;
+    padding: 0.5rem;
+    background: var(--card-background);
+    color: var(--dark-text);
 }
 
 .card-content h3 {
-    margin: 0;
-    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.8rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Animations */
+.card-meta {
+    font-size: 0.65rem;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+}
+
+.card-score {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+/* Load More Container */
+.load-more-container {
+    padding: 0.75rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.loading-indicator {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.85rem;
+}
 
 /* Loading/Error Messages */
 .loading-message, .error-message {
-    color: var(--dark-text);
+    color: var(--light-text);
     text-align: center;
     width: 100%;
     padding: 2rem;
+    grid-column: 1 / -1;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* Media Queries for Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
+    .grid-panel {
+        min-width: 240px;
+        max-width: 280px;
+    }
+    
+    .performer-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
     .main-content {
         flex-direction: column;
-        height: auto;
     }
 
     .viewer-panel {
-        min-height: 50vh;
+        flex: none;
+        height: 50vh;
     }
 
     .grid-panel {
         max-width: 100%;
-        max-height: 50vh;
+        flex: 1;
     }
-
-    .app-header {
+    
+    .performer-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .filters-row {
         flex-direction: column;
-        padding-bottom: 0.5rem;
     }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
     .app-header h1 {
-        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+    }
+    
+    .iframe-grid.layout-9,
+    .iframe-grid.layout-6 {
+        grid-template-columns: repeat(2, 1fr);
     }
 }

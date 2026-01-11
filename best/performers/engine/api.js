@@ -1,29 +1,17 @@
 /**
- * @file Data fetching and decompression logic.
- * @author Jules
- * @description This class encapsulates the logic for fetching performer data.
- * It uses a "cache-first" strategy, trying to load from IndexedDB before
- * falling back to fetching from the network. This improves performance and
- * enables offline capabilities.
+ * @file Data fetching and processing logic for the Best Performers Engine.
+ * @description Handles API calls, data decompression, filtering, and ranking.
  */
 
 class DataAPI {
-    /**
-     * @private
-     * A Set to keep track of unique performers and avoid duplicates.
-     * Using a Set for this is highly efficient for checking existence.
-     */
-    #_uniqueUsernames = new Set();
-
-    /**
-     * @private
-     * A private field to hold the CacheManager instance.
-     */
     #_cache;
+    #_uniqueUsernames = new Set();
+    #_currentOffset = 0;
+    #_hasMoreData = true;
+    #_allOnlinePerformers = [];
 
     /**
-     * The constructor for the DataAPI.
-     * @param {object} cacheManager - An instance of the CacheManager.
+     * @param {object} cacheManager - Instance of CacheManager
      */
     constructor(cacheManager) {
         if (!cacheManager) {
@@ -33,110 +21,304 @@ class DataAPI {
     }
 
     /**
-     * @private
-     * Fetches a single .dat file and decompresses it.
-     * This is an async generator, which allows us to process files one by one
-     * without waiting for all to download, potentially improving perceived performance.
-     * @param {string} file - The name of the .dat file to fetch.
-     * @returns {AsyncGenerator<Object[], void, void>} A generator that yields an array of performer objects.
+     * Fetch performers from the live API
+     * @param {Object} filters - Filter parameters
+     * @param {number} offset - Pagination offset
+     * @returns {Promise<Object>} { performers, hasMore, nextOffset }
      */
-    async* #_fetchAndDecompress(file) {
+    async fetchOnlinePerformers(filters = {}, offset = 0) {
+        const gender = filters.gender || AppConfig.DEFAULT_FILTERS.gender;
+        const limit = AppConfig.API_LIMIT;
+        const url = AppConfig.buildApiUrl({ gender, limit, offset });
+
+        console.log(`DataAPI: Fetching performers (offset: ${offset}, gender: ${gender})`);
+
         try {
-            const response = await fetch(`${AppConfig.DATA_PATH}${file}`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                console.warn(`DataAPI: Aborting fetch due to timeout`);
+                controller.abort();
+            }, AppConfig.API_TIMEOUT);
+
+            const response = await fetch(url, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
-                console.warn(`Could not fetch ${file}. Status: ${response.status}`);
-                return;
+                throw new Error(`HTTP error ${response.status}`);
             }
-            const compressedData = await response.arrayBuffer();
-            // Using pako for decompression as specified.
-            const decompressedData = pako.inflate(new Uint8Array(compressedData), { to: 'string' });
-            const data = JSON.parse(decompressedData);
 
-            if (Array.isArray(data)) {
-                yield data;
-            } else if (typeof data === 'object' && data !== null) {
-                yield Object.values(data);
+            const data = await response.json();
+            
+            if (data && data.results && Array.isArray(data.results)) {
+                // Filter to only include public performers (not in private shows)
+                const publicPerformers = data.results.filter(p => 
+                    p.current_show === 'public' && p.iframe_embed
+                );
+
+                console.log(`DataAPI: Received ${data.results.length} results, ${publicPerformers.length} are public`);
+                
+                return {
+                    performers: publicPerformers,
+                    hasMore: data.results.length === limit,
+                    nextOffset: offset + data.results.length
+                };
             }
+
+            return { performers: [], hasMore: false, nextOffset: offset };
         } catch (error) {
-            console.error(`Error processing file ${file}:`, error);
+            console.error(`DataAPI: Fetch error:`, error);
+            throw error;
         }
     }
 
     /**
-     * The main public method to get performers. It orchestrates the cache-first logic.
-     * @param {boolean} forceRefresh - If true, bypasses the cache and fetches from the network.
-     * @returns {Promise<Object[]>} A promise that resolves to an array of unique performer objects.
+     * Get performers with filtering, sorting, and ranking
+     * @param {Object} options - Options for fetching
+     * @returns {Promise<Array<Object>>}
      */
-    async getPerformers(forceRefresh = false) {
-        const lastFetch = await this.#_cache.getSetting('lastFetch');
-        const isCacheStale = !lastFetch || (Date.now() - lastFetch > 3600 * 1000); // 1 hour cache
+    async getPerformers(options = {}) {
+        const {
+            forceRefresh = false,
+            filters = {},
+            page = 1,
+            perPage = AppConfig.PERFORMERS_PER_PAGE
+        } = options;
 
-        if (!forceRefresh && !isCacheStale) {
-            const cachedPerformers = await this.#_cache.getPerformers();
-            if (cachedPerformers && cachedPerformers.length > 0) {
-                console.log("Loading performers from cache.");
-                return cachedPerformers;
+        // Check cache first
+        if (!forceRefresh) {
+            const lastFetch = await this.#_cache.getSetting('lastFetch');
+            const isCacheStale = !lastFetch || (Date.now() - lastFetch > 60000); // 1 minute cache
+
+            if (!isCacheStale && this.#_allOnlinePerformers.length > 0) {
+                console.log("DataAPI: Using cached performers");
+                return this.#_applyFiltersAndSort(this.#_allOnlinePerformers, filters, page, perPage);
             }
         }
 
-        console.log("Fetching performers from network...");
-        return this.#_fetchFromNetwork();
+        // Fetch fresh data
+        console.log("DataAPI: Fetching fresh performer data...");
+        await this.#_fetchAllPerformers(filters);
+        
+        return this.#_applyFiltersAndSort(this.#_allOnlinePerformers, filters, page, perPage);
     }
 
     /**
+     * Fetch all performers from API (with pagination)
      * @private
-     * Fetches all .dat files from the network, processes them, and caches the result.
-     * This method demonstrates aggregation of data from multiple async sources.
-     * @returns {Promise<Object[]>} A promise that resolves to the aggregated list of performers.
      */
-    async #_fetchFromNetwork() {
-        const allPerformers = [];
+    async #_fetchAllPerformers(filters) {
+        this.#_allOnlinePerformers = [];
         this.#_uniqueUsernames.clear();
+        let offset = 0;
+        let hasMore = true;
+        let totalFetched = 0;
 
-        // Using Promise.all to fetch and process files in parallel for efficiency.
-        const filePromises = AppConfig.DAT_FILES.map(file => this.#_processFile(file));
-        await Promise.all(filePromises);
-
-        // This is a simplified way to collect results; a more complex app might stream them.
-        for (const file of AppConfig.DAT_FILES) {
-            for await (const performers of this.#_fetchAndDecompress(file)) {
-                for (const performer of performers) {
-                    // Bitwise check: Ensure essential fields exist before adding.
-                    // This is a more esoteric way to check for non-null/undefined properties.
-                    const hasRequiredFields = (performer.username && performer.iframe_embed) ? 1 : 0;
-
-                    if ((hasRequiredFields & 1) && !this.#_uniqueUsernames.has(performer.username)) {
-                        allPerformers.push(performer);
-                        this.#_uniqueUsernames.add(performer.username);
-                    }
+        while (hasMore && totalFetched < AppConfig.MAX_API_FETCH_LIMIT) {
+            const result = await this.fetchOnlinePerformers(filters, offset);
+            
+            for (const performer of result.performers) {
+                if (!this.#_uniqueUsernames.has(performer.username)) {
+                    this.#_uniqueUsernames.add(performer.username);
+                    this.#_allOnlinePerformers.push(performer);
                 }
             }
+
+            hasMore = result.hasMore;
+            offset = result.nextOffset;
+            totalFetched += result.performers.length;
+
+            // Stop after getting enough performers for performance
+            if (this.#_allOnlinePerformers.length >= 1000) {
+                console.log("DataAPI: Stopping fetch, have enough performers");
+                break;
+            }
         }
 
-        // Sort performers alphabetically by display name or username
-        allPerformers.sort((a, b) => {
-            const nameA = a.display_name || a.username;
-            const nameB = b.display_name || b.username;
-            return nameA.localeCompare(nameB);
-        });
-
-        // Cache the fresh data for future use.
-        await this.#_cache.savePerformers(allPerformers);
+        // Save to cache
         await this.#_cache.saveSetting('lastFetch', Date.now());
-        console.log(`Fetched and cached ${allPerformers.length} unique performers.`);
+        console.log(`DataAPI: Fetched ${this.#_allOnlinePerformers.length} unique public performers`);
+    }
+
+    /**
+     * Apply filters and sorting to performers
+     * @private
+     */
+    async #_applyFiltersAndSort(performers, filters, page, perPage) {
+        let filtered = [...performers];
+
+        // Apply age filter
+        if (filters.ageMin) {
+            filtered = filtered.filter(p => p.age >= filters.ageMin);
+        }
+        if (filters.ageMax) {
+            filtered = filtered.filter(p => p.age <= filters.ageMax);
+        }
+
+        // Apply tag filter
+        if (filters.tags && filters.tags.length > 0) {
+            const filterTags = filters.tags.map(t => t.toLowerCase().trim());
+            filtered = filtered.filter(p => {
+                if (!p.tags || !Array.isArray(p.tags)) return false;
+                const performerTags = p.tags.map(t => t.toLowerCase());
+                return filterTags.some(ft => performerTags.includes(ft));
+            });
+        }
+
+        // Apply search filter
+        if (filters.search) {
+            const searchLower = filters.search.toLowerCase();
+            filtered = filtered.filter(p => {
+                const username = (p.username || '').toLowerCase();
+                const displayName = (p.display_name || '').toLowerCase();
+                const tags = (p.tags || []).join(' ').toLowerCase();
+                return username.includes(searchLower) || 
+                       displayName.includes(searchLower) || 
+                       tags.includes(searchLower);
+            });
+        }
+
+        // Apply new models filter
+        if (filters.newOnly) {
+            filtered = filtered.filter(p => p.is_new === true);
+        }
+
+        // Get ranking context
+        const context = await this.#_getRankingContext();
+
+        // Calculate rank scores
+        filtered = filtered.map(p => ({
+            ...p,
+            rankScore: AppConfig.calculateRankScore(p, context)
+        }));
+
+        // Apply sorting
+        filtered = this.#_sortPerformers(filtered, filters.sortBy);
+
+        // Apply pagination
+        const start = (page - 1) * perPage;
+        const paged = filtered.slice(start, start + perPage);
+
+        return {
+            performers: paged,
+            total: filtered.length,
+            page,
+            perPage,
+            hasMore: start + perPage < filtered.length
+        };
+    }
+
+    /**
+     * Sort performers by specified criteria
+     * @private
+     */
+    #_sortPerformers(performers, sortBy = 'viewers_desc') {
+        const sorted = [...performers];
+
+        switch (sortBy) {
+            case 'viewers_desc':
+                sorted.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
+                break;
+            case 'viewers_asc':
+                sorted.sort((a, b) => (a.num_viewers || 0) - (b.num_viewers || 0));
+                break;
+            case 'age_asc':
+                sorted.sort((a, b) => (a.age || 99) - (b.age || 99));
+                break;
+            case 'age_desc':
+                sorted.sort((a, b) => (b.age || 0) - (a.age || 0));
+                break;
+            case 'name_asc':
+                sorted.sort((a, b) => (a.display_name || a.username).localeCompare(b.display_name || b.username));
+                break;
+            case 'name_desc':
+                sorted.sort((a, b) => (b.display_name || b.username).localeCompare(a.display_name || a.username));
+                break;
+            case 'new_first':
+                sorted.sort((a, b) => {
+                    if (a.is_new === b.is_new) return (b.num_viewers || 0) - (a.num_viewers || 0);
+                    return a.is_new ? -1 : 1;
+                });
+                break;
+            case 'rank_score':
+                sorted.sort((a, b) => (b.rankScore || 0) - (a.rankScore || 0));
+                break;
+            default:
+                sorted.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
+        }
+
+        return sorted;
+    }
+
+    /**
+     * Get ranking context (favorites, history)
+     * @private
+     */
+    async #_getRankingContext() {
+        try {
+            const favorites = await this.#_cache.getFavorites();
+            const history = await this.#_cache.getHistory();
+            
+            // Get recently viewed (last 24 hours)
+            const recentThreshold = Date.now() - (24 * 60 * 60 * 1000);
+            const recentlyViewed = history
+                .filter(h => h.timestamp > recentThreshold)
+                .map(h => h.username);
+
+            return {
+                favorites: new Set(favorites),
+                recentlyViewed: new Set(recentlyViewed)
+            };
+        } catch (error) {
+            console.error("DataAPI: Error getting ranking context:", error);
+            return { favorites: new Set(), recentlyViewed: new Set() };
+        }
+    }
+
+    /**
+     * Load performers from local .dat files
+     * @returns {Promise<Array<Object>>}
+     */
+    async loadCachedPerformers() {
+        const allPerformers = [];
+        const seen = new Set();
+
+        for (const file of AppConfig.DAT_FILES) {
+            try {
+                const response = await fetch(`${AppConfig.DATA_PATH}${file}`);
+                if (!response.ok) continue;
+
+                const compressedData = await response.arrayBuffer();
+                const decompressedData = pako.inflate(new Uint8Array(compressedData), { to: 'string' });
+                const data = JSON.parse(decompressedData);
+
+                const performers = Array.isArray(data) ? data : Object.values(data);
+                for (const p of performers) {
+                    if (p.username && !seen.has(p.username)) {
+                        seen.add(p.username);
+                        allPerformers.push(p);
+                    }
+                }
+            } catch (error) {
+                console.warn(`DataAPI: Could not load ${file}:`, error.message);
+            }
+        }
 
         return allPerformers;
     }
 
     /**
-     * @private
-     * Helper to process a single file and add its performers to the main list.
-     * This is used with Promise.all to parallelize the downloads.
-     * @param {string} file
+     * Get the count of all online performers
+     * @returns {number}
      */
-    async #_processFile(file) {
-        // This function is currently a placeholder for the logic inside #_fetchFromNetwork's loop.
-        // In a more complex scenario, this could handle per-file logic.
-        // The actual processing is done in the loop to maintain a single list.
+    getTotalCount() {
+        return this.#_allOnlinePerformers.length;
+    }
+
+    /**
+     * Check if more performers can be loaded
+     * @returns {boolean}
+     */
+    hasMorePerformers() {
+        return this.#_hasMoreData;
     }
 }

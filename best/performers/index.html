@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jinx Gen | Performers Engine</title>
+    <title>Jinx Gen | Best Performers Engine</title>
 
     <!-- CDNs for Frameworks -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -18,24 +18,229 @@
 <body>
 
     <div class="app-container">
-        <header class="app-header w3-container">
-            <h1>Jinx Gen Performers</h1>
-            <div class="controls w3-bar">
-                <input type="text" id="searchInput" class="w3-bar-item w3-input w3-border" placeholder="Search performers...">
-                <button id="refreshButton" class="w3-bar-item w3-button w3-blue">Refresh</button>
+        <header class="app-header">
+            <div class="header-main">
+                <h1>🎭 Best Performers Engine</h1>
+                <div class="header-actions">
+                    <button id="toggleFilters" class="btn btn-sm btn-outline-light">Filters ▼</button>
+                    <button id="toggleSnippets" class="btn btn-sm btn-outline-light">Snippets ▼</button>
+                    <button id="refreshButton" class="btn btn-sm btn-primary">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <!-- Search Bar -->
+            <div class="search-container">
+                <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search performers by name, tags...">
             </div>
         </header>
 
+        <!-- Filters Panel -->
+        <div id="filtersPanel" class="filters-panel" style="display: none;">
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label for="sortBy">Sort By:</label>
+                    <select id="sortBy" class="form-select form-select-sm">
+                        <option value="viewers_desc">Most Viewers</option>
+                        <option value="viewers_asc">Least Viewers</option>
+                        <option value="age_asc">Youngest First</option>
+                        <option value="age_desc">Oldest First</option>
+                        <option value="name_asc">Name (A-Z)</option>
+                        <option value="name_desc">Name (Z-A)</option>
+                        <option value="new_first">New Models First</option>
+                        <option value="rank_score">Ranking Score</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterGender">Gender:</label>
+                    <select id="filterGender" class="form-select form-select-sm">
+                        <option value="">All</option>
+                        <option value="f" selected>Female</option>
+                        <option value="m">Male</option>
+                        <option value="c">Couples</option>
+                        <option value="s">Trans</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterAgeMin">Age Min:</label>
+                    <input type="number" id="filterAgeMin" class="form-control form-control-sm" min="18" max="99" value="18">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterAgeMax">Age Max:</label>
+                    <input type="number" id="filterAgeMax" class="form-control form-control-sm" min="18" max="99" value="99">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterTags">Tags (comma separated):</label>
+                    <input type="text" id="filterTags" class="form-control form-control-sm" placeholder="asian, blonde...">
+                </div>
+                
+                <div class="filter-group">
+                    <label for="viewerLayoutSelect">Viewer Layout:</label>
+                    <select id="viewerLayoutSelect" class="form-select form-select-sm">
+                        <option value="1">1 Viewer</option>
+                        <option value="2">2 Viewers</option>
+                        <option value="3">3 Viewers</option>
+                        <option value="4" selected>4 Viewers (2x2)</option>
+                        <option value="6">6 Viewers (2x3)</option>
+                        <option value="9">9 Viewers (3x3)</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group filter-actions">
+                    <button id="applyFilters" class="btn btn-sm btn-success">Apply Filters</button>
+                    <button id="resetFilters" class="btn btn-sm btn-secondary">Reset</button>
+                </div>
+            </div>
+            
+            <!-- Quick Filter Buttons -->
+            <div class="quick-filters">
+                <span class="quick-label">Quick:</span>
+                <button class="quick-filter-btn" data-filter="age" data-value="18">Age 18</button>
+                <button class="quick-filter-btn" data-filter="tag" data-value="asian">Asian</button>
+                <button class="quick-filter-btn" data-filter="tag" data-value="blonde">Blonde</button>
+                <button class="quick-filter-btn" data-filter="tag" data-value="bigboobs">Bigboobs</button>
+                <button class="quick-filter-btn" data-filter="tag" data-value="latina">Latina</button>
+                <button class="quick-filter-btn" data-filter="new" data-value="true">New Models</button>
+            </div>
+        </div>
+
+        <!-- Snippet Manager Panel -->
+        <div id="snippetsPanel" class="snippets-panel" style="display: none;">
+            <div class="snippet-input-group">
+                <textarea id="newSnippetInput" class="form-control" rows="2" placeholder="Enter a new chat snippet for autocomplete..."></textarea>
+                <button id="saveSnippetButton" class="btn btn-sm btn-primary">Add Snippet</button>
+            </div>
+            <div class="snippets-list">
+                <h6>Saved Snippets (click to copy):</h6>
+                <div id="snippetsList">
+                    <p class="text-muted">No snippets saved yet.</p>
+                </div>
+            </div>
+            <div id="snippetStatus" class="snippet-status" style="display: none;"></div>
+            
+            <!-- Main text area with autocomplete -->
+            <div class="main-text-area-container">
+                <label for="mainTextArea">Compose Message (type <code>{{</code> for autocomplete):</label>
+                <textarea id="mainTextArea" class="form-control" rows="3" placeholder="Type your message... use {{ to trigger snippets"></textarea>
+                <div id="autocompleteSuggestions" class="autocomplete-suggestions" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="performerCount">Loading performers...</span>
+            <span id="onlineStatus" class="online-indicator">●</span>
+            <span id="lastUpdate"></span>
+        </div>
+
         <main class="main-content">
+            <!-- Multi-Iframe Viewer Panel -->
             <section class="viewer-panel">
-                <div class="iframe-container">
-                    <iframe id="mainIframe" src="about:blank" title="Main Viewer" sandbox="allow-scripts allow-same-origin"></iframe>
+                <div id="iframeGrid" class="iframe-grid layout-4">
+                    <div class="iframe-wrapper" data-slot="1">
+                        <div class="iframe-header">
+                            <span class="slot-number">#1</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe1" src="about:blank" title="Viewer 1" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="2">
+                        <div class="iframe-header">
+                            <span class="slot-number">#2</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe2" src="about:blank" title="Viewer 2" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="3">
+                        <div class="iframe-header">
+                            <span class="slot-number">#3</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe3" src="about:blank" title="Viewer 3" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="4">
+                        <div class="iframe-header">
+                            <span class="slot-number">#4</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe4" src="about:blank" title="Viewer 4" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="5">
+                        <div class="iframe-header">
+                            <span class="slot-number">#5</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe5" src="about:blank" title="Viewer 5" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="6">
+                        <div class="iframe-header">
+                            <span class="slot-number">#6</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe6" src="about:blank" title="Viewer 6" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="7">
+                        <div class="iframe-header">
+                            <span class="slot-number">#7</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe7" src="about:blank" title="Viewer 7" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="8">
+                        <div class="iframe-header">
+                            <span class="slot-number">#8</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe8" src="about:blank" title="Viewer 8" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
+                    <div class="iframe-wrapper" data-slot="9">
+                        <div class="iframe-header">
+                            <span class="slot-number">#9</span>
+                            <span class="performer-name">-</span>
+                            <button class="close-iframe-btn" title="Clear">&times;</button>
+                        </div>
+                        <iframe id="iframe9" src="about:blank" title="Viewer 9" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+                    </div>
                 </div>
             </section>
 
+            <!-- Performer Grid Panel -->
             <aside class="grid-panel">
+                <div class="grid-header">
+                    <h5>Performers</h5>
+                    <div class="slot-selector">
+                        <label>Add to slot:</label>
+                        <select id="targetSlot" class="form-select form-select-sm">
+                            <option value="auto">Auto (next empty)</option>
+                            <option value="1">#1</option>
+                            <option value="2">#2</option>
+                            <option value="3">#3</option>
+                            <option value="4">#4</option>
+                            <option value="5">#5</option>
+                            <option value="6">#6</option>
+                            <option value="7">#7</option>
+                            <option value="8">#8</option>
+                            <option value="9">#9</option>
+                        </select>
+                    </div>
+                </div>
                 <div id="performerGrid" class="performer-grid">
                     <!-- Performer cards will be dynamically inserted here -->
+                </div>
+                <div id="loadMoreContainer" class="load-more-container">
+                    <button id="loadMoreBtn" class="btn btn-sm btn-outline-primary" style="display: none;">Load More</button>
+                    <div id="loadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
                 </div>
             </aside>
         </main>
