@@ -1,147 +1,311 @@
 /**
- * @file Main PerformerEngine class and application entry point.
- * @author Jules
- * @description This file brings together all the engine components (API, Cache, UI)
- * to create the main application logic. It demonstrates advanced OOP concepts like
- * classes, private members, and composition.
+ * @file Main Best Performers Engine class and application entry point.
+ * @description Orchestrates all modules for the enhanced performer viewing experience.
  */
 
 /**
  * @class Performer
- * @description A class representing a single performer. This is a form of Object Mapping,
- * turning raw data objects into structured instances with potential methods.
- * This acts as a "struct" or "interface" for performer data.
+ * @description Data class for performer objects
  */
 class Performer {
-    // Public members, directly mapped from the JSON data.
     username;
     display_name;
     image_url;
     iframe_embed;
     age;
     gender;
+    num_viewers;
+    is_new;
+    tags;
+    current_show;
+    rankScore;
 
-    /**
-     * @param {object} data - Raw data object for a performer.
-     */
     constructor(data) {
-        // Object mapping from data to class properties.
         this.username = data.username;
         this.display_name = data.display_name || data.username;
         this.image_url = data.image_url || data.profile_pic_url;
         this.iframe_embed = data.iframe_embed;
         this.age = data.age;
         this.gender = data.gender;
+        this.num_viewers = data.num_viewers || 0;
+        this.is_new = data.is_new || false;
+        this.tags = data.tags || [];
+        this.current_show = data.current_show;
+        this.rankScore = data.rankScore || 0;
 
-        // Using Object.freeze to make the instance immutable, a good practice for data objects.
         Object.freeze(this);
     }
 
-    /**
-     * A static factory method to create Performer instances.
-     * @param {object[]} performerData - An array of raw performer data.
-     * @returns {Performer[]} An array of Performer instances.
-     */
     static createMany(performerData) {
         return performerData.map(data => new Performer(data));
     }
 }
 
-
 /**
- * @class PerformerEngine
- * @description The main orchestrator for the application. It initializes and
- * coordinates all the other modules.
+ * @class BestPerformersEngine
+ * @description Main application orchestrator
  */
-class PerformerEngine {
-    // Using private fields for true encapsulation.
+class BestPerformersEngine {
     #_uiManager;
     #_dataAPI;
-    #_performers = []; // This will hold Performer class instances.
+    #_performers = [];
+    #_currentPage = 1;
+    #_currentFilters = {};
+    #_fetchInterval = null;
 
     constructor() {
-        // The engine is composed of the other modules, a key OOP principle.
         this.#_dataAPI = new DataAPI(CacheManager);
-        this.#_uiManager = new UIManager(
-            {
-                grid: '#performerGrid',
-                iframe: '#mainIframe',
-                searchInput: '#searchInput',
-                refreshButton: '#refreshButton'
-            },
-            // The callback "hook" allows the UI to communicate back to the engine
-            // without being tightly coupled.
-            (performer) => this.#_handlePerformerSelection(performer),
-            () => this.init(true) // Pass true to force a refresh
-        );
+        this.#_uiManager = new UIManager({
+            onPerformerSelect: (performer) => this.#_handlePerformerSelection(performer),
+            onRefresh: () => this.refresh(),
+            onFilterChange: (filters, loadMore) => this.#_handleFilterChange(filters, loadMore),
+            onSearch: (query) => this.#_handleSearch(query)
+        });
+
+        this.#_currentFilters = { ...AppConfig.DEFAULT_FILTERS };
     }
 
     /**
+     * Handle performer selection
      * @private
-     * Handles the logic when a performer card is selected in the UI.
-     * @param {Performer} performer - The selected performer.
      */
-    #_handlePerformerSelection(performer) {
-        console.log(`Performer selected: ${performer.display_name}`);
+    async #_handlePerformerSelection(performer) {
+        console.log(`Performer selected: ${performer.display_name || performer.username}`);
+        
         this.#_uiManager.updateViewer(performer);
-    }
-
-    /**
-     * The main initialization method for the application.
-     * @public
-     * @param {boolean} forceRefresh - If true, bypass the cache and fetch fresh data.
-     */
-    async init(forceRefresh = false) {
-        this.#_uiManager.showLoading();
+        
+        // Add to history
         try {
-            // The "async/await" syntax makes asynchronous code read like synchronous code.
-            const performerData = await this.#_dataAPI.getPerformers(forceRefresh);
-            this.#_performers = Performer.createMany(performerData);
-
-            if (this.#_performers.length > 0) {
-                this.#_uiManager.renderPerformers(this.#_performers);
-                // Automatically select the first performer to display in the viewer.
-                this.#_handlePerformerSelection(this.#_performers[0]);
-            } else {
-                this.#_uiManager.showError(); // Or a "no performers found" message
-            }
+            await CacheManager.addToHistory(performer.username);
         } catch (error) {
-            console.error("Failed to initialize PerformerEngine:", error);
-            this.#_uiManager.showError();
+            console.error("Error adding to history:", error);
         }
     }
-}
 
-// Entry point for the application.
-// We wait for the DOM to be fully loaded before initializing the engine.
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Visit Tracking ---
-    const LOGGING_SERVICE_URL = 'https://script.google.com/macros/s/AKfycbzr5jBpyz_6w94lOZotEoYpVa9kDY603A_6QAB4FLRSnI5GDlgzfRb8FOCR8uTdoGGc/exec';
+    /**
+     * Handle filter changes
+     * @private
+     */
+    async #_handleFilterChange(filters, loadMore = false) {
+        if (loadMore) {
+            this.#_currentPage++;
+        } else {
+            this.#_currentPage = 1;
+            this.#_currentFilters = { ...filters };
+        }
 
-    function logVisit() {
+        await this.#_loadPerformers(loadMore);
+    }
+
+    /**
+     * Handle search input
+     * @private
+     */
+    async #_handleSearch(query) {
+        this.#_currentFilters.search = query;
+        this.#_currentPage = 1;
+        await this.#_loadPerformers(false);
+    }
+
+    /**
+     * Load performers with current filters
+     * @private
+     */
+    async #_loadPerformers(append = false) {
+        if (!append) {
+            this.#_uiManager.showLoading();
+        }
+
+        try {
+            const result = await this.#_dataAPI.getPerformers({
+                filters: this.#_currentFilters,
+                page: this.#_currentPage,
+                perPage: AppConfig.PERFORMERS_PER_PAGE
+            });
+
+            this.#_performers = Performer.createMany(result.performers);
+
+            if (this.#_performers.length > 0) {
+                this.#_uiManager.renderPerformers(this.#_performers, append);
+                this.#_uiManager.showLoadMore(result.hasMore);
+                
+                // Auto-populate viewers on first load
+                if (this.#_currentPage === 1 && !append) {
+                    this.#_uiManager.autoPopulateViewers(this.#_performers);
+                }
+            } else if (!append) {
+                this.#_uiManager.showError('No performers found matching your criteria.');
+            }
+
+            this.#_uiManager.updateStatus({
+                count: result.total,
+                lastUpdate: Date.now()
+            });
+
+        } catch (error) {
+            console.error("Failed to load performers:", error);
+            if (!append) {
+                this.#_uiManager.showError(error.message);
+            }
+        } finally {
+            this.#_uiManager.hideLoading();
+        }
+    }
+
+    /**
+     * Refresh performer data
+     */
+    async refresh() {
+        this.#_currentPage = 1;
+        await this.#_dataAPI.getPerformers({ forceRefresh: true, filters: this.#_currentFilters });
+        await this.#_loadPerformers(false);
+    }
+
+    /**
+     * Initialize snippet functionality
+     * @private
+     */
+    async #_initSnippets() {
+        // Load existing snippets
+        try {
+            const snippets = await CacheManager.getAllSnippets();
+            this.#_uiManager.renderSnippets(snippets);
+        } catch (error) {
+            console.error("Error loading snippets:", error);
+        }
+
+        // Save snippet button handler
+        const saveBtn = document.querySelector('#saveSnippetButton');
+        saveBtn?.addEventListener('click', async () => {
+            const text = this.#_uiManager.getSnippetInput();
+            if (!text.trim()) {
+                this.#_uiManager.showSnippetStatus('Snippet cannot be empty', 'error');
+                return;
+            }
+
+            try {
+                await CacheManager.addSnippet(text);
+                const snippets = await CacheManager.getAllSnippets();
+                this.#_uiManager.renderSnippets(snippets);
+                this.#_uiManager.clearSnippetInput();
+                this.#_uiManager.showSnippetStatus('Snippet saved!', 'success');
+            } catch (error) {
+                this.#_uiManager.showSnippetStatus(error.message, 'error');
+            }
+        });
+
+        // Delete snippet handler (event delegation)
+        const snippetsList = document.querySelector('#snippetsList');
+        snippetsList?.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = parseInt(e.target.dataset.id);
+                if (id) {
+                    try {
+                        await CacheManager.deleteSnippet(id);
+                        const snippets = await CacheManager.getAllSnippets();
+                        this.#_uiManager.renderSnippets(snippets);
+                        this.#_uiManager.showSnippetStatus('Snippet deleted', 'success');
+                    } catch (error) {
+                        this.#_uiManager.showSnippetStatus('Failed to delete', 'error');
+                    }
+                }
+            }
+        });
+
+        // Autocomplete for main text area
+        const mainTextArea = document.querySelector('#mainTextArea');
+        mainTextArea?.addEventListener('input', async (e) => {
+            const text = e.target.value;
+            const triggerPos = text.lastIndexOf('{{');
+            
+            if (triggerPos !== -1 && triggerPos === text.length - 2) {
+                // Just typed '{{', show all snippets
+                const snippets = await CacheManager.getAllSnippets();
+                this.#_uiManager.showAutocompleteSuggestions(snippets);
+            } else if (triggerPos !== -1) {
+                const query = text.substring(triggerPos + 2);
+                if (query.length > 0) {
+                    const snippets = await CacheManager.searchSnippets(query);
+                    this.#_uiManager.showAutocompleteSuggestions(snippets);
+                }
+            } else {
+                this.#_uiManager.hideAutocompleteSuggestions();
+            }
+        });
+
+        mainTextArea?.addEventListener('blur', () => {
+            setTimeout(() => {
+                this.#_uiManager.hideAutocompleteSuggestions();
+            }, 150);
+        });
+    }
+
+    /**
+     * Start periodic refresh
+     * @private
+     */
+    #_startPeriodicRefresh() {
+        if (this.#_fetchInterval) {
+            clearInterval(this.#_fetchInterval);
+        }
+        
+        this.#_fetchInterval = setInterval(async () => {
+            console.log("Periodic refresh triggered");
+            await this.refresh();
+        }, AppConfig.FETCH_INTERVAL);
+    }
+
+    /**
+     * Log visit for analytics
+     * @private
+     */
+    #_logVisit() {
         const data = {
             timestamp: new Date().toISOString(),
             target: window.location.href,
             referrer: document.referrer,
             userAgent: navigator.userAgent,
-            event_type: 'page_visit' // Differentiate from link clicks
+            event_type: 'page_visit'
         };
 
-        if (navigator.sendBeacon) {
-            navigator.sendBeacon(LOGGING_SERVICE_URL, JSON.stringify(data));
-        } else {
-            fetch(LOGGING_SERVICE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-                keepalive: true
-            }).catch(error => console.error('Error logging visit:', error));
+        if (navigator.sendBeacon && AppConfig.LOGGING_SERVICE_URL) {
+            navigator.sendBeacon(AppConfig.LOGGING_SERVICE_URL, JSON.stringify(data));
         }
     }
 
-    logVisit();
-    // --- End Visit Tracking ---
+    /**
+     * Main initialization
+     */
+    async init() {
+        console.log("BestPerformersEngine: Initializing...");
+        
+        this.#_logVisit();
+        
+        // Load saved filter preferences
+        try {
+            const savedFilters = await CacheManager.getFilters();
+            this.#_currentFilters = { ...AppConfig.DEFAULT_FILTERS, ...savedFilters };
+        } catch (error) {
+            console.warn("Could not load saved filters:", error);
+        }
 
-    const engine = new PerformerEngine();
-    engine.init();
+        // Initialize snippets
+        await this.#_initSnippets();
+
+        // Load performers
+        await this.#_loadPerformers(false);
+
+        // Start periodic refresh
+        this.#_startPeriodicRefresh();
+
+        console.log("BestPerformersEngine: Initialization complete");
+    }
+}
+
+// Entry point
+document.addEventListener('DOMContentLoaded', () => {
+    const engine = new BestPerformersEngine();
+    engine.init().catch(error => {
+        console.error("Failed to initialize BestPerformersEngine:", error);
+    });
 });
