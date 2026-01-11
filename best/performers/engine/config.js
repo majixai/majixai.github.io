@@ -35,6 +35,7 @@ const AppConfig = (() => {
     const _MAX_IFRAMES = 9;
     const _DEFAULT_LAYOUT = 4;
     const _PERFORMERS_PER_PAGE = 50;
+    const _MAX_PERFORMERS_DISPLAY = 1000; // Maximum performers to keep in memory for performance
 
     // Ranking Weights (used for calculating rank score)
     const _RANKING_WEIGHTS = {
@@ -80,6 +81,7 @@ const AppConfig = (() => {
         MAX_IFRAMES: _MAX_IFRAMES,
         DEFAULT_LAYOUT: _DEFAULT_LAYOUT,
         PERFORMERS_PER_PAGE: _PERFORMERS_PER_PAGE,
+        MAX_PERFORMERS_DISPLAY: _MAX_PERFORMERS_DISPLAY,
 
         // Ranking
         RANKING_WEIGHTS: Object.freeze({ ..._RANKING_WEIGHTS }),

@@ -128,7 +128,7 @@ class DataAPI {
             totalFetched += result.performers.length;
 
             // Stop after getting enough performers for performance
-            if (this.#_allOnlinePerformers.length >= 1000) {
+            if (this.#_allOnlinePerformers.length >= AppConfig.MAX_PERFORMERS_DISPLAY) {
                 console.log("DataAPI: Stopping fetch, have enough performers");
                 break;
             }
