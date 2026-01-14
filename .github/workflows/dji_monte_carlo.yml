@@ -1,0 +1,62 @@
+name: DJI Monte Carlo Simulation
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  # Also trigger on push to the dji_monte_carlo directory
+  push:
+    branches:
+      - main
+    paths:
+      - 'dji_monte_carlo/**'
+
+permissions:
+  contents: write
+
+jobs:
+  run_monte_carlo_simulation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          echo "INFO: Installing Python packages numpy and matplotlib..."
+          pip install numpy matplotlib
+          echo "SUCCESS: Python dependencies installed."
+
+      - name: Run Monte Carlo Simulation
+        run: |
+          echo "INFO: Running DJI Monte Carlo Simulation..."
+          cd dji_monte_carlo
+          python monte_carlo_simulation.py
+          echo "SUCCESS: Simulation completed."
+
+      - name: Commit and push results
+        run: |
+          echo "INFO: Configuring git user..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          echo "INFO: Staging simulation output..."
+          git add dji_monte_carlo/dji_simulation_output.png
+
+          if ! git diff --staged --quiet; then
+            echo "INFO: Changes detected. Committing..."
+            git commit -m "simulation: Update DJI Monte Carlo output - $(date +'%Y-%m-%d %H:%M:%S')"
+            echo "INFO: Pushing changes..."
+            git push
+            echo "SUCCESS: Results pushed."
+          else
+            echo "INFO: No changes to commit."
+          fi
