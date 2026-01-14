@@ -114,6 +114,26 @@ def main():
         action="store_true",
         help="List all tickers and exit"
     )
+    parser.add_argument(
+        "--show-data",
+        action="store_true",
+        help="Display data from the database"
+    )
+    parser.add_argument(
+        "--show-ticker",
+        help="Show data for a specific ticker"
+    )
+    parser.add_argument(
+        "--show-summary",
+        action="store_true",
+        help="Show summary of data in the database"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        help="Limit number of records to display (default: 100)"
+    )
 
     args = parser.parse_args()
 
@@ -131,6 +151,55 @@ def main():
             print(f"  {i:3d}. {ticker}")
         return 0
 
+    # Handle data display commands
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    if args.show_summary:
+        from models.data_model import DataModel
+        model = DataModel(data_dir=script_dir)
+        try:
+            summary = model.get_data_summary()
+            print("\n" + "=" * 60)
+            print("DATABASE SUMMARY")
+            print("=" * 60)
+            print(f"Total Records: {summary['total_records']:,}")
+            print(f"Unique Tickers: {summary['unique_tickers']}")
+            print(f"Date Range: {summary['date_range']['min']} to {summary['date_range']['max']}")
+            print("\nRecords per Ticker:")
+            print("-" * 40)
+            for ticker, count in list(summary['ticker_counts'].items())[:20]:
+                print(f"  {ticker:10s}: {count:,} records")
+            if len(summary['ticker_counts']) > 20:
+                print(f"  ... and {len(summary['ticker_counts']) - 20} more tickers")
+            print("=" * 60)
+        except FileNotFoundError as e:
+            logger.error(f"Error: {e}")
+            return 1
+        return 0
+
+    if args.show_data or args.show_ticker:
+        from models.data_model import DataModel
+        model = DataModel(data_dir=script_dir)
+        try:
+            df = model.read_data(ticker=args.show_ticker, limit=args.limit)
+            if df.empty:
+                print("No data found in the database.")
+                return 0
+
+            print("\n" + "=" * 100)
+            if args.show_ticker:
+                print(f"DATA FOR TICKER: {args.show_ticker}")
+            else:
+                print("DATABASE CONTENTS")
+            print("=" * 100)
+            print(df.to_string(index=False))
+            print("=" * 100)
+            print(f"Total rows displayed: {len(df)}")
+        except FileNotFoundError as e:
+            logger.error(f"Error: {e}")
+            return 1
+        return 0
+
     # Determine which tickers to fetch
     if args.tickers:
         tickers_to_fetch = [t.strip() for t in args.tickers.split(",")]
@@ -142,7 +211,6 @@ def main():
     logger.info(f"Preparing to fetch {len(tickers_to_fetch)} tickers...")
 
     # Create controller - use current directory for data storage when run from yfinance_data dir
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     controller = DataController(data_dir=script_dir)
 
     # Configure notifications from environment or command line

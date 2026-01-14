@@ -245,3 +245,147 @@ class DataModel:
         if self.conn:
             self.conn.close()
             self.conn = None
+
+    def decompress_database(self, dat_file: Optional[str] = None) -> str:
+        """
+        Decompress a .dat file back to SQLite database.
+
+        Args:
+            dat_file: Path to the .dat file. Defaults to yfinance.dat in data_dir.
+
+        Returns:
+            Path to the decompressed database file.
+        """
+        if dat_file is None:
+            dat_file = os.path.join(self.data_dir, "yfinance.dat")
+
+        if not os.path.exists(dat_file):
+            raise FileNotFoundError(f"Data file not found: {dat_file}")
+
+        # Create a temporary database file
+        temp_db = os.path.join(self.data_dir, "temp_yfinance.db")
+
+        with gzip.open(dat_file, "rb") as f_in:
+            with open(temp_db, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+
+        logger.info(f"Decompressed {dat_file} to {temp_db}")
+        return temp_db
+
+    def read_data(
+        self,
+        ticker: Optional[str] = None,
+        limit: int = 100,
+        dat_file: Optional[str] = None
+    ) -> pd.DataFrame:
+        """
+        Read data from the compressed .dat file.
+
+        Args:
+            ticker: Optional ticker to filter by. If None, returns all tickers.
+            limit: Maximum number of records to return per ticker.
+            dat_file: Path to the .dat file.
+
+        Returns:
+            DataFrame with the data.
+        """
+        temp_db = self.decompress_database(dat_file)
+
+        try:
+            conn = sqlite3.connect(temp_db)
+
+            if ticker:
+                query = "SELECT * FROM prices WHERE Ticker = ? ORDER BY Date DESC LIMIT ?"
+                df = pd.read_sql_query(query, conn, params=(ticker, limit))
+            else:
+                query = """
+                    SELECT * FROM prices 
+                    ORDER BY Ticker, Date DESC
+                    LIMIT ?
+                """
+                df = pd.read_sql_query(query, conn, params=(limit,))
+
+            conn.close()
+            return df
+
+        finally:
+            # Clean up temp database
+            if os.path.exists(temp_db):
+                os.remove(temp_db)
+
+    def get_available_tickers(self, dat_file: Optional[str] = None) -> List[str]:
+        """
+        Get list of tickers available in the database.
+
+        Args:
+            dat_file: Path to the .dat file.
+
+        Returns:
+            List of ticker symbols.
+        """
+        temp_db = self.decompress_database(dat_file)
+
+        try:
+            conn = sqlite3.connect(temp_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT Ticker FROM prices ORDER BY Ticker")
+            tickers = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            return tickers
+
+        finally:
+            if os.path.exists(temp_db):
+                os.remove(temp_db)
+
+    def get_data_summary(self, dat_file: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get summary of data in the database.
+
+        Args:
+            dat_file: Path to the .dat file.
+
+        Returns:
+            Dictionary with data summary.
+        """
+        temp_db = self.decompress_database(dat_file)
+
+        try:
+            conn = sqlite3.connect(temp_db)
+            cursor = conn.cursor()
+
+            # Get total records
+            cursor.execute("SELECT COUNT(*) FROM prices")
+            total_records = cursor.fetchone()[0]
+
+            # Get unique tickers
+            cursor.execute("SELECT COUNT(DISTINCT Ticker) FROM prices")
+            unique_tickers = cursor.fetchone()[0]
+
+            # Get date range
+            cursor.execute("SELECT MIN(Date), MAX(Date) FROM prices")
+            date_range = cursor.fetchone()
+
+            # Get records per ticker
+            cursor.execute("""
+                SELECT Ticker, COUNT(*) as count 
+                FROM prices 
+                GROUP BY Ticker 
+                ORDER BY count DESC
+            """)
+            ticker_counts = cursor.fetchall()
+
+            conn.close()
+
+            return {
+                "total_records": total_records,
+                "unique_tickers": unique_tickers,
+                "date_range": {
+                    "min": date_range[0],
+                    "max": date_range[1]
+                },
+                "ticker_counts": dict(ticker_counts)
+            }
+
+        finally:
+            if os.path.exists(temp_db):
+                os.remove(temp_db)
