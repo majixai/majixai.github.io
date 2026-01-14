@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YFinance Interactive Chart - Advanced Analytics</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Plotly.js for advanced charting -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" integrity="sha384-p7P4K1q9F8zfQOkP5MxoLQ8dYYkuK2QJ6o3+2HKZmWz7V4Uxz6P7C8oMn0k+OJTQ" crossorigin="anonymous"></script>
+    <!-- Pako for decompression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js" integrity="sha384-UDqLY+v/kPgRaVqzUh8L0mZvWx6khiAfCxnkBQVeQC3eLFPHiYJpLCpZ5aLRbQsb" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📈 YFinance Interactive Chart</h1>
+            <p class="subtitle">Advanced Multivariate Bayesian Analysis with Pattern Recognition</p>
+        </header>
+
+        <div class="controls-panel">
+            <div class="search-container">
+                <label for="ticker-search">Search Watchlist:</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="ticker-search" placeholder="Type ticker symbol (e.g., AAPL, TSLA)" autocomplete="off">
+                    <div id="autocomplete-list" class="autocomplete-items"></div>
+                </div>
+                <button id="load-btn" class="btn-primary">Load Chart</button>
+            </div>
+
+            <div class="indicator-controls">
+                <h3>📊 Indicators</h3>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="show-sma" checked> SMA (20, 50)</label>
+                    <label><input type="checkbox" id="show-ema"> EMA (12, 26)</label>
+                    <label><input type="checkbox" id="show-bb" checked> Bollinger Bands</label>
+                    <label><input type="checkbox" id="show-volume" checked> Volume</label>
+                </div>
+            </div>
+
+            <div class="oscillator-controls">
+                <h3>📉 Oscillators</h3>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="show-rsi" checked> RSI</label>
+                    <label><input type="checkbox" id="show-macd"> MACD</label>
+                    <label><input type="checkbox" id="show-stoch"> Stochastic</label>
+                </div>
+            </div>
+
+            <div class="pattern-controls">
+                <h3>🔍 Pattern Recognition</h3>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="show-patterns" checked> Show Patterns</label>
+                    <label><input type="checkbox" id="show-forecast" checked> Show 1PM Forecast</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="watchlist-panel">
+            <h3>📋 Watchlist</h3>
+            <div id="watchlist" class="watchlist-grid"></div>
+        </div>
+
+        <div id="loader" class="loader">
+            <div class="spinner"></div>
+            <span id="loader-text">Loading data...</span>
+        </div>
+
+        <div class="chart-container">
+            <div id="main-chart" class="chart"></div>
+            <div id="volume-chart" class="chart-small"></div>
+            <div id="rsi-chart" class="chart-small"></div>
+            <div id="macd-chart" class="chart-small"></div>
+        </div>
+
+        <div class="info-panel">
+            <div class="forecast-panel" id="forecast-panel">
+                <h3>🎯 1PM Close Forecast</h3>
+                <div id="forecast-content"></div>
+            </div>
+
+            <div class="patterns-panel" id="patterns-panel">
+                <h3>🔎 Detected Patterns</h3>
+                <div id="patterns-content"></div>
+            </div>
+
+            <div class="stats-panel" id="stats-panel">
+                <h3>📊 Statistics</h3>
+                <div id="stats-content"></div>
+            </div>
+        </div>
+
+        <div class="feedback-panel">
+            <h3>🔄 Feedback Loop Engine Status</h3>
+            <div id="feedback-content" class="feedback-grid"></div>
+        </div>
+
+        <footer>
+            <p>Data powered by <a href="https://finance.yahoo.com" target="_blank">Yahoo Finance</a> | 
+               Analysis includes Multivariate Bayesian Nonlinear Differential Calculus</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
