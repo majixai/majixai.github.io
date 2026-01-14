@@ -227,18 +227,26 @@ def bayesian_forecast(data, target_hour=13):
     recent_n = min(100, n)
 
     # Construct covariance matrix for Bayesian prior
+    vol_max = np.max(np.abs(vol_momentum[-recent_n:]))
     state_matrix = np.column_stack([
         close[-recent_n:],
         price_diff[-recent_n:],
         price_acc[-recent_n:],
-        vol_momentum[-recent_n:] / (np.max(np.abs(vol_momentum[-recent_n:])) + 1e-10)
+        vol_momentum[-recent_n:] / (vol_max + 1e-10)
     ])
 
     # Calculate multivariate covariance matrix
     cov_matrix = np.cov(state_matrix.T)
 
-    # Eigendecomposition for matrix analysis
-    eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+    # Eigendecomposition for matrix analysis with error handling
+    try:
+        eigenvalues, eigenvectors = np.linalg.eig(cov_matrix)
+        eigenvalue_sum = np.sum(np.abs(eigenvalues))
+        principal_eigenvalue = eigenvalues[0].real / (eigenvalue_sum + 1e-10) if eigenvalue_sum > 0 else 0.25
+    except np.linalg.LinAlgError:
+        # Handle singular matrix case
+        eigenvalues = np.array([1.0, 0.0, 0.0, 0.0])
+        principal_eigenvalue = 0.25
 
     # Prior distribution parameters (Bayesian)
     prior_mean = close[-1]
@@ -285,7 +293,7 @@ def bayesian_forecast(data, target_hour=13):
     feedback_adjustment = (
         momentum_adj * volatility * 0.3 +  # Momentum feedback
         vol_direction * volatility * 0.1 +  # Volume feedback
-        (eigenvalues[0].real / np.sum(np.abs(eigenvalues)) - 0.25) * volatility * 0.2  # Matrix eigenvalue feedback
+        (principal_eigenvalue - 0.25) * volatility * 0.2  # Matrix eigenvalue feedback
     )
 
     # Final forecast with confidence intervals
@@ -301,7 +309,7 @@ def bayesian_forecast(data, target_hour=13):
         'posterior_variance': float(posterior_var),
         'momentum_factor': float(momentum_adj),
         'volume_direction': vol_direction,
-        'eigenvalue_principal': float(eigenvalues[0].real),
+        'eigenvalue_principal': float(principal_eigenvalue),
         'method': 'Multivariate Bayesian Nonlinear Differential Analysis'
     }
 

@@ -290,7 +290,7 @@ function setupAutocomplete() {
         
         matches.forEach(ticker => {
             const div = document.createElement('div');
-            div.innerHTML = `<strong>${ticker.substr(0, val.length)}</strong>${ticker.substr(val.length)}`;
+            div.innerHTML = `<strong>${ticker.substring(0, val.length)}</strong>${ticker.substring(val.length)}`;
             div.onclick = () => {
                 elements.tickerSearch.value = ticker;
                 closeAutocomplete();
