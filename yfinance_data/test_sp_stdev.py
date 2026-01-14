@@ -38,6 +38,13 @@ class TestSPStdev(unittest.TestCase):
         expected_stdev = np.std([99.0, 108.0, 103.0], ddof=1)
         self.assertAlmostEqual(stdev_open, expected_stdev, places=5)
 
+    def test_calculate_stdev_invalid_column(self):
+        """Test that invalid column raises ValueError."""
+        data = pd.DataFrame({"Close": [100.0, 110.0, 105.0]})
+        with self.assertRaises(ValueError) as context:
+            calculate_stdev(data, column="InvalidColumn")
+        self.assertIn("InvalidColumn", str(context.exception))
+
     @patch("sp_stdev.yf.Ticker")
     def test_fetch_sp500_weekly_data(self, mock_ticker):
         """Test fetching S&P 500 data from yfinance."""

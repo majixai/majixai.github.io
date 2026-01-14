@@ -37,9 +37,14 @@ def calculate_stdev(data, column="Close"):
 
     Returns:
         float: Standard deviation of the specified column
+
+    Raises:
+        ValueError: If data is empty or column doesn't exist
     """
     if data.empty:
         raise ValueError("No data available to calculate standard deviation")
+    if column not in data.columns:
+        raise ValueError(f"Column '{column}' not found in data. Available columns: {list(data.columns)}")
     return np.std(data[column], ddof=1)  # Sample standard deviation
 
 
