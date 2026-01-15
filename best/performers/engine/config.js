@@ -15,7 +15,9 @@ const AppConfig = (() => {
     const _DATA_PATH = '../'; // Relative path to the .dat files
 
     // API Configuration
-    const _API_URL_BASE = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=dU9X&wm=9cg6A&disable_sound=1&client_ip=request_ip';
+    const _AFFILIATE_TOUR = 'dU9X';
+    const _AFFILIATE_CAMPAIGN = '9cg6A';
+    const _API_URL_BASE = `https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=${_AFFILIATE_TOUR}&wm=${_AFFILIATE_CAMPAIGN}&disable_sound=1&client_ip=request_ip`;
     const _API_LIMIT = 500;
     const _API_TIMEOUT = 25000;
     const _MAX_API_FETCH_LIMIT = 5000;
@@ -103,6 +105,18 @@ const AppConfig = (() => {
             if (params.limit) url += `&limit=${params.limit}`;
             if (params.offset) url += `&offset=${params.offset}`;
             return url;
+        },
+
+        /**
+         * Build iframe embed URL for a performer
+         * @param {string} username - Performer username
+         * @returns {string} Iframe embed URL, or empty string if username is invalid
+         */
+        buildIframeUrl(username) {
+            if (!username || typeof username !== 'string' || !username.trim()) {
+                return '';
+            }
+            return `https://chaturbate.com/fullvideo/?campaign=${_AFFILIATE_CAMPAIGN}&disable_sound=1&b=${encodeURIComponent(username.trim())}&tour=${_AFFILIATE_TOUR}`;
         },
 
         /**

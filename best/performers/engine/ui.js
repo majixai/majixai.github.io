@@ -382,7 +382,7 @@ class UIManager {
      * @param {number} slot - Slot number (1-9), or 'auto' for next empty
      */
     updateViewer(performer, slot = 'auto') {
-        if (!performer || !performer.iframe_embed) return;
+        if (!performer || !performer.username) return;
 
         // Determine which slot to use
         let targetSlot;
@@ -408,7 +408,12 @@ class UIManager {
         const nameSpan = wrapper?.querySelector('.performer-name');
 
         if (iframe) {
-            iframe.src = performer.iframe_embed;
+            const iframeSrc = AppConfig.buildIframeUrl(performer.username);
+            if (!iframeSrc) {
+                console.warn("Invalid username for viewer");
+                return;
+            }
+            iframe.src = iframeSrc;
             
             // Remove from previous slot if already viewing
             for (const [username, existingSlot] of this.#_viewerSlots) {
