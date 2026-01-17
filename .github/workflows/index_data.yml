@@ -20,7 +20,8 @@ on:
         default: 'true'
         type: boolean
 
-  # Scheduled run at 5 PM PST (1:00 AM UTC next day)
+  # Scheduled run at 5 PM Pacific Time (1:00 AM UTC next day)
+  # Note: This is 5 PM PST (UTC-8) or 6 PM PDT (UTC-7) depending on daylight saving
   schedule:
     - cron: '0 1 * * *'
 

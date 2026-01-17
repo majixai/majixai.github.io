@@ -45,19 +45,27 @@ try:
     SCIPY_AVAILABLE = True
 except ImportError:
     SCIPY_AVAILABLE = False
-    # Fallback erf approximation
+    # Fallback erf approximation using Abramowitz and Stegun formula 7.1.26
+    # Reference: Handbook of Mathematical Functions, 1964
+    # Coefficients provide accuracy to within 1.5×10^-7
     def erf(x):
-        """Approximation of error function."""
-        a = 0.254829592
-        b = -0.284496736
-        c = 1.421413741
-        d = -1.453152027
-        e = 1.061405429
-        p = 0.3275911
+        """
+        Approximation of error function using Abramowitz and Stegun formula 7.1.26.
+        Reference: Handbook of Mathematical Functions (1964), formula 7.1.26
+        Maximum error: 1.5×10^-7
+        """
+        # Abramowitz and Stegun coefficients
+        a1 = 0.254829592
+        a2 = -0.284496736
+        a3 = 1.421413741
+        a4 = -1.453152027
+        a5 = 1.061405429
+        p = 0.3275911  # Scaling parameter
+        
         sign = np.sign(x)
         x = np.abs(x)
         t = 1.0 / (1.0 + p * x)
-        y = 1.0 - (((((e * t + d) * t) + c) * t + b) * t + a) * t * np.exp(-x * x)
+        y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * np.exp(-x * x)
         return sign * y
     print("Warning: scipy not available, advanced analytics disabled")
 
@@ -67,6 +75,22 @@ try:
 except ImportError:
     TF_AVAILABLE = False
     print("Warning: tensorflow not available, ML features disabled")
+
+
+# =============================================================================
+# CONSTANTS
+# =============================================================================
+
+# Trading calendar constants
+TRADING_DAYS_PER_YEAR = 252  # Standard US market trading days
+TRADING_MINUTES_PER_DAY = 390  # 6.5 hours * 60 minutes (9:30 AM - 4:00 PM ET)
+MINUTES_PER_YEAR = TRADING_DAYS_PER_YEAR * TRADING_MINUTES_PER_DAY
+
+# Mathematical constants for normal distribution approximation
+# Used in fast tanh-based CDF approximation: 0.5 * (1 + tanh(x * TANH_CDF_SCALE))
+# This constant ≈ sqrt(2/π) provides a good approximation to the normal CDF
+TANH_CDF_SCALE = 0.7978845608  # ≈ sqrt(2/π)
+
 
 
 # =============================================================================
@@ -758,7 +782,7 @@ class BlackScholesMerton:
     @staticmethod
     def _norm_cdf(x: float) -> float:
         """Standard normal cumulative distribution function."""
-        return 0.5 * (1 + erf(x / np.sqrt(2))) if SCIPY_AVAILABLE else 0.5 * (1 + np.tanh(x * 0.7978845608))
+        return 0.5 * (1 + erf(x / np.sqrt(2))) if SCIPY_AVAILABLE else 0.5 * (1 + np.tanh(x * TANH_CDF_SCALE))
     
     @staticmethod
     def _norm_pdf(x: float) -> float:
@@ -1813,7 +1837,8 @@ class AdvancedAnalyticsEngine:
         
         # BSM Greeks (at-the-money options)
         current_price = self.prices[-1]
-        annualized_vol = np.std(self.returns) * np.sqrt(252 * 390)  # 1-min data
+        # Annualize 1-minute volatility: sqrt(trading_days * minutes_per_day)
+        annualized_vol = np.std(self.returns) * np.sqrt(MINUTES_PER_YEAR)
         if annualized_vol > 0:
             bsm = BlackScholesMerton(
                 S=current_price,
@@ -1882,7 +1907,7 @@ class AdvancedAnalyticsEngine:
         Compute BSM prices and Greeks across strike/maturity surface.
         """
         current_price = self.prices[-1]
-        annualized_vol = np.std(self.returns) * np.sqrt(252 * 390)
+        annualized_vol = np.std(self.returns) * np.sqrt(MINUTES_PER_YEAR)
         
         if strikes is None:
             strikes = current_price * np.array([0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2])
