@@ -1,0 +1,172 @@
+name: Index Data Collector (1-Minute Data)
+
+on:
+  # Manual trigger for immediate run
+  workflow_dispatch:
+    inputs:
+      parallel:
+        description: 'Use parallel processing'
+        required: false
+        default: 'true'
+        type: boolean
+      workers:
+        description: 'Number of parallel workers'
+        required: false
+        default: '10'
+        type: string
+      analytics:
+        description: 'Generate analytics after fetch'
+        required: false
+        default: 'true'
+        type: boolean
+
+  # Scheduled run at 5 PM Pacific Time (1:00 AM UTC next day)
+  # Note: This is 5 PM PST (UTC-8) or 6 PM PDT (UTC-7) depending on daylight saving
+  schedule:
+    - cron: '0 1 * * *'
+
+# Sets permissions for the GITHUB_TOKEN
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  fetch_index_data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'index/requirements.txt'
+
+      - name: Install dependencies
+        run: |
+          echo "INFO: Installing Python packages..."
+          pip install --upgrade pip
+          pip install -r index/requirements.txt
+          echo "SUCCESS: Dependencies installed."
+
+      - name: Decompress existing databases
+        run: |
+          echo "INFO: Checking for existing compressed databases..."
+          if [ -d "index/dbs" ]; then
+            for gz_file in index/dbs/*.db.gz; do
+              if [ -f "$gz_file" ]; then
+                echo "  Found: $gz_file"
+              fi
+            done
+          else
+            echo "  No existing database directory found."
+            mkdir -p index/dbs index/csv
+          fi
+          echo "SUCCESS: Database check complete."
+
+      - name: Run data fetching script
+        env:
+          PARALLEL: ${{ github.event.inputs.parallel || 'true' }}
+          WORKERS: ${{ github.event.inputs.workers || '10' }}
+          ANALYTICS: ${{ github.event.inputs.analytics || 'true' }}
+        run: |
+          echo "INFO: Starting index data collection..."
+          echo "  Parallel mode: $PARALLEL"
+          echo "  Workers: $WORKERS"
+          echo "  Analytics: $ANALYTICS"
+          
+          cd index
+          
+          ARGS=""
+          if [ "$PARALLEL" = "true" ]; then
+            ARGS="$ARGS --parallel --workers $WORKERS"
+          fi
+          if [ "$ANALYTICS" = "true" ]; then
+            ARGS="$ARGS --analytics"
+          fi
+          
+          echo "Running: python fetch_index_data.py $ARGS"
+          python fetch_index_data.py $ARGS
+          
+          echo "SUCCESS: Data collection complete."
+
+      - name: List generated files
+        run: |
+          echo "INFO: Listing generated files..."
+          echo ""
+          echo "=== Compressed Databases ==="
+          ls -lh index/dbs/*.db.gz 2>/dev/null || echo "  No compressed databases found"
+          echo ""
+          echo "=== CSV Files ==="
+          ls -lh index/csv/*.csv 2>/dev/null | head -20 || echo "  No CSV files found"
+          echo ""
+          echo "=== JSON Files ==="
+          ls -lh index/*.json 2>/dev/null || echo "  No JSON files found"
+          echo ""
+          
+          # Count files
+          DB_COUNT=$(ls index/dbs/*.db.gz 2>/dev/null | wc -l)
+          CSV_COUNT=$(ls index/csv/*.csv 2>/dev/null | wc -l)
+          echo "Total: $DB_COUNT databases, $CSV_COUNT CSV files"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push changes
+        run: |
+          echo "INFO: Staging changes..."
+          
+          # Add all index data files
+          git add index/dbs/*.db.gz 2>/dev/null || true
+          git add index/csv/*.csv 2>/dev/null || true
+          git add index/*.json 2>/dev/null || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "INFO: No changes to commit."
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: Update index data - $TIMESTAMP" \
+                       -m "Automated update of 1-minute market index data."
+            
+            echo "INFO: Pushing changes..."
+            git push
+            echo "SUCCESS: Changes pushed to repository."
+          fi
+
+      - name: Generate summary
+        run: |
+          echo "## Index Data Collection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count files
+          DB_COUNT=$(ls index/dbs/*.db.gz 2>/dev/null | wc -l)
+          CSV_COUNT=$(ls index/csv/*.csv 2>/dev/null | wc -l)
+          
+          echo "### Files Generated" >> $GITHUB_STEP_SUMMARY
+          echo "- **Compressed Databases:** $DB_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "- **CSV Files:** $CSV_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List some of the indices
+          echo "### Sample Indices" >> $GITHUB_STEP_SUMMARY
+          echo "| Ticker | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          for ticker in GSPC DJI IXIC NDX RUT VIX SPY QQQ; do
+            if [ -f "index/csv/${ticker}_1m.csv" ]; then
+              LINES=$(wc -l < "index/csv/${ticker}_1m.csv")
+              echo "| $ticker | ✅ ($LINES rows) |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| $ticker | ❌ |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done

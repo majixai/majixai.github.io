@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Major Market Indices - 1 Minute Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #00d4ff;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #16213e;
+            border-radius: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            color: #00d4ff;
+            text-transform: uppercase;
+        }
+        
+        select, button {
+            padding: 10px 15px;
+            font-size: 14px;
+            border: 1px solid #0f3460;
+            border-radius: 5px;
+            background: #0f3460;
+            color: #eee;
+            cursor: pointer;
+        }
+        
+        select:hover, button:hover {
+            background: #1a4a7a;
+        }
+        
+        button.primary {
+            background: #00d4ff;
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+        
+        button.primary:hover {
+            background: #00a8cc;
+        }
+        
+        #chart-container {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 500px;
+        }
+        
+        .data-section {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .data-section h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .stat-card .value.positive {
+            color: #00ff88;
+        }
+        
+        .stat-card .value.negative {
+            color: #ff4757;
+        }
+        
+        #data-table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: right;
+            border-bottom: 1px solid #0f3460;
+        }
+        
+        th {
+            background: #0f3460;
+            color: #00d4ff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+        
+        th:first-child, td:first-child {
+            text-align: left;
+        }
+        
+        tr:hover {
+            background: #0f3460;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+            border-radius: 8px;
+        }
+        
+        .indices-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .index-card {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .index-card:hover {
+            background: #1a4a7a;
+            transform: translateY(-2px);
+        }
+        
+        .index-card.selected {
+            border: 2px solid #00d4ff;
+        }
+        
+        .index-card .ticker {
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .index-card .name {
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Major Market Indices - 1 Minute Data</h1>
+    <p class="last-updated" id="last-updated">Loading...</p>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Select Index</label>
+            <select id="index-select">
+                <option value="">Loading indices...</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Chart Type</label>
+            <select id="chart-type">
+                <option value="candlestick">Candlestick</option>
+                <option value="line">Line</option>
+                <option value="ohlc">OHLC</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Data Points</label>
+            <select id="data-points">
+                <option value="100">Last 100</option>
+                <option value="500" selected>Last 500</option>
+                <option value="1000">Last 1000</option>
+                <option value="all">All Data</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>&nbsp;</label>
+            <button class="primary" id="load-btn">Load Data</button>
+        </div>
+    </div>
+    
+    <div id="chart-container">
+        <div id="chart" class="loading">Select an index and click Load Data</div>
+    </div>
+    
+    <div class="data-section">
+        <h2>📈 Statistics</h2>
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="label">Last Price</div>
+                <div class="value" id="stat-last">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Change</div>
+                <div class="value" id="stat-change">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">High</div>
+                <div class="value" id="stat-high">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Low</div>
+                <div class="value" id="stat-low">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Volume</div>
+                <div class="value" id="stat-volume">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Data Points</div>
+                <div class="value" id="stat-points">--</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="data-section">
+        <h2>📋 Recent Data</h2>
+        <div id="data-table-container">
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>Datetime</th>
+                        <th>Open</th>
+                        <th>High</th>
+                        <th>Low</th>
+                        <th>Close</th>
+                        <th>Volume</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr><td colspan="6" class="loading">No data loaded</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let filesData = null;
+        let currentData = null;
+        
+        // Indices configuration - comprehensive global coverage
+        const INDICES = {
+            // US Major Indices
+            "GSPC": { ticker: "^GSPC", name: "S&P 500" },
+            "DJI": { ticker: "^DJI", name: "Dow Jones Industrial Average" },
+            "IXIC": { ticker: "^IXIC", name: "NASDAQ Composite" },
+            "NDX": { ticker: "^NDX", name: "NASDAQ 100" },
+            "RUT": { ticker: "^RUT", name: "Russell 2000" },
+            "RUA": { ticker: "^RUA", name: "Russell 3000" },
+            "VIX": { ticker: "^VIX", name: "CBOE Volatility Index" },
+            "OEX": { ticker: "^OEX", name: "S&P 100" },
+            "MID": { ticker: "^MID", name: "S&P MidCap 400" },
+            "SML": { ticker: "^SML", name: "S&P SmallCap 600" },
+            "NYA": { ticker: "^NYA", name: "NYSE Composite" },
+            
+            // European Indices
+            "FTSE": { ticker: "^FTSE", name: "FTSE 100 (UK)" },
+            "GDAXI": { ticker: "^GDAXI", name: "DAX (Germany)" },
+            "FCHI": { ticker: "^FCHI", name: "CAC 40 (France)" },
+            "STOXX50E": { ticker: "^STOXX50E", name: "Euro Stoxx 50" },
+            "AEX": { ticker: "^AEX", name: "AEX (Netherlands)" },
+            "IBEX": { ticker: "^IBEX", name: "IBEX 35 (Spain)" },
+            "SSMI": { ticker: "^SSMI", name: "SMI (Switzerland)" },
+            
+            // Asian Indices
+            "N225": { ticker: "^N225", name: "Nikkei 225 (Japan)" },
+            "HSI": { ticker: "^HSI", name: "Hang Seng (Hong Kong)" },
+            "TWII": { ticker: "^TWII", name: "Taiwan Weighted" },
+            "KS11": { ticker: "^KS11", name: "KOSPI (South Korea)" },
+            "STI": { ticker: "^STI", name: "Straits Times (Singapore)" },
+            "AXJO": { ticker: "^AXJO", name: "S&P/ASX 200 (Australia)" },
+            "BSESN": { ticker: "^BSESN", name: "BSE Sensex (India)" },
+            "NSEI": { ticker: "^NSEI", name: "Nifty 50 (India)" },
+            
+            // Americas Indices
+            "GSPTSE": { ticker: "^GSPTSE", name: "S&P/TSX Composite (Canada)" },
+            "BVSP": { ticker: "^BVSP", name: "Bovespa (Brazil)" },
+            "MXX": { ticker: "^MXX", name: "IPC (Mexico)" },
+            
+            // Major ETFs
+            "SPY": { ticker: "SPY", name: "SPDR S&P 500 ETF" },
+            "QQQ": { ticker: "QQQ", name: "Invesco QQQ (NASDAQ 100)" },
+            "DIA": { ticker: "DIA", name: "SPDR Dow Jones ETF" },
+            "IWM": { ticker: "IWM", name: "iShares Russell 2000 ETF" },
+            "VTI": { ticker: "VTI", name: "Vanguard Total Stock Market ETF" },
+            "VOO": { ticker: "VOO", name: "Vanguard S&P 500 ETF" },
+            "EFA": { ticker: "EFA", name: "iShares MSCI EAFE ETF" },
+            "EEM": { ticker: "EEM", name: "iShares MSCI Emerging Markets ETF" },
+            
+            // Sector ETFs
+            "XLK": { ticker: "XLK", name: "Technology Select Sector SPDR" },
+            "XLF": { ticker: "XLF", name: "Financial Select Sector SPDR" },
+            "XLV": { ticker: "XLV", name: "Health Care Select Sector SPDR" },
+            "XLE": { ticker: "XLE", name: "Energy Select Sector SPDR" },
+            "XLI": { ticker: "XLI", name: "Industrial Select Sector SPDR" },
+            "XLP": { ticker: "XLP", name: "Consumer Staples Select Sector SPDR" },
+            "XLY": { ticker: "XLY", name: "Consumer Discretionary Select Sector SPDR" },
+            "XLB": { ticker: "XLB", name: "Materials Select Sector SPDR" },
+            "XLU": { ticker: "XLU", name: "Utilities Select Sector SPDR" },
+            "XLRE": { ticker: "XLRE", name: "Real Estate Select Sector SPDR" },
+            "XLC": { ticker: "XLC", name: "Communication Services Select Sector SPDR" },
+            
+            // Bond ETFs
+            "TLT": { ticker: "TLT", name: "iShares 20+ Year Treasury Bond ETF" },
+            "IEF": { ticker: "IEF", name: "iShares 7-10 Year Treasury Bond ETF" },
+            "LQD": { ticker: "LQD", name: "iShares Investment Grade Corporate Bond ETF" },
+            "HYG": { ticker: "HYG", name: "iShares High Yield Corporate Bond ETF" },
+            "AGG": { ticker: "AGG", name: "iShares Core US Aggregate Bond ETF" },
+            
+            // Commodity ETFs
+            "GLD": { ticker: "GLD", name: "SPDR Gold Shares" },
+            "SLV": { ticker: "SLV", name: "iShares Silver Trust" },
+            "USO": { ticker: "USO", name: "United States Oil Fund" },
+            "UNG": { ticker: "UNG", name: "United States Natural Gas Fund" },
+            
+            // Volatility ETFs
+            "UVXY": { ticker: "UVXY", name: "ProShares Ultra VIX Short-Term Futures ETF" },
+            "TQQQ": { ticker: "TQQQ", name: "ProShares UltraPro QQQ" },
+            "SQQQ": { ticker: "SQQQ", name: "ProShares UltraPro Short QQQ" },
+            
+            // Thematic ETFs
+            "ARKK": { ticker: "ARKK", name: "ARK Innovation ETF" },
+            "SOXX": { ticker: "SOXX", name: "iShares Semiconductor ETF" },
+            "SMH": { ticker: "SMH", name: "VanEck Semiconductor ETF" },
+            "ICLN": { ticker: "ICLN", name: "iShares Global Clean Energy ETF" },
+            
+            // International ETFs
+            "FXI": { ticker: "FXI", name: "iShares China Large-Cap ETF" },
+            "EWJ": { ticker: "EWJ", name: "iShares MSCI Japan ETF" },
+            "EWZ": { ticker: "EWZ", name: "iShares MSCI Brazil ETF" },
+            "EWG": { ticker: "EWG", name: "iShares MSCI Germany ETF" },
+            "INDA": { ticker: "INDA", name: "iShares MSCI India ETF" },
+            
+            // Crypto ETFs
+            "BITO": { ticker: "BITO", name: "ProShares Bitcoin Strategy ETF" },
+            
+            // Real Estate
+            "VNQ": { ticker: "VNQ", name: "Vanguard Real Estate ETF" }
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadFilesJson();
+            populateIndexSelect();
+            document.getElementById('load-btn').addEventListener('click', loadSelectedIndex);
+        });
+        
+        async function loadFilesJson() {
+            try {
+                const response = await fetch('files.json');
+                if (response.ok) {
+                    filesData = await response.json();
+                    document.getElementById('last-updated').textContent = 
+                        `Last updated: ${new Date(filesData.last_updated).toLocaleString()}`;
+                }
+            } catch (e) {
+                console.log('files.json not found, using default indices');
+            }
+        }
+        
+        function populateIndexSelect() {
+            const select = document.getElementById('index-select');
+            select.innerHTML = '';
+            
+            for (const [key, info] of Object.entries(INDICES)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = `${info.ticker} - ${info.name}`;
+                select.appendChild(option);
+            }
+        }
+        
+        async function loadSelectedIndex() {
+            const select = document.getElementById('index-select');
+            const selectedKey = select.value;
+            
+            if (!selectedKey) {
+                alert('Please select an index');
+                return;
+            }
+            
+            const chartDiv = document.getElementById('chart');
+            chartDiv.innerHTML = '<div class="loading">Loading data...</div>';
+            
+            try {
+                const csvUrl = `csv/${selectedKey}_1m.csv`;
+                const response = await fetch(csvUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load data: ${response.status}`);
+                }
+                
+                const csvText = await response.text();
+                currentData = parseCSV(csvText);
+                
+                if (currentData.length === 0) {
+                    throw new Error('No data available');
+                }
+                
+                // Apply data points limit
+                const limit = document.getElementById('data-points').value;
+                let displayData = currentData;
+                if (limit !== 'all') {
+                    displayData = currentData.slice(-parseInt(limit));
+                }
+                
+                plotChart(displayData, INDICES[selectedKey]);
+                updateStats(displayData);
+                updateTable(displayData.slice(-50).reverse());
+                
+            } catch (error) {
+                chartDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                console.error(error);
+            }
+        }
+        
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) return [];
+            
+            const headers = lines[0].split(',');
+            const data = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                if (values.length >= 6) {
+                    data.push({
+                        datetime: values[0],
+                        open: parseFloat(values[1]),
+                        high: parseFloat(values[2]),
+                        low: parseFloat(values[3]),
+                        close: parseFloat(values[4]),
+                        volume: parseInt(values[5]) || 0
+                    });
+                }
+            }
+            
+            return data;
+        }
+        
+        function plotChart(data, indexInfo) {
+            const chartType = document.getElementById('chart-type').value;
+            const dates = data.map(d => d.datetime);
+            
+            let trace;
+            
+            if (chartType === 'candlestick') {
+                trace = {
+                    x: dates,
+                    open: data.map(d => d.open),
+                    high: data.map(d => d.high),
+                    low: data.map(d => d.low),
+                    close: data.map(d => d.close),
+                    type: 'candlestick',
+                    increasing: { line: { color: '#00ff88' } },
+                    decreasing: { line: { color: '#ff4757' } },
+                    name: indexInfo.ticker
+                };
+            } else if (chartType === 'ohlc') {
+                trace = {
+                    x: dates,
+                    open: data.map(d => d.open),
+                    high: data.map(d => d.high),
+                    low: data.map(d => d.low),
+                    close: data.map(d => d.close),
+                    type: 'ohlc',
+                    increasing: { line: { color: '#00ff88' } },
+                    decreasing: { line: { color: '#ff4757' } },
+                    name: indexInfo.ticker
+                };
+            } else {
+                trace = {
+                    x: dates,
+                    y: data.map(d => d.close),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#00d4ff', width: 1 },
+                    name: indexInfo.ticker
+                };
+            }
+            
+            const layout = {
+                title: {
+                    text: `${indexInfo.name} (${indexInfo.ticker}) - 1 Minute Data`,
+                    font: { color: '#eee' }
+                },
+                paper_bgcolor: '#16213e',
+                plot_bgcolor: '#0f3460',
+                font: { color: '#eee' },
+                xaxis: {
+                    title: 'DateTime',
+                    gridcolor: '#1a4a7a',
+                    rangeslider: { visible: false }
+                },
+                yaxis: {
+                    title: 'Price',
+                    gridcolor: '#1a4a7a'
+                },
+                margin: { t: 50, b: 50, l: 60, r: 30 }
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['lasso2d', 'select2d']
+            };
+            
+            Plotly.newPlot('chart', [trace], layout, config);
+        }
+        
+        function updateStats(data) {
+            if (data.length === 0) return;
+            
+            const lastPrice = data[data.length - 1].close;
+            const firstPrice = data[0].close;
+            const change = lastPrice - firstPrice;
+            const changePercent = (change / firstPrice) * 100;
+            const high = Math.max(...data.map(d => d.high));
+            const low = Math.min(...data.map(d => d.low));
+            const totalVolume = data.reduce((sum, d) => sum + d.volume, 0);
+            
+            document.getElementById('stat-last').textContent = lastPrice.toFixed(2);
+            
+            const changeEl = document.getElementById('stat-change');
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent.toFixed(2)}%)`;
+            changeEl.className = `value ${change >= 0 ? 'positive' : 'negative'}`;
+            
+            document.getElementById('stat-high').textContent = high.toFixed(2);
+            document.getElementById('stat-low').textContent = low.toFixed(2);
+            document.getElementById('stat-volume').textContent = formatVolume(totalVolume);
+            document.getElementById('stat-points').textContent = data.length.toLocaleString();
+        }
+        
+        function formatVolume(vol) {
+            if (vol >= 1e9) return (vol / 1e9).toFixed(2) + 'B';
+            if (vol >= 1e6) return (vol / 1e6).toFixed(2) + 'M';
+            if (vol >= 1e3) return (vol / 1e3).toFixed(2) + 'K';
+            return vol.toString();
+        }
+        
+        function updateTable(data) {
+            const tbody = document.getElementById('table-body');
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No data available</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = data.map(row => `
+                <tr>
+                    <td>${row.datetime}</td>
+                    <td>${row.open.toFixed(2)}</td>
+                    <td>${row.high.toFixed(2)}</td>
+                    <td>${row.low.toFixed(2)}</td>
+                    <td>${row.close.toFixed(2)}</td>
+                    <td>${row.volume.toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
