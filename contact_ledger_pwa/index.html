@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Manage contacts, company ledgers, and track check-ins for quizzes, homework, and testing">
+    <meta name="theme-color" content="#4a90d9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ContactLedger">
+    <title>Contact & Ledger Manager</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="app-header">
+        <h1>Contact & Ledger Manager</h1>
+        <button id="installBtn" class="install-btn" style="display: none;">Install App</button>
+    </header>
+
+    <nav class="tab-navigation">
+        <button class="tab-btn active" data-tab="contacts">Contacts</button>
+        <button class="tab-btn" data-tab="companies">Companies</button>
+        <button class="tab-btn" data-tab="checkins">Check-ins</button>
+        <button class="tab-btn" data-tab="ledger">Ledger</button>
+    </nav>
+
+    <main class="app-content">
+        <!-- Contacts Tab -->
+        <section id="contacts" class="tab-content active">
+            <div class="section-header">
+                <h2>Contacts</h2>
+                <button id="addContactBtn" class="btn-primary">+ Add Contact</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="contactSearch" placeholder="Search contacts..." class="search-input">
+                <select id="companyFilter" class="filter-select">
+                    <option value="">All Companies</option>
+                </select>
+            </div>
+            <div id="contactsList" class="list-container">
+                <!-- Contacts will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Companies Tab -->
+        <section id="companies" class="tab-content">
+            <div class="section-header">
+                <h2>Companies / Clients</h2>
+                <button id="addCompanyBtn" class="btn-primary">+ Add Company</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="companySearch" placeholder="Search companies..." class="search-input">
+            </div>
+            <div id="companiesList" class="list-container">
+                <!-- Companies will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Check-ins Tab -->
+        <section id="checkins" class="tab-content">
+            <div class="section-header">
+                <h2>Check-ins</h2>
+                <button id="addCheckinBtn" class="btn-primary">+ New Check-in</button>
+            </div>
+            <div class="filter-bar">
+                <select id="checkinTypeFilter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="quiz">Quiz</option>
+                    <option value="homework">Homework</option>
+                    <option value="test">Test</option>
+                    <option value="meeting">Meeting</option>
+                    <option value="other">Other</option>
+                </select>
+                <select id="checkinContactFilter" class="filter-select">
+                    <option value="">All Contacts</option>
+                </select>
+            </div>
+            <div id="checkinsList" class="list-container">
+                <!-- Check-ins will be loaded here -->
+            </div>
+        </section>
+
+        <!-- Ledger Tab -->
+        <section id="ledger" class="tab-content">
+            <div class="section-header">
+                <h2>Ledger</h2>
+                <button id="addLedgerEntryBtn" class="btn-primary">+ Add Entry</button>
+            </div>
+            <div class="filter-bar">
+                <select id="ledgerTypeFilter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="general">General</option>
+                    <option value="company">Company</option>
+                </select>
+                <select id="ledgerCompanyFilter" class="filter-select">
+                    <option value="">All Companies</option>
+                </select>
+            </div>
+            <div class="ledger-summary" id="ledgerSummary">
+                <!-- Ledger summary will be shown here -->
+            </div>
+            <div id="ledgerList" class="list-container">
+                <!-- Ledger entries will be loaded here -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="contactModalTitle">Add Contact</h3>
+                <button class="close-btn" data-close="contactModal">&times;</button>
+            </div>
+            <form id="contactForm">
+                <input type="hidden" id="contactId">
+                <div class="form-group">
+                    <label for="contactName">Name *</label>
+                    <input type="text" id="contactName" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Email</label>
+                    <input type="email" id="contactEmail">
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone">Phone</label>
+                    <input type="tel" id="contactPhone">
+                </div>
+                <div class="form-group">
+                    <label for="contactCompany">Company</label>
+                    <select id="contactCompany">
+                        <option value="">No Company</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contactNotes">Notes</label>
+                    <textarea id="contactNotes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-close="contactModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Company Modal -->
+    <div id="companyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="companyModalTitle">Add Company</h3>
+                <button class="close-btn" data-close="companyModal">&times;</button>
+            </div>
+            <form id="companyForm">
+                <input type="hidden" id="companyId">
+                <div class="form-group">
+                    <label for="companyName">Company Name *</label>
+                    <input type="text" id="companyName" required>
+                </div>
+                <div class="form-group">
+                    <label for="companyAddress">Address</label>
+                    <textarea id="companyAddress" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="companyIndustry">Industry</label>
+                    <input type="text" id="companyIndustry">
+                </div>
+                <div class="form-group">
+                    <label for="companyNotes">Notes</label>
+                    <textarea id="companyNotes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-close="companyModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Check-in Modal -->
+    <div id="checkinModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="checkinModalTitle">New Check-in</h3>
+                <button class="close-btn" data-close="checkinModal">&times;</button>
+            </div>
+            <form id="checkinForm">
+                <input type="hidden" id="checkinId">
+                <div class="form-group">
+                    <label for="checkinContact">Contact *</label>
+                    <select id="checkinContact" required>
+                        <option value="">Select Contact</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="checkinType">Type *</label>
+                    <select id="checkinType" required>
+                        <option value="">Select Type</option>
+                        <option value="quiz">Quiz</option>
+                        <option value="homework">Homework</option>
+                        <option value="test">Test</option>
+                        <option value="meeting">Meeting</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="checkinDate">Date *</label>
+                    <input type="datetime-local" id="checkinDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkinScore">Score/Grade</label>
+                    <input type="text" id="checkinScore" placeholder="e.g., 85%, A+, Pass">
+                </div>
+                <div class="form-group">
+                    <label for="checkinStatus">Status</label>
+                    <select id="checkinStatus">
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed</option>
+                        <option value="missed">Missed</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="checkinNotes">Notes</label>
+                    <textarea id="checkinNotes" rows="3"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-close="checkinModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ledger Entry Modal -->
+    <div id="ledgerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="ledgerModalTitle">Add Ledger Entry</h3>
+                <button class="close-btn" data-close="ledgerModal">&times;</button>
+            </div>
+            <form id="ledgerForm">
+                <input type="hidden" id="ledgerId">
+                <div class="form-group">
+                    <label for="ledgerType">Ledger Type *</label>
+                    <select id="ledgerType" required>
+                        <option value="general">General Ledger</option>
+                        <option value="company">Company Ledger</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ledgerCompanyGroup">
+                    <label for="ledgerCompany">Company</label>
+                    <select id="ledgerCompany">
+                        <option value="">Select Company</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ledgerDate">Date *</label>
+                    <input type="date" id="ledgerDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="ledgerDescription">Description *</label>
+                    <input type="text" id="ledgerDescription" required>
+                </div>
+                <div class="form-group">
+                    <label for="ledgerCategory">Category</label>
+                    <select id="ledgerCategory">
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                        <option value="asset">Asset</option>
+                        <option value="liability">Liability</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ledgerAmount">Amount *</label>
+                    <input type="number" id="ledgerAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="ledgerNotes">Notes</label>
+                    <textarea id="ledgerNotes" rows="2"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-close="ledgerModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <button class="close-btn" data-close="confirmModal">&times;</button>
+            </div>
+            <p id="confirmMessage">Are you sure you want to delete this item?</p>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" data-close="confirmModal">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        <p>Contact & Ledger Manager - Data stored locally on your device</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
