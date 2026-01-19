@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Market Forecasting - DOW & S&P 500</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header .subtitle {
+            font-size: 1.3em;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+
+        .forecast-time {
+            background: rgba(255,255,255,0.2);
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 25px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .index-selector {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .index-selector h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .index-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .index-btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .index-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .index-btn.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            transform: scale(1.05);
+        }
+
+        .forecast-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .dashboard-card h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .sentiment-display {
+            text-align: center;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.8em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sentiment-STRONGLY_BULLISH {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .sentiment-BULLISH {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            color: white;
+        }
+
+        .sentiment-NEUTRAL {
+            background: linear-gradient(135deg, #f2994a 0%, #f2c94c 100%);
+            color: white;
+        }
+
+        .sentiment-BEARISH {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+
+        .sentiment-STRONGLY_BEARISH {
+            background: linear-gradient(135deg, #c31432 0%, #240b36 100%);
+            color: white;
+        }
+
+        .indicator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .indicator-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .indicator-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .indicator-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .pattern-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .pattern-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #764ba2;
+        }
+
+        .pattern-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #764ba2;
+            margin-bottom: 5px;
+        }
+
+        .pattern-details {
+            font-size: 0.95em;
+            color: #666;
+        }
+
+        .confidence-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .ml-forecast-box {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .ml-forecast-price {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+        }
+
+        .ml-confidence-range {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .price-targets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .target-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .target-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .target-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .target-price {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .resistance {
+            border-color: #f45c43;
+        }
+
+        .resistance .target-price {
+            color: #f45c43;
+        }
+
+        .support {
+            border-color: #38ef7d;
+        }
+
+        .support .target-price {
+            color: #38ef7d;
+        }
+
+        .option-strategies {
+            grid-column: 1 / -1;
+        }
+
+        .strategy-card {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 5px solid #667eea;
+        }
+
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .strategy-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .strategy-type {
+            background: #764ba2;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .strategy-description {
+            color: #555;
+            margin: 15px 0;
+            font-size: 1.05em;
+        }
+
+        .strategy-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .strategy-detail-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .strategy-legs {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .leg-item {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .leg-item:last-child {
+            border-bottom: none;
+        }
+
+        .leg-action-BUY {
+            color: #38ef7d;
+            font-weight: bold;
+        }
+
+        .leg-action-SELL {
+            color: #f45c43;
+            font-weight: bold;
+        }
+
+        .chart-viewer {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+
+        .chart-viewer h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .chart-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        .chart-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+            color: white;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .narrative-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            margin-top: 30px;
+            line-height: 1.8;
+        }
+
+        .narrative-box h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .narrative-section {
+            margin: 20px 0;
+        }
+
+        .narrative-section h4 {
+            color: #764ba2;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .narrative-section ul {
+            list-style-position: inside;
+            color: #555;
+        }
+
+        .narrative-section li {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .risk-assessment {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .risk-level-LOW {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .risk-level-MODERATE {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .risk-level-HIGH {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .risk-level-VERY_HIGH {
+            background: #d6d8db;
+            border-color: #343a40;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            padding: 30px;
+            margin-top: 50px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .disclaimer {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 GenAI Market Forecasting</h1>
+            <p class="subtitle">Advanced AI-Powered Analysis for DOW & S&P 500</p>
+            <div class="forecast-time" id="forecast-time">Loading target time...</div>
+        </header>
+
+        <div class="index-selector">
+            <h2>Select Index to Analyze</h2>
+            <div class="index-buttons">
+                <button class="index-btn active" data-symbol="^GSPC">
+                    📈 S&P 500<br>
+                    <small>^GSPC</small>
+                </button>
+                <button class="index-btn" data-symbol="^DJI">
+                    📊 Dow Jones<br>
+                    <small>^DJI</small>
+                </button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            Loading forecast data
+        </div>
+
+        <div id="forecast-content" style="display: none;">
+            <div class="forecast-dashboard">
+                <!-- Sentiment Card -->
+                <div class="dashboard-card">
+                    <h3>🎯 Market Sentiment</h3>
+                    <div id="sentiment-display" class="sentiment-display"></div>
+                    <div id="sentiment-details"></div>
+                </div>
+
+                <!-- ML Forecast Card -->
+                <div class="dashboard-card">
+                    <h3>🤖 Machine Learning Forecast</h3>
+                    <div id="ml-forecast"></div>
+                </div>
+
+                <!-- Technical Indicators Card -->
+                <div class="dashboard-card">
+                    <h3>📊 Technical Indicators</h3>
+                    <div id="technical-indicators" class="indicator-grid"></div>
+                </div>
+
+                <!-- Pattern Detection Card -->
+                <div class="dashboard-card">
+                    <h3>🔍 Pattern Recognition</h3>
+                    <div id="patterns-detected"></div>
+                </div>
+
+                <!-- Price Targets Card -->
+                <div class="dashboard-card">
+                    <h3>🎯 Price Targets</h3>
+                    <div id="price-targets"></div>
+                </div>
+
+                <!-- Risk Assessment Card -->
+                <div class="dashboard-card">
+                    <h3>⚠️ Risk Assessment</h3>
+                    <div id="risk-assessment"></div>
+                </div>
+
+                <!-- Option Strategies Card (Full Width) -->
+                <div class="dashboard-card option-strategies">
+                    <h3>💼 Complex Option Strategies</h3>
+                    <div id="option-strategies"></div>
+                </div>
+            </div>
+
+            <!-- Comprehensive Chart -->
+            <div class="chart-viewer">
+                <h3>📈 Comprehensive Technical Analysis Chart</h3>
+                <div id="chart-container" class="chart-container"></div>
+            </div>
+
+            <!-- Narrative Analysis -->
+            <div class="narrative-box">
+                <h3>📝 Detailed Forecast Narrative</h3>
+                <div id="narrative-content"></div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="disclaimer">
+                <strong>⚠️ DISCLAIMER:</strong> This forecast is generated using artificial intelligence and historical data analysis. 
+                It should not be considered as financial advice. Trading stocks and options involves substantial risk of loss and is not 
+                suitable for all investors. Past performance does not guarantee future results. Always consult with a qualified financial 
+                advisor before making investment decisions.
+            </div>
+            <p style="margin-top: 20px;">
+                © 2026 GenAI Market Forecasting | Powered by Advanced Machine Learning & Technical Analysis
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        let currentSymbol = '^GSPC';
+        let forecastData = {};
+        let targetTimeInfo = null;
+
+        // Fetch target time info
+        async function loadTargetTime() {
+            try {
+                const response = await fetch('/api/target-time');
+                targetTimeInfo = await response.json();
+                document.getElementById('forecast-time').innerHTML = 
+                    `Target: ${targetTimeInfo.target_formatted}`;
+            } catch (error) {
+                console.error('Error loading target time:', error);
+                document.getElementById('forecast-time').innerHTML = 
+                    'Target: Next Trading Day 1:00 PM Close';
+            }
+        }
+
+        // Load forecast data
+        async function loadForecastData() {
+            try {
+                const response = await fetch('forecast_monday_1pm.json');
+                forecastData = await response.json();
+                displayForecast(currentSymbol);
+            } catch (error) {
+                console.error('Error loading forecast data:', error);
+                document.getElementById('loading').innerHTML = 'Error loading forecast data. Please run the forecast generator first.';
+            }
+        }
+
+        // Display forecast for selected symbol
+        function displayForecast(symbol) {
+            const data = forecastData[symbol];
+            if (!data) {
+                console.error('No data for symbol:', symbol);
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('forecast-content').style.display = 'block';
+
+            // Update sentiment
+            displaySentiment(data.market_sentiment);
+
+            // Update ML forecast
+            displayMLForecast(data.ml_forecast, data.current_market_state.current_price);
+
+            // Update technical indicators
+            displayTechnicalIndicators(data.current_market_state);
+
+            // Update patterns
+            displayPatterns(data.patterns_detected);
+
+            // Update price targets
+            displayPriceTargets(data.price_targets, data.patterns_detected);
+
+            // Update risk assessment
+            displayRiskAssessment(data.risk_assessment);
+
+            // Update option strategies
+            displayOptionStrategies(data.option_strategies);
+
+            // Update chart
+            displayChart(symbol);
+
+            // Update narrative
+            displayNarrative(data.forecast_narrative);
+        }
+
+        function displaySentiment(sentiment) {
+            const display = document.getElementById('sentiment-display');
+            display.className = `sentiment-display sentiment-${sentiment.overall}`;
+            display.innerHTML = sentiment.overall.replace(/_/g, ' ');
+
+            const details = document.getElementById('sentiment-details');
+            details.innerHTML = `
+                <div class="indicator-grid">
+                    <div class="indicator-item">
+                        <div class="indicator-label">Sentiment Score</div>
+                        <div class="indicator-value">${(sentiment.score * 100).toFixed(1)}%</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-label">Bullish Factors</div>
+                        <div class="indicator-value" style="color: #38ef7d;">${sentiment.bullish_factors}</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-label">Bearish Factors</div>
+                        <div class="indicator-value" style="color: #f45c43;">${sentiment.bearish_factors}</div>
+                    </div>
+                    <div class="indicator-item">
+                        <div class="indicator-label">Confidence</div>
+                        <div class="indicator-value">${(sentiment.confidence * 100).toFixed(0)}%</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayMLForecast(forecast, currentPrice) {
+            const container = document.getElementById('ml-forecast');
+            
+            if (!forecast || !forecast.predicted_price) {
+                container.innerHTML = '<p>ML forecast not available</p>';
+                return;
+            }
+
+            const change = ((forecast.predicted_price - currentPrice) / currentPrice) * 100;
+            const changeColor = change > 0 ? '#38ef7d' : '#f45c43';
+            const changeSymbol = change > 0 ? '+' : '';
+
+            container.innerHTML = `
+                <div class="ml-forecast-box">
+                    <div style="font-size: 1.2em; opacity: 0.9;">Predicted Monday 1 PM Close</div>
+                    <div class="ml-forecast-price">$${forecast.predicted_price.toFixed(2)}</div>
+                    <div style="font-size: 1.5em; color: ${changeColor};">
+                        ${changeSymbol}${change.toFixed(2)}% from current
+                    </div>
+                    <div class="ml-confidence-range" style="margin-top: 20px;">
+                        95% Confidence Range:<br>
+                        $${forecast.confidence_95_lower.toFixed(2)} - $${forecast.confidence_95_upper.toFixed(2)}
+                    </div>
+                    <div style="margin-top: 15px; opacity: 0.8;">
+                        Models Agreement: ${(forecast.models_agreement * 100).toFixed(0)}%
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayTechnicalIndicators(indicators) {
+            const container = document.getElementById('technical-indicators');
+            
+            const displayIndicators = [
+                { label: 'Current Price', value: indicators.current_price, format: 'price' },
+                { label: 'RSI', value: indicators.rsi, format: 'number' },
+                { label: 'MACD', value: indicators.macd, format: 'number' },
+                { label: 'Stochastic %K', value: indicators.stochastic_k, format: 'number' },
+                { label: 'Williams %R', value: indicators.williams_r, format: 'number' },
+                { label: 'CCI', value: indicators.cci, format: 'number' },
+                { label: 'ATR', value: indicators.atr, format: 'number' },
+                { label: 'Volume Ratio', value: indicators.volume_ratio, format: 'number' }
+            ];
+
+            container.innerHTML = displayIndicators.map(ind => {
+                if (ind.value === null || ind.value === undefined) return '';
+                
+                let displayValue;
+                if (ind.format === 'price') {
+                    displayValue = `$${ind.value.toFixed(2)}`;
+                } else {
+                    displayValue = ind.value.toFixed(2);
+                }
+
+                return `
+                    <div class="indicator-item">
+                        <div class="indicator-label">${ind.label}</div>
+                        <div class="indicator-value">${displayValue}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function displayPatterns(patterns) {
+            const container = document.getElementById('patterns-detected');
+            
+            const detectedPatterns = [];
+            for (const [name, data] of Object.entries(patterns)) {
+                if (data.detected) {
+                    detectedPatterns.push({ name, data });
+                }
+            }
+
+            if (detectedPatterns.length === 0) {
+                container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No significant patterns detected</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <ul class="pattern-list">
+                    ${detectedPatterns.map(p => `
+                        <li class="pattern-item">
+                            <div class="pattern-name">${p.name.replace(/_/g, ' ').toUpperCase()}</div>
+                            <div class="pattern-details">
+                                Type: ${p.data.type || p.data.pattern_type || 'N/A'}
+                                ${p.data.confidence ? `<div class="confidence-bar"><div class="confidence-fill" style="width: ${p.data.confidence * 100}%"></div></div>` : ''}
+                            </div>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+
+        function displayPriceTargets(targets, patterns) {
+            const container = document.getElementById('price-targets');
+            
+            const sr = patterns.support_resistance;
+            
+            let html = '<div class="price-targets">';
+            
+            // Current price
+            html += `
+                <div class="target-box">
+                    <div class="target-label">Current Price</div>
+                    <div class="target-price">$${targets.current.toFixed(2)}</div>
+                </div>
+            `;
+
+            // Nearest resistance
+            if (sr && sr.nearest_resistance && sr.nearest_resistance.length > 0) {
+                html += `
+                    <div class="target-box resistance">
+                        <div class="target-label">Nearest Resistance</div>
+                        <div class="target-price">$${sr.nearest_resistance[0].toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            // Nearest support
+            if (sr && sr.nearest_support && sr.nearest_support.length > 0) {
+                html += `
+                    <div class="target-box support">
+                        <div class="target-label">Nearest Support</div>
+                        <div class="target-price">$${sr.nearest_support[0].toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            // Short-term targets
+            if (targets.short_term) {
+                html += `
+                    <div class="target-box resistance">
+                        <div class="target-label">Short-term Resistance</div>
+                        <div class="target-price">$${targets.short_term.resistance.toFixed(2)}</div>
+                    </div>
+                    <div class="target-box support">
+                        <div class="target-label">Short-term Support</div>
+                        <div class="target-price">$${targets.short_term.support.toFixed(2)}</div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function displayRiskAssessment(risk) {
+            const container = document.getElementById('risk-assessment');
+            
+            container.innerHTML = `
+                <div class="risk-assessment risk-level-${risk.level}">
+                    <h4 style="margin-bottom: 15px; font-size: 1.3em;">Risk Level: ${risk.level}</h4>
+                    <div style="margin-bottom: 10px;"><strong>Risk Score:</strong> ${risk.score}/10</div>
+                    <div>
+                        <strong>Risk Factors:</strong>
+                        <ul style="margin-top: 10px; padding-left: 20px;">
+                            ${risk.factors.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayOptionStrategies(optionData) {
+            const container = document.getElementById('option-strategies');
+            
+            if (!optionData || !optionData.recommended_strategies) {
+                container.innerHTML = '<p>No option strategies available</p>';
+                return;
+            }
+
+            const strategies = optionData.recommended_strategies.slice(0, 5); // Show top 5
+
+            container.innerHTML = strategies.map(strategy => `
+                <div class="strategy-card">
+                    <div class="strategy-header">
+                        <div class="strategy-name">${strategy.name}</div>
+                        <div class="strategy-type">${strategy.type.replace(/_/g, ' ')}</div>
+                    </div>
+                    <div class="strategy-description">${strategy.description}</div>
+                    
+                    <div class="strategy-details">
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Complexity</div>
+                            <div class="detail-value">${strategy.complexity}</div>
+                        </div>
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Risk Level</div>
+                            <div class="detail-value">${strategy.risk_level}</div>
+                        </div>
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Capital Required</div>
+                            <div class="detail-value">${strategy.capital_required}</div>
+                        </div>
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Max Profit</div>
+                            <div class="detail-value" style="color: #38ef7d;">${strategy.max_profit}</div>
+                        </div>
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Max Loss</div>
+                            <div class="detail-value" style="color: #f45c43;">${strategy.max_loss}</div>
+                        </div>
+                        ${strategy.breakeven ? `
+                        <div class="strategy-detail-item">
+                            <div class="detail-label">Breakeven</div>
+                            <div class="detail-value">${strategy.breakeven}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    ${strategy.legs ? `
+                    <div class="strategy-legs">
+                        <strong>Strategy Legs:</strong>
+                        ${strategy.legs.map(leg => `
+                            <div class="leg-item">
+                                <span class="leg-action-${leg.action}">${leg.action}</span>
+                                <span>${leg.quantity} ${leg.type} @ $${leg.strike.toFixed(2)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+
+                    <div style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px; font-size: 0.95em;">
+                        <strong>Ideal Scenario:</strong> ${strategy.ideal_scenario}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayChart(symbol) {
+            const container = document.getElementById('chart-container');
+            const baseFilename = symbol.replace('^', '');
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📊 Standard Chart (8 Panels)</h3>
+                    <img src="forecast_${baseFilename}_chart.png" alt="Standard forecast chart for ${symbol}" 
+                         style="width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);"
+                         onerror="this.parentElement.innerHTML='<p style=\\'color: #666;\\'>Standard chart not available.</p>'">
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">📈 Enhanced Chart (16 Panels - Ultra Complex)</h3>
+                    <img src="forecast_${baseFilename}_enhanced_chart.png" alt="Enhanced forecast chart for ${symbol}" 
+                         style="width: 100%; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);"
+                         onerror="this.parentElement.innerHTML='<p style=\\'color: #666;\\'>Enhanced chart not available. Run: python enhanced_visualizer.py</p>'">
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🎨 Interactive 3D Visualizations (12 Models)</h3>
+                    <p style="color: #666; margin-bottom: 10px;">Click the button below to view interactive 3D analysis:</p>
+                    <a href="forecast_${baseFilename}_3d_interactive.html" target="_blank" 
+                       style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; text-decoration: none; border-radius: 10px; font-weight: bold; 
+                              box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: all 0.3s ease;"
+                       onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 25px rgba(0,0,0,0.3)';"
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)';">
+                        🚀 Launch Interactive 3D Dashboard
+                    </a>
+                    <p style="color: #888; margin-top: 10px; font-size: 0.9em;">
+                        Includes: 3D price-volume scatter, volatility surface, correlation heatmap, 
+                        technical indicator space, Monte Carlo simulations, pattern recognition (PCA), 
+                        option Greeks surface, sentiment evolution, support/resistance planes, and more!
+                    </p>
+                </div>
+            `;
+        }
+
+        function displayNarrative(narrative) {
+            const container = document.getElementById('narrative-content');
+            
+            // Split narrative into sections
+            const sections = narrative.split('\n\n');
+            
+            container.innerHTML = sections.map(section => {
+                // Check if section is a header (starts with **)
+                if (section.startsWith('**')) {
+                    const lines = section.split('\n');
+                    const header = lines[0].replace(/\*\*/g, '');
+                    const content = lines.slice(1).join('\n');
+                    
+                    return `
+                        <div class="narrative-section">
+                            <h4>${header}</h4>
+                            <div>${content.replace(/- /g, '<br>• ')}</div>
+                        </div>
+                    `;
+                } else {
+                    return `<div class="narrative-section"><div>${section.replace(/- /g, '<br>• ')}</div></div>`;
+                }
+            }).join('');
+        }
+
+        // Event listeners
+        document.querySelectorAll('.index-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.index-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentSymbol = this.dataset.symbol;
+                displayForecast(currentSymbol);
+            });
+        });
+
+        // Load data on page load
+        document.getElementById('loading').style.display = 'block';
+        loadTargetTime();
+        loadForecastData();
+    </script>
+</body>
+</html>
