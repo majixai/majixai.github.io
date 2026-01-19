@@ -439,7 +439,7 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">👤</div>
                     <div class="empty-state-text">No contacts found</div>
-                    <button class="btn-primary" onclick="document.getElementById('addContactBtn').click()">Add your first contact</button>
+                    <button class="btn-primary" data-action="add-first">Add your first contact</button>
                 </div>
             `;
             return;
@@ -459,8 +459,8 @@
                     ${contact.notes ? `<p>📝 ${escapeHtml(contact.notes)}</p>` : ''}
                 </div>
                 <div class="card-item-actions">
-                    <button class="btn-primary btn-small" onclick="editContact(${contact.id})">Edit</button>
-                    <button class="btn-danger btn-small" onclick="deleteContact(${contact.id})">Delete</button>
+                    <button class="btn-primary btn-small" data-action="edit" data-id="${contact.id}">Edit</button>
+                    <button class="btn-danger btn-small" data-action="delete" data-id="${contact.id}">Delete</button>
                 </div>
             </div>
         `).join('');
@@ -474,7 +474,7 @@
         openModal(elements.contactModal);
     });
 
-    window.editContact = async function(id) {
+    async function editContact(id) {
         const contact = await db.getById(DatabaseManager.STORES.CONTACTS, id);
         if (!contact) return;
 
@@ -487,9 +487,9 @@
         elements.contactCompany.value = contact.companyId || '';
         elements.contactNotes.value = contact.notes || '';
         openModal(elements.contactModal);
-    };
+    }
 
-    window.deleteContact = function(id) {
+    function deleteContact(id) {
         const contact = state.contacts.find(c => c.id === id);
         elements.confirmMessage.textContent = `Are you sure you want to delete "${contact?.name}"?`;
         state.deleteCallback = async () => {
@@ -498,7 +498,24 @@
             refreshCurrentTab();
         };
         openModal(elements.confirmModal);
-    };
+    }
+
+    // Event delegation for contacts list
+    elements.contactsList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        
+        const action = btn.dataset.action;
+        const id = btn.dataset.id ? parseInt(btn.dataset.id) : null;
+        
+        if (action === 'add-first') {
+            elements.addContactBtn.click();
+        } else if (action === 'edit' && id) {
+            editContact(id);
+        } else if (action === 'delete' && id) {
+            deleteContact(id);
+        }
+    });
 
     elements.contactForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -543,7 +560,7 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">🏢</div>
                     <div class="empty-state-text">No companies found</div>
-                    <button class="btn-primary" onclick="document.getElementById('addCompanyBtn').click()">Add your first company</button>
+                    <button class="btn-primary" data-action="add-first">Add your first company</button>
                 </div>
             `;
             return;
@@ -565,8 +582,8 @@
                         ${company.notes ? `<p>📝 ${escapeHtml(company.notes)}</p>` : ''}
                     </div>
                     <div class="card-item-actions">
-                        <button class="btn-primary btn-small" onclick="editCompany(${company.id})">Edit</button>
-                        <button class="btn-danger btn-small" onclick="deleteCompany(${company.id})">Delete</button>
+                        <button class="btn-primary btn-small" data-action="edit" data-id="${company.id}">Edit</button>
+                        <button class="btn-danger btn-small" data-action="delete" data-id="${company.id}">Delete</button>
                     </div>
                 </div>
             `;
@@ -580,7 +597,7 @@
         openModal(elements.companyModal);
     });
 
-    window.editCompany = async function(id) {
+    async function editCompany(id) {
         const company = await db.getById(DatabaseManager.STORES.COMPANIES, id);
         if (!company) return;
 
@@ -591,9 +608,9 @@
         elements.companyIndustry.value = company.industry || '';
         elements.companyNotes.value = company.notes || '';
         openModal(elements.companyModal);
-    };
+    }
 
-    window.deleteCompany = function(id) {
+    function deleteCompany(id) {
         const company = state.companies.find(c => c.id === id);
         elements.confirmMessage.textContent = `Are you sure you want to delete "${company?.name}"? This will not delete associated contacts.`;
         state.deleteCallback = async () => {
@@ -602,7 +619,24 @@
             refreshCurrentTab();
         };
         openModal(elements.confirmModal);
-    };
+    }
+
+    // Event delegation for companies list
+    elements.companiesList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        
+        const action = btn.dataset.action;
+        const id = btn.dataset.id ? parseInt(btn.dataset.id) : null;
+        
+        if (action === 'add-first') {
+            elements.addCompanyBtn.click();
+        } else if (action === 'edit' && id) {
+            editCompany(id);
+        } else if (action === 'delete' && id) {
+            deleteCompany(id);
+        }
+    });
 
     elements.companyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -650,7 +684,7 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">✅</div>
                     <div class="empty-state-text">No check-ins found</div>
-                    <button class="btn-primary" onclick="document.getElementById('addCheckinBtn').click()">Add a check-in</button>
+                    <button class="btn-primary" data-action="add-first">Add a check-in</button>
                 </div>
             `;
             return;
@@ -673,8 +707,8 @@
                     ${checkin.notes ? `<p>📝 ${escapeHtml(checkin.notes)}</p>` : ''}
                 </div>
                 <div class="card-item-actions">
-                    <button class="btn-primary btn-small" onclick="editCheckin(${checkin.id})">Edit</button>
-                    <button class="btn-danger btn-small" onclick="deleteCheckin(${checkin.id})">Delete</button>
+                    <button class="btn-primary btn-small" data-action="edit" data-id="${checkin.id}">Edit</button>
+                    <button class="btn-danger btn-small" data-action="delete" data-id="${checkin.id}">Delete</button>
                 </div>
             </div>
         `).join('');
@@ -692,7 +726,7 @@
         openModal(elements.checkinModal);
     });
 
-    window.editCheckin = async function(id) {
+    async function editCheckin(id) {
         const checkin = await db.getById(DatabaseManager.STORES.CHECKINS, id);
         if (!checkin) return;
 
@@ -706,9 +740,9 @@
         elements.checkinStatus.value = checkin.status;
         elements.checkinNotes.value = checkin.notes || '';
         openModal(elements.checkinModal);
-    };
+    }
 
-    window.deleteCheckin = function(id) {
+    function deleteCheckin(id) {
         elements.confirmMessage.textContent = 'Are you sure you want to delete this check-in?';
         state.deleteCallback = async () => {
             await db.delete(DatabaseManager.STORES.CHECKINS, id);
@@ -716,7 +750,24 @@
             refreshCurrentTab();
         };
         openModal(elements.confirmModal);
-    };
+    }
+
+    // Event delegation for check-ins list
+    elements.checkinsList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        
+        const action = btn.dataset.action;
+        const id = btn.dataset.id ? parseInt(btn.dataset.id) : null;
+        
+        if (action === 'add-first') {
+            elements.addCheckinBtn.click();
+        } else if (action === 'edit' && id) {
+            editCheckin(id);
+        } else if (action === 'delete' && id) {
+            deleteCheckin(id);
+        }
+    });
 
     elements.checkinForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -794,7 +845,7 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">📒</div>
                     <div class="empty-state-text">No ledger entries found</div>
-                    <button class="btn-primary" onclick="document.getElementById('addLedgerEntryBtn').click()">Add an entry</button>
+                    <button class="btn-primary" data-action="add-first">Add an entry</button>
                 </div>
             `;
             return;
@@ -816,8 +867,8 @@
                     ${entry.notes ? `<p>📝 ${escapeHtml(entry.notes)}</p>` : ''}
                 </div>
                 <div class="card-item-actions">
-                    <button class="btn-primary btn-small" onclick="editLedgerEntry(${entry.id})">Edit</button>
-                    <button class="btn-danger btn-small" onclick="deleteLedgerEntry(${entry.id})">Delete</button>
+                    <button class="btn-primary btn-small" data-action="edit" data-id="${entry.id}">Edit</button>
+                    <button class="btn-danger btn-small" data-action="delete" data-id="${entry.id}">Delete</button>
                 </div>
             </div>
         `).join('');
@@ -841,7 +892,7 @@
         openModal(elements.ledgerModal);
     });
 
-    window.editLedgerEntry = async function(id) {
+    async function editLedgerEntry(id) {
         const entry = await db.getById(DatabaseManager.STORES.LEDGER, id);
         if (!entry) return;
 
@@ -857,9 +908,9 @@
         elements.ledgerNotes.value = entry.notes || '';
         elements.ledgerType.dispatchEvent(new Event('change'));
         openModal(elements.ledgerModal);
-    };
+    }
 
-    window.deleteLedgerEntry = function(id) {
+    function deleteLedgerEntry(id) {
         elements.confirmMessage.textContent = 'Are you sure you want to delete this ledger entry?';
         state.deleteCallback = async () => {
             await db.delete(DatabaseManager.STORES.LEDGER, id);
@@ -867,7 +918,24 @@
             refreshCurrentTab();
         };
         openModal(elements.confirmModal);
-    };
+    }
+
+    // Event delegation for ledger list
+    elements.ledgerList.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        
+        const action = btn.dataset.action;
+        const id = btn.dataset.id ? parseInt(btn.dataset.id) : null;
+        
+        if (action === 'add-first') {
+            elements.addLedgerEntryBtn.click();
+        } else if (action === 'edit' && id) {
+            editLedgerEntry(id);
+        } else if (action === 'delete' && id) {
+            deleteLedgerEntry(id);
+        }
+    });
 
     elements.ledgerForm.addEventListener('submit', async (e) => {
         e.preventDefault();

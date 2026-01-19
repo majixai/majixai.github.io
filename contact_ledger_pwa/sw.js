@@ -49,8 +49,8 @@ self.addEventListener('fetch', (event) => {
                     if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
                         return networkResponse;
                     }
-                    // Cache successful responses
-                    if (networkResponse && networkResponse.status === 200) {
+                    // Cache successful responses (2xx status codes)
+                    if (networkResponse && networkResponse.ok) {
                         const responseToCache = networkResponse.clone();
                         caches.open(CACHE_NAME).then((cache) => {
                             cache.put(event.request, responseToCache);
