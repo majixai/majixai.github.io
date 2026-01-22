@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      padding: 0;
+      margin: 0;
+      background: #f8f9fa;
+    }
+    
+    .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-header h2 {
+      margin: 0;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px 12px;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    .modal-content {
+      padding: 25px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      font-family: 'Courier New', monospace;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    input:disabled {
+      background: #f5f5f5;
+      cursor: not-allowed;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 14px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      width: 100%;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .info {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      border-radius: 4px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .info strong {
+      color: #1565c0;
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .info ol {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    
+    .info li {
+      margin: 5px 0;
+    }
+    
+    .success {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      border-radius: 4px;
+      color: #2e7d32;
+      font-weight: 600;
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    
+    .status-connected {
+      background: #4caf50;
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+    }
+    
+    .status-disconnected {
+      background: #f44336;
+      box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+    }
+    
+    .status-unknown {
+      background: #ff9800;
+    }
+    
+    .test-btn {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      padding: 10px 16px;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    
+    .input-group {
+      position: relative;
+    }
+    
+    .input-icon {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-header">
+    <h2>
+      <span>⚙️</span>
+      <span>Configuration</span>
+    </h2>
+    <button class="close-btn" onclick="google.script.host.close()">×</button>
+  </div>
+  
+  <div class="modal-content">
+    <div class="form-group">
+      <label for="backendUrl">
+        🌐 Python Backend URL
+      </label>
+      <div class="input-group">
+        <input type="text" id="backendUrl" placeholder="https://your-backend.com">
+        <span class="input-icon">🔗</span>
+      </div>
+      <button class="btn test-btn" onclick="testBackendConnection()">Test Connection</button>
+    </div>
+    
+    <div class="form-group">
+      <label for="folderId">
+        📁 Google Drive Folder ID
+      </label>
+      <div class="input-group">
+        <input type="text" id="folderId" placeholder="1ABC...xyz">
+        <span class="input-icon">💾</span>
+      </div>
+    </div>
+    
+    <button class="btn" id="saveBtn" onclick="saveSettings()">💾 Save Configuration</button>
+    
+    <div class="success" id="success">
+      <span class="status-indicator status-connected"></span>
+      ✅ Configuration saved successfully!
+    </div>
+    
+    <div class="info">
+      <strong>📝 Setup Instructions:</strong>
+      <ol>
+        <li>Deploy your Python backend (see README)</li>
+        <li>Create a Google Drive folder for data storage</li>
+        <li>Get the folder ID from the Drive URL</li>
+        <li>Enter both values above and test connection</li>
+        <li>Click Save to store configuration</li>
+      </ol>
+    </div>
+  </div>
+
+  <script>
+    // Load current configuration
+    google.script.run
+      .withSuccessHandler(function(config) {
+        if (config.backendUrl) {
+          document.getElementById('backendUrl').value = config.backendUrl;
+        }
+        if (config.folderId) {
+          document.getElementById('folderId').value = config.folderId;
+        }
+      })
+      .getConfig();
+    
+    function testBackendConnection() {
+      const backendUrl = document.getElementById('backendUrl').value.trim();
+      
+      if (!backendUrl) {
+        alert('Please enter a backend URL first');
+        return;
+      }
+      
+      const testBtn = event.target;
+      testBtn.disabled = true;
+      testBtn.textContent = 'Testing...';
+      
+      // Simple test using fetch
+      fetch(backendUrl + '/health', {
+        method: 'GET',
+        mode: 'cors'
+      })
+      .then(response => response.json())
+      .then(data => {
+        testBtn.disabled = false;
+        testBtn.textContent = '✅ Connected!';
+        setTimeout(() => {
+          testBtn.textContent = 'Test Connection';
+        }, 2000);
+        alert('✅ Backend is reachable and healthy!\\n\\nStatus: ' + data.status);
+      })
+      .catch(error => {
+        testBtn.disabled = false;
+        testBtn.textContent = '❌ Failed';
+        setTimeout(() => {
+          testBtn.textContent = 'Test Connection';
+        }, 2000);
+        alert('❌ Cannot reach backend.\\n\\nError: ' + error.message + '\\n\\nMake sure your backend is deployed and the URL is correct.');
+      });
+    }
+    
+    function saveSettings() {
+      const backendUrl = document.getElementById('backendUrl').value.trim();
+      const folderId = document.getElementById('folderId').value.trim();
+      
+      if (!backendUrl || !folderId) {
+        alert('⚠️ Please fill in all fields');
+        return;
+      }
+      
+      const saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      
+      google.script.run
+        .withSuccessHandler(function() {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Save Configuration';
+          
+          const successDiv = document.getElementById('success');
+          successDiv.style.display = 'block';
+          
+          setTimeout(function() {
+            successDiv.style.display = 'none';
+            google.script.host.close();
+          }, 2000);
+        })
+        .withFailureHandler(function(error) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Save Configuration';
+          alert('❌ Error saving configuration: ' + error.message);
+        })
+        .saveConfig(backendUrl, folderId);
+    }
+  </script>
+</body>
+</html>

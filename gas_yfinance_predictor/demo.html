@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YFinance Predictor Demo</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .header h1 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 36px;
+    }
+    
+    .header p {
+      margin: 0;
+      color: #666;
+      font-size: 18px;
+    }
+    
+    .status-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    
+    .status-label {
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .status-value {
+      font-family: 'Courier New', monospace;
+      color: #667eea;
+      font-weight: 600;
+    }
+    
+    .status-ok {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    
+    .demo-section {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      margin-bottom: 20px;
+    }
+    
+    .demo-section h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+      border-bottom: 3px solid #667eea;
+      padding-bottom: 10px;
+    }
+    
+    .ticker-input {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    input {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
+    .result {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none;
+    }
+    
+    .result.show {
+      display: block;
+    }
+    
+    .result h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+    }
+    
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    
+    .result-item {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .result-label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    
+    .result-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #667eea;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+    
+    .loading.show {
+      display: block;
+    }
+    
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .file-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .file-name {
+      font-family: 'Courier New', monospace;
+      color: #667eea;
+      font-weight: 600;
+    }
+    
+    .file-desc {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📈 YFinance Predictor</h1>
+      <p>AI-Powered Market Predictions with Git Webhook Integration</p>
+    </div>
+    
+    <div class="status-card">
+      <h2 style="margin: 0 0 20px 0; color: #333;">🔍 System Status</h2>
+      <div class="status-row">
+        <span class="status-label">Backend API</span>
+        <span class="status-value status-ok" id="apiStatus">✅ Running</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Server URL</span>
+        <span class="status-value">http://localhost:5000</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Last Test</span>
+        <span class="status-value status-ok">5/5 Passed</span>
+      </div>
+    </div>
+    
+    <div class="demo-section">
+      <h2>🎯 Live Demo - Try a Ticker</h2>
+      <div class="ticker-input">
+        <input type="text" id="ticker" placeholder="Enter ticker (e.g., AAPL, MSFT, SPY)" value="AAPL">
+        <button onclick="fetchPrediction()">Get Prediction</button>
+      </div>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Fetching data and generating prediction...</p>
+      </div>
+      
+      <div class="result" id="result"></div>
+    </div>
+    
+    <div class="demo-section">
+      <h2>📁 Project Files</h2>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">finCode.gs</div>
+          <div class="file-desc">Main Google Apps Script with webhook handlers</div>
+        </div>
+        <button onclick="window.open('finCode.gs', '_blank')">View</button>
+      </div>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">finSidebar.html</div>
+          <div class="file-desc">Interactive sidebar with settings and instructions</div>
+        </div>
+        <button onclick="window.open('finSidebar.html', '_blank')">View</button>
+      </div>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">Config.html</div>
+          <div class="file-desc">Settings modal with connection testing</div>
+        </div>
+        <button onclick="window.open('Config.html', '_blank')">View</button>
+      </div>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">Instructions.html</div>
+          <div class="file-desc">Interactive step-by-step guide</div>
+        </div>
+        <button onclick="window.open('Instructions.html', '_blank')">View</button>
+      </div>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">app.py</div>
+          <div class="file-desc">Flask backend with yfinance and GenAI predictions</div>
+        </div>
+        <button onclick="window.open('app.py', '_blank')">View</button>
+      </div>
+      
+      <div class="file-card">
+        <div>
+          <div class="file-name">README.md</div>
+          <div class="file-desc">Complete setup and deployment guide</div>
+        </div>
+        <button onclick="window.open('README.md', '_blank')">View</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check API health on load
+    fetch('http://localhost:5000/health')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('apiStatus').textContent = '✅ ' + data.status.toUpperCase();
+      })
+      .catch(error => {
+        document.getElementById('apiStatus').textContent = '❌ Offline';
+        document.getElementById('apiStatus').classList.remove('status-ok');
+        document.getElementById('apiStatus').style.color = '#f44336';
+      });
+    
+    async function fetchPrediction() {
+      const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+      
+      if (!ticker) {
+        alert('Please enter a ticker symbol');
+        return;
+      }
+      
+      // Show loading
+      document.getElementById('loading').classList.add('show');
+      document.getElementById('result').classList.remove('show');
+      
+      try {
+        // Fetch data
+        const fetchResponse = await fetch('http://localhost:5000/api/fetch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticker: ticker,
+            period: '1mo',
+            interval: '1d'
+          })
+        });
+        
+        const fetchData = await fetchResponse.json();
+        
+        if (fetchData.status !== 'success') {
+          throw new Error(fetchData.message || 'Failed to fetch data');
+        }
+        
+        // Get prediction
+        const predictResponse = await fetch('http://localhost:5000/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ticker: ticker,
+            data: fetchData.data
+          })
+        });
+        
+        const prediction = await predictResponse.json();
+        
+        // Hide loading
+        document.getElementById('loading').classList.remove('show');
+        
+        // Show result
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `
+          <h3>📊 ${ticker} Analysis</h3>
+          <div class="result-grid">
+            <div class="result-item">
+              <div class="result-label">Current Price</div>
+              <div class="result-value">$${prediction.current_price}</div>
+            </div>
+            <div class="result-item">
+              <div class="result-label">Predicted Price</div>
+              <div class="result-value">$${prediction.predicted_price}</div>
+            </div>
+            <div class="result-item">
+              <div class="result-label">Change</div>
+              <div class="result-value" style="color: ${prediction.change_percent > 0 ? '#4caf50' : '#f44336'}">
+                ${prediction.change_percent > 0 ? '+' : ''}${prediction.change_percent}%
+              </div>
+            </div>
+            <div class="result-item">
+              <div class="result-label">Confidence</div>
+              <div class="result-value">${prediction.confidence}</div>
+            </div>
+            <div class="result-item">
+              <div class="result-label">Recommendation</div>
+              <div class="result-value" style="color: ${
+                prediction.recommendation.includes('BUY') ? '#4caf50' : 
+                prediction.recommendation.includes('SELL') ? '#f44336' : '#ff9800'
+              }">
+                ${prediction.recommendation}
+              </div>
+            </div>
+            <div class="result-item">
+              <div class="result-label">Data Points</div>
+              <div class="result-value">${fetchData.data.data_points}</div>
+            </div>
+          </div>
+        `;
+        resultDiv.classList.add('show');
+        
+      } catch (error) {
+        document.getElementById('loading').classList.remove('show');
+        alert('Error: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 15px;
+      background: #f8f9fa;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      margin: -15px -15px 20px -15px;
+      border-radius: 0 0 10px 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .header h2 {
+      margin: 0 0 5px 0;
+      font-size: 20px;
+    }
+    
+    .header p {
+      margin: 0;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .icon-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 0 3px;
+      transition: background 0.3s, transform 0.2s;
+    }
+    
+    .icon-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateY(-2px);
+    }
+    
+    .icon-btn:active {
+      transform: translateY(0);
+    }
+    
+    .section {
+      background: white;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .section h3 {
+      margin: 0 0 15px 0;
+      font-size: 16px;
+      color: #333;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 8px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      width: 100%;
+      margin-bottom: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      border-radius: 5px;
+      display: none;
+    }
+    
+    .result.error {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    
+    .result h4 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: #2e7d32;
+    }
+    
+    .result.error h4 {
+      color: #c62828;
+    }
+    
+    .result p {
+      margin: 5px 0;
+      font-size: 13px;
+    }
+    
+    .prediction-card {
+      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    
+    .prediction-card .price {
+      font-size: 24px;
+      font-weight: 700;
+      color: #667eea;
+      margin: 5px 0;
+    }
+    
+    .prediction-card .label {
+      font-size: 12px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .ticker-list {
+      margin-top: 10px;
+    }
+    
+    .ticker-item {
+      padding: 8px;
+      background: #f5f5f5;
+      margin-bottom: 5px;
+      border-radius: 4px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .ticker-item .ticker-symbol {
+      font-weight: 600;
+      color: #667eea;
+    }
+    
+    .spinner {
+      display: none;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .status {
+      text-align: center;
+      padding: 10px;
+      font-size: 13px;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>📈 YFinance Predictor</h2>
+    <p>AI-Powered Market Predictions</p>
+    <div style="margin-top: 10px;">
+      <button class="icon-btn" onclick="showInstructions()" title="Instructions">📚</button>
+      <button class="icon-btn" onclick="showSettings()" title="Settings">⚙️</button>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h3>🎯 Quick Actions</h3>
+    <button class="btn" onclick="fetchAllData()">Fetch All Tickers</button>
+    <button class="btn btn-secondary" onclick="generateReport()">Generate Report</button>
+  </div>
+  
+  <div class="section">
+    <h3>📊 Single Ticker Analysis</h3>
+    <div class="form-group">
+      <label for="ticker">Ticker Symbol</label>
+      <input type="text" id="ticker" placeholder="e.g., AAPL, SPY, ^GSPC" value="SPY">
+    </div>
+    
+    <div class="form-group">
+      <label for="period">Time Period</label>
+      <select id="period">
+        <option value="1d">1 Day</option>
+        <option value="5d">5 Days</option>
+        <option value="1mo" selected>1 Month</option>
+        <option value="3mo">3 Months</option>
+        <option value="6mo">6 Months</option>
+        <option value="1y">1 Year</option>
+        <option value="2y">2 Years</option>
+        <option value="5y">5 Years</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="interval">Interval</label>
+      <select id="interval">
+        <option value="1m">1 Minute</option>
+        <option value="5m">5 Minutes</option>
+        <option value="15m">15 Minutes</option>
+        <option value="1h">1 Hour</option>
+        <option value="1d" selected>1 Day</option>
+        <option value="1wk">1 Week</option>
+        <option value="1mo">1 Month</option>
+      </select>
+    </div>
+    
+    <button class="btn btn-success" onclick="fetchAndPredict()">Fetch & Predict</button>
+    
+    <div class="spinner" id="spinner"></div>
+    <div class="status" id="status"></div>
+    <div class="result" id="result"></div>
+  </div>
+  
+  <div class="section">
+    <h3>💡 Popular Indices</h3>
+    <div class="ticker-list">
+      <div class="ticker-item" onclick="quickFetch('SPY')">
+        <span class="ticker-symbol">SPY</span>
+        <span>S&P 500 ETF</span>
+      </div>
+      <div class="ticker-item" onclick="quickFetch('^GSPC')">
+        <span class="ticker-symbol">^GSPC</span>
+        <span>S&P 500</span>
+      </div>
+      <div class="ticker-item" onclick="quickFetch('^DJI')">
+        <span class="ticker-symbol">^DJI</span>
+        <span>Dow Jones</span>
+      </div>
+      <div class="ticker-item" onclick="quickFetch('^IXIC')">
+        <span class="ticker-symbol">^IXIC</span>
+        <span>NASDAQ</span>
+      </div>
+      <div class="ticker-item" onclick="quickFetch('QQQ')">
+        <span class="ticker-symbol">QQQ</span>
+        <span>NASDAQ ETF</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showSpinner() {
+      document.getElementById('spinner').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+    }
+    
+    function hideSpinner() {
+      document.getElementById('spinner').style.display = 'none';
+    }
+    
+    function setStatus(message) {
+      document.getElementById('status').textContent = message;
+    }
+    
+    function showResult(data, isError = false) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      
+      if (isError) {
+        resultDiv.className = 'result error';
+        resultDiv.innerHTML = `<h4>❌ Error</h4><p>${data}</p>`;
+      } else {
+        resultDiv.className = 'result';
+        resultDiv.innerHTML = `
+          <h4>✅ Success</h4>
+          <div class="prediction-card">
+            <div class="label">Ticker</div>
+            <div class="price">${data.ticker || 'N/A'}</div>
+            
+            <div class="label" style="margin-top: 10px;">Current Price</div>
+            <div class="price">$${data.current_price || 'N/A'}</div>
+            
+            <div class="label" style="margin-top: 10px;">Predicted Price</div>
+            <div class="price">$${data.predicted_price || 'N/A'}</div>
+            
+            <div class="label" style="margin-top: 10px;">Confidence</div>
+            <p>${data.confidence || 'N/A'}</p>
+            
+            <div class="label" style="margin-top: 10px;">Recommendation</div>
+            <p style="font-weight: 600; color: ${data.recommendation === 'BUY' ? '#4caf50' : data.recommendation === 'SELL' ? '#f44336' : '#ff9800'};">
+              ${data.recommendation || 'HOLD'}
+            </p>
+          </div>
+        `;
+      }
+    }
+    
+    function fetchAndPredict() {
+      const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+      const period = document.getElementById('period').value;
+      const interval = document.getElementById('interval').value;
+      
+      if (!ticker) {
+        alert('Please enter a ticker symbol');
+        return;
+      }
+      
+      showSpinner();
+      setStatus('Fetching data...');
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          setStatus('Getting prediction...');
+          
+          google.script.run
+            .withSuccessHandler(function(prediction) {
+              hideSpinner();
+              setStatus('');
+              showResult({
+                ticker: ticker,
+                current_price: data.current_price || 'N/A',
+                predicted_price: prediction.predicted_price || 'N/A',
+                confidence: prediction.confidence || 'N/A',
+                recommendation: prediction.recommendation || 'HOLD'
+              });
+            })
+            .withFailureHandler(function(error) {
+              hideSpinner();
+              setStatus('');
+              showResult('Prediction failed: ' + error.message, true);
+            })
+            .getPricePrediction(ticker, data);
+        })
+        .withFailureHandler(function(error) {
+          hideSpinner();
+          setStatus('');
+          showResult('Failed to fetch data: ' + error.message, true);
+        })
+        .fetchTickerData(ticker, period, interval);
+    }
+    
+    function fetchAllData() {
+      if (confirm('This will fetch data for all tickers in the sheet. Continue?')) {
+        showSpinner();
+        setStatus('Fetching all tickers...');
+        
+        google.script.run
+          .withSuccessHandler(function() {
+            hideSpinner();
+            setStatus('');
+            showResult({ ticker: 'All Tickers', current_price: 'Updated', predicted_price: 'Complete', confidence: '100%', recommendation: 'Check Sheet' });
+          })
+          .withFailureHandler(function(error) {
+            hideSpinner();
+            setStatus('');
+            showResult('Error: ' + error.message, true);
+          })
+          .fetchAllTickerData();
+      }
+    }
+    
+    function generateReport() {
+      showSpinner();
+      setStatus('Generating report...');
+      
+      google.script.run
+        .withSuccessHandler(function() {
+          hideSpinner();
+          setStatus('');
+          showResult({ ticker: 'Report', current_price: 'Generated', predicted_price: 'Complete', confidence: '100%', recommendation: 'Check Report Sheet' });
+        })
+        .withFailureHandler(function(error) {
+          hideSpinner();
+          setStatus('');
+          showResult('Error: ' + error.message, true);
+        })
+        .generateReport();
+    }
+    
+    function quickFetch(ticker) {
+      document.getElementById('ticker').value = ticker;
+      fetchAndPredict();
+    }
+    
+    function showInstructions() {
+      google.script.run.showInstructions();
+    }
+    
+    function showSettings() {
+      google.script.run.showConfigDialog();
+    }
+  </script>
+</body>
+</html>

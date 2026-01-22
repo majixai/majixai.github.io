@@ -1,0 +1,192 @@
+name: YFinance Background Data Updater
+
+# This workflow runs yfinance data collection in the background
+# even when your codespace is offline or stopped
+
+on:
+  # Run every 30 minutes during market hours (weekdays 9:30 AM - 4:00 PM ET)
+  schedule:
+    # Every 30 minutes from 9:30 AM to 4:00 PM ET (14:30-21:00 UTC)
+    - cron: '30,0 14-20 * * 1-5'  # Mon-Fri, every 30 min during market hours
+    # Once daily at 5 PM ET for end-of-day data
+    - cron: '0 21 * * 1-5'  # Mon-Fri, 5 PM ET (21:00 UTC)
+    # Weekend update (once on Saturday for weekly summary)
+    - cron: '0 12 * * 6'  # Saturday at noon UTC
+  
+  # Manual trigger option
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Data period (1d, 5d, 1mo, etc.)'
+        required: false
+        default: '1d'
+      interval:
+        description: 'Data interval (1m, 5m, 15m, 1h, 1d)'
+        required: false
+        default: '1m'
+
+# Set permissions for committing changes
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  update-yfinance-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use PAT if available, otherwise use default GITHUB_TOKEN
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: true
+      
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zstd
+          echo "✓ System dependencies installed"
+      
+      - name: Install Python dependencies
+        run: |
+          cd yfinance_index_1m
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install yfinance pandas numpy
+          fi
+          echo "✓ Python dependencies installed"
+      
+      - name: Create data directory
+        run: |
+          mkdir -p yfinance_index_1m/data
+          mkdir -p yfinance_index_1m/logs
+          echo "✓ Directories created"
+      
+      - name: Fetch YFinance data
+        env:
+          PERIOD: ${{ github.event.inputs.period || '1d' }}
+          INTERVAL: ${{ github.event.inputs.interval || '1m' }}
+        run: |
+          cd yfinance_index_1m
+          echo "Starting data fetch at $(date)"
+          echo "Period: $PERIOD | Interval: $INTERVAL"
+          
+          # Run the update script
+          python update_data.py
+          
+          # Create a timestamp log
+          echo "Last updated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > logs/last_update.txt
+          echo "✓ Data fetch completed"
+      
+      - name: Generate forecast (if available)
+        continue-on-error: true
+        run: |
+          cd yfinance_index_1m
+          if [ -f genai_forecaster.py ]; then
+            echo "Generating AI forecasts..."
+            python genai_forecaster.py || echo "⚠ Forecast generation failed (continuing anyway)"
+          fi
+      
+      - name: Compress data files
+        run: |
+          cd yfinance_index_1m
+          # Compress JSON files with zstd for better compression
+          if [ -f index_1m.json ]; then
+            zstd -f index_1m.json -o index_1m.json.zst
+            echo "✓ Compressed index_1m.json"
+          fi
+          
+          if [ -f multi_timeframe.json ]; then
+            zstd -f multi_timeframe.json -o multi_timeframe.json.zst
+            echo "✓ Compressed multi_timeframe.json"
+          fi
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Commit and push changes
+        run: |
+          git add yfinance_index_1m/*.json || true
+          git add yfinance_index_1m/*.dat || true
+          git add yfinance_index_1m/*.zst || true
+          git add yfinance_index_1m/logs/*.txt || true
+          git add yfinance_index_1m/data/* || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🤖 Auto-update: YFinance data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git push
+            echo "✓ Changes committed and pushed"
+          fi
+      
+      - name: Report status
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "YFinance Background Update Status Report"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Status: ${{ job.status }}"
+          
+          if [ -f yfinance_index_1m/logs/last_update.txt ]; then
+            echo ""
+            echo "Last Update Info:"
+            cat yfinance_index_1m/logs/last_update.txt
+          fi
+          
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  # Cleanup old data (runs weekly)
+  cleanup-old-data:
+    runs-on: ubuntu-latest
+    # Only run on Saturday
+    if: github.event.schedule == '0 12 * * 6' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          persist-credentials: true
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Clean up old compressed files
+        run: |
+          cd yfinance_index_1m/data
+          # Keep only last 30 days of data
+          find . -name "*.zst" -type f -mtime +30 -delete || true
+          find . -name "*.dat" -type f -mtime +30 -delete || true
+          echo "✓ Cleaned up old data files"
+      
+      - name: Commit cleanup
+        run: |
+          git add yfinance_index_1m/data/* || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No cleanup needed"
+          else
+            git commit -m "🧹 Cleanup: Removed data files older than 30 days"
+            git push
+            echo "✓ Cleanup committed and pushed"
+          fi

@@ -1,0 +1,68 @@
+name: Webhook Trigger - Predict Prices
+
+on:
+  repository_dispatch:
+    types: [predict-prices]
+  
+  webhook:
+    types: [prediction-request]
+
+env:
+  PREDICTION_WEBHOOK_URL: ${{ secrets.PREDICTION_WEBHOOK_URL }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  predict-on-webhook:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd gas_yfinance_predictor
+          pip install -r requirements.txt numpy pandas scikit-learn
+      
+      - name: Extract webhook payload
+        id: payload
+        run: |
+          echo "ticker=${{ github.event.client_payload.ticker || '' }}" >> $GITHUB_OUTPUT
+          echo "horizons=${{ github.event.client_payload.horizons || '4 12 24' }}" >> $GITHUB_OUTPUT
+          echo "trigger_source=${{ github.event.client_payload.source || 'webhook' }}" >> $GITHUB_OUTPUT
+      
+      - name: Run predictions
+        run: |
+          cd gas_yfinance_predictor
+          
+          if [ -n "${{ steps.payload.outputs.ticker }}" ]; then
+            python3 prediction_service.py \
+              --ticker "${{ steps.payload.outputs.ticker }}" \
+              --horizons ${{ steps.payload.outputs.horizons }}
+          else
+            python3 prediction_service.py \
+              --horizons ${{ steps.payload.outputs.horizons }}
+          fi
+      
+      - name: Send webhook response
+        if: always()
+        run: |
+          WEBHOOK_URL="${{ secrets.PREDICTION_WEBHOOK_URL }}"
+          
+          if [ -n "$WEBHOOK_URL" ]; then
+            curl -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "trigger": "webhook",
+                "source": "${{ steps.payload.outputs.trigger_source }}",
+                "status": "${{ job.status }}",
+                "ticker": "${{ steps.payload.outputs.ticker }}",
+                "run_id": "${{ github.run_id }}"
+              }'
+          fi

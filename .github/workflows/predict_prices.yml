@@ -1,0 +1,170 @@
+name: Price Action Predictions
+
+on:
+  schedule:
+    # Run at 1 AM PST (9 AM UTC)
+    - cron: '0 9 * * *'
+    # Run at 6 AM PST (2 PM UTC)
+    - cron: '0 14 * * *'
+    # Run at 5 PM PST (1 AM UTC next day)
+    - cron: '0 1 * * *'
+  
+  workflow_dispatch:
+    inputs:
+      time_horizons:
+        description: 'Time horizons (hours, space-separated)'
+        required: false
+        default: '4 12 24'
+      ticker:
+        description: 'Single ticker (optional)'
+        required: false
+        default: ''
+
+env:
+  PREDICTION_WEBHOOK_URL: ${{ secrets.PREDICTION_WEBHOOK_URL }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          cd gas_yfinance_predictor
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install numpy pandas scikit-learn
+      
+      - name: Download latest data
+        run: |
+          cd gas_yfinance_predictor
+          
+          # Create dbs directory
+          mkdir -p dbs
+          
+          # Try to download existing databases from artifacts
+          echo "Checking for existing data..."
+          
+          # If databases don't exist, fetch fresh data (quick update)
+          if [ ! -f "dbs/ticker_data_1m.db" ]; then
+            echo "No cached data, fetching latest..."
+            timeout 300 python3 fetch_1m_daily.py || echo "Fetch timed out, using available data"
+          fi
+      
+      - name: Run predictions
+        id: predict
+        run: |
+          cd gas_yfinance_predictor
+          
+          # Determine time of day
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -eq 9 ]; then
+            RUN_TIME="1am"
+          elif [ "$HOUR" -eq 14 ]; then
+            RUN_TIME="6am"
+          elif [ "$HOUR" -eq 1 ]; then
+            RUN_TIME="5pm"
+          else
+            RUN_TIME="manual"
+          fi
+          
+          echo "run_time=$RUN_TIME" >> $GITHUB_OUTPUT
+          
+          # Run predictions
+          if [ -n "${{ github.event.inputs.ticker }}" ]; then
+            python3 prediction_service.py --ticker "${{ github.event.inputs.ticker }}" \
+              --horizons ${{ github.event.inputs.time_horizons || '4 12 24' }} \
+              | tee predictions_output.txt
+          else
+            python3 prediction_service.py \
+              --horizons ${{ github.event.inputs.time_horizons || '4 12 24' }} \
+              | tee predictions_output.txt
+          fi
+      
+      - name: Generate predictions report
+        run: |
+          cd gas_yfinance_predictor
+          
+          cat << EOF > predictions_report.md
+          # Price Action Predictions Report
+          
+          **Generated:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          **Run Type:** ${{ steps.predict.outputs.run_time }}
+          **Time Horizons:** ${{ github.event.inputs.time_horizons || '4, 12, 24 hours' }}
+          
+          ## Summary
+          
+          \`\`\`
+          $(tail -50 predictions_output.txt)
+          \`\`\`
+          
+          ## Database Stats
+          
+          \`\`\`
+          $(sqlite3 dbs/predictions.db "SELECT COUNT(*) as total_predictions FROM predictions")
+          \`\`\`
+          
+          ---
+          *Automated by GitHub Actions*
+          EOF
+          
+          cat predictions_report.md
+      
+      - name: Upload predictions database
+        uses: actions/upload-artifact@v4
+        with:
+          name: predictions-${{ github.run_number }}
+          path: gas_yfinance_predictor/dbs/predictions.db
+          retention-days: 30
+      
+      - name: Send webhook notification
+        if: always()
+        run: |
+          cd gas_yfinance_predictor
+          
+          WEBHOOK_URL="${{ secrets.PREDICTION_WEBHOOK_URL }}"
+          
+          if [ -n "$WEBHOOK_URL" ]; then
+            curl -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d @- << EOF
+          {
+            "run_time": "${{ steps.predict.outputs.run_time }}",
+            "workflow_run": "${{ github.run_number }}",
+            "status": "${{ job.status }}",
+            "timestamp": "$(date -u '+%Y-%m-%dT%H:%M:%SZ')",
+            "repository": "${{ github.repository }}",
+            "run_url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          fi
+      
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '⚠️ Prediction Service Failed - ${{ steps.predict.outputs.run_time }}',
+              body: `The prediction service failed during the ${{ steps.predict.outputs.run_time }} run.
+              
+              **Workflow Run:** ${{ github.run_number }}
+              **Time:** ${new Date().toISOString()}
+              
+              Please check the [workflow logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.`,
+              labels: ['automated', 'prediction-failure']
+            })

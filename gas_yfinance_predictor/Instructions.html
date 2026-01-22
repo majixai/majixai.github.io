@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      padding: 0;
+      margin: 0;
+      background: #f8f9fa;
+    }
+    
+    .modal-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+    
+    .close-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 5px 12px;
+      border-radius: 4px;
+      transition: background 0.3s;
+    }
+    
+    .close-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    .modal-content {
+      padding: 25px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    
+    .step {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 4px solid #667eea;
+    }
+    
+    .step-number {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-right: 12px;
+      font-size: 16px;
+    }
+    
+    .step-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .step-content {
+      padding-left: 47px;
+      color: #555;
+      line-height: 1.6;
+    }
+    
+    .step-content code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #d63384;
+    }
+    
+    .step-content ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+    
+    .step-content li {
+      margin: 8px 0;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .feature-card {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    
+    .feature-title {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .feature-desc {
+      font-size: 13px;
+      color: #666;
+    }
+    
+    .tip {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+    
+    .tip strong {
+      color: #2e7d32;
+    }
+    
+    .warning {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+    }
+    
+    .warning strong {
+      color: #e65100;
+    }
+    
+    .btn-container {
+      text-align: center;
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 5px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+  </style>
+</head>
+<body>
+  <div class="modal-header">
+    <h2>📚 How to Use YFinance Predictor</h2>
+    <button class="close-btn" onclick="google.script.host.close()">×</button>
+  </div>
+  
+  <div class="modal-content">
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Live Data</div>
+        <div class="feature-desc">Real-time market data from yfinance</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">AI Predictions</div>
+        <div class="feature-desc">GenAI-powered price forecasts</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔗</div>
+        <div class="feature-title">Git Webhook</div>
+        <div class="feature-desc">Auto-sync on code changes</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <div class="feature-title">Compressed DB</div>
+        <div class="feature-desc">Optimized Drive storage</div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">1</span>
+        <span>Quick Start - Single Ticker</span>
+      </div>
+      <div class="step-content">
+        <ul>
+          <li>Enter a ticker symbol (e.g., <code>AAPL</code>, <code>SPY</code>, <code>^GSPC</code>)</li>
+          <li>Select your desired time period (<code>1mo</code> recommended for predictions)</li>
+          <li>Choose the data interval (<code>1d</code> for daily data)</li>
+          <li>Click <strong>Fetch & Predict</strong> to get AI-powered predictions</li>
+        </ul>
+        <div class="tip">
+          <strong>💡 Tip:</strong> Use the Popular Indices section for one-click access to major market indices!
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">2</span>
+        <span>Batch Processing</span>
+      </div>
+      <div class="step-content">
+        <p>To analyze multiple tickers at once:</p>
+        <ul>
+          <li>Add tickers to the <strong>Tickers</strong> sheet in your spreadsheet</li>
+          <li>Click <strong>Fetch All Tickers</strong> button</li>
+          <li>System will automatically fetch data and predictions for all tickers</li>
+          <li>Results are updated in real-time in the sheet</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">3</span>
+        <span>Generate Reports</span>
+      </div>
+      <div class="step-content">
+        <ul>
+          <li>Click <strong>Generate Report</strong> to create a comprehensive analysis</li>
+          <li>Report includes: current prices, predictions, change percentages, and recommendations</li>
+          <li>A new <strong>Report</strong> sheet will be created with formatted results</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">4</span>
+        <span>Understanding Predictions</span>
+      </div>
+      <div class="step-content">
+        <p>The AI prediction engine uses multiple algorithms:</p>
+        <ul>
+          <li><strong>Linear Regression:</strong> Trend analysis</li>
+          <li><strong>Moving Averages:</strong> SMA 20/50/200 day trends</li>
+          <li><strong>RSI (Relative Strength Index):</strong> Overbought/oversold detection</li>
+          <li><strong>MACD:</strong> Momentum indicators</li>
+          <li><strong>Bollinger Bands:</strong> Volatility analysis</li>
+        </ul>
+        <div class="tip">
+          <strong>💡 Confidence Score:</strong> Higher confidence (>70%) indicates more reliable predictions based on lower volatility and model agreement.
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">5</span>
+        <span>Recommendations Guide</span>
+      </div>
+      <div class="step-content">
+        <ul>
+          <li><strong style="color: #4caf50;">STRONG BUY:</strong> Significant upward prediction (>5%) with positive indicators</li>
+          <li><strong style="color: #8bc34a;">BUY:</strong> Moderate upward prediction (>2%)</li>
+          <li><strong style="color: #ff9800;">HOLD:</strong> Minimal predicted change (-2% to +2%)</li>
+          <li><strong style="color: #f44336;">SELL:</strong> Moderate downward prediction (<-2%)</li>
+          <li><strong style="color: #d32f2f;">STRONG SELL:</strong> Significant downward prediction (<-5%)</li>
+        </ul>
+        <div class="warning">
+          <strong>⚠️ Disclaimer:</strong> Predictions are for informational purposes only. Always do your own research and consult with financial advisors before making investment decisions.
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">6</span>
+        <span>Git Webhook Integration</span>
+      </div>
+      <div class="step-content">
+        <p>Automatically sync data when your repository is updated:</p>
+        <ul>
+          <li>Webhook logs all push and pull request events</li>
+          <li>Automatically refreshes data when Python files change</li>
+          <li>Check the <strong>Webhook_Log</strong> sheet for sync history</li>
+          <li>Manual sync available via <strong>Sync with Git</strong> menu option</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">7</span>
+        <span>Configuration</span>
+      </div>
+      <div class="step-content">
+        <p>Configure your backend and storage:</p>
+        <ul>
+          <li>Click the ⚙️ icon in the sidebar or use menu: <strong>YFinance Predictor → Configure Settings</strong></li>
+          <li>Enter your Python backend URL (deployed Flask API)</li>
+          <li>Enter your Google Drive folder ID for compressed data storage</li>
+          <li>Settings are saved automatically to Script Properties</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="step-title">
+        <span class="step-number">8</span>
+        <span>Troubleshooting</span>
+      </div>
+      <div class="step-content">
+        <p><strong>Common Issues:</strong></p>
+        <ul>
+          <li><strong>Cannot fetch data:</strong> Check backend URL in settings, ensure server is running</li>
+          <li><strong>Prediction errors:</strong> Ensure sufficient historical data (>10 points)</li>
+          <li><strong>Slow performance:</strong> Try shorter time periods or larger intervals</li>
+          <li><strong>Webhook not working:</strong> Verify webhook URL in GitHub repo settings</li>
+        </ul>
+        <div class="tip">
+          <strong>💡 Pro Tip:</strong> Check the execution logs in Apps Script editor (View → Logs) for detailed error messages.
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="btn-container">
+    <button class="btn" onclick="openSettings()">⚙️ Open Settings</button>
+    <button class="btn btn-secondary" onclick="google.script.host.close()">Got It!</button>
+  </div>
+
+  <script>
+    function openSettings() {
+      google.script.run.showConfigDialog();
+      google.script.host.close();
+    }
+  </script>
+</body>
+</html>
