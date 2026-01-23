@@ -49,6 +49,27 @@
             </div>
         </div>
 
+        <!-- News Script Generator -->
+        <div class="news-script-container" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h2 style="margin: 0 0 15px 0; display: flex; align-items: center; gap: 10px;">
+                🎙️ AI News Script Generator
+            </h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="play-summary-btn" class="script-btn" style="flex: 1; min-width: 200px; padding: 12px 24px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); color: white; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                    ▶️ Play 30s Summary
+                </button>
+                <button id="stop-speech-btn" class="script-btn" style="flex: 0.5; min-width: 120px; padding: 12px 24px; background: rgba(239,68,68,0.8); border: 2px solid rgba(255,255,255,0.5); color: white; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: none;">
+                    ⏹️ Stop
+                </button>
+                <button id="export-script-btn" class="script-btn" style="flex: 1; min-width: 200px; padding: 12px 24px; background: rgba(255,255,255,0.9); border: 2px solid rgba(255,255,255,0.5); color: #667eea; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">
+                    📄 Export 4min Script
+                </button>
+            </div>
+            <div id="script-status" style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 14px; min-height: 40px; display: none;">
+                Ready to generate market commentary...
+            </div>
+        </div>
+
         <!-- AI Suggestion Buttons -->
         <div class="ai-controls">
             <h2>🤖 AI-Powered Analysis Tools</h2>

@@ -62,6 +62,31 @@ function setupEventListeners() {
             toggleAnalysis(analysisType, this);
         });
     });
+    
+    // News script buttons
+    document.getElementById('play-summary-btn').addEventListener('click', () => {
+        generateAndPlayScript('summary');
+    });
+    
+    document.getElementById('stop-speech-btn').addEventListener('click', () => {
+        stopSpeech();
+    });
+    
+    document.getElementById('export-script-btn').addEventListener('click', () => {
+        generateAndPlayScript('full');
+    });
+    
+    // Add hover effects for script buttons
+    document.querySelectorAll('.script-btn').forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 6px 20px rgba(0,0,0,0.3)';
+        });
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
 }
 
 // ============================================
@@ -3166,6 +3191,378 @@ function randomNormal() {
     while(u === 0) u = Math.random();
     while(v === 0) v = Math.random();
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+// ============================================
+// NEWS SCRIPT GENERATOR & TEXT-TO-SPEECH
+// ============================================
+
+let speechSynthesis = null;
+let currentUtterance = null;
+
+/**
+ * Generate news-style script for ticker
+ * @param {string} mode - 'summary' for 30s, 'full' for 4min
+ */
+function generateAndPlayScript(mode) {
+    const statusEl = document.getElementById('script-status');
+    statusEl.style.display = 'block';
+    statusEl.textContent = mode === 'summary' ? '⏳ Generating 30-second summary...' : '⏳ Generating 4-minute detailed script...';
+    
+    if (!tickerData || tickerData.length === 0) {
+        statusEl.textContent = '⚠️ Please load ticker data first by running some analyses.';
+        return;
+    }
+    
+    // Initialize speech synthesis
+    speechSynthesis = window.speechSynthesis;
+    
+    // Generate script based on mode
+    const script = mode === 'summary' ? generateSummaryScript() : generateFullScript();
+    
+    if (mode === 'summary') {
+        // Play in browser
+        playSpeech(script);
+        statusEl.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+                <span>🎙️ Broadcasting live market update...</span>
+            </div>
+        `;
+    } else {
+        // Export as file
+        exportScript(script);
+        statusEl.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>✅ Script exported successfully! Check your downloads.</span>
+            </div>
+        `;
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 5000);
+    }
+}
+
+/**
+ * Generate 30-second summary script
+ */
+function generateSummaryScript() {
+    const prices = tickerData.map(d => d.close);
+    const currentPrice = prices[prices.length - 1];
+    const openPrice = prices[0];
+    const priceChange = ((currentPrice - openPrice) / openPrice * 100).toFixed(2);
+    const direction = priceChange >= 0 ? 'up' : 'down';
+    const volumes = tickerData.map(d => d.volume || 0);
+    const avgVolume = volumes.reduce((a,b) => a+b, 0) / volumes.length;
+    
+    // Get latest analysis results
+    const priceProj = allAnalysisResults['price-projection'] || {};
+    const technical = allAnalysisResults['technical-indicators'] || {};
+    const patterns = allAnalysisResults['chart-patterns'] || {};
+    
+    let script = `Good ${getTimeOfDay()}, this is your AI market analyst with a quick update on ${currentTicker}. `;
+    
+    script += `The stock is currently trading at ${currentPrice.toFixed(2)} dollars, ${direction} ${Math.abs(priceChange)} percent ${direction === 'up' ? 'from' : 'since'} the opening. `;
+    
+    if (priceProj.ensemble) {
+        const projChange = priceProj.change > 0 ? 'gain' : 'loss';
+        script += `Our advanced mathematical models project a ${Math.abs(priceProj.change)} percent ${projChange} over the next 30 days, with a target price of ${priceProj.ensemble.toFixed(2)} dollars. `;
+    }
+    
+    if (technical.signals && technical.signals.length > 0) {
+        const bullishSignals = technical.signals.filter(s => s.type === 'BUY').length;
+        const bearishSignals = technical.signals.filter(s => s.type === 'SELL').length;
+        if (bullishSignals > bearishSignals) {
+            script += `Technical indicators are showing ${bullishSignals} bullish signals, suggesting upward momentum. `;
+        } else if (bearishSignals > bullishSignals) {
+            script += `We're seeing ${bearishSignals} bearish signals, indicating potential downside pressure. `;
+        }
+    }
+    
+    if (patterns.patterns && patterns.patterns.length > 0) {
+        const pattern = patterns.patterns[0];
+        script += `Chart analysis reveals a ${pattern.name} pattern, which is typically ${pattern.direction}. `;
+    }
+    
+    script += `That's your quick market snapshot. Stay tuned for more updates.`;
+    
+    return script;
+}
+
+/**
+ * Generate 4-minute detailed script
+ */
+function generateFullScript() {
+    const prices = tickerData.map(d => d.close);
+    const currentPrice = prices[prices.length - 1];
+    const openPrice = prices[0];
+    const highPrice = Math.max(...prices);
+    const lowPrice = Math.min(...prices);
+    const priceChange = ((currentPrice - openPrice) / openPrice * 100).toFixed(2);
+    const direction = priceChange >= 0 ? 'up' : 'down';
+    const volumes = tickerData.map(d => d.volume || 0);
+    const totalVolume = volumes.reduce((a,b) => a+b, 0);
+    const avgVolume = totalVolume / volumes.length;
+    
+    // Calculate volatility
+    const returns = [];
+    for (let i = 1; i < prices.length; i++) {
+        returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+    }
+    const volatility = calculateStdDev(returns) * 100;
+    
+    let script = `[MARKET INTELLIGENCE REPORT - ${new Date().toLocaleDateString()}]\n\n`;
+    
+    // OPENING
+    script += `Good ${getTimeOfDay()}, and welcome to today's comprehensive market analysis. I'm your AI analyst, and we'll be conducting an in-depth examination of ${currentTicker}, utilizing advanced mathematical models and real-time market data.\n\n`;
+    
+    // SECTION 1: CURRENT MARKET STATUS
+    script += `SECTION 1: CURRENT MARKET STATUS\n\n`;
+    script += `${currentTicker} is currently trading at ${currentPrice.toFixed(2)} dollars per share. `;
+    script += `The stock has moved ${direction} ${Math.abs(priceChange)} percent during this trading period, `;
+    script += `with an intraday high of ${highPrice.toFixed(2)} dollars and a low of ${lowPrice.toFixed(2)} dollars. `;
+    script += `This represents a trading range of ${((highPrice - lowPrice) / lowPrice * 100).toFixed(2)} percent, `;
+    script += `indicating ${volatility > 2 ? 'elevated' : volatility > 1 ? 'moderate' : 'low'} intraday volatility.\n\n`;
+    
+    script += `Volume analysis shows ${(totalVolume / 1e6).toFixed(2)} million shares traded, `;
+    script += `with an average of ${(avgVolume / 1e6).toFixed(2)} million shares per period. `;
+    script += `${avgVolume > volumes[volumes.length-1] ? 'Current volume is below average, suggesting lighter trading activity.' : 'We\'re seeing above-average volume, indicating strong market participation.'}\n\n`;
+    
+    // SECTION 2: ADVANCED MATHEMATICAL PROJECTIONS
+    const priceProj = allAnalysisResults['price-projection'] || {};
+    if (priceProj.ensemble) {
+        script += `SECTION 2: ADVANCED MATHEMATICAL PROJECTIONS\n\n`;
+        script += `Using our proprietary ensemble of mathematical models, including Geometric Brownian Motion, `;
+        script += `Heston Stochastic Volatility, Jump Diffusion, and Neural Network predictions, `;
+        script += `we project a 30-day price target of ${priceProj.ensemble.toFixed(2)} dollars. `;
+        script += `This represents a ${Math.abs(priceProj.change)} percent ${priceProj.change > 0 ? 'potential gain' : 'potential decline'} from current levels.\n\n`;
+        
+        script += `Breaking down our ensemble: `;
+        if (priceProj.models) {
+            script += `The Monte Carlo simulation forecasts ${priceProj.models.monteCarlo.toFixed(2)} dollars. `;
+            script += `The Heston model, accounting for stochastic volatility, projects ${priceProj.models.heston.toFixed(2)} dollars. `;
+            script += `Our Jump Diffusion model, which captures sudden price movements, indicates ${priceProj.models.jumpDiffusion.toFixed(2)} dollars. `;
+            script += `Finally, our neural network prediction comes in at ${priceProj.models.neuralNet.toFixed(2)} dollars. `;
+            const spread = Math.max(...Object.values(priceProj.models)) - Math.min(...Object.values(priceProj.models));
+            script += `The spread between our models is ${spread.toFixed(2)} dollars, `;
+            script += `${spread / currentPrice * 100 < 5 ? 'indicating strong consensus among different mathematical approaches.' : 'suggesting some divergence in methodologies that warrants careful monitoring.'}\n\n`;
+        }
+    }
+    
+    // SECTION 3: TECHNICAL ANALYSIS
+    const technical = allAnalysisResults['technical-indicators'] || {};
+    if (technical.signals && technical.signals.length > 0) {
+        script += `SECTION 3: TECHNICAL ANALYSIS AND TRADING SIGNALS\n\n`;
+        const bullishSignals = technical.signals.filter(s => s.type === 'BUY');
+        const bearishSignals = technical.signals.filter(s => s.type === 'SELL');
+        
+        script += `Our comprehensive technical analysis has identified ${technical.signals.length} actionable signals. `;
+        script += `${bullishSignals.length} signals are bullish, while ${bearishSignals.length} are bearish. `;
+        
+        if (bullishSignals.length > 0) {
+            script += `Key bullish indicators include: `;
+            bullishSignals.slice(0, 3).forEach((signal, idx) => {
+                script += `${signal.indicator} showing ${signal.reason}, `;
+                if (signal.entry && signal.target) {
+                    script += `with a suggested entry at ${signal.entry.toFixed(2)} dollars and target of ${signal.target.toFixed(2)} dollars. `;
+                }
+            });
+        }
+        
+        if (bearishSignals.length > 0) {
+            script += `On the bearish side: `;
+            bearishSignals.slice(0, 3).forEach((signal, idx) => {
+                script += `${signal.indicator} indicates ${signal.reason}, `;
+                if (signal.entry && signal.target) {
+                    script += `suggesting entry at ${signal.entry.toFixed(2)} dollars with a target of ${signal.target.toFixed(2)} dollars. `;
+                }
+            });
+        }
+        script += `\n\n`;
+    }
+    
+    // SECTION 4: PATTERN RECOGNITION
+    const patterns = allAnalysisResults['chart-patterns'] || {};
+    if (patterns.patterns && patterns.patterns.length > 0) {
+        script += `SECTION 4: CHART PATTERN ANALYSIS\n\n`;
+        script += `Our pattern recognition algorithms have identified ${patterns.patterns.length} distinct chart patterns. `;
+        
+        patterns.patterns.slice(0, 3).forEach((pattern, idx) => {
+            script += `Pattern ${idx + 1}: We've detected a ${pattern.name}, which typically exhibits ${pattern.direction} characteristics. `;
+            script += `This pattern has a confidence rating of ${pattern.confidence} percent. `;
+            if (pattern.entryPoint && pattern.exitPoint) {
+                script += `Traders often look for entry near ${pattern.entryPoint.toFixed(2)} dollars, `;
+                script += `with a target exit around ${pattern.exitPoint.toFixed(2)} dollars. `;
+                if (pattern.riskReward) {
+                    script += `The risk-reward ratio stands at ${pattern.riskReward.toFixed(2)} to 1. `;
+                }
+            }
+        });
+        script += `\n\n`;
+    }
+    
+    // SECTION 5: ADVANCED MATHEMATICS
+    const derivatives3D = allAnalysisResults['3d-derivatives'];
+    const itoCalc = allAnalysisResults['ito-calculus'];
+    const mechanics = allAnalysisResults['mechanics'];
+    
+    if (derivatives3D || itoCalc || mechanics) {
+        script += `SECTION 5: ADVANCED MATHEMATICAL INSIGHTS\n\n`;
+        
+        if (derivatives3D && derivatives3D.current) {
+            script += `Our 3-dimensional derivative analysis reveals: `;
+            script += `The price derivative is ${derivatives3D.current.dx.toFixed(4)}, `;
+            script += `volatility derivative at ${derivatives3D.current.dy.toFixed(4)}, `;
+            script += `and volume derivative at ${derivatives3D.current.dz.toFixed(0)}. `;
+            script += `The gradient magnitude of ${derivatives3D.current.gradientMagnitude.toFixed(4)} `;
+            script += `indicates ${derivatives3D.current.gradientMagnitude > 0.5 ? 'strong directional momentum' : 'consolidation phase'}. `;
+        }
+        
+        if (itoCalc) {
+            script += `Ito calculus analysis shows the market is ${itoCalc.dominantComponent}-dominated, `;
+            script += `with a drift-to-diffusion ratio of ${itoCalc.avgRatio ? itoCalc.avgRatio.toFixed(2) : 'N/A'}. `;
+            script += `This ${itoCalc.dominantComponent === 'drift' ? 'suggests a trending market with clear directional bias' : 'indicates noise-driven price action with limited trend strength'}. `;
+        }
+        
+        if (mechanics) {
+            script += `Applying classical mechanics principles, current momentum stands at ${mechanics.momentum ? mechanics.momentum.toFixed(2) : 'N/A'}, `;
+            script += `with force at ${mechanics.force ? mechanics.force.toFixed(2) : 'N/A'}. `;
+            script += `The Hamiltonian energy balance of ${mechanics.energyBalance ? mechanics.energyBalance.toFixed(2) : 'N/A'} `;
+            script += `${mechanics.energyBalance > 1 ? 'indicates kinetic energy dominance, suggesting active price movement' : 'shows potential energy accumulation, often preceding significant moves'}. `;
+        }
+        script += `\n\n`;
+    }
+    
+    // CLOSING
+    script += `CONCLUSION AND MARKET OUTLOOK\n\n`;
+    script += `In summary, ${currentTicker} is exhibiting `;
+    if (priceChange > 2) {
+        script += `strong bullish momentum with a ${Math.abs(priceChange)} percent gain. `;
+    } else if (priceChange < -2) {
+        script += `bearish pressure with a ${Math.abs(priceChange)} percent decline. `;
+    } else {
+        script += `neutral price action with minimal change. `;
+    }
+    
+    script += `Our multi-model ensemble approach provides a comprehensive view of potential price trajectories, `;
+    script += `while technical indicators and pattern recognition offer tactical entry and exit points for traders. `;
+    script += `The advanced mathematical analysis adds depth to our understanding of market microstructure and momentum dynamics.\n\n`;
+    
+    script += `As always, this analysis is for informational purposes and should not be considered investment advice. `;
+    script += `Market conditions can change rapidly, and past performance does not guarantee future results. `;
+    script += `We recommend conducting your own due diligence and consulting with financial advisors before making investment decisions.\n\n`;
+    
+    script += `This concludes our comprehensive market analysis of ${currentTicker}. `;
+    script += `Thank you for your attention, and we'll continue monitoring the markets for you.\n\n`;
+    script += `[END OF REPORT]`;
+    
+    return script;
+}
+
+/**
+ * Play speech using Web Speech API
+ */
+function playSpeech(text) {
+    if (!speechSynthesis) {
+        alert('Text-to-speech is not supported in your browser.');
+        return;
+    }
+    
+    // Cancel any ongoing speech
+    speechSynthesis.cancel();
+    
+    // Create utterance
+    currentUtterance = new SpeechSynthesisUtterance(text);
+    
+    // Configure voice settings for news-style delivery
+    currentUtterance.rate = 1.1; // Slightly faster for professional delivery
+    currentUtterance.pitch = 1.0;
+    currentUtterance.volume = 1.0;
+    
+    // Try to use a professional-sounding voice
+    const voices = speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => 
+        v.name.includes('Google') || 
+        v.name.includes('Microsoft') || 
+        v.name.includes('Alex') ||
+        v.name.includes('Daniel') ||
+        v.name.includes('Samantha')
+    );
+    if (preferredVoice) {
+        currentUtterance.voice = preferredVoice;
+    }
+    
+    // Event handlers
+    currentUtterance.onstart = () => {
+        document.getElementById('stop-speech-btn').style.display = 'block';
+        document.getElementById('play-summary-btn').style.opacity = '0.6';
+        document.getElementById('play-summary-btn').style.pointerEvents = 'none';
+    };
+    
+    currentUtterance.onend = () => {
+        document.getElementById('stop-speech-btn').style.display = 'none';
+        document.getElementById('play-summary-btn').style.opacity = '1';
+        document.getElementById('play-summary-btn').style.pointerEvents = 'auto';
+        const statusEl = document.getElementById('script-status');
+        statusEl.innerHTML = '✅ Broadcast complete.';
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 3000);
+    };
+    
+    currentUtterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        document.getElementById('stop-speech-btn').style.display = 'none';
+        document.getElementById('play-summary-btn').style.opacity = '1';
+        document.getElementById('play-summary-btn').style.pointerEvents = 'auto';
+        const statusEl = document.getElementById('script-status');
+        statusEl.innerHTML = '⚠️ Speech error occurred. Please try again.';
+    };
+    
+    // Speak
+    speechSynthesis.speak(currentUtterance);
+}
+
+/**
+ * Stop speech playback
+ */
+function stopSpeech() {
+    if (speechSynthesis) {
+        speechSynthesis.cancel();
+        document.getElementById('stop-speech-btn').style.display = 'none';
+        document.getElementById('play-summary-btn').style.opacity = '1';
+        document.getElementById('play-summary-btn').style.pointerEvents = 'auto';
+        const statusEl = document.getElementById('script-status');
+        statusEl.innerHTML = '⏹️ Broadcast stopped.';
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 2000);
+    }
+}
+
+/**
+ * Export script as text file
+ */
+function exportScript(script) {
+    const blob = new Blob([script], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentTicker}_Market_Analysis_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Get time of day greeting
+ */
+function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
 }
 
 // Loading overlay
