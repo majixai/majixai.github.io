@@ -377,25 +377,41 @@ async function main() {
 }
 
 // ============================================
-// SEARCH AND FILTER FUNCTIONALITY
+// ENHANCED SEARCH AND FILTER FUNCTIONALITY
 // ============================================
 
 let filteredRows = [];
 let allTickers = [];
+let tickerMetadata = new Map(); // Store additional metadata for each ticker
 
 function initializeSearchAndFilter() {
-    console.log('Initializing search and filter...');
+    console.log('Initializing enhanced search and filter...');
     
-    // Store all ticker symbols for autocomplete
+    // Store all ticker symbols and metadata for advanced search
     allTickers = [...new Set(allRows.map(row => row.Ticker))].sort();
-    console.log(`Found ${allTickers.length} unique tickers`);
+    
+    // Build metadata map with price trends
+    allRows.forEach(row => {
+        const ticker = row.Ticker;
+        if (!tickerMetadata.has(ticker)) {
+            tickerMetadata.set(ticker, {
+                ticker,
+                currentPrice: parseFloat(row.Close),
+                date: row.Date,
+                priceRange: 'unknown',
+                trend: 'unknown'
+            });
+        }
+    });
+    
+    console.log(`Found ${allTickers.length} unique tickers with metadata`);
     
     const searchInput = document.getElementById('ticker-search');
     const sortSelect = document.getElementById('sort-select');
     const clearFiltersBtn = document.getElementById('clear-filters');
     const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
     
-    // Search input with debounce
+    // Enhanced search input with debounce and fuzzy matching
     let searchTimeout;
     searchInput.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
@@ -404,14 +420,14 @@ function initializeSearchAndFilter() {
         if (query.length > 0) {
             searchTimeout = setTimeout(() => {
                 showAutocomplete(query);
-            }, 200);
+            }, 150); // Faster debounce for better UX
         } else {
             hideAutocomplete();
             applyFilters();
         }
     });
     
-    // Autocomplete selection
+    // Autocomplete selection with keyboard navigation
     searchInput.addEventListener('keydown', (e) => {
         const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
         const selected = autocompleteDropdown.querySelector('.autocomplete-item.selected');
@@ -435,7 +451,8 @@ function initializeSearchAndFilter() {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             if (selected) {
-                selectTicker(selected.textContent);
+                const tickerText = selected.querySelector('.ticker-symbol')?.textContent || selected.textContent;
+                selectTicker(tickerText);
             }
         } else if (e.key === 'Escape') {
             hideAutocomplete();
@@ -449,8 +466,14 @@ function initializeSearchAndFilter() {
         }
     });
     
-    // Sort selection
+    // Sort selection with more options
     sortSelect.addEventListener('change', () => {
+        applyFilters();
+    });
+    
+    // Price filter
+    const priceFilter = document.getElementById('price-filter');
+    priceFilter.addEventListener('change', () => {
         applyFilters();
     });
     
@@ -458,35 +481,128 @@ function initializeSearchAndFilter() {
     clearFiltersBtn.addEventListener('click', () => {
         searchInput.value = '';
         sortSelect.value = 'date-desc';
+        priceFilter.value = 'all';
         hideAutocomplete();
         applyFilters();
     });
 }
 
+/**
+ * Fuzzy match algorithm using Levenshtein distance
+ * Ranks results by similarity to query
+ */
+function fuzzyMatch(query, ticker) {
+    // Exact match gets highest priority
+    if (ticker === query) return 1000;
+    if (ticker.startsWith(query)) return 900 - query.length;
+    
+    // Calculate Levenshtein distance
+    const distance = levenshteinDistance(query, ticker);
+    const maxLen = Math.max(query.length, ticker.length);
+    const similarity = 1 - (distance / maxLen);
+    
+    // Contains match gets medium priority
+    if (ticker.includes(query)) return 500 + similarity * 100;
+    
+    // Fuzzy match gets lower priority based on similarity
+    return similarity * 300;
+}
+
+/**
+ * Levenshtein distance - edit distance between two strings
+ */
+function levenshteinDistance(a, b) {
+    const matrix = [];
+    
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1, // substitution
+                    matrix[i][j - 1] + 1,     // insertion
+                    matrix[i - 1][j] + 1      // deletion
+                );
+            }
+        }
+    }
+    
+    return matrix[b.length][a.length];
+}
+
+/**
+ * Enhanced autocomplete with fuzzy matching and metadata display
+ */
 function showAutocomplete(query) {
     const dropdown = document.getElementById('autocomplete-dropdown');
-    const matches = allTickers.filter(ticker => ticker.startsWith(query)).slice(0, 10);
     
-    if (matches.length === 0) {
-        dropdown.innerHTML = '<div class="autocomplete-item" style="color: #999;">No matches found</div>';
+    // Rank tickers by fuzzy match score
+    const rankedMatches = allTickers
+        .map(ticker => ({
+            ticker,
+            score: fuzzyMatch(query, ticker),
+            metadata: tickerMetadata.get(ticker)
+        }))
+        .filter(item => item.score > 100) // Filter out very poor matches
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 15); // Show top 15 results
+    
+    if (rankedMatches.length === 0) {
+        dropdown.innerHTML = `
+            <div class="autocomplete-item" style="color: #999; font-style: italic;">
+                No matches found for "${query}"
+            </div>
+        `;
         dropdown.classList.add('active');
         return;
     }
     
-    dropdown.innerHTML = matches.map(ticker => 
-        `<div class="autocomplete-item">${ticker}</div>`
-    ).join('');
+    // Build enhanced dropdown with metadata
+    dropdown.innerHTML = rankedMatches.map((item, index) => {
+        const meta = item.metadata || {};
+        const priceDisplay = meta.currentPrice ? `$${meta.currentPrice.toFixed(2)}` : 'N/A';
+        const matchType = item.score >= 900 ? '⭐ Exact' : 
+                         item.score >= 500 ? '✓ Contains' : 
+                         '≈ Similar';
+        
+        return `
+            <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-ticker="${item.ticker}">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="ticker-symbol" style="font-weight: bold; color: #667eea;">${item.ticker}</span>
+                        <span style="font-size: 0.75rem; color: #999; margin-left: 8px;">${matchType}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 600; color: #10b981;">${priceDisplay}</div>
+                        <div style="font-size: 0.7rem; color: #999;">${meta.date || ''}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
     
     // Add click handlers
     dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-        item.addEventListener('click', () => {
-            selectTicker(item.textContent);
-        });
-        
-        item.addEventListener('mouseenter', () => {
-            dropdown.querySelectorAll('.autocomplete-item').forEach(i => i.classList.remove('selected'));
-            item.classList.add('selected');
-        });
+        const ticker = item.getAttribute('data-ticker');
+        if (ticker) {
+            item.addEventListener('click', () => {
+                selectTicker(ticker);
+            });
+            
+            item.addEventListener('mouseenter', () => {
+                dropdown.querySelectorAll('.autocomplete-item').forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+            });
+        }
     });
     
     dropdown.classList.add('active');
@@ -508,38 +624,78 @@ function selectTicker(ticker) {
 function applyFilters() {
     const searchQuery = document.getElementById('ticker-search').value.trim().toUpperCase();
     const sortValue = document.getElementById('sort-select').value;
+    const priceFilterValue = document.getElementById('price-filter').value;
     
-    console.log(`Applying filters: search="${searchQuery}", sort="${sortValue}"`);
+    console.log(`Applying filters: search="${searchQuery}", sort="${sortValue}", priceFilter="${priceFilterValue}"`);
     
-    // Filter rows
+    // Start with original dataset
+    let tempRows = [...allRows];
+    
+    // Apply search filter
     if (searchQuery) {
-        filteredRows = allRows.filter(row => row.Ticker.toUpperCase().includes(searchQuery));
-        console.log(`Filtered to ${filteredRows.length} rows`);
-    } else {
-        filteredRows = [...allRows];
+        // Use fuzzy matching for search
+        const rankedResults = tempRows
+            .map(row => ({
+                row,
+                score: fuzzyMatch(searchQuery, row.Ticker)
+            }))
+            .filter(item => item.score > 50) // Keep reasonable matches
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.row);
+        
+        tempRows = rankedResults;
+        console.log(`Fuzzy search filtered to ${tempRows.length} rows`);
     }
     
-    // Sort rows
-    filteredRows.sort((a, b) => {
-        switch(sortValue) {
-            case 'ticker-asc':
-                return a.Ticker.localeCompare(b.Ticker);
-            case 'ticker-desc':
-                return b.Ticker.localeCompare(a.Ticker);
-            case 'price-asc':
-                return parseFloat(a.Close) - parseFloat(b.Close);
-            case 'price-desc':
-                return parseFloat(b.Close) - parseFloat(a.Close);
-            case 'date-asc':
-                return new Date(a.Date) - new Date(b.Date);
-            case 'date-desc':
-                return new Date(b.Date) - new Date(a.Date);
-            default:
-                return 0;
-        }
-    });
+    // Apply price range filter
+    if (priceFilterValue !== 'all') {
+        tempRows = tempRows.filter(row => {
+            const price = parseFloat(row.Close);
+            switch(priceFilterValue) {
+                case 'under-10':
+                    return price < 10;
+                case '10-50':
+                    return price >= 10 && price < 50;
+                case '50-100':
+                    return price >= 50 && price < 100;
+                case '100-500':
+                    return price >= 100 && price < 500;
+                case 'over-500':
+                    return price >= 500;
+                default:
+                    return true;
+            }
+        });
+        console.log(`Price filter applied: ${tempRows.length} rows in range`);
+    }
+    
+    // Sort rows (skip if relevance and search query exists)
+    if (sortValue === 'relevance' && searchQuery) {
+        // Already sorted by fuzzy match score
+        console.log('Sorting by relevance (fuzzy match score)');
+    } else {
+        tempRows.sort((a, b) => {
+            switch(sortValue) {
+                case 'ticker-asc':
+                    return a.Ticker.localeCompare(b.Ticker);
+                case 'ticker-desc':
+                    return b.Ticker.localeCompare(a.Ticker);
+                case 'price-asc':
+                    return parseFloat(a.Close) - parseFloat(b.Close);
+                case 'price-desc':
+                    return parseFloat(b.Close) - parseFloat(a.Close);
+                case 'date-asc':
+                    return new Date(a.Date) - new Date(b.Date);
+                case 'date-desc':
+                    return new Date(b.Date) - new Date(a.Date);
+                default:
+                    return 0;
+            }
+        });
+    }
     
     // Update display with filtered rows
+    filteredRows = tempRows;
     allRows = filteredRows;
     currentPage = 1;
     totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE);
@@ -547,6 +703,19 @@ function applyFilters() {
     displayTablePage(1);
     setupPagination();
     updatePaginationButtons();
+    
+    // Update status message
+    const filterStatus = document.querySelector('.page-info');
+    if (filterStatus) {
+        const appliedFilters = [];
+        if (searchQuery) appliedFilters.push(`search: "${searchQuery}"`);
+        if (priceFilterValue !== 'all') appliedFilters.push(`price: ${priceFilterValue}`);
+        
+        const statusText = appliedFilters.length > 0 
+            ? `Showing ${allRows.length} tickers (${appliedFilters.join(', ')})`
+            : `Showing ${allRows.length} tickers`;
+        filterStatus.textContent = statusText;
+    }
     
     console.log(`Displaying ${allRows.length} rows in ${totalPages} pages`);
 }

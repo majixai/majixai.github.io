@@ -31,14 +31,23 @@
             </div>
             <div class="filter-controls">
                 <select id="sort-select">
-                    <option value="ticker-asc">Ticker (A-Z)</option>
-                    <option value="ticker-desc">Ticker (Z-A)</option>
-                    <option value="price-asc">Price (Low-High)</option>
-                    <option value="price-desc">Price (High-Low)</option>
-                    <option value="date-asc">Date (Old-New)</option>
-                    <option value="date-desc" selected>Date (New-Old)</option>
+                    <option value="ticker-asc">Ticker (A→Z)</option>
+                    <option value="ticker-desc">Ticker (Z→A)</option>
+                    <option value="price-asc">Price (Low→High)</option>
+                    <option value="price-desc">Price (High→Low)</option>
+                    <option value="date-asc">Date (Old→New)</option>
+                    <option value="date-desc" selected>Date (New→Old)</option>
+                    <option value="relevance">Relevance (Best Match)</option>
                 </select>
-                <button id="clear-filters" class="btn-secondary">Clear Filters</button>
+                <select id="price-filter">
+                    <option value="all">All Prices</option>
+                    <option value="under-10">Under $10</option>
+                    <option value="10-50">$10 - $50</option>
+                    <option value="50-100">$50 - $100</option>
+                    <option value="100-500">$100 - $500</option>
+                    <option value="over-500">Over $500</option>
+                </select>
+                <button id="clear-filters" class="btn-secondary">🔄 Reset</button>
             </div>
         </div>
     </div>

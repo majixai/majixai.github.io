@@ -590,6 +590,18 @@ function runAnalysis(analysisType) {
             case 'momentum-signals':
                 analyzeMomentumSignals(section);
                 break;
+            case '3d-derivatives':
+                analyze3DDerivatives(section);
+                break;
+            case 'ito-calculus':
+                analyzeItoCalculus(section);
+                break;
+            case 'mechanics':
+                analyzeMechanics(section);
+                break;
+            case 'euler-complex':
+                analyzeEuler(section);
+                break;
         }
         
         statusEl.textContent = '✅ Analysis complete';
@@ -2706,6 +2718,425 @@ function calculateMaxDrawdown(prices) {
     }
     
     return maxDD;
+}
+
+// ============================================
+// ADVANCED MATHEMATICAL ANALYSIS
+// ============================================
+
+/**
+ * 3D Derivative Tracking Analysis
+ * Tracks dx (price), dy (volatility), dz (volume) derivatives
+ */
+function analyze3DDerivatives(section) {
+    console.log('Running 3D derivative tracking analysis...');
+    
+    const chartEl = section.querySelector('#chart-placeholder');
+    const detailsEl = section.querySelector('#details-placeholder');
+    
+    const prices = tickerData.map(d => d.close);
+    const volumes = tickerData.map(d => d.volume || 0);
+    
+    // Compute 3D derivatives
+    const derivatives = window.AdvancedMath.compute3DDerivatives(prices, volumes, 5);
+    
+    // Compute surface curvature
+    const curvatures = window.AdvancedMath.computeSurfaceCurvature(derivatives);
+    
+    // Create 3D visualization traces
+    const priceDerivTrace = {
+        x: derivatives.map(d => tickerData[d.index].date),
+        y: derivatives.map(d => d.dx),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'dx (Price Rate)',
+        line: { color: '#667eea', width: 2 }
+    };
+    
+    const volDerivTrace = {
+        x: derivatives.map(d => tickerData[d.index].date),
+        y: derivatives.map(d => d.dy),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'dy (Volatility Rate)',
+        line: { color: '#10b981', width: 2 },
+        yaxis: 'y2'
+    };
+    
+    const volumeDerivTrace = {
+        x: derivatives.map(d => tickerData[d.index].date),
+        y: derivatives.map(d => d.dz),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'dz (Volume Rate)',
+        line: { color: '#f59e0b', width: 2 },
+        yaxis: 'y3'
+    };
+    
+    const gradientMagTrace = {
+        x: derivatives.map(d => tickerData[d.index].date),
+        y: derivatives.map(d => d.gradientMagnitude),
+        type: 'scatter',
+        mode: 'lines',
+        name: '|∇| (Gradient Magnitude)',
+        line: { color: '#ef4444', width: 3 },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(239, 68, 68, 0.1)'
+    };
+    
+    Plotly.newPlot(chartEl, [priceDerivTrace, volDerivTrace, volumeDerivTrace, gradientMagTrace], {
+        title: '3D Derivative Tracking: dx/dy/dz Analysis',
+        xaxis: { title: 'Date' },
+        yaxis: { 
+            title: 'dx (Price Derivative)',
+            titlefont: { color: '#667eea' },
+            tickfont: { color: '#667eea' }
+        },
+        yaxis2: {
+            title: 'dy (Volatility Derivative)',
+            titlefont: { color: '#10b981' },
+            tickfont: { color: '#10b981' },
+            overlaying: 'y',
+            side: 'right'
+        },
+        yaxis3: {
+            title: 'dz (Volume Derivative)',
+            titlefont: { color: '#f59e0b' },
+            tickfont: { color: '#f59e0b' },
+            overlaying: 'y',
+            side: 'right',
+            anchor: 'free',
+            position: 0.95
+        },
+        showlegend: true,
+        legend: { x: 0, y: 1 }
+    });
+    
+    // Calculate summary statistics
+    const avgGradient = derivatives.reduce((sum, d) => sum + d.gradientMagnitude, 0) / derivatives.length;
+    const maxGradient = Math.max(...derivatives.map(d => d.gradientMagnitude));
+    const currentDerivatives = derivatives[derivatives.length - 1];
+    const currentCurvature = curvatures[curvatures.length - 1];
+    
+    // Count trends
+    const bullishCount = derivatives.filter(d => d.trend === 'bullish').length;
+    const bearishCount = derivatives.filter(d => d.trend === 'bearish').length;
+    const trendPercent = (bullishCount / derivatives.length * 100).toFixed(1);
+    
+    // Store results
+    allAnalysisResults['3d-derivatives'] = {
+        current: currentDerivatives,
+        curvature: currentCurvature,
+        avgGradient,
+        trendPercent
+    };
+    
+    detailsEl.innerHTML = `
+        <h4>3D Derivative Metrics</h4>
+        <table>
+            <tr><td><strong>dx (Price Rate):</strong></td><td style="color: ${currentDerivatives.dx > 0 ? '#10b981' : '#ef4444'}">${currentDerivatives.dx.toFixed(4)}</td></tr>
+            <tr><td><strong>dy (Volatility Rate):</strong></td><td style="color: ${currentDerivatives.dy > 0 ? '#ef4444' : '#10b981'}">${currentDerivatives.dy.toFixed(4)}</td></tr>
+            <tr><td><strong>dz (Volume Rate):</strong></td><td style="color: ${currentDerivatives.dz > 0 ? '#10b981' : '#ef4444'}">${currentDerivatives.dz.toFixed(0)}</td></tr>
+            <tr><td><strong>Gradient Magnitude:</strong></td><td>${currentDerivatives.gradientMagnitude.toFixed(4)}</td></tr>
+        </table>
+        
+        <h4>Directional Analysis</h4>
+        <table>
+            <tr><td>Price Trend:</td><td><span class="badge" style="background: ${currentDerivatives.trend === 'bullish' ? '#10b981' : currentDerivatives.trend === 'bearish' ? '#ef4444' : '#6b7280'}">${currentDerivatives.trend.toUpperCase()}</span></td></tr>
+            <tr><td>Volatility Trend:</td><td><span class="badge">${currentDerivatives.volatilityTrend}</span></td></tr>
+            <tr><td>Volume Trend:</td><td><span class="badge">${currentDerivatives.volumeTrend}</span></td></tr>
+            <tr><td>Theta (xy-plane angle):</td><td>${currentDerivatives.thetaDeg.toFixed(2)}°</td></tr>
+            <tr><td>Phi (z-axis angle):</td><td>${currentDerivatives.phiDeg.toFixed(2)}°</td></tr>
+        </table>
+        
+        <h4>Surface Curvature</h4>
+        <table>
+            <tr><td>Mean Curvature:</td><td>${currentCurvature.meanCurvature.toFixed(6)}</td></tr>
+            <tr><td>Gaussian Curvature:</td><td>${currentCurvature.gaussianCurvature.toFixed(6)}</td></tr>
+            <tr><td>Surface Type:</td><td><span class="badge">${currentCurvature.surfaceType}</span></td></tr>
+            <tr><td>Convexity:</td><td><span class="badge">${currentCurvature.convexity}</span></td></tr>
+        </table>
+        
+        <h4>Statistical Summary</h4>
+        <table>
+            <tr><td>Average Gradient:</td><td>${avgGradient.toFixed(4)}</td></tr>
+            <tr><td>Maximum Gradient:</td><td>${maxGradient.toFixed(4)}</td></tr>
+            <tr><td>Bullish Periods:</td><td>${bullishCount} (${trendPercent}%)</td></tr>
+            <tr><td>Bearish Periods:</td><td>${bearishCount} (${(100-trendPercent).toFixed(1)}%)</td></tr>
+        </table>
+        
+        <p style="margin-top: 15px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; border-radius: 5px;">
+            <strong>3D Analysis:</strong> This tracks the rate of change in three dimensions: price (dx), 
+            volatility (dy), and volume (dz). The gradient magnitude |∇| = √(dx² + dy² + dz²) indicates 
+            the overall market momentum intensity. Surface curvature analysis reveals acceleration patterns: 
+            ${currentCurvature.surfaceType} surfaces indicate ${currentCurvature.convexity} price action.
+        </p>
+    `;
+}
+
+/**
+ * Ito Calculus & Stochastic Differential Equations
+ */
+function analyzeItoCalculus(section) {
+    console.log('Running Ito calculus analysis...');
+    
+    const chartEl = section.querySelector('#chart-placeholder');
+    const detailsEl = section.querySelector('#details-placeholder');
+    
+    const prices = tickerData.map(d => d.close);
+    
+    // Apply Ito's lemma for different transformations
+    const itoLog = window.AdvancedMath.itoLemma(prices, 'log');
+    const itoSquare = window.AdvancedMath.itoLemma(prices, 'square');
+    const itoIdentity = window.AdvancedMath.itoLemma(prices, 'identity');
+    
+    // Create visualization
+    const driftTrace = {
+        x: itoLog.map(r => tickerData[r.index].date),
+        y: itoLog.map(r => r.drift),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Drift (μ dt)',
+        line: { color: '#667eea', width: 2 }
+    };
+    
+    const diffusionTrace = {
+        x: itoLog.map(r => tickerData[r.index].date),
+        y: itoLog.map(r => r.diffusion),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Diffusion (σ dW)',
+        line: { color: '#10b981', width: 2 }
+    };
+    
+    const ratioTrace = {
+        x: itoLog.map(r => tickerData[r.index].date),
+        y: itoLog.map(r => r.driftDiffusionRatio),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Drift/Diffusion Ratio',
+        line: { color: '#f59e0b', width: 2 },
+        yaxis: 'y2'
+    };
+    
+    Plotly.newPlot(chartEl, [driftTrace, diffusionTrace, ratioTrace], {
+        title: 'Ito Calculus: Drift vs Diffusion Analysis',
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Drift & Diffusion Components' },
+        yaxis2: {
+            title: 'Drift/Diffusion Ratio',
+            overlaying: 'y',
+            side: 'right'
+        },
+        showlegend: true
+    });
+    
+    const avgDrift = itoLog.reduce((sum, r) => sum + r.drift, 0) / itoLog.length;
+    const avgDiffusion = Math.abs(itoLog.reduce((sum, r) => sum + r.diffusion, 0) / itoLog.length);
+    const avgRatio = itoLog.reduce((sum, r) => sum + r.driftDiffusionRatio, 0) / itoLog.length;
+    
+    allAnalysisResults['ito-calculus'] = {
+        avgDrift,
+        avgDiffusion,
+        avgRatio,
+        dominantComponent: avgRatio > 1 ? 'drift' : 'diffusion'
+    };
+    
+    detailsEl.innerHTML = `
+        <h4>Ito's Lemma Analysis</h4>
+        <p>For f(S) = log(S): df = (μ - 0.5σ²)dt + σdW</p>
+        <table>
+            <tr><td><strong>Average Drift:</strong></td><td>${avgDrift.toFixed(6)}</td></tr>
+            <tr><td><strong>Average Diffusion:</strong></td><td>${avgDiffusion.toFixed(6)}</td></tr>
+            <tr><td><strong>Drift/Diffusion Ratio:</strong></td><td>${avgRatio.toFixed(4)}</td></tr>
+            <tr><td><strong>Dominant Component:</strong></td><td><span class="badge">${avgRatio > 1 ? 'Drift (Trend)' : 'Diffusion (Noise)'}</span></td></tr>
+        </table>
+        
+        <p style="margin-top: 15px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; border-radius: 5px;">
+            <strong>Ito Calculus:</strong> Drift represents the deterministic trend component (μ), 
+            while diffusion represents stochastic noise (σdW). A higher drift/diffusion ratio indicates 
+            the market is ${avgRatio > 1 ? 'trending strongly' : 'dominated by random fluctuations'}.
+        </p>
+    `;
+}
+
+/**
+ * Classical Mechanics Analysis (Newtonian & Hamiltonian)
+ */
+function analyzeMechanics(section) {
+    console.log('Running classical mechanics analysis...');
+    
+    const chartEl = section.querySelector('#chart-placeholder');
+    const detailsEl = section.querySelector('#details-placeholder');
+    
+    const prices = tickerData.map(d => d.close);
+    const volumes = tickerData.map(d => d.volume || 1);
+    
+    // Newtonian mechanics
+    const newtonianResults = window.AdvancedMath.newtonianMechanics(prices, volumes);
+    
+    // Hamiltonian mechanics
+    const hamiltonianResults = window.AdvancedMath.hamiltonianMechanics(prices, volumes);
+    
+    // Create visualization
+    const momentumTrace = {
+        x: newtonianResults.map(r => tickerData[r.index].date),
+        y: newtonianResults.map(r => r.momentum),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Momentum (p = mv)',
+        line: { color: '#667eea', width: 2 },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(102, 126, 234, 0.1)'
+    };
+    
+    const forceTrace = {
+        x: newtonianResults.map(r => tickerData[r.index].date),
+        y: newtonianResults.map(r => r.force),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Force (F = ma)',
+        line: { color: '#ef4444', width: 2 }
+    };
+    
+    const hamiltonianTrace = {
+        x: hamiltonianResults.map(r => tickerData[r.index].date),
+        y: hamiltonianResults.map(r => r.hamiltonian),
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Hamiltonian (H = T + V)',
+        line: { color: '#10b981', width: 2 },
+        yaxis: 'y2'
+    };
+    
+    Plotly.newPlot(chartEl, [momentumTrace, forceTrace, hamiltonianTrace], {
+        title: 'Classical Mechanics: Force, Momentum & Energy',
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Momentum & Force' },
+        yaxis2: {
+            title: 'Total Energy (Hamiltonian)',
+            overlaying: 'y',
+            side: 'right'
+        },
+        showlegend: true
+    });
+    
+    const currentNewton = newtonianResults[newtonianResults.length - 1];
+    const currentHamilton = hamiltonianResults[hamiltonianResults.length - 1];
+    
+    allAnalysisResults['mechanics'] = {
+        momentum: currentNewton.momentum,
+        force: currentNewton.force,
+        hamiltonian: currentHamilton.hamiltonian,
+        energyBalance: currentHamilton.energyBalance
+    };
+    
+    detailsEl.innerHTML = `
+        <h4>Newtonian Mechanics</h4>
+        <table>
+            <tr><td><strong>Velocity:</strong></td><td>${currentNewton.velocity.toFixed(4)}</td></tr>
+            <tr><td><strong>Acceleration:</strong></td><td>${currentNewton.acceleration.toFixed(4)}</td></tr>
+            <tr><td><strong>Momentum (p = mv):</strong></td><td>${currentNewton.momentum.toFixed(2)}</td></tr>
+            <tr><td><strong>Force (F = ma):</strong></td><td>${currentNewton.force.toFixed(2)}</td></tr>
+            <tr><td><strong>Kinetic Energy:</strong></td><td>${currentNewton.kineticEnergy.toFixed(2)}</td></tr>
+            <tr><td><strong>Trend:</strong></td><td><span class="badge" style="background: ${currentNewton.trend === 'bullish' ? '#10b981' : '#ef4444'}">${currentNewton.trend.toUpperCase()}</span></td></tr>
+        </table>
+        
+        <h4>Hamiltonian Mechanics</h4>
+        <table>
+            <tr><td><strong>Kinetic Energy (T):</strong></td><td>${currentHamilton.kineticEnergy.toFixed(4)}</td></tr>
+            <tr><td><strong>Potential Energy (V):</strong></td><td>${currentHamilton.potentialEnergy.toFixed(4)}</td></tr>
+            <tr><td><strong>Total Hamiltonian (H):</strong></td><td>${currentHamilton.hamiltonian.toFixed(4)}</td></tr>
+            <tr><td><strong>Energy Balance (T/V):</strong></td><td>${currentHamilton.energyBalance.toFixed(4)}</td></tr>
+            <tr><td><strong>Position (q):</strong></td><td>$${currentHamilton.position.toFixed(2)}</td></tr>
+            <tr><td><strong>Momentum (p):</strong></td><td>${currentHamilton.momentum.toFixed(2)}</td></tr>
+        </table>
+        
+        <p style="margin-top: 15px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; border-radius: 5px;">
+            <strong>Physics Analogy:</strong> Treating price as position and volume as mass, we analyze 
+            market dynamics using Newton's laws (F=ma) and Hamiltonian energy conservation (H=T+V). 
+            Current energy balance of ${currentHamilton.energyBalance.toFixed(2)} indicates 
+            ${currentHamilton.energyBalance > 1 ? 'kinetic-dominated (high momentum)' : 'potential-dominated (consolidation)'} market phase.
+        </p>
+    `;
+}
+
+/**
+ * Euler's Formula & Complex Analysis
+ */
+function analyzeEuler(section) {
+    console.log('Running Euler formula analysis...');
+    
+    const chartEl = section.querySelector('#chart-placeholder');
+    const detailsEl = section.querySelector('#details-placeholder');
+    
+    const prices = tickerData.map(d => d.close);
+    
+    // Apply Euler's formula
+    const eulerResults = window.AdvancedMath.eulerFormula(prices);
+    
+    // Apply McLaurin series for price modeling
+    const mclaurinExp = prices.map((p, i) => {
+        const normalized = (p - prices[0]) / prices[0];
+        return window.AdvancedMath.mclaurinSeries(normalized, 'exp', 10);
+    });
+    
+    // Create spiral plot
+    const spiralTrace = {
+        x: eulerResults.map(r => r.spiralX),
+        y: eulerResults.map(r => r.spiralY),
+        type: 'scatter',
+        mode: 'markers+lines',
+        name: 'Price Spiral (e^(iθ))',
+        marker: { 
+            size: 8,
+            color: eulerResults.map((r, i) => i),
+            colorscale: 'Viridis',
+            showscale: true
+        },
+        line: { color: '#667eea', width: 1 }
+    };
+    
+    Plotly.newPlot(chartEl, [spiralTrace], {
+        title: 'Euler Spiral: e^(iθ) = cos(θ) + i·sin(θ)',
+        xaxis: { title: 'Real Component (cos)', zeroline: true },
+        yaxis: { title: 'Imaginary Component (sin)', zeroline: true },
+        showlegend: true
+    });
+    
+    const avgPhase = eulerResults.reduce((sum, r) => sum + r.phase, 0) / eulerResults.length;
+    const currentEuler = eulerResults[eulerResults.length - 1];
+    
+    allAnalysisResults['euler'] = {
+        phase: currentEuler.phase,
+        spiralRadius: currentEuler.spiralX,
+        avgPhase
+    };
+    
+    detailsEl.innerHTML = `
+        <h4>Euler's Formula: e^(iθ) = cos(θ) + i·sin(θ)</h4>
+        <table>
+            <tr><td><strong>Current Phase (θ):</strong></td><td>${currentEuler.theta.toFixed(4)} rad (${(currentEuler.theta * 180 / Math.PI).toFixed(2)}°)</td></tr>
+            <tr><td><strong>Real Component:</strong></td><td>${currentEuler.real.toFixed(4)}</td></tr>
+            <tr><td><strong>Imaginary Component:</strong></td><td>${currentEuler.imag.toFixed(4)}</td></tr>
+            <tr><td><strong>Magnitude:</strong></td><td>${currentEuler.magnitude.toFixed(4)}</td></tr>
+            <tr><td><strong>Spiral Radius:</strong></td><td>${currentEuler.spiralRadius.toFixed(4)}</td></tr>
+        </table>
+        
+        <h4>McLaurin Series Approximation</h4>
+        <p>e^x ≈ 1 + x + x²/2! + x³/3! + ... (10 terms)</p>
+        <table>
+            <tr><td><strong>Average Phase:</strong></td><td>${avgPhase.toFixed(4)} rad</td></tr>
+            <tr><td><strong>Euler's Constant (e):</strong></td><td>${Math.E.toFixed(6)}</td></tr>
+            <tr><td><strong>Euler's Identity:</strong></td><td>e^(iπ) + 1 = 0</td></tr>
+        </table>
+        
+        <p style="margin-top: 15px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-left: 3px solid #667eea; border-radius: 5px;">
+            <strong>Complex Analysis:</strong> Euler's formula represents oscillatory price behavior in 
+            the complex plane. The spiral visualization shows how returns rotate in phase space, with 
+            radius indicating price magnitude and angle representing momentum direction.
+        </p>
+    `;
 }
 
 function calculateMean(data) {

@@ -783,6 +783,606 @@ const AdvancedMath = {
             magnitude: Math.sqrt(real*real + imag*imag) / n,
             phase: Math.atan2(imag, real)
         };
+    },
+    
+    // ============================================
+    // 3D DERIVATIVE TRACKING (dx, dy, dz)
+    // ============================================
+    
+    /**
+     * Compute 3D derivatives for price surface analysis
+     * dx: temporal derivative (rate of price change)
+     * dy: volatility derivative (rate of volatility change)
+     * dz: volume derivative (rate of volume change)
+     */
+    compute3DDerivatives(prices, volumes, window = 5) {
+        const n = prices.length;
+        const derivatives = [];
+        
+        for (let i = window; i < n - window; i++) {
+            // Compute volatility locally
+            const localPrices = prices.slice(i - window, i + window + 1);
+            const returns = [];
+            for (let j = 1; j < localPrices.length; j++) {
+                returns.push((localPrices[j] - localPrices[j-1]) / localPrices[j-1]);
+            }
+            const volatility = this.standardDeviation(returns);
+            
+            // dx: temporal price derivative (∂P/∂t)
+            const dx = (prices[i + window] - prices[i - window]) / (2 * window);
+            
+            // dy: volatility gradient (∂σ/∂t)
+            const prevVol = this.standardDeviation(returns.slice(0, window));
+            const nextVol = this.standardDeviation(returns.slice(window));
+            const dy = (nextVol - prevVol) / (2 * window);
+            
+            // dz: volume derivative (∂V/∂t)
+            const dz = volumes ? (volumes[i + window] - volumes[i - window]) / (2 * window) : 0;
+            
+            // Gradient magnitude (3D gradient vector length)
+            const gradientMagnitude = Math.sqrt(dx*dx + dy*dy + dz*dz);
+            
+            // Direction angles
+            const theta = Math.atan2(dy, dx); // angle in xy-plane
+            const phi = Math.atan2(dz, Math.sqrt(dx*dx + dy*dy)); // angle from xy-plane
+            
+            derivatives.push({
+                index: i,
+                price: prices[i],
+                volatility,
+                volume: volumes ? volumes[i] : 0,
+                dx, dy, dz,
+                gradientMagnitude,
+                theta, // radians
+                phi,   // radians
+                thetaDeg: theta * 180 / Math.PI,
+                phiDeg: phi * 180 / Math.PI,
+                // Classification
+                trend: dx > 0 ? 'bullish' : dx < 0 ? 'bearish' : 'neutral',
+                volatilityTrend: dy > 0 ? 'increasing' : dy < 0 ? 'decreasing' : 'stable',
+                volumeTrend: dz > 0 ? 'expanding' : dz < 0 ? 'contracting' : 'stable'
+            });
+        }
+        
+        return derivatives;
+    },
+    
+    /**
+     * Surface Curvature Analysis (3D second derivatives)
+     * Computes Gaussian and Mean curvature
+     */
+    computeSurfaceCurvature(derivatives) {
+        const n = derivatives.length;
+        const curvatures = [];
+        
+        for (let i = 2; i < n - 2; i++) {
+            // Second derivatives (d²x/dt², d²y/dt², d²z/dt²)
+            const d2x = derivatives[i+1].dx - derivatives[i-1].dx;
+            const d2y = derivatives[i+1].dy - derivatives[i-1].dy;
+            const d2z = derivatives[i+1].dz - derivatives[i-1].dz;
+            
+            // Mean curvature (average of principal curvatures)
+            const meanCurvature = (d2x + d2y + d2z) / 3;
+            
+            // Gaussian curvature (product of principal curvatures, simplified)
+            const gaussianCurvature = d2x * d2y - (d2z * d2z);
+            
+            curvatures.push({
+                index: derivatives[i].index,
+                meanCurvature,
+                gaussianCurvature,
+                // Surface classification
+                surfaceType: gaussianCurvature > 0 ? 'elliptic' : 
+                            gaussianCurvature < 0 ? 'hyperbolic' : 'parabolic',
+                convexity: meanCurvature > 0 ? 'convex' : meanCurvature < 0 ? 'concave' : 'flat'
+            });
+        }
+        
+        return curvatures;
+    },
+    
+    // ============================================
+    // ITO CALCULUS & STOCHASTIC DIFFERENTIAL EQUATIONS
+    // ============================================
+    
+    /**
+     * Ito's Lemma Application
+     * For f(S,t), df = (∂f/∂t + μS∂f/∂S + 0.5σ²S²∂²f/∂S²)dt + σS∂f/∂S dW
+     * Computes the drift and diffusion of transformed variables
+     */
+    itoLemma(prices, func = 'log') {
+        const n = prices.length;
+        const results = [];
+        
+        for (let i = 1; i < n - 1; i++) {
+            const S = prices[i];
+            const dS = prices[i+1] - prices[i];
+            const dt = 1; // unit time
+            
+            // Estimate μ and σ from data
+            const returns = [];
+            for (let j = Math.max(0, i-20); j < i; j++) {
+                returns.push((prices[j+1] - prices[j]) / prices[j]);
+            }
+            const mu = this.mean(returns);
+            const sigma = this.standardDeviation(returns);
+            
+            let df, drift, diffusion;
+            
+            if (func === 'log') {
+                // f(S) = log(S)
+                // ∂f/∂S = 1/S, ∂²f/∂S² = -1/S²
+                drift = (mu - 0.5 * sigma * sigma) * dt;
+                diffusion = sigma * this.normalRandom() * Math.sqrt(dt);
+                df = drift + diffusion;
+            } else if (func === 'square') {
+                // f(S) = S²
+                // ∂f/∂S = 2S, ∂²f/∂S² = 2
+                drift = (2 * mu * S * S + sigma * sigma * S * S) * dt;
+                diffusion = 2 * S * sigma * S * this.normalRandom() * Math.sqrt(dt);
+                df = drift + diffusion;
+            } else {
+                // Identity function f(S) = S
+                drift = mu * S * dt;
+                diffusion = sigma * S * this.normalRandom() * Math.sqrt(dt);
+                df = drift + diffusion;
+            }
+            
+            results.push({
+                index: i,
+                price: S,
+                df,
+                drift,
+                diffusion,
+                mu,
+                sigma,
+                driftDiffusionRatio: Math.abs(drift / (diffusion + 1e-10))
+            });
+        }
+        
+        return results;
+    },
+    
+    // ============================================
+    // EFFICIENT FRONTIER & PORTFOLIO OPTIMIZATION
+    // ============================================
+    
+    /**
+     * Efficient Frontier Calculation
+     * Finds optimal portfolio weights for target returns
+     */
+    efficientFrontier(returns, numPortfolios = 100) {
+        const n = returns[0].length; // number of assets
+        const portfolios = [];
+        
+        for (let i = 0; i < numPortfolios; i++) {
+            // Generate random weights
+            const weights = [];
+            let sum = 0;
+            for (let j = 0; j < n; j++) {
+                const w = Math.random();
+                weights.push(w);
+                sum += w;
+            }
+            // Normalize to sum to 1
+            for (let j = 0; j < n; j++) {
+                weights[j] /= sum;
+            }
+            
+            // Calculate portfolio return and risk
+            let portfolioReturn = 0;
+            let portfolioVariance = 0;
+            
+            for (let t = 0; t < returns.length; t++) {
+                let periodReturn = 0;
+                for (let j = 0; j < n; j++) {
+                    periodReturn += weights[j] * returns[t][j];
+                }
+                portfolioReturn += periodReturn;
+            }
+            portfolioReturn /= returns.length;
+            
+            // Calculate variance
+            for (let t = 0; t < returns.length; t++) {
+                let periodReturn = 0;
+                for (let j = 0; j < n; j++) {
+                    periodReturn += weights[j] * returns[t][j];
+                }
+                portfolioVariance += Math.pow(periodReturn - portfolioReturn, 2);
+            }
+            portfolioVariance /= returns.length;
+            const portfolioStd = Math.sqrt(portfolioVariance);
+            
+            const sharpeRatio = portfolioReturn / (portfolioStd + 1e-10);
+            
+            portfolios.push({
+                weights,
+                return: portfolioReturn,
+                risk: portfolioStd,
+                sharpeRatio
+            });
+        }
+        
+        // Find efficient frontier (portfolios on the upper edge)
+        portfolios.sort((a, b) => b.sharpeRatio - a.sharpeRatio);
+        
+        return {
+            portfolios,
+            optimalPortfolio: portfolios[0],
+            efficientFrontier: portfolios.slice(0, Math.floor(numPortfolios / 2))
+        };
+    },
+    
+    // ============================================
+    // SKEW & DEVIATION ANALYSIS
+    // ============================================
+    
+    /**
+     * Skewness and Kurtosis calculation
+     * Measures asymmetry and tail heaviness of distribution
+     */
+    skewKurtosis(prices) {
+        const n = prices.length;
+        const returns = [];
+        for (let i = 1; i < n; i++) {
+            returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+        }
+        
+        const mean = this.mean(returns);
+        const std = this.standardDeviation(returns);
+        
+        let skewness = 0;
+        let kurtosis = 0;
+        
+        for (let i = 0; i < returns.length; i++) {
+            const z = (returns[i] - mean) / std;
+            skewness += Math.pow(z, 3);
+            kurtosis += Math.pow(z, 4);
+        }
+        
+        skewness /= returns.length;
+        kurtosis = kurtosis / returns.length - 3; // Excess kurtosis
+        
+        return {
+            skewness,
+            kurtosis,
+            interpretation: {
+                skew: skewness > 0 ? 'right-tailed (positive outliers)' : 
+                      skewness < 0 ? 'left-tailed (negative outliers)' : 'symmetric',
+                kurt: kurtosis > 0 ? 'heavy-tailed (fat tails)' : 
+                      kurtosis < 0 ? 'light-tailed (thin tails)' : 'normal',
+                riskLevel: Math.abs(kurtosis) > 1 ? 'high' : Math.abs(kurtosis) > 0.5 ? 'moderate' : 'low'
+            }
+        };
+    },
+    
+    /**
+     * Deviation Metrics (Mean Absolute Deviation, Median Absolute Deviation)
+     */
+    deviationMetrics(prices) {
+        const n = prices.length;
+        const returns = [];
+        for (let i = 1; i < n; i++) {
+            returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+        }
+        
+        const mean = this.mean(returns);
+        const median = this.median(returns);
+        
+        // Mean Absolute Deviation
+        let mad = 0;
+        for (let i = 0; i < returns.length; i++) {
+            mad += Math.abs(returns[i] - mean);
+        }
+        mad /= returns.length;
+        
+        // Median Absolute Deviation
+        const absDeviations = returns.map(r => Math.abs(r - median));
+        const medianAD = this.median(absDeviations);
+        
+        return {
+            mad,
+            medianAD,
+            mean,
+            median,
+            robustness: medianAD / (mad + 1e-10) // Ratio indicates data robustness
+        };
+    },
+    
+    // ============================================
+    // NONLINEAR TRANSFORMATIONS
+    // ============================================
+    
+    /**
+     * Box-Cox Transformation for variance stabilization
+     * y(λ) = (x^λ - 1) / λ  if λ ≠ 0, log(x) if λ = 0
+     */
+    boxCoxTransform(prices, lambda = 0) {
+        return prices.map(p => {
+            if (lambda === 0) {
+                return Math.log(Math.max(p, 1e-10));
+            } else {
+                return (Math.pow(Math.max(p, 1e-10), lambda) - 1) / lambda;
+            }
+        });
+    },
+    
+    /**
+     * Logit Transform (log odds)
+     * logit(p) = log(p / (1-p))
+     */
+    logitTransform(probabilities) {
+        return probabilities.map(p => {
+            const clamped = Math.max(1e-10, Math.min(1 - 1e-10, p));
+            return Math.log(clamped / (1 - clamped));
+        });
+    },
+    
+    // ============================================
+    // MCLAURIN SERIES EXPANSIONS
+    // ============================================
+    
+    /**
+     * McLaurin Series for common functions
+     * Provides polynomial approximations
+     */
+    mclaurinSeries(x, func = 'exp', terms = 10) {
+        let result = 0;
+        
+        if (func === 'exp') {
+            // e^x = 1 + x + x²/2! + x³/3! + ...
+            let factorial = 1;
+            for (let n = 0; n < terms; n++) {
+                result += Math.pow(x, n) / factorial;
+                factorial *= (n + 1);
+            }
+        } else if (func === 'sin') {
+            // sin(x) = x - x³/3! + x⁵/5! - ...
+            let factorial = 1;
+            for (let n = 0; n < terms; n++) {
+                const power = 2 * n + 1;
+                factorial = this.factorial(power);
+                result += Math.pow(-1, n) * Math.pow(x, power) / factorial;
+            }
+        } else if (func === 'cos') {
+            // cos(x) = 1 - x²/2! + x⁴/4! - ...
+            let factorial = 1;
+            for (let n = 0; n < terms; n++) {
+                const power = 2 * n;
+                factorial = this.factorial(power);
+                result += Math.pow(-1, n) * Math.pow(x, power) / factorial;
+            }
+        } else if (func === 'log') {
+            // log(1+x) = x - x²/2 + x³/3 - x⁴/4 + ... (for |x| < 1)
+            for (let n = 1; n <= terms; n++) {
+                result += Math.pow(-1, n + 1) * Math.pow(x, n) / n;
+            }
+        }
+        
+        return result;
+    },
+    
+    // ============================================
+    // BAYESIAN INFERENCE
+    // ============================================
+    
+    /**
+     * Bayesian Update for price prediction
+     * P(H|D) ∝ P(D|H) * P(H)
+     */
+    bayesianUpdate(priorMean, priorVar, observedMean, observedVar) {
+        // Posterior mean (weighted average)
+        const posteriorVar = 1 / (1/priorVar + 1/observedVar);
+        const posteriorMean = posteriorVar * (priorMean/priorVar + observedMean/observedVar);
+        
+        return {
+            posteriorMean,
+            posteriorVar,
+            posteriorStd: Math.sqrt(posteriorVar),
+            credibleInterval: [
+                posteriorMean - 1.96 * Math.sqrt(posteriorVar),
+                posteriorMean + 1.96 * Math.sqrt(posteriorVar)
+            ]
+        };
+    },
+    
+    /**
+     * Naive Bayes Classifier for trend prediction
+     */
+    naiveBayesClassifier(features, labels) {
+        // Calculate class probabilities
+        const classCounts = {};
+        labels.forEach(label => {
+            classCounts[label] = (classCounts[label] || 0) + 1;
+        });
+        
+        const total = labels.length;
+        const classPriors = {};
+        Object.keys(classCounts).forEach(cls => {
+            classPriors[cls] = classCounts[cls] / total;
+        });
+        
+        return {
+            priors: classPriors,
+            classify: (feature) => {
+                let maxProb = -Infinity;
+                let predicted = null;
+                
+                Object.keys(classPriors).forEach(cls => {
+                    let prob = Math.log(classPriors[cls]);
+                    // Simplified: assume features are independent
+                    prob += feature.reduce((sum, f) => sum + Math.log(Math.abs(f) + 1), 0);
+                    
+                    if (prob > maxProb) {
+                        maxProb = prob;
+                        predicted = cls;
+                    }
+                });
+                
+                return { predicted, probability: Math.exp(maxProb) };
+            }
+        };
+    },
+    
+    // ============================================
+    // CLASSICAL MECHANICS ANALOGIES
+    // ============================================
+    
+    /**
+     * Newtonian Mechanics: Force and Momentum Analysis
+     * F = ma, p = mv
+     */
+    newtonianMechanics(prices, volumes) {
+        const n = prices.length;
+        const results = [];
+        
+        for (let i = 2; i < n; i++) {
+            // Velocity (price change rate)
+            const velocity = (prices[i] - prices[i-1]);
+            
+            // Acceleration (change in velocity)
+            const prevVelocity = (prices[i-1] - prices[i-2]);
+            const acceleration = velocity - prevVelocity;
+            
+            // Mass proxy (volume)
+            const mass = volumes ? volumes[i] : 1;
+            
+            // Force (F = ma)
+            const force = mass * acceleration;
+            
+            // Momentum (p = mv)
+            const momentum = mass * velocity;
+            
+            // Kinetic Energy (KE = 0.5 * m * v²)
+            const kineticEnergy = 0.5 * mass * velocity * velocity;
+            
+            results.push({
+                index: i,
+                price: prices[i],
+                velocity,
+                acceleration,
+                force,
+                momentum,
+                kineticEnergy,
+                trend: momentum > 0 ? 'bullish' : momentum < 0 ? 'bearish' : 'neutral',
+                strength: Math.abs(momentum)
+            });
+        }
+        
+        return results;
+    },
+    
+    /**
+     * Hamiltonian Mechanics: Total Energy Conservation
+     * H = T + V (kinetic + potential energy)
+     */
+    hamiltonianMechanics(prices, volumes) {
+        const n = prices.length;
+        const results = [];
+        
+        // Find price range for potential energy calculation
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        const priceRange = maxPrice - minPrice;
+        
+        for (let i = 1; i < n; i++) {
+            const velocity = (prices[i] - prices[i-1]);
+            const mass = volumes ? volumes[i] : 1;
+            
+            // Kinetic Energy T = 0.5 * m * v²
+            const T = 0.5 * mass * velocity * velocity;
+            
+            // Potential Energy V (height in price space)
+            // Higher price = higher potential energy
+            const V = mass * (prices[i] - minPrice) / priceRange;
+            
+            // Total Hamiltonian H = T + V
+            const H = T + V;
+            
+            // Phase space coordinates (position, momentum)
+            const q = prices[i]; // generalized coordinate
+            const p = mass * velocity; // generalized momentum
+            
+            results.push({
+                index: i,
+                price: prices[i],
+                kineticEnergy: T,
+                potentialEnergy: V,
+                hamiltonian: H,
+                position: q,
+                momentum: p,
+                energyBalance: T / (V + 1e-10) // Ratio indicates market phase
+            });
+        }
+        
+        return results;
+    },
+    
+    /**
+     * Euler's Formula and Complex Analysis
+     * e^(iθ) = cos(θ) + i*sin(θ)
+     */
+    eulerFormula(prices) {
+        const n = prices.length;
+        const results = [];
+        
+        for (let i = 1; i < n; i++) {
+            // Use price change as angle
+            const returns = (prices[i] - prices[i-1]) / prices[i-1];
+            const theta = returns * Math.PI; // Scale to radians
+            
+            // Euler's formula
+            const real = Math.cos(theta);
+            const imag = Math.sin(theta);
+            
+            // Magnitude (always 1 for e^(iθ))
+            const magnitude = Math.sqrt(real*real + imag*imag);
+            
+            // Phase
+            const phase = Math.atan2(imag, real);
+            
+            // Spiral representation (price oscillation)
+            const spiralRadius = prices[i] / prices[0];
+            const spiralX = spiralRadius * real;
+            const spiralY = spiralRadius * imag;
+            
+            results.push({
+                index: i,
+                price: prices[i],
+                theta,
+                real,
+                imag,
+                magnitude,
+                phase,
+                spiralX,
+                spiralY,
+                eulerIdentity: Math.abs(Math.exp(theta * 1i) - (real + imag * 1i)) < 1e-10
+            });
+        }
+        
+        return results;
+    },
+    
+    /**
+     * Euler's Number (e) Applications in Finance
+     * Continuous compounding, exponential growth
+     */
+    eulerNumberApplications(initialPrice, rate, time) {
+        // Continuous compounding: A = Pe^(rt)
+        const continuousValue = initialPrice * Math.exp(rate * time);
+        
+        // Compare with discrete compounding
+        const discreteDaily = initialPrice * Math.pow(1 + rate/365, 365 * time);
+        const discreteMonthly = initialPrice * Math.pow(1 + rate/12, 12 * time);
+        
+        return {
+            continuousCompounding: continuousValue,
+            discreteDaily,
+            discreteMonthly,
+            continuousAdvantage: continuousValue - discreteDaily,
+            e: Math.E,
+            naturalLog: Math.log(continuousValue / initialPrice) / time
+        };
     }
 };
 
