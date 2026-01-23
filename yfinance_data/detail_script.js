@@ -886,13 +886,13 @@ function analyzeOptionsBSM(section) {
 
 // 3. CHART PATTERNS ANALYSIS
 function analyzeChartPatterns(section) {
-    console.log('Running chart pattern detection...');
+    console.log('Running advanced chart pattern detection with overlays...');
     
     const chartEl = section.querySelector('#chart-patterns-chart');
     const detailsEl = section.querySelector('#chart-patterns-details');
     
-    // Detect patterns with coordinates
-    const patterns = detectChartPatternsWithCoordinates(tickerData);
+    // Detect patterns using advanced pattern detection module
+    const patterns = window.PatternDetection.detectAllPatterns(tickerData);
     
     // Create candlestick chart
     const candlestickTrace = {
@@ -907,47 +907,342 @@ function analyzeChartPatterns(section) {
         decreasing: { line: { color: '#ef4444' } }
     };
     
-    // Create layout with pattern annotations
+    // Create layout with pattern shapes and annotations
     const layout = {
-        title: 'Chart Pattern Detection with Visual Overlays',
+        title: `Chart Pattern Detection - ${patterns.length} Pattern${patterns.length !== 1 ? 's' : ''} Found`,
         xaxis: { title: 'Date', rangeslider: { visible: false } },
         yaxis: { title: 'Price ($)' },
         shapes: [],
-        annotations: []
+        annotations: [],
+        showlegend: false
     };
     
-    // Add pattern shapes and annotations
-    patterns.forEach((p, index) => {
-        if (p.coordinates) {
-            // Draw pattern lines
-            if (p.type === 'support' || p.type === 'resistance') {
+    // Draw patterns on chart
+    patterns.forEach((pattern, idx) => {
+        const color = pattern.direction === 'bullish' ? '#10b981' : 
+                     pattern.direction === 'bearish' ? '#ef4444' : '#f59e0b';
+        
+        // Draw pattern shapes based on type
+        if (pattern.shape === 'triangle' && pattern.coordinates) {
+            // Draw triangle lines
+            if (pattern.coordinates.topLine) {
                 layout.shapes.push({
                     type: 'line',
-                    x0: p.coordinates.x0,
-                    y0: p.coordinates.y0,
-                    x1: p.coordinates.x1,
-                    y1: p.coordinates.y1,
-                    line: {
-                        color: p.type === 'support' ? '#10b981' : '#ef4444',
-                        width: 2,
-                        dash: 'dash'
-                    }
+                    x0: pattern.coordinates.topLine[0].x,
+                    y0: pattern.coordinates.topLine[0].y,
+                    x1: pattern.coordinates.topLine[1].x,
+                    y1: pattern.coordinates.topLine[1].y,
+                    line: { color: color, width: 2, dash: 'solid' }
                 });
-            } else if (p.type === 'triangle') {
-                // Draw triangle pattern
-                const points = p.coordinates.points;
-                for (let i = 0; i < points.length - 1; i++) {
-                    layout.shapes.push({
-                        type: 'line',
-                        x0: points[i].x,
-                        y0: points[i].y,
-                        x1: points[i + 1].x,
-                        y1: points[i + 1].y,
-                        line: { color: '#f59e0b', width: 2 }
+            }
+            if (pattern.coordinates.bottomLine) {
+                layout.shapes.push({
+                    type: 'line',
+                    x0: pattern.coordinates.bottomLine[0].x,
+                    y0: pattern.coordinates.bottomLine[0].y,
+                    x1: pattern.coordinates.bottomLine[1].x,
+                    y1: pattern.coordinates.bottomLine[1].y,
+                    line: { color: color, width: 2, dash: 'solid' }
+                });
+            }
+        } else if (pattern.shape === 'rectangle' && pattern.coordinates) {
+            // Draw rectangle
+            const corners = pattern.coordinates.corners;
+            layout.shapes.push({
+                type: 'rect',
+                x0: corners[0].x,
+                y0: corners[0].y,
+                x1: corners[1].x,
+                y1: corners[2].y,
+                line: { color: color, width: 2 },
+                fillcolor: color,
+                opacity: 0.1
+            });
+        } else if (pattern.shape === 'pennant' && pattern.coordinates) {
+            // Draw flagpole
+            if (pattern.coordinates.flagpole) {
+                layout.shapes.push({
+                    type: 'line',
+                    x0: pattern.coordinates.flagpole[0].x,
+                    y0: pattern.coordinates.flagpole[0].y,
+                    x1: pattern.coordinates.flagpole[1].x,
+                    y1: pattern.coordinates.flagpole[1].y,
+                    line: { color: color, width: 3 }
+                });
+            }
+            // Draw pennant
+            if (pattern.coordinates.topLine) {
+                layout.shapes.push({
+                    type: 'line',
+                    x0: pattern.coordinates.topLine[0].x,
+                    y0: pattern.coordinates.topLine[0].y,
+                    x1: pattern.coordinates.topLine[1].x,
+                    y1: pattern.coordinates.topLine[1].y,
+                    line: { color: color, width: 2, dash: 'dot' }
+                });
+            }
+            if (pattern.coordinates.bottomLine) {
+                layout.shapes.push({
+                    type: 'line',
+                    x0: pattern.coordinates.bottomLine[0].x,
+                    y0: pattern.coordinates.bottomLine[0].y,
+                    x1: pattern.coordinates.bottomLine[1].x,
+                    y1: pattern.coordinates.bottomLine[1].y,
+                    line: { color: color, width: 2, dash: 'dot' }
+                });
+            }
+        } else if (pattern.shape === 'complex' && pattern.coordinates) {
+            // Head and shoulders
+            if (pattern.coordinates.neckline) {
+                layout.shapes.push({
+                    type: 'line',
+                    x0: pattern.coordinates.neckline[0].x,
+                    y0: pattern.coordinates.neckline[0].y,
+                    x1: pattern.coordinates.neckline[1].x,
+                    y1: pattern.coordinates.neckline[1].y,
+                    line: { color: '#ef4444', width: 2, dash: 'dash' }
+                });
+            }
+            // Draw shoulders and head markers
+            if (pattern.coordinates.shoulders) {
+                pattern.coordinates.shoulders.forEach(s => {
+                    layout.annotations.push({
+                        x: s.x,
+                        y: s.y,
+                        text: 'S',
+                        showarrow: true,
+                        arrowhead: 2,
+                        arrowcolor: '#ef4444',
+                        ax: 0,
+                        ay: -40
                     });
-                }
-            } else if (p.type === 'head-shoulders') {
-                // Draw head and shoulders
+                });
+            }
+            if (pattern.coordinates.head) {
+                layout.annotations.push({
+                    x: pattern.coordinates.head.x,
+                    y: pattern.coordinates.head.y,
+                    text: 'HEAD',
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowcolor: '#ef4444',
+                    ax: 0,
+                    ay: -50,
+                    font: { size: 12, color: '#ef4444', weight: 'bold' }
+                });
+            }
+        } else if (pattern.shape === 'double_peak' && pattern.coordinates) {
+            // Double top/bottom markers
+            pattern.coordinates.peaks.forEach((peak, i) => {
+                layout.annotations.push({
+                    x: peak.x,
+                    y: peak.y,
+                    text: `Peak ${i + 1}`,
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowcolor: color,
+                    ax: 0,
+                    ay: -30
+                });
+            });
+        } else if (pattern.shape === 'double_trough' && pattern.coordinates) {
+            pattern.coordinates.troughs.forEach((trough, i) => {
+                layout.annotations.push({
+                    x: trough.x,
+                    y: trough.y,
+                    text: `Trough ${i + 1}`,
+                    showarrow: true,
+                    arrowhead: 2,
+                    arrowcolor: color,
+                    ax: 0,
+                    ay: 30
+                });
+            });
+        }
+        
+        // Draw entry point marker
+        if (pattern.entryPoint) {
+            const lastDate = tickerData[tickerData.length - 1].date;
+            layout.shapes.push({
+                type: 'line',
+                x0: pattern.startDate,
+                y0: pattern.entryPoint,
+                x1: lastDate,
+                y1: pattern.entryPoint,
+                line: { color: '#3b82f6', width: 1, dash: 'dot' }
+            });
+            layout.annotations.push({
+                x: lastDate,
+                y: pattern.entryPoint,
+                text: `Entry: $${pattern.entryPoint.toFixed(2)}`,
+                xanchor: 'left',
+                showarrow: false,
+                bgcolor: '#3b82f6',
+                font: { color: 'white', size: 10 }
+            });
+        }
+        
+        // Draw exit/target point marker
+        if (pattern.exitPoint) {
+            const lastDate = tickerData[tickerData.length - 1].date;
+            layout.shapes.push({
+                type: 'line',
+                x0: pattern.startDate,
+                y0: pattern.exitPoint,
+                x1: lastDate,
+                y1: pattern.exitPoint,
+                line: { color: '#10b981', width: 1, dash: 'dot' }
+            });
+            layout.annotations.push({
+                x: lastDate,
+                y: pattern.exitPoint,
+                text: `Target: $${pattern.exitPoint.toFixed(2)}`,
+                xanchor: 'left',
+                showarrow: false,
+                bgcolor: '#10b981',
+                font: { color: 'white', size: 10 }
+            });
+        }
+        
+        // Draw stop loss marker
+        if (pattern.stopLoss) {
+            const lastDate = tickerData[tickerData.length - 1].date;
+            layout.shapes.push({
+                type: 'line',
+                x0: pattern.startDate,
+                y0: pattern.stopLoss,
+                x1: lastDate,
+                y1: pattern.stopLoss,
+                line: { color: '#ef4444', width: 1, dash: 'dot' }
+            });
+            layout.annotations.push({
+                x: lastDate,
+                y: pattern.stopLoss,
+                text: `Stop: $${pattern.stopLoss.toFixed(2)}`,
+                xanchor: 'left',
+                showarrow: false,
+                bgcolor: '#ef4444',
+                font: { color: 'white', size: 10 }
+            });
+        }
+    });
+    
+    // Plot chart
+    Plotly.newPlot(chartEl, [candlestickTrace], layout);
+    
+    // Display pattern details
+    let detailsHTML = `<h4>Detected Patterns (${patterns.length})</h4>`;
+    
+    if (patterns.length === 0) {
+        detailsHTML += '<p>No significant patterns detected in current timeframe.</p>';
+    } else {
+        patterns.forEach((p, idx) => {
+            const directionIcon = p.direction === 'bullish' ? '📈' : 
+                                 p.direction === 'bearish' ? '📉' : '↔️';
+            const directionColor = p.direction === 'bullish' ? '#10b981' :
+                                  p.direction === 'bearish' ? '#ef4444' : '#f59e0b';
+            
+            detailsHTML += `
+                <div style="border-left: 4px solid ${directionColor}; padding: 15px; margin: 15px 0; background: rgba(${
+                    p.direction === 'bullish' ? '16, 185, 129' :
+                    p.direction === 'bearish' ? '239, 68, 68' : '245, 158, 11'
+                }, 0.1); border-radius: 8px;">
+                    <h5 style="margin-top: 0; color: ${directionColor};">
+                        ${directionIcon} ${p.name}
+                        <span style="float: right; font-size: 0.9em; background: ${directionColor}; color: white; padding: 2px 8px; border-radius: 4px;">
+                            ${p.confidence}% confidence
+                        </span>
+                    </h5>
+                    <p>${p.description}</p>
+                    <table style="width: 100%; margin-top: 10px; font-size: 0.9em;">
+                        <tr>
+                            <td><strong>Current Price:</strong></td>
+                            <td>$${p.currentPrice.toFixed(2)}</td>
+                            <td><strong>Entry Point:</strong></td>
+                            <td style="color: #3b82f6; font-weight: 600;">$${p.entryPoint.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Target/Exit:</strong></td>
+                            <td style="color: #10b981; font-weight: 600;">$${p.exitPoint ? p.exitPoint.toFixed(2) : 'N/A'}</td>
+                            <td><strong>Stop Loss:</strong></td>
+                            <td style="color: #ef4444; font-weight: 600;">$${p.stopLoss.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Risk/Reward:</strong></td>
+                            <td>${p.riskReward.toFixed(2)}:1</td>
+                            <td><strong>Direction:</strong></td>
+                            <td style="color: ${directionColor}; font-weight: 600; text-transform: uppercase;">${p.direction}</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        });
+        
+        // Add summary statistics
+        const bullishCount = patterns.filter(p => p.direction === 'bullish').length;
+        const bearishCount = patterns.filter(p => p.direction === 'bearish').length;
+        const neutralCount = patterns.filter(p => p.direction === 'neutral').length;
+        const avgConfidence = (patterns.reduce((sum, p) => sum + p.confidence, 0) / patterns.length).toFixed(1);
+        
+        detailsHTML += `
+            <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 10px;">
+                <h4>Pattern Summary</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2em;">📈 ${bullishCount}</div>
+                        <div style="color: #10b981;">Bullish</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2em;">📉 ${bearishCount}</div>
+                        <div style="color: #ef4444;">Bearish</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2em;">↔️ ${neutralCount}</div>
+                        <div style="color: #f59e0b;">Neutral</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2em;">${avgConfidence}%</div>
+                        <div>Avg Confidence</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Apply advanced mathematical analysis
+    const injectionAnalysis = window.AdvancedMath.injectionAnalysis(tickerData.map(d => d.close));
+    
+    detailsHTML += `
+        <div style="margin-top: 20px; padding: 15px; background: rgba(139, 92, 246, 0.1); border-radius: 10px; border-left: 4px solid #8b5cf6;">
+            <h4 style="color: #8b5cf6;">🧮 Advanced Mathematical Analysis</h4>
+            <p><strong>Support/Resistance Levels (Injection Analysis):</strong></p>
+            <table style="width: 100%;">
+                ${injectionAnalysis.supportResistanceLevels.slice(0, 5).map(level => `
+                    <tr>
+                        <td>$${level.price.toFixed(2)}</td>
+                        <td>${level.touches} touches</td>
+                        <td>
+                            <div style="background: #8b5cf6; height: 8px; width: ${level.strength * 100}%; border-radius: 4px;"></div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </table>
+            <p style="margin-top: 10px;"><strong>Price Uniqueness Ratio:</strong> ${(injectionAnalysis.uniqueRatio * 100).toFixed(1)}%</p>
+        </div>
+    `;
+    
+    // Store results for synthesis
+    allAnalysisResults['chart-patterns'] = {
+        patterns: patterns,
+        patternCount: patterns.length,
+        bullishSignals: bullishCount,
+        bearishSignals: bearishCount,
+        avgConfidence: avgConfidence,
+        supportResistance: injectionAnalysis.supportResistanceLevels
+    };
+    
+    detailsEl.innerHTML = detailsHTML;
+}
                 const points = p.coordinates.points;
                 points.forEach((point, idx) => {
                     layout.shapes.push({
@@ -1213,24 +1508,163 @@ function detectDoublePattern(data) {
 
 // 4. TECHNICAL INDICATORS
 function analyzeTechnicalIndicators(section) {
-    console.log('Running technical indicators analysis...');
+    console.log('Running technical indicators with entry/exit signals...');
     
     const chartEl = section.querySelector('#technical-indicators-chart');
     const detailsEl = section.querySelector('#technical-indicators-details');
     
     const prices = tickerData.map(d => d.close);
     const dates = tickerData.map(d => d.date);
+    const volumes = tickerData.map(d => d.volume);
     
     // Calculate indicators
     const sma20 = calculateSMA(prices, 20);
     const sma50 = calculateSMA(prices, 50);
+    const sma200 = calculateSMA(prices, 200);
     const ema12 = calculateEMA(prices, 12);
+    const ema26 = calculateEMA(prices, 26);
     const rsi = calculateRSI(prices, 14);
     const macd = calculateMACD(prices);
     const bb = calculateBollingerBands(prices, 20, 2);
+    const stochastic = calculateStochastic(tickerData, 14);
     
-    // Create chart
-    Plotly.newPlot(chartEl, [
+    // Advanced mathematical analysis
+    const momentumFlow = window.AdvancedMath.momentumFlow(prices, 0.01);
+    const dampedOsc = window.AdvancedMath.dampedOscillator(prices, 0.1);
+    const stokesAnalysis = window.AdvancedMath.stokesCirculation(prices, volumes);
+    
+    // Detect entry/exit signals
+    const signals = [];
+    const currentPrice = prices[prices.length - 1];
+    const currentRSI = rsi[rsi.length - 1];
+    const currentMACD = macd.macd[macd.macd.length - 1];
+    const currentSignal = macd.signal[macd.signal.length - 1];
+    const currentStoch = stochastic[stochastic.length - 1];
+    
+    // RSI signals
+    if (currentRSI < 30) {
+        signals.push({
+            indicator: 'RSI',
+            type: 'BUY',
+            strength: (30 - currentRSI) / 30 * 100,
+            entry: currentPrice,
+            target: currentPrice * 1.05,
+            stop: currentPrice * 0.97,
+            reason: `RSI oversold at ${currentRSI.toFixed(1)} (< 30)`
+        });
+    } else if (currentRSI > 70) {
+        signals.push({
+            indicator: 'RSI',
+            type: 'SELL',
+            strength: (currentRSI - 70) / 30 * 100,
+            entry: currentPrice,
+            target: currentPrice * 0.95,
+            stop: currentPrice * 1.03,
+            reason: `RSI overbought at ${currentRSI.toFixed(1)} (> 70)`
+        });
+    }
+    
+    // MACD crossover signals
+    if (currentMACD > currentSignal && macd.macd[macd.macd.length - 2] <= macd.signal[macd.signal.length - 2]) {
+        signals.push({
+            indicator: 'MACD',
+            type: 'BUY',
+            strength: 75,
+            entry: currentPrice,
+            target: currentPrice * 1.08,
+            stop: currentPrice * 0.96,
+            reason: 'MACD bullish crossover'
+        });
+    } else if (currentMACD < currentSignal && macd.macd[macd.macd.length - 2] >= macd.signal[macd.signal.length - 2]) {
+        signals.push({
+            indicator: 'MACD',
+            type: 'SELL',
+            strength: 75,
+            entry: currentPrice,
+            target: currentPrice * 0.92,
+            stop: currentPrice * 1.04,
+            reason: 'MACD bearish crossover'
+        });
+    }
+    
+    // Bollinger Band signals
+    const currentBBUpper = bb.upper[bb.upper.length - 1];
+    const currentBBLower = bb.lower[bb.lower.length - 1];
+    const bbPosition = (currentPrice - currentBBLower) / (currentBBUpper - currentBBLower);
+    
+    if (bbPosition < 0.1) {
+        signals.push({
+            indicator: 'Bollinger Bands',
+            type: 'BUY',
+            strength: 70,
+            entry: currentPrice,
+            target: bb.middle[bb.middle.length - 1],
+            stop: currentBBLower * 0.98,
+            reason: `Price at lower BB (${(bbPosition * 100).toFixed(1)}% position)`
+        });
+    } else if (bbPosition > 0.9) {
+        signals.push({
+            indicator: 'Bollinger Bands',
+            type: 'SELL',
+            strength: 70,
+            entry: currentPrice,
+            target: bb.middle[bb.middle.length - 1],
+            stop: currentBBUpper * 1.02,
+            reason: `Price at upper BB (${(bbPosition * 100).toFixed(1)}% position)`
+        });
+    }
+    
+    // Moving average crossover signals
+    const sma20Current = sma20[sma20.length - 1];
+    const sma50Current = sma50[sma50.length - 1];
+    
+    if (sma20Current > sma50Current && sma20[sma20.length - 2] <= sma50[sma50.length - 2]) {
+        signals.push({
+            indicator: 'Golden Cross',
+            type: 'BUY',
+            strength: 85,
+            entry: currentPrice,
+            target: currentPrice * 1.15,
+            stop: sma50Current * 0.98,
+            reason: 'SMA(20) crossed above SMA(50)'
+        });
+    } else if (sma20Current < sma50Current && sma20[sma20.length - 2] >= sma50[sma50.length - 2]) {
+        signals.push({
+            indicator: 'Death Cross',
+            type: 'SELL',
+            strength: 85,
+            entry: currentPrice,
+            target: currentPrice * 0.85,
+            stop: sma50Current * 1.02,
+            reason: 'SMA(20) crossed below SMA(50)'
+        });
+    }
+    
+    // Stochastic signals
+    if (currentStoch.k < 20 && currentStoch.k > currentStoch.d) {
+        signals.push({
+            indicator: 'Stochastic',
+            type: 'BUY',
+            strength: 65,
+            entry: currentPrice,
+            target: currentPrice * 1.06,
+            stop: currentPrice * 0.97,
+            reason: `Stochastic oversold crossover (K=${currentStoch.k.toFixed(1)}, D=${currentStoch.d.toFixed(1)})`
+        });
+    } else if (currentStoch.k > 80 && currentStoch.k < currentStoch.d) {
+        signals.push({
+            indicator: 'Stochastic',
+            type: 'SELL',
+            strength: 65,
+            entry: currentPrice,
+            target: currentPrice * 0.94,
+            stop: currentPrice * 1.03,
+            reason: `Stochastic overbought crossover (K=${currentStoch.k.toFixed(1)}, D=${currentStoch.d.toFixed(1)})`
+        });
+    }
+    
+    // Create main chart with indicators
+    const traces = [
         {
             x: dates,
             y: prices,
@@ -1261,7 +1695,9 @@ function analyzeTechnicalIndicators(section) {
             type: 'scatter',
             mode: 'lines',
             name: 'BB Upper',
-            line: { color: '#f59e0b', width: 1, dash: 'dot' }
+            line: { color: '#f59e0b', width: 1, dash: 'dot' },
+            fill: 'tonexty',
+            fillcolor: 'rgba(245, 158, 11, 0.1)'
         },
         {
             x: dates.slice(19),
@@ -1270,39 +1706,203 @@ function analyzeTechnicalIndicators(section) {
             mode: 'lines',
             name: 'BB Lower',
             line: { color: '#f59e0b', width: 1, dash: 'dot' }
+        },
+        {
+            x: dates.slice(11),
+            y: ema12.slice(11),
+            type: 'scatter',
+            mode: 'lines',
+            name: 'EMA(12)',
+            line: { color: '#3b82f6', width: 1, dash: 'dash' }
         }
-    ], {
-        title: 'Technical Indicators',
+    ];
+    
+    const layout = {
+        title: `Technical Indicators with Entry/Exit Signals - ${signals.length} Signal${signals.length !== 1 ? 's' : ''}`,
         xaxis: { title: 'Date' },
-        yaxis: { title: 'Price ($)' }
+        yaxis: { title: 'Price ($)' },
+        shapes: [],
+        annotations: []
+    };
+    
+    // Add signal markers to chart
+    signals.forEach((signal, idx) => {
+        const color = signal.type === 'BUY' ? '#10b981' : '#ef4444';
+        const yOffset = signal.type === 'BUY' ? -40 : 40;
+        
+        // Entry point annotation
+        layout.annotations.push({
+            x: dates[dates.length - 1],
+            y: signal.entry,
+            text: `${signal.indicator}: ${signal.type}`,
+            showarrow: true,
+            arrowhead: 2,
+            arrowcolor: color,
+            ax: 0,
+            ay: yOffset,
+            bgcolor: color,
+            font: { color: 'white', size: 10 }
+        });
+        
+        // Target line
+        layout.shapes.push({
+            type: 'line',
+            x0: dates[dates.length - 10],
+            y0: signal.target,
+            x1: dates[dates.length - 1],
+            y1: signal.target,
+            line: { color: color, width: 1, dash: 'dot' }
+        });
+        
+        // Stop loss line
+        layout.shapes.push({
+            type: 'line',
+            x0: dates[dates.length - 10],
+            y0: signal.stop,
+            x1: dates[dates.length - 1],
+            y1: signal.stop,
+            line: { color: '#ef4444', width: 1, dash: 'dash' }
+        });
     });
     
-    const currentRSI = rsi[rsi.length - 1];
-    const currentMACD = macd.macd[macd.macd.length - 1];
+    Plotly.newPlot(chartEl, traces, layout);
     
-    detailsEl.innerHTML = `
-        <h4>Indicator Summary</h4>
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-label">RSI (14)</div>
-                <div class="metric-value">${currentRSI.toFixed(2)}</div>
-                <div class="metric-change">${currentRSI > 70 ? 'Overbought' : currentRSI < 30 ? 'Oversold' : 'Neutral'}</div>
+    // Display details with signals
+    let detailsHTML = `
+        <h4>Current Indicator Values</h4>
+        <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            <div class="metric-card" style="padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                <div class="metric-label" style="font-size: 0.9em; color: #6c757d;">RSI (14)</div>
+                <div class="metric-value" style="font-size: 1.5em; font-weight: 700; color: ${currentRSI > 70 ? '#ef4444' : currentRSI < 30 ? '#10b981' : '#667eea'};">
+                    ${currentRSI.toFixed(2)}
+                </div>
+                <div class="metric-change" style="font-size: 0.85em; margin-top: 5px;">
+                    ${currentRSI > 70 ? '⚠️ Overbought' : currentRSI < 30 ? '✅ Oversold' : '↔️ Neutral'}
+                </div>
             </div>
-            <div class="metric-card">
-                <div class="metric-label">MACD</div>
-                <div class="metric-value">${currentMACD.toFixed(2)}</div>
-                <div class="metric-change">${currentMACD > 0 ? 'Bullish' : 'Bearish'}</div>
+            <div class="metric-card" style="padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                <div class="metric-label" style="font-size: 0.9em; color: #6c757d;">MACD</div>
+                <div class="metric-value" style="font-size: 1.5em; font-weight: 700; color: ${currentMACD > 0 ? '#10b981' : '#ef4444'};">
+                    ${currentMACD.toFixed(4)}
+                </div>
+                <div class="metric-change" style="font-size: 0.85em; margin-top: 5px;">
+                    ${currentMACD > currentSignal ? '📈 Bullish' : '📉 Bearish'}
+                </div>
             </div>
-            <div class="metric-card">
-                <div class="metric-label">SMA(20)</div>
-                <div class="metric-value">$${sma20[sma20.length-1].toFixed(2)}</div>
+            <div class="metric-card" style="padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                <div class="metric-label" style="font-size: 0.9em; color: #6c757d;">BB Position</div>
+                <div class="metric-value" style="font-size: 1.5em; font-weight: 700;">
+                    ${(bbPosition * 100).toFixed(1)}%
+                </div>
+                <div class="metric-change" style="font-size: 0.85em; margin-top: 5px;">
+                    ${bbPosition < 0.2 ? 'Near Lower' : bbPosition > 0.8 ? 'Near Upper' : 'Mid-Range'}
+                </div>
             </div>
-            <div class="metric-card">
-                <div class="metric-label">SMA(50)</div>
-                <div class="metric-value">$${sma50[sma50.length-1].toFixed(2)}</div>
+            <div class="metric-card" style="padding: 15px; background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                <div class="metric-label" style="font-size: 0.9em; color: #6c757d;">Stochastic</div>
+                <div class="metric-value" style="font-size: 1.5em; font-weight: 700;">
+                    K: ${currentStoch.k.toFixed(1)}
+                </div>
+                <div class="metric-change" style="font-size: 0.85em; margin-top: 5px;">
+                    D: ${currentStoch.d.toFixed(1)}
+                </div>
             </div>
         </div>
+        
+        <h4>Trading Signals with Entry/Exit Points (${signals.length})</h4>
     `;
+    
+    if (signals.length === 0) {
+        detailsHTML += '<p>No active trading signals at this time. Wait for confirmation.</p>';
+    } else {
+        signals.forEach(signal => {
+            const typeColor = signal.type === 'BUY' ? '#10b981' : '#ef4444';
+            const typeIcon = signal.type === 'BUY' ? '📈' : '📉';
+            const riskReward = Math.abs((signal.target - signal.entry) / (signal.entry - signal.stop));
+            
+            detailsHTML += `
+                <div style="border-left: 4px solid ${typeColor}; padding: 15px; margin: 15px 0; background: rgba(${
+                    signal.type === 'BUY' ? '16, 185, 129' : '239, 68, 68'
+                }, 0.1); border-radius: 8px;">
+                    <h5 style="margin: 0 0 10px 0; color: ${typeColor};">
+                        ${typeIcon} ${signal.indicator} - ${signal.type} Signal
+                        <span style="float: right; background: ${typeColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">
+                            ${signal.strength.toFixed(0)}% confidence
+                        </span>
+                    </h5>
+                    <p style="margin: 5px 0; font-size: 0.9em;">${signal.reason}</p>
+                    <table style="width: 100%; margin-top: 10px; font-size: 0.9em;">
+                        <tr>
+                            <td><strong>Entry:</strong></td>
+                            <td style="color: #3b82f6; font-weight: 600;">$${signal.entry.toFixed(2)}</td>
+                            <td><strong>Target:</strong></td>
+                            <td style="color: #10b981; font-weight: 600;">$${signal.target.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stop Loss:</strong></td>
+                            <td style="color: #ef4444; font-weight: 600;">$${signal.stop.toFixed(2)}</td>
+                            <td><strong>Risk/Reward:</strong></td>
+                            <td style="font-weight: 600;">${riskReward.toFixed(2)}:1</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Potential Gain:</strong></td>
+                            <td style="color: #10b981;">${((signal.target - signal.entry) / signal.entry * 100).toFixed(2)}%</td>
+                            <td><strong>Risk:</strong></td>
+                            <td style="color: #ef4444;">${((signal.entry - signal.stop) / signal.entry * 100).toFixed(2)}%</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+        });
+    }
+    
+    // Add advanced mathematical analysis
+    detailsHTML += `
+        <div style="margin-top: 20px; padding: 15px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(167, 139, 250, 0.1)); border-radius: 10px; border-left: 4px solid #8b5cf6;">
+            <h4 style="color: #8b5cf6;">🧮 Advanced Mathematical Analysis</h4>
+            <p><strong>Momentum Flow (Navier-Stokes):</strong></p>
+            <ul>
+                <li>Flow Regime: <strong>${momentumFlow.flowRegime.toUpperCase()}</strong></li>
+                <li>Turbulence: ${momentumFlow.turbulence.toFixed(4)}</li>
+                <li>Average Velocity: ${(momentumFlow.velocity.reduce((a,b) => a+b, 0) / momentumFlow.velocity.length).toFixed(4)}</li>
+            </ul>
+            
+            <p><strong>Damped Oscillator:</strong></p>
+            <ul>
+                <li>Damping Type: <strong>${dampedOsc.dampingType.toUpperCase()}</strong></li>
+                <li>Natural Frequency: ${dampedOsc.naturalFrequency.toFixed(4)}</li>
+                <li>Half-Life: ${dampedOsc.halfLife.toFixed(2)} periods</li>
+            </ul>
+            
+            <p><strong>Stokes' Circulation:</strong></p>
+            <ul>
+                <li>Total Circulation: ${stokesAnalysis.totalCirculation.toFixed(2)}</li>
+                <li>Average Circulation: ${stokesAnalysis.avgCirculation.toFixed(4)}</li>
+                <li>Interpretation: ${Math.abs(stokesAnalysis.avgCirculation) > 0.1 ? 'Strong momentum rotation' : 'Weak circulation'}</li>
+            </ul>
+        </div>
+    `;
+    
+    // Store for synthesis
+    allAnalysisResults['technical-indicators'] = {
+        signals: signals,
+        signalCount: signals.length,
+        buySignals: signals.filter(s => s.type === 'BUY').length,
+        sellSignals: signals.filter(s => s.type === 'SELL').length,
+        indicators: {
+            rsi: currentRSI,
+            macd: currentMACD,
+            bbPosition: bbPosition,
+            stochastic: currentStoch
+        },
+        advancedAnalysis: {
+            flowRegime: momentumFlow.flowRegime,
+            dampingType: dampedOsc.dampingType,
+            circulation: stokesAnalysis.totalCirculation
+        }
+    };
+    
+    detailsEl.innerHTML = detailsHTML;
 }
 
 // 5. DIFFERENTIAL CALCULUS ANALYSIS
@@ -1886,6 +2486,37 @@ function calculateBollingerBands(data, period, stdDev) {
     }
     
     return { upper, lower, middle: sma };
+}
+
+function calculateStochastic(data, period) {
+    const result = [];
+    const highs = data.map(d => d.high);
+    const lows = data.map(d => d.low);
+    const closes = data.map(d => d.close);
+    
+    for (let i = 0; i < data.length; i++) {
+        if (i < period - 1) {
+            result.push({ k: 50, d: 50 });
+        } else {
+            const highWindow = highs.slice(i - period + 1, i + 1);
+            const lowWindow = lows.slice(i - period + 1, i + 1);
+            const currentClose = closes[i];
+            
+            const highestHigh = Math.max(...highWindow);
+            const lowestLow = Math.min(...lowWindow);
+            
+            const k = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+            
+            // Calculate %D (3-period SMA of %K)
+            const kValues = result.slice(-2).map(r => r.k);
+            kValues.push(k);
+            const d = kValues.reduce((a, b) => a + b, 0) / kValues.length;
+            
+            result.push({ k, d });
+        }
+    }
+    
+    return result;
 }
 
 function calculateDerivative(data) {

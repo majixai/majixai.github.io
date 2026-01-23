@@ -487,6 +487,302 @@ const AdvancedMath = {
         const min = Math.min(...originalData);
         const max = Math.max(...originalData);
         return normalized.map(x => x * (max - min) + min);
+    },
+    
+    // ============================================
+    // ADVANCED MATHEMATICAL CONCEPTS
+    // ============================================
+    
+    /**
+     * Stokes' Theorem Application - Circulation and Flux
+     * ∮_C F·dr = ∬_S (∇×F)·dS
+     * Used for analyzing price momentum circulation
+     */
+    stokesCirculation(prices, volumes) {
+        const n = prices.length;
+        const circulation = [];
+        
+        for (let i = 2; i < n; i++) {
+            // Vector field: F = (price_change, volume_change)
+            const dx = prices[i] - prices[i-1];
+            const dy = volumes ? volumes[i] - volumes[i-1] : 0;
+            
+            // Curl calculation (∇×F)
+            const curl = dy - dx;
+            
+            // Line integral approximation
+            circulation.push(curl);
+        }
+        
+        return {
+            circulation: circulation,
+            totalCirculation: circulation.reduce((a, b) => a + b, 0),
+            avgCirculation: circulation.reduce((a, b) => a + b, 0) / circulation.length
+        };
+    },
+    
+    /**
+     * Green's Theorem for Area-based Analysis
+     * ∮_C (P dx + Q dy) = ∬_D (∂Q/∂x - ∂P/∂y) dA
+     * Used for pattern area calculations and closed curve analysis
+     */
+    greensTheoremArea(xCoords, yCoords) {
+        if (xCoords.length !== yCoords.length || xCoords.length < 3) {
+            return 0;
+        }
+        
+        let area = 0;
+        const n = xCoords.length;
+        
+        // Shoelace formula (Green's theorem application)
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += xCoords[i] * yCoords[j];
+            area -= xCoords[j] * yCoords[i];
+        }
+        
+        return Math.abs(area / 2);
+    },
+    
+    /**
+     * Injection/Bijection Analysis for Price Mapping
+     * Tests if price movements are injective (one-to-one)
+     * Useful for detecting reversals and unique price levels
+     */
+    injectionAnalysis(prices) {
+        const uniqueLevels = new Set();
+        const duplicateLevels = [];
+        const supportResistance = [];
+        
+        // Round to 2 decimals for level detection
+        prices.forEach((p, i) => {
+            const level = Math.round(p * 100) / 100;
+            if (uniqueLevels.has(level)) {
+                duplicateLevels.push({ price: level, index: i });
+            } else {
+                uniqueLevels.add(level);
+            }
+        });
+        
+        // Find significant support/resistance (prices hit 3+ times)
+        const levelCounts = {};
+        duplicateLevels.forEach(({ price }) => {
+            levelCounts[price] = (levelCounts[price] || 0) + 1;
+        });
+        
+        Object.entries(levelCounts).forEach(([price, count]) => {
+            if (count >= 2) {
+                supportResistance.push({
+                    price: parseFloat(price),
+                    touches: count + 1,
+                    strength: count / prices.length
+                });
+            }
+        });
+        
+        return {
+            uniqueRatio: uniqueLevels.size / prices.length,
+            supportResistanceLevels: supportResistance.sort((a, b) => b.strength - a.strength),
+            duplicateCount: duplicateLevels.length
+        };
+    },
+    
+    /**
+     * Damped Harmonic Oscillator Model
+     * m(d²x/dt²) + γ(dx/dt) + kx = 0
+     * Models price oscillations with friction/resistance
+     */
+    dampedOscillator(prices, dampingRatio = 0.1) {
+        const returns = prices.slice(1).map((p, i) => Math.log(p / prices[i]));
+        const n = returns.length;
+        
+        // Estimate natural frequency from autocorrelation
+        const omega0 = this.estimateNaturalFrequency(returns);
+        const gamma = 2 * dampingRatio * omega0;
+        
+        // Damping regimes
+        const dampingType = dampingRatio < 1 ? 'underdamped' : 
+                           dampingRatio === 1 ? 'critically damped' : 'overdamped';
+        
+        // Calculate oscillation envelope
+        const envelope = [];
+        const phase = [];
+        
+        for (let t = 0; t < n; t++) {
+            const decayFactor = Math.exp(-gamma * t);
+            envelope.push(decayFactor);
+            
+            if (dampingRatio < 1) {
+                const omegaD = omega0 * Math.sqrt(1 - dampingRatio * dampingRatio);
+                phase.push(Math.cos(omegaD * t) * decayFactor);
+            }
+        }
+        
+        return {
+            dampingType: dampingType,
+            dampingRatio: dampingRatio,
+            naturalFrequency: omega0,
+            envelope: envelope,
+            oscillationPhase: phase,
+            halfLife: Math.log(2) / gamma
+        };
+    },
+    
+    estimateNaturalFrequency(returns) {
+        // Estimate dominant frequency using autocorrelation
+        const maxLag = Math.min(50, Math.floor(returns.length / 4));
+        let maxCorr = 0;
+        let bestLag = 1;
+        
+        for (let lag = 1; lag < maxLag; lag++) {
+            const corr = this.autocorrelation(returns, lag);
+            if (Math.abs(corr) > Math.abs(maxCorr) && lag > 5) {
+                maxCorr = corr;
+                bestLag = lag;
+            }
+        }
+        
+        return 2 * Math.PI / bestLag;
+    },
+    
+    autocorrelation(series, lag) {
+        const n = series.length - lag;
+        const mean = series.reduce((a, b) => a + b, 0) / series.length;
+        
+        let numerator = 0;
+        let denominator = 0;
+        
+        for (let i = 0; i < n; i++) {
+            numerator += (series[i] - mean) * (series[i + lag] - mean);
+        }
+        
+        for (let i = 0; i < series.length; i++) {
+            denominator += Math.pow(series[i] - mean, 2);
+        }
+        
+        return numerator / denominator;
+    },
+    
+    /**
+     * Navier-Stokes Inspired Momentum Flow
+     * ∂u/∂t + (u·∇)u = -∇p + ν∇²u + f
+     * Models price momentum as fluid flow with viscosity
+     */
+    momentumFlow(prices, viscosity = 0.01) {
+        const n = prices.length;
+        const velocity = [];
+        const acceleration = [];
+        const pressure = [];
+        
+        // Calculate velocity (first derivative)
+        for (let i = 1; i < n; i++) {
+            velocity.push(prices[i] - prices[i-1]);
+        }
+        
+        // Calculate acceleration (second derivative)
+        for (let i = 1; i < velocity.length; i++) {
+            acceleration.push(velocity[i] - velocity[i-1]);
+        }
+        
+        // Calculate pressure gradient (third derivative approximation)
+        for (let i = 1; i < acceleration.length; i++) {
+            const pressureGrad = acceleration[i] - acceleration[i-1];
+            pressure.push(pressureGrad);
+        }
+        
+        // Apply viscous diffusion
+        const diffusedVelocity = this.applyViscousDiffusion(velocity, viscosity);
+        
+        return {
+            velocity: velocity,
+            acceleration: acceleration,
+            pressure: pressure,
+            diffusedVelocity: diffusedVelocity,
+            turbulence: this.calculateTurbulence(velocity),
+            flowRegime: this.classifyFlowRegime(velocity, viscosity)
+        };
+    },
+    
+    applyViscousDiffusion(velocity, viscosity) {
+        const diffused = [...velocity];
+        const n = velocity.length;
+        
+        // Simple diffusion: v_new = v + ν(v_{i+1} - 2v_i + v_{i-1})
+        for (let iter = 0; iter < 5; iter++) {
+            const temp = [...diffused];
+            for (let i = 1; i < n - 1; i++) {
+                diffused[i] = temp[i] + viscosity * (temp[i+1] - 2*temp[i] + temp[i-1]);
+            }
+        }
+        
+        return diffused;
+    },
+    
+    calculateTurbulence(velocity) {
+        // Measure of velocity fluctuations
+        const mean = velocity.reduce((a, b) => a + b, 0) / velocity.length;
+        const fluctuations = velocity.map(v => Math.pow(v - mean, 2));
+        return Math.sqrt(fluctuations.reduce((a, b) => a + b, 0) / velocity.length);
+    },
+    
+    classifyFlowRegime(velocity, viscosity) {
+        const avgVelocity = Math.abs(velocity.reduce((a, b) => a + b, 0) / velocity.length);
+        const reynolds = avgVelocity / viscosity;
+        
+        if (reynolds < 100) return 'laminar';
+        if (reynolds < 500) return 'transitional';
+        return 'turbulent';
+    },
+    
+    /**
+     * Complex Analysis - Residue Theorem for Singularity Detection
+     * Detects price singularities and critical points
+     */
+    findSingularities(prices) {
+        const singularities = [];
+        const returns = prices.slice(1).map((p, i) => (p - prices[i]) / prices[i]);
+        
+        // Find discontinuities and sharp changes
+        for (let i = 1; i < returns.length - 1; i++) {
+            const change = Math.abs(returns[i]);
+            const avgChange = (Math.abs(returns[i-1]) + Math.abs(returns[i+1])) / 2;
+            
+            // Detect jumps (singularities)
+            if (change > avgChange * 3 && Math.abs(returns[i]) > 0.03) {
+                singularities.push({
+                    index: i + 1,
+                    price: prices[i + 1],
+                    magnitude: change,
+                    type: returns[i] > 0 ? 'gap_up' : 'gap_down'
+                });
+            }
+        }
+        
+        return singularities;
+    },
+    
+    /**
+     * Laplace Transform for System Response
+     * L{f(t)} = ∫₀^∞ e^(-st)f(t)dt
+     * Analyzes price response to impulses
+     */
+    laplaceTransform(prices, s = 1) {
+        const n = prices.length;
+        let real = 0;
+        let imag = 0;
+        
+        for (let t = 0; t < n; t++) {
+            const factor = Math.exp(-s * t);
+            real += prices[t] * factor * Math.cos(s * t);
+            imag += prices[t] * factor * Math.sin(s * t);
+        }
+        
+        return {
+            real: real / n,
+            imag: imag / n,
+            magnitude: Math.sqrt(real*real + imag*imag) / n,
+            phase: Math.atan2(imag, real)
+        };
     }
 };
 
