@@ -229,15 +229,17 @@ async function main() {
     console.log('Database URL:', DB_URL);
     
     try {
-        // Step 1: Initialize SQL.js
+        // Step 1: Initialize SQL.js with proper configuration
         updateLoadingState(
             'Initializing SQL.js library...',
             'Loading WebAssembly database engine',
             5
         );
         console.log('Initializing SQL.js...');
+        
+        // Fix WebAssembly import error by using correct SQL.js version and config
         const SQL = await initSqlJs({
-            locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/${file}`
+            locateFile: file => `https://sql.js.org/dist/${file}`
         });
         console.log('✓ SQL.js initialized');
 
@@ -365,11 +367,24 @@ async function main() {
         console.error('✗ Error loading data:', error);
         console.error('Stack trace:', error.stack);
         
+        // Log to error tracker
+        if (window.ErrorTracker) {
+            window.ErrorTracker.logError({
+                type: 'database_load',
+                message: error.message,
+                stack: error.stack,
+                context: 'main_data_load'
+            });
+        }
+        
         // Show error details in loader
         if (LOADER_DETAILS) {
             LOADER_DETAILS.innerHTML = `
                 <strong>Error:</strong> ${error.message}<br>
-                <small>Check the browser console for more details</small>
+                <small>Check the browser console for more details</small><br>
+                <button onclick="window.location.href='client-tracking.html'" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    🔍 View Error Tracking
+                </button>
             `;
             LOADER_DETAILS.style.color = '#dc3545';
         }

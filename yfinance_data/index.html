@@ -20,10 +20,16 @@
     
     <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
+    
+    <!-- Error Tracking -->
+    <script src="error-tracking.js"></script>
 </head>
 <body>
     <div class="header-container">
         <h1>YFinance Data Analytics</h1>
+        <button id="error-settings-btn" class="error-settings-btn" title="Error Tracking & Settings">
+            ⚙️ <span id="error-count-badge" class="error-badge">0</span>
+        </button>
         <div class="controls-panel">
             <div class="search-box">
                 <input type="text" id="ticker-search" placeholder="🔍 Search ticker (e.g., AAPL)..." autocomplete="off">
@@ -189,6 +195,273 @@
                 header.appendChild(minerBtn);
             }
         });
+        
+        // Initialize Error Tracker
+        if (window.ErrorTracker) {
+            window.ErrorTracker.init();
+            
+            // Add CSS for error settings button
+            const style = document.createElement('style');
+            style.textContent = `
+                .error-settings-btn {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 50px;
+                    font-size: 18px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+                    transition: all 0.3s;
+                    z-index: 1000;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .error-settings-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+                }
+                .error-badge {
+                    display: none;
+                    background: white;
+                    color: #dc3545;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Add error settings modal
+            const modal = document.createElement('div');
+            modal.id = 'error-settings-modal';
+            modal.style.cssText = `
+                display: none;
+                position: fixed;
+                z-index: 10000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.7);
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    position: relative;
+                    margin: 5% auto;
+                    padding: 30px;
+                    width: 90%;
+                    max-width: 600px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 20px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                    color: white;
+                ">
+                    <span style="
+                        position: absolute;
+                        right: 20px;
+                        top: 20px;
+                        font-size: 32px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        opacity: 0.7;
+                        transition: opacity 0.3s;
+                    " onclick="document.getElementById('error-settings-modal').style.display='none'">&times;</span>
+                    
+                    <h2 style="margin-top: 0; font-size: 28px;">⚙️ Error Tracking & Settings</h2>
+                    
+                    <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; margin: 20px 0;">
+                        <h3 style="margin-top: 0;">📊 Session Information</h3>
+                        <p><strong>Session ID:</strong> <span id="modal-session-id"></span></p>
+                        <p><strong>Client Hash:</strong> <span id="modal-client-hash"></span></p>
+                        <p><strong>Total Errors:</strong> <span id="modal-error-count">0</span></p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
+                        <button onclick="copyAllErrors()" style="
+                            padding: 15px;
+                            background: rgba(255,255,255,0.2);
+                            border: 2px solid rgba(255,255,255,0.3);
+                            border-radius: 12px;
+                            color: white;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                           onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            📋 Copy All Errors
+                        </button>
+                        
+                        <button onclick="exportErrorLog()" style="
+                            padding: 15px;
+                            background: rgba(255,255,255,0.2);
+                            border: 2px solid rgba(255,255,255,0.3);
+                            border-radius: 12px;
+                            color: white;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                           onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                            💾 Export to File
+                        </button>
+                        
+                        <button onclick="clearAllErrors()" style="
+                            padding: 15px;
+                            background: rgba(220, 53, 69, 0.3);
+                            border: 2px solid rgba(220, 53, 69, 0.5);
+                            border-radius: 12px;
+                            color: white;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(220, 53, 69, 0.5)'" 
+                           onmouseout="this.style.background='rgba(220, 53, 69, 0.3)'">
+                            🗑️ Clear Errors
+                        </button>
+                        
+                        <button onclick="window.location.href='client-tracking.html'" style="
+                            padding: 15px;
+                            background: rgba(40, 167, 69, 0.3);
+                            border: 2px solid rgba(40, 167, 69, 0.5);
+                            border-radius: 12px;
+                            color: white;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                        " onmouseover="this.style.background='rgba(40, 167, 69, 0.5)'" 
+                           onmouseout="this.style.background='rgba(40, 167, 69, 0.3)'">
+                            🔍 Full Dashboard
+                        </button>
+                    </div>
+                    
+                    <div id="recent-errors-list" style="
+                        max-height: 200px;
+                        overflow-y: auto;
+                        background: rgba(0,0,0,0.2);
+                        padding: 15px;
+                        border-radius: 12px;
+                        margin-top: 20px;
+                    ">
+                        <h3 style="margin-top: 0;">🔴 Recent Errors</h3>
+                        <div id="recent-errors-content">Loading...</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Settings button handler
+            const settingsBtn = document.getElementById('error-settings-btn');
+            if (settingsBtn) {
+                settingsBtn.onclick = () => {
+                    updateModalStats();
+                    modal.style.display = 'block';
+                };
+            }
+            
+            // Update error count badge periodically
+            setInterval(() => {
+                const badge = document.getElementById('error-count-badge');
+                if (badge && window.ErrorTracker) {
+                    const errorCount = window.ErrorTracker.errors.filter(e => e.type !== 'event').length;
+                    badge.textContent = errorCount;
+                    badge.style.display = errorCount > 0 ? 'inline-block' : 'none';
+                }
+            }, 2000);
+        }
+        
+        // Modal helper functions
+        window.updateModalStats = function() {
+            if (!window.ErrorTracker) return;
+            
+            document.getElementById('modal-session-id').textContent = window.ErrorTracker.sessionId;
+            document.getElementById('modal-client-hash').textContent = window.ErrorTracker.clientHash;
+            
+            const errors = window.ErrorTracker.errors.filter(e => e.type !== 'event');
+            document.getElementById('modal-error-count').textContent = errors.length;
+            
+            const recentErrorsContent = document.getElementById('recent-errors-content');
+            if (errors.length === 0) {
+                recentErrorsContent.innerHTML = '<p style="opacity: 0.7; font-style: italic;">No errors logged</p>';
+            } else {
+                recentErrorsContent.innerHTML = errors.slice(-5).reverse().map(err => `
+                    <div style="
+                        padding: 10px;
+                        margin: 5px 0;
+                        background: rgba(220, 53, 69, 0.2);
+                        border-left: 3px solid #dc3545;
+                        border-radius: 6px;
+                        font-size: 13px;
+                    ">
+                        <strong>${err.type}</strong>: ${err.message}<br>
+                        <small style="opacity: 0.8;">${new Date(err.timestamp).toLocaleString()}</small>
+                    </div>
+                `).join('');
+            }
+        };
+        
+        window.copyAllErrors = async function() {
+            if (!window.ErrorTracker) return;
+            await window.ErrorTracker.copyToClipboard();
+            showToast('✅ Errors copied to clipboard!');
+        };
+        
+        window.exportErrorLog = function() {
+            if (!window.ErrorTracker) return;
+            window.ErrorTracker.exportToFile();
+            showToast('✅ Error log downloaded!');
+        };
+        
+        window.clearAllErrors = function() {
+            if (!window.ErrorTracker) return;
+            if (confirm('Are you sure you want to clear all logged errors?')) {
+                window.ErrorTracker.clearErrors();
+                updateModalStats();
+                showToast('🗑️ All errors cleared!');
+            }
+        };
+        
+        window.showToast = function(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: rgba(40, 167, 69, 0.95);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                font-weight: 600;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                z-index: 10001;
+                animation: slideIn 0.3s ease-out;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        };
     </script>
 </body>
 </html>
