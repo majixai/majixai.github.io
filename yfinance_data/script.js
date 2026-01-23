@@ -58,9 +58,24 @@ function displayTablePage(page) {
 
     const tableRows = DATA_CONTAINER.querySelectorAll('tbody tr');
     tableRows.forEach(row => {
+        // Add click handler to ticker cell (first column) for detail page
+        const tickerCell = row.cells[0];
+        tickerCell.style.cursor = 'pointer';
+        tickerCell.style.fontWeight = 'bold';
+        tickerCell.style.color = '#667eea';
+        
+        tickerCell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const ticker = tickerCell.textContent;
+            console.log(`Clicked ticker (detail): ${ticker}`);
+            // Link to ticker detail page
+            window.open(`ticker_detail.html?ticker=${ticker}`, '_blank');
+        });
+        
+        // Add click handler to rest of row for chart page
         row.addEventListener('click', () => {
             const ticker = row.cells[0].textContent;
-            console.log(`Clicked ticker: ${ticker}`);
+            console.log(`Clicked row (chart): ${ticker}`);
             // Link to yfinance_chart page with the ticker as a URL parameter
             const url = `../yfinance_chart/index.html?ticker=${ticker}`;
             window.open(url, '_blank');

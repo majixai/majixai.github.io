@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticker Analysis - YFinance Data</title>
+    <link rel="stylesheet" href="detail_style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="ticker-title">Loading Ticker Analysis...</h1>
+            <button id="back-btn" class="back-button">← Back to List</button>
+        </header>
+
+        <!-- AI Suggestion Buttons -->
+        <div class="ai-controls">
+            <h2>🤖 AI-Powered Analysis Tools</h2>
+            <div class="button-grid">
+                <button class="ai-btn" data-analysis="price-projection">
+                    <span class="icon">📈</span>
+                    <span class="label">Price Projections</span>
+                </button>
+                <button class="ai-btn" data-analysis="options-bsm">
+                    <span class="icon">💰</span>
+                    <span class="label">Options BSM</span>
+                </button>
+                <button class="ai-btn" data-analysis="chart-patterns">
+                    <span class="icon">📊</span>
+                    <span class="label">Chart Patterns</span>
+                </button>
+                <button class="ai-btn" data-analysis="technical-indicators">
+                    <span class="icon">📉</span>
+                    <span class="label">Technical Indicators</span>
+                </button>
+                <button class="ai-btn" data-analysis="differential-calculus">
+                    <span class="icon">∂</span>
+                    <span class="label">Differential Calculus</span>
+                </button>
+                <button class="ai-btn" data-analysis="integral-calculus">
+                    <span class="icon">∫</span>
+                    <span class="label">Integral Calculus</span>
+                </button>
+                <button class="ai-btn" data-analysis="arctrig-analysis">
+                    <span class="icon">∠</span>
+                    <span class="label">Arctrig Analysis</span>
+                </button>
+                <button class="ai-btn" data-analysis="multivariate-matrix">
+                    <span class="icon">⊗</span>
+                    <span class="label">Multivariate Matrix</span>
+                </button>
+                <button class="ai-btn" data-analysis="risk-metrics">
+                    <span class="icon">⚠️</span>
+                    <span class="label">Risk Metrics</span>
+                </button>
+                <button class="ai-btn" data-analysis="momentum-signals">
+                    <span class="icon">🚀</span>
+                    <span class="label">Momentum Signals</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Analysis Sections -->
+        <div id="analysis-container">
+            
+            <!-- Price Projections Section -->
+            <section id="price-projection" class="analysis-section" style="display: none;">
+                <h3>📈 Price Projections</h3>
+                <div class="section-status">Click "Price Projections" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="price-projection-chart"></div>
+                    <div id="price-projection-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Options BSM Section -->
+            <section id="options-bsm" class="analysis-section" style="display: none;">
+                <h3>💰 Options Pricing (Black-Scholes-Merton)</h3>
+                <div class="section-status">Click "Options BSM" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="options-bsm-chart"></div>
+                    <div id="options-bsm-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Chart Patterns Section -->
+            <section id="chart-patterns" class="analysis-section" style="display: none;">
+                <h3>📊 Chart Patterns Detection</h3>
+                <div class="section-status">Click "Chart Patterns" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="chart-patterns-chart"></div>
+                    <div id="chart-patterns-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Technical Indicators Section -->
+            <section id="technical-indicators" class="analysis-section" style="display: none;">
+                <h3>📉 Technical Indicators</h3>
+                <div class="section-status">Click "Technical Indicators" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="technical-indicators-chart"></div>
+                    <div id="technical-indicators-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Differential Calculus Section -->
+            <section id="differential-calculus" class="analysis-section" style="display: none;">
+                <h3>∂ Advanced Differential Calculus Analysis</h3>
+                <div class="section-status">Click "Differential Calculus" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="differential-calculus-chart"></div>
+                    <div id="differential-calculus-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Integral Calculus Section -->
+            <section id="integral-calculus" class="analysis-section" style="display: none;">
+                <h3>∫ Integral Calculus Analysis</h3>
+                <div class="section-status">Click "Integral Calculus" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="integral-calculus-chart"></div>
+                    <div id="integral-calculus-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Arctrig Analysis Section -->
+            <section id="arctrig-analysis" class="analysis-section" style="display: none;">
+                <h3>∠ Arctrigonometric Analysis</h3>
+                <div class="section-status">Click "Arctrig Analysis" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="arctrig-analysis-chart"></div>
+                    <div id="arctrig-analysis-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Multivariate Matrix Section -->
+            <section id="multivariate-matrix" class="analysis-section" style="display: none;">
+                <h3>⊗ Multivariate Matrix Set Theoretical Analysis</h3>
+                <div class="section-status">Click "Multivariate Matrix" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="multivariate-matrix-chart"></div>
+                    <div id="multivariate-matrix-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Risk Metrics Section -->
+            <section id="risk-metrics" class="analysis-section" style="display: none;">
+                <h3>⚠️ Risk Metrics & VaR Analysis</h3>
+                <div class="section-status">Click "Risk Metrics" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="risk-metrics-chart"></div>
+                    <div id="risk-metrics-details" class="details-box"></div>
+                </div>
+            </section>
+
+            <!-- Momentum Signals Section -->
+            <section id="momentum-signals" class="analysis-section" style="display: none;">
+                <h3>🚀 Momentum & Signal Analysis</h3>
+                <div class="section-status">Click "Momentum Signals" button to generate analysis</div>
+                <div class="section-content">
+                    <div id="momentum-signals-chart"></div>
+                    <div id="momentum-signals-details" class="details-box"></div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" style="display: none;">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Analyzing...</div>
+            <div class="loader-details"></div>
+        </div>
+    </div>
+
+    <script src="detail_script.js"></script>
+</body>
+</html>
