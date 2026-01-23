@@ -29,9 +29,8 @@ function displayTablePage(page) {
     tableRows.forEach(row => {
         row.addEventListener('click', () => {
             const ticker = row.cells[0].textContent;
-            // Link to Google Finance. Note: Exchange might be needed for some tickers for accuracy.
-            // For this example, we'll assume the ticker is sufficient for major exchanges.
-            const url = `https://www.google.com/finance/quote/${ticker}`;
+            // Link to yfinance_chart page with the ticker as a URL parameter
+            const url = `../yfinance_chart/index.html?ticker=${ticker}`;
             window.open(url, '_blank');
         });
     });

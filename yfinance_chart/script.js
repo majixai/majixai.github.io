@@ -86,6 +86,12 @@ async function loadData() {
     
     hideLoader();
     initializeWatchlist();
+    
+    // Update the search input with current ticker
+    if (elements.tickerSearch) {
+        elements.tickerSearch.value = currentTicker;
+    }
+    
     loadChart(currentTicker);
 }
 
@@ -920,6 +926,14 @@ async function init() {
         console.error('Plotly not loaded. Charts will not render.');
         elements.mainChart.innerHTML = '<div style="padding: 40px; text-align: center; color: #757575;"><h3>⚠️ Plotly.js not loaded</h3><p>Please ensure you have internet connectivity for CDN resources.</p></div>';
         // Still initialize other features
+    }
+    
+    // Check for ticker parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tickerParam = urlParams.get('ticker');
+    if (tickerParam) {
+        currentTicker = tickerParam.toUpperCase();
+        console.log('Loading ticker from URL parameter:', currentTicker);
     }
     
     setupAutocomplete();
