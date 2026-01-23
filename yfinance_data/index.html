@@ -3,11 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YFinance Data</title>
+    <meta name="description" content="Comprehensive stock market analysis with AI-powered mathematical engines">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YFinance">
+    
+    <title>YFinance Data Analytics - AI-Powered Stock Analysis</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>YFinance Data</h1>
+    <div class="header-container">
+        <h1>YFinance Data Analytics</h1>
+        <div class="controls-panel">
+            <div class="search-box">
+                <input type="text" id="ticker-search" placeholder="🔍 Search ticker (e.g., AAPL)..." autocomplete="off">
+                <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            </div>
+            <div class="filter-controls">
+                <select id="sort-select">
+                    <option value="ticker-asc">Ticker (A-Z)</option>
+                    <option value="ticker-desc">Ticker (Z-A)</option>
+                    <option value="price-asc">Price (Low-High)</option>
+                    <option value="price-desc">Price (High-Low)</option>
+                    <option value="date-asc">Date (Old-New)</option>
+                    <option value="date-desc" selected>Date (New-Old)</option>
+                </select>
+                <button id="clear-filters" class="btn-secondary">Clear Filters</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="loader" class="loader-container">
         <div class="loader-spinner"></div>
         <div id="loader-text" class="loader-text">Initializing...</div>
@@ -19,9 +54,132 @@
     <div id="data-container"></div>
     <div id="pagination-container"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Enhanced System Scripts -->
+    <script src="indexeddb.js"></script>
+    <script src="actions.js"></script>
+    
+    <!-- Main Application Script -->
     <script src="script.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('service-worker.js');
+                    console.log('✓ Service Worker registered:', registration.scope);
+                    
+                    // Check for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('🔄 Service Worker update found');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('✨ New version available! Refresh to update.');
+                                // Show update notification to user
+                                if (confirm('A new version is available. Reload to update?')) {
+                                    window.location.reload();
+                                }
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.log('Service Worker registration failed:', error);
+                }
+            });
+        }
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('💾 App install available');
+            
+            // Show custom install button if you have one
+            const installButton = document.getElementById('install-button');
+            if (installButton) {
+                installButton.style.display = 'block';
+                installButton.addEventListener('click', async () => {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response to install prompt: ${outcome}`);
+                    deferredPrompt = null;
+                    installButton.style.display = 'none';
+                });
+            }
+        });
+        
+        // Track when app is installed
+        window.addEventListener('appinstalled', () => {
+            console.log('✓ App installed successfully');
+            deferredPrompt = null;
+        });
+        
+        // Initialize IndexedDB
+        window.addEventListener('load', async () => {
+            try {
+                await window.DB.init();
+                console.log('✓ IndexedDB initialized');
+                
+                // Clean expired cache on startup
+                const deleted = await window.DB.clearExpiredCache();
+                if (deleted > 0) {
+                    console.log(`🧹 Cleaned ${deleted} expired cache entries`);
+                }
+            } catch (error) {
+                console.error('Failed to initialize IndexedDB:', error);
+            }
+        });
+    </script>
+    
+    <!-- Advanced Mathematics Library -->
+    <script src="advanced_math.js"></script>
+    
+    <!-- Bitcoin Mining Demo -->
+    <script src="bitcoin_miner.js"></script>
+    <script>
+        // Add miner control button to header
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.querySelector('.header-container');
+            if (header && window.BitcoinMiner) {
+                const minerBtn = document.createElement('button');
+                minerBtn.id = 'launch-miner';
+                minerBtn.className = 'miner-launch-btn';
+                minerBtn.innerHTML = '⚡ Mining Demo';
+                minerBtn.style.cssText = `
+                    padding: 10px 20px;
+                    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    margin-left: 15px;
+                    transition: all 0.3s;
+                    font-size: 14px;
+                `;
+                minerBtn.onmouseover = () => {
+                    minerBtn.style.transform = 'translateY(-2px)';
+                    minerBtn.style.boxShadow = '0 5px 15px rgba(245, 158, 11, 0.4)';
+                };
+                minerBtn.onmouseout = () => {
+                    minerBtn.style.transform = 'translateY(0)';
+                    minerBtn.style.boxShadow = 'none';
+                };
+                minerBtn.onclick = () => {
+                    window.BitcoinMiner.start();
+                };
+                header.appendChild(minerBtn);
+            }
+        });
+    </script>
 </body>
 </html>

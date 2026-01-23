@@ -3,17 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ticker Analysis - YFinance Data</title>
+    <meta name="description" content="Advanced AI-powered ticker analysis with 10 mathematical engines">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <title>Ticker Analysis - YFinance Data Analytics</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="detail_style.css">
+    
+    <!-- External Libraries -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.2.0/math.min.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
             <h1 id="ticker-title">Loading Ticker Analysis...</h1>
-            <button id="back-btn" class="back-button">← Back to List</button>
+            <div class="header-controls">
+                <button id="back-btn" class="back-button">← Back to List</button>
+                <button id="synthesize-btn" class="synthesize-button">🤖 AI Synthesis Report</button>
+            </div>
         </header>
+
+        <!-- Timeframe Selection -->
+        <div class="timeframe-controls">
+            <h3>📅 Timeframe</h3>
+            <div class="timeframe-buttons">
+                <button class="timeframe-btn" data-timeframe="1m">1 Minute</button>
+                <button class="timeframe-btn" data-timeframe="1h" data-selected="true">1 Hour</button>
+                <button class="timeframe-btn" data-timeframe="1d">1 Day</button>
+                <button class="timeframe-btn" data-timeframe="1w">1 Week</button>
+                <button class="timeframe-btn" data-timeframe="1mo">1 Month</button>
+                <button class="timeframe-btn" data-timeframe="1y">1 Year</button>
+            </div>
+            <div class="timeframe-info">
+                <span id="timeframe-display">Current: 1 Hour</span>
+                <span id="data-points-display">Data Points: Loading...</span>
+            </div>
+        </div>
 
         <!-- AI Suggestion Buttons -->
         <div class="ai-controls">
@@ -175,6 +209,43 @@
         </div>
     </div>
 
+    <!-- Enhanced System Scripts -->
+    <script src="indexeddb.js"></script>
+    <script src="actions.js"></script>
+    
+    <!-- Main Application Script -->
     <script src="detail_script.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('✓ Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
+        
+        // Initialize Web Worker for calculations
+        if (window.Worker) {
+            const calcWorker = new Worker('worker.js');
+            window.ActionSystem.dispatcher.registerWorker('calculation', calcWorker);
+            console.log('✓ Calculation Worker registered');
+        }
+        
+        // Initialize IndexedDB
+        window.addEventListener('load', async () => {
+            try {
+                await window.DB.init();
+                console.log('✓ IndexedDB ready');
+            } catch (error) {
+                console.error('IndexedDB initialization failed:', error);
+            }
+        });
+    </script>
+    
+    <!-- Advanced Mathematics Library -->
+    <script src="advanced_math.js"></script>
+    
+    <!-- Bitcoin Mining Demo -->
+    <script src="bitcoin_miner.js"></script>
 </body>
 </html>

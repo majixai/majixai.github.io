@@ -351,6 +351,9 @@ async function main() {
             console.log(`Total tickers: ${allRows.length}`);
             console.log(`Rows per page: ${ROWS_PER_PAGE}`);
             console.log(`Total pages: ${totalPages}`);
+            
+            // Initialize search and filter
+            initializeSearchAndFilter();
         }, 800);
 
     } catch (error) {
@@ -371,6 +374,181 @@ async function main() {
             LOADER_DETAILS.style.color = '#dc3545';
         }
     }
+}
+
+// ============================================
+// SEARCH AND FILTER FUNCTIONALITY
+// ============================================
+
+let filteredRows = [];
+let allTickers = [];
+
+function initializeSearchAndFilter() {
+    console.log('Initializing search and filter...');
+    
+    // Store all ticker symbols for autocomplete
+    allTickers = [...new Set(allRows.map(row => row.Ticker))].sort();
+    console.log(`Found ${allTickers.length} unique tickers`);
+    
+    const searchInput = document.getElementById('ticker-search');
+    const sortSelect = document.getElementById('sort-select');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+    
+    // Search input with debounce
+    let searchTimeout;
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim().toUpperCase();
+        
+        if (query.length > 0) {
+            searchTimeout = setTimeout(() => {
+                showAutocomplete(query);
+            }, 200);
+        } else {
+            hideAutocomplete();
+            applyFilters();
+        }
+    });
+    
+    // Autocomplete selection
+    searchInput.addEventListener('keydown', (e) => {
+        const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+        const selected = autocompleteDropdown.querySelector('.autocomplete-item.selected');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (selected && selected.nextElementSibling) {
+                selected.classList.remove('selected');
+                selected.nextElementSibling.classList.add('selected');
+                selected.nextElementSibling.scrollIntoView({ block: 'nearest' });
+            } else if (items.length > 0) {
+                items[0].classList.add('selected');
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (selected && selected.previousElementSibling) {
+                selected.classList.remove('selected');
+                selected.previousElementSibling.classList.add('selected');
+                selected.previousElementSibling.scrollIntoView({ block: 'nearest' });
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selected) {
+                selectTicker(selected.textContent);
+            }
+        } else if (e.key === 'Escape') {
+            hideAutocomplete();
+        }
+    });
+    
+    // Click outside to close
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+            hideAutocomplete();
+        }
+    });
+    
+    // Sort selection
+    sortSelect.addEventListener('change', () => {
+        applyFilters();
+    });
+    
+    // Clear filters
+    clearFiltersBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        sortSelect.value = 'date-desc';
+        hideAutocomplete();
+        applyFilters();
+    });
+}
+
+function showAutocomplete(query) {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    const matches = allTickers.filter(ticker => ticker.startsWith(query)).slice(0, 10);
+    
+    if (matches.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-item" style="color: #999;">No matches found</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    dropdown.innerHTML = matches.map(ticker => 
+        `<div class="autocomplete-item">${ticker}</div>`
+    ).join('');
+    
+    // Add click handlers
+    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('click', () => {
+            selectTicker(item.textContent);
+        });
+        
+        item.addEventListener('mouseenter', () => {
+            dropdown.querySelectorAll('.autocomplete-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+        });
+    });
+    
+    dropdown.classList.add('active');
+}
+
+function hideAutocomplete() {
+    const dropdown = document.getElementById('autocomplete-dropdown');
+    dropdown.classList.remove('active');
+}
+
+function selectTicker(ticker) {
+    console.log(`Selected ticker: ${ticker}`);
+    const searchInput = document.getElementById('ticker-search');
+    searchInput.value = ticker;
+    hideAutocomplete();
+    applyFilters();
+}
+
+function applyFilters() {
+    const searchQuery = document.getElementById('ticker-search').value.trim().toUpperCase();
+    const sortValue = document.getElementById('sort-select').value;
+    
+    console.log(`Applying filters: search="${searchQuery}", sort="${sortValue}"`);
+    
+    // Filter rows
+    if (searchQuery) {
+        filteredRows = allRows.filter(row => row.Ticker.toUpperCase().includes(searchQuery));
+        console.log(`Filtered to ${filteredRows.length} rows`);
+    } else {
+        filteredRows = [...allRows];
+    }
+    
+    // Sort rows
+    filteredRows.sort((a, b) => {
+        switch(sortValue) {
+            case 'ticker-asc':
+                return a.Ticker.localeCompare(b.Ticker);
+            case 'ticker-desc':
+                return b.Ticker.localeCompare(a.Ticker);
+            case 'price-asc':
+                return parseFloat(a.Close) - parseFloat(b.Close);
+            case 'price-desc':
+                return parseFloat(b.Close) - parseFloat(a.Close);
+            case 'date-asc':
+                return new Date(a.Date) - new Date(b.Date);
+            case 'date-desc':
+                return new Date(b.Date) - new Date(a.Date);
+            default:
+                return 0;
+        }
+    });
+    
+    // Update display with filtered rows
+    allRows = filteredRows;
+    currentPage = 1;
+    totalPages = Math.ceil(allRows.length / ROWS_PER_PAGE);
+    
+    displayTablePage(1);
+    setupPagination();
+    updatePaginationButtons();
+    
+    console.log(`Displaying ${allRows.length} rows in ${totalPages} pages`);
 }
 
 console.log('Initializing...');
