@@ -55,24 +55,59 @@ tbody tr:hover {
 #pagination-container {
     text-align: center;
     margin-top: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 #pagination-container a {
     color: black;
-    float: left;
     padding: 8px 16px;
     text-decoration: none;
     transition: background-color .3s;
     border: 1px solid #ddd;
-    margin: 0 4px;
+    border-radius: 4px;
+    background-color: white;
 }
 
 #pagination-container a.active {
     background-color: #007bff;
     color: white;
     border: 1px solid #007bff;
+    font-weight: bold;
 }
 
-#pagination-container a:hover:not(.active) {
+#pagination-container a:hover:not(.active):not(.disabled) {
     background-color: #ddd;
+    cursor: pointer;
+}
+
+#pagination-container a.pagination-nav {
+    font-weight: bold;
+    background-color: #f8f9fa;
+}
+
+#pagination-container a.pagination-nav:hover:not(.disabled) {
+    background-color: #e2e6ea;
+}
+
+#pagination-container a.disabled {
+    color: #ccc;
+    cursor: not-allowed;
+    border-color: #e9ecef;
+    background-color: #f8f9fa;
+}
+
+#pagination-container .pagination-ellipsis {
+    padding: 8px 12px;
+    color: #6c757d;
+}
+
+#pagination-container .page-info {
+    padding: 8px 16px;
+    color: #6c757d;
+    font-size: 0.9em;
+    margin-left: 10px;
 }
