@@ -8,7 +8,14 @@
 </head>
 <body>
     <h1>YFinance Data</h1>
-    <div id="loader">Loading and decompressing data...</div>
+    <div id="loader" class="loader-container">
+        <div class="loader-spinner"></div>
+        <div id="loader-text" class="loader-text">Initializing...</div>
+        <div id="loader-details" class="loader-details"></div>
+        <div id="loader-progress" class="loader-progress">
+            <div id="loader-progress-bar" class="loader-progress-bar"></div>
+        </div>
+    </div>
     <div id="data-container"></div>
     <div id="pagination-container"></div>
 

@@ -1,5 +1,8 @@
 const DB_URL = 'yfinance.dat';
 const LOADER = document.getElementById('loader');
+const LOADER_TEXT = document.getElementById('loader-text');
+const LOADER_DETAILS = document.getElementById('loader-details');
+const LOADER_PROGRESS = document.getElementById('loader-progress-bar');
 const DATA_CONTAINER = document.getElementById('data-container');
 const PAGINATION_CONTAINER = document.getElementById('pagination-container');
 const ROWS_PER_PAGE = 50; // Increased from 10 to 50 for better performance with 1000 tickers
@@ -9,6 +12,28 @@ let currentPage = 1;
 let totalPages = 0;
 
 console.log('=== YFinance Data Viewer Initialized ===');
+
+// Enhanced loading state management
+function updateLoadingState(text, details = '', progress = 0) {
+    console.log(`[Loading] ${text} ${details ? '- ' + details : ''} (${progress}%)`);
+    if (LOADER_TEXT) LOADER_TEXT.textContent = text;
+    if (LOADER_DETAILS) LOADER_DETAILS.textContent = details;
+    if (LOADER_PROGRESS) LOADER_PROGRESS.style.width = `${progress}%`;
+}
+
+function hideLoader() {
+    console.log('[Loading] Complete - hiding loader');
+    if (LOADER) {
+        LOADER.classList.add('hidden');
+    }
+}
+
+function showLoader() {
+    console.log('[Loading] Showing loader');
+    if (LOADER) {
+        LOADER.classList.remove('hidden');
+    }
+}
 
 function displayTablePage(page) {
     console.log(`Displaying page ${page} of ${totalPages}`);
@@ -189,35 +214,69 @@ async function main() {
     console.log('Database URL:', DB_URL);
     
     try {
+        // Step 1: Initialize SQL.js
+        updateLoadingState(
+            'Initializing SQL.js library...',
+            'Loading WebAssembly database engine',
+            5
+        );
         console.log('Initializing SQL.js...');
         const SQL = await initSqlJs({
             locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/${file}`
         });
         console.log('✓ SQL.js initialized');
 
-        LOADER.textContent = 'Fetching and decompressing database...';
+        // Step 2: Fetch compressed database
+        updateLoadingState(
+            'Fetching database...',
+            'Downloading compressed data from server',
+            15
+        );
         console.log('Fetching database from:', `${DB_URL}?t=${new Date().getTime()}`);
         
-        // Add cache busting query parameter
         const response = await fetch(`${DB_URL}?t=${new Date().getTime()}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         console.log('✓ Database fetched');
         
+        // Step 3: Load compressed data
+        updateLoadingState(
+            'Loading compressed data...',
+            'Reading data into memory',
+            30
+        );
         const compressedData = new Uint8Array(await response.arrayBuffer());
-        console.log(`Compressed data size: ${compressedData.length.toLocaleString()} bytes`);
+        const compressedSizeMB = (compressedData.length / 1024 / 1024).toFixed(2);
+        console.log(`Compressed data size: ${compressedData.length.toLocaleString()} bytes (${compressedSizeMB} MB)`);
         
+        // Step 4: Decompress database
+        updateLoadingState(
+            'Decompressing database...',
+            `Inflating ${compressedSizeMB} MB of compressed data`,
+            45
+        );
         console.log('Decompressing database...');
         const decompressedData = pako.inflate(compressedData);
-        console.log(`✓ Decompressed data size: ${decompressedData.length.toLocaleString()} bytes`);
+        const decompressedSizeMB = (decompressedData.length / 1024 / 1024).toFixed(2);
+        console.log(`✓ Decompressed data size: ${decompressedData.length.toLocaleString()} bytes (${decompressedSizeMB} MB)`);
 
-        LOADER.textContent = 'Loading database...';
+        // Step 5: Load into SQL.js
+        updateLoadingState(
+            'Initializing database...',
+            'Loading decompressed data into SQL engine',
+            60
+        );
         console.log('Loading database into SQL.js...');
         const db = new SQL.Database(decompressedData);
         console.log('✓ Database loaded');
 
-        LOADER.textContent = 'Querying data...';
+        // Step 6: Execute query
+        updateLoadingState(
+            'Querying database...',
+            'Retrieving latest prices for all tickers',
+            75
+        );
         console.log('Executing query to get latest prices...');
         const stmt = db.prepare(`
             SELECT Ticker, Close, Date
@@ -226,32 +285,76 @@ async function main() {
             ORDER BY Ticker
         `);
 
+        // Step 7: Process results
+        updateLoadingState(
+            'Processing results...',
+            'Loading ticker data into memory',
+            85
+        );
         let rowCount = 0;
         while (stmt.step()) {
             allRows.push(stmt.getAsObject());
             rowCount++;
+            
+            // Update progress during loading
             if (rowCount % 100 === 0) {
+                const progressPercent = 85 + (rowCount / 1000) * 10; // 85-95% range
+                updateLoadingState(
+                    'Processing results...',
+                    `Loaded ${rowCount} tickers so far...`,
+                    Math.min(progressPercent, 95)
+                );
                 console.log(`  Loaded ${rowCount} rows...`);
             }
         }
         stmt.free();
         console.log(`✓ Query complete: ${allRows.length} tickers loaded`);
 
-        LOADER.style.display = 'none';
+        // Step 8: Setup UI
+        updateLoadingState(
+            'Preparing interface...',
+            `Setting up display for ${allRows.length} tickers`,
+            95
+        );
         console.log('Displaying page 1...');
         displayTablePage(1);
+        
         console.log('Setting up pagination...');
         setupPagination();
         
-        console.log('=== YFinance Data Viewer Ready ===');
-        console.log(`Total tickers: ${allRows.length}`);
-        console.log(`Rows per page: ${ROWS_PER_PAGE}`);
-        console.log(`Total pages: ${totalPages}`);
+        // Step 9: Complete
+        updateLoadingState(
+            'Ready!',
+            `Successfully loaded ${allRows.length} tickers`,
+            100
+        );
+        
+        // Wait a moment to show completion, then hide
+        setTimeout(() => {
+            hideLoader();
+            console.log('=== YFinance Data Viewer Ready ===');
+            console.log(`Total tickers: ${allRows.length}`);
+            console.log(`Rows per page: ${ROWS_PER_PAGE}`);
+            console.log(`Total pages: ${totalPages}`);
+        }, 800);
 
     } catch (error) {
-        LOADER.textContent = `Error: ${error.message}`;
+        updateLoadingState(
+            '❌ Error Loading Data',
+            error.message,
+            0
+        );
         console.error('✗ Error loading data:', error);
         console.error('Stack trace:', error.stack);
+        
+        // Show error details in loader
+        if (LOADER_DETAILS) {
+            LOADER_DETAILS.innerHTML = `
+                <strong>Error:</strong> ${error.message}<br>
+                <small>Check the browser console for more details</small>
+            `;
+            LOADER_DETAILS.style.color = '#dc3545';
+        }
     }
 }
 

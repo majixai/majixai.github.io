@@ -69,19 +69,33 @@ def fetch_and_store_data():
     logger.info('='*60)
     logger.info(f'Total tickers to fetch: {len(TICKERS)}')
     logger.info(f'Started at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    logger.info('')
+    logger.info('Progress Legend:')
+    logger.info('  ✓ = Success')
+    logger.info('  ⚠ = No data available')
+    logger.info('  ✗ = Error occurred')
+    logger.info('')
     
     conn = sqlite3.connect(DB_NAME)
     successful = 0
     failed = 0
     failed_tickers = []
+    start_time = datetime.now()
     
     for i, ticker in enumerate(TICKERS, 1):
+        # Calculate progress
+        progress_pct = (i / len(TICKERS)) * 100
+        elapsed = (datetime.now() - start_time).total_seconds()
+        avg_time_per_ticker = elapsed / i if i > 0 else 0
+        remaining_tickers = len(TICKERS) - i
+        estimated_remaining = avg_time_per_ticker * remaining_tickers
+        
         try:
-            logger.info(f'[{i}/{len(TICKERS)}] Fetching {ticker}...')
+            logger.info(f'[{i:4d}/{len(TICKERS)}] ({progress_pct:5.1f}%) Fetching {ticker:8s}...')
             data = yf.download(ticker, period="1y", interval="1d", progress=False)
             
             if data.empty:
-                logger.warning(f'  ⚠ No data returned for {ticker}')
+                logger.info(f'  ⚠ No data available')
                 failed += 1
                 failed_tickers.append(ticker)
                 continue
@@ -100,28 +114,43 @@ def fetch_and_store_data():
             data_to_store['Ticker'] = data['Ticker']
 
             data_to_store.to_sql('prices', conn, if_exists='append', index=False)
-            logger.info(f'  ✓ Stored {len(data_to_store)} rows for {ticker}')
+            logger.info(f'  ✓ Stored {len(data_to_store)} rows')
             successful += 1
             
-            # Log progress every 50 tickers
+            # Detailed progress every 50 tickers
             if i % 50 == 0:
-                logger.info(f'Progress: {i}/{len(TICKERS)} ({i/len(TICKERS)*100:.1f}%) - Success: {successful}, Failed: {failed}')
+                logger.info('')
+                logger.info('-' * 60)
+                logger.info(f'📊 PROGRESS UPDATE: {i}/{len(TICKERS)} tickers processed')
+                logger.info(f'   Success: {successful} | Failed: {failed}')
+                logger.info(f'   Elapsed: {int(elapsed)}s | Avg: {avg_time_per_ticker:.2f}s/ticker')
+                logger.info(f'   Estimated remaining: {int(estimated_remaining)}s ({int(estimated_remaining/60)}m {int(estimated_remaining%60)}s)')
+                logger.info('-' * 60)
+                logger.info('')
                 
         except Exception as e:
-            logger.error(f'  ✗ Error fetching {ticker}: {str(e)}')
+            logger.info(f'  ✗ Error: {str(e)[:50]}')
             failed += 1
             failed_tickers.append(ticker)
     
     conn.close()
     
+    total_time = (datetime.now() - start_time).total_seconds()
+    
+    logger.info('')
     logger.info('='*60)
     logger.info('FETCH SUMMARY')
     logger.info('='*60)
     logger.info(f'Total tickers: {len(TICKERS)}')
-    logger.info(f'Successful: {successful}')
-    logger.info(f'Failed: {failed}')
+    logger.info(f'✓ Successful: {successful} ({successful/len(TICKERS)*100:.1f}%)')
+    logger.info(f'✗ Failed: {failed} ({failed/len(TICKERS)*100:.1f}%)')
+    logger.info(f'Total time: {int(total_time)}s ({int(total_time/60)}m {int(total_time%60)}s)')
+    logger.info(f'Average: {total_time/len(TICKERS):.2f}s per ticker')
     if failed_tickers:
-        logger.info(f'Failed tickers: {", ".join(failed_tickers[:20])}{"..." if len(failed_tickers) > 20 else ""}')
+        logger.info('')
+        logger.info(f'Failed tickers ({len(failed_tickers)}):')
+        for i in range(0, len(failed_tickers), 10):
+            logger.info(f'  {", ".join(failed_tickers[i:i+10])}')
     logger.info(f'Completed at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
 
 def compress_database():
