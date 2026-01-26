@@ -1,0 +1,111 @@
+name: YFinance Data Fetcher (Scheduled)
+
+on:
+  # Scheduled runs at 6:30 AM and 1:00 PM PST
+  # PST is UTC-8, so:
+  # 6:30 AM PST = 14:30 UTC
+  # 1:00 PM PST = 21:00 UTC
+  schedule:
+    - cron: '30 14 * * *'  # 6:30 AM PST daily
+    - cron: '0 21 * * *'   # 1:00 PM PST daily
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Data period (e.g., 1y, 6mo, 1mo)'
+        required: false
+        default: '1y'
+      interval:
+        description: 'Data interval (e.g., 1d, 1h)'
+        required: false
+        default: '1d'
+      category:
+        description: 'Ticker category (leave empty for all)'
+        required: false
+        default: ''
+
+# Sets permissions for the GITHUB_TOKEN
+permissions:
+  contents: write
+
+jobs:
+  fetch-yfinance-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          echo "INFO: Installing Python dependencies..."
+          pip install -r yfinance_data/requirements.txt
+          echo "SUCCESS: Dependencies installed."
+
+      - name: Run tests
+        run: |
+          echo "INFO: Running unit tests..."
+          python -m unittest yfinance_data/test_fetch_data.py -v
+          python -m unittest discover -s yfinance_data/tests -p 'test_*.py' -v
+          echo "SUCCESS: All tests passed."
+
+      - name: Run YFinance Data Fetcher
+        env:
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          WEBHOOK_URL: ${{ secrets.YFINANCE_WEBHOOK_URL }}
+        run: |
+          echo "INFO: Starting YFinance data fetch..."
+          echo "INFO: Current time (UTC): $(date)"
+
+          cd yfinance_data
+
+          # Determine arguments based on workflow trigger
+          ARGS="--period ${{ github.event.inputs.period || '1y' }} --interval ${{ github.event.inputs.interval || '1d' }}"
+
+          # Add category if specified
+          if [ -n "${{ github.event.inputs.category }}" ]; then
+            ARGS="$ARGS --category ${{ github.event.inputs.category }}"
+          fi
+
+          echo "INFO: Running with arguments: $ARGS"
+          python main.py $ARGS
+
+          echo "SUCCESS: YFinance data fetch complete."
+
+      - name: Commit and push changes
+        run: |
+          echo "INFO: Configuring git..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          echo "INFO: Checking for changes..."
+          git add yfinance_data/*.dat
+
+          if git diff --staged --quiet; then
+            echo "INFO: No new data files to commit."
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: Update yfinance data - $TIMESTAMP"
+            git push
+            echo "SUCCESS: Changes committed and pushed."
+          fi
+
+      - name: Upload data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yfinance-data-${{ github.run_number }}
+          path: yfinance_data/*.dat
+          retention-days: 30
