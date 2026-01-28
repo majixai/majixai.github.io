@@ -28,14 +28,7 @@
 #include <string.h>      /* String operations */
 #include <math.h>        /* Mathematical functions */
 #include <float.h>       /* Floating point limits */
-#include <time.h>        /* Time functions */
-#include <errno.h>       /* Error handling */
-#include <limits.h>      /* Integer limits */
-#include <stdint.h>      /* Fixed-width integers */
 #include <stdbool.h>     /* Boolean type */
-#include <assert.h>      /* Assertions */
-#include <signal.h>      /* Signal handling */
-#include <stdarg.h>      /* Variable arguments */
 
 /* ==============================================================================
  * CONSTANTS AND CONFIGURATION
@@ -102,7 +95,6 @@ static unsigned long lcg_state = 1;
  */
 void seed_random(unsigned int seed) {
     lcg_state = seed;
-    srand(seed);
 }
 
 /**
@@ -456,8 +448,15 @@ int compare_doubles(const void* a, const void* b) {
  * Compute percentile of array
  */
 double compute_percentile(double* arr, int n, double p) {
+    if (arr == NULL || n <= 0) return 0.0;
+    
     /* Create sorted copy */
     double* sorted = (double*)malloc(n * sizeof(double));
+    if (sorted == NULL) {
+        fprintf(stderr, "Warning: Memory allocation failed in compute_percentile\n");
+        return arr[0];  /* Return first element as fallback */
+    }
+    
     memcpy(sorted, arr, n * sizeof(double));
     qsort(sorted, n, sizeof(double), compare_doubles);
     
@@ -511,11 +510,11 @@ PredictionResults run_simulation(MarketConfig* config) {
     double* av_prices = (double*)malloc(n_sims * sizeof(double));
     double* strat_prices = (double*)malloc(n_sims * sizeof(double));
     
-    if (!gbm_prices || !av_prices || !strat_prices) {
+    if (gbm_prices == NULL || av_prices == NULL || strat_prices == NULL) {
         fprintf(stderr, "Error: Memory allocation failed\n");
-        free(gbm_prices);
-        free(av_prices);
-        free(strat_prices);
+        if (gbm_prices) free(gbm_prices);
+        if (av_prices) free(av_prices);
+        if (strat_prices) free(strat_prices);
         return results;
     }
     
@@ -639,22 +638,48 @@ int main(void) {
         .random_seed = DEFAULT_RANDOM_SEED
     };
     
-    /* Override from environment variables */
+    /* Override from environment variables with validation */
     char* env_val;
+    double temp_double;
+    int temp_int;
+    
     if ((env_val = getenv("DJI_PRICE")) != NULL) {
-        config.current_price = atof(env_val);
+        temp_double = atof(env_val);
+        if (temp_double > 0.0) {
+            config.current_price = temp_double;
+        } else {
+            fprintf(stderr, "Warning: Invalid DJI_PRICE, using default\n");
+        }
     }
     if ((env_val = getenv("VOLATILITY")) != NULL) {
-        config.volatility = atof(env_val);
+        temp_double = atof(env_val);
+        if (temp_double > 0.0 && temp_double <= 5.0) {
+            config.volatility = temp_double;
+        } else {
+            fprintf(stderr, "Warning: Invalid VOLATILITY (must be 0-5), using default\n");
+        }
     }
     if ((env_val = getenv("DRIFT")) != NULL) {
-        config.drift = atof(env_val);
+        temp_double = atof(env_val);
+        if (temp_double >= -1.0 && temp_double <= 1.0) {
+            config.drift = temp_double;
+        } else {
+            fprintf(stderr, "Warning: Invalid DRIFT (must be -1 to 1), using default\n");
+        }
     }
     if ((env_val = getenv("SIMULATIONS")) != NULL) {
-        config.simulations = atoi(env_val);
+        temp_int = atoi(env_val);
+        if (temp_int >= 100 && temp_int <= 1000000) {
+            config.simulations = temp_int;
+        } else {
+            fprintf(stderr, "Warning: Invalid SIMULATIONS (must be 100-1000000), using default\n");
+        }
     }
     if ((env_val = getenv("RANDOM_SEED")) != NULL) {
-        config.random_seed = (unsigned int)atoi(env_val);
+        temp_int = atoi(env_val);
+        if (temp_int >= 0) {
+            config.random_seed = (unsigned int)temp_int;
+        }
     }
     
     /* Seed random number generator */

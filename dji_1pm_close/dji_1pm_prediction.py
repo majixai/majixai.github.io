@@ -526,16 +526,21 @@ class MonteCarloEngine:
         Z = np.random.normal(0, 1, n_sims)
         S_T = S0 * np.exp((mu - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)
         
-        # Expected value of control
+        # Expected value of control (the underlying at time T)
         E_control = S0 * np.exp(mu * T)
         
-        # Compute optimal coefficient
-        cov = np.cov(S_T, S_T)[0, 1]  # Simplified for demonstration
-        var = np.var(S_T)
-        c_star = cov / var if var > 0 else 0
+        # The control variable is the difference from expected value
+        control = S_T - E_control
         
-        # Adjusted estimator
-        adjusted = S_T - c_star * (S_T - E_control)
+        # Compute optimal coefficient: c* = Cov(Y, C) / Var(C)
+        # Here Y = S_T (estimator) and C = control (S_T - E_control)
+        cov_matrix = np.cov(S_T, control)
+        cov_YC = cov_matrix[0, 1]  # Covariance between estimator and control
+        var_C = cov_matrix[1, 1]   # Variance of control
+        c_star = cov_YC / var_C if var_C > 0 else 0
+        
+        # Adjusted estimator: Y_adj = Y - c*(C - E[C]), where E[C] = 0
+        adjusted = S_T - c_star * control
         
         return np.mean(adjusted), np.std(adjusted) / np.sqrt(n_sims)
     
@@ -661,7 +666,7 @@ class DJI1PMPredictor:
         
         # 5. Itô's Lemma calculation for expected price change
         dt = T
-        dW = np.sqrt(T) * 0  # Expected value of Brownian increment
+        dW = 0.0  # Expected value of Brownian increment is zero
         ito_result = self.calculus.ito_lemma_application(
             S0, dt, dW, self.config.drift, self.config.volatility
         )
@@ -676,13 +681,7 @@ class DJI1PMPredictor:
         }
         
         # 7. Numerical Integration - expected value
-        def price_pdf(x, S, T, mu, sigma):
-            """Log-normal PDF for GBM ending price"""
-            m = np.log(S) + (mu - 0.5 * sigma**2) * T
-            s = sigma * np.sqrt(T)
-            return lognorm.pdf(x, s=s, scale=np.exp(m))
-        
-        # Expected price via integration
+        # Expected price via analytical formula for log-normal distribution
         mu, sigma = self.config.drift, self.config.volatility
         m = np.log(S0) + (mu - 0.5 * sigma**2) * T
         s = sigma * np.sqrt(T)
@@ -939,13 +938,41 @@ def create_visualization(results: Dict, config: MarketConfig, output_path: str):
 
 def main():
     """Main execution function."""
-    # Configuration
+    # Parse and validate configuration from environment
+    def get_validated_float(name: str, default: float, min_val: float = None, max_val: float = None) -> float:
+        try:
+            value = float(os.environ.get(name, default))
+            if min_val is not None and value < min_val:
+                print(f"Warning: {name}={value} is below minimum {min_val}, using {min_val}")
+                value = min_val
+            if max_val is not None and value > max_val:
+                print(f"Warning: {name}={value} exceeds maximum {max_val}, using {max_val}")
+                value = max_val
+            return value
+        except (ValueError, TypeError):
+            print(f"Warning: Invalid {name}, using default {default}")
+            return default
+    
+    def get_validated_int(name: str, default: int, min_val: int = 1, max_val: int = None) -> int:
+        try:
+            value = int(os.environ.get(name, default))
+            if value < min_val:
+                print(f"Warning: {name}={value} is below minimum {min_val}, using {min_val}")
+                value = min_val
+            if max_val is not None and value > max_val:
+                print(f"Warning: {name}={value} exceeds maximum {max_val}, using {max_val}")
+                value = max_val
+            return value
+        except (ValueError, TypeError):
+            print(f"Warning: Invalid {name}, using default {default}")
+            return default
+    
     config = MarketConfig(
-        current_price=float(os.environ.get('DJI_PRICE', 44000.00)),
-        volatility=float(os.environ.get('VOLATILITY', 0.15)),
-        drift=float(os.environ.get('DRIFT', 0.05)),
-        simulations=int(os.environ.get('SIMULATIONS', 10000)),
-        random_seed=int(os.environ.get('RANDOM_SEED', 42)) if os.environ.get('RANDOM_SEED') else 42
+        current_price=get_validated_float('DJI_PRICE', 44000.00, min_val=0.01),
+        volatility=get_validated_float('VOLATILITY', 0.15, min_val=0.001, max_val=5.0),
+        drift=get_validated_float('DRIFT', 0.05, min_val=-1.0, max_val=1.0),
+        simulations=get_validated_int('SIMULATIONS', 10000, min_val=100, max_val=1000000),
+        random_seed=get_validated_int('RANDOM_SEED', 42, min_val=0) if os.environ.get('RANDOM_SEED') else 42
     )
     
     # Create predictor

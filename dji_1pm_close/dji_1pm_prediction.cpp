@@ -29,59 +29,30 @@
 #include <fstream>        // File I/O
 #include <sstream>        // String streams
 #include <string>         // String class
-#include <string_view>    // String views (C++17)
 
 // STL Containers
 #include <vector>         // Dynamic arrays
 #include <array>          // Fixed-size arrays
-#include <deque>          // Double-ended queues
-#include <list>           // Doubly-linked lists
-#include <forward_list>   // Singly-linked lists
-#include <set>            // Ordered sets
-#include <map>            // Ordered maps
-#include <unordered_set>  // Hash sets
-#include <unordered_map>  // Hash maps
-#include <stack>          // Stack adapter
-#include <queue>          // Queue adapter
-#include <tuple>          // Tuple support
-#include <optional>       // Optional values (C++17)
-#include <variant>        // Type-safe unions (C++17)
 
 // STL Algorithms & Iterators
 #include <algorithm>      // Algorithms
 #include <numeric>        // Numeric algorithms
-#include <iterator>       // Iterator support
-#include <execution>      // Parallel execution policies
 
 // Functional & Utilities
 #include <functional>     // Function objects
-#include <utility>        // Utility functions
-#include <memory>         // Smart pointers
-#include <type_traits>    // Type traits
 
 // Numerics
 #include <cmath>          // Math functions
-#include <complex>        // Complex numbers
-#include <valarray>       // Numeric arrays
 #include <limits>         // Numeric limits
 #include <random>         // Random number generation
-#include <ratio>          // Compile-time ratios
-
-// Time & Chrono
-#include <chrono>         // Time utilities
-#include <ctime>          // C time functions
 
 // Other utilities
-#include <cassert>        // Assertions
 #include <cstdlib>        // C standard library
-#include <cstdint>        // Fixed-width integers
 #include <stdexcept>      // Standard exceptions
 
 // =============================================================================
 // NAMESPACE AND TYPE ALIASES
 // =============================================================================
-
-using namespace std::chrono_literals;
 
 namespace dji {
 
@@ -113,23 +84,54 @@ struct MarketConfig {
     unsigned int random_seed = 42;
     
     /**
-     * Load configuration from environment variables
+     * Load configuration from environment variables with validation
      */
     void load_from_env() {
-        if (const char* val = std::getenv("DJI_PRICE")) {
-            current_price = std::stod(val);
-        }
-        if (const char* val = std::getenv("VOLATILITY")) {
-            volatility = std::stod(val);
-        }
-        if (const char* val = std::getenv("DRIFT")) {
-            drift = std::stod(val);
-        }
-        if (const char* val = std::getenv("SIMULATIONS")) {
-            simulations = std::stoi(val);
-        }
+        auto get_env_double = [](const char* name, Real default_val, Real min_val, Real max_val) -> Real {
+            if (const char* val = std::getenv(name)) {
+                try {
+                    Real result = std::stod(val);
+                    if (result < min_val || result > max_val) {
+                        std::cerr << "Warning: " << name << " out of range, using default\n";
+                        return default_val;
+                    }
+                    return result;
+                } catch (const std::exception&) {
+                    std::cerr << "Warning: Invalid " << name << ", using default\n";
+                    return default_val;
+                }
+            }
+            return default_val;
+        };
+        
+        auto get_env_int = [](const char* name, int default_val, int min_val, int max_val) -> int {
+            if (const char* val = std::getenv(name)) {
+                try {
+                    int result = std::stoi(val);
+                    if (result < min_val || result > max_val) {
+                        std::cerr << "Warning: " << name << " out of range, using default\n";
+                        return default_val;
+                    }
+                    return result;
+                } catch (const std::exception&) {
+                    std::cerr << "Warning: Invalid " << name << ", using default\n";
+                    return default_val;
+                }
+            }
+            return default_val;
+        };
+        
+        current_price = get_env_double("DJI_PRICE", current_price, 0.01, 1e9);
+        volatility = get_env_double("VOLATILITY", volatility, 0.001, 5.0);
+        drift = get_env_double("DRIFT", drift, -1.0, 1.0);
+        simulations = get_env_int("SIMULATIONS", simulations, 100, 1000000);
+        
         if (const char* val = std::getenv("RANDOM_SEED")) {
-            random_seed = static_cast<unsigned int>(std::stoul(val));
+            try {
+                random_seed = static_cast<unsigned int>(std::stoul(val));
+            } catch (const std::exception&) {
+                std::cerr << "Warning: Invalid RANDOM_SEED, using default\n";
+            }
         }
     }
 };
