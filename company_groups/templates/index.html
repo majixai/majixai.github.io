@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Groups</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <header class="w3-container w3-blue-grey">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="logo">
+                <svg width="120" height="50">
+                    <rect width="120" height="50" style="fill:rgb(66,133,244);stroke-width:2;stroke:rgb(0,0,0)" />
+                    <text x="10" y="32" font-family="Verdana" font-size="16" fill="white">GROUPS</text>
+                </svg>
+            </div>
+            <nav>
+                <ul class="nav">
+                    <li class="nav-item"><a class="nav-link text-white" href="#companies">Companies</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#incentives">Incentives</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#schedules">Schedules</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="parallax">
+        <div class="caption">
+            <span class="border">Company Groups Management</span>
+        </div>
+    </div>
+
+    <div class="container mt-5">
+        <!-- Create Company Form -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Create New Company</h4>
+            </div>
+            <div class="card-body">
+                <form id="create-company-form">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="companyName">Company Name</label>
+                            <input type="text" class="form-control" id="companyName" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="companyDesc">Description</label>
+                            <input type="text" class="form-control" id="companyDesc">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hasLottery">
+                                <label class="form-check-label" for="hasLottery">Enable Lottery</label>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hasRaffle">
+                                <label class="form-check-label" for="hasRaffle">Enable Raffle</label>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="hasDisbursement">
+                                <label class="form-check-label" for="hasDisbursement">Enable Monthly Disbursement</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Company</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Companies Section -->
+        <section id="companies" class="mb-5">
+            <h2 class="text-center mb-4">Companies</h2>
+            <div class="row" id="company-grid">
+                <!-- Company cards will be inserted here -->
+            </div>
+        </section>
+
+        <!-- Company Details Modal -->
+        <div class="modal fade" id="companyModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="companyModalLabel">Company Details</h5>
+                        <button type="button" class="close text-white" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs" id="companyTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="tab" href="#membersTab">Members</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#schedulesTab">Schedules</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#incentivesTab">Incentives</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#stocksTab">Stocks</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#eventsTab">Events</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content mt-3">
+                            <div class="tab-pane fade show active" id="membersTab">
+                                <div id="members-content"></div>
+                            </div>
+                            <div class="tab-pane fade" id="schedulesTab">
+                                <div id="schedules-content"></div>
+                            </div>
+                            <div class="tab-pane fade" id="incentivesTab">
+                                <div id="incentives-content"></div>
+                            </div>
+                            <div class="tab-pane fade" id="stocksTab">
+                                <div id="stocks-content"></div>
+                            </div>
+                            <div class="tab-pane fade" id="eventsTab">
+                                <div id="events-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w3-container w3-dark-grey mt-5 p-3 text-center">
+        <p>&copy; 2026 Company Groups. All rights reserved.</p>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>
