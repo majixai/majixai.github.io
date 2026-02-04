@@ -1,0 +1,91 @@
+name: Market Prediction Webhook
+
+on:
+  # Run every minute (maximum frequency for GitHub Actions cron)
+  schedule:
+    - cron: '* * * * *'
+  
+  # Allow manual triggering (webhook-like behavior)
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: 'Stock ticker symbol (e.g., SPY, QQQ, DIA)'
+        required: false
+        default: 'SPY'
+      forecast_minutes:
+        description: 'Number of minutes to forecast'
+        required: false
+        default: '60'
+      simulations:
+        description: 'Number of Monte Carlo simulations'
+        required: false
+        default: '1000'
+
+  # Also trigger on push to the market_prediction directory
+  push:
+    branches:
+      - main
+    paths:
+      - 'market_prediction/**'
+
+permissions:
+  contents: write
+
+jobs:
+  run_market_prediction:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'market_prediction/requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          echo "INFO: Installing Python packages..."
+          pip install -r market_prediction/requirements.txt
+          echo "SUCCESS: Python dependencies installed."
+
+      - name: Run Market Prediction Engine
+        env:
+          TICKER: ${{ github.event.inputs.ticker || 'SPY' }}
+          FORECAST_MINUTES: ${{ github.event.inputs.forecast_minutes || '60' }}
+          SIMULATIONS: ${{ github.event.inputs.simulations || '1000' }}
+          WEBHOOK_URL: ${{ secrets.MARKET_PREDICTION_WEBHOOK_URL }}
+        run: |
+          echo "INFO: Running Market Prediction Engine..."
+          echo "Ticker: $TICKER"
+          echo "Forecast Minutes: $FORECAST_MINUTES"
+          echo "Simulations: $SIMULATIONS"
+          cd market_prediction
+          python market_predictor.py
+          echo "SUCCESS: Prediction completed."
+
+      - name: Commit and push results
+        run: |
+          echo "INFO: Configuring git user..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          echo "INFO: Staging prediction output..."
+          git add market_prediction/market_prediction_output.png
+          git add market_prediction/latest_prediction.json
+
+          if ! git diff --staged --quiet; then
+            echo "INFO: Changes detected. Committing..."
+            TICKER="${{ github.event.inputs.ticker || 'SPY' }}"
+            git commit -m "prediction: Update ${TICKER} market prediction - $(date +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "INFO: Pushing changes..."
+            git push
+            echo "SUCCESS: Prediction results pushed."
+          else
+            echo "INFO: No changes to commit."
+          fi

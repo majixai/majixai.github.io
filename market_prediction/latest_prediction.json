@@ -1,0 +1,57 @@
+{
+  "ticker": "SPY",
+  "timestamp": "2026-02-04T00:34:39.890408",
+  "current_price": 594.11,
+  "forecast_minutes": 60,
+  "simulation": {
+    "statistics": {
+      "mean": 594.0224151235332,
+      "std": 2.420851822833096,
+      "p05": 590.0313160525935,
+      "p25": 592.404840449169,
+      "p50": 594.0213737839879,
+      "p75": 595.6542008297048,
+      "p95": 597.900716381629,
+      "min": 585.5665720070073,
+      "max": 602.2399976983551
+    },
+    "simulations": 1000,
+    "volatility": 0.166
+  },
+  "technical_indicators": {
+    "rsi": 53.12,
+    "macd": {
+      "line": 5.3243,
+      "signal": 4.7919,
+      "histogram": 0.5324
+    },
+    "bollinger_bands": {
+      "upper": 620.3,
+      "middle": 599.0,
+      "lower": 577.69
+    }
+  },
+  "bsm_analysis": {
+    "greeks": {
+      "delta": 0.5456,
+      "gamma": 0.014017,
+      "theta": -0.2316,
+      "vega": 0.6751,
+      "rho": 0.2561
+    },
+    "atm_call_price": 12.58,
+    "atm_put_price": 10.02,
+    "implied_move": 0.41
+  },
+  "prediction": {
+    "signal": "NEUTRAL",
+    "score": 1,
+    "confidence": 25.0,
+    "reasons": [
+      "MACD histogram positive (bullish momentum)"
+    ],
+    "target_price": 594.02,
+    "support": 592.4,
+    "resistance": 595.65
+  }
+}
