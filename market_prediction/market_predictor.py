@@ -682,7 +682,7 @@ def main():
     print(f"Chart saved to: {chart_file}")
     
     # Save prediction data (without paths for smaller file size)
-    prediction_output = {k: v for k, v in prediction_data.items() if k != 'simulation' or k == 'simulation'}
+    prediction_output = {k: v for k, v in prediction_data.items() if k != 'simulation'}
     prediction_output['simulation'] = {k: v for k, v in prediction_data['simulation'].items() if k != 'paths'}
     
     json_file = os.path.join(output_dir, 'latest_prediction.json')

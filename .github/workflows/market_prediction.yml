@@ -3,7 +3,7 @@ name: Market Prediction Webhook
 on:
   # Run every minute (maximum frequency for GitHub Actions cron)
   schedule:
-    - cron: '* * * * *'
+    - cron: '*/15 * * * *'
   
   # Allow manual triggering (webhook-like behavior)
   workflow_dispatch:
