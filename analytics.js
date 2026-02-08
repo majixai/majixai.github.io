@@ -181,25 +181,28 @@
     }
 
     /**
-     * Track performance metrics
+     * Track performance metrics using Navigation Timing Level 2 API
      */
     function trackPerformance() {
-        if ('performance' in window) {
+        if ('performance' in window && 'getEntriesByType' in performance) {
             window.addEventListener('load', function() {
                 setTimeout(function() {
-                    const timing = performance.timing;
-                    const params = {
-                        dns_time: timing.domainLookupEnd - timing.domainLookupStart,
-                        connect_time: timing.connectEnd - timing.connectStart,
-                        ttfb: timing.responseStart - timing.requestStart,
-                        dom_load_time: timing.domContentLoadedEventEnd - timing.navigationStart,
-                        page_load_time: timing.loadEventEnd - timing.navigationStart
-                    };
+                    const entries = performance.getEntriesByType('navigation');
+                    if (entries.length > 0) {
+                        const navTiming = entries[0];
+                        const params = {
+                            dns_time: Math.round(navTiming.domainLookupEnd - navTiming.domainLookupStart),
+                            connect_time: Math.round(navTiming.connectEnd - navTiming.connectStart),
+                            ttfb: Math.round(navTiming.responseStart - navTiming.requestStart),
+                            dom_load_time: Math.round(navTiming.domContentLoadedEventEnd - navTiming.startTime),
+                            page_load_time: Math.round(navTiming.loadEventEnd - navTiming.startTime)
+                        };
 
-                    if (typeof gtag !== 'undefined') {
-                        gtag('event', 'page_timing', params);
+                        if (typeof gtag !== 'undefined') {
+                            gtag('event', 'page_timing', params);
+                        }
+                        debugLog('page_timing', params);
                     }
-                    debugLog('page_timing', params);
                 }, 0);
             });
         }
@@ -209,11 +212,12 @@
      * Track errors
      */
     function trackError(errorMessage, errorSource, errorLine) {
+        const safeMessage = String(errorMessage || 'Unknown error').substring(0, 100);
         const params = {
             event_category: 'error',
-            error_message: errorMessage.substring(0, 100), // Limit message length
-            error_source: errorSource,
-            error_line: errorLine,
+            error_message: safeMessage,
+            error_source: errorSource || 'unknown',
+            error_line: errorLine || 0,
             page_path: window.location.pathname
         };
 
@@ -228,11 +232,13 @@
      */
     function trackPageExit() {
         trackEngagementTime();
+        const scrollKeys = Object.keys(scrollDepthTracked).map(Number).filter(n => !isNaN(n));
+        const maxScroll = scrollKeys.length > 0 ? Math.max(...scrollKeys) : 0;
         const params = {
             event_category: 'engagement',
             engagement_time_msec: engagementTime,
             session_duration: Math.round((Date.now() - sessionStartTime) / 1000),
-            max_scroll_depth: Math.max(...Object.keys(scrollDepthTracked).map(Number), 0),
+            max_scroll_depth: maxScroll,
             page_path: window.location.pathname
         };
 

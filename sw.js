@@ -63,11 +63,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Skip Google Analytics and tracking requests
-    if (request.url.includes('google-analytics.com') || 
-        request.url.includes('googletagmanager.com') ||
-        request.url.includes('script.google.com')) {
-        return;
+    // Skip Google Analytics and tracking requests by checking the URL hostname
+    try {
+        const url = new URL(request.url);
+        const hostname = url.hostname;
+        const pathname = url.pathname;
+        
+        // Check if this is an analytics/tracking request
+        if (hostname === 'www.google-analytics.com' ||
+            hostname === 'google-analytics.com' ||
+            hostname === 'www.googletagmanager.com' ||
+            hostname === 'googletagmanager.com' ||
+            hostname === 'script.google.com' ||
+            pathname === '/collect' ||
+            pathname === '/g/collect' ||
+            pathname.startsWith('/mp/collect')) {
+            return;
+        }
+    } catch (e) {
+        // If URL parsing fails, proceed with caching logic
+        console.warn('ServiceWorker: Could not parse URL', request.url);
     }
 
     // For navigation requests (HTML), use network first strategy
