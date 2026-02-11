@@ -1,25 +1,14 @@
 const DB_URL = 'yfinance.dat';
 const LOADER = document.getElementById('loader');
 const DATA_CONTAINER = document.getElementById('data-container');
-const PAGINATION_CONTAINER = document.getElementById('pagination-container');
-const ROWS_PER_PAGE = 10;
 
-let allRows = [];
-let currentPage = 1;
-
-function displayTablePage(page) {
-    currentPage = page;
-    DATA_CONTAINER.innerHTML = '';
-    const startIndex = (page - 1) * ROWS_PER_PAGE;
-    const endIndex = startIndex + ROWS_PER_PAGE;
-    const paginatedRows = allRows.slice(startIndex, endIndex);
-
-    let tableHtml = '<table><thead><tr><th>Ticker</th><th>Close</th><th>Date</th></tr></thead><tbody>';
-    paginatedRows.forEach(row => {
+function displayData(rows) {
+    let tableHtml = '<table><thead><tr><th>Ticker</th><th>Close</th><th>Datetime</th></tr></thead><tbody>';
+    rows.forEach(row => {
         tableHtml += `<tr>
             <td>${row.Ticker}</td>
             <td>${row.Close}</td>
-            <td>${row.Date}</td>
+            <td>${row.Datetime}</td>
         </tr>`;
     });
     tableHtml += '</tbody></table>';
@@ -29,39 +18,10 @@ function displayTablePage(page) {
     tableRows.forEach(row => {
         row.addEventListener('click', () => {
             const ticker = row.cells[0].textContent;
-            // Link to Google Finance. Note: Exchange might be needed for some tickers for accuracy.
-            // For this example, we'll assume the ticker is sufficient for major exchanges.
-            const url = `https://www.google.com/finance/quote/${ticker}`;
+            // Link to Google Finance for SPX
+            const url = `https://www.google.com/finance/quote/SPX:INDEXSP`;
             window.open(url, '_blank');
         });
-    });
-
-    updatePaginationButtons();
-}
-
-function setupPagination() {
-    const pageCount = Math.ceil(allRows.length / ROWS_PER_PAGE);
-    for (let i = 1; i <= pageCount; i++) {
-        const link = document.createElement('a');
-        link.href = '#';
-        link.innerText = i;
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            displayTablePage(i);
-        });
-        PAGINATION_CONTAINER.appendChild(link);
-    }
-    updatePaginationButtons();
-}
-
-function updatePaginationButtons() {
-    const links = PAGINATION_CONTAINER.querySelectorAll('a');
-    links.forEach((link, index) => {
-        if ((index + 1) === currentPage) {
-            link.classList.add('active');
-        } else {
-            link.classList.remove('active');
-        }
     });
 }
 
@@ -72,7 +32,6 @@ async function main() {
         });
 
         LOADER.textContent = 'Fetching and decompressing database...';
-        // Add cache busting query parameter
         const response = await fetch(`${DB_URL}?t=${new Date().getTime()}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const compressedData = new Uint8Array(await response.arrayBuffer());
@@ -83,20 +42,20 @@ async function main() {
 
         LOADER.textContent = 'Querying data...';
         const stmt = db.prepare(`
-            SELECT Ticker, Close, Date
-            FROM prices p
-            WHERE p.rowid IN (SELECT MAX(rowid) FROM prices GROUP BY Ticker)
-            ORDER BY Ticker
+            SELECT Ticker, Close, Datetime
+            FROM prices
+            ORDER BY Datetime DESC
+            LIMIT 1
         `);
 
-        while (stmt.step()) {
-            allRows.push(stmt.getAsObject());
+        let rows = [];
+        if (stmt.step()) {
+            rows.push(stmt.getAsObject());
         }
         stmt.free();
 
         LOADER.style.display = 'none';
-        displayTablePage(1);
-        setupPagination();
+        displayData(rows);
 
     } catch (error) {
         LOADER.textContent = `Error: ${error.message}`;
