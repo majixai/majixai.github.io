@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Calculator with GAS Webhook</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+  <style>
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .numbers {
+      font-size: 2em;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .result {
+      font-size: 2.5em;
+      font-weight: bold;
+      text-align: center;
+      margin: 20px 0;
+      color: #2ecc71;
+      min-height: 60px;
+    }
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .status.pending {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .status.success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      font-size: 1.2em;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .config-section {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simple Calculator</h1>
+    <p>This app generates two random numbers, sends the calculation to a Google Apps Script webhook, and then displays the result.</p>
+
+    <div class="config-section">
+      <label for="webhookUrl">GAS Webhook URL:</label>
+      <input type="url" id="webhookUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width: 100%;">
+      <small>Enter your deployed GAS web app URL</small>
+    </div>
+
+    <button class="btn" onclick="runCalculation()">Generate & Calculate</button>
+
+    <div class="numbers" id="numbers">
+      <span id="num1">?</span> + <span id="num2">?</span>
+    </div>
+
+    <div class="status pending" id="status">Waiting to start...</div>
+
+    <div class="result" id="result">—</div>
+
+    <h3>Log</h3>
+    <ul id="log"></ul>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const num1El = document.getElementById('num1');
+    const num2El = document.getElementById('num2');
+    const logEl = document.getElementById('log');
+    const webhookInput = document.getElementById('webhookUrl');
+
+    // Load saved webhook URL from localStorage
+    const savedUrl = localStorage.getItem('gasWebhookUrl');
+    if (savedUrl) {
+      webhookInput.value = savedUrl;
+    }
+
+    // Save webhook URL when changed
+    webhookInput.addEventListener('change', () => {
+      localStorage.setItem('gasWebhookUrl', webhookInput.value);
+    });
+
+    function log(message) {
+      const li = document.createElement('li');
+      const timestamp = new Date().toLocaleTimeString();
+      li.textContent = `[${timestamp}] ${message}`;
+      logEl.insertBefore(li, logEl.firstChild);
+    }
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+    }
+
+    async function runCalculation() {
+      // Reset UI
+      resultEl.textContent = '—';
+      logEl.innerHTML = '';
+      setStatus('Generating random numbers...', 'pending');
+
+      // Generate two random numbers (1-100)
+      const num1 = Math.floor(Math.random() * 100) + 1;
+      const num2 = Math.floor(Math.random() * 100) + 1;
+      const sum = num1 + num2;
+
+      // Display numbers immediately
+      num1El.textContent = num1;
+      num2El.textContent = num2;
+      log(`Generated numbers: ${num1} and ${num2}`);
+
+      // Calculate timestamp
+      const timestamp = new Date().toISOString();
+      log(`Calculation: ${num1} + ${num2} = ${sum}`);
+
+      // Get webhook URL
+      const webhookUrl = webhookInput.value.trim();
+
+      if (webhookUrl) {
+        setStatus('Sending to GAS webhook...', 'pending');
+        log('Sending calculation to Google Apps Script...');
+
+        try {
+          // Send to GAS webhook immediately (before showing result)
+          const response = await fetch(webhookUrl, {
+            method: 'POST',
+            mode: 'no-cors', // GAS requires no-cors for cross-origin
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              num1: num1,
+              num2: num2,
+              operation: 'addition',
+              result: sum,
+              timestamp: timestamp,
+              source: 'simple_calculator'
+            })
+          });
+
+          log('Webhook request sent successfully (no-cors mode)');
+          setStatus('Sent to GAS! Waiting to display result...', 'success');
+        } catch (error) {
+          log(`Webhook error: ${error.message}`);
+          setStatus('Webhook failed, but continuing...', 'error');
+        }
+      } else {
+        log('No webhook URL configured - skipping GAS integration');
+        setStatus('Waiting to display result...', 'pending');
+      }
+
+      // Wait 1 second before showing the result
+      log('Waiting 1 second before displaying result...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Display result
+      resultEl.textContent = sum;
+      log('Result displayed!');
+      setStatus('Complete!', 'success');
+    }
+  </script>
+</body>
+</html>

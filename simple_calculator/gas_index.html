@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <title>Simple Calculator Webhook</title>
+  </head>
+  <body>
+    <h1>Simple Calculator Webhook</h1>
+    <p>
+      This Google Apps Script provides a webhook endpoint to receive calculation data
+      from the Simple Calculator web app and log it to a Google Sheet.
+    </p>
+
+    <h2>How It Works</h2>
+    <ol>
+      <li>The Simple Calculator generates two random numbers</li>
+      <li>The calculation is sent to this webhook immediately via POST</li>
+      <li>This script logs the calculation to a "Calculations" sheet</li>
+      <li>After 1 second, the result is displayed in the web app</li>
+    </ol>
+
+    <h2>Endpoint URL</h2>
+    <p>
+      Use the URL of this deployed web app to send POST requests with calculation data.
+    </p>
+
+    <h2>JSON Payload</h2>
+    <p>The POST request must contain a JSON body with the following structure:</p>
+    <pre><code>{
+  "num1": 42,
+  "num2": 58,
+  "operation": "addition",
+  "result": 100,
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "source": "simple_calculator"
+}</code></pre>
+
+    <h3>Fields</h3>
+    <ul>
+      <li><code>num1</code> (Required): The first number in the calculation</li>
+      <li><code>num2</code> (Required): The second number in the calculation</li>
+      <li><code>result</code> (Required): The result of the calculation</li>
+      <li><code>operation</code> (Optional): The type of operation (default: "addition")</li>
+      <li><code>timestamp</code> (Optional): Client-side timestamp of the calculation</li>
+      <li><code>source</code> (Optional): Identifier for the source application</li>
+    </ul>
+
+    <h2>Success Response</h2>
+    <pre><code>{
+  "success": true,
+  "message": "Calculation logged successfully",
+  "row": 5,
+  "timestamp": "2024-01-15T10:30:01.000Z"
+}</code></pre>
+
+    <h2>Error Response</h2>
+    <pre><code>{
+  "success": false,
+  "error": "Missing required fields: num1, num2, result"
+}</code></pre>
+
+    <h2>Setup Instructions</h2>
+    <ol>
+      <li>Create a new Google Sheet</li>
+      <li>Go to Extensions > Apps Script</li>
+      <li>Copy the Code.gs content into the script editor</li>
+      <li>Copy this HTML file content as index.html</li>
+      <li>Copy the appsscript.json content into the manifest</li>
+      <li>Deploy as a web app with "Anyone" access</li>
+      <li>Copy the deployment URL to the Simple Calculator web app</li>
+    </ol>
+
+  </body>
+</html>
