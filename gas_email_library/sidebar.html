@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('stylesheet'); ?>
+  </head>
+  <body>
+    <h2>Email Sender</h2>
+
+    <div class="container">
+      <form id="basic-email-form">
+        <label for="to">To:</label>
+        <input type="email" id="to" name="to" required>
+
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" name="subject" required>
+
+        <label for="body">Body:</label>
+        <textarea id="body" name="body" rows="4" required></textarea>
+
+        <button type="submit">Send Email</button>
+      </form>
+      <div id="status"></div>
+    </div>
+
+    <?!= include('javascript'); ?>
+  </body>
+</html>
