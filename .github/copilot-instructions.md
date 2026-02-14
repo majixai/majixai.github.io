@@ -194,5 +194,5 @@ When making changes:
 
 - **Do not** create markdown files for planning or tracking unless explicitly requested
 - **Do not** add new testing infrastructure unless necessary for the specific task
-- **Always** use absolute paths when referring to files in the repository (in CI/CD, this is typically `/home/runner/work/majixai.github.io/majixai.github.io/...`)
+- **Prefer relative paths** from repository root when referring to files (e.g., `./project/file.py`)
 - **Trust these instructions** - only search for additional information if instructions are incomplete or incorrect
