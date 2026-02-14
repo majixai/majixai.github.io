@@ -17,7 +17,7 @@ function getWeightedRandomSegment(segments) {
     let weightSum = 0;
     for (const segment of segments) {
         weightSum += (segment.weight || 1);
-        if (randomValue <= weightSum) {
+        if (randomValue < weightSum) {
             return segment;
         }
     }

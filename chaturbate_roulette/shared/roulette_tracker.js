@@ -235,7 +235,13 @@ function checkSpinCooldown(kv, username, cooldownSeconds) {
         return { canSpin: true, remainingSeconds: 0 };
     }
     
-    const elapsed = (Date.now() - parseInt(lastSpinTime, 10)) / 1000;
+    const parsedTime = parseInt(lastSpinTime, 10);
+    if (isNaN(parsedTime)) {
+        // Invalid data, allow spin
+        return { canSpin: true, remainingSeconds: 0 };
+    }
+    
+    const elapsed = (Date.now() - parsedTime) / 1000;
     if (elapsed >= cooldownSeconds) {
         return { canSpin: true, remainingSeconds: 0 };
     }

@@ -62,7 +62,7 @@ console.log("--- Roulette Tip Received Event Handler ---");
 
             for (const segment of config.segments) {
                 weightSum += (segment.weight || 1);
-                if (randomValue <= weightSum) {
+                if (randomValue < weightSum) {
                     result = segment;
                     break;
                 }

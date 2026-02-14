@@ -13,7 +13,7 @@ async function sendRouletteNotice(message, options = {}) {
     await $room.sendNotice(message, options);
 }
 
-function logRouletteMessage(level, message) {
+function logRoulette(level, message) {
     console.log(`Roulette - ${level.toUpperCase()}: ${message}`);
 }
 
@@ -251,7 +251,7 @@ async function handleRouletteSetCost(args, user) {
     $kv.set('roulette_config', JSON.stringify(config));
     
     await sendRouletteNotice(`✅ Spin cost set to ${newCost} tokens!`);
-    logRouletteMessage('info', `${user.username} set spin cost to ${newCost}`);
+    logRoulette('info', `${user.username} set spin cost to ${newCost}`);
 }
 registerRouletteCommand('roulette_setcost', handleRouletteSetCost, 'Set spin cost [tokens]', true);
 registerRouletteCommand('rsetcost', handleRouletteSetCost, 'Set spin cost [tokens]', true);
@@ -276,7 +276,7 @@ async function handleRouletteSetCooldown(args, user) {
     $kv.set('roulette_config', JSON.stringify(config));
     
     await sendRouletteNotice(`✅ Spin cooldown set to ${newCooldown} seconds!`, { toUsername: user.username });
-    logRouletteMessage('info', `${user.username} set spin cooldown to ${newCooldown}`);
+    logRoulette('info', `${user.username} set spin cooldown to ${newCooldown}`);
 }
 registerRouletteCommand('roulette_setcooldown', handleRouletteSetCooldown, 'Set spin cooldown [seconds]', true);
 registerRouletteCommand('rsetcd', handleRouletteSetCooldown, 'Set spin cooldown [seconds]', true);
@@ -307,7 +307,7 @@ async function handleRouletteReset(args, user) {
     $kv.set('roulette_tracking', JSON.stringify(initialData));
     
     await sendRouletteNotice("✅ Roulette stats have been reset!");
-    logRouletteMessage('info', `${user.username} reset roulette stats`);
+    logRoulette('info', `${user.username} reset roulette stats`);
 }
 registerRouletteCommand('roulette_reset', handleRouletteReset, 'Reset all stats [confirm]', true);
 registerRouletteCommand('rreset', handleRouletteReset, 'Reset all stats [confirm]', true);
@@ -327,7 +327,7 @@ async function handleRouletteAnnounce(args, user) {
         : `🎰 ROULETTE GAME IS ACTIVE! 🎰\nTip ${config.spinCost} tokens to spin the wheel and win prizes!\nType /rprizes to see what you can win!`;
     
     await sendRouletteNotice(message);
-    logRouletteMessage('info', `${user.username} triggered roulette announcement`);
+    logRoulette('info', `${user.username} triggered roulette announcement`);
 }
 registerRouletteCommand('roulette_announce', handleRouletteAnnounce, 'Send game announcement [message]', true);
 registerRouletteCommand('rannounce', handleRouletteAnnounce, 'Send game announcement [message]', true);
@@ -355,7 +355,7 @@ registerRouletteCommand('rannounce', handleRouletteAnnounce, 'Send game announce
         }
         
         // Execute command
-        logRouletteMessage('info', `${user.username} executed /${commandName} with args: ${args.join(' ')}`);
+        logRoulette('info', `${user.username} executed /${commandName} with args: ${args.join(' ')}`);
         await commandInfo.handler(args, user);
         
     } catch (error) {

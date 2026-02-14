@@ -358,8 +358,19 @@
                 // Process spin event
                 const { username, results, animation, spinsEarned } = event.payload;
                 
+                // Process first spin with animation
                 spinWheel(animation.angle, animation.duration, () => {
+                    // Show first result
                     showResult(username, results[0]);
+                    
+                    // If multiple spins, show remaining results sequentially
+                    if (spinsEarned > 1 && results.length > 1) {
+                        results.slice(1).forEach((result, idx) => {
+                            setTimeout(() => {
+                                showResult(username + ` (Spin ${idx + 2})`, result);
+                            }, (idx + 1) * 5000); // 5 second delay between results
+                        });
+                    }
                 });
             }
         }
