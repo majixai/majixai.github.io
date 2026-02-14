@@ -1,0 +1,269 @@
+/* Roulette Wheel Overlay Styles */
+/* Can be included separately or customized */
+
+:root {
+    --roulette-primary: #FFD700;
+    --roulette-secondary: #4ECDC4;
+    --roulette-accent: #FF6B6B;
+    --roulette-bg: rgba(0, 0, 0, 0.9);
+    --roulette-text: #FFFFFF;
+    --roulette-shadow: rgba(255, 215, 0, 0.5);
+}
+
+/* Wheel animations */
+@keyframes wheelGlow {
+    0%, 100% { box-shadow: 0 0 20px var(--roulette-shadow); }
+    50% { box-shadow: 0 0 40px var(--roulette-shadow); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    25% { transform: translateX(-50%) rotate(-5deg); }
+    75% { transform: translateX(-50%) rotate(5deg); }
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translate(-50%, -50%); }
+    50% { transform: translate(-50%, -55%); }
+}
+
+.wheel-glow {
+    animation: wheelGlow 2s ease-in-out infinite;
+}
+
+.pointer-shake {
+    animation: shake 0.1s ease-in-out infinite;
+}
+
+/* Mini wheel display for sidebar */
+.mini-wheel-container {
+    width: 150px;
+    height: 150px;
+    margin: 0 auto;
+}
+
+.mini-wheel-container .wheel {
+    width: 100%;
+    height: 100%;
+    border-width: 4px;
+}
+
+.mini-wheel-container .center-circle {
+    width: 30px;
+    height: 30px;
+    font-size: 14px;
+}
+
+.mini-wheel-container .pointer {
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 20px solid var(--roulette-primary);
+}
+
+.mini-wheel-container .segment-label {
+    font-size: 8px;
+}
+
+/* Stats display styling */
+.roulette-stats {
+    background: var(--roulette-bg);
+    border: 2px solid var(--roulette-primary);
+    border-radius: 10px;
+    padding: 15px;
+    color: var(--roulette-text);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.roulette-stats h3 {
+    color: var(--roulette-primary);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.roulette-stats .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.roulette-stats .stat-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.roulette-stats .stat-value {
+    color: var(--roulette-secondary);
+    font-weight: bold;
+}
+
+/* Leaderboard styling */
+.roulette-leaderboard {
+    background: var(--roulette-bg);
+    border: 2px solid var(--roulette-primary);
+    border-radius: 10px;
+    padding: 15px;
+    color: var(--roulette-text);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.roulette-leaderboard h3 {
+    color: var(--roulette-primary);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.roulette-leaderboard .entry {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.roulette-leaderboard .entry:nth-child(2) .medal { color: #FFD700; }
+.roulette-leaderboard .entry:nth-child(3) .medal { color: #C0C0C0; }
+.roulette-leaderboard .entry:nth-child(4) .medal { color: #CD7F32; }
+
+.roulette-leaderboard .medal {
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+.roulette-leaderboard .username {
+    flex: 1;
+    color: var(--roulette-secondary);
+}
+
+.roulette-leaderboard .spins {
+    color: var(--roulette-accent);
+    font-weight: bold;
+}
+
+/* Recent spins ticker */
+.roulette-ticker {
+    background: var(--roulette-bg);
+    border: 2px solid var(--roulette-primary);
+    border-radius: 25px;
+    padding: 10px 20px;
+    color: var(--roulette-text);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.roulette-ticker .ticker-content {
+    display: flex;
+    animation: tickerScroll 20s linear infinite;
+}
+
+@keyframes tickerScroll {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+.roulette-ticker .spin-entry {
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.roulette-ticker .spin-entry .username {
+    color: var(--roulette-secondary);
+}
+
+.roulette-ticker .spin-entry .result {
+    color: var(--roulette-primary);
+}
+
+/* Prize list styling */
+.roulette-prizes {
+    background: var(--roulette-bg);
+    border: 2px solid var(--roulette-primary);
+    border-radius: 10px;
+    padding: 15px;
+    color: var(--roulette-text);
+}
+
+.roulette-prizes h3 {
+    color: var(--roulette-primary);
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.roulette-prizes .prize-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.roulette-prizes .prize-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-right: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.roulette-prizes .prize-name {
+    flex: 1;
+    color: var(--roulette-text);
+}
+
+.roulette-prizes .prize-tokens {
+    color: var(--roulette-accent);
+    font-weight: bold;
+}
+
+/* Win celebration overlay */
+.win-celebration {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+.win-celebration.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.win-celebration .content {
+    text-align: center;
+    animation: bounce 0.5s ease infinite;
+}
+
+.win-celebration .big-text {
+    font-size: 72px;
+    color: var(--roulette-primary);
+    text-shadow: 0 0 30px var(--roulette-shadow);
+    margin-bottom: 20px;
+}
+
+.win-celebration .prize-text {
+    font-size: 36px;
+    color: var(--roulette-text);
+}
+
+.win-celebration .tokens-text {
+    font-size: 48px;
+    color: #00FF00;
+    margin-top: 10px;
+    font-weight: bold;
+}

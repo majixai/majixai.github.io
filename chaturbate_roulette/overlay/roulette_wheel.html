@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roulette Wheel Overlay</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        .roulette-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 1000;
+        }
+
+        .roulette-container.active {
+            display: block;
+        }
+
+        .wheel-wrapper {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5),
+                        0 0 40px rgba(255, 215, 0, 0.3);
+            border: 8px solid #333;
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+
+        .wheel.spinning {
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+        }
+
+        .segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            top: 0;
+            right: 0;
+            transform-origin: 0% 100%;
+            overflow: hidden;
+        }
+
+        .segment-content {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            bottom: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+            padding-top: 20px;
+        }
+
+        .segment-label {
+            font-weight: bold;
+            font-size: 12px;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            transform: rotate(90deg);
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #FFD700;
+            z-index: 10;
+            filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.8));
+        }
+
+        .center-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            border-radius: 50%;
+            border: 4px solid #333;
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        }
+
+        .result-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #FFD700;
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+            z-index: 2000;
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .result-display.show {
+            display: block;
+            animation: resultPop 0.5s ease;
+        }
+
+        @keyframes resultPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+
+        .result-username {
+            color: #4ECDC4;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .result-prize {
+            color: #FF6B6B;
+            font-size: 22px;
+            margin-top: 10px;
+        }
+
+        .result-tokens {
+            color: #00FF00;
+            font-size: 26px;
+            margin-top: 10px;
+        }
+
+        .spin-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #FFD700;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            display: none;
+        }
+
+        .spin-indicator.show {
+            display: block;
+        }
+
+        /* Confetti animation for wins */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #FFD700;
+            animation: confettiFall 3s ease-out forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Roulette Wheel -->
+    <div class="roulette-container" id="rouletteContainer">
+        <div class="wheel-wrapper">
+            <div class="pointer"></div>
+            <div class="wheel" id="wheel"></div>
+            <div class="center-circle">🎰</div>
+        </div>
+    </div>
+
+    <!-- Result Display -->
+    <div class="result-display" id="resultDisplay">
+        <div class="result-username" id="resultUsername"></div>
+        <div id="resultLabel"></div>
+        <div class="result-prize" id="resultPrize"></div>
+        <div class="result-tokens" id="resultTokens"></div>
+    </div>
+
+    <!-- Spin Indicator -->
+    <div class="spin-indicator" id="spinIndicator">🎰 Spinning...</div>
+
+    <script>
+        // Default segments (will be updated from app config)
+        let segments = [
+            { id: 1, label: "Flash!", color: "#FF6B6B", tokens: 0 },
+            { id: 2, label: "Dance!", color: "#4ECDC4", tokens: 0 },
+            { id: 3, label: "Bonus 50!", color: "#FFE66D", tokens: 50 },
+            { id: 4, label: "Tease", color: "#95E1D3", tokens: 0 },
+            { id: 5, label: "Song Request", color: "#F38181", tokens: 0 },
+            { id: 6, label: "Try Again!", color: "#AA96DA", tokens: 0 },
+            { id: 7, label: "Special!", color: "#FCBAD3", tokens: 0 },
+            { id: 8, label: "Bonus 25!", color: "#A8D8EA", tokens: 25 },
+            { id: 9, label: "Pose", color: "#C9CBA3", tokens: 0 },
+            { id: 10, label: "JACKPOT!", color: "#FFD700", tokens: 200 }
+        ];
+
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        // Initialize wheel
+        function initWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            
+            const segmentAngle = 360 / segments.length;
+            
+            segments.forEach((segment, index) => {
+                const segmentEl = document.createElement('div');
+                segmentEl.className = 'segment';
+                segmentEl.style.transform = `rotate(${index * segmentAngle}deg) skewY(${90 - segmentAngle}deg)`;
+                segmentEl.style.backgroundColor = segment.color;
+                
+                const content = document.createElement('div');
+                content.className = 'segment-content';
+                content.style.transform = `skewY(${-(90 - segmentAngle)}deg) rotate(${segmentAngle / 2}deg)`;
+                
+                const label = document.createElement('span');
+                label.className = 'segment-label';
+                label.textContent = segment.label;
+                
+                content.appendChild(label);
+                segmentEl.appendChild(content);
+                wheel.appendChild(segmentEl);
+            });
+        }
+
+        // Spin the wheel
+        function spinWheel(angle, duration, callback) {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const wheel = document.getElementById('wheel');
+            const container = document.getElementById('rouletteContainer');
+            const indicator = document.getElementById('spinIndicator');
+            
+            // Show wheel and indicator
+            container.classList.add('active');
+            indicator.classList.add('show');
+            
+            // Reset and spin
+            wheel.style.transition = 'none';
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            
+            // Force reflow
+            wheel.offsetHeight;
+            
+            // Apply spin
+            wheel.style.transition = `transform ${duration}ms cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
+            currentRotation += angle;
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            
+            // After spin completes
+            setTimeout(() => {
+                isSpinning = false;
+                indicator.classList.remove('show');
+                if (callback) callback();
+            }, duration);
+        }
+
+        // Show result
+        function showResult(username, result) {
+            const display = document.getElementById('resultDisplay');
+            const usernameEl = document.getElementById('resultUsername');
+            const labelEl = document.getElementById('resultLabel');
+            const prizeEl = document.getElementById('resultPrize');
+            const tokensEl = document.getElementById('resultTokens');
+            
+            usernameEl.textContent = username;
+            labelEl.textContent = result.label;
+            prizeEl.textContent = result.prize || '';
+            tokensEl.textContent = result.tokens > 0 ? `+${result.tokens} TOKENS!` : '';
+            
+            display.classList.add('show');
+            
+            // Create confetti for wins
+            if (result.tokens > 0) {
+                createConfetti();
+            }
+            
+            // Hide after delay
+            setTimeout(() => {
+                display.classList.remove('show');
+                document.getElementById('rouletteContainer').classList.remove('active');
+            }, 4000);
+        }
+
+        // Create confetti effect
+        function createConfetti() {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#FF69B4', '#00FF00'];
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = (Math.random() * 10 + 5) + 'px';
+                    confetti.style.height = confetti.style.width;
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 50);
+            }
+        }
+
+        // Handle events from Chaturbate app
+        function handleOverlayEvent(event) {
+            if (event.eventName === 'setConfig') {
+                // Update segments configuration
+                if (event.payload && event.payload.segments) {
+                    segments = event.payload.segments;
+                    initWheel();
+                }
+            } else if (event.eventName === 'spin') {
+                // Process spin event
+                const { username, results, animation, spinsEarned } = event.payload;
+                
+                spinWheel(animation.angle, animation.duration, () => {
+                    showResult(username, results[0]);
+                });
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initWheel();
+            
+            // Listen for Chaturbate overlay events
+            // The CB platform will inject the overlay API
+            if (typeof CB !== 'undefined' && CB.overlay) {
+                CB.overlay.on('*', handleOverlayEvent);
+            }
+        });
+
+        // For testing outside Chaturbate
+        window.testSpin = function() {
+            const randomIndex = Math.floor(Math.random() * segments.length);
+            const segmentAngle = 360 / segments.length;
+            const targetAngle = (randomIndex * segmentAngle) + (segmentAngle / 2);
+            const spinAngle = (5 * 360) + (360 - targetAngle);
+            
+            spinWheel(spinAngle, 4000, () => {
+                showResult('TestUser', segments[randomIndex]);
+            });
+        };
+    </script>
+</body>
+</html>
