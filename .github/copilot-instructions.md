@@ -194,5 +194,5 @@ When making changes:
 
 - **Do not** create markdown files for planning or tracking unless explicitly requested
 - **Do not** add new testing infrastructure unless necessary for the specific task
-- **Prefer relative paths** from repository root when referring to files (e.g., `./project/file.py`)
+- **Use relative paths** from repository root when referring to files (e.g., `project/file.py` not `./project/file.py`)
 - **Trust these instructions** - only search for additional information if instructions are incomplete or incorrect
