@@ -1160,4 +1160,87 @@ class UIManager {
     getCurrentLayout() {
         return this.#_currentLayout;
     }
+
+    /**
+     * Initializes zoom functionality for iframes and images.
+     * Call this method after DOM is ready.
+     */
+    initZoomHandlers() {
+        // Iframe zoom - double-click to toggle fullscreen
+        document.querySelectorAll('.iframe-wrapper').forEach(wrapper => {
+            // Add close button if not present
+            if (!wrapper.querySelector('.iframe-zoom-close')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'iframe-zoom-close';
+                closeBtn.innerHTML = '×';
+                closeBtn.title = 'Close fullscreen (Esc)';
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    wrapper.classList.remove('zoomed');
+                });
+                wrapper.appendChild(closeBtn);
+            }
+
+            wrapper.addEventListener('dblclick', (e) => {
+                // Don't zoom if clicking on iframe directly (to avoid interference with iframe content)
+                // or if clicking close button
+                if (e.target.tagName !== 'IFRAME' && !e.target.classList.contains('close-iframe-btn') && !e.target.classList.contains('iframe-zoom-close')) {
+                    wrapper.classList.toggle('zoomed');
+                }
+            });
+        });
+
+        // Global escape key to close zoomed iframes
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.iframe-wrapper.zoomed').forEach(wrapper => {
+                    wrapper.classList.remove('zoomed');
+                });
+                // Also close any image zoom overlays
+                document.querySelectorAll('.image-zoom-overlay').forEach(overlay => {
+                    overlay.remove();
+                });
+            }
+        });
+
+        // Image zoom - click to open fullscreen overlay for performer cards
+        this.initImageZoomHandlers();
+    }
+
+    /**
+     * Initializes image zoom handlers for performer thumbnails in the grid.
+     */
+    initImageZoomHandlers() {
+        document.addEventListener('click', (e) => {
+            // Check if it's an image in a performer card that was clicked with Alt key or via a dedicated zoom button
+            const img = e.target.closest('.card-image-container img');
+            if (img && e.altKey && !e.target.closest('.image-zoom-overlay')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openImageZoom(img.src, img.alt);
+            }
+        });
+
+        // Also allow right-click context menu on images to have zoom option handled elsewhere
+    }
+
+    /**
+     * Opens a fullscreen overlay with the zoomed image.
+     * @param {string} src - Image source URL
+     * @param {string} alt - Image alt text
+     */
+    openImageZoom(src, alt) {
+        // Remove any existing overlay
+        document.querySelectorAll('.image-zoom-overlay').forEach(overlay => overlay.remove());
+
+        const overlay = document.createElement('div');
+        overlay.className = 'image-zoom-overlay';
+        overlay.innerHTML = `<img src="${src}" alt="${alt || 'Zoomed image'}">`;
+        
+        overlay.addEventListener('click', () => {
+            overlay.remove();
+        });
+
+        document.body.appendChild(overlay);
+    }
 }

@@ -1095,6 +1095,9 @@
             
             this.#adjustLayoutHeights(); // Adjust heights after initial load
 
+            // Initialize zoom handlers for iframes and images
+            this.uiManager.initZoomHandlers();
+
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
         }

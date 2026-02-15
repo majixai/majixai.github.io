@@ -226,6 +226,85 @@ class UIManager {
             reportStatusDisplay.className = 'report-status';
         }
     }
+
+    /**
+     * Initializes zoom functionality for iframes and images.
+     * Call this method after DOM is ready.
+     */
+    initZoomHandlers() {
+        // Iframe zoom - double-click to toggle fullscreen
+        document.querySelectorAll('.iframe-container').forEach(container => {
+            // Add close button if not present
+            if (!container.querySelector('.iframe-zoom-close')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'iframe-zoom-close';
+                closeBtn.innerHTML = '×';
+                closeBtn.title = 'Close fullscreen (Esc)';
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    container.classList.remove('zoomed');
+                });
+                container.appendChild(closeBtn);
+            }
+
+            container.addEventListener('dblclick', (e) => {
+                // Don't zoom if clicking on iframe directly (to avoid interference with iframe content)
+                if (e.target.tagName !== 'IFRAME') {
+                    container.classList.toggle('zoomed');
+                }
+            });
+        });
+
+        // Global escape key to close zoomed iframe
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.iframe-container.zoomed').forEach(container => {
+                    container.classList.remove('zoomed');
+                });
+                // Also close any image zoom overlays
+                document.querySelectorAll('.image-zoom-overlay').forEach(overlay => {
+                    overlay.remove();
+                });
+            }
+        });
+
+        // Image zoom - click to open fullscreen overlay
+        this.initImageZoomHandlers();
+    }
+
+    /**
+     * Initializes image zoom handlers for user thumbnails in scroll lists.
+     */
+    initImageZoomHandlers() {
+        document.addEventListener('click', (e) => {
+            const img = e.target.closest('.user-image-container img');
+            if (img && !e.target.closest('.image-zoom-overlay')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openImageZoom(img.src, img.alt);
+            }
+        });
+    }
+
+    /**
+     * Opens a fullscreen overlay with the zoomed image.
+     * @param {string} src - Image source URL
+     * @param {string} alt - Image alt text
+     */
+    openImageZoom(src, alt) {
+        // Remove any existing overlay
+        document.querySelectorAll('.image-zoom-overlay').forEach(overlay => overlay.remove());
+
+        const overlay = document.createElement('div');
+        overlay.className = 'image-zoom-overlay';
+        overlay.innerHTML = `<img src="${src}" alt="${alt || 'Zoomed image'}">`;
+        
+        overlay.addEventListener('click', () => {
+            overlay.remove();
+        });
+
+        document.body.appendChild(overlay);
+    }
 }
 
 // To make UIManager available if not using modules:

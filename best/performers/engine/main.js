@@ -606,6 +606,9 @@ class BestPerformersEngine {
         // Start periodic refresh
         this.#_startPeriodicRefresh();
 
+        // Initialize zoom handlers for iframes and images
+        this.#_uiManager.initZoomHandlers();
+
         console.log("BestPerformersEngine: Initialization complete");
     }
 }
