@@ -7,7 +7,7 @@ const CacheManager = (() => {
     'use strict';
 
     let _db = null;
-    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE } = AppConfig;
+    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE, LABELS_STORE } = AppConfig;
 
     /**
      * Initialize the IndexedDB database
@@ -54,6 +54,15 @@ const CacheManager = (() => {
                 if (!db.objectStoreNames.contains(RECORDINGS_STORE)) {
                     const recordingStore = db.createObjectStore(RECORDINGS_STORE, { keyPath: 'id', autoIncrement: true });
                     recordingStore.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+
+                // Image labels store for user annotations
+                if (!db.objectStoreNames.contains(LABELS_STORE)) {
+                    const labelStore = db.createObjectStore(LABELS_STORE, { keyPath: 'id', autoIncrement: true });
+                    labelStore.createIndex('imageUrl', 'imageUrl', { unique: false });
+                    labelStore.createIndex('username', 'username', { unique: false });
+                    labelStore.createIndex('labelId', 'labelId', { unique: false });
+                    labelStore.createIndex('createdAt', 'createdAt', { unique: false });
                 }
             };
         });
@@ -375,6 +384,87 @@ const CacheManager = (() => {
         getFilters: async () => {
             const filters = await publicInterface.getSetting('filterPrefs');
             return filters || AppConfig.DEFAULT_FILTERS;
+        },
+
+        // ==================== Image Label Methods ====================
+
+        /**
+         * Add a label to an image at specific coordinates
+         * @param {Object} labelData - { imageUrl, username, labelId, customText, x, y, slotNumber }
+         * @returns {Promise<number>} The ID of the new label
+         */
+        addImageLabel: async (labelData) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(LABELS_STORE, 'readwrite');
+                const store = transaction.objectStore(LABELS_STORE);
+
+                const payload = {
+                    imageUrl: labelData.imageUrl || '',
+                    username: labelData.username || '',
+                    labelId: labelData.labelId,
+                    customText: labelData.customText || '',
+                    x: labelData.x || 0,
+                    y: labelData.y || 0,
+                    slotNumber: labelData.slotNumber || null,
+                    createdAt: Date.now()
+                };
+
+                const request = store.add(payload);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Get all labels for a specific username
+         * @param {string} username
+         * @returns {Promise<Array<Object>>}
+         */
+        getLabelsByUsername: async (username) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(LABELS_STORE, 'readonly');
+                const store = transaction.objectStore(LABELS_STORE);
+                const index = store.index('username');
+                const request = index.getAll(username);
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Get all labels
+         * @returns {Promise<Array<Object>>}
+         */
+        getAllLabels: () => _withStore(LABELS_STORE, 'readonly', (store) => {
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        }),
+
+        /**
+         * Delete a label by ID
+         * @param {number} id
+         * @returns {Promise<void>}
+         */
+        deleteLabel: (id) => _withStore(LABELS_STORE, 'readwrite', (store) => {
+            store.delete(id);
+        }),
+
+        /**
+         * Get label statistics (counts per label type)
+         * @returns {Promise<Object>}
+         */
+        getLabelStats: async () => {
+            const allLabels = await publicInterface.getAllLabels();
+            const stats = {};
+            for (const label of allLabels) {
+                stats[label.labelId] = (stats[label.labelId] || 0) + 1;
+            }
+            return stats;
         }
     };
 

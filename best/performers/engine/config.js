@@ -8,7 +8,7 @@ const AppConfig = (() => {
 
     // Database Configuration
     const _DB_NAME = 'BestPerformerDB';
-    const _DB_VERSION = 3;
+    const _DB_VERSION = 4;  // Incremented for new LABELS_STORE
     const _PERFORMER_STORE = 'performers';
     const _SETTINGS_STORE = 'settings';
     const _SNIPPETS_STORE = 'snippets';
@@ -62,6 +62,33 @@ const AppConfig = (() => {
     // Logging Service (for analytics)
     const _LOGGING_SERVICE_URL = 'https://script.google.com/macros/s/AKfycbzr5jBpyz_6w94lOZotEoYpVa9kDY603A_6QAB4FLRSnI5GDlgzfRb8FOCR8uTdoGGc/exec';
 
+    // ML Image Recognition Configuration
+    const _ML_CONFIG = {
+        modelVersion: 2,          // MobileNet version (1 or 2)
+        modelAlpha: 1.0,          // Model size multiplier (0.25, 0.5, 0.75, 1.0)
+        topPredictions: 3,        // Number of top predictions to display
+        confidenceThreshold: 5,   // Minimum confidence % to display
+        analyzeInterval: 30000,   // Re-analyze visible images every 30 seconds
+        enableIframeCapture: true // Enable frame capture from iframes (if same-origin)
+    };
+
+    // User Label Categories for image annotation
+    const _LABEL_CATEGORIES = Object.freeze([
+        { id: 'bigbs', label: 'Big Bs', shortLabel: 'BB', color: '#e91e63' },
+        { id: 'fmachine', label: 'F Machine', shortLabel: 'FM', color: '#9c27b0' },
+        { id: 'multiperformers', label: 'Multi Performers', shortLabel: 'MP', color: '#3f51b5' },
+        { id: 'nked', label: 'N*ked', shortLabel: 'NK', color: '#f44336' },
+        { id: 'toy', label: 'Toy', shortLabel: 'TY', color: '#ff9800' },
+        { id: 'solo', label: 'Solo', shortLabel: 'SO', color: '#4caf50' },
+        { id: 'couple', label: 'Couple', shortLabel: 'CP', color: '#00bcd4' },
+        { id: 'group', label: 'Group', shortLabel: 'GP', color: '#795548' },
+        { id: 'lingerie', label: 'Lingerie', shortLabel: 'LG', color: '#e91e63' },
+        { id: 'custom', label: 'Custom...', shortLabel: '??', color: '#607d8b' }
+    ]);
+
+    // IndexedDB store for labels
+    const _LABELS_STORE = 'imageLabels';
+
     // Public interface
     const publicInterface = {
         // Database
@@ -71,6 +98,7 @@ const AppConfig = (() => {
         SETTINGS_STORE: _SETTINGS_STORE,
         SNIPPETS_STORE: _SNIPPETS_STORE,
         RECORDINGS_STORE: _RECORDINGS_STORE,
+        LABELS_STORE: _LABELS_STORE,
         DATA_PATH: _DATA_PATH,
         DAT_FILES: Object.freeze([..._DAT_FILES]),
 
@@ -95,6 +123,12 @@ const AppConfig = (() => {
 
         // Analytics
         LOGGING_SERVICE_URL: _LOGGING_SERVICE_URL,
+
+        // ML Configuration
+        ML_CONFIG: Object.freeze({ ..._ML_CONFIG }),
+
+        // Label Categories
+        LABEL_CATEGORIES: _LABEL_CATEGORIES,
 
         /**
          * Build API URL with parameters
