@@ -77,17 +77,56 @@ This application provides AI-powered stock analysis, price projections, options 
     ```
 4.  Open the application in your web browser (e.g., `http://localhost:3000` or `http://localhost:8000`).
 
-## Directory Structure (Simplified)
+## Directory Structure
 
 ```
-.
-├── index.html         # Main HTML structure
-├── index.js           # Core application logic, Gemini API interaction
-├── index.css          # Styles for the application
-├── sw.js              # Service worker for caching and offline support
-├── metadata.json      # Application metadata
-└── README.md          # This file
+option/
+├── models/                         # Data models
+│   ├── index.js
+│   ├── option_model.js            # Option contract data management
+│   └── strategy_model.js          # Options strategy definitions
+├── controllers/                    # Controllers (MVC pattern)
+│   ├── index.js
+│   ├── pricing_controller.js      # Option pricing operations
+│   └── strategy_controller.js     # Strategy operations
+├── services/                       # Business logic services
+│   ├── index.js
+│   ├── black_scholes_service.js   # Black-Scholes option pricing
+│   ├── payoff_service.js          # Strategy payoff calculations
+│   └── greeks_service.js          # Greeks calculations
+├── utils/                          # Utility modules
+│   ├── index.js
+│   ├── option_formatters.js       # Option-specific formatting
+│   └── option_validators.js       # Option data validation
+├── index.html                      # Main HTML structure
+├── index.js                        # Core application logic
+├── index.css                       # Styles for the application
+├── sw.js                           # Service worker
+├── manifest.json                   # PWA manifest
+└── README.md                       # This file
 ```
+
+### Module Packages
+
+#### Models
+- **OptionModel**: Manages option contracts and market parameters
+- **StrategyModel**: Defines and manages options strategies (covered calls, spreads, iron condors, etc.)
+
+#### Controllers
+- **PricingController**: Orchestrates option pricing calculations
+- **StrategyController**: Manages strategy selection and payoff calculations
+
+#### Services
+- **BlackScholesService**: Full Black-Scholes-Merton implementation including:
+  - Call and put option pricing
+  - Greeks calculation (Delta, Gamma, Theta, Vega, Rho)
+  - Implied volatility calculation
+- **PayoffService**: Strategy payoff calculations at expiration
+- **GreeksService**: Portfolio-level Greeks calculations and P&L estimation
+
+#### Utils
+- **OptionFormatters**: Formatting for strikes, premiums, Greeks, IV
+- **OptionValidators**: Validation for BS inputs, strategy legs, contracts
 
 ## Advanced Integrations & Future Enhancements
 
