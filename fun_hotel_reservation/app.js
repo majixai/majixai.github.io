@@ -76,7 +76,7 @@ const ActionTracker = {
 
   track(category, action, details = {}, severity = 'info') {
     const entry = {
-      id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       timestamp: new Date().toISOString(),
       category,
       action,
@@ -104,7 +104,7 @@ const ActionTracker = {
   getSessionId() {
     let sessionId = sessionStorage.getItem('funstay_session_id');
     if (!sessionId) {
-      sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       sessionStorage.setItem('funstay_session_id', sessionId);
     }
     return sessionId;
@@ -295,7 +295,9 @@ const ActionAlertEmailGenerator = {
           latitude: booking.guestLocation.lat,
           longitude: booking.guestLocation.lng,
           accuracy: booking.guestLocation.accuracy,
-          capturedAt: booking.guestLocation.timestamp ? new Date(booking.guestLocation.timestamp).toISOString() : null
+          capturedAt: booking.guestLocation.timestamp 
+            ? new Date(booking.guestLocation.timestamp).toISOString() 
+            : new Date().toISOString()
         } : null,
 
         travelLogistics: {
@@ -356,7 +358,13 @@ const ActionAlertEmailGenerator = {
         },
 
         localInfo: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          timezone: (function() {
+            try {
+              return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            } catch {
+              return 'UTC';
+            }
+          })(),
           weatherTip: 'Check local weather before your trip',
           localAttractions: [
             { name: 'City Center', distance: '2.5 miles' },
@@ -787,38 +795,110 @@ Generated: ${new Date().toISOString()}
   showEmailPreviewModal(booking) {
     const emailData = this.generateBookingConfirmationEmail(booking, state.actionLog);
     
+    // HTML escape function to prevent XSS
+    const escapeHtml = (text) => {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    };
+
+    // Escape for srcdoc attribute
+    const escapeSrcdoc = (html) => {
+      return html
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    };
+
     // Create modal
     const modal = document.createElement('div');
     modal.id = 'emailPreviewModal';
     modal.className = 'email-preview-modal';
-    modal.innerHTML = `
-      <div class="email-preview-content">
-        <div class="email-preview-header">
-          <h2>📧 Action Alert Status Email Preview</h2>
-          <button class="email-preview-close" onclick="document.getElementById('emailPreviewModal').remove()">×</button>
-        </div>
-        <div class="email-preview-tabs">
-          <button class="email-tab active" data-tab="preview">Preview</button>
-          <button class="email-tab" data-tab="logistics">Logistics Data</button>
-          <button class="email-tab" data-tab="text">Text Version</button>
-        </div>
-        <div class="email-preview-body">
-          <div class="email-tab-content active" id="tab-preview">
-            <iframe srcdoc="${emailData.htmlBody.replace(/"/g, '&quot;')}" style="width:100%;height:500px;border:1px solid #ddd;border-radius:8px;"></iframe>
-          </div>
-          <div class="email-tab-content" id="tab-logistics">
-            <pre style="background:#f5f5f5;padding:15px;border-radius:8px;overflow:auto;max-height:500px;font-size:12px;">${JSON.stringify(emailData.logistics, null, 2)}</pre>
-          </div>
-          <div class="email-tab-content" id="tab-text">
-            <pre style="background:#f5f5f5;padding:15px;border-radius:8px;overflow:auto;max-height:500px;font-size:12px;white-space:pre-wrap;">${emailData.textBody}</pre>
-          </div>
-        </div>
-        <div class="email-preview-actions">
-          <button class="btn btn-primary" id="downloadEmailBtn">📥 Download Email Files</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('emailPreviewModal').remove()">Close</button>
-        </div>
-      </div>
+    
+    // Build modal content safely
+    const content = document.createElement('div');
+    content.className = 'email-preview-content';
+    
+    // Header
+    const header = document.createElement('div');
+    header.className = 'email-preview-header';
+    header.innerHTML = '<h2>📧 Action Alert Status Email Preview</h2>';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'email-preview-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => modal.remove());
+    header.appendChild(closeBtn);
+    content.appendChild(header);
+    
+    // Tabs
+    const tabs = document.createElement('div');
+    tabs.className = 'email-preview-tabs';
+    tabs.innerHTML = `
+      <button class="email-tab active" data-tab="preview">Preview</button>
+      <button class="email-tab" data-tab="logistics">Logistics Data</button>
+      <button class="email-tab" data-tab="text">Text Version</button>
     `;
+    content.appendChild(tabs);
+    
+    // Body
+    const body = document.createElement('div');
+    body.className = 'email-preview-body';
+    
+    // Preview tab with iframe
+    const previewTab = document.createElement('div');
+    previewTab.className = 'email-tab-content active';
+    previewTab.id = 'tab-preview';
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'width:100%;height:500px;border:1px solid #ddd;border-radius:8px;';
+    iframe.srcdoc = emailData.htmlBody;
+    previewTab.appendChild(iframe);
+    body.appendChild(previewTab);
+    
+    // Logistics tab
+    const logisticsTab = document.createElement('div');
+    logisticsTab.className = 'email-tab-content';
+    logisticsTab.id = 'tab-logistics';
+    const logisticsPre = document.createElement('pre');
+    logisticsPre.style.cssText = 'background:#f5f5f5;padding:15px;border-radius:8px;overflow:auto;max-height:500px;font-size:12px;';
+    logisticsPre.textContent = JSON.stringify(emailData.logistics, null, 2);
+    logisticsTab.appendChild(logisticsPre);
+    body.appendChild(logisticsTab);
+    
+    // Text tab
+    const textTab = document.createElement('div');
+    textTab.className = 'email-tab-content';
+    textTab.id = 'tab-text';
+    const textPre = document.createElement('pre');
+    textPre.style.cssText = 'background:#f5f5f5;padding:15px;border-radius:8px;overflow:auto;max-height:500px;font-size:12px;white-space:pre-wrap;';
+    textPre.textContent = emailData.textBody;
+    textTab.appendChild(textPre);
+    body.appendChild(textTab);
+    
+    content.appendChild(body);
+    
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'email-preview-actions';
+    
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'btn btn-primary';
+    downloadBtn.id = 'downloadEmailBtn';
+    downloadBtn.textContent = '📥 Download Email Files';
+    downloadBtn.addEventListener('click', () => {
+      this.downloadEmailAsFile(booking);
+      ActionTracker.trackUI('email_downloaded', { bookingRef: booking.bookingRef });
+    });
+    actions.appendChild(downloadBtn);
+    
+    const closeActionBtn = document.createElement('button');
+    closeActionBtn.className = 'btn btn-secondary';
+    closeActionBtn.textContent = 'Close';
+    closeActionBtn.addEventListener('click', () => modal.remove());
+    actions.appendChild(closeActionBtn);
+    
+    content.appendChild(actions);
+    modal.appendChild(content);
 
     document.body.appendChild(modal);
 
@@ -830,12 +910,6 @@ Generated: ${new Date().toISOString()}
         tab.classList.add('active');
         document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
       });
-    });
-
-    // Download button
-    document.getElementById('downloadEmailBtn').addEventListener('click', () => {
-      this.downloadEmailAsFile(booking);
-      ActionTracker.trackUI('email_downloaded', { bookingRef: booking.bookingRef });
     });
 
     ActionTracker.trackUI('email_preview_opened', { bookingRef: booking.bookingRef });
@@ -1894,6 +1968,8 @@ async function addToGoogleWalletDemo() {
 
   if (config.wallet.savePassEndpoint) {
     ActionTracker.trackWallet('wallet_endpoint_request_started', { endpoint: config.wallet.savePassEndpoint });
+    let requestFailed = false;
+    let failStatus = 0;
     try {
       const response = await fetch(config.wallet.savePassEndpoint, {
         method: 'POST',
@@ -1908,12 +1984,16 @@ async function addToGoogleWalletDemo() {
           return;
         }
       }
-      ActionTracker.trackWallet('wallet_endpoint_request_failed', { status: response.status });
+      requestFailed = true;
+      failStatus = response.status;
     } catch (error) {
       ActionTracker.trackWallet('wallet_endpoint_error', { error: String(error), offline: !navigator.onLine });
       if (!navigator.onLine) {
         alert('Offline mode: generated local Google Wallet payload instead.');
       }
+    }
+    if (requestFailed) {
+      ActionTracker.trackWallet('wallet_endpoint_request_failed', { status: failStatus });
     }
   }
 
@@ -2025,7 +2105,7 @@ function renderRecentActions() {
     return;
   }
 
-  container.innerHTML = recentActions.reverse().map(action => {
+  container.innerHTML = [...recentActions].reverse().map(action => {
     const time = new Date(action.timestamp).toLocaleTimeString();
     return `
       <div class="recent-action-item">
