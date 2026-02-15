@@ -445,14 +445,18 @@ class UIManager {
                 try {
                     const performerData = JSON.parse(card.dataset.performer);
                     const rect = img.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
+                    const coords = this.#_calculatePercentCoords(
+                        e.clientX - rect.left, 
+                        e.clientY - rect.top, 
+                        rect.width, 
+                        rect.height
+                    );
                     
                     this.#_showContextMenu(e.clientX, e.clientY, {
                         imageUrl: img.src,
                         username: performerData.username,
-                        x: Math.round((x / rect.width) * 100),
-                        y: Math.round((y / rect.height) * 100),
+                        x: coords.xPercent,
+                        y: coords.yPercent,
                         slotNumber: null
                     });
                 } catch (error) {
@@ -470,14 +474,18 @@ class UIManager {
                 const username = this.#_getSlotUsername(slot);
                 if (username) {
                     const rect = wrapper.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const y = e.clientY - rect.top;
+                    const coords = this.#_calculatePercentCoords(
+                        e.clientX - rect.left, 
+                        e.clientY - rect.top, 
+                        rect.width, 
+                        rect.height
+                    );
                     
                     this.#_showContextMenu(e.clientX, e.clientY, {
                         imageUrl: '',
                         username: username,
-                        x: Math.round((x / rect.width) * 100),
-                        y: Math.round((y / rect.height) * 100),
+                        x: coords.xPercent,
+                        y: coords.yPercent,
                         slotNumber: slot
                     });
                 }
@@ -670,6 +678,42 @@ class UIManager {
     }
 
     /**
+     * Format a single prediction label (strips extra comma-separated details)
+     * @private
+     */
+    #_formatPredictionLabel(label, confidence) {
+        const shortLabel = label.split(',')[0].trim();
+        return `${shortLabel} ${confidence}%`;
+    }
+
+    /**
+     * Format multiple predictions into a display string
+     * @private
+     */
+    #_formatPredictionText(prediction, maxPreds = 3) {
+        if (!prediction) return 'unavailable';
+        
+        if (prediction.predictions && prediction.predictions.length > 1) {
+            const topPreds = prediction.predictions.slice(0, maxPreds)
+                .map(p => this.#_formatPredictionLabel(p.label, p.confidence))
+                .join(' | ');
+            return topPreds;
+        }
+        return this.#_formatPredictionLabel(prediction.label, prediction.confidence);
+    }
+
+    /**
+     * Calculate percentage coordinates from mouse event
+     * @private
+     */
+    #_calculatePercentCoords(x, y, width, height) {
+        return {
+            xPercent: Math.round((x / width) * 100),
+            yPercent: Math.round((y / height) * 100)
+        };
+    }
+
+    /**
      * Infer image labels and confidence for an image URL.
      * Returns top N predictions based on ML_CONFIG.topPredictions.
      * @private
@@ -742,15 +786,10 @@ class UIManager {
                 continue;
             }
             
-            // Display top predictions with confidences
-            if (prediction.predictions && prediction.predictions.length > 1) {
-                const topPreds = prediction.predictions.slice(0, 3)
-                    .map(p => `${p.label.split(',')[0]} ${p.confidence}%`)
-                    .join(' | ');
-                visionEl.textContent = `🔍 ${topPreds}`;
+            // Display top predictions with confidences using helper method
+            visionEl.textContent = `🔍 ${this.#_formatPredictionText(prediction, 3)}`;
+            if (prediction.predictions) {
                 visionEl.title = prediction.predictions.map(p => `${p.label} (${p.confidence}%)`).join('\n');
-            } else {
-                visionEl.textContent = `🔍 ${prediction.label.split(',')[0]} (${prediction.confidence}%)`;
             }
 
             // Also update any existing user labels
@@ -870,14 +909,7 @@ class UIManager {
             this.#_setViewerVisionPill(targetSlot, '🔍 analyzing...');
             const prediction = await this.#_inferImageLabel(performer.image_url || performer.profile_pic_url);
             if (prediction) {
-                if (prediction.predictions && prediction.predictions.length > 1) {
-                    const topPreds = prediction.predictions.slice(0, 2)
-                        .map(p => `${p.label.split(',')[0]} ${p.confidence}%`)
-                        .join(' | ');
-                    this.#_setViewerVisionPill(targetSlot, `🔍 ${topPreds}`);
-                } else {
-                    this.#_setViewerVisionPill(targetSlot, `🔍 ${prediction.label.split(',')[0]} (${prediction.confidence}%)`);
-                }
+                this.#_setViewerVisionPill(targetSlot, `🔍 ${this.#_formatPredictionText(prediction, 2)}`);
             } else {
                 this.#_setViewerVisionPill(targetSlot, '🔍 unavailable');
             }
