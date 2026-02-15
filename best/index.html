@@ -7,18 +7,30 @@
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
+    html, body { height: 100%; margin: 0; }
     body { background: #101114; color: #f0f2f5; }
-    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
-    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-    .stat { background: #191c22; border-radius: 8px; padding: 10px 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .wrap { max-width: 100%; margin: 0 auto; padding: 8px; min-height: 100%; }
+    h2 { margin: 4px 0 2px; font-size: 1.3rem; }
+    p { margin: 0 0 6px; }
+    .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .stat { background: #191c22; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
     .card { background: #191c22; border-radius: 8px; overflow: hidden; border: 1px solid #2a2f39; }
-    .card img { width: 100%; height: 220px; object-fit: cover; background: #0f1115; }
-    .meta { padding: 10px; font-size: 13px; line-height: 1.35; }
+    .card img { width: 100%; height: 200px; object-fit: cover; background: #0f1115; }
+    .meta { padding: 8px; font-size: 12px; line-height: 1.35; }
     .name { font-weight: 700; font-size: 14px; }
     .muted { color: #a8afbb; }
-    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
     .toolbar input { min-width: 260px; }
+    .slideshow { position: relative; border: 1px solid #2a2f39; border-radius: 10px; overflow: hidden; background: #0b0d11; margin-bottom: 8px; }
+    .slideshow img { width: 100%; height: 44vh; min-height: 280px; object-fit: cover; display: block; }
+    .slide-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.78)); font-size: 13px; }
+    .slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; }
+    .slide-prev { left: 8px; }
+    .slide-next { right: 8px; }
+    .interest-panel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pill { border: 1px solid #2f3a48; background: #171b22; color: #e7ebf0; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+    .tag-chip { border: 1px solid #354258; background: #1b2432; color: #dce6ff; border-radius: 999px; padding: 1px 7px; font-size: 11px; margin: 3px 4px 0 0; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -30,6 +42,15 @@
       <input id="searchInput" class="w3-input w3-round" placeholder="Search username, tags, display name" />
       <button id="reloadBtn" class="w3-button w3-round w3-blue">Reload</button>
       <span id="status" class="muted">Loading...</span>
+    </div>
+
+    <div id="interestPanel" class="interest-panel"></div>
+
+    <div class="slideshow" id="slideshow">
+      <img id="slideImage" src="" alt="Featured" loading="eager" />
+      <button class="slide-nav slide-prev" id="slidePrev" aria-label="Previous image">‹</button>
+      <button class="slide-nav slide-next" id="slideNext" aria-label="Next image">›</button>
+      <div id="slideCaption" class="slide-caption"></div>
     </div>
 
     <div class="stats">
@@ -45,8 +66,20 @@
   <script>
     const state = {
       payload: null,
-      filtered: []
+      filtered: [],
+      slideshowIndex: 0,
+      slideshowTimer: null,
+      interests: {}
     };
+
+    function esc(str) {
+      return String(str || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
 
     function fmtTs(ts) {
       if (!ts) return '-';
@@ -55,15 +88,16 @@
     }
 
     function cardHtml(item) {
-      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 6).join(', ') : '';
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 8) : [];
+      const tagsHtml = tags.map((tag) => `<button class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</button>`).join('');
       return `
         <div class="card">
-          <img src="${item.image_url}" alt="${item.username}" loading="lazy" />
+          <img src="${esc(item.image_url)}" alt="${esc(item.username)}" loading="lazy" />
           <div class="meta">
-            <div class="name">${item.display_name || item.username}</div>
-            <div class="muted">@${item.username}</div>
+            <div class="name">${esc(item.display_name || item.username)}</div>
+            <div class="muted">@${esc(item.username)}</div>
             <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0}</div>
-            <div class="muted">${tags}</div>
+            <div>${tagsHtml}</div>
             <div class="muted">Bytes: ${item.byte_size ?? 0}</div>
             <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
           </div>
@@ -71,10 +105,71 @@
       `;
     }
 
+    function loadInterests() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('best_user_interests') || '{}');
+        state.interests = saved && typeof saved === 'object' ? saved : {};
+      } catch {
+        state.interests = {};
+      }
+    }
+
+    function saveInterests() {
+      localStorage.setItem('best_user_interests', JSON.stringify(state.interests));
+    }
+
+    function trackInterest(key) {
+      const normalized = String(key || '').trim().toLowerCase();
+      if (!normalized) return;
+      state.interests[normalized] = (state.interests[normalized] || 0) + 1;
+      saveInterests();
+      renderInterests();
+    }
+
+    function renderInterests() {
+      const panel = document.getElementById('interestPanel');
+      const top = Object.entries(state.interests)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      if (!top.length) {
+        panel.innerHTML = '<span class="muted">Interest profile: click tags to capture interaction insights.</span>';
+        return;
+      }
+
+      panel.innerHTML = `<span class="muted">Interest profile:</span>${top
+        .map(([k, v]) => `<span class="pill">${esc(k)} · ${v}</span>`)
+        .join('')}`;
+    }
+
+    function setSlideshowIndex(nextIndex) {
+      if (!state.filtered.length) {
+        document.getElementById('slideImage').src = '';
+        document.getElementById('slideCaption').textContent = 'No results for slideshow';
+        return;
+      }
+
+      state.slideshowIndex = ((nextIndex % state.filtered.length) + state.filtered.length) % state.filtered.length;
+      const item = state.filtered[state.slideshowIndex];
+      const img = document.getElementById('slideImage');
+      img.src = item.image_url || '';
+      img.alt = item.username || 'featured image';
+      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}`;
+    }
+
+    function startSlideshow() {
+      if (state.slideshowTimer) clearInterval(state.slideshowTimer);
+      state.slideshowTimer = setInterval(() => {
+        setSlideshowIndex(state.slideshowIndex + 1);
+      }, 2500);
+    }
+
     function render() {
       const grid = document.getElementById('grid');
       grid.innerHTML = state.filtered.map(cardHtml).join('');
       document.getElementById('visibleCount').textContent = String(state.filtered.length);
+      setSlideshowIndex(0);
+      startSlideshow();
     }
 
     function applySearch() {
@@ -123,7 +218,17 @@
 
     document.getElementById('reloadBtn').addEventListener('click', loadManifest);
     document.getElementById('searchInput').addEventListener('input', applySearch);
+    document.getElementById('slidePrev').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex - 1));
+    document.getElementById('slideNext').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex + 1));
+    document.getElementById('grid').addEventListener('click', (event) => {
+      const btn = event.target.closest('.tag-chip');
+      if (!btn) return;
+      const tag = btn.getAttribute('data-tag');
+      trackInterest(tag);
+    });
 
+    loadInterests();
+    renderInterests();
     loadManifest();
   </script>
 </body>
