@@ -604,10 +604,20 @@ class BestPerformersEngine {
         }
 
         try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
-                audio: true
-            });
+            // Try with audio first, fallback to video-only if audio fails
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+            } catch (audioError) {
+                console.warn(`Slot ${slot}: Audio capture not available, recording video only.`);
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: false
+                });
+            }
 
             const mimeType = this.#_getSupportedRecordingMimeType();
             const mediaRecorder = mimeType
@@ -626,6 +636,13 @@ class BestPerformersEngine {
             mediaRecorder.onstop = () => {
                 const recordedMime = mediaRecorder.mimeType || mimeType || 'video/webm';
                 const blob = new Blob(chunks, { type: recordedMime });
+                
+                // Revoke previous blob URL to prevent memory leaks
+                const existingState = this.#_slotRecordings.get(slot);
+                if (existingState?.blobUrl) {
+                    URL.revokeObjectURL(existingState.blobUrl);
+                }
+                
                 const blobUrl = URL.createObjectURL(blob);
 
                 // Update state with the recording blob
@@ -745,7 +762,9 @@ class BestPerformersEngine {
             // Show video overlay
             videoOverlay.src = state.blobUrl;
             videoOverlay.style.display = 'block';
-            videoOverlay.play().catch(() => {});
+            videoOverlay.play().catch((err) => {
+                console.warn(`Slot ${slot}: Playback failed:`, err.message);
+            });
 
             // Add close button if not present
             let closeBtn = wrapper.querySelector('.video-close-btn');
@@ -761,7 +780,9 @@ class BestPerformersEngine {
         } else {
             // Toggle pause/play
             if (videoOverlay.paused) {
-                videoOverlay.play().catch(() => {});
+                videoOverlay.play().catch((err) => {
+                    console.warn(`Slot ${slot}: Playback failed:`, err.message);
+                });
             } else {
                 videoOverlay.pause();
             }
