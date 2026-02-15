@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Best Compressed Image DB Viewer</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <style>
+    body { background: #101114; color: #f0f2f5; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .stat { background: #191c22; border-radius: 8px; padding: 10px 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .card { background: #191c22; border-radius: 8px; overflow: hidden; border: 1px solid #2a2f39; }
+    .card img { width: 100%; height: 220px; object-fit: cover; background: #0f1115; }
+    .meta { padding: 10px; font-size: 13px; line-height: 1.35; }
+    .name { font-weight: 700; font-size: 14px; }
+    .muted { color: #a8afbb; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .toolbar input { min-width: 260px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2 class="w3-margin-top">Best Compressed Image DB Viewer</h2>
+    <p class="muted">Data source: <code>best/dbs/performer_images_manifest.dat</code></p>
+
+    <div class="toolbar">
+      <input id="searchInput" class="w3-input w3-round" placeholder="Search username, tags, display name" />
+      <button id="reloadBtn" class="w3-button w3-round w3-blue">Reload</button>
+      <span id="status" class="muted">Loading...</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">Performers: <strong id="performerCount">0</strong></div>
+      <div class="stat">Images Cached: <strong id="imageCount">0</strong></div>
+      <div class="stat">Generated: <strong id="generatedAt">-</strong></div>
+      <div class="stat">Visible: <strong id="visibleCount">0</strong></div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    const state = {
+      payload: null,
+      filtered: []
+    };
+
+    function fmtTs(ts) {
+      if (!ts) return '-';
+      const d = new Date(ts * 1000);
+      return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString();
+    }
+
+    function cardHtml(item) {
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 6).join(', ') : '';
+      return `
+        <div class="card">
+          <img src="${item.image_url}" alt="${item.username}" loading="lazy" />
+          <div class="meta">
+            <div class="name">${item.display_name || item.username}</div>
+            <div class="muted">@${item.username}</div>
+            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0}</div>
+            <div class="muted">${tags}</div>
+            <div class="muted">Bytes: ${item.byte_size ?? 0}</div>
+            <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      const grid = document.getElementById('grid');
+      grid.innerHTML = state.filtered.map(cardHtml).join('');
+      document.getElementById('visibleCount').textContent = String(state.filtered.length);
+    }
+
+    function applySearch() {
+      const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+      const items = state.payload?.items || [];
+      if (!query) {
+        state.filtered = items;
+        render();
+        return;
+      }
+      state.filtered = items.filter((item) => {
+        const tags = Array.isArray(item.tags) ? item.tags.join(' ').toLowerCase() : '';
+        return (
+          String(item.username || '').toLowerCase().includes(query) ||
+          String(item.display_name || '').toLowerCase().includes(query) ||
+          tags.includes(query)
+        );
+      });
+      render();
+    }
+
+    async function loadManifest() {
+      const status = document.getElementById('status');
+      status.textContent = 'Loading...';
+      try {
+        const res = await fetch(`dbs/performer_images_manifest.dat?t=${Date.now()}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const compressed = await res.arrayBuffer();
+        const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+        const payload = JSON.parse(decompressed);
+        state.payload = payload;
+        state.filtered = payload.items || [];
+
+        document.getElementById('performerCount').textContent = String(payload.performer_count || 0);
+        document.getElementById('imageCount').textContent = String(payload.image_count || 0);
+        document.getElementById('generatedAt').textContent = fmtTs(payload.generated_at);
+        render();
+        status.textContent = `Loaded ${state.filtered.length} entries`;
+      } catch (error) {
+        status.textContent = `Failed: ${error.message}`;
+        document.getElementById('grid').innerHTML = '<div class="w3-panel w3-red">Unable to load compressed manifest data.</div>';
+      }
+    }
+
+    document.getElementById('reloadBtn').addEventListener('click', loadManifest);
+    document.getElementById('searchInput').addEventListener('input', applySearch);
+
+    loadManifest();
+  </script>
+</body>
+</html>

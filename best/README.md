@@ -114,3 +114,35 @@ You may need to adjust the configuration variables at the top of the `script.js`
 *   Option to save/load filter presets or viewer layouts.
 
 ---
+
+## Compressed Image DB Pipeline (best/index.html)
+
+This directory now includes an automated compressed image datastore pipeline:
+
+- Script: `best/compressed_image_db_pipeline.py`
+- Compressed DB output: `best/dbs/performer_images.db.gz`
+- Viewer manifest output: `best/dbs/performer_images_manifest.dat`
+- Viewer page: `best/index.html`
+
+### Scheduling and concurrency
+
+- Workflow: `.github/workflows/best_performer_minute.yml`
+- Schedule: `*/1 * * * *`
+- Per-run maximum runtime: `180` seconds
+- Race-condition protections:
+    - GitHub Actions `concurrency` group prevents workflow overlap.
+    - Script-level file lock (`best/dbs/.performer_images.lock`) prevents local overlap.
+    - Atomic compressed DB replacement avoids partial writes.
+
+### What gets stored
+
+- Every newly seen performer `image_url` is downloaded once and stored in compressed SQLite.
+- Existing images are not re-downloaded unless the URL is unseen.
+- Per-performer mapping is updated with last-seen metadata for viewer rendering.
+
+### Viewer behavior
+
+- `best/index.html` reads `best/dbs/performer_images_manifest.dat`.
+- Manifest is zlib-compressed JSON and rendered client-side using `pako`.
+- The UI supports quick filtering and shows cache metadata from the compressed datastore.
+

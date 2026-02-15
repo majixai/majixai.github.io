@@ -1,0 +1,54 @@
+name: Best Performer Image DB (Minutely)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/1 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: best-performer-image-db
+  cancel-in-progress: false
+
+jobs:
+  update_best_images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Update compressed image DB (max 3 minutes)
+        run: |
+          python best/compressed_image_db_pipeline.py \
+            --base-dir best \
+            --runtime-seconds 180 \
+            --api-max-pages 6 \
+            --api-concurrency 6 \
+            --image-concurrency 12
+
+      - name: Commit and push when changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git add best/dbs/performer_images.db.gz best/dbs/performer_images_manifest.dat || true
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          ts=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "best: refresh compressed performer image DB - ${ts}"
+          git push
