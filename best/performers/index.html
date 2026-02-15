@@ -122,6 +122,25 @@
                 </div>
             </div>
             <div id="snippetStatus" class="snippet-status" style="display: none;"></div>
+
+            <div class="recording-panel">
+                <h6>Screen Recording</h6>
+                <div class="recording-actions">
+                    <button id="startRecordingBtn" class="btn btn-sm btn-danger">⏺ Start</button>
+                    <button id="stopRecordingBtn" class="btn btn-sm btn-outline-light" disabled>⏹ Stop</button>
+                    <button id="refreshRecordingsBtn" class="btn btn-sm btn-outline-info">↻ Refresh</button>
+                </div>
+                <div class="recording-actions">
+                    <select id="recordingList" class="form-select form-select-sm">
+                        <option value="">No recordings</option>
+                    </select>
+                    <button id="playRecordingBtn" class="btn btn-sm btn-outline-success">▶ Play</button>
+                    <button id="downloadRecordingBtn" class="btn btn-sm btn-outline-primary">⬇ Download</button>
+                    <button id="deleteRecordingBtn" class="btn btn-sm btn-outline-warning">🗑 Delete</button>
+                </div>
+                <video id="recordingPreview" class="recording-preview" controls preload="metadata"></video>
+                <div id="recordingStatus" class="snippet-status" style="display: none;"></div>
+            </div>
             
             <!-- Main text area with autocomplete -->
             <div class="main-text-area-container">

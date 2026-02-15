@@ -210,6 +210,39 @@ html, body {
 .snippet-status.success { background: rgba(40, 167, 69, 0.2); color: var(--success-color); }
 .snippet-status.error { background: rgba(220, 53, 69, 0.2); color: var(--danger-color); }
 
+.recording-panel {
+    margin-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    padding-top: 0.8rem;
+}
+
+.recording-panel h6 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.recording-actions {
+    display: flex;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+#recordingList {
+    min-width: 220px;
+    flex: 1;
+}
+
+.recording-preview {
+    width: 100%;
+    max-height: 180px;
+    border-radius: 6px;
+    background: #000;
+    margin-top: 0.25rem;
+}
+
 .main-text-area-container {
     margin-top: 1rem;
     position: relative;

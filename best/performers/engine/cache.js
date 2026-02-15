@@ -7,7 +7,7 @@ const CacheManager = (() => {
     'use strict';
 
     let _db = null;
-    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE } = AppConfig;
+    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE } = AppConfig;
 
     /**
      * Initialize the IndexedDB database
@@ -48,6 +48,12 @@ const CacheManager = (() => {
                 if (!db.objectStoreNames.contains(SNIPPETS_STORE)) {
                     const snippetStore = db.createObjectStore(SNIPPETS_STORE, { keyPath: 'id', autoIncrement: true });
                     snippetStore.createIndex('text', 'text', { unique: true });
+                }
+
+                // Screen recordings store
+                if (!db.objectStoreNames.contains(RECORDINGS_STORE)) {
+                    const recordingStore = db.createObjectStore(RECORDINGS_STORE, { keyPath: 'id', autoIncrement: true });
+                    recordingStore.createIndex('createdAt', 'createdAt', { unique: false });
                 }
             };
         });
@@ -239,6 +245,72 @@ const CacheManager = (() => {
                 transaction.onerror = () => reject(transaction.error);
             });
         },
+
+        // ==================== Screen Recording Methods ====================
+
+        /**
+         * Save a new screen recording
+         * @param {Object} recording
+         * @returns {Promise<number>} The ID of the new recording
+         */
+        addRecording: async (recording) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(RECORDINGS_STORE, 'readwrite');
+                const store = transaction.objectStore(RECORDINGS_STORE);
+
+                const payload = {
+                    createdAt: recording.createdAt || Date.now(),
+                    durationMs: recording.durationMs || 0,
+                    mimeType: recording.mimeType || 'video/webm',
+                    byteSize: recording.byteSize || (recording.blob?.size || 0),
+                    filename: recording.filename || `screen_recording_${Date.now()}.webm`,
+                    blob: recording.blob
+                };
+
+                const request = store.add(payload);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Get all recordings (newest first)
+         * @returns {Promise<Array<Object>>}
+         */
+        getAllRecordings: () => _withStore(RECORDINGS_STORE, 'readonly', (store) => {
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const items = request.result || [];
+                    items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                    resolve(items);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }),
+
+        /**
+         * Get recording by ID
+         * @param {number} id
+         * @returns {Promise<Object|undefined>}
+         */
+        getRecordingById: (id) => _withStore(RECORDINGS_STORE, 'readonly', (store) => {
+            return new Promise((resolve, reject) => {
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }),
+
+        /**
+         * Delete recording by ID
+         * @param {number} id
+         * @returns {Promise<void>}
+         */
+        deleteRecording: (id) => _withStore(RECORDINGS_STORE, 'readwrite', (store) => {
+            store.delete(id);
+        }),
 
         // ==================== Favorites/History Methods ====================
         

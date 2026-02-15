@@ -8,10 +8,11 @@ const AppConfig = (() => {
 
     // Database Configuration
     const _DB_NAME = 'BestPerformerDB';
-    const _DB_VERSION = 2;
+    const _DB_VERSION = 3;
     const _PERFORMER_STORE = 'performers';
     const _SETTINGS_STORE = 'settings';
     const _SNIPPETS_STORE = 'snippets';
+    const _RECORDINGS_STORE = 'recordings';
     const _DATA_PATH = '../'; // Relative path to the .dat files
 
     // API Configuration
@@ -69,6 +70,7 @@ const AppConfig = (() => {
         PERFORMER_STORE: _PERFORMER_STORE,
         SETTINGS_STORE: _SETTINGS_STORE,
         SNIPPETS_STORE: _SNIPPETS_STORE,
+        RECORDINGS_STORE: _RECORDINGS_STORE,
         DATA_PATH: _DATA_PATH,
         DAT_FILES: Object.freeze([..._DAT_FILES]),
 
