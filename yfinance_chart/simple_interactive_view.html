@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simple Interactive Pattern Viewer</title>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js" async></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #0b1220; color: #e2e8f0; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    input, button { padding: 8px 10px; border-radius: 6px; border: 1px solid #334155; background: #111827; color: #e2e8f0; }
+    button { background: #2563eb; border-color: #2563eb; cursor: pointer; }
+    #chart { width: 100%; height: 560px; border: 1px solid #1f2937; border-radius: 8px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+    .panel { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    td, th { border-bottom: 1px solid #1f2937; padding: 6px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Async Parallel Pattern Viewer</h2>
+    <div class="row">
+      <input id="ticker" value="SPY" placeholder="Ticker" />
+      <input id="period" value="6mo" placeholder="Period" />
+      <input id="interval" value="1d" placeholder="Interval" />
+      <input id="maxPatterns" type="number" value="60" min="1" max="200" />
+      <input id="minScore" type="number" value="0.18" min="0" max="1" step="0.01" />
+      <input id="projectionHorizon" type="number" value="24" min="4" max="120" />
+      <button id="loadBtn">Load</button>
+    </div>
+    <div id="chart"></div>
+    <div class="grid">
+      <div class="panel">
+        <h3>Top Patterns</h3>
+        <table id="patternTable">
+          <thead><tr><th>Name</th><th>Family</th><th>Score</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Calculus Metrics</h3>
+        <pre id="metrics" style="white-space:pre-wrap;"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CLIENT_SESSION_KEY = 'yf_client_session';
+
+    function getClientSession() {
+      let sessionValue = localStorage.getItem(CLIENT_SESSION_KEY);
+      if (!sessionValue) {
+        sessionValue = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem(CLIENT_SESSION_KEY, sessionValue);
+      }
+      return sessionValue;
+    }
+
+    async function logClientEvent(eventName, payload = {}) {
+      try {
+        await fetch('/api/client-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Session': getClientSession(),
+          },
+          body: JSON.stringify({
+            event: eventName,
+            page: 'simple_interactive_view',
+            at: new Date().toISOString(),
+            ...payload,
+          }),
+        });
+      } catch (_error) {
+      }
+    }
+
+    function waitForChartsLib() {
+      return new Promise((resolve) => {
+        const tick = () => {
+          if (window.LightweightCharts) {
+            resolve(window.LightweightCharts);
+          } else {
+            setTimeout(tick, 30);
+          }
+        };
+        tick();
+      });
+    }
+
+    let chart;
+    let candleSeries;
+
+    async function initChart() {
+      const LWC = await waitForChartsLib();
+      const container = document.getElementById('chart');
+      chart = LWC.createChart(container, {
+        layout: { background: { color: '#0b1220' }, textColor: '#e2e8f0' },
+        grid: { vertLines: { color: '#1f2937' }, horzLines: { color: '#1f2937' } },
+        width: container.clientWidth,
+        height: 560,
+      });
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#22c55e', downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#22c55e', wickDownColor: '#ef4444'
+      });
+      window.addEventListener('resize', () => chart.applyOptions({ width: container.clientWidth }));
+    }
+
+    function toUnixSeconds(ts) {
+      return Math.floor(new Date(ts).getTime() / 1000);
+    }
+
+    function lineColorFromRgba(rgba) {
+      return rgba.replace(/0\.(\d+)|1\)/, '0.9)');
+    }
+
+    async function loadData() {
+      const ticker = document.getElementById('ticker').value.trim().toUpperCase() || 'SPY';
+      const period = document.getElementById('period').value.trim() || '6mo';
+      const interval = document.getElementById('interval').value.trim() || '1d';
+      const maxPatterns = document.getElementById('maxPatterns').value || '60';
+      const minScore = document.getElementById('minScore').value || '0.18';
+      const projectionHorizon = document.getElementById('projectionHorizon').value || '24';
+      await logClientEvent('load_data_start', { ticker, period, interval, maxPatterns, minScore, projectionHorizon });
+
+      const qs = new URLSearchParams({
+        ticker,
+        period,
+        interval,
+        max_patterns: maxPatterns,
+        min_score: minScore,
+        projection_horizon: projectionHorizon,
+      });
+
+      const [candlesResp, overlaysResp] = await Promise.all([
+        fetch(`/api/candles?${qs.toString()}`, { headers: { 'X-Client-Session': getClientSession() } }),
+        fetch(`/api/overlays?${qs.toString()}`, { headers: { 'X-Client-Session': getClientSession() } })
+      ]);
+
+      const candlesJson = await candlesResp.json();
+      const overlaysJson = await overlaysResp.json();
+
+      const candleData = candlesJson.candles.map(c => ({
+        time: toUnixSeconds(c.time), open: c.open, high: c.high, low: c.low, close: c.close
+      }));
+
+      candleSeries.setData(candleData);
+
+      const existing = window.__overlaySeries || [];
+      existing.forEach(s => chart.removeSeries(s));
+      window.__overlaySeries = [];
+
+      const projectionSeries = window.__projectionSeries || [];
+      projectionSeries.forEach(s => chart.removeSeries(s));
+      window.__projectionSeries = [];
+
+      overlaysJson.overlays.forEach((ov) => {
+        const i1 = Math.max(0, ov.start_idx);
+        const i2 = Math.min(candlesJson.candles.length - 1, ov.end_idx);
+        const t1 = toUnixSeconds(candlesJson.candles[i1].time);
+        const t2 = toUnixSeconds(candlesJson.candles[i2].time);
+
+        const upper = chart.addLineSeries({ color: lineColorFromRgba(ov.color), lineWidth: 1 });
+        upper.setData([{ time: t1, value: ov.upper_start }, { time: t2, value: ov.upper_end }]);
+
+        const lower = chart.addLineSeries({ color: lineColorFromRgba(ov.color), lineWidth: 1 });
+        lower.setData([{ time: t1, value: ov.lower_start }, { time: t2, value: ov.lower_end }]);
+
+        window.__overlaySeries.push(upper, lower);
+      });
+
+      const projection = overlaysJson.projections || { points: [] };
+      if (projection.points && projection.points.length) {
+        const points = projection.points.map((p) => ({
+          time: toUnixSeconds(p.time),
+          mean: p.mean,
+          std1_upper: p.std1_upper,
+          std1_lower: p.std1_lower,
+          std2_upper: p.std2_upper,
+          std2_lower: p.std2_lower,
+          std3_upper: p.std3_upper,
+          std3_lower: p.std3_lower,
+          skew_upper: p.skew_upper,
+          skew_lower: p.skew_lower,
+          robust_upper: p.robust_upper,
+          robust_lower: p.robust_lower,
+        }));
+
+        const shadeStd2Upper = chart.addAreaSeries({
+          lineColor: 'rgba(59, 130, 246, 0.35)',
+          topColor: 'rgba(59, 130, 246, 0.18)',
+          bottomColor: 'rgba(59, 130, 246, 0.02)',
+          lineWidth: 1,
+        });
+        shadeStd2Upper.setData(points.map((p) => ({ time: p.time, value: p.std2_upper })));
+
+        const shadeStd2Lower = chart.addAreaSeries({
+          lineColor: 'rgba(244, 63, 94, 0.35)',
+          topColor: 'rgba(244, 63, 94, 0.18)',
+          bottomColor: 'rgba(244, 63, 94, 0.02)',
+          lineWidth: 1,
+        });
+        shadeStd2Lower.setData(points.map((p) => ({ time: p.time, value: p.std2_lower })));
+
+        const meanLine = chart.addLineSeries({ color: 'rgba(250, 204, 21, 0.95)', lineWidth: 2 });
+        meanLine.setData(points.map((p) => ({ time: p.time, value: p.mean })));
+
+        const std1u = chart.addLineSeries({ color: 'rgba(96, 165, 250, 0.85)', lineWidth: 1 });
+        std1u.setData(points.map((p) => ({ time: p.time, value: p.std1_upper })));
+        const std1l = chart.addLineSeries({ color: 'rgba(96, 165, 250, 0.85)', lineWidth: 1 });
+        std1l.setData(points.map((p) => ({ time: p.time, value: p.std1_lower })));
+
+        const skewU = chart.addLineSeries({ color: 'rgba(16, 185, 129, 0.85)', lineWidth: 1 });
+        skewU.setData(points.map((p) => ({ time: p.time, value: p.skew_upper })));
+        const skewL = chart.addLineSeries({ color: 'rgba(16, 185, 129, 0.85)', lineWidth: 1 });
+        skewL.setData(points.map((p) => ({ time: p.time, value: p.skew_lower })));
+
+        const robustU = chart.addLineSeries({ color: 'rgba(217, 70, 239, 0.85)', lineWidth: 1 });
+        robustU.setData(points.map((p) => ({ time: p.time, value: p.robust_upper })));
+        const robustL = chart.addLineSeries({ color: 'rgba(217, 70, 239, 0.85)', lineWidth: 1 });
+        robustL.setData(points.map((p) => ({ time: p.time, value: p.robust_lower })));
+
+        window.__projectionSeries.push(
+          shadeStd2Upper,
+          shadeStd2Lower,
+          meanLine,
+          std1u,
+          std1l,
+          skewU,
+          skewL,
+          robustU,
+          robustL,
+        );
+      }
+
+      const tbody = document.querySelector('#patternTable tbody');
+      tbody.innerHTML = '';
+      overlaysJson.overlays.slice(0, 20).forEach((ov) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${ov.name}</td><td>${ov.family}</td><td>${ov.score.toFixed(4)}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      const metricsPayload = {
+        ...overlaysJson.calculus,
+        projection: {
+          horizon: overlaysJson.projections?.horizon,
+          drift: overlaysJson.projections?.drift,
+          sigma: overlaysJson.projections?.sigma,
+          skewness: overlaysJson.projections?.skewness,
+          robust_sigma: overlaysJson.projections?.robust_sigma,
+        },
+      };
+      document.getElementById('metrics').textContent = JSON.stringify(metricsPayload, null, 2);
+      chart.timeScale().fitContent();
+      await logClientEvent('load_data_complete', {
+        ticker,
+        candles: candleData.length,
+        patterns: overlaysJson.overlays.length,
+        projection_points: overlaysJson.projections?.points?.length || 0,
+      });
+    }
+
+    (async function bootstrap() {
+      await logClientEvent('page_load');
+      await initChart();
+      document.getElementById('loadBtn').addEventListener('click', async () => {
+        await logClientEvent('click_load_button');
+        loadData();
+      });
+      loadData();
+    })();
+  </script>
+</body>
+</html>

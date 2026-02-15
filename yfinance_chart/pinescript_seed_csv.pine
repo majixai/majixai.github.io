@@ -1,0 +1,55 @@
+//@version=6
+indicator("GitHub CSV Seed (Daily)", overlay=true, max_labels_count=500)
+
+// --- Configure your GitHub seed source ---
+// Source format: "owner/repo" (public repo)
+seedSource = input.string("majixai/majixai.github.io", "Seed source (owner/repo)")
+
+// Symbol should match your seed symbol mapping in the repository.
+// Example assumes a symbol named SPY_LITE is mapped to your simple CSV feed.
+seedSymbol = input.string("SPY_LITE", "Seed symbol")
+
+// Pine seed requests. If your seed feed maps CSV columns to OHLCV,
+// these series will load directly. TradingView seed caching is typically daily.
+seedOpen  = request.seed(seedSource, seedSymbol, open,  ignore_invalid_symbol=true)
+seedHigh  = request.seed(seedSource, seedSymbol, high,  ignore_invalid_symbol=true)
+seedLow   = request.seed(seedSource, seedSymbol, low,   ignore_invalid_symbol=true)
+seedClose = request.seed(seedSource, seedSymbol, close, ignore_invalid_symbol=true)
+seedVol   = request.seed(seedSource, seedSymbol, volume, ignore_invalid_symbol=true)
+
+// Simple derived calculations from seeded close
+smaLen = input.int(10, "SMA length", minval=1)
+seedSma = ta.sma(seedClose, smaLen)
+seedRet = na(seedClose[1]) ? na : (seedClose / seedClose[1] - 1.0)
+
+// Plot seeded series
+plot(seedClose, "Seed Close", color=color.new(color.aqua, 0), linewidth=2)
+plot(seedSma, "Seed SMA", color=color.new(color.yellow, 0), linewidth=2)
+
+// Optional candle overlay from seed OHLC
+showSeedCandles = input.bool(false, "Show seed candles")
+plotcandle(
+     showSeedCandles ? seedOpen : na,
+     showSeedCandles ? seedHigh : na,
+     showSeedCandles ? seedLow : na,
+     showSeedCandles ? seedClose : na,
+     title="Seed OHLC",
+     color=seedClose >= seedOpen ? color.new(color.green, 0) : color.new(color.red, 0),
+     wickcolor=color.new(color.gray, 0),
+     bordercolor=color.new(color.gray, 40)
+ )
+
+// Daily refresh marker: highlights first bar of each day
+isNewDay = ta.change(time("D"))
+bgcolor(isNewDay ? color.new(color.blue, 92) : na, title="Daily boundary")
+
+// Lightweight diagnostics
+var label statusLabel = na
+if barstate.islast
+    label.delete(statusLabel)
+    statusText = na(seedClose) ? "Seed status: no data (check source/symbol mapping)" : "Seed status: loaded"
+    statusLabel := label.new(bar_index, high, statusText, style=label.style_label_down, textcolor=color.white, color=color.new(color.black, 0))
+
+// Data window helper plots
+plot(seedRet, "Seed Return", color=color.new(color.fuchsia, 0), display=display.data_window)
+plot(seedVol, "Seed Volume", color=color.new(color.orange, 0), display=display.data_window)

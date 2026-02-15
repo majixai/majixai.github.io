@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Compression DB Search</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    input, button, select { padding: 8px 10px; border-radius: 6px; border: 1px solid #334155; background: #111827; color: #e2e8f0; }
+    button { background: #2563eb; border-color: #2563eb; cursor: pointer; }
+    .panel { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; margin-top: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid #1f2937; padding: 6px; text-align: left; vertical-align: top; }
+    code { color: #93c5fd; }
+    .muted { color: #94a3b8; font-size: 12px; }
+    pre { white-space: pre-wrap; background: #0b1220; padding: 8px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Compressed Datastore Search</h2>
+    <div class="muted">Search ticker, hash, period, interval, or object path in append-only manifest index.</div>
+
+    <div class="row">
+      <input id="query" placeholder="query (optional)" />
+      <input id="ticker" placeholder="ticker filter (e.g., SPY)" />
+      <select id="limit">
+        <option>25</option>
+        <option selected>50</option>
+        <option>100</option>
+        <option>200</option>
+      </select>
+      <label><input id="preview" type="checkbox" /> include .dat preview</label>
+      <button id="searchBtn">Search</button>
+      <a href="/" style="color:#93c5fd; align-self:center;">Main chart</a>
+    </div>
+
+    <div class="panel">
+      <div id="summary" class="muted">No search yet.</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Created UTC</th>
+            <th>Ticker</th>
+            <th>Period</th>
+            <th>Interval</th>
+            <th>Size</th>
+            <th>SHA</th>
+            <th>Object</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>Preview</h3>
+      <pre id="previewData">Select include preview and search.</pre>
+    </div>
+  </div>
+
+  <script>
+    const CLIENT_SESSION_KEY = 'yf_client_session';
+
+    function getClientSession() {
+      let sessionValue = localStorage.getItem(CLIENT_SESSION_KEY);
+      if (!sessionValue) {
+        sessionValue = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem(CLIENT_SESSION_KEY, sessionValue);
+      }
+      return sessionValue;
+    }
+
+    async function logClientEvent(eventName, payload = {}) {
+      try {
+        await fetch('/api/client-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Client-Session': getClientSession(),
+          },
+          body: JSON.stringify({
+            event: eventName,
+            page: 'compression_db_search',
+            at: new Date().toISOString(),
+            ...payload,
+          }),
+        });
+      } catch (_error) {
+      }
+    }
+
+    async function search() {
+      const q = document.getElementById('query').value.trim();
+      const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+      const limit = document.getElementById('limit').value;
+      const includePreview = document.getElementById('preview').checked ? '1' : '0';
+      await logClientEvent('compression_search_start', { q, ticker, limit, includePreview });
+
+      const params = new URLSearchParams({ q, ticker, limit, include_preview: includePreview });
+      const resp = await fetch(`/api/compression-search?${params.toString()}`, {
+        headers: { 'X-Client-Session': getClientSession() }
+      });
+      const data = await resp.json();
+
+      document.getElementById('summary').textContent = `Found ${data.count} records | data base: ${data.data_base_dir}`;
+      const rows = document.getElementById('rows');
+      rows.innerHTML = '';
+
+      data.items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.created_utc || ''}</td>
+          <td>${item.ticker || ''}</td>
+          <td>${item.period || ''}</td>
+          <td>${item.interval || ''}</td>
+          <td>${item.size || 0}</td>
+          <td><code>${(item.sha256 || '').slice(0, 18)}...</code></td>
+          <td><code>${item.object || ''}</code></td>
+        `;
+        tr.addEventListener('click', () => {
+          const payload = item.preview || item;
+          document.getElementById('previewData').textContent = JSON.stringify(payload, null, 2);
+          logClientEvent('compression_result_click', {
+            ticker: item.ticker,
+            object: item.object,
+            sha256: (item.sha256 || '').slice(0, 18),
+          });
+        });
+        if (idx === 0) {
+          const payload = item.preview || item;
+          document.getElementById('previewData').textContent = JSON.stringify(payload, null, 2);
+        }
+        rows.appendChild(tr);
+      });
+
+      if (!data.items.length) {
+        document.getElementById('previewData').textContent = 'No matching rows.';
+      }
+      await logClientEvent('compression_search_complete', { count: data.count, q, ticker });
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', search);
+    document.getElementById('query').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+    document.getElementById('ticker').addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
+    logClientEvent('page_load');
+    search();
+  </script>
+</body>
+</html>
