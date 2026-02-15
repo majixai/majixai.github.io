@@ -1209,10 +1209,12 @@ class UIManager {
 
     /**
      * Initializes image zoom handlers for performer thumbnails in the grid.
+     * Uses Alt+click to avoid interfering with the normal card click behavior
+     * (which selects a performer and loads them in a viewer).
      */
     initImageZoomHandlers() {
         document.addEventListener('click', (e) => {
-            // Check if it's an image in a performer card that was clicked with Alt key or via a dedicated zoom button
+            // Alt+click on performer images to zoom without triggering performer selection
             const img = e.target.closest('.card-image-container img');
             if (img && e.altKey && !e.target.closest('.image-zoom-overlay')) {
                 e.preventDefault();
@@ -1220,8 +1222,6 @@ class UIManager {
                 this.openImageZoom(img.src, img.alt);
             }
         });
-
-        // Also allow right-click context menu on images to have zoom option handled elsewhere
     }
 
     /**
@@ -1235,7 +1235,12 @@ class UIManager {
 
         const overlay = document.createElement('div');
         overlay.className = 'image-zoom-overlay';
-        overlay.innerHTML = `<img src="${src}" alt="${alt || 'Zoomed image'}">`;
+        
+        // Create image element programmatically to avoid XSS
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt || 'Zoomed image';
+        overlay.appendChild(img);
         
         overlay.addEventListener('click', () => {
             overlay.remove();

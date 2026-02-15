@@ -255,7 +255,7 @@ class UIManager {
             });
         });
 
-        // Global escape key to close zoomed iframe
+        // Global escape key to close zoomed iframes and image overlays
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 document.querySelectorAll('.iframe-container.zoomed').forEach(container => {
@@ -297,7 +297,12 @@ class UIManager {
 
         const overlay = document.createElement('div');
         overlay.className = 'image-zoom-overlay';
-        overlay.innerHTML = `<img src="${src}" alt="${alt || 'Zoomed image'}">`;
+        
+        // Create image element programmatically to avoid XSS
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt || 'Zoomed image';
+        overlay.appendChild(img);
         
         overlay.addEventListener('click', () => {
             overlay.remove();
