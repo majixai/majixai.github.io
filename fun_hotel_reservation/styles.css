@@ -1,0 +1,207 @@
+:root {
+  --bg: linear-gradient(120deg, #ff7eb3, #65d6ff, #ffe066, #8fff98);
+  --card: rgba(255, 255, 255, 0.92);
+  --ink: #1f2444;
+  --primary: #6b4eff;
+  --accent: #ff4fa3;
+  --success: #0f9d58;
+  --wallet: #0d47a1;
+  --border: #d9d9ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  background-size: 300% 300%;
+  animation: shift 12s ease infinite;
+}
+
+@keyframes shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.hero {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+}
+
+.hero p { margin: .4rem 0 1rem; }
+
+.hero-badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.badge {
+  background: #ffffffcc;
+  padding: .4rem .75rem;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  font-size: .88rem;
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 8px 24px rgba(31, 36, 68, 0.12);
+}
+
+label, legend {
+  font-weight: 600;
+  display: block;
+  margin-top: .4rem;
+  margin-bottom: .25rem;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: .6rem;
+  border-radius: 10px;
+  border: 1px solid #cfd4ff;
+  font-size: 1rem;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 240px;
+  margin-top: .6rem;
+  border-radius: 12px;
+  border: 1px solid #dfe5ff;
+  overflow: hidden;
+  background: #eef2ff;
+}
+
+.grid-2 {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: 1fr 1fr;
+}
+
+.amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.autocomplete-list {
+  list-style: none;
+  margin: .35rem 0 0;
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.autocomplete-list li {
+  background: #fff;
+  border: 1px solid #ececff;
+  border-top: none;
+  padding: .55rem .7rem;
+  cursor: pointer;
+}
+
+.autocomplete-list li:hover { background: #f4f4ff; }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: .6rem .85rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: .6rem;
+}
+
+.btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: #edf0ff; color: #1f2444; }
+.btn-google { background: #ffffff; color: #1f2444; border: 1px solid #ddd; }
+.btn-wallet { background: var(--wallet); color: #fff; }
+
+.auth-actions,
+.booking-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.status {
+  margin-top: .6rem;
+  background: #f8f9ff;
+  padding: .6rem;
+  border-radius: 10px;
+  border: 1px solid #eceeff;
+}
+
+.status.offline {
+  background: #fff3e9;
+  border-color: #ffd4aa;
+}
+
+.results {
+  display: grid;
+  gap: .75rem;
+}
+
+.hotel-card {
+  background: white;
+  border: 1px solid #e8e8ff;
+  border-radius: 12px;
+  padding: .75rem;
+}
+
+.hotel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.hotel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .4rem;
+}
+
+.tag {
+  background: #eef3ff;
+  border: 1px solid #dfe5ff;
+  border-radius: 999px;
+  padding: .1rem .55rem;
+  font-size: .78rem;
+}
+
+footer {
+  text-align: center;
+  padding: 1.2rem;
+  font-size: .9rem;
+}

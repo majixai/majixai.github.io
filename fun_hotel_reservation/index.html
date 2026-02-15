@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#6b4eff" />
+  <title>FunStay — Colorful Hotel Reservations</title>
+  <meta name="description" content="Bright, fun hotel reservation experience with guest booking, discounts, and calendar exports." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <h1>🌈 FunStay Hotel Reservations</h1>
+    <p>Search, book, and manage your stay with colorful vibes.</p>
+    <div class="hero-badges">
+      <span class="badge">Guest Booking Enabled</span>
+      <span class="badge">Google/Apple Calendar Export</span>
+      <span class="badge">Google Wallet Ready</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel auth-panel">
+      <h2>👤 Account Access</h2>
+      <p>Continue as guest or connect Google account.</p>
+      <div class="auth-actions">
+        <button id="googleSignInBtn" class="btn btn-google">Sign in with Google</button>
+        <button id="createAccountBtn" class="btn btn-secondary">Create Account</button>
+        <button id="guestBtn" class="btn btn-primary">Continue as Guest</button>
+      </div>
+      <div id="googleSignInContainer" class="status" style="display:none;"></div>
+      <div id="accountStatus" class="status"></div>
+      <div id="offlineStatus" class="status"></div>
+    </section>
+
+    <section class="panel search-panel">
+      <h2>🏨 Search Hotels</h2>
+      <label>Country</label>
+      <select id="countrySelect">
+        <option value="us" selected>United States</option>
+        <option value="ca">Canada</option>
+        <option value="mx">Mexico</option>
+        <option value="uk">United Kingdom</option>
+        <option value="fr">France</option>
+        <option value="de">Germany</option>
+        <option value="es">Spain</option>
+        <option value="it">Italy</option>
+        <option value="pt">Portugal</option>
+        <option value="au">Australia</option>
+        <option value="br">Brazil</option>
+        <option value="za">South Africa</option>
+        <option value="all">All Countries</option>
+      </select>
+      <label>Destination / Hotel Name</label>
+      <input id="searchInput" type="text" placeholder="Try: Miami, Tokyo, Paris, Beach, Spa..." autocomplete="off" />
+      <ul id="autocompleteList" class="autocomplete-list"></ul>
+      <div id="map" class="map-canvas"></div>
+
+      <div class="grid-2">
+        <div>
+          <label>Check-in</label>
+          <input id="checkIn" type="date" />
+        </div>
+        <div>
+          <label>Check-out</label>
+          <input id="checkOut" type="date" />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Max Nightly Price ($)</label>
+          <input id="maxPrice" type="number" min="50" step="10" value="500" />
+        </div>
+        <div>
+          <label>Guests</label>
+          <input id="guestCount" type="number" min="1" max="8" value="2" />
+        </div>
+      </div>
+
+      <fieldset>
+        <legend>Amenities</legend>
+        <div class="amenities">
+          <label><input type="checkbox" value="wifi" /> Wi-Fi</label>
+          <label><input type="checkbox" value="pool" /> Pool</label>
+          <label><input type="checkbox" value="spa" /> Spa</label>
+          <label><input type="checkbox" value="breakfast" /> Breakfast</label>
+          <label><input type="checkbox" value="parking" /> Parking</label>
+          <label><input type="checkbox" value="gym" /> Gym</label>
+        </div>
+      </fieldset>
+
+      <button id="searchBtn" class="btn btn-primary">Search Availability</button>
+    </section>
+
+    <section class="panel discount-panel">
+      <h2>💸 Smart Discount Engine</h2>
+      <p>Every return visit adds 1% loyalty discount.</p>
+      <p>Weekly activity bonus: <strong>+5%</strong> | Monthly activity bonus: <strong>+7.5%</strong></p>
+      <div id="discountDetails" class="status"></div>
+    </section>
+
+    <section class="panel results-panel">
+      <h2>✨ Hotel Results</h2>
+      <div id="results" class="results"></div>
+    </section>
+
+    <section class="panel booking-panel">
+      <h2>📅 Booking & Guest Stay Tools</h2>
+      <div id="bookingSummary" class="status">No booking yet.</div>
+      <div class="booking-actions">
+        <button id="googleCalendarBtn" class="btn btn-secondary" disabled>Add to Google Calendar</button>
+        <button id="appleCalendarBtn" class="btn btn-secondary" disabled>Download iCal (.ics)</button>
+        <button id="walletBtn" class="btn btn-wallet" disabled>Add Hotel Card to Google Wallet</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>FunStay demo: built for colorful booking, guest-first travel, and integration-ready APIs.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
