@@ -470,46 +470,15 @@ class UIManager {
     }
 
     /**
-     * Randomized high-speed slideshow for performer images.
+     * Stop any active slideshow timer.
+     * Each card displays only its own performer's image, not random images from other performers.
      * @private
      */
     #_startAutoSlideshow() {
         if (this.#_slideshowTimer) {
             clearTimeout(this.#_slideshowTimer);
+            this.#_slideshowTimer = null;
         }
-
-        const tick = () => {
-            const cards = Array.from(this.#_gridContainer.querySelectorAll('.performer-card'));
-            if (cards.length > 0 && this.#_allPerformers.length > 0) {
-                const swaps = Math.max(1, Math.floor(cards.length * 0.12));
-                for (let i = 0; i < swaps; i++) {
-                    const card = cards[Math.floor(Math.random() * cards.length)];
-                    const candidate = this.#_allPerformers[Math.floor(Math.random() * this.#_allPerformers.length)];
-                    if (!card || !candidate?.image_url) continue;
-
-                    const imageEl = card.querySelector('img[data-role="performer-image"]');
-                    if (!imageEl) continue;
-                    imageEl.src = candidate.image_url;
-
-                    const visionEl = card.querySelector('.card-vision');
-                    if (visionEl) {
-                        visionEl.textContent = 'Vision: updating...';
-                        this.#_inferImageLabel(candidate.image_url).then((prediction) => {
-                            if (!prediction) {
-                                visionEl.textContent = 'Vision: unavailable';
-                                return;
-                            }
-                            visionEl.textContent = `Vision: ${prediction.label} (${prediction.confidence}%)`;
-                        });
-                    }
-                }
-            }
-
-            const nextDelay = 100 + Math.floor(Math.random() * 190); // 0.10s - 0.29s
-            this.#_slideshowTimer = setTimeout(tick, nextDelay);
-        };
-
-        tick();
     }
 
     /**
