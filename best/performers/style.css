@@ -387,7 +387,7 @@ html, body {
     flex: 1;
     width: 100%;
     border: none;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 16 / 10;
     min-height: 0;
 }
 
@@ -441,8 +441,11 @@ html, body {
     padding: 0.5rem;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    grid-auto-rows: max-content;
     gap: 0.5rem;
     align-content: start;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
 }
 
 .performer-card {
@@ -469,7 +472,7 @@ html, body {
 
 .card-image-container {
     position: relative;
-    padding-top: 75%; /* 4:3 aspect ratio */
+    padding-top: 62.5%; /* 16:10 aspect ratio */
 }
 
 .card-image-container img {
@@ -554,6 +557,28 @@ html, body {
     color: #666;
     display: flex;
     justify-content: space-between;
+}
+
+.card-vision {
+    font-size: 0.62rem;
+    color: #4f6170;
+    margin-top: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vision-pill {
+    font-size: 0.62rem;
+    background: rgba(255, 255, 255, 0.14);
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    margin-left: 0.4rem;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .card-score {

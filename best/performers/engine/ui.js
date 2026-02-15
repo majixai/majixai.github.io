@@ -14,6 +14,11 @@ class UIManager {
     #_snippetElements = {};
     #_currentLayout = AppConfig.DEFAULT_LAYOUT;
     #_viewerSlots = new Map(); // Maps slot number to performer username
+    #_allPerformers = [];
+    #_slideshowTimer = null;
+    #_mlModel = null;
+    #_mlModelPromise = null;
+    #_predictionCache = new Map();
     
     // Callbacks
     #_onPerformerSelectCallback;
@@ -29,6 +34,29 @@ class UIManager {
         this.#_onSearchCallback = callbacks.onSearch;
         this.#_initEventListeners();
         this.#_setLayout(this.#_currentLayout);
+        this.#_initLocalImageRecognition();
+    }
+
+    /**
+     * Initialize local image recognition model (non-generative ML).
+     * @private
+     */
+    #_initLocalImageRecognition() {
+        if (!window.mobilenet || !window.tf) {
+            console.warn('UIManager: TensorFlow/MobileNet not available, skipping local vision labels.');
+            return;
+        }
+
+        this.#_mlModelPromise = window.mobilenet.load({ version: 2, alpha: 1.0 })
+            .then((model) => {
+                this.#_mlModel = model;
+                this.#_analyzeVisibleCards();
+                return model;
+            })
+            .catch((error) => {
+                console.warn('UIManager: Failed to load MobileNet model:', error);
+                return null;
+            });
     }
 
     /**
@@ -293,6 +321,9 @@ class UIManager {
     renderPerformers(performers, append = false) {
         if (!append) {
             this.#_gridContainer.innerHTML = '';
+            this.#_allPerformers = [...performers];
+        } else {
+            this.#_allPerformers = [...this.#_allPerformers, ...performers];
         }
 
         if (performers.length === 0 && !append) {
@@ -308,6 +339,8 @@ class UIManager {
 
         // Update cards that are currently in viewer
         this.#_updateViewerIndicators();
+        this.#_analyzeVisibleCards();
+        this.#_startAutoSlideshow();
     }
 
     /**
@@ -333,7 +366,7 @@ class UIManager {
 
         card.innerHTML = `
             <div class="card-image-container">
-                <img src="${imageUrl}" alt="${this.#_escapeHtml(name)}" loading="lazy">
+                <img src="${imageUrl}" alt="${this.#_escapeHtml(name)}" loading="lazy" data-role="performer-image">
                 <div class="card-badges">
                     ${performer.is_new ? '<span class="badge badge-new">NEW</span>' : ''}
                     ${rank <= 10 ? `<span class="badge badge-rank">#${rank}</span>` : ''}
@@ -349,10 +382,134 @@ class UIManager {
                     <span>Age: ${age}</span>
                     <span class="card-score">★ ${rankScore}</span>
                 </div>
+                <div class="card-vision" data-vision-for="${this.#_escapeHtml(performer.username)}">Vision: pending...</div>
             </div>
         `;
 
         return card;
+    }
+
+    /**
+     * Infer image label and confidence for an image URL.
+     * @private
+     */
+    async #_inferImageLabel(imageUrl) {
+        if (!imageUrl) return null;
+        if (this.#_predictionCache.has(imageUrl)) {
+            return this.#_predictionCache.get(imageUrl);
+        }
+
+        if (!this.#_mlModel && this.#_mlModelPromise) {
+            await this.#_mlModelPromise;
+        }
+        if (!this.#_mlModel) return null;
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        const loaded = new Promise((resolve, reject) => {
+            img.onload = () => resolve(true);
+            img.onerror = () => reject(new Error('image load failed'));
+        });
+
+        img.src = imageUrl;
+        try {
+            await loaded;
+            const predictions = await this.#_mlModel.classify(img, 1);
+            if (!predictions || !predictions.length) {
+                return null;
+            }
+            const top = predictions[0];
+            const result = {
+                label: top.className,
+                confidence: Math.round((top.probability || 0) * 100)
+            };
+            this.#_predictionCache.set(imageUrl, result);
+            return result;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Analyze currently visible performer cards.
+     * @private
+     */
+    async #_analyzeVisibleCards() {
+        if (!this.#_gridContainer) return;
+        const cards = Array.from(this.#_gridContainer.querySelectorAll('.performer-card'));
+        for (const card of cards) {
+            const image = card.querySelector('img[data-role="performer-image"]');
+            const visionEl = card.querySelector('.card-vision');
+            if (!image || !visionEl) continue;
+            const prediction = await this.#_inferImageLabel(image.src);
+            if (!prediction) {
+                visionEl.textContent = 'Vision: unavailable';
+                continue;
+            }
+            visionEl.textContent = `Vision: ${prediction.label} (${prediction.confidence}%)`;
+        }
+    }
+
+    /**
+     * Set local vision label pill on viewer slot header.
+     * @private
+     */
+    #_setViewerVisionPill(slot, text) {
+        const wrapper = this.#_iframeGrid?.querySelector(`.iframe-wrapper[data-slot="${slot}"]`);
+        const header = wrapper?.querySelector('.iframe-header');
+        if (!header) return;
+
+        let pill = header.querySelector('.vision-pill');
+        if (!pill) {
+            pill = document.createElement('span');
+            pill.className = 'vision-pill';
+            header.appendChild(pill);
+        }
+        pill.textContent = text;
+    }
+
+    /**
+     * Randomized high-speed slideshow for performer images.
+     * @private
+     */
+    #_startAutoSlideshow() {
+        if (this.#_slideshowTimer) {
+            clearTimeout(this.#_slideshowTimer);
+        }
+
+        const tick = () => {
+            const cards = Array.from(this.#_gridContainer.querySelectorAll('.performer-card'));
+            if (cards.length > 0 && this.#_allPerformers.length > 0) {
+                const swaps = Math.max(1, Math.floor(cards.length * 0.12));
+                for (let i = 0; i < swaps; i++) {
+                    const card = cards[Math.floor(Math.random() * cards.length)];
+                    const candidate = this.#_allPerformers[Math.floor(Math.random() * this.#_allPerformers.length)];
+                    if (!card || !candidate?.image_url) continue;
+
+                    const imageEl = card.querySelector('img[data-role="performer-image"]');
+                    if (!imageEl) continue;
+                    imageEl.src = candidate.image_url;
+
+                    const visionEl = card.querySelector('.card-vision');
+                    if (visionEl) {
+                        visionEl.textContent = 'Vision: updating...';
+                        this.#_inferImageLabel(candidate.image_url).then((prediction) => {
+                            if (!prediction) {
+                                visionEl.textContent = 'Vision: unavailable';
+                                return;
+                            }
+                            visionEl.textContent = `Vision: ${prediction.label} (${prediction.confidence}%)`;
+                        });
+                    }
+                }
+            }
+
+            const nextDelay = 100 + Math.floor(Math.random() * 190); // 0.10s - 0.29s
+            this.#_slideshowTimer = setTimeout(tick, nextDelay);
+        };
+
+        tick();
     }
 
     /**
@@ -381,7 +538,7 @@ class UIManager {
      * @param {Object} performer 
      * @param {number} slot - Slot number (1-9), or 'auto' for next empty
      */
-    updateViewer(performer, slot = 'auto') {
+    async updateViewer(performer, slot = 'auto') {
         if (!performer || !performer.username) return;
 
         // Determine which slot to use
@@ -429,6 +586,14 @@ class UIManager {
                 nameSpan.textContent = performer.display_name || performer.username;
             }
 
+            this.#_setViewerVisionPill(targetSlot, 'Vision: analyzing...');
+            const prediction = await this.#_inferImageLabel(performer.image_url || performer.profile_pic_url);
+            if (prediction) {
+                this.#_setViewerVisionPill(targetSlot, `${prediction.label} (${prediction.confidence}%)`);
+            } else {
+                this.#_setViewerVisionPill(targetSlot, 'Vision: unavailable');
+            }
+
             this.#_updateViewerIndicators();
         }
     }
@@ -461,6 +626,7 @@ class UIManager {
         if (nameSpan) {
             nameSpan.textContent = '-';
         }
+        this.#_setViewerVisionPill(slot, 'Vision: -');
 
         // Remove from tracking
         for (const [username, existingSlot] of this.#_viewerSlots) {
