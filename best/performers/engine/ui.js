@@ -19,6 +19,10 @@ class UIManager {
     #_mlModel = null;
     #_mlModelPromise = null;
     #_predictionCache = new Map();
+    #_contextMenu = null;
+    #_contextMenuTarget = null;
+    #_analyzeInterval = null;
+    #_userLabels = new Map(); // Maps username to array of labels
     
     // Callbacks
     #_onPerformerSelectCallback;
@@ -35,10 +39,13 @@ class UIManager {
         this.#_initEventListeners();
         this.#_setLayout(this.#_currentLayout);
         this.#_initLocalImageRecognition();
+        this.#_initContextMenu();
+        this.#_loadUserLabels();
     }
 
     /**
      * Initialize local image recognition model (non-generative ML).
+     * Enhanced with configurable settings and periodic re-analysis.
      * @private
      */
     #_initLocalImageRecognition() {
@@ -47,16 +54,230 @@ class UIManager {
             return;
         }
 
-        this.#_mlModelPromise = window.mobilenet.load({ version: 2, alpha: 1.0 })
+        const mlConfig = AppConfig.ML_CONFIG;
+        this.#_mlModelPromise = window.mobilenet.load({ 
+            version: mlConfig.modelVersion, 
+            alpha: mlConfig.modelAlpha 
+        })
             .then((model) => {
                 this.#_mlModel = model;
+                console.log('UIManager: MobileNet model loaded successfully');
                 this.#_analyzeVisibleCards();
+                this.#_startPeriodicAnalysis();
                 return model;
             })
             .catch((error) => {
                 console.warn('UIManager: Failed to load MobileNet model:', error);
                 return null;
             });
+    }
+
+    /**
+     * Start periodic re-analysis of visible images
+     * @private
+     */
+    #_startPeriodicAnalysis() {
+        if (this.#_analyzeInterval) {
+            clearInterval(this.#_analyzeInterval);
+        }
+        const interval = AppConfig.ML_CONFIG.analyzeInterval;
+        if (interval > 0) {
+            this.#_analyzeInterval = setInterval(() => {
+                this.#_analyzeVisibleCards();
+            }, interval);
+        }
+    }
+
+    /**
+     * Load user labels from IndexedDB
+     * @private
+     */
+    async #_loadUserLabels() {
+        try {
+            const labels = await CacheManager.getAllLabels();
+            this.#_userLabels.clear();
+            for (const label of labels) {
+                if (!this.#_userLabels.has(label.username)) {
+                    this.#_userLabels.set(label.username, []);
+                }
+                this.#_userLabels.get(label.username).push(label);
+            }
+            console.log(`UIManager: Loaded ${labels.length} user labels`);
+        } catch (error) {
+            console.warn('UIManager: Failed to load user labels:', error);
+        }
+    }
+
+    /**
+     * Initialize the right-click context menu for image labeling
+     * @private
+     */
+    #_initContextMenu() {
+        // Create context menu element
+        this.#_contextMenu = document.createElement('div');
+        this.#_contextMenu.id = 'imageContextMenu';
+        this.#_contextMenu.className = 'context-menu';
+        this.#_contextMenu.style.display = 'none';
+
+        // Build menu items from label categories
+        const categories = AppConfig.LABEL_CATEGORIES;
+        let menuHTML = '<div class="context-menu-header">🏷️ Add Label</div>';
+        for (const cat of categories) {
+            if (cat.id === 'custom') {
+                menuHTML += `<div class="context-menu-divider"></div>`;
+            }
+            menuHTML += `
+                <div class="context-menu-item" data-label-id="${cat.id}" style="--label-color: ${cat.color}">
+                    <span class="label-indicator" style="background: ${cat.color}">${cat.shortLabel}</span>
+                    <span class="label-text">${cat.label}</span>
+                </div>
+            `;
+        }
+        menuHTML += `<div class="context-menu-divider"></div>`;
+        menuHTML += `<div class="context-menu-item context-menu-cancel" data-action="cancel">❌ Cancel</div>`;
+        
+        this.#_contextMenu.innerHTML = menuHTML;
+        document.body.appendChild(this.#_contextMenu);
+
+        // Handle menu item clicks
+        this.#_contextMenu.addEventListener('click', async (e) => {
+            const item = e.target.closest('.context-menu-item');
+            if (!item) return;
+
+            const labelId = item.dataset.labelId;
+            const action = item.dataset.action;
+
+            if (action === 'cancel') {
+                this.#_hideContextMenu();
+                return;
+            }
+
+            if (labelId && this.#_contextMenuTarget) {
+                await this.#_applyLabel(labelId, this.#_contextMenuTarget);
+            }
+
+            this.#_hideContextMenu();
+        });
+
+        // Hide menu on outside click
+        document.addEventListener('click', (e) => {
+            if (!this.#_contextMenu.contains(e.target)) {
+                this.#_hideContextMenu();
+            }
+        });
+
+        // Hide menu on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.#_hideContextMenu();
+            }
+        });
+    }
+
+    /**
+     * Show context menu at position
+     * @private
+     */
+    #_showContextMenu(x, y, targetData) {
+        this.#_contextMenuTarget = targetData;
+        this.#_contextMenu.style.left = `${x}px`;
+        this.#_contextMenu.style.top = `${y}px`;
+        this.#_contextMenu.style.display = 'block';
+
+        // Ensure menu stays within viewport
+        const rect = this.#_contextMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            this.#_contextMenu.style.left = `${x - rect.width}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            this.#_contextMenu.style.top = `${y - rect.height}px`;
+        }
+    }
+
+    /**
+     * Hide context menu
+     * @private
+     */
+    #_hideContextMenu() {
+        this.#_contextMenu.style.display = 'none';
+        this.#_contextMenuTarget = null;
+    }
+
+    /**
+     * Apply a label to an image
+     * @private
+     */
+    async #_applyLabel(labelId, targetData) {
+        let customText = '';
+        if (labelId === 'custom') {
+            customText = prompt('Enter custom label:');
+            if (!customText) return;
+        }
+
+        try {
+            const labelData = {
+                imageUrl: targetData.imageUrl,
+                username: targetData.username,
+                labelId: labelId,
+                customText: customText,
+                x: targetData.x,
+                y: targetData.y,
+                slotNumber: targetData.slotNumber
+            };
+
+            await CacheManager.addImageLabel(labelData);
+
+            // Update local cache
+            if (!this.#_userLabels.has(targetData.username)) {
+                this.#_userLabels.set(targetData.username, []);
+            }
+            this.#_userLabels.get(targetData.username).push(labelData);
+
+            // Update UI to show the new label
+            this.#_updateLabelBadges(targetData.username);
+
+            console.log(`Label applied: ${labelId} to ${targetData.username}`);
+        } catch (error) {
+            console.error('Failed to apply label:', error);
+        }
+    }
+
+    /**
+     * Update label badges for a performer card
+     * @private
+     */
+    #_updateLabelBadges(username) {
+        const card = this.#_gridContainer?.querySelector(`[data-username="${username}"]`);
+        if (!card) return;
+
+        const labels = this.#_userLabels.get(username) || [];
+        let badgeContainer = card.querySelector('.user-label-badges');
+        
+        if (!badgeContainer) {
+            badgeContainer = document.createElement('div');
+            badgeContainer.className = 'user-label-badges';
+            const imageContainer = card.querySelector('.card-image-container');
+            if (imageContainer) {
+                imageContainer.appendChild(badgeContainer);
+            }
+        }
+
+        // Get unique labels
+        const uniqueLabels = [...new Set(labels.map(l => l.labelId))];
+        const categories = AppConfig.LABEL_CATEGORIES;
+        
+        badgeContainer.innerHTML = '';
+        for (const labelId of uniqueLabels) {
+            const cat = categories.find(c => c.id === labelId);
+            if (cat) {
+                const badge = document.createElement('span');
+                badge.className = 'user-label-badge';
+                badge.style.background = cat.color;
+                badge.textContent = cat.shortLabel;
+                badge.title = cat.label;
+                badgeContainer.appendChild(badge);
+            }
+        }
     }
 
     /**
@@ -214,6 +435,73 @@ class UIManager {
                 this.#_onFilterChangeCallback(this.getFilters(), true); // true = load more
             }
         });
+
+        // Right-click context menu for performer cards
+        this.#_gridContainer?.addEventListener('contextmenu', (e) => {
+            const card = e.target.closest('.performer-card');
+            const img = e.target.closest('img[data-role="performer-image"]');
+            if (card && img) {
+                e.preventDefault();
+                try {
+                    const performerData = JSON.parse(card.dataset.performer);
+                    const rect = img.getBoundingClientRect();
+                    const coords = this.#_calculatePercentCoords(
+                        e.clientX - rect.left, 
+                        e.clientY - rect.top, 
+                        rect.width, 
+                        rect.height
+                    );
+                    
+                    this.#_showContextMenu(e.clientX, e.clientY, {
+                        imageUrl: img.src,
+                        username: performerData.username,
+                        x: coords.xPercent,
+                        y: coords.yPercent,
+                        slotNumber: null
+                    });
+                } catch (error) {
+                    console.error("Error handling context menu:", error);
+                }
+            }
+        });
+
+        // Right-click context menu for iframe wrappers
+        this.#_iframeGrid?.addEventListener('contextmenu', (e) => {
+            const wrapper = e.target.closest('.iframe-wrapper');
+            if (wrapper) {
+                e.preventDefault();
+                const slot = parseInt(wrapper.dataset.slot);
+                const username = this.#_getSlotUsername(slot);
+                if (username) {
+                    const rect = wrapper.getBoundingClientRect();
+                    const coords = this.#_calculatePercentCoords(
+                        e.clientX - rect.left, 
+                        e.clientY - rect.top, 
+                        rect.width, 
+                        rect.height
+                    );
+                    
+                    this.#_showContextMenu(e.clientX, e.clientY, {
+                        imageUrl: '',
+                        username: username,
+                        x: coords.xPercent,
+                        y: coords.yPercent,
+                        slotNumber: slot
+                    });
+                }
+            }
+        });
+    }
+
+    /**
+     * Get username for a slot number
+     * @private
+     */
+    #_getSlotUsername(slot) {
+        for (const [username, slotNum] of this.#_viewerSlots) {
+            if (slotNum === slot) return username;
+        }
+        return null;
     }
 
     /**
@@ -390,7 +678,44 @@ class UIManager {
     }
 
     /**
-     * Infer image label and confidence for an image URL.
+     * Format a single prediction label (strips extra comma-separated details)
+     * @private
+     */
+    #_formatPredictionLabel(label, confidence) {
+        const shortLabel = label.split(',')[0].trim();
+        return `${shortLabel} ${confidence}%`;
+    }
+
+    /**
+     * Format multiple predictions into a display string
+     * @private
+     */
+    #_formatPredictionText(prediction, maxPreds = 3) {
+        if (!prediction) return 'unavailable';
+        
+        if (prediction.predictions && prediction.predictions.length > 1) {
+            const topPreds = prediction.predictions.slice(0, maxPreds)
+                .map(p => this.#_formatPredictionLabel(p.label, p.confidence))
+                .join(' | ');
+            return topPreds;
+        }
+        return this.#_formatPredictionLabel(prediction.label, prediction.confidence);
+    }
+
+    /**
+     * Calculate percentage coordinates from mouse event
+     * @private
+     */
+    #_calculatePercentCoords(x, y, width, height) {
+        return {
+            xPercent: Math.round((x / width) * 100),
+            yPercent: Math.round((y / height) * 100)
+        };
+    }
+
+    /**
+     * Infer image labels and confidence for an image URL.
+     * Returns top N predictions based on ML_CONFIG.topPredictions.
      * @private
      */
     async #_inferImageLabel(imageUrl) {
@@ -404,6 +729,7 @@ class UIManager {
         }
         if (!this.#_mlModel) return null;
 
+        const mlConfig = AppConfig.ML_CONFIG;
         const img = new Image();
         img.crossOrigin = 'anonymous';
 
@@ -415,14 +741,25 @@ class UIManager {
         img.src = imageUrl;
         try {
             await loaded;
-            const predictions = await this.#_mlModel.classify(img, 1);
+            const predictions = await this.#_mlModel.classify(img, mlConfig.topPredictions);
             if (!predictions || !predictions.length) {
                 return null;
             }
-            const top = predictions[0];
+            
+            // Filter by confidence threshold and format results
+            const filtered = predictions
+                .filter(p => Math.round((p.probability || 0) * 100) >= mlConfig.confidenceThreshold)
+                .map(p => ({
+                    label: p.className,
+                    confidence: Math.round((p.probability || 0) * 100)
+                }));
+
+            if (filtered.length === 0) return null;
+
             const result = {
-                label: top.className,
-                confidence: Math.round((top.probability || 0) * 100)
+                label: filtered[0].label,
+                confidence: filtered[0].confidence,
+                predictions: filtered  // Array of all top predictions
             };
             this.#_predictionCache.set(imageUrl, result);
             return result;
@@ -433,6 +770,7 @@ class UIManager {
 
     /**
      * Analyze currently visible performer cards.
+     * Enhanced to show multiple predictions.
      * @private
      */
     async #_analyzeVisibleCards() {
@@ -447,7 +785,20 @@ class UIManager {
                 visionEl.textContent = 'Vision: unavailable';
                 continue;
             }
-            visionEl.textContent = `Vision: ${prediction.label} (${prediction.confidence}%)`;
+            
+            // Display top predictions with confidences using helper method
+            visionEl.textContent = `🔍 ${this.#_formatPredictionText(prediction, 3)}`;
+            if (prediction.predictions) {
+                visionEl.title = prediction.predictions.map(p => `${p.label} (${p.confidence}%)`).join('\n');
+            }
+
+            // Also update any existing user labels
+            try {
+                const performerData = JSON.parse(card.dataset.performer);
+                this.#_updateLabelBadges(performerData.username);
+            } catch (err) {
+                // Ignore parse errors
+            }
         }
     }
 
@@ -470,46 +821,15 @@ class UIManager {
     }
 
     /**
-     * Randomized high-speed slideshow for performer images.
+     * Stop any active slideshow timer.
+     * Each card displays only its own performer's image, not random images from other performers.
      * @private
      */
     #_startAutoSlideshow() {
         if (this.#_slideshowTimer) {
             clearTimeout(this.#_slideshowTimer);
+            this.#_slideshowTimer = null;
         }
-
-        const tick = () => {
-            const cards = Array.from(this.#_gridContainer.querySelectorAll('.performer-card'));
-            if (cards.length > 0 && this.#_allPerformers.length > 0) {
-                const swaps = Math.max(1, Math.floor(cards.length * 0.12));
-                for (let i = 0; i < swaps; i++) {
-                    const card = cards[Math.floor(Math.random() * cards.length)];
-                    const candidate = this.#_allPerformers[Math.floor(Math.random() * this.#_allPerformers.length)];
-                    if (!card || !candidate?.image_url) continue;
-
-                    const imageEl = card.querySelector('img[data-role="performer-image"]');
-                    if (!imageEl) continue;
-                    imageEl.src = candidate.image_url;
-
-                    const visionEl = card.querySelector('.card-vision');
-                    if (visionEl) {
-                        visionEl.textContent = 'Vision: updating...';
-                        this.#_inferImageLabel(candidate.image_url).then((prediction) => {
-                            if (!prediction) {
-                                visionEl.textContent = 'Vision: unavailable';
-                                return;
-                            }
-                            visionEl.textContent = `Vision: ${prediction.label} (${prediction.confidence}%)`;
-                        });
-                    }
-                }
-            }
-
-            const nextDelay = 100 + Math.floor(Math.random() * 190); // 0.10s - 0.29s
-            this.#_slideshowTimer = setTimeout(tick, nextDelay);
-        };
-
-        tick();
     }
 
     /**
@@ -586,12 +906,12 @@ class UIManager {
                 nameSpan.textContent = performer.display_name || performer.username;
             }
 
-            this.#_setViewerVisionPill(targetSlot, 'Vision: analyzing...');
+            this.#_setViewerVisionPill(targetSlot, '🔍 analyzing...');
             const prediction = await this.#_inferImageLabel(performer.image_url || performer.profile_pic_url);
             if (prediction) {
-                this.#_setViewerVisionPill(targetSlot, `${prediction.label} (${prediction.confidence}%)`);
+                this.#_setViewerVisionPill(targetSlot, `🔍 ${this.#_formatPredictionText(prediction, 2)}`);
             } else {
-                this.#_setViewerVisionPill(targetSlot, 'Vision: unavailable');
+                this.#_setViewerVisionPill(targetSlot, '🔍 unavailable');
             }
 
             this.#_updateViewerIndicators();

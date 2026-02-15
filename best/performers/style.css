@@ -592,28 +592,6 @@ html, body {
     justify-content: space-between;
 }
 
-.card-vision {
-    font-size: 0.62rem;
-    color: #4f6170;
-    margin-top: 0.2rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.vision-pill {
-    font-size: 0.62rem;
-    background: rgba(255, 255, 255, 0.14);
-    padding: 0.1rem 0.35rem;
-    border-radius: 999px;
-    margin-left: 0.4rem;
-    color: rgba(255, 255, 255, 0.9);
-    max-width: 45%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .card-score {
     color: var(--accent-color);
     font-weight: bold;
@@ -718,4 +696,150 @@ html, body {
     .iframe-grid.layout-6 {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* ==================== Context Menu Styles ==================== */
+
+.context-menu {
+    position: fixed;
+    z-index: 10000;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    min-width: 180px;
+    overflow: hidden;
+    animation: contextMenuFadeIn 0.15s ease;
+}
+
+@keyframes contextMenuFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu-header {
+    padding: 0.6rem 1rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: var(--dark-text);
+    font-size: 0.85rem;
+    transition: background 0.15s;
+}
+
+.context-menu-item:hover {
+    background: var(--light-background);
+}
+
+.context-menu-item .label-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: white;
+}
+
+.context-menu-item .label-text {
+    flex: 1;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.25rem 0;
+}
+
+.context-menu-cancel {
+    color: var(--danger-color);
+}
+
+/* ==================== User Label Badges ==================== */
+
+.user-label-badges {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 80%;
+}
+
+.user-label-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 0.55rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== Enhanced Vision Display ==================== */
+
+.card-vision {
+    font-size: 0.62rem;
+    color: #4f6170;
+    margin-top: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+}
+
+.card-vision:hover {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    background: rgba(255, 255, 255, 0.95);
+    position: relative;
+    z-index: 10;
+    padding: 2px 4px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.vision-pill {
+    font-size: 0.62rem;
+    background: rgba(255, 255, 255, 0.14);
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    margin-left: 0.4rem;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.vision-pill:hover {
+    max-width: none;
+    white-space: normal;
+    background: rgba(255, 255, 255, 0.25);
 }
