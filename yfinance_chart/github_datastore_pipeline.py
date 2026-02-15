@@ -30,7 +30,10 @@ import pandas as pd
 import requests
 from scipy.signal import savgol_filter
 
-from lightweight_pattern_chart import calculate_overlays_and_calculus, fetch_ohlcv
+try:
+    from .lightweight_pattern_chart import calculate_overlays_and_calculus, fetch_ohlcv
+except ImportError:
+    from lightweight_pattern_chart import calculate_overlays_and_calculus, fetch_ohlcv
 
 
 INDEX_WRITE_LOCK = Lock()
@@ -279,6 +282,15 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("GAS_WEBHOOK_URL", ""),
         help="Google Apps Script webhook URL (or set GAS_WEBHOOK_URL).",
     )
+    parser.add_argument("--gas-calendar", action="store_true", help="Request GAS to create a Calendar event.")
+    parser.add_argument("--gas-gmail", action="store_true", help="Request GAS to send Gmail summary.")
+    parser.add_argument("--gas-drive-compression", action="store_true", help="Request GAS to write compressed run archive to Drive.")
+    parser.add_argument("--gas-calendar-id", default="", help="Optional calendar ID override for GAS payload.")
+    parser.add_argument("--gas-calendar-title", default="", help="Optional calendar title override for GAS payload.")
+    parser.add_argument("--gas-gmail-to", default="", help="Optional recipient override for GAS payload.")
+    parser.add_argument("--gas-gmail-subject", default="", help="Optional subject override for GAS payload.")
+    parser.add_argument("--gas-gmail-body", default="", help="Optional body override for GAS payload.")
+    parser.add_argument("--gas-drive-folder-id", default="", help="Optional Drive folder ID override for GAS payload.")
     return parser.parse_args()
 
 
@@ -347,7 +359,32 @@ def run_once(args: argparse.Namespace, dirs: dict[str, Path]) -> list[dict]:
             "period": args.period,
             "interval": args.interval,
             "summary": summaries,
+            "services": {
+                "calendar": bool(args.gas_calendar),
+                "gmail": bool(args.gas_gmail),
+                "driveCompression": bool(args.gas_drive_compression),
+            },
         }
+
+        if args.gas_calendar_id or args.gas_calendar_title:
+            webhook_payload["calendar"] = {}
+            if args.gas_calendar_id:
+                webhook_payload["calendar"]["calendarId"] = args.gas_calendar_id
+            if args.gas_calendar_title:
+                webhook_payload["calendar"]["title"] = args.gas_calendar_title
+
+        if args.gas_gmail_to or args.gas_gmail_subject or args.gas_gmail_body:
+            webhook_payload["gmail"] = {}
+            if args.gas_gmail_to:
+                webhook_payload["gmail"]["to"] = args.gas_gmail_to
+            if args.gas_gmail_subject:
+                webhook_payload["gmail"]["subject"] = args.gas_gmail_subject
+            if args.gas_gmail_body:
+                webhook_payload["gmail"]["body"] = args.gas_gmail_body
+
+        if args.gas_drive_folder_id:
+            webhook_payload["drive"] = {"folderId": args.gas_drive_folder_id}
+
         send_gas_webhook(args.gas_webhook_url, webhook_payload)
 
     return summaries

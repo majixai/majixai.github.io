@@ -125,6 +125,7 @@ This receiver:
 - accepts POST JSON payloads from the pipeline,
 - returns JSON success/error,
 - optionally logs run rows to Google Sheets.
+- can dynamically execute Calendar, Gmail, and Drive compression services.
 
 ### Deploy GAS webhook
 
@@ -136,6 +137,11 @@ This receiver:
     - `SHEET_ID`
     - `SHEET_NAME` (default `WebhookRuns`)
 
+Optional Script Properties for dynamic services:
+- `CALENDAR_ID`
+- `GMAIL_TO`
+- `DRIVE_FOLDER_ID`
+
 ### Run pipeline with GAS webhook
 
 Using flag:
@@ -146,6 +152,22 @@ python yfinance_chart/github_datastore_pipeline.py \
    --period 7d \
    --interval 1m \
    --gas-webhook-url "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+```
+
+Enable dynamic GAS services directly from pipeline CLI:
+
+```bash
+python yfinance_chart/github_datastore_pipeline.py \
+   --tickers SPY \
+   --period 1mo \
+   --interval 1d \
+   --gas-webhook-url "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec" \
+   --gas-calendar \
+   --gas-calendar-title "SPY datastore run" \
+   --gas-gmail \
+   --gas-gmail-to "you@example.com" \
+   --gas-drive-compression \
+   --gas-drive-folder-id "YOUR_DRIVE_FOLDER_ID"
 ```
 
 Using environment variable:
@@ -163,6 +185,39 @@ Pipeline sends:
 - `git` metadata (`repo`, `branch`, `commit`, `remote`).
 
 This makes GAS logs Git-aware for downstream auditing and automation.
+
+### Dynamic GAS services (Calendar, Gmail, Drive)
+
+You can enable extra services per webhook payload:
+
+```json
+{
+   "services": {
+      "calendar": true,
+      "gmail": true,
+      "driveCompression": true
+   },
+   "calendar": {
+      "calendarId": "optional-calendar-id@group.calendar.google.com",
+      "title": "Optional custom event title"
+   },
+   "gmail": {
+      "to": "optional@example.com",
+      "subject": "Optional custom subject",
+      "body": "Optional custom email body"
+   },
+   "drive": {
+      "folderId": "optional-folder-id"
+   }
+}
+```
+
+Behavior:
+- `calendar=true`: creates a 30-minute event for the run.
+- `gmail=true`: sends a summary email.
+- `driveCompression=true`: writes compressed `.gz` JSON run archive to Drive.
+
+If optional payload fields are omitted, Script Properties are used.
 
 ### Quick webhook test (curl)
 
@@ -209,6 +264,17 @@ Expected success response:
    "run_utc": "2026-02-15T00:00:00Z",
    "rows_logged": 1
 }
+```
+
+## Unit testing
+
+Pipeline webhook/Git integration tests are included at:
+- [yfinance_chart/tests/test_github_datastore_pipeline.py](yfinance_chart/tests/test_github_datastore_pipeline.py)
+
+Run tests:
+
+```bash
+/workspaces/majixai.github.io/.venv/bin/python -m unittest yfinance_chart.tests.test_github_datastore_pipeline
 ```
 
 ## Pine Script (request.seed with simple CSV)
