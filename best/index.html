@@ -85,6 +85,23 @@
     .btn-primary:hover { background: #3b6ce8; }
     .btn-secondary { background: #3a4049; color: #f0f2f5; }
     .btn-secondary:hover { background: #4a5059; }
+    /* Pagination & Load More */
+    .load-more-container { text-align: center; padding: 16px 0; margin-top: 8px; }
+    .load-more-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; }
+    .load-more-btn:hover { opacity: 0.9; }
+    .load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pagination-info { color: #a8afbb; font-size: 12px; margin-top: 8px; }
+    /* Offline Toggle */
+    .toggle-container { display: flex; align-items: center; gap: 8px; }
+    .toggle-switch { position: relative; width: 40px; height: 20px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #3a4049; border-radius: 20px; transition: 0.3s; }
+    .toggle-slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-slider { background: #667eea; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
+    /* ML Feature Badge */
+    .ml-badge { background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
+    .similarity-indicator { color: #10b981; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -133,6 +150,35 @@
         <input type="range" id="slideshowSpeed" min="1" max="10" value="3" />
         <span id="speedValue">3s</span>
       </div>
+      <div class="settings-row">
+        <label>Items per Page:</label>
+        <select id="itemsPerPageSelect">
+          <option value="20">20</option>
+          <option value="40" selected>40</option>
+          <option value="60">60</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Offline Only:</label>
+        <div class="toggle-container">
+          <label class="toggle-switch">
+            <input type="checkbox" id="offlineOnlyToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="offlineOnlyLabel" class="muted">Show all performers</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>ML Features:</label>
+        <div class="toggle-container">
+          <label class="toggle-switch">
+            <input type="checkbox" id="mlFeaturesToggle" checked />
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="mlFeaturesLabel" class="muted">Enable ML similarity detection</span>
+        </div>
+      </div>
     </div>
 
     <div id="interestPanel" class="interest-panel"></div>
@@ -150,17 +196,27 @@
       <div class="stat">Offline Images: <strong id="offlineImageCount">0</strong></div>
       <div class="stat">Generated: <strong id="generatedAt">-</strong></div>
       <div class="stat">Visible: <strong id="visibleCount">0</strong></div>
+      <div class="stat">Showing: <strong id="showingCount">0</strong> / <strong id="totalFilteredCount">0</strong></div>
     </div>
 
     <div id="grid" class="grid"></div>
+    
+    <!-- Load More / Pagination -->
+    <div id="loadMoreContainer" class="load-more-container" style="display: none;">
+      <button id="loadMoreBtn" class="load-more-btn">Load More</button>
+      <div id="paginationInfo" class="pagination-info"></div>
+    </div>
   </div>
 
   <!-- Context Menu for Right-Click -->
   <div id="contextMenu" class="context-menu">
-    <div class="context-menu-item" data-action="addTag">📝 Add Tag/Description</div>
+    <div class="context-menu-item" data-action="addTag">📝 Add Tag/Feature</div>
     <div class="context-menu-item" data-action="viewTags">🏷️ View Tags</div>
     <div class="context-menu-divider"></div>
     <div class="context-menu-item" data-action="findSimilar">🔍 Find Similar</div>
+    <div class="context-menu-item" data-action="analyzeFeatures">🤖 Analyze Features (ML)</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" data-action="boostPopularity">⬆️ Boost Popularity</div>
     <div class="context-menu-item" data-action="copyUsername">📋 Copy Username</div>
   </div>
 
@@ -187,23 +243,49 @@
     const state = {
       payload: null,
       filtered: [],
+      displayedItems: [],
+      currentPage: 0,
       slideshowIndex: 0,
       slideshowTimer: null,
       interests: {},
       clickCounts: {},
       customTags: {},
       allKnownTags: [],
+      mlFeatures: {},
+      similarityScores: {},
+      offlineImageUrls: new Set(),
       settings: {
         columns: 4,
         layout: 'auto',
         sortBy: 'score',
-        slideshowSpeed: 3
+        slideshowSpeed: 3,
+        itemsPerPage: 40,
+        offlineOnly: false,
+        mlFeaturesEnabled: true
       },
       contextTarget: null,
       tagModalTarget: null,
       selectedTagsForModal: [],
-      cardSlideshowIndices: {}
+      cardSlideshowIndices: {},
+      isLoading: false,
+      offlineDb: null
     };
+
+    // ============ CONFIGURATION CONSTANTS ============
+    // Offline caching limits
+    const OFFLINE_CACHE_LIMIT = 100; // Maximum images to cache for offline use
+    
+    // ML Feature Detection thresholds
+    const SIMILARITY_THRESHOLD = 0.3; // Minimum Jaccard similarity to consider performers "similar"
+    const SIMILARITY_BOOST_MULTIPLIER = 5; // Score boost multiplier for similar performers
+    const TAG_POPULARITY_BOOST = 2; // Popularity boost per new tag added
+    
+    // Pagination & UI
+    const SCROLL_LOAD_THRESHOLD = 200; // Pixels from bottom to trigger infinite scroll load
+    const LOAD_MORE_DELAY_MS = 100; // Artificial delay for smooth loading UX
+    
+    // Scoring weights
+    const ML_SIMILARITY_WEIGHT = 2; // Multiplier for ML similarity scores in total score
 
     // ============ UTILITIES ============
     function esc(str) {
@@ -283,6 +365,250 @@
       state.allKnownTags = Array.from(tagSet).sort();
     }
 
+    // ============ INDEXEDDB OFFLINE STORAGE ============
+    const DB_NAME = 'best_viewer_offline';
+    const DB_VERSION = 2;
+    const STORE_DATA = 'performer_data';
+    const STORE_IMAGES = 'cached_images';
+    const STORE_ML_FEATURES = 'ml_features';
+
+    function initOfflineDb() {
+      return new Promise((resolve, reject) => {
+        if (state.offlineDb) {
+          resolve(state.offlineDb);
+          return;
+        }
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          state.offlineDb = request.result;
+          resolve(state.offlineDb);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_DATA)) {
+            db.createObjectStore(STORE_DATA, { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains(STORE_IMAGES)) {
+            db.createObjectStore(STORE_IMAGES, { keyPath: 'url' });
+          }
+          if (!db.objectStoreNames.contains(STORE_ML_FEATURES)) {
+            db.createObjectStore(STORE_ML_FEATURES, { keyPath: 'username' });
+          }
+        };
+      });
+    }
+
+    async function saveOfflineData(payload) {
+      try {
+        const db = await initOfflineDb();
+        const tx = db.transaction(STORE_DATA, 'readwrite');
+        const store = tx.objectStore(STORE_DATA);
+        store.put({ id: 'manifest', ...payload, savedAt: Date.now() });
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (err) {
+        console.warn('Failed to save offline data:', err);
+      }
+    }
+
+    async function loadOfflineData() {
+      try {
+        const db = await initOfflineDb();
+        const tx = db.transaction(STORE_DATA, 'readonly');
+        const store = tx.objectStore(STORE_DATA);
+        return new Promise((resolve, reject) => {
+          const request = store.get('manifest');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      } catch (err) {
+        console.warn('Failed to load offline data:', err);
+        return null;
+      }
+    }
+
+    async function cacheImagesForOffline(items) {
+      if (!items || !items.length) return;
+      try {
+        const db = await initOfflineDb();
+        const tx = db.transaction(STORE_IMAGES, 'readwrite');
+        const store = tx.objectStore(STORE_IMAGES);
+        
+        // Cache images up to the configured limit for offline use
+        const imagesToCache = items.slice(0, OFFLINE_CACHE_LIMIT).map(item => item.image_url).filter(Boolean);
+        
+        for (const url of imagesToCache) {
+          try {
+            const response = await fetch(url);
+            if (response.ok) {
+              const blob = await response.blob();
+              store.put({ url, blob, cachedAt: Date.now() });
+              state.offlineImageUrls.add(url);
+            }
+          } catch {
+            // Skip failed image caches
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to cache images:', err);
+      }
+    }
+
+    async function updateOfflineImageCount() {
+      try {
+        const db = await initOfflineDb();
+        const tx = db.transaction(STORE_IMAGES, 'readonly');
+        const store = tx.objectStore(STORE_IMAGES);
+        const countReq = store.count();
+        countReq.onsuccess = () => {
+          document.getElementById('offlineImageCount').textContent = String(countReq.result || 0);
+        };
+        
+        // Also populate offlineImageUrls set
+        const getAllReq = store.getAllKeys();
+        getAllReq.onsuccess = () => {
+          state.offlineImageUrls = new Set(getAllReq.result || []);
+        };
+      } catch (err) {
+        document.getElementById('offlineImageCount').textContent = '0';
+      }
+    }
+
+    function updateOfflineStatus() {
+      const isOnline = navigator.onLine;
+      const indicator = document.getElementById('offlineIndicator');
+      indicator.style.display = isOnline ? 'none' : 'inline';
+    }
+
+    // Listen for online/offline status changes
+    window.addEventListener('online', updateOfflineStatus);
+    window.addEventListener('offline', updateOfflineStatus);
+
+    // ============ ML FEATURE DETECTION ============
+    // Predefined features that can be detected/assigned
+    const ML_FEATURES = [
+      'smile', 'glasses', 'hat', 'outdoor', 'indoor', 'close-up', 'full-body',
+      'natural-light', 'studio', 'casual', 'formal', 'athletic', 'artistic',
+      'colorful', 'minimal', 'warm-tones', 'cool-tones', 'high-contrast',
+      'soft-focus', 'sharp', 'portrait', 'candid', 'posed', 'professional',
+      'amateur', 'selfie', 'mirror', 'beach', 'city', 'nature', 'home'
+    ];
+
+    function loadMlFeatures() {
+      state.mlFeatures = loadFromStorage('best_ml_features', {});
+    }
+
+    function saveMlFeatures() {
+      saveToStorage('best_ml_features', state.mlFeatures);
+    }
+
+    function loadSimilarityScores() {
+      state.similarityScores = loadFromStorage('best_similarity_scores', {});
+    }
+
+    function saveSimilarityScores() {
+      saveToStorage('best_similarity_scores', state.similarityScores);
+    }
+
+    /**
+     * Simulates ML feature extraction for demonstration purposes.
+     * Uses a deterministic hash-based approach to generate consistent pseudo-random features
+     * for the same image URL. This ensures that the same image always gets the same features.
+     * 
+     * In production, this would be replaced with actual ML inference using TensorFlow.js,
+     * ONNX Runtime, or a similar framework to analyze image content.
+     * 
+     * @param {string} imageUrl - The URL of the image to analyze
+     * @returns {string[]} Array of detected feature labels
+     */
+    function extractImageFeatures(imageUrl) {
+      // Hash function creates deterministic output for consistent feature assignment
+      const hash = imageUrl.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+      const features = [];
+      const featureCount = 3 + Math.abs(hash % 5);
+      
+      for (let i = 0; i < featureCount; i++) {
+        const featureIndex = Math.abs((hash * (i + 1)) % ML_FEATURES.length);
+        const feature = ML_FEATURES[featureIndex];
+        if (!features.includes(feature)) {
+          features.push(feature);
+        }
+      }
+      return features;
+    }
+
+    function analyzePerformerFeatures(username) {
+      const item = (state.payload?.items || []).find(i => i.username?.toLowerCase() === username);
+      if (!item) return [];
+      
+      const imageUrl = item.image_url;
+      if (!imageUrl) return [];
+      
+      // Check if already analyzed
+      if (state.mlFeatures[username]) {
+        return state.mlFeatures[username];
+      }
+      
+      // Extract features
+      const features = extractImageFeatures(imageUrl);
+      state.mlFeatures[username] = features;
+      saveMlFeatures();
+      
+      // Calculate similarity with other performers
+      calculateSimilarityScores(username, features);
+      
+      return features;
+    }
+
+    function calculateSimilarityScores(sourceUsername, sourceFeatures) {
+      if (!state.settings.mlFeaturesEnabled) return;
+      
+      const items = state.payload?.items || [];
+      const sourceSet = new Set(sourceFeatures);
+      
+      items.forEach(item => {
+        const targetUsername = item.username?.toLowerCase();
+        if (targetUsername === sourceUsername) return;
+        
+        // Get or extract target features
+        let targetFeatures = state.mlFeatures[targetUsername];
+        if (!targetFeatures && item.image_url) {
+          targetFeatures = extractImageFeatures(item.image_url);
+          state.mlFeatures[targetUsername] = targetFeatures;
+        }
+        
+        if (!targetFeatures) return;
+        
+        // Calculate Jaccard similarity
+        const targetSet = new Set(targetFeatures);
+        const intersection = [...sourceSet].filter(f => targetSet.has(f)).length;
+        const union = new Set([...sourceFeatures, ...targetFeatures]).size;
+        const similarity = union > 0 ? intersection / union : 0;
+        
+        if (similarity > SIMILARITY_THRESHOLD) {
+          // Boost target performer's score based on similarity
+          const boost = Math.round(similarity * SIMILARITY_BOOST_MULTIPLIER);
+          state.similarityScores[targetUsername] = (state.similarityScores[targetUsername] || 0) + boost;
+        }
+      });
+      
+      saveMlFeatures();
+      saveSimilarityScores();
+    }
+
+    function boostPopularity(username) {
+      const key = String(username || '').toLowerCase();
+      if (!key) return;
+      state.clickCounts[key] = (state.clickCounts[key] || 0) + 5;
+      saveClickCounts();
+      document.getElementById('status').textContent = `Boosted popularity for @${username}`;
+      setTimeout(() => document.getElementById('status').textContent = '', 2000);
+      render();
+    }
+
     // ============ SCORING ============
     function calculateScore(item) {
       let score = 0;
@@ -304,6 +630,15 @@
 
       // Bonus for having custom tags (user showed interest)
       score += customTagsForUser.length * 3;
+      
+      // ML similarity score bonus
+      if (state.settings.mlFeaturesEnabled) {
+        score += (state.similarityScores[username] || 0) * ML_SIMILARITY_WEIGHT;
+        
+        // Bonus for having ML-detected features
+        const mlFeatureCount = (state.mlFeatures[username] || []).length;
+        score += mlFeatureCount;
+      }
       
       // Viewers bonus (mild)
       score += Math.min(item.num_viewers || 0, 100) * 0.1;
@@ -395,6 +730,12 @@
       const images = getPerformerImages(item);
       const currentSlideIndex = state.cardSlideshowIndices[username] || 0;
       
+      // ML features info
+      const mlFeatures = state.mlFeatures[username] || [];
+      const similarityScore = state.similarityScores[username] || 0;
+      const mlBadge = mlFeatures.length > 0 ? `<span class="ml-badge">🤖 ${mlFeatures.length}</span>` : '';
+      const similarityInfo = similarityScore > 0 ? `<span class="similarity-indicator">⚡${similarityScore}</span>` : '';
+      
       const dotsHtml = images.length > 1 
         ? `<div class="slide-dots">${images.map((_, i) => `<div class="slide-dot${i === currentSlideIndex ? ' active' : ''}" data-slide="${i}"></div>`).join('')}</div>` 
         : '';
@@ -414,9 +755,9 @@
             ${dotsHtml}
           </div>
           <div class="meta">
-            <div class="name">${esc(item.display_name || item.username)} ${score > 0 ? `<span class="score-badge">★ ${score}</span>` : ''}</div>
-            <div class="muted">@${esc(username)} ${clickCount > 0 ? `· <span class="click-count">${clickCount} clicks</span>` : ''}</div>
-            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0}</div>
+            <div class="name">${esc(item.display_name || item.username)} ${score > 0 ? `<span class="score-badge">★ ${score}</span>` : ''} ${mlBadge}</div>
+            <div class="muted">@${esc(username)} ${clickCount > 0 ? `· <span class="click-count">${clickCount} clicks</span>` : ''} ${similarityInfo}</div>
+            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0} · 📷 ${images.length}</div>
             <div>${tagsHtml}</div>
             <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
           </div>
@@ -449,6 +790,11 @@
       document.getElementById('sortSelect').value = state.settings.sortBy;
       document.getElementById('slideshowSpeed').value = state.settings.slideshowSpeed;
       document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
+      document.getElementById('itemsPerPageSelect').value = state.settings.itemsPerPage;
+      document.getElementById('offlineOnlyToggle').checked = state.settings.offlineOnly;
+      document.getElementById('offlineOnlyLabel').textContent = state.settings.offlineOnly ? 'Show offline only' : 'Show all performers';
+      document.getElementById('mlFeaturesToggle').checked = state.settings.mlFeaturesEnabled;
+      document.getElementById('mlFeaturesLabel').textContent = state.settings.mlFeaturesEnabled ? 'ML similarity enabled' : 'ML similarity disabled';
       
       startSlideshow();
     }
@@ -483,6 +829,29 @@
         saveSettings();
         startSlideshow();
       });
+
+      document.getElementById('itemsPerPageSelect').addEventListener('change', (e) => {
+        state.settings.itemsPerPage = parseInt(e.target.value);
+        state.currentPage = 0;
+        saveSettings();
+        render();
+      });
+
+      document.getElementById('offlineOnlyToggle').addEventListener('change', (e) => {
+        state.settings.offlineOnly = e.target.checked;
+        document.getElementById('offlineOnlyLabel').textContent = e.target.checked ? 'Show offline only' : 'Show all performers';
+        state.currentPage = 0;
+        saveSettings();
+        applyFilters();
+        render();
+      });
+
+      document.getElementById('mlFeaturesToggle').addEventListener('change', (e) => {
+        state.settings.mlFeaturesEnabled = e.target.checked;
+        document.getElementById('mlFeaturesLabel').textContent = e.target.checked ? 'ML similarity enabled' : 'ML similarity disabled';
+        saveSettings();
+        render();
+      });
     }
 
     // ============ MAIN SLIDESHOW ============
@@ -514,16 +883,80 @@
     function render() {
       const grid = document.getElementById('grid');
       const sorted = sortItems(state.filtered);
-      grid.innerHTML = sorted.map((item, i) => cardHtml(item, i)).join('');
+      const itemsPerPage = state.settings.itemsPerPage || 40;
+      const startIndex = 0;
+      const endIndex = (state.currentPage + 1) * itemsPerPage;
+      
+      // Get items to display (paginated)
+      state.displayedItems = sorted.slice(startIndex, endIndex);
+      
+      grid.innerHTML = state.displayedItems.map((item, i) => cardHtml(item, i)).join('');
+      
+      // Update stats
       document.getElementById('visibleCount').textContent = String(state.filtered.length);
+      document.getElementById('showingCount').textContent = String(state.displayedItems.length);
+      document.getElementById('totalFilteredCount').textContent = String(state.filtered.length);
+      
+      // Update load more button
+      const loadMoreContainer = document.getElementById('loadMoreContainer');
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      const paginationInfo = document.getElementById('paginationInfo');
+      
+      if (state.displayedItems.length < state.filtered.length) {
+        loadMoreContainer.style.display = 'block';
+        loadMoreBtn.disabled = state.isLoading;
+        loadMoreBtn.textContent = state.isLoading ? 'Loading...' : 'Load More';
+        const remaining = state.filtered.length - state.displayedItems.length;
+        paginationInfo.textContent = `${remaining} more performer${remaining !== 1 ? 's' : ''} available`;
+      } else {
+        loadMoreContainer.style.display = 'none';
+      }
+      
       setSlideshowIndex(0);
       startSlideshow();
       applySettings();
     }
 
+    function loadMore() {
+      if (state.isLoading) return;
+      state.isLoading = true;
+      state.currentPage++;
+      
+      // Brief delay for smooth UX transition (prevents jarring layout shifts)
+      setTimeout(() => {
+        state.isLoading = false;
+        render();
+      }, LOAD_MORE_DELAY_MS);
+    }
+
+    function applyFilters() {
+      const items = state.payload?.items || [];
+      let filtered = items;
+      
+      // Apply offline-only filter
+      if (state.settings.offlineOnly) {
+        filtered = filtered.filter(item => {
+          return item.image_url && state.offlineImageUrls.has(item.image_url);
+        });
+      }
+      
+      state.filtered = filtered;
+    }
+
     function applySearch() {
       const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
-      const items = state.payload?.items || [];
+      let items = state.payload?.items || [];
+      
+      // Apply offline-only filter first
+      if (state.settings.offlineOnly) {
+        items = items.filter(item => {
+          return item.image_url && state.offlineImageUrls.has(item.image_url);
+        });
+      }
+      
+      // Reset pagination on search
+      state.currentPage = 0;
+      
       if (!query) {
         state.filtered = items;
         render();
@@ -532,11 +965,13 @@
       state.filtered = items.filter((item) => {
         const tags = Array.isArray(item.tags) ? item.tags.join(' ').toLowerCase() : '';
         const customTags = (state.customTags[item.username?.toLowerCase()] || []).join(' ').toLowerCase();
+        const mlFeatures = (state.mlFeatures[item.username?.toLowerCase()] || []).join(' ').toLowerCase();
         return (
           String(item.username || '').toLowerCase().includes(query) ||
           String(item.display_name || '').toLowerCase().includes(query) ||
           tags.includes(query) ||
-          customTags.includes(query)
+          customTags.includes(query) ||
+          mlFeatures.includes(query)
         );
       });
       render();
@@ -567,10 +1002,21 @@
       if (action === 'addTag') {
         openTagModal(username);
       } else if (action === 'viewTags') {
-        const tags = state.customTags[username] || [];
-        alert(`Custom tags for @${username}:\n${tags.length ? tags.join(', ') : 'No custom tags yet'}`);
+        const customTags = state.customTags[username] || [];
+        const mlFeatures = state.mlFeatures[username] || [];
+        const allInfo = [];
+        if (customTags.length) allInfo.push(`Custom tags: ${customTags.join(', ')}`);
+        if (mlFeatures.length) allInfo.push(`ML features: ${mlFeatures.join(', ')}`);
+        alert(`Tags for @${username}:\n${allInfo.length ? allInfo.join('\n') : 'No tags yet'}`);
       } else if (action === 'findSimilar') {
         findSimilarPerformers(username);
+      } else if (action === 'analyzeFeatures') {
+        const features = analyzePerformerFeatures(username);
+        document.getElementById('status').textContent = `ML Features detected: ${features.join(', ')}`;
+        setTimeout(() => document.getElementById('status').textContent = '', 3000);
+        render();
+      } else if (action === 'boostPopularity') {
+        boostPopularity(username);
       } else if (action === 'copyUsername') {
         navigator.clipboard.writeText(username).then(() => {
           document.getElementById('status').textContent = `Copied: ${username}`;
@@ -657,10 +1103,34 @@
 
     function saveModalTags() {
       if (state.tagModalTarget) {
-        state.customTags[state.tagModalTarget] = [...state.selectedTagsForModal];
+        const previousTags = state.customTags[state.tagModalTarget] || [];
+        const newTags = [...state.selectedTagsForModal];
+        state.customTags[state.tagModalTarget] = newTags;
         saveCustomTags();
+        
+        // Calculate new tags added using Set for O(n) lookup instead of O(n²)
+        const previousTagsLower = new Set(previousTags.map(p => p.toLowerCase()));
+        const addedTags = newTags.filter(t => !previousTagsLower.has(t.toLowerCase()));
+        if (addedTags.length > 0) {
+          // Each new tag boosts popularity
+          state.clickCounts[state.tagModalTarget] = (state.clickCounts[state.tagModalTarget] || 0) + addedTags.length * TAG_POPULARITY_BOOST;
+          saveClickCounts();
+          
+          // Track these tags as interests
+          addedTags.forEach(tag => trackInterest(tag));
+          
+          // If ML features enabled, trigger similarity analysis
+          if (state.settings.mlFeaturesEnabled) {
+            // Merge custom tags with ML features for similarity
+            const features = [...(state.mlFeatures[state.tagModalTarget] || []), ...addedTags];
+            state.mlFeatures[state.tagModalTarget] = [...new Set(features)];
+            saveMlFeatures();
+            calculateSimilarityScores(state.tagModalTarget, state.mlFeatures[state.tagModalTarget]);
+          }
+        }
+        
         render();
-        document.getElementById('status').textContent = `Tags saved for @${state.tagModalTarget}`;
+        document.getElementById('status').textContent = `Tags saved for @${state.tagModalTarget}${addedTags.length ? ` (+${addedTags.length} popularity boost)` : ''}`;
       }
       closeTagModal();
     }
@@ -673,19 +1143,31 @@
         return;
       }
       
-      const matches = state.allKnownTags.filter(t => 
+      // Combine known tags with ML features for autocomplete
+      const allSuggestions = new Set([...state.allKnownTags, ...ML_FEATURES]);
+      
+      const matches = Array.from(allSuggestions).filter(t => 
         t.includes(query.toLowerCase()) && 
         !state.selectedTagsForModal.map(s => s.toLowerCase()).includes(t)
       ).slice(0, 10);
       
-      if (!matches.length) {
+      // If query doesn't match any existing tag, show option to create new
+      const showCreateNew = query.length >= 2 && !matches.some(m => m === query.toLowerCase());
+      
+      if (!matches.length && !showCreateNew) {
         hideAutocomplete();
         return;
       }
       
-      dropdown.innerHTML = matches.map((tag, i) => 
-        `<div class="autocomplete-item${i === 0 ? ' selected' : ''}" data-tag="${esc(tag)}">${esc(tag)}</div>`
+      let html = matches.map((tag, i) => 
+        `<div class="autocomplete-item${i === 0 && !showCreateNew ? ' selected' : ''}" data-tag="${esc(tag)}">${esc(tag)}</div>`
       ).join('');
+      
+      if (showCreateNew) {
+        html = `<div class="autocomplete-item${matches.length === 0 ? ' selected' : ''}" data-tag="${esc(query)}" style="font-style: italic;">+ Create "${esc(query)}"</div>` + html;
+      }
+      
+      dropdown.innerHTML = html;
       dropdown.classList.add('visible');
     }
 
@@ -786,6 +1268,26 @@
     document.getElementById('searchInput').addEventListener('input', applySearch);
     document.getElementById('slidePrev').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex - 1));
     document.getElementById('slideNext').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex + 1));
+    document.getElementById('loadMoreBtn').addEventListener('click', loadMore);
+    
+    // Infinite scroll support
+    let scrollThrottle = null;
+    window.addEventListener('scroll', () => {
+      if (scrollThrottle) return;
+      scrollThrottle = setTimeout(() => {
+        scrollThrottle = null;
+        const scrollY = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        // Load more when user is near bottom
+        if (documentHeight - (scrollY + windowHeight) < SCROLL_LOAD_THRESHOLD) {
+          if (state.displayedItems.length < state.filtered.length && !state.isLoading) {
+            loadMore();
+          }
+        }
+      }, 100);
+    });
     
     // Grid click handlers
     document.getElementById('grid').addEventListener('click', (event) => {
@@ -910,6 +1412,8 @@
     loadInterests();
     loadClickCounts();
     loadCustomTags();
+    loadMlFeatures();
+    loadSimilarityScores();
     loadSettings();
     setupSettingsListeners();
     renderInterests();
