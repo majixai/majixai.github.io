@@ -40,7 +40,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.x'
 
       - name: Generate Projects Data
         run: |
@@ -78,8 +78,8 @@ jobs:
                               mtime = datetime.fromtimestamp(os.path.getmtime(os.path.join(root, f)))
                               if mtime > latest:
                                   latest = mtime
-                          except:
-                              pass
+                          except (OSError, ValueError) as e:
+                              print(f'Warning: Could not get mtime for file: {e}')
               return latest if latest != datetime.min else datetime.now()
 
           def get_description(dir_path, dir_name):
@@ -98,8 +98,8 @@ jobs:
                               if line and not line.startswith('#') and not line.startswith('!'):
                                   desc = line[:100]
                                   break
-                  except:
-                      pass
+                  except (IOError, UnicodeDecodeError) as e:
+                      print(f'Warning: Could not read README.md: {e}')
               elif os.path.exists(index_path):
                   try:
                       with open(index_path, 'r', encoding='utf-8') as f:
@@ -109,8 +109,8 @@ jobs:
                           title_match = re.search(r'<title>([^<]+)</title>', content, re.IGNORECASE)
                           if title_match:
                               desc = title_match.group(1).strip()[:100]
-                  except:
-                      pass
+                  except (IOError, UnicodeDecodeError) as e:
+                      print(f'Warning: Could not read index.html: {e}')
               
               return desc
 
@@ -140,8 +140,8 @@ jobs:
                       'path': f'{item}/',
                       'desc': description,
                       'category': category,
-                      'enhancements': ['Updated content', 'Bug fixes'],
-                      'recommendations': ['Add documentation', 'Improve tests'],
+                      'enhancements': ['Content updates', 'Performance improvements'],  # Placeholder - can be enhanced to read from CHANGELOG
+                      'recommendations': ['Documentation', 'Test coverage'],  # Placeholder - can be enhanced to read from TODO
                       'lastUpdated': last_modified.isoformat()
                   }
                   

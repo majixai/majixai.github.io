@@ -417,7 +417,7 @@
   <footer class="main-footer">
     <p>&copy; 2025 MajixAI | <span id="projectCount">0</span> Projects</p>
     <p><small>Built with <i class="fas fa-heart text-danger"></i> using advanced OOP, IndexedDB, and modern web technologies</small></p>
-    <p><small>Version: <span id="appVersion">2.0.0</span> | <a href="https://github.com/majixai" target="_blank" rel="noopener">GitHub</a></small></p>
+    <p><small>Version: <span id="appVersion">2.0.0</span> | <a href="https://github.com/majixai" target="_blank" rel="noopener noreferrer">GitHub</a></small></p>
   </footer>
 
   <script>
@@ -711,7 +711,8 @@
         const fresh = await fetcher();
         await this.#storage.save(key, fresh);
         return fresh;
-      } catch {
+      } catch (e) {
+        console.warn('Network fetch failed, using cache:', e);
         return this.#storage.load(key);
       }
     }
@@ -719,7 +720,7 @@
     async #staleWhileRevalidate(key, fetcher) {
       const cached = await this.#storage.load(key);
       // Start background refresh
-      fetcher().then(fresh => this.#storage.save(key, fresh)).catch(() => {});
+      fetcher().then(fresh => this.#storage.save(key, fresh)).catch((e) => console.warn('Cache save failed:', e));
       return cached || fetcher();
     }
   }
@@ -1071,8 +1072,13 @@
       const fetcher = async () => {
         try {
           const response = await fetch(MajixConfig.dataUrl);
-          if (response.ok) return response.json();
-        } catch {}
+          if (response.ok) {
+            const data = await response.json();
+            return data;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch projects.json:', e);
+        }
         return this.#getDefaultProjects();
       };
 
