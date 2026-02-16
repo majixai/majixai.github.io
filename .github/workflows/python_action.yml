@@ -1,14 +1,6 @@
-name: Python Action
+# Existing workflow content...
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
-    - name: Run script
-      run: python -c "print('Python action triggered')"
+# Scheduled trigger to run the S&P 500 1 PM projection job
+on:
+  schedule:
+    - cron: '59 15 * * 1-5'  # Every weekday at 8:59 AM PST
