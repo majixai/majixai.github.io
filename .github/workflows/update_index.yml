@@ -1,0 +1,187 @@
+name: Update Index Projects Data
+
+on:
+  # Run on push to main branch
+  push:
+    branches:
+      - main
+    paths:
+      - '**/index.html'
+      - '**/README.md'
+      - '**/*.json'
+  
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update all project data'
+        required: false
+        default: 'false'
+        type: boolean
+
+  # Scheduled run every day at midnight UTC
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  update_projects:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Generate Projects Data
+        run: |
+          python << 'EOF'
+          import os
+          import json
+          from datetime import datetime
+          from pathlib import Path
+
+          # Category mappings based on directory names
+          CATEGORY_KEYWORDS = {
+              'finance': ['stock', 'trade', 'ticker', 'option', 'market', 'etrade', 'yfinance', 'quantix', 'jinx_strategy', 'jump'],
+              'gaming': ['nfl', 'gridiron', 'playbook', 'holdem', 'casino', 'golf', 'touchdown', 'dice'],
+              'data': ['csv', 'dbs', 'data', 'index', 'fetcher', 'github_data', 'latest_commit'],
+              'web': ['hotel', 'reservation', 'booking', 'stays', 'referral', 'showcase', 'whatsapp', 'contact', 'link_manager', 'jinxco', 'boxstore']
+          }
+
+          def get_category(dir_name):
+              dir_lower = dir_name.lower()
+              for category, keywords in CATEGORY_KEYWORDS.items():
+                  for keyword in keywords:
+                      if keyword in dir_lower:
+                          return category
+              return 'tools'
+
+          def get_last_modified(dir_path):
+              """Get the most recent modification time of files in directory"""
+              latest = datetime.min
+              for root, dirs, files in os.walk(dir_path):
+                  # Skip hidden directories
+                  dirs[:] = [d for d in dirs if not d.startswith('.')]
+                  for f in files:
+                      if not f.startswith('.'):
+                          try:
+                              mtime = datetime.fromtimestamp(os.path.getmtime(os.path.join(root, f)))
+                              if mtime > latest:
+                                  latest = mtime
+                          except (OSError, ValueError) as e:
+                              print(f'Warning: Could not get mtime for file: {e}')
+              return latest if latest != datetime.min else datetime.now()
+
+          def get_description(dir_path, dir_name):
+              """Try to extract description from README or index.html"""
+              readme_path = os.path.join(dir_path, 'README.md')
+              index_path = os.path.join(dir_path, 'index.html')
+              
+              desc = f'{dir_name} project'
+              
+              if os.path.exists(readme_path):
+                  try:
+                      with open(readme_path, 'r', encoding='utf-8') as f:
+                          lines = f.readlines()
+                          for line in lines[1:10]:  # Skip first line (usually title)
+                              line = line.strip()
+                              if line and not line.startswith('#') and not line.startswith('!'):
+                                  desc = line[:100]
+                                  break
+                  except (IOError, UnicodeDecodeError) as e:
+                      print(f'Warning: Could not read README.md: {e}')
+              elif os.path.exists(index_path):
+                  try:
+                      with open(index_path, 'r', encoding='utf-8') as f:
+                          content = f.read()
+                          # Try to extract title
+                          import re
+                          title_match = re.search(r'<title>([^<]+)</title>', content, re.IGNORECASE)
+                          if title_match:
+                              desc = title_match.group(1).strip()[:100]
+                  except (IOError, UnicodeDecodeError) as e:
+                      print(f'Warning: Could not read index.html: {e}')
+              
+              return desc
+
+          def scan_directories():
+              """Scan all directories and generate project data"""
+              projects = []
+              base_path = os.getcwd()
+              
+              # Directories to exclude
+              exclude_dirs = {'.git', '.github', '__pycache__', 'node_modules', 'icons', '.vscode'}
+              
+              for item in sorted(os.listdir(base_path)):
+                  item_path = os.path.join(base_path, item)
+                  
+                  if not os.path.isdir(item_path):
+                      continue
+                  
+                  if item.startswith('.') or item in exclude_dirs:
+                      continue
+                  
+                  last_modified = get_last_modified(item_path)
+                  category = get_category(item)
+                  description = get_description(item_path, item)
+                  
+                  project = {
+                      'name': item,
+                      'path': f'{item}/',
+                      'desc': description,
+                      'category': category,
+                      'enhancements': ['Content updates', 'Performance improvements'],  # Placeholder - can be enhanced to read from CHANGELOG
+                      'recommendations': ['Documentation', 'Test coverage'],  # Placeholder - can be enhanced to read from TODO
+                      'lastUpdated': last_modified.isoformat()
+                  }
+                  
+                  projects.append(project)
+              
+              return projects
+
+          # Generate and save projects data
+          projects = scan_directories()
+          
+          with open('projects.json', 'w', encoding='utf-8') as f:
+              json.dump(projects, f, indent=2)
+          
+          print(f"Generated data for {len(projects)} projects")
+          EOF
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push changes
+        run: |
+          git add projects.json
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: Update projects.json - $TIMESTAMP"
+            git push
+            echo "Changes pushed successfully"
+          fi
+
+      - name: Generate summary
+        run: |
+          echo "## Projects Data Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          PROJECT_COUNT=$(python -c "import json; print(len(json.load(open('projects.json'))))")
+          echo "**Total Projects:** $PROJECT_COUNT" >> $GITHUB_STEP_SUMMARY

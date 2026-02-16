@@ -4,405 +4,1271 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#2c3e50">
+  <meta name="description" content="MajixAI Project Directory - Advanced routing menu with expandable project details, enhancements, and future recommendations">
   <link rel="manifest" href="manifest.webmanifest">
-  <title>MajixAI Project Directory Menu</title>
-  <!-- Bootstrap 5 CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- W3CSS CDN -->
+  <title>MajixAI Project Directory</title>
+  <!-- CDN Resources -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-  <!-- jQuery CDN -->
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <!-- Bootstrap Bundle JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
   <style>
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #3498db;
+      --accent-color: #06d6a0;
+      --warning-color: #ffd166;
+      --bg-gradient-start: #e0eafc;
+      --bg-gradient-end: #cfdef3;
+      --card-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      --card-hover-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
     body, html {
       height: 100%;
       margin: 0;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
       overflow-x: hidden;
+      scroll-behavior: smooth;
     }
-    .parallax {
-      background-image: url('https://www.transparenttextures.com/patterns/diamond-upholstery.png');
-      min-height: 300px;
+    /* Parallax Hero Section */
+    .parallax-hero {
+      position: relative;
+      min-height: 350px;
+      background-image: url('https://www.transparenttextures.com/patterns/diamond-upholstery.png'),
+                        linear-gradient(135deg, var(--primary-color) 0%, #1a252f 100%);
       background-attachment: fixed;
       background-position: center;
       background-repeat: repeat;
-      background-size: cover;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
+    .parallax-hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 1;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      color: #fff;
+      padding: 2rem;
+    }
+    .hero-title {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+      margin-bottom: 0.5rem;
+    }
+    .hero-subtitle {
+      font-size: 1.2rem;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    /* About Section */
+    .about-section {
+      background: linear-gradient(90deg, var(--primary-color), #34495e);
+      color: #fff;
+      padding: 2rem;
+      text-align: center;
+    }
+    .about-section h2 { margin-bottom: 1rem; }
+    .about-section p { max-width: 800px; margin: 0 auto; line-height: 1.7; opacity: 0.95; }
+    /* Control Bar */
+    .control-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .control-bar .btn { min-width: 120px; }
+    .search-box {
+      flex: 1 1 250px;
+      max-width: 400px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 0.6rem 1rem;
+      border: 2px solid var(--secondary-color);
+      border-radius: 25px;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .search-box input:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 8px rgba(6,214,160,0.3);
+    }
+    /* Grid/Flex Project Container */
+    .project-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+    /* Project Card */
     .project-card {
-      transition: transform 0.3s cubic-bezier(.25,.8,.25,1), box-shadow 0.3s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      background: #fff;
       border-radius: 1rem;
       overflow: hidden;
-      background: #fff;
-      position: relative;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.3s cubic-bezier(.25,.8,.25,1), box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
     }
     .project-card:hover {
-      transform: translateY(-8px) scale(1.03);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-      z-index: 2;
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: var(--card-hover-shadow);
     }
-    .project-svg {
-      width: 100%;
-      height: 80px;
-      display: block;
-      background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);
+    .card-header-svg {
+      height: 100px;
+      background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
     }
-    .project-title {
-      font-size: 1.2rem;
+    .card-header-svg svg {
+      width: 60px;
+      height: 60px;
+      transition: transform 0.3s;
+    }
+    .project-card:hover .card-header-svg svg {
+      transform: scale(1.1) rotate(5deg);
+    }
+    .card-body-content {
+      padding: 1rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .project-name {
+      font-size: 1.25rem;
       font-weight: 600;
-      margin: 0.5rem 0 0.2rem 0;
-      color: #2a3a4a;
-      text-align: center;
+      color: var(--primary-color);
+      margin-bottom: 0.3rem;
+    }
+    .project-path {
+      font-size: 0.8rem;
+      color: #888;
+      margin-bottom: 0.5rem;
+      font-family: monospace;
     }
     .project-desc {
       font-size: 0.95rem;
       color: #555;
-      text-align: center;
-      margin-bottom: 0.5rem;
+      line-height: 1.5;
+      flex: 1;
     }
-    .animated-bg {
-      animation: bgmove 8s linear infinite alternate;
+    /* Category Badge */
+    .category-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin-right: 0.3rem;
+      margin-bottom: 0.3rem;
     }
-    @keyframes bgmove {
-      0% { background-position: 0 0; }
-      100% { background-position: 100px 100px; }
+    .cat-finance { background: #e3f2fd; color: #1565c0; }
+    .cat-gaming { background: #fce4ec; color: #c2185b; }
+    .cat-tools { background: #e8f5e9; color: #2e7d32; }
+    .cat-data { background: #fff3e0; color: #ef6c00; }
+    .cat-web { background: #f3e5f5; color: #7b1fa2; }
+    /* Expandable Details */
+    .expandable-section {
+      border-top: 1px solid #eee;
+      padding: 0;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease-out, padding 0.3s;
     }
-    .menu-header {
-      background: rgba(44,62,80,0.95);
+    .expandable-section.expanded {
+      max-height: 500px;
+      padding: 1rem;
+    }
+    .expand-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.6rem;
+      background: #f8f9fa;
+      border: none;
+      width: 100%;
+      cursor: pointer;
+      color: var(--secondary-color);
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+    .expand-toggle:hover { background: #e9ecef; }
+    .expand-toggle i { margin-left: 0.5rem; transition: transform 0.3s; }
+    .expand-toggle.active i { transform: rotate(180deg); }
+    /* Enhancement Tags */
+    .enhancement-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.6rem;
+      margin: 0.2rem;
+      border-radius: 15px;
+      font-size: 0.75rem;
+      background: linear-gradient(135deg, var(--accent-color), #00b894);
       color: #fff;
-      padding: 2rem 0 1rem 0;
-      text-align: center;
-      letter-spacing: 0.1em;
-      font-size: 2.2rem;
-      font-weight: 700;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    .w3-animate-opacity { animation: opac 1.2s; }
-    @keyframes opac { from {opacity:0} to {opacity:1} }
-    .project-grid {
+    .recommendation-tag {
+      background: linear-gradient(135deg, var(--warning-color), #fdcb6e);
+      color: #2d3436;
+    }
+    /* Card Actions */
+    .card-actions {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.8rem 1rem;
+      background: #f8f9fa;
+      border-top: 1px solid #eee;
+    }
+    .card-actions .btn { flex: 1; font-size: 0.85rem; }
+    /* Stats Dashboard */
+    .stats-dashboard {
       display: flex;
       flex-wrap: wrap;
-      gap: 2rem;
       justify-content: center;
-      margin: 2rem auto;
-      max-width: 1400px;
+      gap: 1rem;
+      padding: 1.5rem 2rem;
+      background: rgba(255,255,255,0.9);
     }
-    .project-card {
-      flex: 1 1 260px;
-      min-width: 260px;
-      max-width: 320px;
-      margin: 0.5rem;
+    .stat-card {
+      background: linear-gradient(135deg, var(--primary-color), #34495e);
+      color: #fff;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      text-align: center;
+      min-width: 150px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; }
+    .stat-label { font-size: 0.85rem; opacity: 0.9; }
+    /* Footer */
+    .main-footer {
+      background: var(--primary-color);
+      color: #fff;
+      padding: 2rem;
+      text-align: center;
+    }
+    .main-footer a { color: var(--accent-color); }
+    /* Animation Classes */
+    .animate-fade-in {
+      animation: fadeIn 0.6s ease-out forwards;
+      opacity: 0;
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.5s ease-out forwards;
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    @keyframes slideUp {
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .animations-paused * {
+      animation-play-state: paused !important;
+    }
+    /* Loading Spinner */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.95);
       display: flex;
       flex-direction: column;
-      align-items: stretch;
-      border: 1px solid #e0eafc;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s;
     }
-    .svg-anim {
-      cursor: pointer;
-      transition: filter 0.3s;
+    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #eee;
+      border-top-color: var(--secondary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
     }
-    .svg-anim:hover {
-      filter: drop-shadow(0 0 8px #6ec6ff);
-    }
-    .footer {
-      text-align: center;
-      color: #888;
-      padding: 1.5rem 0 0.5rem 0;
-      font-size: 1rem;
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 1.8rem; }
+      .project-container { padding: 1rem; gap: 1rem; }
+      .control-bar { flex-direction: column; padding: 1rem; }
     }
   </style>
 </head>
 <body>
-  <div class="parallax w3-animate-opacity">
-    <div class="menu-header">MajixAI Project Directory Menu</div>
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p class="mt-3 text-muted">Loading MajixAI Projects...</p>
   </div>
-  <main>
-    <div class="container-fluid">
-      <div id="projectGrid" class="project-grid"></div>
+
+  <!-- Parallax Hero -->
+  <header class="parallax-hero">
+    <div class="hero-content animate-fade-in">
+      <h1 class="hero-title">MajixAI</h1>
+      <p class="hero-subtitle">Advanced Project Directory &amp; Routing Hub</p>
+      <!-- Animated SVG Logo -->
+      <svg id="heroLogo" class="mt-3" width="80" height="80" viewBox="0 0 100 100">
+        <defs>
+          <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#6ec6ff"/>
+            <stop offset="100%" style="stop-color:#06d6a0"/>
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="40" fill="url(#logoGrad)" stroke="#fff" stroke-width="2">
+          <animate attributeName="r" values="38;42;38" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <text x="50" y="58" text-anchor="middle" fill="#fff" font-size="24" font-weight="bold">M</text>
+      </svg>
     </div>
+  </header>
+
+  <!-- About Section -->
+  <section class="about-section">
+    <h2><i class="fas fa-info-circle me-2"></i>About MajixAI</h2>
+    <p>MajixAI is a comprehensive collection of projects spanning finance, gaming, data analysis, web applications, and developer tools. This directory serves as a central routing hub providing quick access to all projects with expandable details, latest enhancements, and recommendations for future improvements. Built with advanced JavaScript patterns including classes, decorators, generators, async operations, and IndexedDB for offline capability.</p>
+  </section>
+
+  <!-- Control Bar -->
+  <div class="control-bar">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search projects..." aria-label="Search projects">
+    </div>
+    <select id="categoryFilter" class="form-select" style="max-width:200px;">
+      <option value="all">All Categories</option>
+      <option value="finance">Finance</option>
+      <option value="gaming">Gaming</option>
+      <option value="tools">Tools</option>
+      <option value="data">Data</option>
+      <option value="web">Web</option>
+    </select>
+    <button id="toggleAnimations" class="btn btn-outline-primary">
+      <i class="fas fa-pause me-1"></i> Animations
+    </button>
+    <button id="expandAll" class="btn btn-outline-secondary">
+      <i class="fas fa-expand-alt me-1"></i> Expand All
+    </button>
+    <button id="refreshData" class="btn btn-outline-success">
+      <i class="fas fa-sync-alt me-1"></i> Refresh
+    </button>
+  </div>
+
+  <!-- Stats Dashboard -->
+  <div class="stats-dashboard">
+    <div class="stat-card">
+      <div class="stat-value" id="totalProjects">0</div>
+      <div class="stat-label">Total Projects</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="totalCategories">0</div>
+      <div class="stat-label">Categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="lastUpdate">--</div>
+      <div class="stat-label">Last Update</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="cacheStatus">--</div>
+      <div class="stat-label">Cache Status</div>
+    </div>
+  </div>
+
+  <!-- Main Project Container -->
+  <main>
+    <div id="projectContainer" class="project-container"></div>
   </main>
-  <div class="footer">&copy; 2025 MajixAI | <span id="projectCount"></span> Projects</div>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <p>&copy; 2025 MajixAI | <span id="projectCount">0</span> Projects</p>
+    <p><small>Built with <i class="fas fa-heart text-danger"></i> using advanced OOP, IndexedDB, and modern web technologies</small></p>
+    <p><small>Version: <span id="appVersion">2.0.0</span> | <a href="https://github.com/majixai" target="_blank" rel="noopener noreferrer">GitHub</a></small></p>
+  </footer>
+
   <script>
-    const PROJECTS = [
-      { name: 'BoxStore Returns', path: 'boxstore/policy/', desc: 'Returns policy for BoxStore' },
-      { name: '7t', path: '7t/', desc: 'Experimental text and alpha tools' },
-      { name: 'best', path: 'best/', desc: 'Best strategies and alpha' },
-      { name: 'beta', path: 'beta/', desc: 'Beta features and scripts' },
-      { name: 'chat', path: 'chat/', desc: 'Chat and indicators' },
-      { name: 'chaturbate_app', path: 'chaturbate_app/', desc: 'Chaturbate event handlers' },
-      { name: 'church_school_lesson_plan', path: 'church_school_lesson_plan/', desc: 'Church school lesson plans' },
-      { name: 'csv', path: 'csv/', desc: 'Stock CSV data' },
-      { name: 'etrade_client', path: 'etrade_client/', desc: 'Etrade API client' },
-      { name: 'fun_hotel_reservation', path: 'fun_hotel_reservation/', desc: 'Colorful hotel reservation experience' },
-      { name: 'Gridiron', path: 'Gridiron/', desc: 'Football analytics' },
-      { name: 'jinx', path: 'jinx/', desc: 'Jinx core' },
-      { name: 'jinx_strategy', path: 'jinx_strategy/', desc: 'Jinx strategies' },
-      { name: 'jinxcasino', path: 'jinxcasino/', desc: 'Jinx casino' },
-      { name: 'json', path: 'json/', desc: 'JSON data' },
-      { name: 'link_indexer', path: 'link_indexer/', desc: 'Link indexer' },
-      { name: 'market', path: 'market/', desc: 'Market tools' },
-      { name: 'nfl', path: 'nfl/', desc: 'NFL data' },
-      { name: 'nfl_offensive_playbook', path: 'nfl_offensive_playbook/', desc: 'NFL playbook' },
-      { name: 'option', path: 'option/', desc: 'Options tools' },
-      { name: 'options', path: 'options/', desc: 'Options strategies' },
-      { name: 'pj', path: 'pj/', desc: 'PJ tools' },
-      { name: 'playbook', path: 'playbook/', desc: 'Football playbook' },
-      { name: 'playbook_app', path: 'playbook_app/', desc: 'Playbook app' },
-      { name: 'referrals', path: 'referrals/', desc: 'Referral system' },
-      { name: 'script', path: 'script/', desc: 'Scripts' },
-      { name: 'seventy', path: 'seventy/', desc: 'Seventy tools' },
-      { name: 'simple', path: 'simple/', desc: 'Simple tools' },
-      { name: 'stays', path: 'stays/', desc: 'Stay management' },
-      { name: 'stock', path: 'stock/', desc: 'Stock tools' },
-      { name: 'stock_analyzer', path: 'stock_analyzer/', desc: 'Stock analyzer' },
-      { name: 'stock_fetcher', path: 'stock_fetcher/', desc: 'Stock fetcher' },
-      { name: 'study', path: 'study/', desc: 'Study tools' },
-      { name: 'style', path: 'style/', desc: 'Style resources' },
-      { name: 'texas_holdem', path: 'texas_holdem/', desc: 'Texas Holdem' },
-      { name: 'ticker', path: 'ticker/', desc: 'Ticker tools' },
-      { name: 'tickers', path: 'tickers/', desc: 'Tickers' },
-      { name: 'Trades', path: 'Trades/', desc: 'Trade logs' },
-      { name: 'whatsapp_integration', path: 'whatsapp_integration/', desc: 'WhatsApp integration' }
-    ];
+  /**
+   * MajixAI Project Directory - Enhanced Index Page
+   * Implements: Classes, Decorators, Iterators, Generators, Async Patterns,
+   * Private/Protected/Public Members, Static Members, IndexedDB, Hooks, Callbacks,
+   * Object Mapping, IIFE, Interfaces, Cache Management, Bitwise Operations, and more.
+   */
+  'use strict';
 
-    class CompressionDatabase {
-      static dbName = 'MajixAIOfflineDB';
-      static dbVersion = 2;
-      static storeName = 'compressed_records';
-      static chunkSize = 500000;
-      static db = null;
+  // ============================================================================
+  // IIFE Module: Configuration & Constants
+  // ============================================================================
+  const MajixConfig = (function() {
+    const _private = {
+      version: '2.0.0',
+      dbName: 'MajixAIDirectoryDB',
+      dbVersion: 3,
+      cacheKey: 'majixai.projects.v2',
+      dataUrl: './projects.json',
+      firebaseConfig: {
+        apiKey: null,
+        projectId: 'majixai-directory',
+        databaseURL: null
+      }
+    };
 
-      static async open() {
-        if (CompressionDatabase.db) return CompressionDatabase.db;
-        return new Promise((resolve, reject) => {
-          const request = indexedDB.open(CompressionDatabase.dbName, CompressionDatabase.dbVersion);
-          request.onupgradeneeded = event => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(CompressionDatabase.storeName)) {
-              db.createObjectStore(CompressionDatabase.storeName, { keyPath: 'key' });
+    // Bitwise flags for feature toggles
+    const FLAGS = {
+      ANIMATIONS_ENABLED: 1 << 0,      // 1
+      OFFLINE_MODE: 1 << 1,            // 2
+      DEBUG_MODE: 1 << 2,              // 4
+      CACHE_ENABLED: 1 << 3,           // 8
+      FIREBASE_ENABLED: 1 << 4         // 16
+    };
+
+    let _featureFlags = FLAGS.ANIMATIONS_ENABLED | FLAGS.CACHE_ENABLED;
+
+    return Object.freeze({
+      get version() { return _private.version; },
+      get dbName() { return _private.dbName; },
+      get dbVersion() { return _private.dbVersion; },
+      get cacheKey() { return _private.cacheKey; },
+      get dataUrl() { return _private.dataUrl; },
+      get firebaseConfig() { return { ..._private.firebaseConfig }; },
+      FLAGS,
+      hasFlag: (flag) => (_featureFlags & flag) === flag,
+      setFlag: (flag) => { _featureFlags |= flag; },
+      clearFlag: (flag) => { _featureFlags &= ~flag; },
+      toggleFlag: (flag) => { _featureFlags ^= flag; }
+    });
+  })();
+
+  // ============================================================================
+  // Interface-like Pattern: IStorable
+  // ============================================================================
+  const IStorable = {
+    required: ['save', 'load', 'delete', 'clear'],
+    implement(target) {
+      for (const method of this.required) {
+        if (typeof target[method] !== 'function') {
+          throw new Error(`Class must implement ${method} method`);
+        }
+      }
+      return true;
+    }
+  };
+
+  // ============================================================================
+  // Struct-like Pattern: ProjectData
+  // ============================================================================
+  function ProjectStruct(data) {
+    return Object.freeze({
+      name: String(data.name || 'Unnamed'),
+      path: String(data.path || '/'),
+      desc: String(data.desc || 'No description'),
+      category: String(data.category || 'tools'),
+      enhancements: Array.isArray(data.enhancements) ? [...data.enhancements] : [],
+      recommendations: Array.isArray(data.recommendations) ? [...data.recommendations] : [],
+      lastUpdated: data.lastUpdated || new Date().toISOString(),
+      metadata: { ...data.metadata }
+    });
+  }
+
+  // ============================================================================
+  // Decorator Factory
+  // ============================================================================
+  const Decorators = {
+    // Logging decorator
+    log(target, methodName, descriptor) {
+      const original = descriptor.value;
+      descriptor.value = function(...args) {
+        console.log(`[${new Date().toISOString()}] Calling ${methodName}`, args);
+        const result = original.apply(this, args);
+        console.log(`[${new Date().toISOString()}] ${methodName} returned`, result);
+        return result;
+      };
+      return descriptor;
+    },
+
+    // Memoization decorator
+    memoize(target, methodName, descriptor) {
+      const original = descriptor.value;
+      const cache = new Map();
+      descriptor.value = function(...args) {
+        const key = JSON.stringify(args);
+        if (cache.has(key)) return cache.get(key);
+        const result = original.apply(this, args);
+        cache.set(key, result);
+        return result;
+      };
+      return descriptor;
+    },
+
+    // Async retry decorator
+    retry(maxRetries = 3, delay = 1000) {
+      return function(target, methodName, descriptor) {
+        const original = descriptor.value;
+        descriptor.value = async function(...args) {
+          let lastError;
+          for (let i = 0; i < maxRetries; i++) {
+            try {
+              return await original.apply(this, args);
+            } catch (e) {
+              lastError = e;
+              await new Promise(r => setTimeout(r, delay * (i + 1)));
             }
-          };
-          request.onsuccess = event => {
-            CompressionDatabase.db = event.target.result;
-            resolve(CompressionDatabase.db);
-          };
-          request.onerror = event => reject(event.target.error);
-        });
+          }
+          throw lastError;
+        };
+        return descriptor;
+      };
+    },
+
+    // Apply decorator manually (since JS doesn't have native decorator syntax)
+    apply(decorator, target, methodName) {
+      const descriptor = Object.getOwnPropertyDescriptor(target.prototype, methodName);
+      Object.defineProperty(target.prototype, methodName, decorator(target, methodName, descriptor));
+    }
+  };
+
+  // ============================================================================
+  // IndexedDB Storage Class
+  // ============================================================================
+  class IndexedDBStorage {
+    static #instance = null;
+    static #dbPromise = null;
+
+    #db = null;
+    #storeName = 'projects_store';
+
+    constructor() {
+      if (IndexedDBStorage.#instance) return IndexedDBStorage.#instance;
+      IndexedDBStorage.#instance = this;
+    }
+
+    static getInstance() {
+      if (!IndexedDBStorage.#instance) {
+        IndexedDBStorage.#instance = new IndexedDBStorage();
       }
+      return IndexedDBStorage.#instance;
+    }
 
-      static async writeRaw(record) {
-        const db = await CompressionDatabase.open();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(CompressionDatabase.storeName, 'readwrite');
-          const store = tx.objectStore(CompressionDatabase.storeName);
-          store.put(record);
-          tx.oncomplete = () => resolve();
-          tx.onerror = event => reject(event.target.error);
-        });
-      }
+    async #openDB() {
+      if (this.#db) return this.#db;
+      if (IndexedDBStorage.#dbPromise) return IndexedDBStorage.#dbPromise;
 
-      static async readRaw(key) {
-        const db = await CompressionDatabase.open();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(CompressionDatabase.storeName, 'readonly');
-          const store = tx.objectStore(CompressionDatabase.storeName);
-          const request = store.get(key);
-          request.onsuccess = () => resolve(request.result || null);
-          request.onerror = event => reject(event.target.error);
-        });
-      }
+      IndexedDBStorage.#dbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(MajixConfig.dbName, MajixConfig.dbVersion);
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(this.#storeName)) {
+            const store = db.createObjectStore(this.#storeName, { keyPath: 'key' });
+            store.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+        };
 
-      static async gzipToBase64(text) {
-        if (typeof CompressionStream === 'undefined') {
-          return btoa(unescape(encodeURIComponent(text)));
-        }
-        const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
-        const compressedBlob = await new Response(stream).blob();
-        const buffer = await compressedBlob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        bytes.forEach(b => {
-          binary += String.fromCharCode(b);
-        });
-        return btoa(binary);
-      }
+        request.onsuccess = (event) => {
+          this.#db = event.target.result;
+          resolve(this.#db);
+        };
 
-      static async base64ToText(base64Text, isGzip) {
-        const binary = atob(base64Text);
-        const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-        if (!isGzip || typeof DecompressionStream === 'undefined') {
-          return decodeURIComponent(escape(binary));
-        }
-        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-        return await new Response(stream).text();
-      }
+        request.onerror = (event) => reject(event.target.error);
+      });
 
-      static chunkString(text) {
-        const chunks = [];
-        for (let i = 0; i < text.length; i += CompressionDatabase.chunkSize) {
-          chunks.push(text.slice(i, i + CompressionDatabase.chunkSize));
-        }
-        return chunks;
-      }
+      return IndexedDBStorage.#dbPromise;
+    }
 
-      static async setCompressed(key, value) {
-        const json = JSON.stringify(value);
-        const payload = await CompressionDatabase.gzipToBase64(json);
-        const chunks = CompressionDatabase.chunkString(payload);
-        const chunkKeys = [];
+    async save(key, value) {
+      const db = await this.#openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.#storeName, 'readwrite');
+        const store = tx.objectStore(this.#storeName);
+        store.put({ key, value, timestamp: Date.now() });
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e.target.error);
+      });
+    }
 
-        for (let i = 0; i < chunks.length; i += 1) {
-          const chunkKey = `${key}::chunk::${i}`;
-          chunkKeys.push(chunkKey);
-          await CompressionDatabase.writeRaw({ key: chunkKey, type: 'chunk', value: chunks[i] });
-        }
+    async load(key) {
+      const db = await this.#openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.#storeName, 'readonly');
+        const store = tx.objectStore(this.#storeName);
+        const request = store.get(key);
+        request.onsuccess = () => resolve(request.result?.value || null);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
 
-        await CompressionDatabase.writeRaw({
-          key,
-          type: 'manifest',
-          chunkKeys,
-          totalChunks: chunks.length,
-          compressed: true,
-          updatedAt: new Date().toISOString()
-        });
-      }
+    async delete(key) {
+      const db = await this.#openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.#storeName, 'readwrite');
+        const store = tx.objectStore(this.#storeName);
+        store.delete(key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e.target.error);
+      });
+    }
 
-      static async getCompressed(key) {
-        const manifest = await CompressionDatabase.readRaw(key);
-        if (!manifest || manifest.type !== 'manifest') return null;
+    async clear() {
+      const db = await this.#openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.#storeName, 'readwrite');
+        const store = tx.objectStore(this.#storeName);
+        store.clear();
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = (e) => reject(e.target.error);
+      });
+    }
 
-        let combined = '';
-        for (const chunkKey of manifest.chunkKeys) {
-          const chunk = await CompressionDatabase.readRaw(chunkKey);
-          if (!chunk) return null;
-          combined += chunk.value;
-        }
+    async getAllKeys() {
+      const db = await this.#openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(this.#storeName, 'readonly');
+        const store = tx.objectStore(this.#storeName);
+        const request = store.getAllKeys();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+  }
 
-        const json = await CompressionDatabase.base64ToText(combined, manifest.compressed);
-        return JSON.parse(json);
-      }
+  // Verify interface implementation
+  IStorable.implement(IndexedDBStorage.prototype);
 
-      static async listDataKeys() {
-        const db = await CompressionDatabase.open();
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(CompressionDatabase.storeName, 'readonly');
-          const store = tx.objectStore(CompressionDatabase.storeName);
-          const request = store.getAllKeys();
-          request.onsuccess = () => {
-            const keys = request.result.filter(key => !String(key).includes('::chunk::'));
-            resolve(keys);
-          };
-          request.onerror = event => reject(event.target.error);
-        });
+  // ============================================================================
+  // Cache Manager with Protocol Pattern
+  // ============================================================================
+  class CacheManager {
+    static PROTOCOL = {
+      CACHE_FIRST: 'cache-first',
+      NETWORK_FIRST: 'network-first',
+      STALE_WHILE_REVALIDATE: 'stale-while-revalidate'
+    };
+
+    #storage;
+    #protocol;
+    #maxAge;
+
+    constructor(protocol = CacheManager.PROTOCOL.STALE_WHILE_REVALIDATE, maxAgeMs = 3600000) {
+      this.#storage = IndexedDBStorage.getInstance();
+      this.#protocol = protocol;
+      this.#maxAge = maxAgeMs;
+    }
+
+    async fetch(key, fetcher) {
+      switch (this.#protocol) {
+        case CacheManager.PROTOCOL.CACHE_FIRST:
+          return this.#cacheFirst(key, fetcher);
+        case CacheManager.PROTOCOL.NETWORK_FIRST:
+          return this.#networkFirst(key, fetcher);
+        default:
+          return this.#staleWhileRevalidate(key, fetcher);
       }
     }
 
-    class ProjectCard {
-      static svgIcons = [
-        '<svg class="svg-anim" viewBox="0 0 80 80"><circle cx="40" cy="40" r="30" fill="#6ec6ff"><animate attributeName="r" values="30;35;30" dur="2s" repeatCount="indefinite"/></circle></svg>',
-        '<svg class="svg-anim" viewBox="0 0 80 80"><rect x="15" y="15" width="50" height="50" rx="12" fill="#ffd166"><animate attributeName="rx" values="12;30;12" dur="2s" repeatCount="indefinite"/></rect></svg>',
-        '<svg class="svg-anim" viewBox="0 0 80 80"><polygon points="40,10 70,70 10,70" fill="#06d6a0"><animate attributeName="points" values="40,10 70,70 10,70;40,20 70,60 10,60;40,10 70,70 10,70" dur="2s" repeatCount="indefinite"/></polygon></svg>'
-      ];
+    async #cacheFirst(key, fetcher) {
+      const cached = await this.#storage.load(key);
+      if (cached) return cached;
+      const fresh = await fetcher();
+      await this.#storage.save(key, fresh);
+      return fresh;
+    }
 
-      #project;
-      #iconIdx;
+    async #networkFirst(key, fetcher) {
+      try {
+        const fresh = await fetcher();
+        await this.#storage.save(key, fresh);
+        return fresh;
+      } catch (e) {
+        console.warn('Network fetch failed, using cache:', e);
+        return this.#storage.load(key);
+      }
+    }
 
-      constructor(project, iconIdx = 0) {
-        this.#project = project;
-        this.#iconIdx = iconIdx;
+    async #staleWhileRevalidate(key, fetcher) {
+      const cached = await this.#storage.load(key);
+      // Start background refresh
+      fetcher().then(fresh => this.#storage.save(key, fresh)).catch((e) => console.warn('Cache save failed:', e));
+      return cached || fetcher();
+    }
+  }
+
+  // ============================================================================
+  // Event System (Hooks & Callbacks)
+  // ============================================================================
+  class EventBus {
+    static #instance = null;
+    #listeners = new Map();
+
+    static getInstance() {
+      if (!EventBus.#instance) EventBus.#instance = new EventBus();
+      return EventBus.#instance;
+    }
+
+    on(event, callback) {
+      if (!this.#listeners.has(event)) this.#listeners.set(event, new Set());
+      this.#listeners.get(event).add(callback);
+      return () => this.off(event, callback);
+    }
+
+    off(event, callback) {
+      this.#listeners.get(event)?.delete(callback);
+    }
+
+    emit(event, data) {
+      this.#listeners.get(event)?.forEach(cb => {
+        try { cb(data); } catch (e) { console.error('Event handler error:', e); }
+      });
+    }
+
+    once(event, callback) {
+      const wrapper = (data) => {
+        callback(data);
+        this.off(event, wrapper);
+      };
+      this.on(event, wrapper);
+    }
+  }
+
+  // ============================================================================
+  // SVG Icon Generator
+  // ============================================================================
+  class SVGGenerator {
+    static #shapes = ['circle', 'rect', 'polygon', 'path'];
+    static #colors = ['#6ec6ff', '#ffd166', '#06d6a0', '#ff6b6b', '#a29bfe', '#fd79a8'];
+
+    static generateIcon(seed = 0) {
+      const shape = this.#shapes[seed % this.#shapes.length];
+      const color1 = this.#colors[seed % this.#colors.length];
+      const color2 = this.#colors[(seed + 1) % this.#colors.length];
+
+      const animations = `
+        <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+      `;
+
+      let shapeElement;
+      switch (shape) {
+        case 'circle':
+          shapeElement = `<circle cx="40" cy="40" r="30" fill="${color1}">
+            <animate attributeName="r" values="28;32;28" dur="2s" repeatCount="indefinite"/>
+          </circle>`;
+          break;
+        case 'rect':
+          shapeElement = `<rect x="15" y="15" width="50" height="50" rx="8" fill="${color1}">
+            <animate attributeName="rx" values="8;16;8" dur="2s" repeatCount="indefinite"/>
+          </rect>`;
+          break;
+        case 'polygon':
+          shapeElement = `<polygon points="40,10 70,65 10,65" fill="${color1}">
+            <animate attributeName="points" values="40,10 70,65 10,65;40,15 65,60 15,60;40,10 70,65 10,65" dur="2s" repeatCount="indefinite"/>
+          </polygon>`;
+          break;
+        default:
+          shapeElement = `<path d="M20,40 Q40,10 60,40 T100,40" stroke="${color1}" fill="none" stroke-width="4">
+            <animate attributeName="d" values="M20,40 Q40,10 60,40 T100,40;M20,40 Q40,70 60,40 T100,40;M20,40 Q40,10 60,40 T100,40" dur="2s" repeatCount="indefinite"/>
+          </path>`;
       }
 
-      get name() {
-        return this.#project.name;
-      }
+      return `<svg viewBox="0 0 80 80" class="project-icon-svg">
+        <defs>
+          <linearGradient id="grad${seed}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${color1}"/>
+            <stop offset="100%" style="stop-color:${color2}"/>
+          </linearGradient>
+        </defs>
+        ${shapeElement}
+      </svg>`;
+    }
+  }
 
-      get path() {
-        return this.#project.path;
-      }
+  // ============================================================================
+  // Project Card Component Class
+  // ============================================================================
+  class ProjectCard {
+    static #cardCount = 0;
 
-      get desc() {
-        return this.#project.desc;
-      }
+    #id;
+    #data;
+    #element;
+    #expanded = false;
 
-      get icon() {
-        return ProjectCard.svgIcons[this.#iconIdx % ProjectCard.svgIcons.length];
-      }
+    constructor(projectData) {
+      this.#id = ++ProjectCard.#cardCount;
+      this.#data = ProjectStruct(projectData);
+      this.#element = null;
+    }
 
-      render() {
-        console.log('[LOG] render called for project:', this.name);
-        const card = document.createElement('div');
-        card.className = 'project-card w3-animate-opacity';
-        card.innerHTML = `
-          <a href="${this.path}" style="text-decoration:none; color:inherit;">
-            <div class="project-svg animated-bg">${this.icon}</div>
-            <div class="project-title">${this.name}</div>
-            <div class="project-desc">${this.desc}</div>
+    get id() { return this.#id; }
+    get data() { return this.#data; }
+    get element() { return this.#element; }
+    get isExpanded() { return this.#expanded; }
+
+    static get totalCards() { return ProjectCard.#cardCount; }
+
+    #getCategoryClass() {
+      const catMap = {
+        finance: 'cat-finance',
+        gaming: 'cat-gaming',
+        tools: 'cat-tools',
+        data: 'cat-data',
+        web: 'cat-web'
+      };
+      return catMap[this.#data.category] || 'cat-tools';
+    }
+
+    #renderEnhancements() {
+      if (!this.#data.enhancements.length) return '<p class="text-muted small">No recent enhancements</p>';
+      return this.#data.enhancements.map(e => 
+        `<span class="enhancement-tag"><i class="fas fa-check me-1"></i>${e}</span>`
+      ).join('');
+    }
+
+    #renderRecommendations() {
+      if (!this.#data.recommendations.length) return '<p class="text-muted small">No recommendations</p>';
+      return this.#data.recommendations.map(r => 
+        `<span class="enhancement-tag recommendation-tag"><i class="fas fa-lightbulb me-1"></i>${r}</span>`
+      ).join('');
+    }
+
+    render() {
+      const card = document.createElement('div');
+      card.className = 'project-card animate-slide-up';
+      card.dataset.category = this.#data.category;
+      card.dataset.projectId = this.#id;
+      card.style.animationDelay = `${this.#id * 0.05}s`;
+
+      card.innerHTML = `
+        <div class="card-header-svg">
+          ${SVGGenerator.generateIcon(this.#id)}
+        </div>
+        <div class="card-body-content">
+          <h3 class="project-name">${this.#data.name}</h3>
+          <div class="project-path">${this.#data.path}</div>
+          <span class="category-badge ${this.#getCategoryClass()}">${this.#data.category}</span>
+          <p class="project-desc">${this.#data.desc}</p>
+        </div>
+        <button class="expand-toggle" data-card-id="${this.#id}">
+          <span>View Details</span>
+          <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="expandable-section" id="expand-${this.#id}">
+          <h6><i class="fas fa-rocket me-2"></i>Latest Enhancements</h6>
+          <div class="mb-3">${this.#renderEnhancements()}</div>
+          <h6><i class="fas fa-lightbulb me-2"></i>Recommendations</h6>
+          <div>${this.#renderRecommendations()}</div>
+          <div class="text-muted small mt-2">
+            <i class="fas fa-clock me-1"></i>Updated: ${new Date(this.#data.lastUpdated).toLocaleDateString()}
+          </div>
+        </div>
+        <div class="card-actions">
+          <a href="${this.#data.path}" class="btn btn-primary btn-sm">
+            <i class="fas fa-external-link-alt me-1"></i>Open
           </a>
-        `;
-        return card;
+          <button class="btn btn-outline-secondary btn-sm bookmark-btn" data-project="${this.#data.name}">
+            <i class="fas fa-bookmark"></i>
+          </button>
+        </div>
+      `;
+
+      this.#element = card;
+      this.#bindEvents();
+      return card;
+    }
+
+    #bindEvents() {
+      const toggle = this.#element.querySelector('.expand-toggle');
+      toggle?.addEventListener('click', () => this.toggleExpand());
+
+      const bookmarkBtn = this.#element.querySelector('.bookmark-btn');
+      bookmarkBtn?.addEventListener('click', () => {
+        EventBus.getInstance().emit('bookmark', this.#data);
+      });
+    }
+
+    toggleExpand() {
+      this.#expanded = !this.#expanded;
+      const section = this.#element.querySelector('.expandable-section');
+      const toggle = this.#element.querySelector('.expand-toggle');
+      section?.classList.toggle('expanded', this.#expanded);
+      toggle?.classList.toggle('active', this.#expanded);
+    }
+
+    setExpanded(state) {
+      if (this.#expanded !== state) this.toggleExpand();
+    }
+
+    matches(searchTerm, category = 'all') {
+      const matchesSearch = !searchTerm || 
+        this.#data.name.toLowerCase().includes(searchTerm) ||
+        this.#data.desc.toLowerCase().includes(searchTerm) ||
+        this.#data.path.toLowerCase().includes(searchTerm);
+      const matchesCategory = category === 'all' || this.#data.category === category;
+      return matchesSearch && matchesCategory;
+    }
+
+    show() { this.#element.style.display = ''; }
+    hide() { this.#element.style.display = 'none'; }
+  }
+
+  // ============================================================================
+  // Project Collection with Iterator & Generator
+  // ============================================================================
+  class ProjectCollection {
+    #projects = [];
+    #cards = new Map();
+
+    constructor(projects = []) {
+      this.#projects = projects.map(p => ProjectStruct(p));
+    }
+
+    get length() { return this.#projects.length; }
+    get cards() { return this.#cards; }
+
+    add(project) {
+      this.#projects.push(ProjectStruct(project));
+    }
+
+    getByIndex(index) {
+      return this.#projects[index];
+    }
+
+    *[Symbol.iterator]() {
+      for (const project of this.#projects) {
+        yield project;
       }
     }
 
-    function* projectCardGenerator(projects) {
-      let idx = 0;
-      for (const project of projects) {
-        yield new ProjectCard(project, idx);
-        idx += 1;
+    *cardIterator() {
+      for (const [id, card] of this.#cards) {
+        yield card;
       }
     }
 
-    async function loadProjects() {
-      const key = 'projects.catalog.v1';
-      let projects = await CompressionDatabase.getCompressed(key).catch(() => null);
-      if (!Array.isArray(projects) || !projects.length) {
-        projects = PROJECTS;
-        await CompressionDatabase.setCompressed(key, projects);
+    *filterGenerator(predicate) {
+      for (const project of this.#projects) {
+        if (predicate(project)) yield project;
       }
-      return projects;
     }
 
-    let animating = true;
-    function toggleAnimations() {
-      animating = !animating;
-      $('.svg-anim animate').each(function() {
-        if (this[animating ? 'beginElement' : 'endElement']) {
-          this[animating ? 'beginElement' : 'endElement']();
+    async *asyncGenerator() {
+      for (const project of this.#projects) {
+        await new Promise(r => setTimeout(r, 10));
+        yield project;
+      }
+    }
+
+    toCards() {
+      this.#cards.clear();
+      for (const project of this.#projects) {
+        const card = new ProjectCard(project);
+        this.#cards.set(card.id, card);
+      }
+      return [...this.#cards.values()];
+    }
+
+    filter(searchTerm, category) {
+      for (const card of this.#cards.values()) {
+        if (card.matches(searchTerm, category)) {
+          card.show();
+        } else {
+          card.hide();
+        }
+      }
+    }
+
+    expandAll(state) {
+      for (const card of this.#cards.values()) {
+        card.setExpanded(state);
+      }
+    }
+
+    getCategories() {
+      const cats = new Set();
+      for (const p of this.#projects) cats.add(p.category);
+      return [...cats];
+    }
+
+    map(fn) {
+      return this.#projects.map(fn);
+    }
+  }
+
+  // ============================================================================
+  // Main Application Controller
+  // ============================================================================
+  class MajixApp {
+    static #instance = null;
+
+    #collection;
+    #cacheManager;
+    #eventBus;
+    #storage;
+    #animationsEnabled = true;
+    #allExpanded = false;
+
+    constructor() {
+      if (MajixApp.#instance) return MajixApp.#instance;
+      MajixApp.#instance = this;
+
+      this.#cacheManager = new CacheManager();
+      this.#eventBus = EventBus.getInstance();
+      this.#storage = IndexedDBStorage.getInstance();
+    }
+
+    static getInstance() {
+      if (!MajixApp.#instance) MajixApp.#instance = new MajixApp();
+      return MajixApp.#instance;
+    }
+
+    async init() {
+      try {
+        this.#setupEventListeners();
+        this.#registerServiceWorker();
+        await this.#loadProjects();
+        this.#renderProjects();
+        this.#updateStats();
+        this.#hideLoading();
+        this.#setupHooks();
+      } catch (error) {
+        console.error('App initialization failed:', error);
+        this.#hideLoading();
+        this.#showError('Failed to load projects. Please refresh.');
+      }
+    }
+
+    async #loadProjects() {
+      const fetcher = async () => {
+        try {
+          const response = await fetch(MajixConfig.dataUrl);
+          if (response.ok) {
+            const data = await response.json();
+            return data;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch projects.json:', e);
+        }
+        return this.#getDefaultProjects();
+      };
+
+      const projects = await this.#cacheManager.fetch(MajixConfig.cacheKey, fetcher);
+      this.#collection = new ProjectCollection(projects);
+    }
+
+    #getDefaultProjects() {
+      return [
+        { name: '7t', path: '7t/', desc: 'Experimental text and alpha tools', category: 'tools', enhancements: ['Added new text parser', 'Improved performance'], recommendations: ['Add unit tests', 'Document API'] },
+        { name: 'Gridiron', path: 'Gridiron/', desc: 'Football analytics and visualization', category: 'gaming', enhancements: ['New play diagrams', 'Stats dashboard'], recommendations: ['Add player profiles', 'Mobile optimization'] },
+        { name: 'best', path: 'best/', desc: 'Best trading strategies and alpha generation', category: 'finance', enhancements: ['New momentum strategy', 'Backtesting engine'], recommendations: ['Add risk metrics', 'Portfolio optimization'] },
+        { name: 'beta', path: 'beta/', desc: 'Beta features and experimental scripts', category: 'tools', enhancements: ['New video player', 'UI improvements'], recommendations: ['Performance tuning', 'Error handling'] },
+        { name: 'boxstore', path: 'boxstore/', desc: 'BoxStore returns and policy management', category: 'web', enhancements: ['Policy updates', 'New UI'], recommendations: ['Add search', 'Mobile view'] },
+        { name: 'chat', path: 'chat/', desc: 'Chat interface with indicators', category: 'tools', enhancements: ['Real-time updates', 'New indicators'], recommendations: ['Add themes', 'Export feature'] },
+        { name: 'church_school_lesson_plan', path: 'church_school_lesson_plan/', desc: 'Church school lesson planning tools', category: 'tools', enhancements: ['Calendar integration', 'Print layouts'], recommendations: ['Add sharing', 'Media library'] },
+        { name: 'csv', path: 'csv/', desc: 'Stock CSV data repository', category: 'data', enhancements: ['Daily updates', 'New tickers'], recommendations: ['Add visualization', 'API access'] },
+        { name: 'dbs', path: 'dbs/', desc: 'Database tools and utilities', category: 'data', enhancements: ['New query builder', 'Schema viewer'], recommendations: ['Add migrations', 'Backup tools'] },
+        { name: 'details', path: 'details/', desc: 'Detailed project information', category: 'tools', enhancements: ['Updated layouts', 'New sections'], recommendations: ['Add metrics', 'Timeline view'] },
+        { name: 'etrade_client', path: 'etrade_client/', desc: 'E*TRADE API client for trading', category: 'finance', enhancements: ['OAuth2 support', 'Order management'], recommendations: ['Add paper trading', 'Alerts system'] },
+        { name: 'fun_hotel_reservation', path: 'fun_hotel_reservation/', desc: 'Colorful hotel reservation experience', category: 'web', enhancements: ['New animations', 'Booking flow'], recommendations: ['Payment integration', 'Reviews system'] },
+        { name: 'github_data', path: 'github_data/', desc: 'GitHub repository data and analytics', category: 'data', enhancements: ['Commit analysis', 'PR metrics'], recommendations: ['Add graphs', 'Team insights'] },
+        { name: 'holdem_app', path: 'holdem_app/', desc: 'Texas Hold\'em poker application', category: 'gaming', enhancements: ['AI opponents', 'Hand history'], recommendations: ['Tournament mode', 'Leaderboard'] },
+        { name: 'index', path: 'index/', desc: 'Market index data collection', category: 'data', enhancements: ['1-minute data', 'Analytics'], recommendations: ['Real-time feeds', 'Export formats'] },
+        { name: 'jinx', path: 'jinx/', desc: 'Jinx core framework', category: 'tools', enhancements: ['Plugin system', 'CLI tools'], recommendations: ['Documentation', 'Examples'] },
+        { name: 'jinx_strategy', path: 'jinx_strategy/', desc: 'Jinx trading strategies', category: 'finance', enhancements: ['New strategies', 'Backtesting'], recommendations: ['Risk management', 'Live signals'] },
+        { name: 'jinxcasino', path: 'jinxcasino/', desc: 'Jinx casino games collection', category: 'gaming', enhancements: ['New games', 'Graphics update'], recommendations: ['Mobile support', 'Multiplayer'] },
+        { name: 'jinxco', path: 'jinxco/', desc: 'Jinx company portal', category: 'web', enhancements: ['New dashboard', 'Team features'], recommendations: ['Analytics', 'Integrations'] },
+        { name: 'jump', path: 'jump/', desc: 'Jump trading tools', category: 'finance', enhancements: ['Signal generator', 'Risk alerts'], recommendations: ['Position sizing', 'Journal'] },
+        { name: 'latest_commit', path: 'latest_commit/', desc: 'Latest commit tracking', category: 'data', enhancements: ['Webhook support', 'Notifications'], recommendations: ['Slack integration', 'Summary emails'] },
+        { name: 'link_indexer', path: 'link_indexer/', desc: 'Link indexing and management', category: 'tools', enhancements: ['Bulk import', 'Categories'], recommendations: ['Tags system', 'Search'] },
+        { name: 'link_manager_app', path: 'link_manager_app/', desc: 'Advanced link manager application', category: 'web', enhancements: ['Drag and drop', 'Folders'], recommendations: ['Sync feature', 'Browser extension'] },
+        { name: 'market', path: 'market/', desc: 'Market analysis tools', category: 'finance', enhancements: ['Sector analysis', 'Heatmaps'], recommendations: ['Screeners', 'Watchlists'] },
+        { name: 'market_prediction', path: 'market_prediction/', desc: 'ML-based market predictions', category: 'finance', enhancements: ['New models', 'Accuracy improvements'], recommendations: ['Ensemble methods', 'Feature engineering'] },
+        { name: 'nfl', path: 'nfl/', desc: 'NFL statistics and data', category: 'gaming', enhancements: ['Season updates', 'Player stats'], recommendations: ['Fantasy tools', 'Predictions'] },
+        { name: 'nfl_offensive_playbook', path: 'nfl_offensive_playbook/', desc: 'NFL offensive play diagrams', category: 'gaming', enhancements: ['New formations', 'Animations'], recommendations: ['Defensive plays', 'Game film'] },
+        { name: 'option', path: 'option/', desc: 'Options trading tools', category: 'finance', enhancements: ['Greeks calculator', 'Strategy builder'], recommendations: ['Volatility surface', 'P&L simulator'] },
+        { name: 'options', path: 'options/', desc: 'Options strategies and analysis', category: 'finance', enhancements: ['Iron condors', 'Spreads'], recommendations: ['Risk graphs', 'What-if analysis'] },
+        { name: 'pj', path: 'pj/', desc: 'PJ utility tools', category: 'tools', enhancements: ['New utilities', 'Bug fixes'], recommendations: ['Documentation', 'Tests'] },
+        { name: 'playbook', path: 'playbook/', desc: 'Football playbook generator', category: 'gaming', enhancements: ['Custom plays', 'Export PDF'], recommendations: ['Team sharing', 'Video integration'] },
+        { name: 'playbook_app', path: 'playbook_app/', desc: 'Interactive playbook application', category: 'gaming', enhancements: ['Touch controls', 'Animation'], recommendations: ['Cloud sync', 'Collaboration'] },
+        { name: 'quantix', path: 'quantix/', desc: 'Quantitative trading framework', category: 'finance', enhancements: ['Factor models', 'Risk parity'], recommendations: ['Optimization', 'Reporting'] },
+        { name: 'referrals', path: 'referrals/', desc: 'Referral tracking system', category: 'web', enhancements: ['Link tracking', 'Analytics'], recommendations: ['Rewards system', 'Dashboard'] },
+        { name: 'reservations', path: 'reservations/', desc: 'Reservation management', category: 'web', enhancements: ['Calendar view', 'Confirmations'], recommendations: ['SMS reminders', 'Waitlist'] },
+        { name: 'screen_recorder', path: 'screen_recorder/', desc: 'Screen recording utilities', category: 'tools', enhancements: ['HD capture', 'Audio sync'], recommendations: ['Cloud upload', 'Editing tools'] },
+        { name: 'script', path: 'script/', desc: 'Utility scripts collection', category: 'tools', enhancements: ['New automation', 'Scheduling'], recommendations: ['GUI wrapper', 'Logging'] },
+        { name: 'seventy', path: 'seventy/', desc: 'Seventy framework tools', category: 'tools', enhancements: ['Plugin updates', 'Performance'], recommendations: ['Tutorials', 'Examples'] },
+        { name: 'showcase', path: 'showcase/', desc: 'Project showcase gallery', category: 'web', enhancements: ['New layouts', 'Lightbox'], recommendations: ['Categories', 'Search'] },
+        { name: 'simple', path: 'simple/', desc: 'Simple utility applications', category: 'tools', enhancements: ['UI refresh', 'New tools'], recommendations: ['PWA support', 'Offline mode'] },
+        { name: 'simple_calculator', path: 'simple_calculator/', desc: 'Simple calculator application', category: 'tools', enhancements: ['Scientific mode', 'History'], recommendations: ['Unit converter', 'Themes'] },
+        { name: 'stays', path: 'stays/', desc: 'Stay and booking management', category: 'web', enhancements: ['New booking flow', 'Payments'], recommendations: ['Reviews', 'Photos'] },
+        { name: 'stock', path: 'stock/', desc: 'Stock analysis tools', category: 'finance', enhancements: ['Technical indicators', 'Signals'], recommendations: ['Screeners', 'Alerts'] },
+        { name: 'stock_analyzer', path: 'stock_analyzer/', desc: 'Advanced stock analyzer', category: 'finance', enhancements: ['Fundamental data', 'Comparisons'], recommendations: ['Valuation models', 'Reports'] },
+        { name: 'stock_fetcher', path: 'stock_fetcher/', desc: 'Stock data fetcher service', category: 'data', enhancements: ['API optimization', 'Caching'], recommendations: ['Webhooks', 'Batch processing'] },
+        { name: 'study', path: 'study/', desc: 'Study and learning tools', category: 'tools', enhancements: ['Flashcards', 'Quizzes'], recommendations: ['Spaced repetition', 'Progress tracking'] },
+        { name: 'ticker', path: 'ticker/', desc: 'Stock ticker utilities', category: 'finance', enhancements: ['Real-time quotes', 'Widgets'], recommendations: ['Watchlist sync', 'Alerts'] },
+        { name: 'tickers', path: 'tickers/', desc: 'Multi-ticker dashboard', category: 'finance', enhancements: ['Grid view', 'Sorting'], recommendations: ['Custom layouts', 'Export'] },
+        { name: 'tradingview_integration', path: 'tradingview_integration/', desc: 'TradingView chart integration', category: 'finance', enhancements: ['Custom indicators', 'Alerts'], recommendations: ['Strategy tester', 'Screener'] },
+        { name: 'Trades', path: 'Trades/', desc: 'Trade logging and journal', category: 'finance', enhancements: ['Import/export', 'Analytics'], recommendations: ['Performance metrics', 'Tags'] },
+        { name: 'whatsapp_integration', path: 'whatsapp_integration/', desc: 'WhatsApp messaging integration', category: 'web', enhancements: ['Message templates', 'Automation'], recommendations: ['Chatbot', 'Analytics'] },
+        { name: 'yfinance_data', path: 'yfinance_data/', desc: 'Yahoo Finance data collection', category: 'data', enhancements: ['Historical data', 'Dividends'], recommendations: ['Options data', 'Fundamentals'] }
+      ];
+    }
+
+    #renderProjects() {
+      const container = document.getElementById('projectContainer');
+      if (!container) return;
+
+      container.innerHTML = '';
+      const cards = this.#collection.toCards();
+
+      for (const card of cards) {
+        container.appendChild(card.render());
+      }
+    }
+
+    #updateStats() {
+      document.getElementById('totalProjects').textContent = this.#collection.length;
+      document.getElementById('totalCategories').textContent = this.#collection.getCategories().length;
+      document.getElementById('projectCount').textContent = this.#collection.length;
+      document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString();
+      document.getElementById('cacheStatus').textContent = MajixConfig.hasFlag(MajixConfig.FLAGS.CACHE_ENABLED) ? 'Active' : 'Off';
+      document.getElementById('appVersion').textContent = MajixConfig.version;
+    }
+
+    #setupEventListeners() {
+      // Search
+      const searchInput = document.getElementById('searchInput');
+      searchInput?.addEventListener('input', this.#debounce((e) => {
+        const term = e.target.value.toLowerCase();
+        const category = document.getElementById('categoryFilter')?.value || 'all';
+        this.#collection.filter(term, category);
+      }, 300));
+
+      // Category filter
+      document.getElementById('categoryFilter')?.addEventListener('change', (e) => {
+        const term = searchInput?.value.toLowerCase() || '';
+        this.#collection.filter(term, e.target.value);
+      });
+
+      // Toggle animations
+      document.getElementById('toggleAnimations')?.addEventListener('click', () => {
+        this.#animationsEnabled = !this.#animationsEnabled;
+        MajixConfig.toggleFlag(MajixConfig.FLAGS.ANIMATIONS_ENABLED);
+        document.body.classList.toggle('animations-paused', !this.#animationsEnabled);
+        const btn = document.getElementById('toggleAnimations');
+        btn.innerHTML = this.#animationsEnabled 
+          ? '<i class="fas fa-pause me-1"></i> Animations' 
+          : '<i class="fas fa-play me-1"></i> Animations';
+      });
+
+      // Expand all
+      document.getElementById('expandAll')?.addEventListener('click', () => {
+        this.#allExpanded = !this.#allExpanded;
+        this.#collection.expandAll(this.#allExpanded);
+        const btn = document.getElementById('expandAll');
+        btn.innerHTML = this.#allExpanded 
+          ? '<i class="fas fa-compress-alt me-1"></i> Collapse All' 
+          : '<i class="fas fa-expand-alt me-1"></i> Expand All';
+      });
+
+      // Refresh data
+      document.getElementById('refreshData')?.addEventListener('click', async () => {
+        await this.#storage.delete(MajixConfig.cacheKey);
+        location.reload();
+      });
+    }
+
+    #setupHooks() {
+      // Bookmark hook
+      this.#eventBus.on('bookmark', (project) => {
+        console.log('Bookmarked:', project.name);
+        // Could save to localStorage/IndexedDB
+      });
+
+      // Visibility change hook
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.#eventBus.emit('app:visible');
         }
       });
-      $('.animated-bg').css('animation-play-state', animating ? 'running' : 'paused');
     }
 
-    async function registerServiceWorker() {
+    async #registerServiceWorker() {
       if ('serviceWorker' in navigator) {
         try {
           await navigator.serviceWorker.register('./sw.js');
-        } catch (error) {
-          console.error('Service worker registration failed:', error);
+        } catch (e) {
+          console.warn('Service worker registration failed:', e);
         }
       }
     }
 
-    window.MajixOfflineDB = {
-      saveDataset: (key, value) => CompressionDatabase.setCompressed(key, value),
-      loadDataset: key => CompressionDatabase.getCompressed(key),
-      listDatasetKeys: () => CompressionDatabase.listDataKeys()
-    };
+    #hideLoading() {
+      document.getElementById('loadingOverlay')?.classList.add('hidden');
+    }
 
-    $(async function() {
-      await registerServiceWorker();
-      const projects = await loadProjects();
-      const grid = document.getElementById('projectGrid');
-      const generator = projectCardGenerator(projects);
-
-      for (const card of generator) {
-        grid.appendChild(card.render());
+    #showError(message) {
+      const container = document.getElementById('projectContainer');
+      if (container) {
+        container.innerHTML = `<div class="alert alert-danger w-100">${message}</div>`;
       }
+    }
 
-      $('#projectCount').text(projects.length);
-      $('.menu-header').on('click', toggleAnimations);
-    });
+    #debounce(fn, delay) {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+  }
+
+  // ============================================================================
+  // Global API (for external access)
+  // ============================================================================
+  window.MajixAI = Object.freeze({
+    getApp: () => MajixApp.getInstance(),
+    getConfig: () => MajixConfig,
+    getEventBus: () => EventBus.getInstance(),
+    getStorage: () => IndexedDBStorage.getInstance()
+  });
+
+  // ============================================================================
+  // Application Bootstrap
+  // ============================================================================
+  document.addEventListener('DOMContentLoaded', async () => {
+    const app = MajixApp.getInstance();
+    await app.init();
+  });
   </script>
 </body>
 </html>
