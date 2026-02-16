@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#16213e">
+    <meta name="description" content="Room Viewer application with modular architecture - Alpha version.">
     <title>Room Viewer</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/face-api.js"></script>
@@ -221,5 +224,13 @@
     <script src="storage.js"></script>
     <script src="ui.js"></script>
     <script src="script.js"></script>
+    <script>
+    // Register parent service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js', { scope: '../' })
+        .then(registration => console.log('SW registered:', registration.scope))
+        .catch(error => console.error('SW registration failed:', error));
+    }
+    </script>
 </body>
 </html>
