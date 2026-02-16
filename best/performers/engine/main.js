@@ -59,6 +59,8 @@ class BestPerformersEngine {
     #_recordings = [];
     #_recordingElements = {};
     #_recordingPreviewUrl = null;
+    // Slot recording state: Map<slotNumber, { mediaRecorder, stream, chunks, startedAt, blobUrl }>
+    #_slotRecordings = new Map();
 
     constructor() {
         this.#_dataAPI = new DataAPI(CacheManager);
@@ -548,6 +550,264 @@ class BestPerformersEngine {
         }
     }
 
+    // ==================== Per-Slot Recording Methods ====================
+
+    /**
+     * Initialize slot recording controls
+     * @private
+     */
+    #_initSlotRecordingControls() {
+        const iframeGrid = document.querySelector('#iframeGrid');
+        if (!iframeGrid) return;
+
+        // Handle record button clicks
+        iframeGrid.addEventListener('click', (e) => {
+            const recordBtn = e.target.closest('.slot-record-btn');
+            if (recordBtn) {
+                const slot = parseInt(recordBtn.dataset.slot);
+                if (this.#_slotRecordings.has(slot) && this.#_slotRecordings.get(slot).mediaRecorder) {
+                    this.#_stopSlotRecording(slot);
+                } else {
+                    this.#_startSlotRecording(slot);
+                }
+                return;
+            }
+
+            const playBtn = e.target.closest('.slot-play-btn');
+            if (playBtn) {
+                const slot = parseInt(playBtn.dataset.slot);
+                this.#_toggleSlotPlayback(slot);
+                return;
+            }
+
+            const closeVideoBtn = e.target.closest('.video-close-btn');
+            if (closeVideoBtn) {
+                const slot = parseInt(closeVideoBtn.dataset.slot);
+                this.#_hideSlotPlayback(slot);
+            }
+        });
+    }
+
+    /**
+     * Start recording a specific slot
+     * @param {number} slot
+     * @private
+     */
+    async #_startSlotRecording(slot) {
+        if (!navigator.mediaDevices?.getDisplayMedia) {
+            console.warn(`Slot ${slot}: Screen recording not supported.`);
+            return;
+        }
+        if (!window.MediaRecorder) {
+            console.warn(`Slot ${slot}: MediaRecorder not available.`);
+            return;
+        }
+
+        try {
+            // Try with audio first, fallback to video-only if audio fails
+            let stream;
+            try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true
+                });
+            } catch (audioError) {
+                console.warn(`Slot ${slot}: Audio capture not available, recording video only.`);
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: false
+                });
+            }
+
+            const mimeType = this.#_getSupportedRecordingMimeType();
+            const mediaRecorder = mimeType
+                ? new MediaRecorder(stream, { mimeType })
+                : new MediaRecorder(stream);
+
+            const chunks = [];
+            const startedAt = Date.now();
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const recordedMime = mediaRecorder.mimeType || mimeType || 'video/webm';
+                const blob = new Blob(chunks, { type: recordedMime });
+                
+                // Revoke previous blob URL to prevent memory leaks
+                const existingState = this.#_slotRecordings.get(slot);
+                if (existingState?.blobUrl) {
+                    URL.revokeObjectURL(existingState.blobUrl);
+                }
+                
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Update state with the recording blob
+                const state = this.#_slotRecordings.get(slot);
+                if (state) {
+                    state.blobUrl = blobUrl;
+                    state.blob = blob;
+                    state.mediaRecorder = null;
+                    state.stream = null;
+                    state.durationMs = Date.now() - state.startedAt;
+                }
+
+                // Update UI
+                this.#_updateSlotRecordingUI(slot, false);
+                this.#_showSlotPlayButton(slot, true);
+
+                // Cleanup stream tracks
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            // Track ended externally (e.g. user stopped sharing)
+            stream.getVideoTracks().forEach((track) => {
+                track.addEventListener('ended', () => {
+                    if (mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                });
+            });
+
+            // Store recording state
+            this.#_slotRecordings.set(slot, {
+                mediaRecorder,
+                stream,
+                chunks,
+                startedAt,
+                blobUrl: null,
+                blob: null,
+                durationMs: 0
+            });
+
+            mediaRecorder.start(250);
+            this.#_updateSlotRecordingUI(slot, true);
+            console.log(`Slot ${slot}: Recording started.`);
+
+        } catch (error) {
+            console.error(`Slot ${slot}: Failed to start recording:`, error);
+            this.#_slotRecordings.delete(slot);
+        }
+    }
+
+    /**
+     * Stop recording a specific slot
+     * @param {number} slot
+     * @private
+     */
+    #_stopSlotRecording(slot) {
+        const state = this.#_slotRecordings.get(slot);
+        if (!state || !state.mediaRecorder || state.mediaRecorder.state === 'inactive') {
+            return;
+        }
+        state.mediaRecorder.stop();
+        console.log(`Slot ${slot}: Recording stopped.`);
+    }
+
+    /**
+     * Update UI to reflect recording state
+     * @param {number} slot
+     * @param {boolean} isRecording
+     * @private
+     */
+    #_updateSlotRecordingUI(slot, isRecording) {
+        const recordBtn = document.querySelector(`.slot-record-btn[data-slot="${slot}"]`);
+        if (!recordBtn) return;
+
+        if (isRecording) {
+            recordBtn.classList.add('recording');
+            recordBtn.textContent = '⏹';
+            recordBtn.title = 'Stop Recording';
+        } else {
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = '⏺';
+            recordBtn.title = 'Start Recording';
+        }
+    }
+
+    /**
+     * Show/hide play button for a slot
+     * @param {number} slot
+     * @param {boolean} show
+     * @private
+     */
+    #_showSlotPlayButton(slot, show) {
+        const playBtn = document.querySelector(`.slot-play-btn[data-slot="${slot}"]`);
+        if (playBtn) {
+            playBtn.style.display = show ? 'inline-block' : 'none';
+        }
+    }
+
+    /**
+     * Toggle playback of recorded video over the iframe
+     * @param {number} slot
+     * @private
+     */
+    #_toggleSlotPlayback(slot) {
+        const state = this.#_slotRecordings.get(slot);
+        if (!state || !state.blobUrl) {
+            console.warn(`Slot ${slot}: No recording available.`);
+            return;
+        }
+
+        const videoOverlay = document.querySelector(`.slot-video-overlay[data-slot="${slot}"]`);
+        if (!videoOverlay) return;
+
+        const wrapper = videoOverlay.closest('.iframe-wrapper');
+
+        if (videoOverlay.style.display === 'none' || !videoOverlay.style.display) {
+            // Show video overlay
+            videoOverlay.src = state.blobUrl;
+            videoOverlay.style.display = 'block';
+            videoOverlay.play().catch((err) => {
+                console.warn(`Slot ${slot}: Playback failed:`, err.message);
+            });
+
+            // Add close button if not present
+            let closeBtn = wrapper.querySelector('.video-close-btn');
+            if (!closeBtn) {
+                closeBtn = document.createElement('button');
+                closeBtn.className = 'video-close-btn';
+                closeBtn.dataset.slot = slot;
+                closeBtn.textContent = '×';
+                closeBtn.title = 'Close playback';
+                wrapper.appendChild(closeBtn);
+            }
+            closeBtn.style.display = 'flex';
+        } else {
+            // Toggle pause/play
+            if (videoOverlay.paused) {
+                videoOverlay.play().catch((err) => {
+                    console.warn(`Slot ${slot}: Playback failed:`, err.message);
+                });
+            } else {
+                videoOverlay.pause();
+            }
+        }
+    }
+
+    /**
+     * Hide slot playback and resume live view
+     * @param {number} slot
+     * @private
+     */
+    #_hideSlotPlayback(slot) {
+        const videoOverlay = document.querySelector(`.slot-video-overlay[data-slot="${slot}"]`);
+        if (videoOverlay) {
+            videoOverlay.pause();
+            videoOverlay.style.display = 'none';
+        }
+
+        const wrapper = document.querySelector(`.iframe-wrapper[data-slot="${slot}"]`);
+        const closeBtn = wrapper?.querySelector('.video-close-btn');
+        if (closeBtn) {
+            closeBtn.style.display = 'none';
+        }
+    }
+
     /**
      * Start periodic refresh
      * @private
@@ -599,6 +859,9 @@ class BestPerformersEngine {
 
         // Initialize snippets
         await this.#_initSnippets();
+
+        // Initialize slot recording controls
+        this.#_initSlotRecordingControls();
 
         // Load performers
         await this.#_loadPerformers(false);
