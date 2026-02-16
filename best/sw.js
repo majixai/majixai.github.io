@@ -62,6 +62,16 @@ const TRUSTED_CDN_HOSTS = [
   'cdn.jsdelivr.net'
 ];
 
+// Image CDN hostnames for offline slideshow caching
+const IMAGE_CDN_HOSTS = [
+  'thumb.live.mmcdn.com',
+  'roomimg.stream.highwebmedia.com',
+  'cbjpeg.stream.highwebmedia.com'
+];
+
+// Dedicated cache for slideshow images
+const SLIDESHOW_CACHE = `${CACHE_VERSION}-slideshow`;
+
 // Install event - cache app shell (subapps are cached on-demand)
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -132,6 +142,27 @@ async function networkFirst(request) {
   }
 }
 
+// Stale-while-revalidate strategy for slideshow images
+// Returns cached version immediately while fetching fresh version in background
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(SLIDESHOW_CACHE);
+  const cached = await cache.match(request);
+  
+  // Fetch fresh version in background
+  const fetchPromise = fetch(request).then((response) => {
+    if (response && response.ok) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  }).catch(() => null);
+  
+  // Return cached version immediately if available, otherwise wait for fetch
+  if (cached) {
+    return cached;
+  }
+  return fetchPromise;
+}
+
 // Fetch event handler
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -168,5 +199,11 @@ self.addEventListener('fetch', (event) => {
   // Trusted CDN resources use cache-first
   if (TRUSTED_CDN_HOSTS.includes(url.hostname)) {
     event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  // Performer image CDNs use stale-while-revalidate for offline slideshow support
+  if (IMAGE_CDN_HOSTS.includes(url.hostname)) {
+    event.respondWith(staleWhileRevalidate(request));
   }
 });
