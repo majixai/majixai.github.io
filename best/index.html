@@ -271,6 +271,22 @@
       offlineDb: null
     };
 
+    // ============ CONFIGURATION CONSTANTS ============
+    // Offline caching limits
+    const OFFLINE_CACHE_LIMIT = 100; // Maximum images to cache for offline use
+    
+    // ML Feature Detection thresholds
+    const SIMILARITY_THRESHOLD = 0.3; // Minimum Jaccard similarity to consider performers "similar"
+    const SIMILARITY_BOOST_MULTIPLIER = 5; // Score boost multiplier for similar performers
+    const TAG_POPULARITY_BOOST = 2; // Popularity boost per new tag added
+    
+    // Pagination & UI
+    const SCROLL_LOAD_THRESHOLD = 200; // Pixels from bottom to trigger infinite scroll load
+    const LOAD_MORE_DELAY_MS = 100; // Artificial delay for smooth loading UX
+    
+    // Scoring weights
+    const ML_SIMILARITY_WEIGHT = 2; // Multiplier for ML similarity scores in total score
+
     // ============ UTILITIES ============
     function esc(str) {
       return String(str || '')
@@ -421,8 +437,8 @@
         const tx = db.transaction(STORE_IMAGES, 'readwrite');
         const store = tx.objectStore(STORE_IMAGES);
         
-        // Cache first 100 images for offline use
-        const imagesToCache = items.slice(0, 100).map(item => item.image_url).filter(Boolean);
+        // Cache images up to the configured limit for offline use
+        const imagesToCache = items.slice(0, OFFLINE_CACHE_LIMIT).map(item => item.image_url).filter(Boolean);
         
         for (const url of imagesToCache) {
           try {
@@ -497,10 +513,19 @@
       saveToStorage('best_similarity_scores', state.similarityScores);
     }
 
-    // Simulate ML feature extraction (in real app, this would use TensorFlow.js or similar)
+    /**
+     * Simulates ML feature extraction for demonstration purposes.
+     * Uses a deterministic hash-based approach to generate consistent pseudo-random features
+     * for the same image URL. This ensures that the same image always gets the same features.
+     * 
+     * In production, this would be replaced with actual ML inference using TensorFlow.js,
+     * ONNX Runtime, or a similar framework to analyze image content.
+     * 
+     * @param {string} imageUrl - The URL of the image to analyze
+     * @returns {string[]} Array of detected feature labels
+     */
     function extractImageFeatures(imageUrl) {
-      // Pseudo-random feature extraction based on URL hash for demo
-      // In production, this would use actual ML model
+      // Hash function creates deterministic output for consistent feature assignment
       const hash = imageUrl.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
       const features = [];
       const featureCount = 3 + Math.abs(hash % 5);
@@ -563,9 +588,9 @@
         const union = new Set([...sourceFeatures, ...targetFeatures]).size;
         const similarity = union > 0 ? intersection / union : 0;
         
-        if (similarity > 0.3) { // Threshold for "similar"
+        if (similarity > SIMILARITY_THRESHOLD) {
           // Boost target performer's score based on similarity
-          const boost = Math.round(similarity * 5);
+          const boost = Math.round(similarity * SIMILARITY_BOOST_MULTIPLIER);
           state.similarityScores[targetUsername] = (state.similarityScores[targetUsername] || 0) + boost;
         }
       });
@@ -608,7 +633,7 @@
       
       // ML similarity score bonus
       if (state.settings.mlFeaturesEnabled) {
-        score += (state.similarityScores[username] || 0) * 2;
+        score += (state.similarityScores[username] || 0) * ML_SIMILARITY_WEIGHT;
         
         // Bonus for having ML-detected features
         const mlFeatureCount = (state.mlFeatures[username] || []).length;
@@ -897,11 +922,11 @@
       state.isLoading = true;
       state.currentPage++;
       
-      // Simulate loading delay for smooth UX
+      // Brief delay for smooth UX transition (prevents jarring layout shifts)
       setTimeout(() => {
         state.isLoading = false;
         render();
-      }, 100);
+      }, LOAD_MORE_DELAY_MS);
     }
 
     function applyFilters() {
@@ -1083,11 +1108,12 @@
         state.customTags[state.tagModalTarget] = newTags;
         saveCustomTags();
         
-        // Calculate new tags added (these boost popularity)
-        const addedTags = newTags.filter(t => !previousTags.map(p => p.toLowerCase()).includes(t.toLowerCase()));
+        // Calculate new tags added using Set for O(n) lookup instead of O(n²)
+        const previousTagsLower = new Set(previousTags.map(p => p.toLowerCase()));
+        const addedTags = newTags.filter(t => !previousTagsLower.has(t.toLowerCase()));
         if (addedTags.length > 0) {
           // Each new tag boosts popularity
-          state.clickCounts[state.tagModalTarget] = (state.clickCounts[state.tagModalTarget] || 0) + addedTags.length * 2;
+          state.clickCounts[state.tagModalTarget] = (state.clickCounts[state.tagModalTarget] || 0) + addedTags.length * TAG_POPULARITY_BOOST;
           saveClickCounts();
           
           // Track these tags as interests
@@ -1254,8 +1280,8 @@
         const windowHeight = window.innerHeight;
         const documentHeight = document.documentElement.scrollHeight;
         
-        // Load more when user is near bottom (200px threshold)
-        if (documentHeight - (scrollY + windowHeight) < 200) {
+        // Load more when user is near bottom
+        if (documentHeight - (scrollY + windowHeight) < SCROLL_LOAD_THRESHOLD) {
           if (state.displayedItems.length < state.filtered.length && !state.isLoading) {
             loadMore();
           }
