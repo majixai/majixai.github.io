@@ -3,15 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#009688">
+    <meta name="description" content="Fetch and visualize market data from Google Finance">
     <title>Market Data</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="style/main.css">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23009688' width='100' height='100' rx='15'/><text x='50' y='65' font-size='40' text-anchor='middle' fill='white'>🏦</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script/menuSystem.js"></script>
     <script type="module" src="script/main.js" defer></script>
 </head>
 <body>
+    <nav class="w3-bar w3-teal w3-card" style="margin-bottom: 0;">
+        <a href="../finance/" class="w3-bar-item w3-button w3-hover-light-grey">
+            ← Finance Menu
+        </a>
+        <span class="w3-bar-item w3-right">Market Data PWA</span>
+    </nav>
     <div id="menu-bar-container"></div>
     <div class="w3-container w3-teal">
         <h1>Market Data from Google Finance</h1>
@@ -30,5 +41,16 @@
     <div class="w3-container">
         <canvas id="market-chart"></canvas>
     </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(error => console.error('ServiceWorker registration failed:', error));
+            });
+        }
+    </script>
 </body>
 </html>

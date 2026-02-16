@@ -3,10 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#007bff">
+    <meta name="description" content="Yahoo Finance data viewer with compression and database support">
     <title>YFinance Data</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23007bff' width='100' height='100' rx='15'/><text x='50' y='65' font-size='40' text-anchor='middle' fill='white'>💾</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <nav class="w3-bar w3-blue w3-card">
+        <a href="../finance/" class="w3-bar-item w3-button w3-hover-light-grey">
+            ← Finance Menu
+        </a>
+        <span class="w3-bar-item w3-right">YFinance Data PWA</span>
+    </nav>
+
     <h1>YFinance Data</h1>
     <div id="loader">Loading and decompressing data...</div>
     <div id="data-container"></div>
@@ -16,5 +29,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(error => console.error('ServiceWorker registration failed:', error));
+            });
+        }
+    </script>
 </body>
 </html>

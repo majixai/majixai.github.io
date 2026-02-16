@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="description" content="Visualize and analyze various options strategies with payoff diagrams">
     <title>Option Strategy Visualizer (Vanilla JS)</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%232c3e50' width='100' height='100' rx='15'/><text x='50' y='65' font-size='40' text-anchor='middle' fill='white'>📋</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
 
     <!-- W3.CSS Framework -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -30,6 +35,13 @@
 
 </head>
 <body>
+
+<nav class="w3-bar w3-dark-grey w3-card" style="z-index: 4;">
+    <a href="../finance/" class="w3-bar-item w3-button w3-hover-light-grey">
+        <i class="fa fa-arrow-left"></i> Finance Menu
+    </a>
+    <span class="w3-bar-item w3-right">Options Strategy PWA</span>
+</nav>
 
 <div id="page-container">
     <!-- Sidebar/Menu (W3.CSS Structure) -->
@@ -104,6 +116,16 @@
 
     <!-- Link to the main JavaScript file -->
     <script src="script.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(error => console.error('ServiceWorker registration failed:', error));
+            });
+        }
+    </script>
 
 </body>
 </html>
