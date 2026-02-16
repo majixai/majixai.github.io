@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#191c22" />
+  <meta name="description" content="Compressed Image Database Viewer with offline support and slideshow features." />
   <title>Best Compressed Image DB Viewer</title>
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <style>
@@ -94,6 +97,7 @@
       <button id="reloadBtn" class="w3-button w3-round w3-blue">Reload</button>
       <button id="settingsBtn" class="settings-btn">⚙️ Settings</button>
       <span id="status" class="muted">Loading...</span>
+      <span id="offlineIndicator" class="muted" style="display:none;">📴 Offline Mode</span>
     </div>
 
     <!-- Settings Panel -->
@@ -143,6 +147,7 @@
     <div class="stats">
       <div class="stat">Performers: <strong id="performerCount">0</strong></div>
       <div class="stat">Images Cached: <strong id="imageCount">0</strong></div>
+      <div class="stat">Offline Images: <strong id="offlineImageCount">0</strong></div>
       <div class="stat">Generated: <strong id="generatedAt">-</strong></div>
       <div class="stat">Visible: <strong id="visibleCount">0</strong></div>
     </div>
@@ -725,6 +730,16 @@
     async function loadManifest() {
       const status = document.getElementById('status');
       status.textContent = 'Loading...';
+      
+      // Initialize offline database
+      try {
+        await initOfflineDb();
+      } catch {
+        console.warn('IndexedDB not available for offline storage');
+      }
+      
+      updateOfflineStatus();
+      
       try {
         const res = await fetch(`dbs/performer_images_manifest.dat?t=${Date.now()}`);
         if (!res.ok) {
@@ -742,9 +757,27 @@
         rebuildKnownTags();
         render();
         status.textContent = `Loaded ${state.filtered.length} entries`;
+        
+        // Save data for offline use and proactively cache images
+        saveOfflineData(payload);
+        cacheImagesForOffline(payload.items || []).then(() => updateOfflineImageCount());
+        
       } catch (error) {
-        status.textContent = `Failed: ${error.message}`;
-        document.getElementById('grid').innerHTML = '<div class="w3-panel w3-red">Unable to load compressed manifest data.</div>';
+        // Try to load from offline cache
+        const offlinePayload = await loadOfflineData();
+        if (offlinePayload) {
+          state.payload = offlinePayload;
+          state.filtered = offlinePayload.items || [];
+          document.getElementById('performerCount').textContent = String(offlinePayload.performer_count || 0);
+          document.getElementById('imageCount').textContent = String(offlinePayload.image_count || 0);
+          document.getElementById('generatedAt').textContent = fmtTs(offlinePayload.generated_at);
+          render();
+          status.textContent = `📴 Offline: ${state.filtered.length} cached entries`;
+          updateOfflineImageCount();
+        } else {
+          status.textContent = `Failed: ${error.message}`;
+          document.getElementById('grid').innerHTML = '<div class="w3-panel w3-red">Unable to load data. No offline cache available.</div>';
+        }
       }
     }
 
@@ -882,5 +915,6 @@
     renderInterests();
     loadManifest();
   </script>
+  <script src="main.js"></script>
 </body>
 </html>

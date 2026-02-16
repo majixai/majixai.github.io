@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#161b22">
+    <meta name="description" content="Multi-viewer performers engine with filtering, sorting, and screen recording features.">
     <title>Jinx Gen | Best Performers Engine</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
 
     <!-- CDNs for Frameworks -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -318,6 +323,14 @@
     <script src="engine/api.js"></script>
     <script src="engine/ui.js"></script>
     <script src="engine/main.js"></script>
+    <script>
+    // Register parent service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../sw.js', { scope: '../' })
+        .then(registration => console.log('SW registered:', registration.scope))
+        .catch(error => console.error('SW registration failed:', error));
+    }
+    </script>
 
 </body>
 </html>
