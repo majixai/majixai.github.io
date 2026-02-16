@@ -232,8 +232,16 @@ def _load_config_from_env(app: Flask) -> None:
     if os.environ.get("SECRET_KEY"):
         app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
     else:
-        # Generate a default secret key (not for production use)
-        app.config["SECRET_KEY"] = "yfinance-chart-default-secret-key"
+        # Generate a default secret key - warn if in production
+        environment = app.config.get("ENVIRONMENT", "development")
+        if environment == "production":
+            app.logger.warning(
+                "SECRET_KEY not set in production environment. "
+                "Set the SECRET_KEY environment variable for security."
+            )
+        # Use a random key for development/testing (changes each restart)
+        import secrets
+        app.config["SECRET_KEY"] = secrets.token_hex(32)
 
 
 def create_app(

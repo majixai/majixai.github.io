@@ -19,8 +19,6 @@ from .session_model import (
     import_sessions,
     SessionEvent,
     SessionState,
-    NotificationHistory,
-    RateLimiter,
 )
 
 __all__ = [
@@ -42,6 +40,4 @@ __all__ = [
     "import_sessions",
     "SessionEvent",
     "SessionState",
-    "NotificationHistory",
-    "RateLimiter",
 ]

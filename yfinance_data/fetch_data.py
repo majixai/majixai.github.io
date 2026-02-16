@@ -62,6 +62,11 @@ MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 2.0
 REQUEST_TIMEOUT = 30
 
+# Webhook notification colors (Discord embed colors)
+WEBHOOK_SUCCESS_COLOR = 5025616  # Green
+WEBHOOK_ERROR_COLOR = 15158332  # Red
+WEBHOOK_WARNING_COLOR = 15844367  # Yellow
+
 
 @dataclass
 class FetchResult:
@@ -503,7 +508,7 @@ def send_webhook_notification(
                 "embeds": [
                     {
                         "title": "Fetch Summary",
-                        "color": 5025616 if summary.success_rate > 80 else 15158332,
+                        "color": WEBHOOK_SUCCESS_COLOR if summary.success_rate > 80 else WEBHOOK_ERROR_COLOR,
                         "fields": [
                             {"name": "Success Rate", "value": f"{summary.success_rate:.1f}%", "inline": True},
                             {"name": "Total Records", "value": f"{summary.total_records:,}", "inline": True},

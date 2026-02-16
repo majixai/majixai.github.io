@@ -449,10 +449,12 @@ def comprehensive_analysis(
     except:
         mode_value = None
     
-    # Annualized return calculation
+    # Annualized return calculation using actual date range
     total_return = (prices.iloc[-1] / prices.iloc[0]) - 1
-    years = len(data) / 52  # Approximate years based on weekly data
-    annualized_return = (1 + total_return) ** (1 / max(years, 0.001)) - 1
+    # Calculate years from actual date range
+    date_range_days = (data.index.max() - data.index.min()).days
+    years = max(date_range_days / 365.25, 0.001)  # Use actual date range for annualization
+    annualized_return = (1 + total_return) ** (1 / years) - 1
     
     return StatisticalSummary(
         ticker=ticker,
