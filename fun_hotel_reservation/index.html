@@ -113,12 +113,32 @@
         <button id="googleCalendarBtn" class="btn btn-secondary" disabled>Add to Google Calendar</button>
         <button id="appleCalendarBtn" class="btn btn-secondary" disabled>Download iCal (.ics)</button>
         <button id="walletBtn" class="btn btn-wallet" disabled>Add Hotel Card to Google Wallet</button>
+        <button id="emailPreviewBtn" class="btn btn-email" disabled>📧 Preview Action Alert Email</button>
       </div>
+    </section>
+
+    <section class="panel actions-panel">
+      <h2>📊 Action Tracking Dashboard</h2>
+      <div id="actionsSummary" class="status">
+        <p>All user interactions are being tracked for analytics and email reporting.</p>
+        <div class="actions-stats">
+          <span class="action-stat">🔐 Auth Events</span>
+          <span class="action-stat">🔍 Search Events</span>
+          <span class="action-stat">📅 Booking Events</span>
+          <span class="action-stat">📆 Calendar Events</span>
+          <span class="action-stat">💳 Wallet Events</span>
+          <span class="action-stat">🌐 Network Events</span>
+          <span class="action-stat">📍 Location Events</span>
+          <span class="action-stat">🖱️ UI Events</span>
+        </div>
+      </div>
+      <div id="recentActions" class="recent-actions"></div>
     </section>
   </main>
 
   <footer>
     <p>FunStay demo: built for colorful booking, guest-first travel, and integration-ready APIs.</p>
+    <p class="footer-tracking">🔔 Action tracking enabled — All events logged for comprehensive email alerts</p>
   </footer>
 
   <script src="config.js"></script>

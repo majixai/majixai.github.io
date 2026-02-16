@@ -415,6 +415,84 @@ html, body {
     color: var(--danger-color);
 }
 
+/* Iframe Controls Container */
+.iframe-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.slot-record-btn,
+.slot-play-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0 0.2rem;
+    transition: color 0.2s, transform 0.1s;
+}
+
+.slot-record-btn:hover {
+    color: var(--danger-color);
+    transform: scale(1.1);
+}
+
+.slot-record-btn.recording {
+    color: var(--danger-color);
+    animation: recordPulse 1s infinite;
+}
+
+.slot-play-btn:hover {
+    color: var(--success-color);
+    transform: scale(1.1);
+}
+
+@keyframes recordPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Video Overlay for playback */
+.slot-video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    background: #000;
+    border-radius: 6px;
+}
+
+.slot-video-overlay.playing {
+    display: block !important;
+}
+
+/* Close button for video overlay */
+.video-close-btn {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 11;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.video-close-btn:hover {
+    background: var(--danger-color);
+}
+
 .iframe-wrapper iframe {
     flex: 1;
     width: 100%;
@@ -842,4 +920,96 @@ html, body {
     max-width: none;
     white-space: normal;
     background: rgba(255, 255, 255, 0.25);
+}
+
+/* ==================== Zoom Functionality ==================== */
+
+/* Iframe wrapper zoom on hover */
+.iframe-wrapper {
+    transition: transform 0.3s ease, z-index 0s;
+}
+
+.iframe-wrapper:hover {
+    transform: scale(1.02);
+    z-index: 10;
+}
+
+/* Fullscreen iframe zoom on double-click */
+.iframe-wrapper.zoomed {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    transform: none !important;
+    background: #000;
+    aspect-ratio: unset !important;
+}
+
+.iframe-wrapper.zoomed iframe {
+    width: 100%;
+    height: calc(100% - 30px);
+    aspect-ratio: unset !important;
+}
+
+/* Close button for zoomed iframe */
+.iframe-zoom-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.iframe-wrapper.zoomed .iframe-zoom-close {
+    display: flex;
+}
+
+.iframe-zoom-close:hover {
+    background: #fff;
+    transform: scale(1.1);
+}
+
+/* Image zoom in performer cards */
+.card-image-container img {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: zoom-in;
+}
+
+.performer-card:hover .card-image-container img {
+    transform: scale(1.05);
+}
+
+/* Image zoom modal/overlay */
+.image-zoom-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: zoom-out;
+}
+
+.image-zoom-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
