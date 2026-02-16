@@ -123,15 +123,16 @@
       });
     }
 
-    // Proactively cache slideshow images for offline access
-    async function cacheImagesForOffline(items, maxImages = 100) {
+    // Proactively cache all slideshow images for offline access
+    // Data is fetched constantly throughout the day, so thousands of images should be available
+    async function cacheImagesForOffline(items) {
       if (!('caches' in window)) return 0;
       const cache = await caches.open('best-viewer-v2-slideshow');
       let cachedCount = 0;
-      const imagesToCache = items.slice(0, maxImages);
       
+      // Cache all images - no limit since data is fetched constantly
       await Promise.allSettled(
-        imagesToCache.map(async (item) => {
+        items.map(async (item) => {
           if (!item.image_url) return;
           try {
             const cached = await cache.match(item.image_url);
