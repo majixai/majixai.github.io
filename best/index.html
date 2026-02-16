@@ -14,12 +14,23 @@
     p { margin: 0 0 6px; }
     .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
     .stat { background: #191c22; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-    .card { background: #191c22; border-radius: 8px; overflow: hidden; border: 1px solid #2a2f39; }
-    .card img { width: 100%; height: 200px; object-fit: cover; background: #0f1115; }
+    .grid { display: grid; gap: 8px; }
+    .card { background: #191c22; border-radius: 8px; overflow: hidden; border: 1px solid #2a2f39; position: relative; cursor: pointer; }
+    .card:hover { border-color: #4a5568; }
+    .card .card-slideshow { position: relative; width: 100%; height: 200px; background: #0f1115; }
+    .card .card-slideshow img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card .card-slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0,0,0,0.6); color: #fff; width: 24px; height: 24px; border-radius: 12px; cursor: pointer; font-size: 14px; opacity: 0; transition: opacity 0.2s; z-index: 5; }
+    .card:hover .card-slide-nav { opacity: 1; }
+    .card .card-slide-prev { left: 4px; }
+    .card .card-slide-next { right: 4px; }
+    .card .slide-dots { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 5; }
+    .card .slide-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; }
+    .card .slide-dot.active { background: #fff; }
     .meta { padding: 8px; font-size: 12px; line-height: 1.35; }
     .name { font-weight: 700; font-size: 14px; }
     .muted { color: #a8afbb; }
+    .click-count { color: #6ee7b7; font-weight: 600; }
+    .score-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
     .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
     .toolbar input { min-width: 260px; }
     .slideshow { position: relative; border: 1px solid #2a2f39; border-radius: 10px; overflow: hidden; background: #0b0d11; margin-bottom: 8px; }
@@ -29,8 +40,48 @@
     .slide-prev { left: 8px; }
     .slide-next { right: 8px; }
     .interest-panel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-    .pill { border: 1px solid #2f3a48; background: #171b22; color: #e7ebf0; border-radius: 999px; padding: 2px 8px; font-size: 11px; }
+    .pill { border: 1px solid #2f3a48; background: #171b22; color: #e7ebf0; border-radius: 999px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+    .pill:hover { background: #242a35; }
     .tag-chip { border: 1px solid #354258; background: #1b2432; color: #dce6ff; border-radius: 999px; padding: 1px 7px; font-size: 11px; margin: 3px 4px 0 0; cursor: pointer; }
+    .tag-chip:hover { background: #2a3a4d; }
+    .custom-tag { background: #2d3748; border-color: #4a5568; }
+    /* Settings Panel */
+    .settings-panel { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; margin-bottom: 12px; display: none; }
+    .settings-panel.open { display: block; }
+    .settings-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+    .settings-row label { font-size: 12px; color: #a8afbb; min-width: 100px; }
+    .settings-row input[type="range"] { flex: 1; min-width: 100px; max-width: 200px; }
+    .settings-row select { background: #0f1115; color: #f0f2f5; border: 1px solid #2a2f39; border-radius: 4px; padding: 4px 8px; }
+    .settings-btn { background: #2a2f39; border: none; color: #f0f2f5; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .settings-btn:hover { background: #3a4049; }
+    /* Context Menu */
+    .context-menu { position: fixed; background: #1e2228; border: 1px solid #3a4049; border-radius: 8px; padding: 6px 0; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1000; display: none; }
+    .context-menu.visible { display: block; }
+    .context-menu-item { padding: 8px 14px; cursor: pointer; font-size: 13px; }
+    .context-menu-item:hover { background: #2a3140; }
+    .context-menu-divider { height: 1px; background: #3a4049; margin: 4px 0; }
+    /* Tag Input Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1001; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.visible { display: flex; }
+    .modal-content { background: #1e2228; border: 1px solid #3a4049; border-radius: 12px; padding: 20px; width: 90%; max-width: 400px; }
+    .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .modal-close { float: right; cursor: pointer; font-size: 20px; line-height: 1; }
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-input { width: 100%; background: #0f1115; border: 1px solid #2a2f39; border-radius: 6px; padding: 10px; color: #f0f2f5; font-size: 14px; box-sizing: border-box; }
+    .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #1e2228; border: 1px solid #3a4049; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1002; display: none; }
+    .autocomplete-dropdown.visible { display: block; }
+    .autocomplete-item { padding: 8px 12px; cursor: pointer; font-size: 13px; }
+    .autocomplete-item:hover, .autocomplete-item.selected { background: #2a3140; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .tag-item { background: #2d3748; border: 1px solid #4a5568; border-radius: 999px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+    .tag-item .remove-tag { cursor: pointer; opacity: 0.7; }
+    .tag-item .remove-tag:hover { opacity: 1; }
+    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; }
+    .btn-primary { background: #4f7cf7; color: #fff; }
+    .btn-primary:hover { background: #3b6ce8; }
+    .btn-secondary { background: #3a4049; color: #f0f2f5; }
+    .btn-secondary:hover { background: #4a5059; }
   </style>
 </head>
 <body>
@@ -41,7 +92,43 @@
     <div class="toolbar">
       <input id="searchInput" class="w3-input w3-round" placeholder="Search username, tags, display name" />
       <button id="reloadBtn" class="w3-button w3-round w3-blue">Reload</button>
+      <button id="settingsBtn" class="settings-btn">⚙️ Settings</button>
       <span id="status" class="muted">Loading...</span>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel">
+      <div class="settings-row">
+        <label>Grid Columns:</label>
+        <input type="range" id="columnSlider" min="1" max="8" value="4" />
+        <span id="columnValue">4</span>
+      </div>
+      <div class="settings-row">
+        <label>Grid Layout:</label>
+        <select id="layoutSelect">
+          <option value="auto">Auto-fill</option>
+          <option value="2x3">2 columns</option>
+          <option value="3x2">3 columns</option>
+          <option value="4">4 columns</option>
+          <option value="5">5 columns</option>
+          <option value="6">6 columns</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Sort By:</label>
+        <select id="sortSelect">
+          <option value="score">Score (clicks + tags)</option>
+          <option value="clicks">Click Count</option>
+          <option value="viewers">Viewers</option>
+          <option value="recent">Recently Seen</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label>Slideshow Speed:</label>
+        <input type="range" id="slideshowSpeed" min="1" max="10" value="3" />
+        <span id="speedValue">3s</span>
+      </div>
     </div>
 
     <div id="interestPanel" class="interest-panel"></div>
@@ -63,15 +150,57 @@
     <div id="grid" class="grid"></div>
   </div>
 
+  <!-- Context Menu for Right-Click -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" data-action="addTag">📝 Add Tag/Description</div>
+    <div class="context-menu-item" data-action="viewTags">🏷️ View Tags</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" data-action="findSimilar">🔍 Find Similar</div>
+    <div class="context-menu-item" data-action="copyUsername">📋 Copy Username</div>
+  </div>
+
+  <!-- Tag Input Modal -->
+  <div id="tagModal" class="modal-overlay">
+    <div class="modal-content">
+      <span class="modal-close" id="closeTagModal">&times;</span>
+      <div class="modal-header">Add Tags for <span id="tagModalUsername"></span></div>
+      <div class="autocomplete-wrap">
+        <input type="text" id="tagInput" class="autocomplete-input" placeholder="Type to add tags (e.g., smile, outdoor, etc.)" />
+        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+      </div>
+      <p class="muted" style="margin-top: 8px; font-size: 11px;">Press Enter to add a tag, or select from suggestions</p>
+      <div id="selectedTags" class="tag-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelTagModal">Cancel</button>
+        <button class="btn btn-primary" id="saveTagModal">Save Tags</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // ============ STATE ============
     const state = {
       payload: null,
       filtered: [],
       slideshowIndex: 0,
       slideshowTimer: null,
-      interests: {}
+      interests: {},
+      clickCounts: {},
+      customTags: {},
+      allKnownTags: [],
+      settings: {
+        columns: 4,
+        layout: 'auto',
+        sortBy: 'score',
+        slideshowSpeed: 3
+      },
+      contextTarget: null,
+      tagModalTarget: null,
+      selectedTagsForModal: [],
+      cardSlideshowIndices: {}
     };
 
+    // ============ UTILITIES ============
     function esc(str) {
       return String(str || '')
         .replaceAll('&', '&amp;')
@@ -87,37 +216,117 @@
       return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString();
     }
 
-    function cardHtml(item) {
-      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 8) : [];
-      const tagsHtml = tags.map((tag) => `<button class="tag-chip" data-tag="${esc(tag)}">${esc(tag)}</button>`).join('');
-      return `
-        <div class="card">
-          <img src="${esc(item.image_url)}" alt="${esc(item.username)}" loading="lazy" />
-          <div class="meta">
-            <div class="name">${esc(item.display_name || item.username)}</div>
-            <div class="muted">@${esc(item.username)}</div>
-            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0}</div>
-            <div>${tagsHtml}</div>
-            <div class="muted">Bytes: ${item.byte_size ?? 0}</div>
-            <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
-          </div>
-        </div>
-      `;
-    }
-
-    function loadInterests() {
+    // ============ LOCAL STORAGE ============
+    function loadFromStorage(key, defaultVal) {
       try {
-        const saved = JSON.parse(localStorage.getItem('best_user_interests') || '{}');
-        state.interests = saved && typeof saved === 'object' ? saved : {};
+        const saved = JSON.parse(localStorage.getItem(key));
+        return saved !== null ? saved : defaultVal;
       } catch {
-        state.interests = {};
+        return defaultVal;
       }
     }
 
-    function saveInterests() {
-      localStorage.setItem('best_user_interests', JSON.stringify(state.interests));
+    function saveToStorage(key, data) {
+      localStorage.setItem(key, JSON.stringify(data));
     }
 
+    function loadInterests() {
+      state.interests = loadFromStorage('best_user_interests', {});
+    }
+
+    function saveInterests() {
+      saveToStorage('best_user_interests', state.interests);
+    }
+
+    function loadClickCounts() {
+      state.clickCounts = loadFromStorage('best_click_counts', {});
+    }
+
+    function saveClickCounts() {
+      saveToStorage('best_click_counts', state.clickCounts);
+    }
+
+    function loadCustomTags() {
+      state.customTags = loadFromStorage('best_custom_tags', {});
+      rebuildKnownTags();
+    }
+
+    function saveCustomTags() {
+      saveToStorage('best_custom_tags', state.customTags);
+      rebuildKnownTags();
+    }
+
+    function loadSettings() {
+      state.settings = loadFromStorage('best_settings', state.settings);
+      applySettings();
+    }
+
+    function saveSettings() {
+      saveToStorage('best_settings', state.settings);
+    }
+
+    function rebuildKnownTags() {
+      const tagSet = new Set();
+      Object.values(state.customTags).forEach(tags => {
+        tags.forEach(t => tagSet.add(t.toLowerCase()));
+      });
+      (state.payload?.items || []).forEach(item => {
+        if (Array.isArray(item.tags)) {
+          item.tags.forEach(t => tagSet.add(t.toLowerCase()));
+        }
+      });
+      state.allKnownTags = Array.from(tagSet).sort();
+    }
+
+    // ============ SCORING ============
+    function calculateScore(item) {
+      let score = 0;
+      const username = item.username?.toLowerCase();
+      
+      // Click-based scoring
+      score += (state.clickCounts[username] || 0) * 10;
+      
+      // Interest-based scoring (tags user has clicked)
+      const itemTags = Array.isArray(item.tags) ? item.tags.map(t => t.toLowerCase()) : [];
+      const customTagsForUser = state.customTags[username] || [];
+      const allTags = [...itemTags, ...customTagsForUser.map(t => t.toLowerCase())];
+      
+      allTags.forEach(tag => {
+        if (state.interests[tag]) {
+          score += state.interests[tag] * 5;
+        }
+      });
+
+      // Bonus for having custom tags (user showed interest)
+      score += customTagsForUser.length * 3;
+      
+      // Viewers bonus (mild)
+      score += Math.min(item.num_viewers || 0, 100) * 0.1;
+      
+      return Math.round(score);
+    }
+
+    function sortItems(items) {
+      const sortBy = state.settings.sortBy;
+      return [...items].sort((a, b) => {
+        if (sortBy === 'score') {
+          return calculateScore(b) - calculateScore(a);
+        } else if (sortBy === 'clicks') {
+          const aClicks = state.clickCounts[a.username?.toLowerCase()] || 0;
+          const bClicks = state.clickCounts[b.username?.toLowerCase()] || 0;
+          return bClicks - aClicks;
+        } else if (sortBy === 'viewers') {
+          return (b.num_viewers || 0) - (a.num_viewers || 0);
+        } else if (sortBy === 'recent') {
+          return (b.last_seen || 0) - (a.last_seen || 0);
+        } else if (sortBy === 'name') {
+          return (a.username || '').localeCompare(b.username || '');
+        }
+        return 0;
+      });
+    }
+
+    // ============ INTEREST TRACKING ============
     function trackInterest(key) {
       const normalized = String(key || '').trim().toLowerCase();
       if (!normalized) return;
@@ -126,22 +335,144 @@
       renderInterests();
     }
 
+    function trackClick(username) {
+      const key = String(username || '').toLowerCase();
+      if (!key) return;
+      state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
+      saveClickCounts();
+    }
+
     function renderInterests() {
       const panel = document.getElementById('interestPanel');
       const top = Object.entries(state.interests)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
+        .slice(0, 12);
 
       if (!top.length) {
         panel.innerHTML = '<span class="muted">Interest profile: click tags to capture interaction insights.</span>';
         return;
       }
 
-      panel.innerHTML = `<span class="muted">Interest profile:</span>${top
-        .map(([k, v]) => `<span class="pill">${esc(k)} · ${v}</span>`)
+      panel.innerHTML = `<span class="muted">Interests:</span>${top
+        .map(([k, v]) => `<span class="pill" data-interest="${esc(k)}">${esc(k)} · ${v}</span>`)
         .join('')}`;
     }
 
+    // ============ CARD SLIDESHOW ============
+    function getPerformerImages(item) {
+      // If performer has multiple images in history, use them
+      // For now, use single image but structure supports multiple
+      const images = [];
+      if (item.image_url) images.push(item.image_url);
+      if (item.image_history && Array.isArray(item.image_history)) {
+        item.image_history.forEach(img => {
+          if (img && !images.includes(img)) images.push(img);
+        });
+      }
+      return images.length ? images : [item.image_url || ''];
+    }
+
+    function cardHtml(item, index) {
+      const username = item.username?.toLowerCase() || '';
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 6) : [];
+      const customUserTags = state.customTags[username] || [];
+      const allDisplayTags = [...tags, ...customUserTags.filter(t => !tags.map(x => x.toLowerCase()).includes(t.toLowerCase()))].slice(0, 8);
+      
+      const tagsHtml = allDisplayTags.map((tag, i) => {
+        const isCustom = i >= tags.length;
+        return `<button class="tag-chip${isCustom ? ' custom-tag' : ''}" data-tag="${esc(tag)}">${esc(tag)}</button>`;
+      }).join('');
+      
+      const clickCount = state.clickCounts[username] || 0;
+      const score = calculateScore(item);
+      const images = getPerformerImages(item);
+      const currentSlideIndex = state.cardSlideshowIndices[username] || 0;
+      
+      const dotsHtml = images.length > 1 
+        ? `<div class="slide-dots">${images.map((_, i) => `<div class="slide-dot${i === currentSlideIndex ? ' active' : ''}" data-slide="${i}"></div>`).join('')}</div>` 
+        : '';
+      
+      const slideNavHtml = images.length > 1
+        ? `<button class="card-slide-nav card-slide-prev" data-dir="-1">‹</button><button class="card-slide-nav card-slide-next" data-dir="1">›</button>`
+        : '';
+
+      return `
+        <div class="card" data-username="${esc(username)}" data-index="${index}">
+          <div class="card-slideshow">
+            <img src="${esc(images[currentSlideIndex] || '')}" alt="${esc(username)}" loading="lazy" data-images='${JSON.stringify(images)}' />
+            ${slideNavHtml}
+            ${dotsHtml}
+          </div>
+          <div class="meta">
+            <div class="name">${esc(item.display_name || item.username)} ${score > 0 ? `<span class="score-badge">★ ${score}</span>` : ''}</div>
+            <div class="muted">@${esc(username)} ${clickCount > 0 ? `· <span class="click-count">${clickCount} clicks</span>` : ''}</div>
+            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0}</div>
+            <div>${tagsHtml}</div>
+            <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============ SETTINGS ============
+    function applySettings() {
+      const grid = document.getElementById('grid');
+      const layout = state.settings.layout;
+      const cols = state.settings.columns;
+
+      if (layout === 'auto') {
+        grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${Math.max(140, 300 - cols * 20)}px, 1fr))`;
+      } else if (layout === '2x3') {
+        grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+      } else if (layout === '3x2') {
+        grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      } else {
+        grid.style.gridTemplateColumns = `repeat(${parseInt(layout) || cols}, 1fr)`;
+      }
+
+      document.getElementById('columnSlider').value = cols;
+      document.getElementById('columnValue').textContent = cols;
+      document.getElementById('layoutSelect').value = layout;
+      document.getElementById('sortSelect').value = state.settings.sortBy;
+      document.getElementById('slideshowSpeed').value = state.settings.slideshowSpeed;
+      document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
+      
+      startSlideshow();
+    }
+
+    function setupSettingsListeners() {
+      document.getElementById('settingsBtn').addEventListener('click', () => {
+        document.getElementById('settingsPanel').classList.toggle('open');
+      });
+
+      document.getElementById('columnSlider').addEventListener('input', (e) => {
+        state.settings.columns = parseInt(e.target.value);
+        document.getElementById('columnValue').textContent = state.settings.columns;
+        saveSettings();
+        applySettings();
+      });
+
+      document.getElementById('layoutSelect').addEventListener('change', (e) => {
+        state.settings.layout = e.target.value;
+        saveSettings();
+        applySettings();
+      });
+
+      document.getElementById('sortSelect').addEventListener('change', (e) => {
+        state.settings.sortBy = e.target.value;
+        saveSettings();
+        render();
+      });
+
+      document.getElementById('slideshowSpeed').addEventListener('input', (e) => {
+        state.settings.slideshowSpeed = parseInt(e.target.value);
+        document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
+        saveSettings();
+        startSlideshow();
+      });
+    }
+
+    // ============ MAIN SLIDESHOW ============
     function setSlideshowIndex(nextIndex) {
       if (!state.filtered.length) {
         document.getElementById('slideImage').src = '';
@@ -154,22 +485,27 @@
       const img = document.getElementById('slideImage');
       img.src = item.image_url || '';
       img.alt = item.username || 'featured image';
-      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}`;
+      const score = calculateScore(item);
+      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}${score > 0 ? ' · ★' + score : ''}`;
     }
 
     function startSlideshow() {
       if (state.slideshowTimer) clearInterval(state.slideshowTimer);
+      const speed = (state.settings.slideshowSpeed || 3) * 1000;
       state.slideshowTimer = setInterval(() => {
         setSlideshowIndex(state.slideshowIndex + 1);
-      }, 2500);
+      }, speed);
     }
 
+    // ============ RENDER ============
     function render() {
       const grid = document.getElementById('grid');
-      grid.innerHTML = state.filtered.map(cardHtml).join('');
+      const sorted = sortItems(state.filtered);
+      grid.innerHTML = sorted.map((item, i) => cardHtml(item, i)).join('');
       document.getElementById('visibleCount').textContent = String(state.filtered.length);
       setSlideshowIndex(0);
       startSlideshow();
+      applySettings();
     }
 
     function applySearch() {
@@ -182,15 +518,193 @@
       }
       state.filtered = items.filter((item) => {
         const tags = Array.isArray(item.tags) ? item.tags.join(' ').toLowerCase() : '';
+        const customTags = (state.customTags[item.username?.toLowerCase()] || []).join(' ').toLowerCase();
         return (
           String(item.username || '').toLowerCase().includes(query) ||
           String(item.display_name || '').toLowerCase().includes(query) ||
-          tags.includes(query)
+          tags.includes(query) ||
+          customTags.includes(query)
         );
       });
       render();
     }
 
+    // ============ CONTEXT MENU ============
+    function showContextMenu(x, y, username) {
+      const menu = document.getElementById('contextMenu');
+      state.contextTarget = username;
+      menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+      menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
+      menu.classList.add('visible');
+    }
+
+    function hideContextMenu() {
+      document.getElementById('contextMenu').classList.remove('visible');
+      state.contextTarget = null;
+    }
+
+    function handleContextAction(action) {
+      const username = state.contextTarget;
+      if (!username) return;
+
+      if (action === 'addTag') {
+        openTagModal(username);
+      } else if (action === 'viewTags') {
+        const tags = state.customTags[username] || [];
+        alert(`Custom tags for @${username}:\n${tags.length ? tags.join(', ') : 'No custom tags yet'}`);
+      } else if (action === 'findSimilar') {
+        findSimilarPerformers(username);
+      } else if (action === 'copyUsername') {
+        navigator.clipboard.writeText(username).then(() => {
+          document.getElementById('status').textContent = `Copied: ${username}`;
+          setTimeout(() => document.getElementById('status').textContent = '', 2000);
+        });
+      }
+      hideContextMenu();
+    }
+
+    function findSimilarPerformers(username) {
+      const userTags = state.customTags[username] || [];
+      const item = (state.payload?.items || []).find(i => i.username?.toLowerCase() === username);
+      const itemTags = item && Array.isArray(item.tags) ? item.tags : [];
+      const allTags = [...userTags, ...itemTags].map(t => t.toLowerCase());
+      
+      if (!allTags.length) {
+        document.getElementById('status').textContent = 'No tags to match';
+        return;
+      }
+
+      // Filter to performers that share at least one tag
+      state.filtered = (state.payload?.items || []).filter(p => {
+        const pTags = [...(p.tags || []), ...(state.customTags[p.username?.toLowerCase()] || [])].map(t => t.toLowerCase());
+        return pTags.some(t => allTags.includes(t));
+      });
+      
+      // Boost scores for shared tags
+      state.filtered.forEach(p => {
+        const pTags = [...(p.tags || []), ...(state.customTags[p.username?.toLowerCase()] || [])].map(t => t.toLowerCase());
+        const sharedCount = pTags.filter(t => allTags.includes(t)).length;
+        // Temporarily boost click count for sorting
+        const key = p.username?.toLowerCase();
+        state.clickCounts[key] = (state.clickCounts[key] || 0) + sharedCount;
+      });
+      saveClickCounts();
+      
+      render();
+      document.getElementById('status').textContent = `Found ${state.filtered.length} similar performers`;
+    }
+
+    // ============ TAG MODAL ============
+    function openTagModal(username) {
+      state.tagModalTarget = username;
+      state.selectedTagsForModal = [...(state.customTags[username] || [])];
+      
+      document.getElementById('tagModalUsername').textContent = '@' + username;
+      document.getElementById('tagInput').value = '';
+      renderModalTags();
+      document.getElementById('tagModal').classList.add('visible');
+      document.getElementById('tagInput').focus();
+    }
+
+    function closeTagModal() {
+      document.getElementById('tagModal').classList.remove('visible');
+      state.tagModalTarget = null;
+      state.selectedTagsForModal = [];
+    }
+
+    function renderModalTags() {
+      const container = document.getElementById('selectedTags');
+      container.innerHTML = state.selectedTagsForModal.map(tag => 
+        `<span class="tag-item">${esc(tag)} <span class="remove-tag" data-tag="${esc(tag)}">&times;</span></span>`
+      ).join('');
+    }
+
+    function addTagToModal(tag) {
+      const normalized = tag.trim().toLowerCase();
+      if (!normalized || state.selectedTagsForModal.map(t => t.toLowerCase()).includes(normalized)) return;
+      state.selectedTagsForModal.push(tag.trim());
+      renderModalTags();
+      document.getElementById('tagInput').value = '';
+      hideAutocomplete();
+    }
+
+    function removeTagFromModal(tag) {
+      state.selectedTagsForModal = state.selectedTagsForModal.filter(t => t.toLowerCase() !== tag.toLowerCase());
+      renderModalTags();
+    }
+
+    function saveModalTags() {
+      if (state.tagModalTarget) {
+        state.customTags[state.tagModalTarget] = [...state.selectedTagsForModal];
+        saveCustomTags();
+        render();
+        document.getElementById('status').textContent = `Tags saved for @${state.tagModalTarget}`;
+      }
+      closeTagModal();
+    }
+
+    // ============ AUTOCOMPLETE ============
+    function showAutocomplete(query) {
+      const dropdown = document.getElementById('autocompleteDropdown');
+      if (!query) {
+        hideAutocomplete();
+        return;
+      }
+      
+      const matches = state.allKnownTags.filter(t => 
+        t.includes(query.toLowerCase()) && 
+        !state.selectedTagsForModal.map(s => s.toLowerCase()).includes(t)
+      ).slice(0, 10);
+      
+      if (!matches.length) {
+        hideAutocomplete();
+        return;
+      }
+      
+      dropdown.innerHTML = matches.map((tag, i) => 
+        `<div class="autocomplete-item${i === 0 ? ' selected' : ''}" data-tag="${esc(tag)}">${esc(tag)}</div>`
+      ).join('');
+      dropdown.classList.add('visible');
+    }
+
+    function hideAutocomplete() {
+      document.getElementById('autocompleteDropdown').classList.remove('visible');
+    }
+
+    function selectAutocompleteItem(direction) {
+      const items = document.querySelectorAll('#autocompleteDropdown .autocomplete-item');
+      const current = document.querySelector('#autocompleteDropdown .autocomplete-item.selected');
+      if (!items.length) return;
+      
+      let index = current ? Array.from(items).indexOf(current) : -1;
+      items.forEach(i => i.classList.remove('selected'));
+      
+      index += direction;
+      if (index < 0) index = items.length - 1;
+      if (index >= items.length) index = 0;
+      
+      items[index].classList.add('selected');
+    }
+
+    // ============ CARD SLIDESHOW HANDLERS ============
+    function handleCardSlideNav(card, direction) {
+      const username = card.dataset.username;
+      const img = card.querySelector('.card-slideshow img');
+      const images = JSON.parse(img.dataset.images || '[]');
+      if (images.length <= 1) return;
+      
+      let current = state.cardSlideshowIndices[username] || 0;
+      current = ((current + direction) % images.length + images.length) % images.length;
+      state.cardSlideshowIndices[username] = current;
+      
+      img.src = images[current];
+      
+      // Update dots
+      const dots = card.querySelectorAll('.slide-dot');
+      dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
+    }
+
+    // ============ LOAD DATA ============
     async function loadManifest() {
       const status = document.getElementById('status');
       status.textContent = 'Loading...';
@@ -208,6 +722,7 @@
         document.getElementById('performerCount').textContent = String(payload.performer_count || 0);
         document.getElementById('imageCount').textContent = String(payload.image_count || 0);
         document.getElementById('generatedAt').textContent = fmtTs(payload.generated_at);
+        rebuildKnownTags();
         render();
         status.textContent = `Loaded ${state.filtered.length} entries`;
       } catch (error) {
@@ -216,18 +731,137 @@
       }
     }
 
+    // ============ EVENT LISTENERS ============
     document.getElementById('reloadBtn').addEventListener('click', loadManifest);
     document.getElementById('searchInput').addEventListener('input', applySearch);
     document.getElementById('slidePrev').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex - 1));
     document.getElementById('slideNext').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex + 1));
+    
+    // Grid click handlers
     document.getElementById('grid').addEventListener('click', (event) => {
-      const btn = event.target.closest('.tag-chip');
-      if (!btn) return;
-      const tag = btn.getAttribute('data-tag');
-      trackInterest(tag);
+      const tagBtn = event.target.closest('.tag-chip');
+      if (tagBtn) {
+        const tag = tagBtn.getAttribute('data-tag');
+        trackInterest(tag);
+        return;
+      }
+      
+      const slideNav = event.target.closest('.card-slide-nav');
+      if (slideNav) {
+        event.stopPropagation();
+        const card = slideNav.closest('.card');
+        const dir = parseInt(slideNav.dataset.dir);
+        handleCardSlideNav(card, dir);
+        return;
+      }
+      
+      const dot = event.target.closest('.slide-dot');
+      if (dot) {
+        event.stopPropagation();
+        const card = dot.closest('.card');
+        const username = card.dataset.username;
+        const slideIndex = parseInt(dot.dataset.slide);
+        state.cardSlideshowIndices[username] = slideIndex;
+        const img = card.querySelector('.card-slideshow img');
+        const images = JSON.parse(img.dataset.images || '[]');
+        img.src = images[slideIndex] || '';
+        card.querySelectorAll('.slide-dot').forEach((d, i) => d.classList.toggle('active', i === slideIndex));
+        return;
+      }
+      
+      const card = event.target.closest('.card');
+      if (card) {
+        const username = card.dataset.username;
+        trackClick(username);
+        render();
+      }
     });
 
+    // Context menu (right-click)
+    document.getElementById('grid').addEventListener('contextmenu', (event) => {
+      const card = event.target.closest('.card');
+      if (card) {
+        event.preventDefault();
+        showContextMenu(event.clientX, event.clientY, card.dataset.username);
+      }
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.context-menu')) {
+        hideContextMenu();
+      }
+    });
+
+    document.getElementById('contextMenu').addEventListener('click', (event) => {
+      const item = event.target.closest('.context-menu-item');
+      if (item) {
+        handleContextAction(item.dataset.action);
+      }
+    });
+
+    // Interest panel click
+    document.getElementById('interestPanel').addEventListener('click', (event) => {
+      const pill = event.target.closest('.pill');
+      if (pill) {
+        const interest = pill.dataset.interest;
+        document.getElementById('searchInput').value = interest;
+        applySearch();
+      }
+    });
+
+    // Tag modal
+    document.getElementById('closeTagModal').addEventListener('click', closeTagModal);
+    document.getElementById('cancelTagModal').addEventListener('click', closeTagModal);
+    document.getElementById('saveTagModal').addEventListener('click', saveModalTags);
+    
+    document.getElementById('tagModal').addEventListener('click', (event) => {
+      if (event.target.id === 'tagModal') closeTagModal();
+    });
+
+    document.getElementById('selectedTags').addEventListener('click', (event) => {
+      const removeBtn = event.target.closest('.remove-tag');
+      if (removeBtn) {
+        removeTagFromModal(removeBtn.dataset.tag);
+      }
+    });
+
+    document.getElementById('tagInput').addEventListener('input', (event) => {
+      showAutocomplete(event.target.value);
+    });
+
+    document.getElementById('tagInput').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const selected = document.querySelector('#autocompleteDropdown .autocomplete-item.selected');
+        if (selected) {
+          addTagToModal(selected.dataset.tag);
+        } else if (event.target.value.trim()) {
+          addTagToModal(event.target.value);
+        }
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        selectAutocompleteItem(1);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        selectAutocompleteItem(-1);
+      } else if (event.key === 'Escape') {
+        hideAutocomplete();
+      }
+    });
+
+    document.getElementById('autocompleteDropdown').addEventListener('click', (event) => {
+      const item = event.target.closest('.autocomplete-item');
+      if (item) {
+        addTagToModal(item.dataset.tag);
+      }
+    });
+
+    // ============ INIT ============
     loadInterests();
+    loadClickCounts();
+    loadCustomTags();
+    loadSettings();
+    setupSettingsListeners();
     renderInterests();
     loadManifest();
   </script>
