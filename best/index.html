@@ -107,8 +107,8 @@
         <label>Grid Layout:</label>
         <select id="layoutSelect">
           <option value="auto">Auto-fill</option>
-          <option value="2x3">2 columns</option>
-          <option value="3x2">3 columns</option>
+          <option value="2">2 columns</option>
+          <option value="3">3 columns</option>
           <option value="4">4 columns</option>
           <option value="5">5 columns</option>
           <option value="6">6 columns</option>
@@ -376,7 +376,9 @@
       const username = item.username?.toLowerCase() || '';
       const tags = Array.isArray(item.tags) ? item.tags.slice(0, 6) : [];
       const customUserTags = state.customTags[username] || [];
-      const allDisplayTags = [...tags, ...customUserTags.filter(t => !tags.map(x => x.toLowerCase()).includes(t.toLowerCase()))].slice(0, 8);
+      // Use Set for O(1) lookup instead of O(n) includes check
+      const tagSet = new Set(tags.map(x => x.toLowerCase()));
+      const allDisplayTags = [...tags, ...customUserTags.filter(t => !tagSet.has(t.toLowerCase()))].slice(0, 8);
       
       const tagsHtml = allDisplayTags.map((tag, i) => {
         const isCustom = i >= tags.length;
@@ -396,10 +398,13 @@
         ? `<button class="card-slide-nav card-slide-prev" data-dir="-1">‹</button><button class="card-slide-nav card-slide-next" data-dir="1">›</button>`
         : '';
 
+      // Escape JSON for safe embedding in HTML attribute
+      const imagesJson = JSON.stringify(images).replace(/'/g, '&#39;');
+
       return `
         <div class="card" data-username="${esc(username)}" data-index="${index}">
           <div class="card-slideshow">
-            <img src="${esc(images[currentSlideIndex] || '')}" alt="${esc(username)}" loading="lazy" data-images='${JSON.stringify(images)}' />
+            <img src="${esc(images[currentSlideIndex] || '')}" alt="${esc(username)}" loading="lazy" data-images='${imagesJson}' />
             ${slideNavHtml}
             ${dotsHtml}
           </div>
@@ -415,17 +420,20 @@
     }
 
     // ============ SETTINGS ============
+    // Grid layout constants for responsive design
+    const GRID_MIN_CARD_WIDTH = 140;  // Minimum card width in pixels
+    const GRID_BASE_WIDTH = 300;      // Base width for auto-fill calculation
+    const GRID_COL_REDUCTION = 20;    // Width reduction per column
+    
     function applySettings() {
       const grid = document.getElementById('grid');
       const layout = state.settings.layout;
       const cols = state.settings.columns;
 
       if (layout === 'auto') {
-        grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${Math.max(140, 300 - cols * 20)}px, 1fr))`;
-      } else if (layout === '2x3') {
-        grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      } else if (layout === '3x2') {
-        grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        // Calculate responsive min-width based on column count
+        const minWidth = Math.max(GRID_MIN_CARD_WIDTH, GRID_BASE_WIDTH - cols * GRID_COL_REDUCTION);
+        grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minWidth}px, 1fr))`;
       } else {
         grid.style.gridTemplateColumns = `repeat(${parseInt(layout) || cols}, 1fr)`;
       }
@@ -530,11 +538,15 @@
     }
 
     // ============ CONTEXT MENU ============
+    // Context menu dimensions for positioning
+    const CONTEXT_MENU_WIDTH = 200;
+    const CONTEXT_MENU_HEIGHT = 150;
+    
     function showContextMenu(x, y, username) {
       const menu = document.getElementById('contextMenu');
       state.contextTarget = username;
-      menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
-      menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
+      menu.style.left = Math.min(x, window.innerWidth - CONTEXT_MENU_WIDTH) + 'px';
+      menu.style.top = Math.min(y, window.innerHeight - CONTEXT_MENU_HEIGHT) + 'px';
       menu.classList.add('visible');
     }
 
@@ -574,21 +586,26 @@
         return;
       }
 
-      // Filter to performers that share at least one tag
+      // Filter to performers that share at least one tag and calculate similarity scores
+      const similarityScores = new Map();
       state.filtered = (state.payload?.items || []).filter(p => {
         const pTags = [...(p.tags || []), ...(state.customTags[p.username?.toLowerCase()] || [])].map(t => t.toLowerCase());
-        return pTags.some(t => allTags.includes(t));
+        const sharedCount = pTags.filter(t => allTags.includes(t)).length;
+        if (sharedCount > 0) {
+          // Store similarity score separately (not in clickCounts)
+          similarityScores.set(p.username?.toLowerCase(), sharedCount);
+          return true;
+        }
+        return false;
       });
       
-      // Boost scores for shared tags
-      state.filtered.forEach(p => {
-        const pTags = [...(p.tags || []), ...(state.customTags[p.username?.toLowerCase()] || [])].map(t => t.toLowerCase());
-        const sharedCount = pTags.filter(t => allTags.includes(t)).length;
-        // Temporarily boost click count for sorting
-        const key = p.username?.toLowerCase();
-        state.clickCounts[key] = (state.clickCounts[key] || 0) + sharedCount;
+      // Sort by similarity score (descending), then by existing score
+      state.filtered.sort((a, b) => {
+        const aSimScore = similarityScores.get(a.username?.toLowerCase()) || 0;
+        const bSimScore = similarityScores.get(b.username?.toLowerCase()) || 0;
+        if (bSimScore !== aSimScore) return bSimScore - aSimScore;
+        return calculateScore(b) - calculateScore(a);
       });
-      saveClickCounts();
       
       render();
       document.getElementById('status').textContent = `Found ${state.filtered.length} similar performers`;
