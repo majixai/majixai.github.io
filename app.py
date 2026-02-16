@@ -319,15 +319,30 @@ def add_link():
 def increment_click_count():
     link_url = request.get_json()['url']
     logger.info(f"Incrementing click count for URL: {link_url}")
-    with open('menu/clicks.json', 'r+') as f:
-        clicks = json.load(f)
-        old_count = clicks.get(link_url, 0)
-        clicks[link_url] = old_count + 1
-        f.seek(0)
-        json.dump(clicks, f, indent=4)
-        f.truncate()
-    logger.info(f"Click count incremented from {old_count} to {clicks[link_url]}")
-    return jsonify({'message': 'Click count incremented', 'count': clicks[link_url]})
+    
+    try:
+        import fcntl
+        with open('menu/clicks.json', 'r+') as f:
+            # Acquire exclusive lock for thread-safe operation
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                clicks = json.load(f)
+                old_count = clicks.get(link_url, 0)
+                clicks[link_url] = old_count + 1
+                f.seek(0)
+                json.dump(clicks, f, indent=4)
+                f.truncate()
+                logger.info(f"Click count incremented from {old_count} to {clicks[link_url]}")
+                return jsonify({'message': 'Click count incremented', 'count': clicks[link_url]})
+            finally:
+                # Release lock
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    except FileNotFoundError:
+        logger.error("Click tracking file not found: menu/clicks.json")
+        return jsonify({'error': 'Click tracking file not found. Please ensure menu/clicks.json exists.'}), 404
+    except Exception as e:
+        logger.error(f"Error updating click count: {e}")
+        return jsonify({'error': f'Failed to update click count: {str(e)}'}), 500
 
 @app.route('/api/generate', methods=['POST'])
 @log_request_response
@@ -689,24 +704,30 @@ def health_check():
 @app.route('/api/logs/recent', methods=['GET'])
 @log_request_response
 def get_recent_logs():
-    """Retrieve recent log entries"""
+    """Retrieve recent log entries efficiently"""
     logger.info("Fetching recent logs")
     
     try:
+        from collections import deque
+        recent_lines = deque(maxlen=100)
+        
         with open('flask.log', 'r') as f:
-            lines = f.readlines()
-            recent_lines = lines[-100:]  # Last 100 lines
+            for line in f:
+                recent_lines.append(line)
         
         response = {
             'message': 'Recent logs retrieved',
             'count': len(recent_lines),
-            'logs': recent_lines
+            'logs': list(recent_lines)
         }
         logger.info(f"Retrieved {len(recent_lines)} log entries")
         return jsonify(response)
+    except FileNotFoundError:
+        logger.warning("Log file not found")
+        return jsonify({'error': 'Log file not found', 'logs': []}), 404
     except Exception as e:
         logger.error(f"Error reading logs: {e}")
-        return jsonify({'error': 'Could not read log file'}), 500
+        return jsonify({'error': f'Could not read log file: {str(e)}'}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Flask application...")
