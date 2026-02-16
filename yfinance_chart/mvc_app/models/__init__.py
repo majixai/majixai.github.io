@@ -8,8 +8,17 @@ from .data_model import (
 from .session_model import (
     get_or_create_session_state,
     hash_session,
+    hash_session_with_salt,
     read_session_state,
     register_event,
+    update_session_metadata,
+    delete_session,
+    get_session_analytics,
+    clear_all_sessions,
+    export_sessions,
+    import_sessions,
+    SessionEvent,
+    SessionState,
 )
 
 __all__ = [
@@ -20,6 +29,15 @@ __all__ = [
     "search_manifest_records",
     "get_or_create_session_state",
     "hash_session",
+    "hash_session_with_salt",
     "read_session_state",
     "register_event",
+    "update_session_metadata",
+    "delete_session",
+    "get_session_analytics",
+    "clear_all_sessions",
+    "export_sessions",
+    "import_sessions",
+    "SessionEvent",
+    "SessionState",
 ]
