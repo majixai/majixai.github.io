@@ -96,4 +96,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(cacheFirst(request));
     return;
   }
+
+  // For all other requests, try network
+  event.respondWith(fetch(request));
 });
