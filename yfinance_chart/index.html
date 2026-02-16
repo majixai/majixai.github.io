@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00d9ff">
+    <meta name="description" content="Advanced interactive charts with Bayesian analysis and pattern recognition">
     <title>YFinance Interactive Chart - Advanced Analytics</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2300d9ff' width='100' height='100' rx='15'/><text x='50' y='65' font-size='40' text-anchor='middle' fill='%231a1a2e'>📉</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="style.css">
     <!-- Plotly.js for advanced charting -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" integrity="sha384-p7P4K1q9F8zfQOkP5MxoLQ8dYYkuK2QJ6o3+2HKZmWz7V4Uxz6P7C8oMn0k+OJTQ" crossorigin="anonymous"></script>
@@ -11,6 +17,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js" integrity="sha384-UDqLY+v/kPgRaVqzUh8L0mZvWx6khiAfCxnkBQVeQC3eLFPHiYJpLCpZ5aLRbQsb" crossorigin="anonymous"></script>
 </head>
 <body>
+    <nav class="w3-bar w3-cyan w3-card" style="margin-bottom: 0;">
+        <a href="../finance/" class="w3-bar-item w3-button w3-hover-light-grey">
+            ← Finance Menu
+        </a>
+        <span class="w3-bar-item w3-right">YFinance Chart PWA</span>
+    </nav>
+
     <div class="container">
         <header>
             <h1>📈 YFinance Interactive Chart</h1>
@@ -101,5 +114,15 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('ServiceWorker registered:', registration.scope))
+                    .catch(error => console.error('ServiceWorker registration failed:', error));
+            });
+        }
+    </script>
 </body>
 </html>

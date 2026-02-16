@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f3460">
+    <meta name="description" content="Central hub for all finance-related applications and tools">
+    <title>Finance Hub - PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- iOS PWA support -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f3460' width='100' height='100' rx='15'/><text x='50' y='40' font-size='24' text-anchor='middle' fill='%2300d9ff'>📈</text><text x='50' y='70' font-size='18' text-anchor='middle' fill='white'>FIN</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finance Hub">
+</head>
+<body>
+    <div class="offline-indicator" id="offlineIndicator">
+        <i class="fas fa-wifi-slash"></i> Offline Mode
+    </div>
+
+    <header>
+        <h1><i class="fas fa-chart-line"></i> Finance Hub</h1>
+        <p>Your central dashboard for all finance applications</p>
+    </header>
+
+    <div class="container">
+        <!-- Stock Analysis Category -->
+        <section class="category">
+            <h2><i class="fas fa-chart-bar"></i> Stock Analysis</h2>
+            <div class="app-grid">
+                <a href="../stock_analyzer/" class="app-card">
+                    <span class="icon">📊</span>
+                    <h3>Stock Projection Analyzer</h3>
+                    <p>AI-powered stock price projections with Gemini integration and TradingView charts</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../stock/" class="app-card">
+                    <span class="icon">📈</span>
+                    <h3>Stock Signals</h3>
+                    <p>Track stock signals across multiple timeframes with price predictions</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../market/" class="app-card">
+                    <span class="icon">🏦</span>
+                    <h3>Market Data</h3>
+                    <p>Fetch and visualize market data from Google Finance with interactive charts</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../yfinance_chart/" class="app-card">
+                    <span class="icon">📉</span>
+                    <h3>YFinance Chart</h3>
+                    <p>Advanced interactive charts with Bayesian analysis and pattern recognition</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../yfinance_data/" class="app-card">
+                    <span class="icon">💾</span>
+                    <h3>YFinance Data</h3>
+                    <p>Yahoo Finance data viewer with compression and database support</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Options Trading Category -->
+        <section class="category">
+            <h2><i class="fas fa-exchange-alt"></i> Options Trading</h2>
+            <div class="app-grid">
+                <a href="../option/" class="app-card">
+                    <span class="icon">⚖️</span>
+                    <h3>Option Analyzer</h3>
+                    <p>AI-powered options analysis with projections and TradingView integration</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../options/" class="app-card">
+                    <span class="icon">📋</span>
+                    <h3>Options Strategy Visualizer</h3>
+                    <p>Visualize and analyze various options strategies with payoff diagrams</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Ticker Tools Category -->
+        <section class="category">
+            <h2><i class="fas fa-tags"></i> Ticker Tools</h2>
+            <div class="app-grid">
+                <a href="../ticker/" class="app-card">
+                    <span class="icon">📺</span>
+                    <h3>Ticker Tape</h3>
+                    <p>Customizable TradingView ticker tape with localStorage persistence</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="../tickers/" class="app-card">
+                    <span class="icon">📝</span>
+                    <h3>Ticker Analyses</h3>
+                    <p>Collection of detailed stock analyses and plotter tools</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Quantitative Analysis Category -->
+        <section class="category">
+            <h2><i class="fas fa-calculator"></i> Quantitative Analysis</h2>
+            <div class="app-grid">
+                <a href="../quantix/" class="app-card">
+                    <span class="icon">🔬</span>
+                    <h3>Quantix</h3>
+                    <p>Quantitative finance tools with MVC architecture for advanced calculations</p>
+                    <span class="status-badge pwa">PWA</span>
+                    <span class="arrow"><i class="fas fa-arrow-right"></i></span>
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>Finance Hub PWA &copy; 2025 | <a href="https://github.com/majixai/majixai.github.io">GitHub</a></p>
+        <p id="swStatus">Service Worker: Checking...</p>
+    </footer>
+
+    <!-- Install Banner -->
+    <div class="install-banner" id="installBanner">
+        <span><i class="fas fa-download"></i> Install Finance Hub for offline access</span>
+        <button id="installBtn">Install</button>
+        <button class="dismiss" id="dismissBtn">Later</button>
+    </div>
+
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered:', registration.scope);
+                        document.getElementById('swStatus').textContent = 'Service Worker: Active';
+                    })
+                    .catch(error => {
+                        console.error('ServiceWorker registration failed:', error);
+                        document.getElementById('swStatus').textContent = 'Service Worker: Failed';
+                    });
+            });
+        }
+
+        // Offline/Online Status
+        const offlineIndicator = document.getElementById('offlineIndicator');
+        
+        function updateOnlineStatus() {
+            if (!navigator.onLine) {
+                offlineIndicator.classList.add('show');
+            } else {
+                offlineIndicator.classList.remove('show');
+            }
+        }
+        
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installBanner = document.getElementById('installBanner');
+        const installBtn = document.getElementById('installBtn');
+        const dismissBtn = document.getElementById('dismissBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Check if user hasn't dismissed before
+            if (!localStorage.getItem('financeHubInstallDismissed')) {
+                installBanner.classList.add('show');
+            }
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Install prompt outcome:', outcome);
+                deferredPrompt = null;
+                installBanner.classList.remove('show');
+            }
+        });
+
+        dismissBtn.addEventListener('click', () => {
+            installBanner.classList.remove('show');
+            localStorage.setItem('financeHubInstallDismissed', 'true');
+        });
+
+        // Track installed state
+        window.addEventListener('appinstalled', () => {
+            console.log('Finance Hub was installed');
+            installBanner.classList.remove('show');
+            deferredPrompt = null;
+        });
+    </script>
+</body>
+</html>
