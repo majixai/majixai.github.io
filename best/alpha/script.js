@@ -1384,7 +1384,7 @@
             let iframeCount = 0;
             for (const container of iframeContainers) {
                 if (this.#shapeEngine.performerMode === 'none') break;
-                if (this.#shapeEngine.performerMode === 'single' && (appliedCount + iframeCount) >= 1) break;
+                if (this.#shapeEngine.performerMode === 'single' && iframeCount >= 1) break;
 
                 this.#shapeEngine.applyOverlay(container, `alpha-iframe-${iframeCount}`);
                 iframeCount++;

@@ -74,7 +74,8 @@ class ShapeEngine {
     /** @returns {number} */
     get complexity() { return this.#_complexity; }
     set complexity(val) {
-        this.#_complexity = Math.max(1, Math.min(10, parseInt(val) || 3));
+        const parsed = parseInt(val);
+        this.#_complexity = Math.max(1, Math.min(10, Number.isFinite(parsed) ? parsed : 3));
     }
 
     /**
@@ -265,14 +266,20 @@ class ShapeEngine {
         // Map prediction confidence to shape properties
         const confidence = prediction?.confidence || 50;
         const predictionCount = prediction?.predictions?.length || 1;
+        const totalShapeTypes = ShapeEngine.SHAPE_TYPES.length;
+        // Prime-derived multiplier for deterministic pseudo-random seed distribution
+        const SEED_SPREAD_FACTOR = 7.3;
 
         for (let i = 0; i < numShapes; i++) {
-            // Use tensor-inspired distribution based on confidence
-            const shapeIndex = Math.floor((confidence / 100) * ShapeEngine.SHAPE_TYPES.length * (i + 1) / numShapes) % ShapeEngine.SHAPE_TYPES.length;
+            // Distribute shape types across the confidence spectrum:
+            // Higher confidence biases toward later (more complex) shape types
+            const confidenceRatio = confidence / 100;
+            const progressRatio = (i + 1) / numShapes;
+            const shapeIndex = Math.floor(confidenceRatio * totalShapeTypes * progressRatio) % totalShapeTypes;
             const type = ShapeEngine.SHAPE_TYPES[Math.min(shapeIndex, this.#_complexity - 1)] || 'circle';
 
-            // Use prediction data to seed position and size
-            const seed = (confidence * (i + 1) * 7.3) % 100;
+            // Use prediction data to seed position and size deterministically
+            const seed = (confidence * (i + 1) * SEED_SPREAD_FACTOR) % 100;
             const size = 10 + (seed / 100) * (30 * (this.#_complexity / 5));
             const colorIdx = (i + predictionCount) % this._colors.length;
 
