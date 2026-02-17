@@ -42,6 +42,9 @@
     .slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; }
     .slide-prev { left: 8px; }
     .slide-next { right: 8px; }
+    .image-recognition-panel { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+    .image-recognition-panel input { background: #0f1115; color: #f0f2f5; border: 1px solid #2a2f39; padding: 6px 10px; font-size: 13px; }
+    .label-tag { background: #667eea; color: #fff; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin: 2px 4px 2px 0; display: inline-block; }
     .interest-panel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     .pill { border: 1px solid #2f3a48; background: #171b22; color: #e7ebf0; border-radius: 999px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
     .pill:hover { background: #242a35; }
@@ -190,6 +193,16 @@
       <div id="slideCaption" class="slide-caption"></div>
     </div>
 
+    <div class="image-recognition-panel">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <label for="imageLabel" style="font-size: 13px; font-weight: 600;">Label this image for GPU recognition:</label>
+        <input type="text" id="imageLabel" class="w3-input" placeholder="e.g., smiling, blonde, tattoo" style="flex: 1; max-width: 300px;" />
+        <button id="saveLabelBtn" class="w3-button w3-round" style="background: #667eea; color: #fff;">Save Label</button>
+        <button id="viewLabelsBtn" class="w3-button w3-round" style="background: #4a5568; color: #fff;">View Labels</button>
+      </div>
+      <div id="currentImageLabels" style="font-size: 12px; color: #a8afbb;"></div>
+    </div>
+
     <div class="stats">
       <div class="stat">Performers: <strong id="performerCount">0</strong></div>
       <div class="stat">Images Cached: <strong id="imageCount">0</strong></div>
@@ -246,6 +259,7 @@
       displayedItems: [],
       currentPage: 0,
       slideshowIndex: 0,
+      slideshowImageIndex: 0,
       slideshowTimer: null,
       interests: {},
       clickCounts: {},
@@ -254,6 +268,7 @@
       mlFeatures: {},
       similarityScores: {},
       offlineImageUrls: new Set(),
+      imageRecognitionLabels: {},
       settings: {
         columns: 4,
         layout: 'auto',
@@ -855,7 +870,7 @@
     }
 
     // ============ MAIN SLIDESHOW ============
-    function setSlideshowIndex(nextIndex) {
+    function setSlideshowIndex(nextIndex, imageIndexDelta = 1) {
       if (!state.filtered.length) {
         document.getElementById('slideImage').src = '';
         document.getElementById('slideCaption').textContent = 'No results for slideshow';
@@ -864,19 +879,200 @@
 
       state.slideshowIndex = ((nextIndex % state.filtered.length) + state.filtered.length) % state.filtered.length;
       const item = state.filtered[state.slideshowIndex];
+      const images = getPerformerImages(item);
+      
+      // Advance to next image in this performer's slideshow
+      if (imageIndexDelta !== 0) {
+        state.slideshowImageIndex = ((state.slideshowImageIndex + imageIndexDelta) % images.length + images.length) % images.length;
+      } else {
+        state.slideshowImageIndex = 0;
+      }
+      
       const img = document.getElementById('slideImage');
-      img.src = item.image_url || '';
+      img.src = images[state.slideshowImageIndex] || '';
       img.alt = item.username || 'featured image';
+      img.dataset.username = item.username || '';
+      img.dataset.imageUrl = images[state.slideshowImageIndex] || '';
+      
       const score = calculateScore(item);
-      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}${score > 0 ? ' · ★' + score : ''}`;
+      const imageCounter = images.length > 1 ? ` · Image ${state.slideshowImageIndex + 1}/${images.length}` : '';
+      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}${score > 0 ? ' · ★' + score : ''}${imageCounter}`;
+      
+      // Update image recognition labels display
+      updateCurrentImageLabels();
     }
 
     function startSlideshow() {
       if (state.slideshowTimer) clearInterval(state.slideshowTimer);
       const speed = (state.settings.slideshowSpeed || 3) * 1000;
       state.slideshowTimer = setInterval(() => {
-        setSlideshowIndex(state.slideshowIndex + 1);
+        const item = state.filtered[state.slideshowIndex];
+        if (!item) {
+          setSlideshowIndex(0, 0);
+          return;
+        }
+        
+        const images = getPerformerImages(item);
+        
+        // If we're at the last image of this performer, move to next performer
+        if (state.slideshowImageIndex >= images.length - 1) {
+          setSlideshowIndex(state.slideshowIndex + 1, 0);
+        } else {
+          // Otherwise, show next image of same performer
+          setSlideshowIndex(state.slideshowIndex, 1);
+        }
       }, speed);
+    }
+
+    // ============ IMAGE RECOGNITION LABELS ============
+    function saveImageLabel() {
+      const img = document.getElementById('slideImage');
+      const imageUrl = img.dataset.imageUrl;
+      const username = img.dataset.username;
+      const labelInput = document.getElementById('imageLabel');
+      const label = labelInput.value.trim();
+      
+      if (!label || !imageUrl) return;
+      
+      // Create unique key for this image
+      const imageKey = `${username}_${imageUrl}`;
+      
+      if (!state.imageRecognitionLabels[imageKey]) {
+        state.imageRecognitionLabels[imageKey] = {
+          username: username,
+          imageUrl: imageUrl,
+          labels: [],
+          timestamp: Date.now()
+        };
+      }
+      
+      // Add label if not already present
+      if (!state.imageRecognitionLabels[imageKey].labels.includes(label)) {
+        state.imageRecognitionLabels[imageKey].labels.push(label);
+        state.imageRecognitionLabels[imageKey].lastUpdated = Date.now();
+      }
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('imageRecognitionLabels', JSON.stringify(state.imageRecognitionLabels));
+        labelInput.value = '';
+        updateCurrentImageLabels();
+        showNotification('Label saved successfully!');
+      } catch (e) {
+        console.error('Failed to save label:', e);
+        showNotification('Failed to save label');
+      }
+    }
+    
+    function updateCurrentImageLabels() {
+      const img = document.getElementById('slideImage');
+      const imageUrl = img.dataset.imageUrl;
+      const username = img.dataset.username;
+      const imageKey = `${username}_${imageUrl}`;
+      const labelsDiv = document.getElementById('currentImageLabels');
+      
+      const imageData = state.imageRecognitionLabels[imageKey];
+      if (imageData && imageData.labels.length > 0) {
+        const labelTags = imageData.labels.map(label => 
+          `<span class="label-tag">${esc(label)}</span>`
+        ).join('');
+        labelsDiv.innerHTML = `Current labels: ${labelTags}`;
+      } else {
+        labelsDiv.innerHTML = 'No labels for this image yet';
+      }
+    }
+    
+    function showLabelsModal() {
+      const totalLabels = Object.keys(state.imageRecognitionLabels).length;
+      let totalLabelCount = 0;
+      Object.values(state.imageRecognitionLabels).forEach(data => {
+        totalLabelCount += data.labels.length;
+      });
+      
+      const labelsList = Object.entries(state.imageRecognitionLabels).map(([key, data]) => {
+        const labelTags = data.labels.map(l => `<span class="label-tag">${esc(l)}</span>`).join('');
+        return `<div style="margin-bottom: 12px; padding: 8px; background: #0f1115; border-radius: 6px;">
+          <div style="font-weight: 600; margin-bottom: 4px;">@${esc(data.username)}</div>
+          <div style="font-size: 11px; color: #a8afbb; margin-bottom: 4px;">${new Date(data.lastUpdated || data.timestamp).toLocaleString()}</div>
+          <div>${labelTags}</div>
+        </div>`;
+      }).join('');
+      
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; overflow: auto; padding: 20px;';
+      modal.innerHTML = `
+        <div style="max-width: 800px; margin: 0 auto; background: #191c22; border-radius: 12px; padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0;">Image Recognition Labels</h3>
+            <button id="closeLabelsModal" style="background: #4a5568; border: none; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Close</button>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <strong>${totalLabels}</strong> images labeled with <strong>${totalLabelCount}</strong> total labels
+          </div>
+          <div style="margin-bottom: 16px;">
+            <button id="exportLabelsBtn" style="background: #667eea; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-right: 8px;">Export as JSON</button>
+            <button id="clearLabelsBtn" style="background: #f56565; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Clear All Labels</button>
+          </div>
+          <div style="max-height: 60vh; overflow-y: auto;">
+            ${labelsList || '<div style="color: #a8afbb;">No labels saved yet</div>'}
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      document.getElementById('closeLabelsModal').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+      
+      document.getElementById('exportLabelsBtn').addEventListener('click', () => {
+        const dataStr = JSON.stringify(state.imageRecognitionLabels, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `image-recognition-labels-${Date.now()}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+      });
+      
+      document.getElementById('clearLabelsBtn').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear all labels? This cannot be undone.')) {
+          state.imageRecognitionLabels = {};
+          localStorage.removeItem('imageRecognitionLabels');
+          document.body.removeChild(modal);
+          showNotification('All labels cleared');
+        }
+      });
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+    }
+    
+    function showNotification(message) {
+      const notif = document.createElement('div');
+      notif.textContent = message;
+      notif.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #667eea; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 10001; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
+      document.body.appendChild(notif);
+      setTimeout(() => {
+        notif.style.transition = 'opacity 0.3s';
+        notif.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(notif), 300);
+      }, 2000);
+    }
+    
+    function loadImageRecognitionLabels() {
+      try {
+        const saved = localStorage.getItem('imageRecognitionLabels');
+        if (saved) {
+          state.imageRecognitionLabels = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Failed to load image recognition labels:', e);
+      }
     }
 
     // ============ RENDER ============
@@ -1266,8 +1462,37 @@
     // ============ EVENT LISTENERS ============
     document.getElementById('reloadBtn').addEventListener('click', loadManifest);
     document.getElementById('searchInput').addEventListener('input', applySearch);
-    document.getElementById('slidePrev').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex - 1));
-    document.getElementById('slideNext').addEventListener('click', () => setSlideshowIndex(state.slideshowIndex + 1));
+    document.getElementById('slidePrev').addEventListener('click', () => {
+      const item = state.filtered[state.slideshowIndex];
+      if (!item) return;
+      const images = getPerformerImages(item);
+      
+      // If at first image of performer, go to previous performer's last image
+      if (state.slideshowImageIndex === 0) {
+        const prevIndex = ((state.slideshowIndex - 1) % state.filtered.length + state.filtered.length) % state.filtered.length;
+        const prevItem = state.filtered[prevIndex];
+        const prevImages = getPerformerImages(prevItem);
+        state.slideshowImageIndex = prevImages.length - 1;
+        setSlideshowIndex(prevIndex, 0);
+      } else {
+        // Otherwise show previous image of same performer
+        setSlideshowIndex(state.slideshowIndex, -1);
+      }
+    });
+    
+    document.getElementById('slideNext').addEventListener('click', () => {
+      const item = state.filtered[state.slideshowIndex];
+      if (!item) return;
+      const images = getPerformerImages(item);
+      
+      // If at last image of performer, go to next performer
+      if (state.slideshowImageIndex >= images.length - 1) {
+        setSlideshowIndex(state.slideshowIndex + 1, 0);
+      } else {
+        // Otherwise show next image of same performer
+        setSlideshowIndex(state.slideshowIndex, 1);
+      }
+    });
     document.getElementById('loadMoreBtn').addEventListener('click', loadMore);
     
     // Infinite scroll support
@@ -1417,6 +1642,18 @@
     loadSettings();
     setupSettingsListeners();
     renderInterests();
+    loadImageRecognitionLabels();
+    
+    // Image recognition event listeners
+    document.getElementById('saveLabelBtn').addEventListener('click', saveImageLabel);
+    document.getElementById('viewLabelsBtn').addEventListener('click', showLabelsModal);
+    document.getElementById('imageLabel').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveImageLabel();
+      }
+    });
+    
     loadManifest();
   </script>
   <script src="main.js"></script>
