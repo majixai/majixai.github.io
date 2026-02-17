@@ -99,7 +99,7 @@ class BestPerformersEngine {
             await this.#_updatePerformerScore(performer.username);
             
             // GPU image processing: move similar images to top
-            await this.#_uiManager.moveSimlarImagesToTop(performer.username);
+            await this.#_uiManager.moveSimilarImagesToTop(performer.username);
         } catch (error) {
             console.error("Error tracking click:", error);
         }

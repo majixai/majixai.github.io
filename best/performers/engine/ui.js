@@ -1389,7 +1389,7 @@ class UIManager {
      * Moves similar images of clicked performers toward the top
      * @param {string} clickedUsername - Username of the clicked performer
      */
-    async moveSimlarImagesToTop(clickedUsername) {
+    async moveSimilarImagesToTop(clickedUsername) {
         if (!this.#_mlModel) {
             console.warn('ML model not loaded, cannot perform image similarity');
             return;
