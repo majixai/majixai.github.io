@@ -120,8 +120,11 @@
 
             // Test 4: Check iframe URL builder
             const testUrl = AppConfig.buildIframeUrl('testuser');
+            const urlObj = new URL(testUrl);
             logResult(section, 'buildIframeUrl works', 
-                testUrl.includes('testuser') && testUrl.includes('chaturbate.com'));
+                testUrl.includes('testuser') && 
+                urlObj.hostname === 'chaturbate.com' &&
+                urlObj.protocol === 'https:');
         }
 
         async function testDatabase() {
