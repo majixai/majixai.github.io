@@ -191,7 +191,7 @@
 
     <div class="slideshow" id="slideshow">
       <img id="slideImage" src="" alt="Featured" loading="eager" />
-      <canvas id="annotationCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></canvas>
+      <canvas id="annotationCanvas" aria-label="Image annotation canvas for drawing shapes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></canvas>
       <button class="slide-nav slide-prev" id="slidePrev" aria-label="Previous image">‹</button>
       <button class="slide-nav slide-next" id="slideNext" aria-label="Next image">›</button>
       <div id="slideCaption" class="slide-caption"></div>
@@ -1141,7 +1141,10 @@
       let startY = 0;
       
       slideshow.addEventListener('mousedown', (e) => {
-        if (!state.currentAnnotationTool || e.target !== canvas) return;
+        if (!state.currentAnnotationTool) return;
+        
+        // Check if click is within slideshow bounds (excluding nav buttons)
+        if (e.target.classList.contains('slide-nav') || e.target.classList.contains('slide-caption')) return;
         
         const rect = canvas.getBoundingClientRect();
         startX = (e.clientX - rect.left) / canvas.clientWidth;
@@ -1158,7 +1161,12 @@
         const currentY = (e.clientY - rect.top) / canvas.clientHeight;
         
         redrawAnnotations();
-        drawPreviewShape(startX, startY, currentX, currentY, state.currentAnnotationTool);
+        // Draw preview with blue color
+        const ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#667eea';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
+        drawShape(startX, startY, currentX, currentY, state.currentAnnotationTool);
       });
       
       slideshow.addEventListener('mouseup', (e) => {
@@ -1175,13 +1183,9 @@
       });
     }
     
-    function drawPreviewShape(x1, y1, x2, y2, shapeType) {
+    function drawShape(x1, y1, x2, y2, shapeType) {
       const canvas = document.getElementById('annotationCanvas');
       const ctx = canvas.getContext('2d');
-      
-      ctx.strokeStyle = '#667eea';
-      ctx.lineWidth = 3;
-      ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
       
       const pixelX1 = x1 * canvas.width;
       const pixelY1 = y1 * canvas.height;
@@ -1281,17 +1285,14 @@
       
       if (!annotations || !annotations.shapes) return;
       
+      // Draw saved annotations with green color
       ctx.strokeStyle = '#48bb78';
       ctx.lineWidth = 2;
       ctx.fillStyle = 'rgba(72, 187, 120, 0.15)';
       
       annotations.shapes.forEach(shape => {
-        drawPreviewShape(shape.x1, shape.y1, shape.x2, shape.y2, shape.type);
+        drawShape(shape.x1, shape.y1, shape.x2, shape.y2, shape.type);
       });
-      
-      // Reset colors for preview
-      ctx.strokeStyle = '#667eea';
-      ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
     }
     
     function clearAnnotations() {
@@ -1363,17 +1364,6 @@
       } else {
         canvas.style.pointerEvents = 'none';
         canvas.style.cursor = 'default';
-      }
-    }
-
-    function loadImageRecognitionLabels() {
-      try {
-        const saved = localStorage.getItem('imageRecognitionLabels');
-        if (saved) {
-          state.imageRecognitionLabels = JSON.parse(saved);
-        }
-      } catch (e) {
-        console.error('Failed to load image recognition labels:', e);
       }
     }
 
