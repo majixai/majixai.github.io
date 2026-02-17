@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Performers Engine Enhancements</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background: rgba(40, 167, 69, 0.3);
+            color: #28a745;
+        }
+        .fail {
+            background: rgba(220, 53, 69, 0.3);
+            color: #dc3545;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #0077cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005fa3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Performers Engine Enhancement Tests</h1>
+    
+    <div class="test-section">
+        <h2>1. Database Schema Tests</h2>
+        <div id="db-tests"></div>
+        <button onclick="testDatabase()">Run DB Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Analytics Tracking Tests</h2>
+        <div id="analytics-tests"></div>
+        <button onclick="testAnalytics()">Run Analytics Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Configuration Tests</h2>
+        <div id="config-tests"></div>
+        <button onclick="testConfig()">Run Config Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Test Summary</h2>
+        <div id="summary"></div>
+    </div>
+
+    <!-- Load the engine scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1"></script>
+    <script src="engine/config.js"></script>
+    <script src="engine/cache.js"></script>
+
+    <script>
+        let passCount = 0;
+        let failCount = 0;
+
+        function logResult(section, test, passed, message = '') {
+            const div = document.getElementById(section);
+            const result = document.createElement('div');
+            result.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            result.textContent = `${passed ? '✓' : '✗'} ${test} ${message}`;
+            div.appendChild(result);
+            
+            if (passed) passCount++;
+            else failCount++;
+            
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            summary.innerHTML = `
+                <h3>Total: ${passCount + failCount} tests</h3>
+                <p class="pass">Passed: ${passCount}</p>
+                <p class="fail">Failed: ${failCount}</p>
+            `;
+        }
+
+        async function testConfig() {
+            const section = 'config-tests';
+            document.getElementById(section).innerHTML = '';
+
+            // Test 1: Check DB version
+            logResult(section, 'DB version is 5', AppConfig.DB_VERSION === 5);
+
+            // Test 2: Check analytics store exists
+            logResult(section, 'ANALYTICS_STORE exists', 
+                typeof AppConfig.ANALYTICS_STORE === 'string' && 
+                AppConfig.ANALYTICS_STORE === 'analytics');
+
+            // Test 3: Check fetch interval (should be defined but not used)
+            logResult(section, 'FETCH_INTERVAL defined', 
+                typeof AppConfig.FETCH_INTERVAL === 'number');
+
+            // Test 4: Check iframe URL builder
+            const testUrl = AppConfig.buildIframeUrl('testuser');
+            const urlObj = new URL(testUrl);
+            logResult(section, 'buildIframeUrl works', 
+                testUrl.includes('testuser') && 
+                urlObj.hostname === 'chaturbate.com' &&
+                urlObj.protocol === 'https:');
+        }
+
+        async function testDatabase() {
+            const section = 'db-tests';
+            document.getElementById(section).innerHTML = '';
+
+            try {
+                // Test 1: DB opens successfully
+                const dbRequest = indexedDB.open(AppConfig.DB_NAME, AppConfig.DB_VERSION);
+                
+                dbRequest.onsuccess = (event) => {
+                    const db = event.target.result;
+                    
+                    // Test 2: Check all stores exist
+                    const expectedStores = [
+                        'performers', 'settings', 'snippets', 
+                        'recordings', 'imageLabels', 'analytics'
+                    ];
+                    
+                    for (const storeName of expectedStores) {
+                        const exists = db.objectStoreNames.contains(storeName);
+                        logResult(section, `Store '${storeName}' exists`, exists);
+                    }
+                    
+                    db.close();
+                };
+
+                dbRequest.onerror = () => {
+                    logResult(section, 'Open database', false, 'Failed to open DB');
+                };
+
+            } catch (error) {
+                logResult(section, 'Database test', false, error.message);
+            }
+        }
+
+        async function testAnalytics() {
+            const section = 'analytics-tests';
+            document.getElementById(section).innerHTML = '';
+
+            try {
+                // Test 1: Track event
+                await CacheManager.trackEvent({
+                    username: 'test_user_' + Date.now(),
+                    eventType: 'click',
+                    rating: 5,
+                    metadata: { test: true }
+                });
+                logResult(section, 'Track event', true);
+
+                // Test 2: Get performer stats
+                const stats = await CacheManager.getPerformerStats('test_user_123');
+                logResult(section, 'Get performer stats', 
+                    typeof stats === 'object' && 
+                    'totalClicks' in stats && 
+                    'clickScore' in stats);
+
+                // Test 3: Get all events
+                const events = await CacheManager.getAllEvents(10);
+                logResult(section, 'Get all events', 
+                    Array.isArray(events));
+
+                // Test 4: Verify event structure
+                if (events.length > 0) {
+                    const event = events[0];
+                    logResult(section, 'Event has correct structure',
+                        'username' in event && 
+                        'eventType' in event && 
+                        'timestamp' in event);
+                }
+
+            } catch (error) {
+                logResult(section, 'Analytics tests', false, error.message);
+            }
+        }
+
+        // Auto-run config tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            testConfig();
+        });
+    </script>
+</body>
+</html>
