@@ -29,6 +29,7 @@ class UIManager {
     #_onRefreshCallback;
     #_onFilterChangeCallback;
     #_onSearchCallback;
+    #_onShapeSettingsChangeCallback;
 
     constructor(callbacks = {}) {
         this.#_initDOMReferences();
@@ -36,6 +37,7 @@ class UIManager {
         this.#_onRefreshCallback = callbacks.onRefresh;
         this.#_onFilterChangeCallback = callbacks.onFilterChange;
         this.#_onSearchCallback = callbacks.onSearch;
+        this.#_onShapeSettingsChangeCallback = callbacks.onShapeSettingsChange;
         this.#_initEventListeners();
         this.#_setLayout(this.#_currentLayout);
         this.#_initLocalImageRecognition();
@@ -491,6 +493,9 @@ class UIManager {
                 }
             }
         });
+
+        // Shape settings listeners
+        this.#_initShapeSettingsListeners();
     }
 
     /**
@@ -1247,5 +1252,85 @@ class UIManager {
         });
 
         document.body.appendChild(overlay);
+    }
+
+    // ==================== Shape Engine Integration ====================
+
+    /**
+     * Expose the ML model for the shape engine
+     * @returns {Promise<Object|null>}
+     */
+    async getMLModel() {
+        if (this.#_mlModel) return this.#_mlModel;
+        if (this.#_mlModelPromise) return this.#_mlModelPromise;
+        return null;
+    }
+
+    /**
+     * Expose image label inference for the shape engine
+     * @param {string} imageUrl
+     * @returns {Promise<Object|null>}
+     */
+    async inferImageLabel(imageUrl) {
+        return this.#_inferImageLabel(imageUrl);
+    }
+
+    /**
+     * Get current viewer slots map
+     * @returns {Map}
+     */
+    getViewerSlots() {
+        return this.#_viewerSlots;
+    }
+
+    /**
+     * Update shape control UI to reflect current settings
+     * @param {Object} config - Shape engine config
+     */
+    updateShapeControls(config) {
+        const shapesToggle = document.querySelector('#shapesEnabledToggle');
+        const mlToggle = document.querySelector('#mlShapesToggle');
+        const modeSelect = document.querySelector('#performerModeSelect');
+        const complexitySlider = document.querySelector('#shapeComplexity');
+
+        if (shapesToggle) shapesToggle.checked = config.shapesEnabled;
+        if (mlToggle) mlToggle.checked = config.mlShapesEnabled;
+        if (modeSelect) modeSelect.value = config.performerMode;
+        if (complexitySlider) complexitySlider.value = config.complexity;
+    }
+
+    /**
+     * Initialize shape settings event listeners
+     * @private - called from #_initEventListeners
+     */
+    #_initShapeSettingsListeners() {
+        const shapesToggle = document.querySelector('#shapesEnabledToggle');
+        const mlToggle = document.querySelector('#mlShapesToggle');
+        const modeSelect = document.querySelector('#performerModeSelect');
+        const complexitySlider = document.querySelector('#shapeComplexity');
+
+        shapesToggle?.addEventListener('change', () => {
+            if (this.#_onShapeSettingsChangeCallback) {
+                this.#_onShapeSettingsChangeCallback({ shapesEnabled: shapesToggle.checked });
+            }
+        });
+
+        mlToggle?.addEventListener('change', () => {
+            if (this.#_onShapeSettingsChangeCallback) {
+                this.#_onShapeSettingsChangeCallback({ mlShapesEnabled: mlToggle.checked });
+            }
+        });
+
+        modeSelect?.addEventListener('change', () => {
+            if (this.#_onShapeSettingsChangeCallback) {
+                this.#_onShapeSettingsChangeCallback({ performerMode: modeSelect.value });
+            }
+        });
+
+        complexitySlider?.addEventListener('input', () => {
+            if (this.#_onShapeSettingsChangeCallback) {
+                this.#_onShapeSettingsChangeCallback({ complexity: parseInt(complexitySlider.value) });
+            }
+        });
     }
 }
