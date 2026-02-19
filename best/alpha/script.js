@@ -44,6 +44,8 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
+        // Shape engine for overlay shapes on iframes and images
+        #shapeEngine = null;
         
         constructor() {
             // Instantiate services and managers
@@ -96,6 +98,22 @@
             this.closeSlotsModal = document.getElementById('closeSlotsModal');
             this.spinButton = document.getElementById('spinButton');
             
+            // Shape engine controls
+            this.alphaShapesEnabled = document.getElementById('alphaShapesEnabled');
+            this.alphaMlShapes = document.getElementById('alphaMlShapes');
+            this.alphaPerformerMode = document.getElementById('alphaPerformerMode');
+            this.alphaShapeComplexity = document.getElementById('alphaShapeComplexity');
+
+            // Initialize shape engine
+            if (typeof ShapeEngine !== 'undefined') {
+                this.#shapeEngine = new ShapeEngine({
+                    shapesEnabled: false,
+                    mlShapesEnabled: false,
+                    performerMode: 'many',
+                    complexity: 3
+                });
+            }
+
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
             window.storageType = this.#storageType; 
@@ -1148,6 +1166,35 @@
                 this.#processVisibleUserImages();
                 this.#processVisibleUserImagesWithOcr();
             });
+
+            // Shape engine toggle listeners
+            this.alphaShapesEnabled?.addEventListener('change', () => {
+                if (this.#shapeEngine) {
+                    this.#shapeEngine.shapesEnabled = this.alphaShapesEnabled.checked;
+                    this.#applyAlphaShapeOverlays();
+                }
+            });
+
+            this.alphaMlShapes?.addEventListener('change', () => {
+                if (this.#shapeEngine) {
+                    this.#shapeEngine.mlShapesEnabled = this.alphaMlShapes.checked;
+                    this.#applyAlphaShapeOverlays();
+                }
+            });
+
+            this.alphaPerformerMode?.addEventListener('change', () => {
+                if (this.#shapeEngine) {
+                    this.#shapeEngine.performerMode = this.alphaPerformerMode.value;
+                    this.#applyAlphaShapeOverlays();
+                }
+            });
+
+            this.alphaShapeComplexity?.addEventListener('input', () => {
+                if (this.#shapeEngine) {
+                    this.#shapeEngine.complexity = parseInt(this.alphaShapeComplexity.value);
+                    this.#applyAlphaShapeOverlays();
+                }
+            });
         }
 
         #autoScrollInterval = null;
@@ -1305,6 +1352,42 @@
                         result.detection.box.bottomLeft
                     ).draw(canvas);
                 });
+            }
+        }
+
+        /**
+         * Apply shape overlays to visible user images and iframe containers
+         * @private
+         */
+        #applyAlphaShapeOverlays() {
+            if (!this.#shapeEngine) return;
+
+            // Remove all existing shape overlays first
+            this.#shapeEngine.removeAllOverlays();
+
+            if (!this.#shapeEngine.shapesEnabled) return;
+
+            // Apply to user image containers
+            const userImageContainers = document.querySelectorAll('.user-image-container');
+            let appliedCount = 0;
+            for (const container of userImageContainers) {
+                if (this.#shapeEngine.performerMode === 'none') break;
+                if (this.#shapeEngine.performerMode === 'single' && appliedCount >= 1) break;
+
+                const username = container.closest('.user-element')?.dataset?.username || `img-${appliedCount}`;
+                this.#shapeEngine.applyOverlay(container, `alpha-img-${username}`);
+                appliedCount++;
+            }
+
+            // Apply to iframe containers
+            const iframeContainers = document.querySelectorAll('.iframe-container');
+            let iframeCount = 0;
+            for (const container of iframeContainers) {
+                if (this.#shapeEngine.performerMode === 'none') break;
+                if (this.#shapeEngine.performerMode === 'single' && iframeCount >= 1) break;
+
+                this.#shapeEngine.applyOverlay(container, `alpha-iframe-${iframeCount}`);
+                iframeCount++;
             }
         }
 

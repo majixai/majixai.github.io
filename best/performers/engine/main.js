@@ -61,14 +61,18 @@ class BestPerformersEngine {
     #_recordingPreviewUrl = null;
     // Slot recording state: Map<slotNumber, { mediaRecorder, stream, chunks, startedAt, blobUrl }>
     #_slotRecordings = new Map();
+    // Shape engine for overlay shapes on iframes and images
+    #_shapeEngine = null;
 
     constructor() {
         this.#_dataAPI = new DataAPI(CacheManager);
+        this.#_shapeEngine = new ShapeEngine(AppConfig.SHAPE_ENGINE_CONFIG);
         this.#_uiManager = new UIManager({
             onPerformerSelect: (performer) => this.#_handlePerformerSelection(performer),
             onRefresh: () => this.refresh(),
             onFilterChange: (filters, loadMore) => this.#_handleFilterChange(filters, loadMore),
-            onSearch: (query) => this.#_handleSearch(query)
+            onSearch: (query) => this.#_handleSearch(query),
+            onShapeSettingsChange: (settings) => this.#_handleShapeSettingsChange(settings)
         });
 
         this.#_currentFilters = { ...AppConfig.DEFAULT_FILTERS };
@@ -853,7 +857,63 @@ class BestPerformersEngine {
     }
 
     /**
-     * Start periodic refresh (DISABLED - manual refresh only)
+     * Handle shape engine setting changes from UI
+     * @private
+     */
+    async #_handleShapeSettingsChange(settings) {
+        if (!this.#_shapeEngine) return;
+
+        if (settings.shapesEnabled !== undefined) {
+            this.#_shapeEngine.shapesEnabled = settings.shapesEnabled;
+        }
+        if (settings.mlShapesEnabled !== undefined) {
+            this.#_shapeEngine.mlShapesEnabled = settings.mlShapesEnabled;
+        }
+        if (settings.performerMode !== undefined) {
+            this.#_shapeEngine.performerMode = settings.performerMode;
+        }
+        if (settings.complexity !== undefined) {
+            this.#_shapeEngine.complexity = settings.complexity;
+        }
+
+        // Save settings
+        try {
+            await CacheManager.saveSetting('shapeEngineConfig', this.#_shapeEngine.getConfig());
+        } catch (error) {
+            console.warn('Failed to save shape engine config:', error);
+        }
+
+        // Re-apply overlays
+        this.#_applyShapeOverlays();
+    }
+
+    /**
+     * Apply shape overlays to visible iframes and images
+     * @private
+     */
+    async #_applyShapeOverlays() {
+        if (!this.#_shapeEngine) return;
+
+        const iframeGrid = document.querySelector('#iframeGrid');
+        const performerGrid = document.querySelector('#performerGrid');
+
+        // Get ML prediction function if ML shapes are enabled
+        const getPrediction = this.#_shapeEngine.mlShapesEnabled
+            ? async (username) => {
+                const performer = this.#_performers.find(p => p.username === username);
+                if (performer?.image_url) {
+                    return this.#_uiManager.inferImageLabel(performer.image_url);
+                }
+                return null;
+            }
+            : null;
+
+        await this.#_shapeEngine.applyToIframes(iframeGrid, this.#_uiManager.getViewerSlots(), getPrediction);
+        await this.#_shapeEngine.applyToImages(performerGrid, getPrediction);
+    }
+
+    /**
+     * Start periodic refresh
      * @private
      */
     #_startPeriodicRefresh() {
@@ -899,6 +959,20 @@ class BestPerformersEngine {
             console.warn("Could not load saved filters:", error);
         }
 
+        // Load saved shape engine settings
+        try {
+            const savedShapeConfig = await CacheManager.getSetting('shapeEngineConfig');
+            if (savedShapeConfig && this.#_shapeEngine) {
+                if (savedShapeConfig.shapesEnabled !== undefined) this.#_shapeEngine.shapesEnabled = savedShapeConfig.shapesEnabled;
+                if (savedShapeConfig.mlShapesEnabled !== undefined) this.#_shapeEngine.mlShapesEnabled = savedShapeConfig.mlShapesEnabled;
+                if (savedShapeConfig.performerMode !== undefined) this.#_shapeEngine.performerMode = savedShapeConfig.performerMode;
+                if (savedShapeConfig.complexity !== undefined) this.#_shapeEngine.complexity = savedShapeConfig.complexity;
+                this.#_uiManager.updateShapeControls(this.#_shapeEngine.getConfig());
+            }
+        } catch (error) {
+            console.warn("Could not load saved shape config:", error);
+        }
+
         // Initialize snippets
         await this.#_initSnippets();
 
@@ -913,6 +987,17 @@ class BestPerformersEngine {
 
         // Initialize zoom handlers for iframes and images
         this.#_uiManager.initZoomHandlers();
+
+        // Pass ML model to shape engine once loaded
+        if (this.#_uiManager.getMLModel) {
+            const mlModel = await this.#_uiManager.getMLModel();
+            if (mlModel) {
+                this.#_shapeEngine.setMLModel(mlModel);
+            }
+        }
+
+        // Apply initial shape overlays if enabled
+        this.#_applyShapeOverlays();
 
         console.log("BestPerformersEngine: Initialization complete");
     }

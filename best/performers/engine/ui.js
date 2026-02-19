@@ -29,6 +29,7 @@ class UIManager {
     #_onRefreshCallback;
     #_onFilterChangeCallback;
     #_onSearchCallback;
+    #_onShapeSettingsChangeCallback;
 
     constructor(callbacks = {}) {
         this.#_initDOMReferences();
@@ -36,6 +37,7 @@ class UIManager {
         this.#_onRefreshCallback = callbacks.onRefresh;
         this.#_onFilterChangeCallback = callbacks.onFilterChange;
         this.#_onSearchCallback = callbacks.onSearch;
+        this.#_onShapeSettingsChangeCallback = callbacks.onShapeSettingsChange;
         this.#_initEventListeners();
         this.#_setLayout(this.#_currentLayout);
         this.#_initLocalImageRecognition();
@@ -506,6 +508,9 @@ class UIManager {
                 }
             }
         });
+
+        // Shape settings listeners
+        this.#_initShapeSettingsListeners();
     }
 
     /**

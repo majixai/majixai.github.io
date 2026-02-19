@@ -112,6 +112,31 @@
                 <button class="quick-filter-btn" data-filter="tag" data-value="latina">Latina</button>
                 <button class="quick-filter-btn" data-filter="new" data-value="true">New Models</button>
             </div>
+
+            <!-- Shape Engine Controls -->
+            <div class="shape-engine-controls">
+                <span class="quick-label">Shape Overlays:</span>
+                <div class="shape-toggle-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="shapesEnabledToggle"> Shapes
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="mlShapesToggle"> GPU/ML/Tensor
+                    </label>
+                </div>
+                <div class="shape-toggle-group">
+                    <label class="toggle-label" for="performerModeSelect">Mode:</label>
+                    <select id="performerModeSelect" class="form-select form-select-sm">
+                        <option value="none">No Performers</option>
+                        <option value="single">1 Performer</option>
+                        <option value="many" selected>Many Performers</option>
+                    </select>
+                </div>
+                <div class="shape-toggle-group">
+                    <label class="toggle-label" for="shapeComplexity">Complexity:</label>
+                    <input type="range" id="shapeComplexity" class="form-range" min="1" max="10" value="3">
+                </div>
+            </div>
         </div>
 
         <!-- Snippet Manager Panel -->
@@ -321,6 +346,7 @@
     <script src="engine/config.js"></script>
     <script src="engine/cache.js"></script>
     <script src="engine/api.js"></script>
+    <script src="engine/shapes.js"></script>
     <script src="engine/ui.js"></script>
     <script src="engine/main.js"></script>
     <script>

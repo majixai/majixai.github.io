@@ -73,6 +73,18 @@ const AppConfig = (() => {
         enableIframeCapture: true // Enable frame capture from iframes (if same-origin)
     };
 
+    // Shape Engine Configuration
+    const _SHAPE_ENGINE_CONFIG = {
+        shapesEnabled: false,
+        mlShapesEnabled: false,
+        performerMode: 'many',    // 'none', 'single', 'many'
+        complexity: 3,            // 1-10, determines shape variety and count
+        maxShapesPerOverlay: 20,
+        shapeOpacity: 0.35,
+        animateShapes: true,
+        colorPalette: ['#ff6b35', '#00539B', '#28a745', '#dc3545', '#ffc107', '#9c27b0', '#00bcd4']
+    };
+
     // User Label Categories for image annotation
     const _LABEL_CATEGORIES = Object.freeze([
         { id: 'bigbs', label: 'Big Bs', shortLabel: 'BB', color: '#e91e63' },
@@ -128,6 +140,9 @@ const AppConfig = (() => {
 
         // ML Configuration
         ML_CONFIG: Object.freeze({ ..._ML_CONFIG }),
+
+        // Shape Engine Configuration
+        SHAPE_ENGINE_CONFIG: Object.freeze({ ..._SHAPE_ENGINE_CONFIG }),
 
         // Label Categories
         LABEL_CATEGORIES: _LABEL_CATEGORIES,

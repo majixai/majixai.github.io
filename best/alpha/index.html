@@ -160,6 +160,29 @@
                         </div>
                     </fieldset>
                     <fieldset>
+                        <legend>Shape Overlays</legend>
+                        <div class="control-group">
+                            <label for="alphaShapesEnabled">Enable Shapes:</label>
+                            <input type="checkbox" id="alphaShapesEnabled">
+                        </div>
+                        <div class="control-group">
+                            <label for="alphaMlShapes">GPU/ML/Tensor Shapes:</label>
+                            <input type="checkbox" id="alphaMlShapes">
+                        </div>
+                        <div class="control-group">
+                            <label for="alphaPerformerMode">Performer Mode:</label>
+                            <select id="alphaPerformerMode">
+                                <option value="none">No Performers</option>
+                                <option value="single">1 Performer</option>
+                                <option value="many" selected>Many Performers</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="alphaShapeComplexity">Complexity (1-10):</label>
+                            <input type="range" id="alphaShapeComplexity" min="1" max="10" value="3">
+                        </div>
+                    </fieldset>
+                    <fieldset>
                         <legend>Reporting</legend>
                         <div class="control-group report-controls">
                             <button id="sendReportButton">Send Report</button>
@@ -222,6 +245,7 @@
     <script src="config.js"></script>
     <script src="api.js"></script>
     <script src="storage.js"></script>
+    <script src="../performers/engine/shapes.js"></script>
     <script src="ui.js"></script>
     <script src="script.js"></script>
     <script>
