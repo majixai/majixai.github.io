@@ -136,6 +136,9 @@ class UIManager {
             `;
         }
         menuHTML += `<div class="context-menu-divider"></div>`;
+        menuHTML += `<div class="context-menu-item" data-action="view-sidebyside">📺 View Side-by-Side</div>`;
+        menuHTML += `<div class="context-menu-item" data-action="view-stacked">📱 View Stacked</div>`;
+        menuHTML += `<div class="context-menu-divider"></div>`;
         menuHTML += `<div class="context-menu-item context-menu-cancel" data-action="cancel">❌ Cancel</div>`;
         
         this.#_contextMenu.innerHTML = menuHTML;
@@ -150,6 +153,18 @@ class UIManager {
             const action = item.dataset.action;
 
             if (action === 'cancel') {
+                this.#_hideContextMenu();
+                return;
+            }
+
+            if (action === 'view-sidebyside' && this.#_contextMenuTarget) {
+                await this.#_openPerformerView(this.#_contextMenuTarget.username, 'sidebyside');
+                this.#_hideContextMenu();
+                return;
+            }
+
+            if (action === 'view-stacked' && this.#_contextMenuTarget) {
+                await this.#_openPerformerView(this.#_contextMenuTarget.username, 'stacked');
                 this.#_hideContextMenu();
                 return;
             }
@@ -1254,83 +1269,227 @@ class UIManager {
         document.body.appendChild(overlay);
     }
 
-    // ==================== Shape Engine Integration ====================
-
     /**
-     * Expose the ML model for the shape engine
-     * @returns {Promise<Object|null>}
+     * Open a performer view (iframe + slideshow) in side-by-side or stacked layout
+     * @param {string} username - Performer username
+     * @param {string} layout - 'sidebyside' or 'stacked'
+     * @private
      */
-    async getMLModel() {
-        if (this.#_mlModel) return this.#_mlModel;
-        if (this.#_mlModelPromise) return this.#_mlModelPromise;
-        return null;
+    async #_openPerformerView(username, layout = 'sidebyside') {
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'performer-view-modal';
+        modal.innerHTML = `
+            <div class="performer-view-container ${layout}">
+                <button class="performer-view-close">×</button>
+                <div class="performer-view-iframe">
+                    <iframe src="${AppConfig.buildIframeUrl(username)}" 
+                            allow="autoplay; encrypted-media; picture-in-picture" 
+                            sandbox="allow-scripts allow-same-origin allow-presentation"
+                            title="${username} live stream"></iframe>
+                </div>
+                <div class="performer-view-slideshow">
+                    <div class="slideshow-header">
+                        <h3>${username} Gallery</h3>
+                        <button class="layout-toggle" data-current="${layout}">
+                            ${layout === 'sidebyside' ? '📱 Stack' : '📺 Side-by-Side'}
+                        </button>
+                    </div>
+                    <div class="slideshow-images">
+                        <p>Loading images...</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+
+        // Close button handler
+        modal.querySelector('.performer-view-close').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        // Layout toggle handler
+        modal.querySelector('.layout-toggle').addEventListener('click', (e) => {
+            const container = modal.querySelector('.performer-view-container');
+            const currentLayout = e.target.dataset.current;
+            const newLayout = currentLayout === 'sidebyside' ? 'stacked' : 'sidebyside';
+            
+            container.classList.remove(currentLayout);
+            container.classList.add(newLayout);
+            e.target.dataset.current = newLayout;
+            e.target.textContent = newLayout === 'sidebyside' ? '📱 Stack' : '📺 Side-by-Side';
+        });
+
+        // Track view event
+        try {
+            await CacheManager.trackEvent({
+                username: username,
+                eventType: 'iframe_open',
+                metadata: { layout: layout }
+            });
+        } catch (error) {
+            console.error("Error tracking iframe open:", error);
+        }
+
+        // Close on escape
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
     }
 
     /**
-     * Expose image label inference for the shape engine
-     * @param {string} imageUrl
-     * @returns {Promise<Object|null>}
+     * Reorder performers by score (GPU-accelerated image similarity)
+     * @param {Array} performers - Array of performer objects
      */
-    async inferImageLabel(imageUrl) {
-        return this.#_inferImageLabel(imageUrl);
+    async reorderPerformersByScore(performers) {
+        if (!performers || performers.length === 0) return;
+
+        // Get click statistics for all performers
+        const performersWithScores = await Promise.all(
+            performers.map(async (performer) => {
+                try {
+                    const stats = await CacheManager.getPerformerStats(performer.username);
+                    return {
+                        ...performer,
+                        clickScore: stats.clickScore,
+                        totalInteractions: stats.totalClicks + stats.totalViews
+                    };
+                } catch (error) {
+                    return {
+                        ...performer,
+                        clickScore: 0,
+                        totalInteractions: 0
+                    };
+                }
+            })
+        );
+
+        // Sort by click score and interactions
+        performersWithScores.sort((a, b) => {
+            // First by click score
+            if (b.clickScore !== a.clickScore) {
+                return b.clickScore - a.clickScore;
+            }
+            // Then by total interactions
+            if (b.totalInteractions !== a.totalInteractions) {
+                return b.totalInteractions - a.totalInteractions;
+            }
+            // Finally by viewer count
+            return (b.num_viewers || 0) - (a.num_viewers || 0);
+        });
+
+        // Re-render with new order
+        this.renderPerformers(performersWithScores, false);
+        
+        console.log('Performers reordered by interaction score');
     }
 
     /**
-     * Get current viewer slots map
-     * @returns {Map}
+     * GPU-accelerated image similarity using TensorFlow.js
+     * Moves similar images of clicked performers toward the top
+     * @param {string} clickedUsername - Username of the clicked performer
      */
-    getViewerSlots() {
-        return this.#_viewerSlots;
+    async moveSimilarImagesToTop(clickedUsername) {
+        if (!this.#_mlModel) {
+            console.warn('ML model not loaded, cannot perform image similarity');
+            return;
+        }
+
+        try {
+            // Get the clicked performer's image
+            const clickedCard = this.#_gridContainer?.querySelector(`[data-performer*='"username":"${clickedUsername}"']`);
+            if (!clickedCard) return;
+
+            const clickedImage = clickedCard.querySelector('img[data-role="performer-image"]');
+            if (!clickedImage) return;
+
+            // Get features for clicked image
+            const clickedFeatures = await this.#_getImageFeatures(clickedImage.src);
+            if (!clickedFeatures) return;
+
+            // Calculate similarity for all visible performers
+            const allCards = Array.from(this.#_gridContainer?.querySelectorAll('.performer-card') || []);
+            const similarities = await Promise.all(
+                allCards.map(async (card) => {
+                    const img = card.querySelector('img[data-role="performer-image"]');
+                    if (!img || img.src === clickedImage.src) {
+                        return { card, similarity: 0 };
+                    }
+
+                    const features = await this.#_getImageFeatures(img.src);
+                    if (!features) {
+                        return { card, similarity: 0 };
+                    }
+
+                    // Calculate cosine similarity
+                    const similarity = this.#_cosineSimilarity(clickedFeatures, features);
+                    return { card, similarity };
+                })
+            );
+
+            // Sort by similarity and reorder DOM
+            similarities.sort((a, b) => b.similarity - a.similarity);
+            
+            // Move top similar cards to the front
+            const topSimilar = similarities.slice(0, 10).filter(s => s.similarity > 0.5);
+            topSimilar.forEach(({ card }) => {
+                this.#_gridContainer?.insertBefore(card, this.#_gridContainer.firstChild);
+            });
+
+            console.log(`Moved ${topSimilar.length} similar images to top for ${clickedUsername}`);
+        } catch (error) {
+            console.error('Error in image similarity:', error);
+        }
     }
 
     /**
-     * Update shape control UI to reflect current settings
-     * @param {Object} config - Shape engine config
+     * Get image features using MobileNet (GPU-accelerated)
+     * @private
      */
-    updateShapeControls(config) {
-        const shapesToggle = document.querySelector('#shapesEnabledToggle');
-        const mlToggle = document.querySelector('#mlShapesToggle');
-        const modeSelect = document.querySelector('#performerModeSelect');
-        const complexitySlider = document.querySelector('#shapeComplexity');
+    async #_getImageFeatures(imageUrl) {
+        if (!this.#_mlModel) return null;
 
-        if (shapesToggle) shapesToggle.checked = config.shapesEnabled;
-        if (mlToggle) mlToggle.checked = config.mlShapesEnabled;
-        if (modeSelect) modeSelect.value = config.performerMode;
-        if (complexitySlider) complexitySlider.value = config.complexity;
+        try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            await new Promise((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error('Image load failed'));
+                img.src = imageUrl;
+            });
+
+            // Get embeddings (feature vector) from the model
+            const features = this.#_mlModel.infer(img, true);
+            return Array.from(await features.data());
+        } catch (error) {
+            return null;
+        }
     }
 
     /**
-     * Initialize shape settings event listeners
-     * @private - called from #_initEventListeners
+     * Calculate cosine similarity between two feature vectors
+     * @private
      */
-    #_initShapeSettingsListeners() {
-        const shapesToggle = document.querySelector('#shapesEnabledToggle');
-        const mlToggle = document.querySelector('#mlShapesToggle');
-        const modeSelect = document.querySelector('#performerModeSelect');
-        const complexitySlider = document.querySelector('#shapeComplexity');
+    #_cosineSimilarity(vec1, vec2) {
+        if (!vec1 || !vec2 || vec1.length !== vec2.length) return 0;
 
-        shapesToggle?.addEventListener('change', () => {
-            if (this.#_onShapeSettingsChangeCallback) {
-                this.#_onShapeSettingsChangeCallback({ shapesEnabled: shapesToggle.checked });
-            }
-        });
+        let dotProduct = 0;
+        let norm1 = 0;
+        let norm2 = 0;
 
-        mlToggle?.addEventListener('change', () => {
-            if (this.#_onShapeSettingsChangeCallback) {
-                this.#_onShapeSettingsChangeCallback({ mlShapesEnabled: mlToggle.checked });
-            }
-        });
+        for (let i = 0; i < vec1.length; i++) {
+            dotProduct += vec1[i] * vec2[i];
+            norm1 += vec1[i] * vec1[i];
+            norm2 += vec2[i] * vec2[i];
+        }
 
-        modeSelect?.addEventListener('change', () => {
-            if (this.#_onShapeSettingsChangeCallback) {
-                this.#_onShapeSettingsChangeCallback({ performerMode: modeSelect.value });
-            }
-        });
-
-        complexitySlider?.addEventListener('input', () => {
-            if (this.#_onShapeSettingsChangeCallback) {
-                this.#_onShapeSettingsChangeCallback({ complexity: parseInt(complexitySlider.value) });
-            }
-        });
+        if (norm1 === 0 || norm2 === 0) return 0;
+        return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
     }
 }

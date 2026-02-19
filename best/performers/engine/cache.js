@@ -7,7 +7,7 @@ const CacheManager = (() => {
     'use strict';
 
     let _db = null;
-    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE, LABELS_STORE } = AppConfig;
+    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE, LABELS_STORE, ANALYTICS_STORE } = AppConfig;
 
     /**
      * Initialize the IndexedDB database
@@ -63,6 +63,14 @@ const CacheManager = (() => {
                     labelStore.createIndex('username', 'username', { unique: false });
                     labelStore.createIndex('labelId', 'labelId', { unique: false });
                     labelStore.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+
+                // Analytics store for click and rating tracking
+                if (!db.objectStoreNames.contains(ANALYTICS_STORE)) {
+                    const analyticsStore = db.createObjectStore(ANALYTICS_STORE, { keyPath: 'id', autoIncrement: true });
+                    analyticsStore.createIndex('username', 'username', { unique: false });
+                    analyticsStore.createIndex('eventType', 'eventType', { unique: false });
+                    analyticsStore.createIndex('timestamp', 'timestamp', { unique: false });
                 }
             };
         });
@@ -465,6 +473,139 @@ const CacheManager = (() => {
                 stats[label.labelId] = (stats[label.labelId] || 0) + 1;
             }
             return stats;
+        },
+
+        // ==================== Analytics Methods ====================
+
+        /**
+         * Track a performer event (click, view, rating)
+         * @param {Object} eventData - { username, eventType, rating?, metadata? }
+         * @returns {Promise<void>}
+         */
+        trackEvent: async (eventData) => {
+            const event = {
+                username: eventData.username,
+                eventType: eventData.eventType, // 'click', 'view', 'rating', 'iframe_open'
+                timestamp: Date.now(),
+                rating: eventData.rating || null,
+                metadata: eventData.metadata || {}
+            };
+            
+            return _withStore(ANALYTICS_STORE, 'readwrite', (store) => {
+                store.add(event);
+            });
+        },
+
+        /**
+         * Get all events for a performer
+         * @param {string} username
+         * @returns {Promise<Array<Object>>}
+         */
+        getPerformerEvents: async (username) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(ANALYTICS_STORE, 'readonly');
+                const store = transaction.objectStore(ANALYTICS_STORE);
+                const index = store.index('username');
+                const request = index.getAll(username);
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Get performer statistics (clicks, views, ratings)
+         * @param {string} username
+         * @returns {Promise<Object>}
+         */
+        getPerformerStats: async (username) => {
+            const events = await publicInterface.getPerformerEvents(username);
+            const stats = {
+                totalClicks: 0,
+                totalViews: 0,
+                totalRatings: 0,
+                averageRating: 0,
+                lastInteraction: null,
+                clickScore: 0 // Score based on interactions
+            };
+
+            let ratingSum = 0;
+            for (const event of events) {
+                if (event.eventType === 'click') stats.totalClicks++;
+                if (event.eventType === 'view' || event.eventType === 'iframe_open') stats.totalViews++;
+                if (event.eventType === 'rating' && event.rating) {
+                    stats.totalRatings++;
+                    ratingSum += event.rating;
+                }
+                if (!stats.lastInteraction || event.timestamp > stats.lastInteraction) {
+                    stats.lastInteraction = event.timestamp;
+                }
+            }
+
+            stats.averageRating = stats.totalRatings > 0 ? ratingSum / stats.totalRatings : 0;
+            // Calculate click score (higher = more interactions)
+            stats.clickScore = (stats.totalClicks * 3) + (stats.totalViews * 2) + (stats.totalRatings * stats.averageRating * 5);
+
+            return stats;
+        },
+
+        /**
+         * Get all analytics events (for reporting)
+         * @param {number} limit - Max events to return
+         * @returns {Promise<Array<Object>>}
+         */
+        getAllEvents: async (limit = 100) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(ANALYTICS_STORE, 'readonly');
+                const store = transaction.objectStore(ANALYTICS_STORE);
+                const index = store.index('timestamp');
+                const request = index.openCursor(null, 'prev'); // Most recent first
+                const results = [];
+                
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor && results.length < limit) {
+                        results.push(cursor.value);
+                        cursor.continue();
+                    } else {
+                        resolve(results);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Clear old analytics events (keep recent ones)
+         * @param {number} daysToKeep - Number of days of history to keep
+         * @returns {Promise<number>} - Number of deleted events
+         */
+        clearOldEvents: async (daysToKeep = 30) => {
+            const cutoffTime = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
+            const db = await _initDB();
+            
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(ANALYTICS_STORE, 'readwrite');
+                const store = transaction.objectStore(ANALYTICS_STORE);
+                const index = store.index('timestamp');
+                const request = index.openCursor();
+                let deletedCount = 0;
+                
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        if (cursor.value.timestamp < cutoffTime) {
+                            cursor.delete();
+                            deletedCount++;
+                        }
+                        cursor.continue();
+                    } else {
+                        resolve(deletedCount);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
         }
     };
 

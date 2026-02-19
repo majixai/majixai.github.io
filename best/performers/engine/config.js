@@ -8,11 +8,12 @@ const AppConfig = (() => {
 
     // Database Configuration
     const _DB_NAME = 'BestPerformerDB';
-    const _DB_VERSION = 4;  // Incremented for new LABELS_STORE
+    const _DB_VERSION = 5;  // Incremented for ANALYTICS_STORE
     const _PERFORMER_STORE = 'performers';
     const _SETTINGS_STORE = 'settings';
     const _SNIPPETS_STORE = 'snippets';
     const _RECORDINGS_STORE = 'recordings';
+    const _ANALYTICS_STORE = 'analytics';  // New store for click and rating tracking
     const _DATA_PATH = '../'; // Relative path to the .dat files
 
     // API Configuration
@@ -111,6 +112,7 @@ const AppConfig = (() => {
         SNIPPETS_STORE: _SNIPPETS_STORE,
         RECORDINGS_STORE: _RECORDINGS_STORE,
         LABELS_STORE: _LABELS_STORE,
+        ANALYTICS_STORE: _ANALYTICS_STORE,
         DATA_PATH: _DATA_PATH,
         DAT_FILES: Object.freeze([..._DAT_FILES]),
 

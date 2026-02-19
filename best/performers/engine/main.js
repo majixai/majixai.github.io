@@ -87,6 +87,27 @@ class BestPerformersEngine {
         
         this.#_uiManager.updateViewer(performer);
         
+        // Track click event
+        try {
+            await CacheManager.trackEvent({
+                username: performer.username,
+                eventType: 'click',
+                metadata: {
+                    display_name: performer.display_name,
+                    gender: performer.gender,
+                    viewers: performer.num_viewers
+                }
+            });
+            
+            // Update performer score based on click
+            await this.#_updatePerformerScore(performer.username);
+            
+            // GPU image processing: move similar images to top
+            await this.#_uiManager.moveSimilarImagesToTop(performer.username);
+        } catch (error) {
+            console.error("Error tracking click:", error);
+        }
+        
         // Add to history
         try {
             await CacheManager.addToHistory(performer.username);
@@ -172,6 +193,29 @@ class BestPerformersEngine {
         this.#_currentPage = 1;
         await this.#_dataAPI.getPerformers({ forceRefresh: true, filters: this.#_currentFilters });
         await this.#_loadPerformers(false);
+    }
+
+    /**
+     * Update performer score based on interactions
+     * @private
+     */
+    async #_updatePerformerScore(username) {
+        try {
+            const stats = await CacheManager.getPerformerStats(username);
+            
+            // Recalculate performer ranking based on interactions
+            const performer = this.#_performers.find(p => p.username === username);
+            if (performer) {
+                // Add click score to rank score
+                performer.rankScore = (performer.rankScore || 0) + Math.min(stats.clickScore / 10, 50);
+                console.log(`Updated score for ${username}: ${performer.rankScore}`);
+                
+                // Trigger re-sort if needed
+                this.#_uiManager.reorderPerformersByScore(this.#_performers);
+            }
+        } catch (error) {
+            console.error("Error updating performer score:", error);
+        }
     }
 
     /**
@@ -873,14 +917,12 @@ class BestPerformersEngine {
      * @private
      */
     #_startPeriodicRefresh() {
+        // Automatic refresh disabled per requirements
+        // Users can manually refresh using the refresh button
         if (this.#_fetchInterval) {
             clearInterval(this.#_fetchInterval);
+            this.#_fetchInterval = null;
         }
-        
-        this.#_fetchInterval = setInterval(async () => {
-            console.log("Periodic refresh triggered");
-            await this.refresh();
-        }, AppConfig.FETCH_INTERVAL);
     }
 
     /**
