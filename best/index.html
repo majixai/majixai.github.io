@@ -37,11 +37,16 @@
     .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
     .toolbar input { min-width: 260px; }
     .slideshow { position: relative; border: 1px solid #2a2f39; border-radius: 10px; overflow: hidden; background: #0b0d11; margin-bottom: 8px; }
-    .slideshow img { width: 100%; height: 44vh; min-height: 280px; object-fit: cover; display: block; }
+    .slideshow img { width: 100%; height: 44vh; min-height: 280px; object-fit: cover; display: block; transition: opacity 0.3s ease; }
+    .slideshow img.fade-out { opacity: 0; }
     .slide-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.78)); font-size: 13px; }
     .slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; z-index: 10; }
     .slide-prev { left: 8px; }
     .slide-next { right: 8px; }
+    .slide-pause-btn { position: absolute; top: 8px; right: 8px; border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 28px; height: 28px; border-radius: 14px; cursor: pointer; z-index: 10; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .slide-pause-btn:hover { background: rgba(0, 0, 0, 0.8); }
+    .slide-progress { position: absolute; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width linear; z-index: 10; border-radius: 0 2px 2px 0; }
+    .slide-counter { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.55); color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; z-index: 10; pointer-events: none; }
     .image-recognition-panel { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
     .image-recognition-panel input { background: #0f1115; color: #f0f2f5; border: 1px solid #2a2f39; padding: 6px 10px; font-size: 13px; }
     .annotation-tool-btn { background: #2a2f39; border: none; color: #f0f2f5; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
@@ -190,10 +195,13 @@
     <div id="interestPanel" class="interest-panel"></div>
 
     <div class="slideshow" id="slideshow">
+      <div id="slideProgress" class="slide-progress"></div>
       <img id="slideImage" src="" alt="Featured" loading="eager" />
       <canvas id="annotationCanvas" aria-label="Image annotation canvas for drawing shapes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></canvas>
       <button class="slide-nav slide-prev" id="slidePrev" aria-label="Previous image">‹</button>
       <button class="slide-nav slide-next" id="slideNext" aria-label="Next image">›</button>
+      <button class="slide-pause-btn" id="slidePauseBtn" aria-label="Pause slideshow" title="Pause / Resume slideshow">⏸</button>
+      <div id="slideCounter" class="slide-counter"></div>
       <div id="slideCaption" class="slide-caption"></div>
     </div>
 
@@ -276,6 +284,7 @@
       slideshowIndex: 0,
       slideshowImageIndex: 0,
       slideshowTimer: null,
+      slideshowPaused: false,
       interests: {},
       clickCounts: {},
       customTags: {},
@@ -861,6 +870,7 @@
         document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
         saveSettings();
         startSlideshow();
+        resetProgressBar();
       });
 
       document.getElementById('itemsPerPageSelect').addEventListener('change', (e) => {
@@ -888,6 +898,20 @@
     }
 
     // ============ MAIN SLIDESHOW ============
+    function resetProgressBar() {
+      const bar = document.getElementById('slideProgress');
+      if (!bar) return;
+      const speed = (state.settings.slideshowSpeed || 3) * 1000;
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      // Force reflow so the transition restart takes effect
+      void bar.offsetWidth;
+      if (!state.slideshowPaused) {
+        bar.style.transition = `width ${speed}ms linear`;
+        bar.style.width = '100%';
+      }
+    }
+
     function setSlideshowIndex(nextIndex, imageIndexDelta = 1, absoluteImageIndex = null) {
       if (!state.filtered.length) {
         document.getElementById('slideImage').src = '';
@@ -909,14 +933,30 @@
       }
       
       const img = document.getElementById('slideImage');
-      img.src = images[state.slideshowImageIndex] || '';
-      img.alt = item.username || 'featured image';
+      // Set data attributes immediately for labels/annotations while applying fade transition
       img.dataset.username = item.username || '';
       img.dataset.imageUrl = images[state.slideshowImageIndex] || '';
+      // Fade transition
+      img.classList.add('fade-out');
+      setTimeout(() => {
+        img.src = images[state.slideshowImageIndex] || '';
+        img.alt = item.username || 'featured image';
+        img.classList.remove('fade-out');
+      }, 150);
       
       const score = calculateScore(item);
       const imageCounter = images.length > 1 ? ` · Image ${state.slideshowImageIndex + 1}/${images.length}` : '';
       document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}${score > 0 ? ' · ★' + score : ''}${imageCounter}`;
+      
+      // Update slide counter
+      const counter = document.getElementById('slideCounter');
+      if (counter) {
+        const total = state.filtered.length;
+        counter.textContent = total > 0 ? `${state.slideshowIndex + 1} / ${total}` : '';
+      }
+      
+      // Reset progress bar for new slide
+      resetProgressBar();
       
       // Update image recognition labels display
       updateCurrentImageLabels();
@@ -928,8 +968,10 @@
 
     function startSlideshow() {
       if (state.slideshowTimer) clearInterval(state.slideshowTimer);
+      if (state.slideshowPaused) return;
       const speed = (state.settings.slideshowSpeed || 3) * 1000;
       state.slideshowTimer = setInterval(() => {
+        if (state.slideshowPaused) return;
         const item = state.filtered[state.slideshowIndex];
         if (!item) {
           setSlideshowIndex(0, 0);
@@ -946,6 +988,60 @@
           setSlideshowIndex(state.slideshowIndex, 1);
         }
       }, speed);
+    }
+
+    function toggleSlideshowPause() {
+      state.slideshowPaused = !state.slideshowPaused;
+      const btn = document.getElementById('slidePauseBtn');
+      if (btn) btn.textContent = state.slideshowPaused ? '▶' : '⏸';
+      if (state.slideshowPaused) {
+        if (state.slideshowTimer) clearInterval(state.slideshowTimer);
+        state.slideshowTimer = null;
+        const bar = document.getElementById('slideProgress');
+        if (bar) {
+          bar.style.transition = 'none';
+          bar.style.width = '0%';
+        }
+      } else {
+        startSlideshow();
+        resetProgressBar();
+      }
+    }
+
+    function initSlideshowInteractions() {
+      const slideshow = document.getElementById('slideshow');
+      // Touch / swipe support
+      let touchStartX = 0;
+      let touchStartY = 0;
+      slideshow.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].clientX;
+        touchStartY = e.changedTouches[0].clientY;
+      }, { passive: true });
+      slideshow.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+          if (dx < 0) {
+            document.getElementById('slideNext').click();
+          } else {
+            document.getElementById('slidePrev').click();
+          }
+        }
+      }, { passive: true });
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (e.key === 'ArrowRight') {
+          document.getElementById('slideNext').click();
+        } else if (e.key === 'ArrowLeft') {
+          document.getElementById('slidePrev').click();
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          toggleSlideshowPause();
+        }
+      });
+      // Pause/play button
+      document.getElementById('slidePauseBtn').addEventListener('click', toggleSlideshowPause);
     }
 
     // ============ IMAGE RECOGNITION LABELS ============
@@ -1144,7 +1240,7 @@
         if (!state.currentAnnotationTool) return;
         
         // Check if click is within slideshow bounds (excluding nav buttons)
-        if (e.target.classList.contains('slide-nav') || e.target.classList.contains('slide-caption')) return;
+        if (e.target.classList.contains('slide-nav') || e.target.classList.contains('slide-caption') || e.target.classList.contains('slide-pause-btn')) return;
         
         const rect = canvas.getBoundingClientRect();
         startX = (e.clientX - rect.left) / canvas.clientWidth;
@@ -1956,6 +2052,7 @@
     
     // Initialize annotation canvas
     initAnnotationCanvas();
+    initSlideshowInteractions();
     
     loadManifest();
   </script>
