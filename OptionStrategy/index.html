@@ -1,1 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="Interactive options strategy visualizer with payoff diagrams, Greeks, and Black-Scholes pricing">
+    <title>Option Strategy Lab</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
+    <!-- W3.CSS Framework -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+    <!-- Plotly.js Charting Engine -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+
+    <style>
+        :root {
+            --color-bg: #0d1117;
+            --color-surface: #161b22;
+            --color-border: #30363d;
+            --color-accent: #58a6ff;
+            --color-accent2: #3fb950;
+            --color-text: #c9d1d9;
+            --color-text-muted: #8b949e;
+            --color-danger: #f85149;
+            --color-warning: #d29922;
+            --color-sidebar-width: 270px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            margin: 0;
+        }
+
+        /* ── Sidebar ── */
+        #mySidebar {
+            background: var(--color-surface);
+            border-right: 1px solid var(--color-border);
+            width: var(--color-sidebar-width);
+            padding-top: 0;
+            z-index: 3;
+        }
+        #mySidebar .sidebar-header {
+            background: linear-gradient(135deg, #1f6feb, #388bfd);
+            padding: 18px 16px;
+            color: #fff;
+        }
+        #mySidebar .sidebar-header h3 { margin: 0; font-size: 1.1rem; }
+        #mySidebar .sidebar-header p { margin: 4px 0 0; font-size: 0.75rem; opacity: .8; }
+
+        .sidebar-section-label {
+            padding: 10px 16px 4px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--color-text-muted);
+            font-weight: 700;
+        }
+
+        #sidebarLinks a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            color: var(--color-text);
+            text-decoration: none;
+            font-size: 0.85rem;
+            border-left: 3px solid transparent;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        #sidebarLinks a:hover, #sidebarLinks a.active {
+            background: rgba(88,166,255,.1);
+            border-left-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+        #sidebarLinks a i { width: 16px; text-align: center; opacity: .75; }
+
+        /* ── Top nav bar ── */
+        #topNav {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            z-index: 4;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            height: 52px;
+        }
+        #topNav .brand { font-weight: 700; font-size: 1rem; color: var(--color-accent); margin-right: auto; }
+        #topNav a { color: var(--color-text-muted); text-decoration: none; font-size: .85rem; margin-left: 16px; transition: color .15s; }
+        #topNav a:hover { color: var(--color-accent); }
+        #openMenuButton { cursor: pointer; background: none; border: none; color: var(--color-text); font-size: 1.1rem; margin-right: 12px; }
+
+        /* ── Page layout ── */
+        .page-content {
+            margin-left: var(--color-sidebar-width);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        @media (max-width: 992px) {
+            .page-content { margin-left: 0; }
+            #mySidebar { display: none; }
+            #mySidebar.open { display: block; position: fixed; top: 0; left: 0; bottom: 0; z-index: 10; overflow-y: auto; }
+            #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9; }
+            #sidebarOverlay.open { display: block; }
+        }
+
+        /* ── Content panels ── */
+        .content-panel {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            margin: 16px;
+            padding: 20px;
+        }
+        .content-panel h2 {
+            font-size: 1rem;
+            color: var(--color-accent);
+            margin: 0 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ── Calculator inputs ── */
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .input-group label {
+            display: block;
+            font-size: .75rem;
+            color: var(--color-text-muted);
+            margin-bottom: 4px;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            color: var(--color-text);
+            padding: 7px 10px;
+            font-size: .85rem;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: var(--color-accent);
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            background: var(--color-accent);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 18px;
+            font-size: .85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .15s;
+        }
+        .btn-primary:hover { opacity: .85; }
+        .btn-secondary {
+            background: var(--color-border);
+            color: var(--color-text);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 18px;
+            font-size: .85rem;
+            cursor: pointer;
+        }
+
+        /* ── Strategy cards ── */
+        .strategy-card {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .strategy-card:hover, .strategy-card.selected {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 2px rgba(88,166,255,.15);
+        }
+        .strategy-card h4 { margin: 0 0 4px; font-size: .9rem; }
+        .strategy-card p { margin: 0; font-size: .78rem; color: var(--color-text-muted); }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: .68rem;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+        .badge-bullish { background: rgba(63,185,80,.2); color: #3fb950; }
+        .badge-bearish { background: rgba(248,81,73,.2); color: #f85149; }
+        .badge-neutral { background: rgba(210,153,34,.2); color: #d29922; }
+        .badge-credit { background: rgba(88,166,255,.2); color: #58a6ff; }
+        .badge-debit  { background: rgba(188,140,255,.2); color: #bc8cff; }
+
+        /* ── Chart container ── */
+        .chart-container {
+            width: 100%;
+            min-height: 350px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        /* ── Metrics grid ── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .metric-box {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+        .metric-box .label { font-size: .7rem; color: var(--color-text-muted); }
+        .metric-box .value { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+        .value.positive { color: var(--color-accent2); }
+        .value.negative { color: var(--color-danger); }
+
+        /* ── Section visibility ── */
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* ── Footer ── */
+        footer {
+            text-align: center;
+            padding: 16px;
+            font-size: .75rem;
+            color: var(--color-text-muted);
+            border-top: 1px solid var(--color-border);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Nav Bar (always visible) -->
+<div id="topNav">
+    <button id="openMenuButton" class="w3-hide-large" onclick="toggleSidebar()" aria-label="Open menu">
+        <i class="fa fa-bars"></i>
+    </button>
+    <span class="brand"><i class="fa-solid fa-chart-line"></i> Option Strategy Lab</span>
+    <a href="../finance/" title="Finance Menu"><i class="fa fa-arrow-left"></i> Finance</a>
+    <a href="../options/" title="Options Visualizer"><i class="fa-solid fa-layer-group"></i> Visualizer</a>
+    <a href="../option/" title="Option Analyzer"><i class="fa-solid fa-robot"></i> AI Analyzer</a>
+</div>
+
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<nav id="mySidebar" aria-label="Strategy navigation">
+    <div class="sidebar-header">
+        <h3><i class="fa-solid fa-flask-vial"></i> Option Strategy Lab</h3>
+        <p>Interactive payoff diagrams &amp; analytics</p>
+    </div>
+
+    <div id="sidebarLinks">
+        <div class="sidebar-section-label">Tools</div>
+        <a href="#" onclick="showSection('calculator')" id="link-calculator">
+            <i class="fa-solid fa-calculator"></i> BS Calculator
+        </a>
+        <a href="#" onclick="showSection('builder')" id="link-builder">
+            <i class="fa-solid fa-wrench"></i> Strategy Builder
+        </a>
+
+        <div class="sidebar-section-label">One-Leg Strategies</div>
+        <a href="#" onclick="loadStrategy('long-call')" id="link-long-call">
+            <i class="fa-solid fa-arrow-trend-up"></i> Long Call
+        </a>
+        <a href="#" onclick="loadStrategy('long-put')" id="link-long-put">
+            <i class="fa-solid fa-arrow-trend-down"></i> Long Put
+        </a>
+        <a href="#" onclick="loadStrategy('short-call')" id="link-short-call">
+            <i class="fa-solid fa-minus"></i> Short Call
+        </a>
+        <a href="#" onclick="loadStrategy('short-put')" id="link-short-put">
+            <i class="fa-solid fa-plus"></i> Short Put
+        </a>
+
+        <div class="sidebar-section-label">Two-Leg Spreads</div>
+        <a href="#" onclick="loadStrategy('bull-call-spread')" id="link-bull-call-spread">
+            <i class="fa-solid fa-angles-up"></i> Bull Call Spread
+        </a>
+        <a href="#" onclick="loadStrategy('bear-put-spread')" id="link-bear-put-spread">
+            <i class="fa-solid fa-angles-down"></i> Bear Put Spread
+        </a>
+        <a href="#" onclick="loadStrategy('bull-put-spread')" id="link-bull-put-spread">
+            <i class="fa-solid fa-circle-up"></i> Bull Put Spread
+        </a>
+        <a href="#" onclick="loadStrategy('bear-call-spread')" id="link-bear-call-spread">
+            <i class="fa-solid fa-circle-down"></i> Bear Call Spread
+        </a>
+
+        <div class="sidebar-section-label">Volatility Strategies</div>
+        <a href="#" onclick="loadStrategy('long-straddle')" id="link-long-straddle">
+            <i class="fa-solid fa-arrows-up-down"></i> Long Straddle
+        </a>
+        <a href="#" onclick="loadStrategy('long-strangle')" id="link-long-strangle">
+            <i class="fa-solid fa-expand"></i> Long Strangle
+        </a>
+        <a href="#" onclick="loadStrategy('short-straddle')" id="link-short-straddle">
+            <i class="fa-solid fa-compress"></i> Short Straddle
+        </a>
+
+        <div class="sidebar-section-label">Multi-Leg</div>
+        <a href="#" onclick="loadStrategy('iron-condor')" id="link-iron-condor">
+            <i class="fa-solid fa-bird"></i> Iron Condor
+        </a>
+        <a href="#" onclick="loadStrategy('iron-butterfly')" id="link-iron-butterfly">
+            <i class="fa-solid fa-bug"></i> Iron Butterfly
+        </a>
+        <a href="#" onclick="loadStrategy('long-butterfly')" id="link-long-butterfly">
+            <i class="fa-solid fa-feather"></i> Long Butterfly
+        </a>
+    </div>
+</nav>
+
+<!-- Main page content -->
+<div class="page-content">
+
+    <!-- ── Black-Scholes Calculator Section ── -->
+    <div id="section-calculator" class="section">
+        <div class="content-panel">
+            <h2><i class="fa-solid fa-calculator"></i> Black-Scholes Option Pricer</h2>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>Underlying Price (S)</label>
+                    <input type="number" id="bs-s" value="5975" step="1">
+                </div>
+                <div class="input-group">
+                    <label>Strike Price (K)</label>
+                    <input type="number" id="bs-k" value="6000" step="1">
+                </div>
+                <div class="input-group">
+                    <label>Time to Expiry (T, years)</label>
+                    <input type="number" id="bs-t" value="0.0833" step="0.001" min="0.001">
+                </div>
+                <div class="input-group">
+                    <label>Risk-Free Rate (r, %)</label>
+                    <input type="number" id="bs-r" value="5.25" step="0.01">
+                </div>
+                <div class="input-group">
+                    <label>Implied Volatility (σ, %)</label>
+                    <input type="number" id="bs-v" value="20" step="0.5" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Option Type</label>
+                    <select id="bs-type">
+                        <option value="call">Call</option>
+                        <option value="put">Put</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="computeBS()"><i class="fa-solid fa-play"></i> Calculate</button>
+            <button class="btn-secondary" style="margin-left:8px;" onclick="computeBS(); renderBSPayoff()"><i class="fa-solid fa-chart-area"></i> Calculate &amp; Plot</button>
+
+            <div id="bs-results" class="metrics-grid" style="display:none;"></div>
+        </div>
+
+        <div class="content-panel" id="bs-chart-panel" style="display:none;">
+            <h2><i class="fa-solid fa-chart-area"></i> Payoff at Expiration</h2>
+            <div id="bs-chart" class="chart-container"></div>
+        </div>
+    </div>
+
+    <!-- ── Strategy Builder Section ── -->
+    <div id="section-builder" class="section">
+        <div class="content-panel">
+            <h2><i class="fa-solid fa-wrench"></i> Custom Strategy Builder</h2>
+            <p style="color:var(--color-text-muted); font-size:.85rem; margin-top:0;">
+                Add up to 4 option legs to build and visualize any custom strategy.
+            </p>
+            <div id="legs-container"></div>
+            <button class="btn-secondary" onclick="addLeg()" style="margin-top:8px;"><i class="fa-solid fa-plus"></i> Add Leg</button>
+            <button class="btn-primary" onclick="buildAndPlot()" style="margin-left:8px;"><i class="fa-solid fa-chart-line"></i> Plot Strategy</button>
+        </div>
+        <div class="content-panel" id="builder-chart-panel" style="display:none;">
+            <h2><i class="fa-solid fa-chart-area"></i> Combined Payoff Diagram</h2>
+            <div id="builder-chart" class="chart-container"></div>
+            <div id="builder-metrics" class="metrics-grid"></div>
+        </div>
+    </div>
+
+    <!-- ── Strategy Display Section ── -->
+    <div id="section-strategy" class="section">
+        <div class="content-panel" id="strategy-info-panel">
+            <!-- populated by JS -->
+        </div>
+        <div class="content-panel">
+            <h2 id="strategy-chart-title"><i class="fa-solid fa-chart-area"></i> Payoff at Expiration</h2>
+            <div id="strategy-chart" class="chart-container"></div>
+            <div id="strategy-metrics" class="metrics-grid"></div>
+        </div>
+    </div>
+
+    <!-- ── Default / Welcome Section ── -->
+    <div id="section-welcome" class="section active">
+        <div class="content-panel">
+            <h2><i class="fa-solid fa-flask-vial"></i> Welcome to Option Strategy Lab</h2>
+            <p>Select a strategy from the sidebar or use the interactive tools below to get started.</p>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:12px; margin-top:16px;">
+                <div class="strategy-card" onclick="loadStrategy('long-call')">
+                    <span class="badge badge-bullish">Bullish</span><span class="badge badge-debit">Debit</span>
+                    <h4>Long Call</h4>
+                    <p>Unlimited upside, limited risk to premium paid.</p>
+                </div>
+                <div class="strategy-card" onclick="loadStrategy('long-put')">
+                    <span class="badge badge-bearish">Bearish</span><span class="badge badge-debit">Debit</span>
+                    <h4>Long Put</h4>
+                    <p>Profit as the underlying falls below the strike.</p>
+                </div>
+                <div class="strategy-card" onclick="loadStrategy('bull-call-spread')">
+                    <span class="badge badge-bullish">Bullish</span><span class="badge badge-debit">Debit</span>
+                    <h4>Bull Call Spread</h4>
+                    <p>Capped upside with lower cost than a naked long call.</p>
+                </div>
+                <div class="strategy-card" onclick="loadStrategy('iron-condor')">
+                    <span class="badge badge-neutral">Neutral</span><span class="badge badge-credit">Credit</span>
+                    <h4>Iron Condor</h4>
+                    <p>Profit from low volatility in a defined range.</p>
+                </div>
+                <div class="strategy-card" onclick="loadStrategy('long-straddle')">
+                    <span class="badge badge-neutral">Volatility</span><span class="badge badge-debit">Debit</span>
+                    <h4>Long Straddle</h4>
+                    <p>Profit from a large move in either direction.</p>
+                </div>
+                <div class="strategy-card" onclick="showSection('calculator')">
+                    <span class="badge badge-neutral">Tool</span>
+                    <h4>BS Calculator</h4>
+                    <p>Price any option using Black-Scholes-Merton model.</p>
+                </div>
+                <div class="strategy-card" onclick="showSection('builder')">
+                    <span class="badge badge-neutral">Tool</span>
+                    <h4>Strategy Builder</h4>
+                    <p>Compose and plot any multi-leg options strategy.</p>
+                </div>
+                <div class="strategy-card" onclick="loadStrategy('iron-butterfly')">
+                    <span class="badge badge-neutral">Neutral</span><span class="badge badge-credit">Credit</span>
+                    <h4>Iron Butterfly</h4>
+                    <p>Maximum credit received when price stays at strike.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>⚠️ <strong>Disclaimer:</strong> For educational purposes only. Option trading involves substantial risk. Consult a qualified financial professional before trading.</p>
+        <p>Powered by <a href="https://plotly.com/javascript/" target="_blank" rel="noopener" style="color:var(--color-accent)">Plotly.js</a> · W3.CSS · Font Awesome</p>
+    </footer>
+</div>
+
+<script>
+// ============================================================
+// BLACK-SCHOLES ENGINE
+// ============================================================
+function normCDF(x) {
+    const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+    const sign = x < 0 ? -1 : 1;
+    x = Math.abs(x)/Math.SQRT2;
+    const t = 1/(1+p*x);
+    const y = 1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+    return 0.5*(1+sign*y);
+}
+
+function normPDF(x) { return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI); }
+
+function bsPrice(S, K, T, r, sigma, type) {
+    if (T <= 0) {
+        if (type==='call') return Math.max(0, S - K);
+        return Math.max(0, K - S);
+    }
+    const d1 = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+    const d2 = d1 - sigma*Math.sqrt(T);
+    if (type === 'call') {
+        return S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2);
+    } else {
+        return K*Math.exp(-r*T)*normCDF(-d2) - S*normCDF(-d1);
+    }
+}
+
+function bsGreeks(S, K, T, r, sigma, type) {
+    if (T <= 0) return { delta: type==='call'?(S>=K?1:0):(S<=K?-1:0), gamma:0, theta:0, vega:0, rho:0 };
+    const d1 = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+    const d2 = d1 - sigma*Math.sqrt(T);
+    const nd1 = normPDF(d1);
+    const gamma = nd1 / (S*sigma*Math.sqrt(T));
+    const vega  = S*nd1*Math.sqrt(T) / 100; // per 1% vol change
+    let delta, theta, rho;
+    if (type === 'call') {
+        delta = normCDF(d1);
+        theta = (-(S*nd1*sigma)/(2*Math.sqrt(T)) - r*K*Math.exp(-r*T)*normCDF(d2)) / 365;
+        rho   = K*T*Math.exp(-r*T)*normCDF(d2) / 100;
+    } else {
+        delta = normCDF(d1) - 1;
+        theta = (-(S*nd1*sigma)/(2*Math.sqrt(T)) + r*K*Math.exp(-r*T)*normCDF(-d2)) / 365;
+        rho   = -K*T*Math.exp(-r*T)*normCDF(-d2) / 100;
+    }
+    return { delta, gamma, theta, vega, rho };
+}
+
+// ============================================================
+// STRATEGY DEFINITIONS
+// ============================================================
+const STRATEGIES = {
+    'long-call': {
+        name: 'Long Call',
+        outlook: 'Bullish',
+        type: 'debit',
+        description: 'Buy a call option. Gives the right to purchase the underlying at the strike price. Unlimited upside potential with risk limited to the premium paid.',
+        maxProfit: 'Unlimited',
+        maxLoss:   'Premium Paid',
+        beFormula: 'Strike + Premium',
+        legs: (S) => [{ type:'call', pos:'long', K:Math.round(S/10)*10+20, premium: null }]
+    },
+    'long-put': {
+        name: 'Long Put',
+        outlook: 'Bearish',
+        type: 'debit',
+        description: 'Buy a put option. Profits as the underlying declines below the strike price. Risk limited to premium paid.',
+        maxProfit: 'Strike – Premium',
+        maxLoss:   'Premium Paid',
+        beFormula: 'Strike – Premium',
+        legs: (S) => [{ type:'put', pos:'long', K:Math.round(S/10)*10-20, premium: null }]
+    },
+    'short-call': {
+        name: 'Short Call (Naked)',
+        outlook: 'Bearish/Neutral',
+        type: 'credit',
+        description: 'Sell a call option without owning the underlying. Collects premium upfront with unlimited risk if the underlying rallies sharply.',
+        maxProfit: 'Premium Received',
+        maxLoss:   'Unlimited',
+        beFormula: 'Strike + Premium',
+        legs: (S) => [{ type:'call', pos:'short', K:Math.round(S/10)*10+30, premium: null }]
+    },
+    'short-put': {
+        name: 'Short Put',
+        outlook: 'Bullish/Neutral',
+        type: 'credit',
+        description: 'Sell a put option. Collects premium; profitable if the underlying stays above the strike. Risk is substantial if underlying falls sharply.',
+        maxProfit: 'Premium Received',
+        maxLoss:   'Strike – Premium',
+        beFormula: 'Strike – Premium',
+        legs: (S) => [{ type:'put', pos:'short', K:Math.round(S/10)*10-30, premium: null }]
+    },
+    'bull-call-spread': {
+        name: 'Bull Call Spread',
+        outlook: 'Bullish',
+        type: 'debit',
+        description: 'Buy a lower-strike call and sell a higher-strike call with the same expiration. Capped profit but lower cost than a naked long call.',
+        maxProfit: 'Width – Net Debit',
+        maxLoss:   'Net Debit',
+        beFormula: 'Lower Strike + Net Debit',
+        legs: (S) => [
+            { type:'call', pos:'long',  K:Math.round(S/10)*10,    premium: null },
+            { type:'call', pos:'short', K:Math.round(S/10)*10+50, premium: null }
+        ]
+    },
+    'bear-put-spread': {
+        name: 'Bear Put Spread',
+        outlook: 'Bearish',
+        type: 'debit',
+        description: 'Buy a higher-strike put and sell a lower-strike put. Capped profit with lower cost than a naked long put.',
+        maxProfit: 'Width – Net Debit',
+        maxLoss:   'Net Debit',
+        beFormula: 'Higher Strike – Net Debit',
+        legs: (S) => [
+            { type:'put', pos:'long',  K:Math.round(S/10)*10,    premium: null },
+            { type:'put', pos:'short', K:Math.round(S/10)*10-50, premium: null }
+        ]
+    },
+    'bull-put-spread': {
+        name: 'Bull Put Spread',
+        outlook: 'Bullish/Neutral',
+        type: 'credit',
+        description: 'Sell a higher-strike put and buy a lower-strike put. Collect a net credit. Profit if underlying stays above the short strike.',
+        maxProfit: 'Net Credit',
+        maxLoss:   'Width – Net Credit',
+        beFormula: 'Short Strike – Net Credit',
+        legs: (S) => [
+            { type:'put', pos:'short', K:Math.round(S/10)*10,    premium: null },
+            { type:'put', pos:'long',  K:Math.round(S/10)*10-50, premium: null }
+        ]
+    },
+    'bear-call-spread': {
+        name: 'Bear Call Spread',
+        outlook: 'Bearish/Neutral',
+        type: 'credit',
+        description: 'Sell a lower-strike call and buy a higher-strike call. Collect a net credit. Profit if underlying stays below the short strike.',
+        maxProfit: 'Net Credit',
+        maxLoss:   'Width – Net Credit',
+        beFormula: 'Short Strike + Net Credit',
+        legs: (S) => [
+            { type:'call', pos:'short', K:Math.round(S/10)*10,    premium: null },
+            { type:'call', pos:'long',  K:Math.round(S/10)*10+50, premium: null }
+        ]
+    },
+    'long-straddle': {
+        name: 'Long Straddle',
+        outlook: 'High Volatility',
+        type: 'debit',
+        description: 'Buy an ATM call and an ATM put at the same strike and expiration. Profits from a large move in either direction.',
+        maxProfit: 'Unlimited',
+        maxLoss:   'Total Premium Paid',
+        beFormula: 'Strike ± Total Premium',
+        legs: (S) => [
+            { type:'call', pos:'long', K:Math.round(S/10)*10, premium: null },
+            { type:'put',  pos:'long', K:Math.round(S/10)*10, premium: null }
+        ]
+    },
+    'long-strangle': {
+        name: 'Long Strangle',
+        outlook: 'High Volatility',
+        type: 'debit',
+        description: 'Buy an OTM call and an OTM put. Cheaper than a straddle; requires a larger move to profit.',
+        maxProfit: 'Unlimited',
+        maxLoss:   'Total Premium Paid',
+        beFormula: 'Call Strike + Total Premium / Put Strike – Total Premium',
+        legs: (S) => [
+            { type:'call', pos:'long', K:Math.round(S/10)*10+30, premium: null },
+            { type:'put',  pos:'long', K:Math.round(S/10)*10-30, premium: null }
+        ]
+    },
+    'short-straddle': {
+        name: 'Short Straddle',
+        outlook: 'Low Volatility',
+        type: 'credit',
+        description: 'Sell an ATM call and an ATM put. Collect maximum premium; profitable if the underlying stays near the strike.',
+        maxProfit: 'Total Premium Received',
+        maxLoss:   'Unlimited',
+        beFormula: 'Strike ± Total Premium',
+        legs: (S) => [
+            { type:'call', pos:'short', K:Math.round(S/10)*10, premium: null },
+            { type:'put',  pos:'short', K:Math.round(S/10)*10, premium: null }
+        ]
+    },
+    'iron-condor': {
+        name: 'Iron Condor',
+        outlook: 'Neutral / Low Volatility',
+        type: 'credit',
+        description: 'Sell an OTM call spread and an OTM put spread simultaneously. Collect a net credit and profit if the underlying stays between the two short strikes.',
+        maxProfit: 'Net Credit',
+        maxLoss:   'Spread Width – Net Credit',
+        beFormula: 'Short Put Strike – Net Credit / Short Call Strike + Net Credit',
+        legs: (S) => {
+            const base = Math.round(S/10)*10;
+            return [
+                { type:'put',  pos:'long',  K:base-75, premium: null },
+                { type:'put',  pos:'short', K:base-25, premium: null },
+                { type:'call', pos:'short', K:base+25, premium: null },
+                { type:'call', pos:'long',  K:base+75, premium: null }
+            ];
+        }
+    },
+    'iron-butterfly': {
+        name: 'Iron Butterfly',
+        outlook: 'Neutral / Low Volatility',
+        type: 'credit',
+        description: 'Sell an ATM call and an ATM put, buy OTM wings for protection. Maximum credit at expiration if underlying lands at the short strike.',
+        maxProfit: 'Net Credit',
+        maxLoss:   'Wing Width – Net Credit',
+        beFormula: 'ATM Strike ± Net Credit',
+        legs: (S) => {
+            const base = Math.round(S/10)*10;
+            return [
+                { type:'put',  pos:'long',  K:base-50, premium: null },
+                { type:'put',  pos:'short', K:base,    premium: null },
+                { type:'call', pos:'short', K:base,    premium: null },
+                { type:'call', pos:'long',  K:base+50, premium: null }
+            ];
+        }
+    },
+    'long-butterfly': {
+        name: 'Long Butterfly',
+        outlook: 'Neutral / Low Volatility',
+        type: 'debit',
+        description: 'Buy one low-strike call, sell two ATM calls, buy one high-strike call (all calls). Maximum profit if underlying lands exactly at the middle strike.',
+        maxProfit: 'Inner Width – Net Debit',
+        maxLoss:   'Net Debit',
+        beFormula: 'Low Strike + Net Debit / High Strike – Net Debit',
+        legs: (S) => {
+            const base = Math.round(S/10)*10;
+            return [
+                { type:'call', pos:'long',  K:base-25, qty:1, premium: null },
+                { type:'call', pos:'short', K:base,    qty:2, premium: null },
+                { type:'call', pos:'long',  K:base+25, qty:1, premium: null }
+            ];
+        }
+    }
+};
+
+// ============================================================
+// PLOTTING ENGINE
+// ============================================================
+const DARK_LAYOUT = {
+    paper_bgcolor: '#0d1117',
+    plot_bgcolor:  '#0d1117',
+    font:          { color: '#c9d1d9', size: 12 },
+    xaxis:         { gridcolor: '#21262d', zerolinecolor: '#30363d', color: '#8b949e' },
+    yaxis:         { gridcolor: '#21262d', zerolinecolor: '#30363d', color: '#8b949e' },
+    legend:        { bgcolor: '#161b22', bordercolor: '#30363d', borderwidth: 1 },
+    margin:        { l:55, r:20, t:30, b:50 },
+    hovermode:     'x unified'
+};
+
+function calcPayoff(legs, price, defaultS, T, r, sigma) {
+    return legs.reduce((sum, leg) => {
+        const qty = leg.qty || 1;
+        const sign = (leg.pos === 'long') ? 1 : -1;
+        // Use provided premium; if null, calculate via BS at inception
+        const premium = leg.premium !== null ? leg.premium
+            : bsPrice(defaultS, leg.K, T, r, sigma, leg.type);
+        // Payoff at expiration
+        let intrinsic = 0;
+        if (leg.type === 'call') intrinsic = Math.max(0, price - leg.K);
+        else                      intrinsic = Math.max(0, leg.K - price);
+        return sum + sign * (intrinsic - premium) * qty;
+    }, 0);
+}
+
+function plotPayoff(divId, legs, S, title) {
+    const T = 0.0833, r = 0.0525, sigma = 0.18;
+
+    // Determine price range
+    const strikes = legs.map(l => l.K);
+    const minK = Math.min(...strikes), maxK = Math.max(...strikes);
+    const spread = Math.max(maxK - minK, 50);
+    const lo = Math.max(0, minK - spread * 1.5);
+    const hi = maxK + spread * 1.5;
+    const prices = [];
+    const step = (hi - lo) / 200;
+    for (let p = lo; p <= hi; p += step) prices.push(p);
+
+    const payoffs = prices.map(p => calcPayoff(legs, p, S, T, r, sigma));
+
+    // Split into profit (green) and loss (red) zones for fill
+    const profitY = payoffs.map(y => y >= 0 ? y : null);
+    const lossY   = payoffs.map(y => y <  0 ? y : null);
+
+    const traces = [
+        {
+            x: prices, y: lossY,
+            type: 'scatter', mode: 'none',
+            fill: 'tozeroy', fillcolor: 'rgba(248,81,73,0.15)',
+            showlegend: false, hoverinfo: 'skip'
+        },
+        {
+            x: prices, y: profitY,
+            type: 'scatter', mode: 'none',
+            fill: 'tozeroy', fillcolor: 'rgba(63,185,80,0.15)',
+            showlegend: false, hoverinfo: 'skip'
+        },
+        {
+            x: prices, y: payoffs,
+            type: 'scatter', mode: 'lines',
+            name: 'P&L at Expiry',
+            line: { color: '#58a6ff', width: 2.5 },
+            hovertemplate: 'Price: %{x:.2f}<br>P&L: %{y:.2f}<extra></extra>'
+        }
+    ];
+
+    // Add current price marker
+    const currentPnL = calcPayoff(legs, S, S, T, r, sigma);
+    traces.push({
+        x: [S], y: [currentPnL],
+        type: 'scatter', mode: 'markers',
+        name: 'Current Price',
+        marker: { color: '#d29922', size: 10, symbol: 'circle' },
+        hovertemplate: `Current: ${S.toFixed(2)}<br>P&L: ${currentPnL.toFixed(2)}<extra></extra>`
+    });
+
+    // Zero line
+    traces.push({
+        x: [lo, hi], y: [0, 0],
+        type: 'scatter', mode: 'lines',
+        name: 'Breakeven',
+        line: { color: '#8b949e', dash: 'dash', width: 1 },
+        hoverinfo: 'skip'
+    });
+
+    const layout = {
+        ...DARK_LAYOUT,
+        title: { text: title || 'Payoff at Expiration', font: { size:14, color:'#c9d1d9' } },
+        xaxis: { ...DARK_LAYOUT.xaxis, title: 'Underlying Price' },
+        yaxis: { ...DARK_LAYOUT.yaxis, title: 'Profit / Loss' },
+    };
+
+    Plotly.newPlot(divId, traces, layout, { responsive: true, displayModeBar: false });
+}
+
+// ============================================================
+// SECTION ROUTING
+// ============================================================
+let currentSection = 'welcome';
+
+function showSection(name) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    // Update sidebar active state
+    document.querySelectorAll('#sidebarLinks a').forEach(a => a.classList.remove('active'));
+    const link = document.getElementById('link-' + name);
+    if (link) link.classList.add('active');
+    currentSection = name;
+    // Close mobile sidebar
+    if (window.innerWidth < 992) toggleSidebar(false);
+}
+
+function toggleSidebar(forceState) {
+    const sb  = document.getElementById('mySidebar');
+    const ov  = document.getElementById('sidebarOverlay');
+    const isOpen = sb.classList.contains('open');
+    const open = (forceState !== undefined) ? forceState : !isOpen;
+    sb.classList.toggle('open', open);
+    ov.classList.toggle('open', open);
+}
+
+// ============================================================
+// STRATEGY LOADER
+// ============================================================
+function loadStrategy(id) {
+    const def = STRATEGIES[id];
+    if (!def) return;
+
+    const S = 5975;
+    const T = 0.0833, r = 0.0525, sigma = 0.18;
+    const legs = def.legs(S);
+
+    // Auto-calculate premiums for display
+    const legsWithPremiums = legs.map(l => ({
+        ...l,
+        premium: l.premium !== null ? l.premium : bsPrice(S, l.K, T, r, sigma, l.type)
+    }));
+
+    const netPremium = legsWithPremiums.reduce((sum, l) => {
+        const sign = l.pos === 'long' ? -1 : 1;
+        return sum + sign * (l.qty || 1) * l.premium;
+    }, 0);
+
+    // Build info panel HTML
+    const outlookClass = def.outlook.toLowerCase().includes('bullish') ? 'badge-bullish'
+        : def.outlook.toLowerCase().includes('bearish') ? 'badge-bearish' : 'badge-neutral';
+    const typeClass = def.type === 'credit' ? 'badge-credit' : 'badge-debit';
+
+    const legsHTML = legsWithPremiums.map(l => `
+        <tr>
+            <td>${l.pos === 'long' ? 'Buy' : 'Sell'} ${l.qty || 1}</td>
+            <td>${l.type.charAt(0).toUpperCase()+l.type.slice(1)}</td>
+            <td>${l.K.toFixed(0)}</td>
+            <td>$${l.premium.toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('strategy-info-panel').innerHTML = `
+        <h2><i class="fa-solid fa-book-open"></i> ${def.name}</h2>
+        <div style="margin-bottom:10px;">
+            <span class="badge ${outlookClass}">${def.outlook}</span>
+            <span class="badge ${typeClass}">${def.type.charAt(0).toUpperCase()+def.type.slice(1)}</span>
+        </div>
+        <p style="color:var(--color-text-muted); font-size:.875rem; margin-top:0;">${def.description}</p>
+        <table style="width:100%; border-collapse:collapse; font-size:.82rem; margin-bottom:14px;">
+            <thead>
+                <tr style="border-bottom:1px solid var(--color-border); color:var(--color-text-muted);">
+                    <th style="text-align:left; padding:4px 0;">Action</th>
+                    <th style="text-align:left; padding:4px 0;">Type</th>
+                    <th style="text-align:left; padding:4px 0;">Strike</th>
+                    <th style="text-align:left; padding:4px 0;">Premium (BS)</th>
+                </tr>
+            </thead>
+            <tbody>${legsHTML}</tbody>
+        </table>
+        <div style="font-size:.8rem; color:var(--color-text-muted);">
+            <strong>Net ${def.type === 'credit' ? 'Credit' : 'Debit'}:</strong>
+            <span style="color:${netPremium>=0?'#3fb950':'#f85149'};font-weight:700;">
+                $${Math.abs(netPremium).toFixed(2)}
+            </span>
+            &nbsp;|&nbsp;
+            <strong>Max Profit:</strong> ${def.maxProfit}
+            &nbsp;|&nbsp;
+            <strong>Max Loss:</strong> ${def.maxLoss}
+            &nbsp;|&nbsp;
+            <strong>Breakeven:</strong> ${def.beFormula}
+        </div>
+    `;
+
+    // Update sidebar active
+    document.querySelectorAll('#sidebarLinks a').forEach(a => a.classList.remove('active'));
+    const link = document.getElementById('link-' + id);
+    if (link) link.classList.add('active');
+
+    // Show strategy section
+    document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+    document.getElementById('section-strategy').classList.add('active');
+
+    // Render chart
+    document.getElementById('strategy-chart-title').innerHTML =
+        `<i class="fa-solid fa-chart-area"></i> ${def.name} – Payoff at Expiration`;
+
+    setTimeout(() => {
+        plotPayoff('strategy-chart', legsWithPremiums, S, def.name);
+        // Metrics
+        const greeksList = legsWithPremiums.map(l => {
+            const g = bsGreeks(S, l.K, T, r, sigma, l.type);
+            const sign = l.pos === 'long' ? 1 : -1;
+            const qty = l.qty || 1;
+            return { delta: sign*g.delta*qty, gamma: sign*g.gamma*qty,
+                     theta: sign*g.theta*qty, vega: sign*g.vega*qty };
+        });
+        const netDelta = greeksList.reduce((s,g)=>s+g.delta,0);
+        const netGamma = greeksList.reduce((s,g)=>s+g.gamma,0);
+        const netTheta = greeksList.reduce((s,g)=>s+g.theta,0);
+        const netVega  = greeksList.reduce((s,g)=>s+g.vega,0);
+        document.getElementById('strategy-metrics').innerHTML = `
+            <div class="metric-box"><div class="label">Net Premium</div>
+                <div class="value ${netPremium>=0?'positive':'negative'}">$${netPremium.toFixed(2)}</div></div>
+            <div class="metric-box"><div class="label">Δ Delta</div>
+                <div class="value ${netDelta>=0?'positive':'negative'}">${netDelta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Γ Gamma</div>
+                <div class="value">${netGamma.toFixed(4)}</div></div>
+            <div class="metric-box"><div class="label">Θ Theta / day</div>
+                <div class="value ${netTheta>=0?'positive':'negative'}">$${netTheta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">ν Vega / 1%σ</div>
+                <div class="value ${netVega>=0?'positive':'negative'}">$${netVega.toFixed(3)}</div></div>
+        `;
+    }, 50);
+
+    if (window.innerWidth < 992) toggleSidebar(false);
+}
+
+// ============================================================
+// BLACK-SCHOLES CALCULATOR UI
+// ============================================================
+function computeBS() {
+    const S = parseFloat(document.getElementById('bs-s').value);
+    const K = parseFloat(document.getElementById('bs-k').value);
+    const T = parseFloat(document.getElementById('bs-t').value);
+    const r = parseFloat(document.getElementById('bs-r').value) / 100;
+    const sigma = parseFloat(document.getElementById('bs-v').value) / 100;
+    const type = document.getElementById('bs-type').value;
+
+    if ([S,K,T,r,sigma].some(isNaN) || T <= 0 || sigma <= 0) {
+        alert('Please enter valid positive inputs.');
+        return;
+    }
+
+    const price = bsPrice(S, K, T, r, sigma, type);
+    const g = bsGreeks(S, K, T, r, sigma, type);
+
+    const resultsEl = document.getElementById('bs-results');
+    resultsEl.style.display = 'grid';
+    resultsEl.innerHTML = `
+        <div class="metric-box"><div class="label">Option Price</div>
+            <div class="value positive">$${price.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Δ Delta</div>
+            <div class="value">${g.delta.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Γ Gamma</div>
+            <div class="value">${g.gamma.toFixed(5)}</div></div>
+        <div class="metric-box"><div class="label">Θ Theta / day</div>
+            <div class="value negative">$${g.theta.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">ν Vega / 1%σ</div>
+            <div class="value">$${g.vega.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">ρ Rho / 1%r</div>
+            <div class="value">$${g.rho.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Intrinsic</div>
+            <div class="value">$${(type==='call'?Math.max(0,S-K):Math.max(0,K-S)).toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Time Value</div>
+            <div class="value">$${(price-(type==='call'?Math.max(0,S-K):Math.max(0,K-S))).toFixed(4)}</div></div>
+    `;
+}
+
+function renderBSPayoff() {
+    const S = parseFloat(document.getElementById('bs-s').value);
+    const K = parseFloat(document.getElementById('bs-k').value);
+    const T = parseFloat(document.getElementById('bs-t').value);
+    const r = parseFloat(document.getElementById('bs-r').value) / 100;
+    const sigma = parseFloat(document.getElementById('bs-v').value) / 100;
+    const type = document.getElementById('bs-type').value;
+    const pos  = 'long';
+    const premium = bsPrice(S, K, T, r, sigma, type);
+
+    document.getElementById('bs-chart-panel').style.display = 'block';
+    setTimeout(() => {
+        plotPayoff('bs-chart', [{ type, pos, K, premium }], S, `${pos} ${type} – Strike ${K}`);
+    }, 50);
+}
+
+// ============================================================
+// CUSTOM STRATEGY BUILDER
+// ============================================================
+let legCount = 0;
+
+function addLeg() {
+    if (legCount >= 4) { alert('Maximum 4 legs allowed.'); return; }
+    legCount++;
+    const id = 'leg-' + legCount;
+    const S = 5975;
+    const div = document.createElement('div');
+    div.id = id;
+    div.style.cssText = 'background:var(--color-bg);border:1px solid var(--color-border);border-radius:6px;padding:12px;margin-bottom:10px;';
+    div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <strong style="font-size:.85rem;">Leg ${legCount}</strong>
+            <button onclick="removeLeg('${id}')" class="btn-secondary" style="padding:3px 10px;font-size:.75rem;">✕ Remove</button>
+        </div>
+        <div class="input-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));">
+            <div class="input-group">
+                <label>Position</label>
+                <select class="leg-pos"><option value="long">Long (Buy)</option><option value="short">Short (Sell)</option></select>
+            </div>
+            <div class="input-group">
+                <label>Option Type</label>
+                <select class="leg-type"><option value="call">Call</option><option value="put">Put</option></select>
+            </div>
+            <div class="input-group">
+                <label>Strike</label>
+                <input type="number" class="leg-strike" value="${S}" step="5">
+            </div>
+            <div class="input-group">
+                <label>Premium (0 = BS)</label>
+                <input type="number" class="leg-premium" value="0" step="0.5" min="0">
+            </div>
+            <div class="input-group">
+                <label>Quantity</label>
+                <input type="number" class="leg-qty" value="1" step="1" min="1" max="10">
+            </div>
+        </div>`;
+    document.getElementById('legs-container').appendChild(div);
+}
+
+function removeLeg(id) {
+    const el = document.getElementById(id);
+    if (el) { el.remove(); legCount = Math.max(0, legCount-1); }
+}
+
+function buildAndPlot() {
+    const container = document.getElementById('legs-container');
+    const legDivs = container.querySelectorAll('[id^="leg-"]');
+    if (legDivs.length === 0) { alert('Add at least one leg.'); return; }
+
+    const S = 5975, T = 0.0833, r = 0.0525, sigma = 0.18;
+    const legs = [];
+    legDivs.forEach(div => {
+        const pos  = div.querySelector('.leg-pos').value;
+        const type = div.querySelector('.leg-type').value;
+        const K    = parseFloat(div.querySelector('.leg-strike').value);
+        let premium = parseFloat(div.querySelector('.leg-premium').value);
+        const qty  = parseInt(div.querySelector('.leg-qty').value, 10) || 1;
+        if (premium === 0) premium = bsPrice(S, K, T, r, sigma, type);
+        legs.push({ pos, type, K, premium, qty });
+    });
+
+    document.getElementById('builder-chart-panel').style.display = 'block';
+    setTimeout(() => {
+        plotPayoff('builder-chart', legs, S, 'Custom Strategy');
+        // Net premium
+        const net = legs.reduce((s,l) => s + (l.pos==='long'?-1:1)*l.qty*l.premium, 0);
+        const netDelta = legs.reduce((s,l) => {
+            const g = bsGreeks(S, l.K, T, r, sigma, l.type);
+            return s + (l.pos==='long'?1:-1)*l.qty*g.delta;
+        }, 0);
+        document.getElementById('builder-metrics').innerHTML = `
+            <div class="metric-box"><div class="label">Net Premium</div>
+                <div class="value ${net>=0?'positive':'negative'}">$${net.toFixed(2)}</div></div>
+            <div class="metric-box"><div class="label">Δ Net Delta</div>
+                <div class="value ${netDelta>=0?'positive':'negative'}">${netDelta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Legs</div>
+                <div class="value">${legs.length}</div></div>
+        `;
+    }, 50);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+    showSection('welcome');
+    // Service Worker registration
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+            .then(r => console.log('[SW] Registered:', r.scope))
+            .catch(e => console.warn('[SW] Registration failed (may not exist yet):', e));
+    }
+});
+</script>
+</body>
+</html>
