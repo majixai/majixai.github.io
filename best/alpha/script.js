@@ -608,6 +608,7 @@
             const fragment = document.createDocumentFragment();
             newUsers.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
+                if (!user.image_urls) user = { ...user, image_urls: [user.image_url] };
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
                     user, 
@@ -797,6 +798,7 @@
                 const fragment = document.createDocumentFragment();
                 onlineUsersInBatch.forEach(user => {
                     if (!user || !user.image_url || !user.username) return;
+                    if (!user.image_urls) user = { ...user, image_urls: [user.image_url] };
                     const socialMedia = this.#extractSocialMedia(user.description);
                     const userElement = this.uiManager.createUserElement(
                         user, 
