@@ -1517,6 +1517,7 @@ class BackgroundImageAnalyzer {
     #_isRunning = false;
     #_onResultsCallback = null;
     #_analysisCount = 0;
+    #_classificationCache = new Map(); // Cache classification results to reduce GPU work
 
     /**
      * @param {Object} options
@@ -1617,10 +1618,16 @@ class BackgroundImageAnalyzer {
                         feedbackScore: 0
                     };
 
-                    // Preserve existing feedback score
+                    // Preserve existing feedback score with time-based decay
                     const existing = await CacheManager.getRecognitionResult(username);
                     if (existing) {
-                        result.feedbackScore = existing.feedbackScore * AppConfig.ML_CONFIG.feedbackDecayFactor;
+                        const ageMinutes = (Date.now() - existing.analyzedAt) / 60000;
+                        // Only apply decay if at least 5 minutes have passed since last analysis
+                        if (ageMinutes >= 5) {
+                            result.feedbackScore = existing.feedbackScore * AppConfig.ML_CONFIG.feedbackDecayFactor;
+                        } else {
+                            result.feedbackScore = existing.feedbackScore;
+                        }
                     }
 
                     await CacheManager.saveRecognitionResult(result);
@@ -1733,6 +1740,12 @@ class BackgroundImageAnalyzer {
     async #_classifyImage(imageUrl) {
         if (!this.#_mlModel) return null;
 
+        // Use cached classification if available (labels rarely change for same image)
+        const cached = this.#_classificationCache.get(imageUrl);
+        if (cached && (Date.now() - cached.timestamp) < 300000) { // 5-minute TTL
+            return cached.predictions;
+        }
+
         try {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -1744,10 +1757,13 @@ class BackgroundImageAnalyzer {
             });
 
             const predictions = await this.#_mlModel.classify(img, AppConfig.ML_CONFIG.topPredictions);
-            return predictions.map(p => ({
+            const filtered = predictions.map(p => ({
                 label: p.className,
                 confidence: Math.round(p.probability * 100)
             })).filter(p => p.confidence >= AppConfig.ML_CONFIG.confidenceThreshold);
+
+            this.#_classificationCache.set(imageUrl, { predictions: filtered, timestamp: Date.now() });
+            return filtered;
         } catch (error) {
             return null;
         }
@@ -1783,9 +1799,14 @@ class BackgroundImageAnalyzer {
             // Base score from feedback loop (0-50)
             score += Math.min(50, (result.feedbackScore || 0) * 5);
 
-            // Recency bonus (0-25): analyzed within last 5 minutes gets full bonus
+            // Recency bonus (0-25): gentler decay aligned with 60-second analysis interval
+            // Full bonus for results < 2 minutes old, linear decay over 30 minutes
             const ageMinutes = (Date.now() - result.analyzedAt) / 60000;
-            score += Math.max(0, 25 - (ageMinutes * 5));
+            if (ageMinutes < 2) {
+                score += 25;
+            } else {
+                score += Math.max(0, 25 - ((ageMinutes - 2) * 0.9));
+            }
 
             // Prediction confidence bonus (0-25)
             if (result.predictions && result.predictions.length > 0) {

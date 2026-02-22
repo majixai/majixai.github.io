@@ -217,15 +217,10 @@ class BestPerformersEngine {
                 // Add click score to rank score
                 performer.rankScore = (performer.rankScore || 0) + Math.min(stats.clickScore / 10, 50);
 
-                // Incorporate background GPU image recognition relevance score
-                const recognitionScore = await this.#_backgroundAnalyzer.getRelevanceScore(username);
-                if (recognitionScore > 0) {
-                    performer.rankScore += recognitionScore * 0.3;
-                }
-
-                console.log(`Updated score for ${username}: ${performer.rankScore} (recognition: ${recognitionScore})`);
+                console.log(`Updated score for ${username}: ${performer.rankScore}`);
                 
-                // Trigger re-sort if needed
+                // Trigger re-sort (calculateRankScore in config.js handles all weight factors
+                // including imageRecognition via a single consistent path)
                 this.#_uiManager.reorderPerformersByScore(this.#_performers);
             }
         } catch (error) {
@@ -235,29 +230,16 @@ class BestPerformersEngine {
 
     /**
      * Handle results from the background GPU image recognition analyzer.
-     * This is the feedback loop: analysis results feed back into relevance scoring.
+     * This is the feedback loop: analysis results trigger a re-sort so that
+     * the calculateRankScore weighting (which includes imageRecognition) is applied.
      * @private
      * @param {Array<Object>} results - Array of recognition results from the latest cycle
      */
     async #_handleBackgroundAnalysisResults(results) {
         if (!results || results.length === 0) return;
 
-        let updated = 0;
-        for (const result of results) {
-            const performer = this.#_performers.find(p => p.username === result.username);
-            if (performer) {
-                const relevanceScore = await this.#_backgroundAnalyzer.getRelevanceScore(result.username);
-                if (relevanceScore > 0) {
-                    performer.rankScore = (performer.rankScore || 0) + relevanceScore * 0.1;
-                    updated++;
-                }
-            }
-        }
-
-        if (updated > 0) {
-            console.log(`BackgroundAnalysis feedback: Updated ${updated} performer scores`);
-            this.#_uiManager.reorderPerformersByScore(this.#_performers);
-        }
+        console.log(`BackgroundAnalysis feedback: ${results.length} new results available, triggering re-sort`);
+        this.#_uiManager.reorderPerformersByScore(this.#_performers);
     }
 
     /**
@@ -1041,17 +1023,23 @@ class BestPerformersEngine {
         }
 
         // Load server-side GPU recognition results and seed into IndexedDB
+        // Server-side features are basic metadata (not MobileNet vectors);
+        // client-side BackgroundImageAnalyzer will overlay with full ML features later
         try {
             const recognitionResults = await this.#_dataAPI.loadRecognitionManifest();
             for (const item of recognitionResults) {
-                await CacheManager.saveRecognitionResult({
-                    username: item.username,
-                    predictions: [],
-                    featureVector: item.features ? [item.features.brightness, item.features.color_variance] : null,
-                    analyzedAt: item.analyzed_at || Date.now(),
-                    feedbackScore: item.feedback_score || 0,
-                    imageUrl: item.image_url || ''
-                });
+                // Only seed if no client-side analysis exists yet
+                const existing = await CacheManager.getRecognitionResult(item.username);
+                if (!existing) {
+                    await CacheManager.saveRecognitionResult({
+                        username: item.username,
+                        predictions: [],
+                        featureVector: null, // Server features are metadata, not ML vectors
+                        analyzedAt: item.analyzed_at || Date.now(),
+                        feedbackScore: item.feedback_score || 0,
+                        imageUrl: item.image_url || ''
+                    });
+                }
             }
             if (recognitionResults.length > 0) {
                 console.log(`BestPerformersEngine: Seeded ${recognitionResults.length} server-side recognition results`);

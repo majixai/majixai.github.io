@@ -49,7 +49,7 @@ const AppConfig = (() => {
         recentlyViewed: 0.15,  // Recently viewed by user
         favorited: 0.15,       // Favorited performers
         imageRecognition: 0.15 // GPU image recognition relevance score
-    };
+    };  // Total: 1.0
 
     // Default Filter Settings
     const _DEFAULT_FILTERS = {
