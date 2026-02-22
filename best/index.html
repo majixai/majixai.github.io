@@ -108,6 +108,10 @@
     /* ML Feature Badge */
     .ml-badge { background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
     .similarity-indicator { color: #10b981; font-size: 11px; }
+    /* List view layout */
+    .grid.list-view .card { display: flex; flex-direction: row; }
+    .grid.list-view .card .card-slideshow { width: 200px; height: 140px; flex-shrink: 0; }
+    .grid.list-view .card .meta { flex: 1; }
   </style>
 </head>
 <body>
@@ -139,6 +143,7 @@
           <option value="4">4 columns</option>
           <option value="5">5 columns</option>
           <option value="6">6 columns</option>
+          <option value="list">List view</option>
         </select>
       </div>
       <div class="settings-row">
@@ -809,12 +814,18 @@
       const layout = state.settings.layout;
       const cols = state.settings.columns;
 
-      if (layout === 'auto') {
-        // Calculate responsive min-width based on column count
-        const minWidth = Math.max(GRID_MIN_CARD_WIDTH, GRID_BASE_WIDTH - cols * GRID_COL_REDUCTION);
-        grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minWidth}px, 1fr))`;
+      if (layout === 'list') {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.classList.add('list-view');
       } else {
-        grid.style.gridTemplateColumns = `repeat(${parseInt(layout) || cols}, 1fr)`;
+        grid.classList.remove('list-view');
+        if (layout === 'auto') {
+          // Calculate responsive min-width based on column count
+          const minWidth = Math.max(GRID_MIN_CARD_WIDTH, GRID_BASE_WIDTH - cols * GRID_COL_REDUCTION);
+          grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minWidth}px, 1fr))`;
+        } else {
+          grid.style.gridTemplateColumns = `repeat(${parseInt(layout) || cols}, 1fr)`;
+        }
       }
 
       document.getElementById('columnSlider').value = cols;
@@ -876,7 +887,7 @@
         state.currentPage = 0;
         saveSettings();
         applyFilters();
-        render();
+        render(true);
       });
 
       document.getElementById('mlFeaturesToggle').addEventListener('change', (e) => {
@@ -1368,7 +1379,7 @@
     }
 
     // ============ RENDER ============
-    function render() {
+    function render(resetSlideshow = false) {
       const grid = document.getElementById('grid');
       const sorted = sortItems(state.filtered);
       const itemsPerPage = state.settings.itemsPerPage || 40;
@@ -1400,8 +1411,10 @@
         loadMoreContainer.style.display = 'none';
       }
       
-      setSlideshowIndex(0);
-      startSlideshow();
+      // Reset slideshow when explicitly requested or when the current performer left the filtered list
+      if (resetSlideshow || !state.filtered[state.slideshowIndex]) {
+        setSlideshowIndex(0, 0);
+      }
       applySettings();
     }
 
@@ -1447,7 +1460,7 @@
       
       if (!query) {
         state.filtered = items;
-        render();
+        render(true);
         return;
       }
       state.filtered = items.filter((item) => {
@@ -1462,7 +1475,7 @@
           mlFeatures.includes(query)
         );
       });
-      render();
+      render(true);
     }
 
     // ============ CONTEXT MENU ============
@@ -1546,7 +1559,7 @@
         return calculateScore(b) - calculateScore(a);
       });
       
-      render();
+      render(true);
       document.getElementById('status').textContent = `Found ${state.filtered.length} similar performers`;
     }
 
@@ -1725,7 +1738,7 @@
         document.getElementById('imageCount').textContent = String(payload.image_count || 0);
         document.getElementById('generatedAt').textContent = fmtTs(payload.generated_at);
         rebuildKnownTags();
-        render();
+        render(true);
         status.textContent = `Loaded ${state.filtered.length} entries`;
         
         // Save data for offline use and proactively cache images
@@ -1741,7 +1754,7 @@
           document.getElementById('performerCount').textContent = String(offlinePayload.performer_count || 0);
           document.getElementById('imageCount').textContent = String(offlinePayload.image_count || 0);
           document.getElementById('generatedAt').textContent = fmtTs(offlinePayload.generated_at);
-          render();
+          render(true);
           status.textContent = `📴 Offline: ${state.filtered.length} cached entries`;
           updateOfflineImageCount();
         } else {

@@ -158,17 +158,21 @@ class UIManager {
         const img = userElement.querySelector('img');
         let currentImageIndex = 0;
 
-        prevBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            currentImageIndex = (currentImageIndex - 1 + user.image_urls.length) % user.image_urls.length;
-            img.src = user.image_urls[currentImageIndex];
-        });
+        if (prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentImageIndex = (currentImageIndex - 1 + user.image_urls.length) % user.image_urls.length;
+                img.src = user.image_urls[currentImageIndex];
+            });
+        }
 
-        nextBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            currentImageIndex = (currentImageIndex + 1) % user.image_urls.length;
-            img.src = user.image_urls[currentImageIndex];
-        });
+        if (nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentImageIndex = (currentImageIndex + 1) % user.image_urls.length;
+                img.src = user.image_urls[currentImageIndex];
+            });
+        }
 
         return userElement;
     }
