@@ -58,6 +58,17 @@ function saveTrackingData(kv, data) {
 /** @type {Object|null} Cached logger config – populated by configureGitLogger */
 let _gitLoggerConfig = null;
 
+/** @type {{ successes: number, failures: number }} Counters for Git logging health monitoring */
+const _gitLogStats = { successes: 0, failures: 0 };
+
+/**
+ * Get Git logging health counters.
+ * @returns {{ successes: number, failures: number }}
+ */
+function getGitLogStats() {
+    return { ..._gitLogStats };
+}
+
 /**
  * Configure GitHub logging for the tracker.
  * Must be called once before any git-backed logging occurs.
@@ -83,7 +94,9 @@ async function syncTrackingToGitHub(kv) {
     try {
         const data = getTrackingData(kv);
         await gitLogger.writeSnapshot(_gitLoggerConfig, 'tracking_snapshot', data);
+        _gitLogStats.successes++;
     } catch (e) {
+        _gitLogStats.failures++;
         console.error('[roulette_tracker] syncTrackingToGitHub failed:', e.message);
     }
 }
@@ -100,7 +113,9 @@ async function logSpinToGitHub(spinRecord) {
             _action: 'spin',
             ...spinRecord
         });
+        _gitLogStats.successes++;
     } catch (e) {
+        _gitLogStats.failures++;
         console.error('[roulette_tracker] logSpinToGitHub failed:', e.message);
     }
 }
@@ -327,6 +342,7 @@ if (typeof module !== 'undefined' && module.exports) {
         getTrackingData,
         saveTrackingData,
         configureGitLogger,
+        getGitLogStats,
         syncTrackingToGitHub,
         logSpinToGitHub,
         recordSpin,
