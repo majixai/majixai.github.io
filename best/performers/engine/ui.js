@@ -1494,6 +1494,330 @@ class UIManager {
     }
 
     /**
+     * Get the ML model (for use by external components)
+     * @returns {Promise<Object|null>}
+     */
+    async getMLModel() {
+        if (this.#_mlModel) return this.#_mlModel;
+        if (this.#_mlModelPromise) return this.#_mlModelPromise;
+        return null;
+    }
+}
+
+/**
+ * @class BackgroundImageAnalyzer
+ * @description Runs GPU image recognition on performer images in the background
+ * every 60 seconds. Results are persisted to IndexedDB and made available for
+ * relevance scoring. Implements a feedback loop where user interactions
+ * influence analysis priority and analysis results influence ranking.
+ */
+class BackgroundImageAnalyzer {
+    #_mlModel = null;
+    #_intervalId = null;
+    #_isRunning = false;
+    #_onResultsCallback = null;
+    #_analysisCount = 0;
+    #_classificationCache = new Map(); // Cache classification results to reduce GPU work
+
+    /**
+     * @param {Object} options
+     * @param {Function} [options.onResults] - Callback invoked with analysis results after each cycle
+     */
+    constructor(options = {}) {
+        this.#_onResultsCallback = options.onResults || null;
+    }
+
+    /**
+     * Set the ML model for GPU-accelerated image feature extraction
+     * @param {Object} model - TensorFlow.js MobileNet model instance
+     */
+    setModel(model) {
+        this.#_mlModel = model;
+    }
+
+    /**
+     * Start the background analysis loop (every 60 seconds)
+     */
+    start() {
+        if (this.#_intervalId) return;
+
+        const interval = AppConfig.ML_CONFIG.backgroundAnalysisInterval;
+        console.log(`BackgroundImageAnalyzer: Starting (interval: ${interval}ms)`);
+
+        // Run an initial analysis after a short delay to let the page settle
+        setTimeout(() => this.#_runAnalysisCycle(), 5000);
+
+        this.#_intervalId = setInterval(() => {
+            this.#_runAnalysisCycle();
+        }, interval);
+    }
+
+    /**
+     * Stop the background analysis loop
+     */
+    stop() {
+        if (this.#_intervalId) {
+            clearInterval(this.#_intervalId);
+            this.#_intervalId = null;
+        }
+        console.log('BackgroundImageAnalyzer: Stopped');
+    }
+
+    /**
+     * Whether the analyzer is currently active
+     * @returns {boolean}
+     */
+    get isActive() {
+        return this.#_intervalId !== null;
+    }
+
+    /**
+     * Number of completed analysis cycles
+     * @returns {number}
+     */
+    get analysisCount() {
+        return this.#_analysisCount;
+    }
+
+    /**
+     * Run a single background analysis cycle.
+     * Selects performer images prioritized by feedback score, extracts features,
+     * stores results, and invokes the callback for relevance scoring feedback.
+     * @private
+     */
+    async #_runAnalysisCycle() {
+        if (this.#_isRunning || !this.#_mlModel) return;
+        this.#_isRunning = true;
+
+        try {
+            const batchSize = AppConfig.ML_CONFIG.backgroundBatchSize;
+            const cards = this.#_getPerformerCards();
+            if (cards.length === 0) {
+                this.#_isRunning = false;
+                return;
+            }
+
+            // Prioritize cards: prefer those with higher feedback or not yet analyzed
+            const prioritized = await this.#_prioritizeCards(cards);
+            const batch = prioritized.slice(0, batchSize);
+
+            const results = [];
+            for (const { username, imageUrl } of batch) {
+                try {
+                    const featureVector = await this.#_extractFeatures(imageUrl);
+                    if (!featureVector) continue;
+
+                    const predictions = await this.#_classifyImage(imageUrl);
+
+                    const result = {
+                        username,
+                        imageUrl,
+                        featureVector,
+                        predictions: predictions || [],
+                        analyzedAt: Date.now(),
+                        feedbackScore: 0
+                    };
+
+                    // Preserve existing feedback score with time-based decay
+                    const existing = await CacheManager.getRecognitionResult(username);
+                    if (existing) {
+                        const ageMinutes = (Date.now() - existing.analyzedAt) / 60000;
+                        // Only apply decay if at least 5 minutes have passed since last analysis
+                        if (ageMinutes >= 5) {
+                            result.feedbackScore = existing.feedbackScore * AppConfig.ML_CONFIG.feedbackDecayFactor;
+                        } else {
+                            result.feedbackScore = existing.feedbackScore;
+                        }
+                    }
+
+                    await CacheManager.saveRecognitionResult(result);
+                    results.push(result);
+                } catch (error) {
+                    // Skip individual failures silently
+                }
+            }
+
+            // Prune old results if cache exceeds max
+            await CacheManager.pruneRecognitionResults(AppConfig.ML_CONFIG.maxCachedResults);
+
+            this.#_analysisCount++;
+            console.log(`BackgroundImageAnalyzer: Cycle ${this.#_analysisCount} completed, analyzed ${results.length} images`);
+
+            // Invoke callback with results for relevance scoring feedback loop
+            if (this.#_onResultsCallback && results.length > 0) {
+                this.#_onResultsCallback(results);
+            }
+        } catch (error) {
+            console.error('BackgroundImageAnalyzer: Cycle error:', error);
+        } finally {
+            this.#_isRunning = false;
+        }
+    }
+
+    /**
+     * Get performer card data from the DOM
+     * @private
+     * @returns {Array<{username: string, imageUrl: string}>}
+     */
+    #_getPerformerCards() {
+        const gridContainer = document.querySelector('#performerGrid');
+        if (!gridContainer) return [];
+
+        const cards = Array.from(gridContainer.querySelectorAll('.performer-card'));
+        const result = [];
+        for (const card of cards) {
+            try {
+                const data = JSON.parse(card.dataset.performer || '{}');
+                const img = card.querySelector('img[data-role="performer-image"]');
+                if (data.username && img?.src) {
+                    result.push({ username: data.username, imageUrl: img.src });
+                }
+            } catch (e) {
+                // Skip cards with invalid data
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Prioritize cards for analysis: prefer unanalyzed or high-feedback performers
+     * @private
+     * @param {Array<{username: string, imageUrl: string}>} cards
+     * @returns {Promise<Array<{username: string, imageUrl: string}>>}
+     */
+    async #_prioritizeCards(cards) {
+        const scored = [];
+        for (const card of cards) {
+            try {
+                const existing = await CacheManager.getRecognitionResult(card.username);
+                let priority = 100; // High priority for unanalyzed
+                if (existing) {
+                    // Lower priority for recently analyzed, but boost by feedback
+                    const ageMinutes = (Date.now() - existing.analyzedAt) / 60000;
+                    priority = Math.min(ageMinutes, 60) + (existing.feedbackScore || 0);
+                }
+                scored.push({ ...card, priority });
+            } catch (e) {
+                scored.push({ ...card, priority: 50 });
+            }
+        }
+        scored.sort((a, b) => b.priority - a.priority);
+        return scored;
+    }
+
+    /**
+     * Extract feature vector from an image using GPU-accelerated MobileNet
+     * @private
+     * @param {string} imageUrl
+     * @returns {Promise<Array<number>|null>}
+     */
+    async #_extractFeatures(imageUrl) {
+        if (!this.#_mlModel) return null;
+
+        try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            await new Promise((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error('Image load failed'));
+                img.src = imageUrl;
+            });
+
+            const features = this.#_mlModel.infer(img, true);
+            return Array.from(await features.data());
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Classify an image and return top predictions
+     * @private
+     * @param {string} imageUrl
+     * @returns {Promise<Array<{label: string, confidence: number}>|null>}
+     */
+    async #_classifyImage(imageUrl) {
+        if (!this.#_mlModel) return null;
+
+        // Use cached classification if available (labels rarely change for same image)
+        const cached = this.#_classificationCache.get(imageUrl);
+        if (cached && (Date.now() - cached.timestamp) < 300000) { // 5-minute TTL
+            return cached.predictions;
+        }
+
+        try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            await new Promise((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error('Image load failed'));
+                img.src = imageUrl;
+            });
+
+            const predictions = await this.#_mlModel.classify(img, AppConfig.ML_CONFIG.topPredictions);
+            const filtered = predictions.map(p => ({
+                label: p.className,
+                confidence: Math.round(p.probability * 100)
+            })).filter(p => p.confidence >= AppConfig.ML_CONFIG.confidenceThreshold);
+
+            this.#_classificationCache.set(imageUrl, { predictions: filtered, timestamp: Date.now() });
+            return filtered;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Record positive feedback for a performer (called when user interacts)
+     * This feeds back into the prioritization for future analysis cycles.
+     * @param {string} username
+     * @param {number} [weight=1] - Feedback weight (higher = stronger signal)
+     */
+    async recordFeedback(username, weight = 1) {
+        try {
+            await CacheManager.updateRecognitionFeedback(username, weight);
+        } catch (error) {
+            // Silently ignore feedback errors
+        }
+    }
+
+    /**
+     * Get recognition-based relevance score for a performer.
+     * Uses stored feature vectors and feedback scores to compute relevance.
+     * @param {string} username
+     * @returns {Promise<number>} Relevance score (0-100)
+     */
+    async getRelevanceScore(username) {
+        try {
+            const result = await CacheManager.getRecognitionResult(username);
+            if (!result) return 0;
+
+            let score = 0;
+
+            // Base score from feedback loop (0-50)
+            score += Math.min(50, (result.feedbackScore || 0) * 5);
+
+            // Recency bonus (0-25): gentler decay aligned with 60-second analysis interval
+            // Full bonus for results < 2 minutes old, linear decay over 30 minutes
+            const ageMinutes = (Date.now() - result.analyzedAt) / 60000;
+            if (ageMinutes < 2) {
+                score += 25;
+            } else {
+                score += Math.max(0, 25 - ((ageMinutes - 2) * 0.9));
+            }
+
+            // Prediction confidence bonus (0-25)
+            if (result.predictions && result.predictions.length > 0) {
+                const avgConfidence = result.predictions.reduce((sum, p) => sum + p.confidence, 0) / result.predictions.length;
+                score += Math.min(25, avgConfidence / 4);
+            }
+
+            return Math.round(Math.min(100, score));
+        } catch (error) {
+            return 0;
+        }
      * Initialize event listeners for shape engine settings controls.
      * Reads the shape toggle checkboxes, performer mode select, and complexity
      * slider from the DOM and fires the shape settings change callback on change.

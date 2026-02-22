@@ -8,7 +8,7 @@ const AppConfig = (() => {
 
     // Database Configuration
     const _DB_NAME = 'BestPerformerDB';
-    const _DB_VERSION = 5;  // Incremented for ANALYTICS_STORE
+    const _DB_VERSION = 6;  // Incremented for IMAGE_RECOGNITION_STORE
     const _PERFORMER_STORE = 'performers';
     const _SETTINGS_STORE = 'settings';
     const _SNIPPETS_STORE = 'snippets';
@@ -43,12 +43,13 @@ const AppConfig = (() => {
 
     // Ranking Weights (used for calculating rank score)
     const _RANKING_WEIGHTS = {
-        viewers: 0.4,      // Higher viewers = higher score
-        isNew: 0.15,       // New performers get a bonus
-        age18Bonus: 0.1,   // Age 18 bonus
-        recentlyViewed: 0.15, // Recently viewed by user
-        favorited: 0.2     // Favorited performers
-    };
+        viewers: 0.35,         // Higher viewers = higher score
+        isNew: 0.1,            // New performers get a bonus
+        age18Bonus: 0.1,       // Age 18 bonus
+        recentlyViewed: 0.15,  // Recently viewed by user
+        favorited: 0.15,       // Favorited performers
+        imageRecognition: 0.15 // GPU image recognition relevance score
+    };  // Total: 1.0
 
     // Default Filter Settings
     const _DEFAULT_FILTERS = {
@@ -70,8 +71,16 @@ const AppConfig = (() => {
         topPredictions: 3,        // Number of top predictions to display
         confidenceThreshold: 5,   // Minimum confidence % to display
         analyzeInterval: 30000,   // Re-analyze visible images every 30 seconds
-        enableIframeCapture: true // Enable frame capture from iframes (if same-origin)
+        enableIframeCapture: true, // Enable frame capture from iframes (if same-origin)
+        backgroundAnalysisInterval: 60000, // Background GPU analysis every 60 seconds (1 minute)
+        backgroundBatchSize: 10,  // Number of images to analyze per background cycle
+        similarityThreshold: 0.5, // Minimum cosine similarity to consider relevant
+        feedbackDecayFactor: 0.95, // Decay factor for feedback scores over time
+        maxCachedResults: 500     // Maximum cached recognition results
     };
+
+    // IndexedDB store for GPU image recognition results
+    const _IMAGE_RECOGNITION_STORE = 'imageRecognition';
 
     // Shape Engine Configuration
     const _SHAPE_ENGINE_CONFIG = {
@@ -113,6 +122,7 @@ const AppConfig = (() => {
         RECORDINGS_STORE: _RECORDINGS_STORE,
         LABELS_STORE: _LABELS_STORE,
         ANALYTICS_STORE: _ANALYTICS_STORE,
+        IMAGE_RECOGNITION_STORE: _IMAGE_RECOGNITION_STORE,
         DATA_PATH: _DATA_PATH,
         DAT_FILES: Object.freeze([..._DAT_FILES]),
 
@@ -204,6 +214,11 @@ const AppConfig = (() => {
             // Favorited bonus
             if (context.favorites && context.favorites.has(performer.username)) {
                 score += 100 * weights.favorited;
+            }
+
+            // GPU image recognition relevance bonus (from background analysis)
+            if (context.imageRecognitionScore != null) {
+                score += Math.min(100, context.imageRecognitionScore) * weights.imageRecognition;
             }
 
             return Math.round(score);

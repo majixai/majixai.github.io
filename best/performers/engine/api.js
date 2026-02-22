@@ -321,4 +321,26 @@ class DataAPI {
     hasMorePerformers() {
         return this.#_hasMoreData;
     }
+
+    /**
+     * Load GPU image recognition results from the server-side manifest.
+     * The manifest is generated every minute by the background pipeline.
+     * @returns {Promise<Array<Object>>} Array of recognition results
+     */
+    async loadRecognitionManifest() {
+        try {
+            const response = await fetch(`${AppConfig.DATA_PATH}dbs/gpu_recognition_manifest.dat`);
+            if (!response.ok) return [];
+
+            const compressedData = await response.arrayBuffer();
+            const decompressedData = pako.inflate(new Uint8Array(compressedData), { to: 'string' });
+            const manifest = JSON.parse(decompressedData);
+
+            console.log(`DataAPI: Loaded recognition manifest (${manifest.analyzed_count || 0} items, generated: ${manifest.generated_at})`);
+            return manifest.items || [];
+        } catch (error) {
+            console.warn('DataAPI: Could not load recognition manifest:', error.message);
+            return [];
+        }
+    }
 }
