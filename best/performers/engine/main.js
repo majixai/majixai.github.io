@@ -33,7 +33,7 @@ class Performer {
         this.current_show = data.current_show;
         this.rankScore = data.rankScore || 0;
 
-        Object.freeze(this);
+        Object.seal(this);
     }
 
     static createMany(performerData) {
@@ -150,6 +150,24 @@ class BestPerformersEngine {
     }
 
     /**
+     * Attempt to load performers from cached .dat files as a fallback
+     * @private
+     * @returns {Promise<boolean>} true if cached performers were loaded successfully
+     */
+    async #_loadCachedFallback() {
+        const cachedPerformers = await this.#_dataAPI.loadCachedPerformers();
+        if (cachedPerformers.length > 0) {
+            this.#_performers = Performer.createMany(cachedPerformers.slice(0, AppConfig.PERFORMERS_PER_PAGE));
+            this.#_uiManager.renderPerformers(this.#_performers, false);
+            this.#_uiManager.autoPopulateViewers(this.#_performers);
+            this.#_uiManager.updateStatus({ count: this.#_performers.length, lastUpdate: Date.now() });
+            console.log(`Fallback: Loaded ${this.#_performers.length} performers from cached data files`);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Load performers with current filters
      * @private
      */
@@ -166,6 +184,12 @@ class BestPerformersEngine {
             });
 
             this.#_performers = Performer.createMany(result.performers);
+
+            // Fallback: if API returned no performers, try loading from cached .dat files
+            if (this.#_performers.length === 0 && !append && this.#_currentPage === 1) {
+                console.warn("No performers from API, attempting to load from cached data files...");
+                await this.#_loadCachedFallback();
+            }
 
             if (this.#_performers.length > 0) {
                 this.#_uiManager.renderPerformers(this.#_performers, append);
@@ -186,8 +210,17 @@ class BestPerformersEngine {
 
         } catch (error) {
             console.error("Failed to load performers:", error);
+            // Fallback: try loading from cached .dat files on API failure
             if (!append) {
-                this.#_uiManager.showError(error.message);
+                try {
+                    const loaded = await this.#_loadCachedFallback();
+                    if (!loaded) {
+                        this.#_uiManager.showError(error.message);
+                    }
+                } catch (fallbackError) {
+                    console.error("Fallback also failed:", fallbackError);
+                    this.#_uiManager.showError(error.message);
+                }
             }
         } finally {
             this.#_uiManager.hideLoading();
