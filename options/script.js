@@ -516,7 +516,7 @@ const plotLogic = {
          const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: '#007bff', width: 2.5 } };
          const costType = netCredit >= 0 ? 'Credit' : 'Debit';
          const title = `Iron Condor ${cleanStrikeP1.toFixed(2)}/${cleanStrikeP2.toFixed(2)}P ${cleanStrikeC3.toFixed(2)}/${cleanStrikeC4.toFixed(2)}C (${costType}: ${Math.abs(netCredit).toFixed(2)})`;
-         Plotly.newPlot(id, [trace], getPlotlyLayout(title));
+         return { trace, title };
      },
      plotIronButterfly: (params, strategy) => {
         const { strikeP1, strikePC2, strikeC3, premiumP1, premiumP2, premiumC2, premiumC3 } = params;
@@ -744,7 +744,7 @@ const plotLogic = {
         const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'darkorange', width: 2.5 } };
         const costType = netDebit >= 0 ? 'Debit' : 'Credit';
         const title = `${type.charAt(0).toUpperCase() + type.slice(1)} Calendar ${cleanStrike.toFixed(2)} (At Near Expiry) (Net ${costType}: ${Math.abs(netDebit).toFixed(2)})`;
-        Plotly.newPlot(id, [trace], getPlotlyLayout(title));
+        return { trace, title };
     },
     plotDiagonalSpread: (params, strategy) => {
         const { type, strike1, premium1, strike2, premium2 } = params; // Assuming strike1/prem1 is FURTHER, strike2/prem2 is NEAR
@@ -798,7 +798,7 @@ const plotLogic = {
         const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'darkviolet', width: 2.5 } };
         const costType = netCost >= 0 ? 'Debit' : 'Credit';
         const title = `${type.charAt(0).toUpperCase() + type.slice(1)} Diagonal ${furtherK.toFixed(2)}/${nearK.toFixed(2)} (At Near Expiry) (Net ${costType}: ${Math.abs(netCost).toFixed(2)})`;
-        Plotly.newPlot(id, [trace], getPlotlyLayout(title));
+        return { trace, title };
     },
      plotRatioSpread: (params, id, strategy) => {
          // Handles both Ratio Spreads (Buy 1, Sell N) and Backspreads (Sell 1, Buy N)
@@ -877,7 +877,7 @@ const plotLogic = {
                   return { trace: { x: [], y: [] }, title: `${position.charAt(0).toUpperCase() + position.slice(1)} ${type.charAt(0).toUpperCase() + type.slice(1)} Condor (Invalid Parameters)` };
              }
               // Basic check for condor condition
-              if (!(cleanStrike1 < cleanStrike2 && cleanStrike2 < cleanStrike3 && cleanStrike3 < cleanStrikeC4)) {
+              if (!(cleanStrike1 < cleanStrike2 && cleanStrike2 < cleanStrike3 && cleanStrike3 < cleanStrike4)) {
                    logger.warn(`[Plot] Condor ${position} ${type}: Strikes not in ascending order or not distinct.`);
                    // Still attempt to plot with provided strikes, but warn
               }
@@ -911,19 +911,14 @@ const plotLogic = {
              const trace = { x: generatePriceRange((cleanStrike2 + cleanStrike3) / 2, 0.2), y: profits, type: 'scatter', mode: 'lines', line: { color: color, width: 2.5 } };
              const costType = netCost >= 0 ? 'Credit' : 'Debit'; // Condors are typically credit (short) or debit (long)
              const title = `${position.charAt(0).toUpperCase() + position.slice(1)} ${type.charAt(0).toUpperCase() + type.slice(1)} Condor ${cleanStrike1.toFixed(2)}/${cleanStrike2.toFixed(2)}/${cleanStrike3.toFixed(2)}/${cleanStrike4.toFixed(2)} (Net ${costType}: ${Math.abs(netCost).toFixed(2)})`;
-             Plotly.newPlot(id, [trace], getPlotlyLayout(title));
+             return { trace, title };
          },
          // Plotting function for strategies with >= 5 legs (requires 'legs' array in parameters)
          plotComplexStrategy: (params, id, strategy) => {
              const { legs } = params; // Expects the parameters to contain a 'legs' array
              if (!Array.isArray(legs) || legs.length < 5) {
                  logger.error(`[Plot] ComplexStrategy ${strategy.name}: Invalid or insufficient legs (${legs ? legs.length : 0}) for plotting.`);
-                 // Display an error message in the plot div
-                 const plotContainer = document.getElementById(id);
-                 if (plotContainer) {
-                      plotContainer.innerHTML = `<p class="error-message">Cannot plot: Invalid parameters for strategy.</p>`;
-                 }
-                 return; // Return undefined/null if parameters are invalid
+                 return { trace: { x: [], y: [] }, title: `${strategy.name} (Invalid Parameters)` };
              }
 
              // Determine price range - find min/max strike from all legs
@@ -968,9 +963,103 @@ const plotLogic = {
              const trace = { x: prices, y: profits, type: 'scatter', mode: 'lines', line: { color: 'darkred', width: 2.5 } }; // Unique color for multi-leg
               const costType = netCost >= 0 ? 'Debit' : 'Credit';
              const title = `${strategy.name} (Net ${costType}: ${Math.abs(netCost).toFixed(2)})`;
-             Plotly.newPlot(id, [trace], getPlotlyLayout(title));
+             return { trace, title };
          }
     }; // End plotFunctions map
+
+
+    /**
+     * ========================================================================
+     * Sidebar Toggle Functions (W3.CSS)
+     * ========================================================================
+     */
+    function w3_open() {
+        if (DOM.sidebar) DOM.sidebar.style.display = 'block';
+        if (DOM.overlay) DOM.overlay.style.display = 'block';
+    }
+
+    function w3_close() {
+        if (DOM.sidebar) DOM.sidebar.style.display = 'none';
+        if (DOM.overlay) DOM.overlay.style.display = 'none';
+    }
+
+
+    /**
+     * ========================================================================
+     * Replot Strategy Function
+     * ========================================================================
+     * Reads current parameter values from DOM inputs and calls the appropriate
+     * plot function from plotLogic, then renders the result using Plotly.
+     */
+    function replotStrategy(strategy) {
+        try {
+            const plotFuncName = strategy.plotFunction;
+            const plotDivId = strategy.plotlyDivId;
+
+            if (!plotFuncName || !plotDivId) {
+                logger.warn(`[Plot] Strategy "${strategy.id}" missing plotFunction or plotlyDivId.`);
+                return;
+            }
+
+            const plotFunc = plotLogic[plotFuncName];
+            if (!plotFunc) {
+                logger.error(`[Plot] Plot function "${plotFuncName}" not found in plotLogic for strategy "${strategy.id}".`);
+                return;
+            }
+
+            // Read current parameter values from DOM inputs
+            const currentParams = {};
+
+            if (strategy.parameters && strategy.parameters.legs && Array.isArray(strategy.parameters.legs)) {
+                // Complex strategy with legs array
+                currentParams.legs = strategy.parameters.legs.map((leg, index) => {
+                    const updatedLeg = { ...leg };
+                    for (const paramName in leg) {
+                        if (paramName === 'strike' || paramName === 'premium') {
+                            const inputId = `${strategy.id}-leg${index}-${paramName}-input`;
+                            const inputEl = document.getElementById(inputId);
+                            if (inputEl) {
+                                updatedLeg[paramName] = parseFloat(inputEl.value) || leg[paramName];
+                            }
+                        }
+                    }
+                    return updatedLeg;
+                });
+            } else if (strategy.parameters) {
+                for (const paramName in strategy.parameters) {
+                    const inputId = `${strategy.id}-${paramName}-input`;
+                    const inputEl = document.getElementById(inputId);
+                    if (inputEl) {
+                        const val = inputEl.value;
+                        currentParams[paramName] = typeof strategy.parameters[paramName] === 'number'
+                            ? (parseFloat(val) || strategy.parameters[paramName])
+                            : val;
+                    } else {
+                        // Use original parameter value if no input element found (e.g., type, position)
+                        currentParams[paramName] = strategy.parameters[paramName];
+                    }
+                }
+            }
+
+            logger.log(`[Plot] Calling ${plotFuncName} for strategy "${strategy.id}".`);
+
+            const result = plotFunc(currentParams, plotDivId, strategy);
+
+            if (result && result.trace && result.title !== undefined) {
+                const plotDiv = document.getElementById(plotDivId);
+                if (plotDiv) {
+                    Plotly.newPlot(plotDivId, [result.trace], getPlotlyLayout(result.title));
+                    logger.log(`[Plot] Successfully plotted "${strategy.id}".`);
+                } else {
+                    logger.error(`[Plot] Plotly div "${plotDivId}" not found in DOM for strategy "${strategy.id}".`);
+                }
+            } else {
+                logger.warn(`[Plot] Plot function "${plotFuncName}" for "${strategy.id}" did not return a valid result.`);
+            }
+        } catch (e) {
+            logger.error(`[Plot] Error in replotStrategy for "${strategy.id}": ${e.message}`, e);
+        }
+    }
 
 
     /**
@@ -1800,4 +1889,3 @@ const plotLogic = {
      * The application relies on fetching data from strategies.json,
      * or loading from cache/IndexedDB if offline/fetch fails.
      */
-```
