@@ -20,29 +20,33 @@ class TestMonteCarloSimulationConfig(unittest.TestCase):
 
     def test_default_parameters(self):
         """Test that default parameters are set correctly when no env vars."""
-        env = {
-            'CURRENT_PRICE': '6025.00',
-            'MINUTES_REMAINING': '390',
-            'SIMULATIONS': '5000',
-            'SIGMA': '0.16',
-            'MU': '0.03',
-            'RANDOM_SEED': '42',
-        }
-        self.assertEqual(float(env['CURRENT_PRICE']), 6025.00)
-        self.assertEqual(int(env['MINUTES_REMAINING']), 390)
-        self.assertEqual(int(env['SIMULATIONS']), 5000)
-        self.assertAlmostEqual(float(env['SIGMA']), 0.16)
-        self.assertAlmostEqual(float(env['MU']), 0.03)
-        self.assertEqual(int(env['RANDOM_SEED']), 42)
+        import importlib
+        # Remove any env overrides to test defaults
+        env_keys = ['CURRENT_PRICE', 'MINUTES_REMAINING', 'SIMULATIONS',
+                     'SIGMA', 'MU', 'RANDOM_SEED']
+        saved = {k: os.environ.pop(k, None) for k in env_keys}
+        try:
+            import monte_carlo_simulation as mcs
+            importlib.reload(mcs)
+            self.assertEqual(mcs.current_price, 6025.00)
+            self.assertEqual(mcs.minutes_remaining, 390)
+            self.assertEqual(mcs.simulations, 5000)
+            self.assertAlmostEqual(mcs.sigma, 0.16)
+            self.assertAlmostEqual(mcs.mu, 0.03)
+        finally:
+            for k, v in saved.items():
+                if v is not None:
+                    os.environ[k] = v
 
+    @patch.dict(os.environ, {'CURRENT_PRICE': '5800.50', 'MINUTES_REMAINING': '200', 'SIMULATIONS': '1000'})
     def test_custom_parameters_via_env(self):
         """Test that environment variables override defaults."""
-        custom_price = '5800.50'
-        custom_minutes = '200'
-        custom_sims = '1000'
-        self.assertEqual(float(custom_price), 5800.50)
-        self.assertEqual(int(custom_minutes), 200)
-        self.assertEqual(int(custom_sims), 1000)
+        import importlib
+        import monte_carlo_simulation as mcs
+        importlib.reload(mcs)
+        self.assertEqual(mcs.current_price, 5800.50)
+        self.assertEqual(mcs.minutes_remaining, 200)
+        self.assertEqual(mcs.simulations, 1000)
 
 
 class TestGBMEngine(unittest.TestCase):
