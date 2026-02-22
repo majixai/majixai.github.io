@@ -1,0 +1,81 @@
+name: S&P 500 Closing Projection
+
+on:
+  # Run every minute (maximum frequency for GitHub Actions cron)
+  # Note: GitHub Actions may throttle or skip runs when repository activity is high.
+  # Actual execution frequency may be lower depending on GitHub's scheduling capacity.
+  schedule:
+    - cron: '* * * * *'
+
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      simulations:
+        description: 'Number of Monte Carlo simulations'
+        required: false
+        default: '5000'
+
+  # Trigger on push to the sp_closing_projection directory
+  push:
+    branches:
+      - main
+    paths:
+      - 'sp_closing_projection/**'
+
+permissions:
+  contents: write
+
+jobs:
+  run_sp_closing_projection:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'sp_closing_projection/requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          echo "INFO: Installing Python packages..."
+          pip install -r sp_closing_projection/requirements.txt
+          echo "SUCCESS: Python dependencies installed."
+
+      - name: Run S&P 500 Closing Projection
+        env:
+          SIMULATIONS: ${{ github.event.inputs.simulations || '5000' }}
+          WEBHOOK_URL: ${{ secrets.SP_CLOSING_PROJECTION_WEBHOOK_URL }}
+          DATA_DIR: ${{ github.workspace }}
+        run: |
+          echo "INFO: Running S&P 500 Closing Projection Engine..."
+          echo "Simulations: $SIMULATIONS"
+          cd sp_closing_projection
+          python sp_closing_projection.py
+          echo "SUCCESS: Projection completed."
+
+      - name: Commit and push results
+        run: |
+          echo "INFO: Configuring git user..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          echo "INFO: Staging projection output..."
+          git add sp_closing_projection/sp_closing_projection_output.png
+          git add sp_closing_projection/latest_projection.json
+
+          if ! git diff --staged --quiet; then
+            echo "INFO: Changes detected. Committing..."
+            git commit -m "projection: Update S&P 500 closing projection - $(date +'%Y-%m-%d %H:%M:%S UTC')"
+            echo "INFO: Pushing changes..."
+            git push
+            echo "SUCCESS: Projection results pushed."
+          else
+            echo "INFO: No changes to commit."
+          fi
