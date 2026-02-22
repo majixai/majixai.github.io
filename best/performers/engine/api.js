@@ -51,8 +51,10 @@ class DataAPI {
             
             if (data && data.results && Array.isArray(data.results)) {
                 // Filter to only include public performers (not in private shows)
+                // Note: iframe URLs are built from usernames via AppConfig.buildIframeUrl,
+                // so we only require a valid username and public show status.
                 const publicPerformers = data.results.filter(p => 
-                    p.current_show === 'public' && p.iframe_embed
+                    p.current_show === 'public' && p.username
                 );
 
                 console.log(`DataAPI: Received ${data.results.length} results, ${publicPerformers.length} are public`);
