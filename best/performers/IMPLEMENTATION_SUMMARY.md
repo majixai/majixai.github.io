@@ -357,6 +357,40 @@ await uiManager.moveSimilarImagesToTop('clicked_performer');
 
 ---
 
+### 8. GPU Engine Image Recognition Patterns ✓
+**Requirement**: Enhance GPU engine image recognition patterns in best dir.
+
+**Implementation**:
+Added the following missing public API methods to `UIManager` in `ui.js` that wire together
+the GPU/TensorFlow.js ML pipeline:
+
+- **`initShapeSettingsListeners()` (private)**: Attaches `change`/`input` listeners to the
+  four shape-engine controls in the DOM (`#shapesEnabledToggle`, `#mlShapesToggle`,
+  `#performerModeSelect`, `#shapeComplexity`) and fires the `onShapeSettingsChange` callback
+  whenever any setting is changed by the user.  Previously called by `#_initEventListeners()` but
+  never defined, causing a silent runtime error.
+
+- **`inferImageLabel(imageUrl)`** *(public)*: Public wrapper for the private `#_inferImageLabel`
+  method.  Allows `BestPerformersEngine` (in `main.js`) to request GPU-accelerated MobileNet
+  image classification for the shape engine's ML-driven overlay generation.
+
+- **`getViewerSlots()`** *(public)*: Returns the internal `#_viewerSlots` Map (username → slot
+  number).  Used by `#_applyShapeOverlays()` in `main.js` so the `ShapeEngine` can resolve
+  which performer is in each iframe and fetch the correct ML prediction for its overlay.
+
+- **`updateShapeControls(config)`** *(public)*: Synchronises the four shape-engine DOM controls
+  with a saved or restored config object.  Called during `init()` in `main.js` after loading
+  persisted shape settings from IndexedDB.
+
+- **`getMLModel()`** *(public)*: Returns the already-loaded MobileNet model (or its loading
+  promise).  Used by `init()` in `main.js` to pass the shared model to `ShapeEngine.setMLModel()`
+  so the shape engine reuses the same GPU-resident model without loading it twice.
+
+**Files Changed**:
+- `best/performers/engine/ui.js` (five new methods added at end of `UIManager` class)
+
+---
+
 ## Future Enhancements (Optional)
 
 1. **Export Analytics**: Download interaction data as CSV
