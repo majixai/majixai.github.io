@@ -1,5 +1,8 @@
 // --- Roulette Tracking Module ---
 // Tracks spin history, statistics, and user records
+// Optionally logs to GitHub via git_logger (Git-as-a-Database with Gzip .dat files)
+
+const gitLogger = typeof require !== 'undefined' ? (() => { try { return require('./git_logger'); } catch (_) { return null; } })() : null;
 
 /**
  * Initialize tracking data structure
@@ -47,6 +50,58 @@ function saveTrackingData(kv, data) {
         kv.set('roulette_tracking', JSON.stringify(data));
     } catch (e) {
         console.error("Error saving tracking data:", e);
+    }
+}
+
+// --- Git-as-a-Database integration (Gzip-compressed .dat files) ---
+
+/** @type {Object|null} Cached logger config – populated by configureGitLogger */
+let _gitLoggerConfig = null;
+
+/**
+ * Configure GitHub logging for the tracker.
+ * Must be called once before any git-backed logging occurs.
+ * The PAT is read from the GITHUB_PAT environment variable – never hardcoded.
+ * @param {Object} opts - { owner, repo, branch?, basePath? }
+ */
+function configureGitLogger(opts) {
+    if (!gitLogger) {
+        console.warn('[roulette_tracker] git_logger module is not available; GitHub logging disabled.');
+        return;
+    }
+    _gitLoggerConfig = { ...gitLogger.getDefaultLoggerConfig(), ...opts };
+}
+
+/**
+ * Push the current tracking snapshot to GitHub as a Gzip-compressed .dat file.
+ * Safe to call when git logging is not configured (no-op in that case).
+ * @param {Object} kv - Key-value store object
+ * @returns {Promise<void>}
+ */
+async function syncTrackingToGitHub(kv) {
+    if (!gitLogger || !_gitLoggerConfig) return;
+    try {
+        const data = getTrackingData(kv);
+        await gitLogger.writeSnapshot(_gitLoggerConfig, 'tracking_snapshot', data);
+    } catch (e) {
+        console.error('[roulette_tracker] syncTrackingToGitHub failed:', e.message);
+    }
+}
+
+/**
+ * Append a single spin record to the GitHub spin log (.dat, Gzip-compressed).
+ * @param {Object} spinRecord - The spin record to log
+ * @returns {Promise<void>}
+ */
+async function logSpinToGitHub(spinRecord) {
+    if (!gitLogger || !_gitLoggerConfig) return;
+    try {
+        await gitLogger.appendLog(_gitLoggerConfig, 'spins', {
+            _action: 'spin',
+            ...spinRecord
+        });
+    } catch (e) {
+        console.error('[roulette_tracker] logSpinToGitHub failed:', e.message);
     }
 }
 
@@ -113,6 +168,10 @@ function recordSpin(kv, username, tipAmount, result) {
     data.segmentStats[segmentId].totalAwarded += (result.tokens || 0);
     
     saveTrackingData(kv, data);
+
+    // Fire-and-forget: log to GitHub (compressed .dat)
+    logSpinToGitHub(spinRecord);
+
     return spinRecord;
 }
 
@@ -267,6 +326,9 @@ if (typeof module !== 'undefined' && module.exports) {
         initTrackingData,
         getTrackingData,
         saveTrackingData,
+        configureGitLogger,
+        syncTrackingToGitHub,
+        logSpinToGitHub,
         recordSpin,
         getUserStats,
         getLeaderboard,

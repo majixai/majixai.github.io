@@ -162,12 +162,69 @@ chaturbate_roulette/
 ├── shared/
 │   ├── roulette.js          # Core game logic
 │   ├── roulette_config.js   # Configuration management
-│   └── roulette_tracker.js  # Statistics tracking
+│   ├── roulette_tracker.js  # Statistics tracking (with Git logging)
+│   └── git_logger.js        # Git-as-a-Database with Gzip .dat files
 ├── overlay/
 │   ├── roulette_wheel.html  # Visual wheel overlay
 │   └── roulette_styles.css  # Additional styles
 └── README.md
 ```
+
+## Git-as-a-Database Logging
+
+The roulette app supports logging spin records, user stats, and ledger updates to a
+GitHub repository as Gzip-compressed `.dat` files. Git history acts as a transaction
+log, giving you versioned, auditable records with a minimal storage footprint.
+
+### How It Works
+
+1. **Write phase** – data is JSON-serialised → Gzip-compressed → Base64-encoded →
+   committed via the GitHub Contents API.
+2. **Read phase** – the `.dat` file is fetched from GitHub → Base64-decoded →
+   Gzip-decompressed → parsed back to JSON.
+3. Every commit is a versioned snapshot, so the full history of changes is preserved
+   in Git.
+
+### Setup
+
+1. **Set the `GITHUB_PAT` environment variable** with a personal access token that
+   has `repo` (or `contents:write`) scope:
+
+   ```bash
+   export GITHUB_PAT="ghp_your_token_here"
+   ```
+
+   > ⚠️ **Never hardcode the token in source files.** The module reads it from the
+   > environment at runtime.
+
+2. **Configure the logger** in your app startup code (e.g. `app_start.js`):
+
+   ```javascript
+   const { configureGitLogger } = require('./shared/roulette_tracker');
+
+   configureGitLogger({
+       owner: 'your-github-username',
+       repo: 'your-repo-name',
+       branch: 'main',              // optional, defaults to 'main'
+       basePath: 'roulette_logs'    // optional, defaults to 'roulette_logs'
+   });
+   ```
+
+3. Spins are automatically logged to `roulette_logs/spins.dat` on every tip.
+4. Call `syncTrackingToGitHub(kv)` at any time to push a full tracking snapshot to
+   `roulette_logs/tracking_snapshot.dat`.
+
+### API Reference (git_logger.js)
+
+| Function | Description |
+|----------|-------------|
+| `compressToBase64(data)` | Gzip-compress a string → Base64 |
+| `decompressFromBase64(b64)` | Base64 → Gzip-decompress → string |
+| `readDatFile(config, path)` | Fetch & auto-decompress a `.dat` file |
+| `writeDatFile(config, path, data, msg, sha)` | Compress & commit a `.dat` file |
+| `appendLog(config, name, record)` | Append a record to a log file |
+| `writeSnapshot(config, name, data)` | Write a full snapshot file |
+| `readSnapshot(config, name)` | Read a snapshot file |
 
 ## Testing
 
