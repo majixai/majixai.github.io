@@ -63,10 +63,15 @@ class BestPerformersEngine {
     #_slotRecordings = new Map();
     // Shape engine for overlay shapes on iframes and images
     #_shapeEngine = null;
+    // Background GPU image recognition analyzer
+    #_backgroundAnalyzer = null;
 
     constructor() {
         this.#_dataAPI = new DataAPI(CacheManager);
         this.#_shapeEngine = new ShapeEngine(AppConfig.SHAPE_ENGINE_CONFIG);
+        this.#_backgroundAnalyzer = new BackgroundImageAnalyzer({
+            onResults: (results) => this.#_handleBackgroundAnalysisResults(results)
+        });
         this.#_uiManager = new UIManager({
             onPerformerSelect: (performer) => this.#_handlePerformerSelection(performer),
             onRefresh: () => this.refresh(),
@@ -104,6 +109,9 @@ class BestPerformersEngine {
             
             // GPU image processing: move similar images to top
             await this.#_uiManager.moveSimilarImagesToTop(performer.username);
+
+            // Feedback loop: signal the background analyzer that user interacted with this performer
+            await this.#_backgroundAnalyzer.recordFeedback(performer.username, 3);
         } catch (error) {
             console.error("Error tracking click:", error);
         }
@@ -208,13 +216,47 @@ class BestPerformersEngine {
             if (performer) {
                 // Add click score to rank score
                 performer.rankScore = (performer.rankScore || 0) + Math.min(stats.clickScore / 10, 50);
-                console.log(`Updated score for ${username}: ${performer.rankScore}`);
+
+                // Incorporate background GPU image recognition relevance score
+                const recognitionScore = await this.#_backgroundAnalyzer.getRelevanceScore(username);
+                if (recognitionScore > 0) {
+                    performer.rankScore += recognitionScore * 0.3;
+                }
+
+                console.log(`Updated score for ${username}: ${performer.rankScore} (recognition: ${recognitionScore})`);
                 
                 // Trigger re-sort if needed
                 this.#_uiManager.reorderPerformersByScore(this.#_performers);
             }
         } catch (error) {
             console.error("Error updating performer score:", error);
+        }
+    }
+
+    /**
+     * Handle results from the background GPU image recognition analyzer.
+     * This is the feedback loop: analysis results feed back into relevance scoring.
+     * @private
+     * @param {Array<Object>} results - Array of recognition results from the latest cycle
+     */
+    async #_handleBackgroundAnalysisResults(results) {
+        if (!results || results.length === 0) return;
+
+        let updated = 0;
+        for (const result of results) {
+            const performer = this.#_performers.find(p => p.username === result.username);
+            if (performer) {
+                const relevanceScore = await this.#_backgroundAnalyzer.getRelevanceScore(result.username);
+                if (relevanceScore > 0) {
+                    performer.rankScore = (performer.rankScore || 0) + relevanceScore * 0.1;
+                    updated++;
+                }
+            }
+        }
+
+        if (updated > 0) {
+            console.log(`BackgroundAnalysis feedback: Updated ${updated} performer scores`);
+            this.#_uiManager.reorderPerformersByScore(this.#_performers);
         }
     }
 
@@ -988,12 +1030,34 @@ class BestPerformersEngine {
         // Initialize zoom handlers for iframes and images
         this.#_uiManager.initZoomHandlers();
 
-        // Pass ML model to shape engine once loaded
+        // Pass ML model to shape engine and background analyzer once loaded
         if (this.#_uiManager.getMLModel) {
             const mlModel = await this.#_uiManager.getMLModel();
             if (mlModel) {
                 this.#_shapeEngine.setMLModel(mlModel);
+                this.#_backgroundAnalyzer.setModel(mlModel);
+                this.#_backgroundAnalyzer.start();
             }
+        }
+
+        // Load server-side GPU recognition results and seed into IndexedDB
+        try {
+            const recognitionResults = await this.#_dataAPI.loadRecognitionManifest();
+            for (const item of recognitionResults) {
+                await CacheManager.saveRecognitionResult({
+                    username: item.username,
+                    predictions: [],
+                    featureVector: item.features ? [item.features.brightness, item.features.color_variance] : null,
+                    analyzedAt: item.analyzed_at || Date.now(),
+                    feedbackScore: item.feedback_score || 0,
+                    imageUrl: item.image_url || ''
+                });
+            }
+            if (recognitionResults.length > 0) {
+                console.log(`BestPerformersEngine: Seeded ${recognitionResults.length} server-side recognition results`);
+            }
+        } catch (error) {
+            console.warn("Could not load server recognition manifest:", error);
         }
 
         // Apply initial shape overlays if enabled

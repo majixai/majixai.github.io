@@ -37,12 +37,18 @@ jobs:
             --api-concurrency 6 \
             --image-concurrency 12
 
+      - name: Run background GPU image recognition analysis
+        run: |
+          python best/gpu_image_recognition_pipeline.py \
+            --base-dir best \
+            --max-images 50
+
       - name: Commit and push when changed
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-          git add best/dbs/performer_images.db.gz best/dbs/performer_images_manifest.dat || true
+          git add best/dbs/performer_images.db.gz best/dbs/performer_images_manifest.dat best/dbs/gpu_recognition_manifest.dat || true
 
           if git diff --staged --quiet; then
             echo "No changes to commit."
@@ -50,5 +56,5 @@ jobs:
           fi
 
           ts=$(date +'%Y-%m-%d %H:%M:%S UTC')
-          git commit -m "best: refresh compressed performer image DB - ${ts}"
+          git commit -m "best: refresh compressed performer image DB + GPU recognition - ${ts}"
           git push

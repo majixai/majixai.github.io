@@ -7,7 +7,7 @@ const CacheManager = (() => {
     'use strict';
 
     let _db = null;
-    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE, LABELS_STORE, ANALYTICS_STORE } = AppConfig;
+    const { DB_NAME, DB_VERSION, PERFORMER_STORE, SETTINGS_STORE, SNIPPETS_STORE, RECORDINGS_STORE, LABELS_STORE, ANALYTICS_STORE, IMAGE_RECOGNITION_STORE } = AppConfig;
 
     /**
      * Initialize the IndexedDB database
@@ -71,6 +71,13 @@ const CacheManager = (() => {
                     analyticsStore.createIndex('username', 'username', { unique: false });
                     analyticsStore.createIndex('eventType', 'eventType', { unique: false });
                     analyticsStore.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+
+                // Image recognition store for background GPU analysis results
+                if (!db.objectStoreNames.contains(IMAGE_RECOGNITION_STORE)) {
+                    const recognitionStore = db.createObjectStore(IMAGE_RECOGNITION_STORE, { keyPath: 'username' });
+                    recognitionStore.createIndex('analyzedAt', 'analyzedAt', { unique: false });
+                    recognitionStore.createIndex('feedbackScore', 'feedbackScore', { unique: false });
                 }
             };
         });
@@ -605,6 +612,127 @@ const CacheManager = (() => {
                     }
                 };
                 request.onerror = () => reject(request.error);
+            });
+        },
+
+        // ==================== Image Recognition Methods ====================
+
+        /**
+         * Save GPU image recognition result for a performer
+         * @param {Object} result - { username, predictions, featureVector, analyzedAt, feedbackScore }
+         * @returns {Promise<void>}
+         */
+        saveRecognitionResult: async (result) => {
+            const record = {
+                username: result.username,
+                predictions: result.predictions || [],
+                featureVector: result.featureVector || null,
+                analyzedAt: result.analyzedAt || Date.now(),
+                feedbackScore: result.feedbackScore || 0,
+                imageUrl: result.imageUrl || ''
+            };
+
+            return _withStore(IMAGE_RECOGNITION_STORE, 'readwrite', (store) => {
+                store.put(record);
+            });
+        },
+
+        /**
+         * Get recognition result for a performer
+         * @param {string} username
+         * @returns {Promise<Object|null>}
+         */
+        getRecognitionResult: async (username) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(IMAGE_RECOGNITION_STORE, 'readonly');
+                const store = transaction.objectStore(IMAGE_RECOGNITION_STORE);
+                const request = store.get(username);
+                request.onsuccess = () => resolve(request.result || null);
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Get all recognition results sorted by feedback score
+         * @param {number} limit - Max results to return
+         * @returns {Promise<Array<Object>>}
+         */
+        getAllRecognitionResults: async (limit = 100) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(IMAGE_RECOGNITION_STORE, 'readonly');
+                const store = transaction.objectStore(IMAGE_RECOGNITION_STORE);
+                const index = store.index('feedbackScore');
+                const request = index.openCursor(null, 'prev');
+                const results = [];
+
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor && results.length < limit) {
+                        results.push(cursor.value);
+                        cursor.continue();
+                    } else {
+                        resolve(results);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        },
+
+        /**
+         * Update feedback score for a performer's recognition result
+         * @param {string} username
+         * @param {number} scoreDelta - Amount to add to feedback score
+         * @returns {Promise<void>}
+         */
+        updateRecognitionFeedback: async (username, scoreDelta) => {
+            const existing = await publicInterface.getRecognitionResult(username);
+            if (!existing) return;
+
+            existing.feedbackScore = (existing.feedbackScore || 0) + scoreDelta;
+            return _withStore(IMAGE_RECOGNITION_STORE, 'readwrite', (store) => {
+                store.put(existing);
+            });
+        },
+
+        /**
+         * Prune old recognition results beyond max cache size
+         * @param {number} maxEntries - Maximum entries to keep
+         * @returns {Promise<number>} - Number of pruned entries
+         */
+        pruneRecognitionResults: async (maxEntries = 500) => {
+            const db = await _initDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(IMAGE_RECOGNITION_STORE, 'readwrite');
+                const store = transaction.objectStore(IMAGE_RECOGNITION_STORE);
+                const index = store.index('analyzedAt');
+                const countRequest = store.count();
+
+                countRequest.onsuccess = () => {
+                    const totalCount = countRequest.result;
+                    if (totalCount <= maxEntries) {
+                        resolve(0);
+                        return;
+                    }
+
+                    const toDelete = totalCount - maxEntries;
+                    let deletedCount = 0;
+                    const cursorRequest = index.openCursor();
+
+                    cursorRequest.onsuccess = (event) => {
+                        const cursor = event.target.result;
+                        if (cursor && deletedCount < toDelete) {
+                            cursor.delete();
+                            deletedCount++;
+                            cursor.continue();
+                        } else {
+                            resolve(deletedCount);
+                        }
+                    };
+                    cursorRequest.onerror = () => reject(cursorRequest.error);
+                };
+                countRequest.onerror = () => reject(countRequest.error);
             });
         }
     };
