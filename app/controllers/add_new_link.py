@@ -4,6 +4,7 @@ def add_new_link():
     """
     This function adds a new link to the menu.json file.
     """
+    """
     with open('menu/menu.json', 'r+') as f:
         data = json.load(f)
         data['links'].append({
@@ -16,3 +17,4 @@ def add_new_link():
 
 if __name__ == "__main__":
     add_new_link()
+    """
