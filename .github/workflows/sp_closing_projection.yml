@@ -2,6 +2,8 @@ name: S&P 500 Closing Projection
 
 on:
   # Run every minute (maximum frequency for GitHub Actions cron)
+  # Note: GitHub Actions may throttle or skip runs when repository activity is high.
+  # Actual execution frequency may be lower depending on GitHub's scheduling capacity.
   schedule:
     - cron: '* * * * *'
 

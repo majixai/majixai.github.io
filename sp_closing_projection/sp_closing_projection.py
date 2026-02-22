@@ -39,6 +39,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass, field, asdict
 
+try:
+    from zoneinfo import ZoneInfo
+    EASTERN_TZ = ZoneInfo("America/New_York")
+except ImportError:
+    EASTERN_TZ = None
+
 # ============================================================================
 # CONFIGURATION & CONSTANTS
 # ============================================================================
@@ -290,7 +296,7 @@ class LiveDataFetcher:
             return {
                 "current_price": current_price,
                 "previous_close": previous_close,
-                "day_open": meta.get("regularMarketDayHigh", current_price),
+                "day_open": meta.get("regularMarketOpen", current_price),
                 "day_high": max(valid_closes) if valid_closes else current_price,
                 "day_low": min(valid_closes) if valid_closes else current_price,
                 "volume": meta.get("regularMarketVolume", 0),
@@ -651,10 +657,13 @@ class MarketTimeUtils:
 
     @staticmethod
     def get_eastern_now() -> datetime:
-        """Get current Eastern Time (approximate UTC-5)."""
+        """Get current Eastern Time (handles DST via zoneinfo)."""
         utc_now = datetime.now(timezone.utc)
+        if EASTERN_TZ is not None:
+            return utc_now.astimezone(EASTERN_TZ).replace(tzinfo=None)
+        # Fallback: approximate UTC-5 when zoneinfo unavailable
         eastern_offset = timedelta(hours=-5)
-        return utc_now + eastern_offset
+        return (utc_now + eastern_offset).replace(tzinfo=None)
 
     @classmethod
     def is_market_open(cls) -> bool:
