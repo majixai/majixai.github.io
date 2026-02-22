@@ -43,6 +43,10 @@ An AI-powered stock analysis tool that provides price projections, options strat
 
 An educational tool for understanding options trading strategies using the Black-Scholes model.
 
+### [Option Strategy Lab](redirect.html?url=https://majixai.github.io/OptionStrategy/) (`OptionStrategy/`)
+
+An interactive options strategy lab featuring a built-in Black-Scholes pricer, 13 strategy templates (Long Call, Iron Condor, Straddles, Spreads, and more), a custom multi-leg Strategy Builder, and Greeks analytics — all rendered in the browser via Plotly.js with no backend required.
+
 ### [Stock Analyzer](redirect.html?url=https://majixai.github.io/stock_analyzer/) (`stock_analyzer/`)
 
 A stock projection analysis application built with TypeScript and esbuild.
