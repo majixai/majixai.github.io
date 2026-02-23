@@ -13,3 +13,15 @@ const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers
 const apiFetchTimeout = 25000; // Timeout for each API fetch request (milliseconds)
 const reportSendTimeout = 45000; // Timeout for sending the report (milliseconds)
 const maxApiFetchLimit = 20000; // Safety limit for total users fetched in one cycle
+
+// --- Gamma: Retry Configuration ---
+const apiRetryAttempts = 3; // Number of retry attempts for failed API requests
+const apiRetryBaseDelay = 1000; // Base delay in ms for exponential backoff (1s, 2s, 4s)
+
+// --- Gamma: Logging Configuration ---
+const logLevel = 'INFO'; // Default log level: DEBUG, INFO, WARN, ERROR
+const maxLogEntries = 200; // Maximum log entries stored in memory
+
+// --- Gamma: Filter Configuration ---
+const defaultMinViewers = 0; // Default minimum viewer count filter
+const filterDebounceDelay = 300; // Debounce delay for filter changes (ms)
