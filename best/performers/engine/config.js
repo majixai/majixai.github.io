@@ -179,7 +179,7 @@ const AppConfig = (() => {
             if (!username || typeof username !== 'string' || !username.trim()) {
                 return '';
             }
-            return `https://chaturbate.com/fullvideo/?campaign=${_AFFILIATE_CAMPAIGN}&disable_sound=1&b=${encodeURIComponent(username.trim())}&tour=${_AFFILIATE_TOUR}`;
+            return `https://chaturbate.com/embed/${encodeURIComponent(username.trim())}/?tour=${_AFFILIATE_TOUR}&campaign=${_AFFILIATE_CAMPAIGN}&disable_sound=1&bgcolor=black`;
         },
 
         /**
