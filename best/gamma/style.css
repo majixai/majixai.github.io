@@ -5,6 +5,7 @@ html, body {
     overflow: hidden;
     font-family: sans-serif;
     background-color: #f0f0f0;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-container {
@@ -308,4 +309,82 @@ html, body {
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== Gamma Enhancements ==================== */
+
+/* Smooth transitions for interactive elements */
+.user-info {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-info:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Active filter indicator */
+.filter-active {
+    border: 2px solid #1a472a;
+    background-color: rgba(26, 71, 42, 0.1);
+    border-radius: 4px;
+    padding: 2px 4px;
+}
+
+/* Loading skeleton animation */
+@keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+
+.skeleton-loader {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 400px 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+/* Notification badge for filter count */
+.filter-count-badge {
+    display: inline-block;
+    background-color: #1a472a;
+    color: #fff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.7em;
+    line-height: 18px;
+    text-align: center;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    html, body {
+        background-color: #1a1a2e;
+        color: #e0e0e0;
+    }
+
+    .user-column {
+        background-color: #16213e;
+    }
+
+    .user-info {
+        background-color: #1a1a3e;
+        color: #e0e0e0;
+    }
+
+    .user-info:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-content {
+        background-color: #16213e;
+        color: #e0e0e0;
+    }
+
+    .iframe-header {
+        background: rgba(0, 0, 0, 0.85);
+    }
 }
