@@ -1284,8 +1284,8 @@ class UIManager {
                 <button class="performer-view-close">×</button>
                 <div class="performer-view-iframe">
                     <iframe src="${AppConfig.buildIframeUrl(username)}" 
-                            allow="autoplay; encrypted-media; picture-in-picture" 
-                            sandbox="allow-scripts allow-same-origin allow-presentation"
+                            allow="autoplay; encrypted-media; picture-in-picture; fullscreen" 
+                            sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads"
                             title="${username} live stream"></iframe>
                 </div>
                 <div class="performer-view-slideshow">
