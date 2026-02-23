@@ -17,7 +17,7 @@ function throttle(limitMs) {
         descriptor.value = function (...args) {
             const now = Date.now();
             if (now - lastCallTime < limitMs) {
-                return null;
+                return undefined;
             }
             lastCallTime = now;
             return originalMethod.apply(this, args);
