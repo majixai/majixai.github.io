@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticker Data Tables</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 10px;
+        }
+        
+        .ticker-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .ticker-card {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #eee;
+            transition: all 0.2s;
+            display: block;
+        }
+        
+        .ticker-card:hover {
+            background: #1a4a7a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+        }
+        
+        .ticker-card .ticker {
+            font-weight: bold;
+            color: #00d4ff;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .ticker-card .name {
+            font-size: 13px;
+            color: #aaa;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #00d4ff;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../index.html" class="back-link">← Back to Home</a>
+        
+        <h1>📊 Ticker Data Tables</h1>
+        <p class="subtitle">Click on any ticker to view detailed OHLCV data in a table format</p>
+        
+        <div class="section">
+            <h2>📈 Major Indices</h2>
+            <div class="ticker-grid">
+                <a href="GSPC.html" class="ticker-card">
+                    <div class="ticker">^GSPC</div>
+                    <div class="name">S&P 500</div>
+                </a>
+                <a href="DJI.html" class="ticker-card">
+                    <div class="ticker">^DJI</div>
+                    <div class="name">Dow Jones Industrial Average</div>
+                </a>
+                <a href="IXIC.html" class="ticker-card">
+                    <div class="ticker">^IXIC</div>
+                    <div class="name">NASDAQ Composite</div>
+                </a>
+                <a href="NDX.html" class="ticker-card">
+                    <div class="ticker">^NDX</div>
+                    <div class="name">NASDAQ 100</div>
+                </a>
+                <a href="VIX.html" class="ticker-card">
+                    <div class="ticker">^VIX</div>
+                    <div class="name">CBOE Volatility Index</div>
+                </a>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🏆 Top Tickers</h2>
+            <div class="ticker-grid">
+                <a href="SPY.html" class="ticker-card">
+                    <div class="ticker">SPY</div>
+                    <div class="name">SPDR S&P 500 ETF</div>
+                </a>
+                <a href="QQQ.html" class="ticker-card">
+                    <div class="ticker">QQQ</div>
+                    <div class="name">Invesco QQQ (NASDAQ 100)</div>
+                </a>
+                <a href="DIA.html" class="ticker-card">
+                    <div class="ticker">DIA</div>
+                    <div class="name">SPDR Dow Jones ETF</div>
+                </a>
+                <a href="IWM.html" class="ticker-card">
+                    <div class="ticker">IWM</div>
+                    <div class="name">iShares Russell 2000 ETF</div>
+                </a>
+                <a href="XLK.html" class="ticker-card">
+                    <div class="ticker">XLK</div>
+                    <div class="name">Technology Select Sector SPDR</div>
+                </a>
+                <a href="XLF.html" class="ticker-card">
+                    <div class="ticker">XLF</div>
+                    <div class="name">Financial Select Sector SPDR</div>
+                </a>
+                <a href="GLD.html" class="ticker-card">
+                    <div class="ticker">GLD</div>
+                    <div class="name">SPDR Gold Shares</div>
+                </a>
+                <a href="TLT.html" class="ticker-card">
+                    <div class="ticker">TLT</div>
+                    <div class="name">iShares 20+ Year Treasury Bond ETF</div>
+                </a>
+                <a href="ARKK.html" class="ticker-card">
+                    <div class="ticker">ARKK</div>
+                    <div class="name">ARK Innovation ETF</div>
+                </a>
+                <a href="SMH.html" class="ticker-card">
+                    <div class="ticker">SMH</div>
+                    <div class="name">VanEck Semiconductor ETF</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
