@@ -5,17 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Calculus Matrix Engine</title>
     
-    <!-- CDNs -->
+    <!-- CDNs: Bootstrap 5, W3.CSS, and Pako for GZIP decompression -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     
     <style>
-        /* CSS GRID & FLEXBOX */
+        /* CSS GRID, FLEXBOX & CUSTOM PROPERTIES */
         :root {
             --matrix-bg: #0a0a12;
             --matrix-fg: #00ffcc;
             --matrix-glow: rgba(0, 255, 204, 0.5);
+            --panel-bg: rgba(15, 15, 25, 0.85);
         }
         
         body {
@@ -25,19 +26,23 @@
             overflow-x: hidden;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
-        /* PARALLAX & ANIMATIONS */
+        /* PARALLAX & WEBKIT ANIMATIONS */
         .parallax-header {
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.05"><rect width="100" height="100" fill="none" stroke="%2300ffcc" stroke-width="1"/></svg>');
             background-attachment: fixed;
             background-position: center;
             background-repeat: repeat;
-            padding: 60px 20px;
+            padding: 40px 20px;
             text-align: center;
             border-bottom: 2px solid var(--matrix-fg);
             -webkit-animation: pulse-border 4s infinite alternate;
             animation: pulse-border 4s infinite alternate;
+            z-index: 10;
         }
 
         @-webkit-keyframes pulse-border {
@@ -48,17 +53,17 @@
         /* CSS GRID LAYOUT */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1fr 300px;
+            grid-template-columns: 1fr 350px;
             grid-template-rows: auto 1fr;
             gap: 20px;
             padding: 20px;
-            height: calc(100vh - 180px);
+            flex-grow: 1;
         }
 
         .canvas-container {
             grid-column: 1 / 2;
             grid-row: 1 / 3;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.6);
             border: 1px solid #333;
             border-radius: 8px;
             position: relative;
@@ -66,11 +71,15 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1);
         }
 
         canvas {
             width: 100%;
             height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
         .controls-panel {
@@ -79,6 +88,9 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .data-panel {
@@ -86,12 +98,15 @@
             grid-row: 2 / 3;
             overflow-y: auto;
             border: 1px solid #333;
-            padding: 10px;
+            padding: 15px;
+            background: var(--panel-bg);
+            max-height: 50vh;
         }
 
         /* SVG & CUSTOM UI */
         .svg-icon {
-            width: 24px; height: 24px; fill: var(--matrix-fg); vertical-align: middle; margin-right: 8px;
+            width: 32px; height: 32px; fill: var(--matrix-fg); vertical-align: middle; margin-right: 12px;
+            filter: drop-shadow(0 0 5px var(--matrix-fg));
         }
         
         .btn-matrix {
@@ -99,51 +114,83 @@
             color: var(--matrix-fg);
             border: 1px solid var(--matrix-fg);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
         .btn-matrix:hover {
             background: var(--matrix-glow);
-            color: white;
+            color: #fff;
             box-shadow: 0 0 15px var(--matrix-fg);
+            transform: translateY(-2px);
+        }
+
+        /* Data List Styling */
+        .forecast-item {
+            border-left: 3px solid var(--matrix-fg);
+            background: rgba(0, 255, 204, 0.05);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: 400px auto auto;
+            }
+            .canvas-container { grid-column: 1 / 2; grid-row: 1 / 2; }
+            .controls-panel { grid-column: 1 / 2; grid-row: 2 / 3; }
+            .data-panel { grid-column: 1 / 2; grid-row: 3 / 4; max-height: none; }
         }
     </style>
 </head>
 <body>
 
-    <div class="parallax-header w3-animate-top">
-        <h1 class="display-4 font-weight-bold">
+    <header class="parallax-header w3-animate-opacity">
+        <h1 class="display-5 fw-bold mb-0">
             <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13.5h-13L12 6.5z"/></svg>
             TENSOR FORECAST ENGINE
         </h1>
-        <p class="lead">Multivariate Differential Data Visualization</p>
-    </div>
+        <p class="lead w3-opacity mt-2">Multivariate Differential Data Visualization</p>
+    </header>
 
-    <div class="dashboard-grid">
+    <main class="dashboard-grid">
         <div class="canvas-container" id="canvasWrapper">
             <!-- CANVAS FOR DATA & FS VISUALIZATION -->
             <canvas id="matrixCanvas"></canvas>
             
             <!-- OVERLAY UI -->
-            <div style="position: absolute; top: 10px; left: 10px; z-index: 10;">
-                <span class="badge bg-dark border" id="fpsCounter">FPS: 0</span>
-                <span class="badge bg-dark border text-info" id="dbStatus">Git DB: DISCONNECTED</span>
+            <div style="position: absolute; top: 15px; left: 15px; z-index: 10;">
+                <span class="badge bg-dark border border-secondary" id="fpsCounter">FPS: 0</span>
+                <span class="badge bg-dark border border-secondary text-info" id="dbStatus">Git DB: INITIALIZING</span>
             </div>
         </div>
 
-        <div class="controls-panel w3-card w3-padding w3-round-large w3-black border">
-            <h4 class="w3-text-teal">System Hooks</h4>
-            <button class="btn btn-matrix w-100" id="btnStart">Start GPU Render</button>
-            <button class="btn btn-matrix w-100" id="btnStop">Halt Render</button>
-            <hr class="border-secondary">
-            <button class="btn btn-outline-secondary w-100" id="btnSync">Sync Git Database (.dat)</button>
-        </div>
+        <aside class="controls-panel w3-card w3-padding w3-round-large border border-secondary">
+            <h5 class="w3-text-teal mb-3 fw-bold border-bottom border-dark pb-2">System Hooks</h5>
+            <button class="btn btn-matrix w-100" id="btnStart">Initialize GPU Render</button>
+            <button class="btn btn-outline-secondary w-100 mt-2" id="btnStop">Halt Render</button>
+            <hr class="border-secondary my-3">
+            <button class="btn btn-matrix w-100" id="btnSync">
+                <svg width="16" height="16" fill="currentColor" class="me-2 mb-1" viewBox="0 0 16 16">
+                    <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/>
+                    <path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"/>
+                </svg>
+                Sync GitHub Data Lake
+            </button>
+            <div class="mt-3 small text-muted text-center" id="syncTimestamp">Last Sync: Never</div>
+        </aside>
 
-        <div class="data-panel w3-card w3-black w3-round-large">
-            <h5 class="w3-text-teal border-bottom border-secondary pb-2">Virtual File System Cache</h5>
-            <ul class="list-unstyled" id="fsList">
-                <li class="text-muted"><small>Initializing IndexedDB Mapping...</small></li>
-            </ul>
-        </div>
-    </div>
+        <section class="data-panel w3-card w3-round-large">
+            <h5 class="w3-text-teal border-bottom border-secondary pb-2 fw-bold">Calculus Forecast Stream</h5>
+            <div id="latestClose" class="w3-text-white mb-3 fw-bold fs-5"></div>
+            <div id="forecastList" class="d-flex flex-column gap-2">
+                <div class="text-muted small text-center mt-4">Waiting for Git Database Sync...</div>
+            </div>
+        </section>
+    </main>
 
 <script>
 /**
@@ -153,10 +200,13 @@
 const TensorApp = (function() {
     'use strict';
 
+    // --- CONFIGURATION ---
+    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/majixai/majixai.github.io/main/jinx/Project/data_lake/latest_forecast.dat';
+
     // --- PROTOCOLS & INTERFACES (JSDoc structural typing) ---
     /**
      * @typedef {Object} ForecastData
-     * @property {number} timestamp
+     * @property {string} timestamp
      * @property {number} latest_close
      * @property {Array<{step: number, high: number, low: number}>} forecasts
      */
@@ -165,7 +215,7 @@ const TensorApp = (function() {
     const Utils = {
         /** Uses bitwise XOR and shifts for rapid hashing */
         fastHash: (str) => {
-            let h = 0x811c9dc5; // FNV offset basis
+            let h = 0x811c9dc5;
             for(let i=0; i<str.length; i++) {
                 h ^= str.charCodeAt(i);
                 h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
@@ -175,7 +225,8 @@ const TensorApp = (function() {
         // Callbacks / Hooks registry
         hooks: {},
         on: (event, cb) => { (Utils.hooks[event] = Utils.hooks[event] || []).push(cb); },
-        emit: (event, data) => { (Utils.hooks[event] || []).forEach(cb => cb(data)); }
+        emit: (event, data) => { (Utils.hooks[event] || []).forEach(cb => cb(data)); },
+        formatTime: (isoString) => new Date(isoString).toLocaleTimeString()
     };
 
     // --- INDEXEDDB STORAGE CLASS (PROMISIFIED) ---
@@ -184,9 +235,7 @@ const TensorApp = (function() {
         #storeName = 'dat_files';
         #db = null;
 
-        constructor() {
-            this.init();
-        }
+        constructor() { }
 
         async init() {
             return new Promise((resolve, reject) => {
@@ -202,20 +251,20 @@ const TensorApp = (function() {
             });
         }
 
-        async saveDat(path, rawBytes) {
+        async saveDat(path, rawBytes, parsedJson) {
             return new Promise((resolve) => {
                 const tx = this.#db.transaction(this.#storeName, 'readwrite');
                 const store = tx.objectStore(this.#storeName);
-                store.put({ path, data: rawBytes, ts: Date.now() });
+                store.put({ path, data: rawBytes, parsed: parsedJson, ts: Date.now() });
                 tx.oncomplete = () => resolve(true);
             });
         }
 
-        async getAllPaths() {
+        async getDat(path) {
             return new Promise((resolve) => {
                 const tx = this.#db.transaction(this.#storeName, 'readonly');
                 const store = tx.objectStore(this.#storeName);
-                const req = store.getAllKeys();
+                const req = store.get(path);
                 req.onsuccess = () => resolve(req.result);
             });
         }
@@ -225,14 +274,17 @@ const TensorApp = (function() {
     class WebGLRendererWrapper {
         #canvas; #ctx; #animId; #isRunning = false;
         #particles = []; #width; #height; #lastTime = performance.now();
-        #frameCount = 0;
+        #frameCount = 0; #forecastNodes = [];
 
         constructor(canvasId) {
             this.#canvas = document.getElementById(canvasId);
-            this.#ctx = this.#canvas.getContext('2d');
+            this.#ctx = this.#canvas.getContext('2d', { alpha: false });
             this.resize();
             window.addEventListener('resize', () => this.resize());
             this.initParticles();
+            
+            // Hook into data updates
+            Utils.on('data_parsed', (data) => this.updateForecastNodes(data));
         }
 
         resize() {
@@ -242,17 +294,30 @@ const TensorApp = (function() {
         }
 
         initParticles() {
-            for(let i=0; i<50; i++) {
+            this.#particles = [];
+            for(let i=0; i<80; i++) {
                 this.#particles.push({
                     x: Math.random() * this.#width,
                     y: Math.random() * this.#height,
-                    vx: (Math.random() - 0.5) * 2,
-                    vy: (Math.random() - 0.5) * 2,
-                    radius: Math.random() * 3 + 1,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    radius: Math.random() * 2 + 0.5,
                     // Bitwise color extraction
-                    color: `hsl(${Utils.fastHash(i.toString()) % 360}, 100%, 50%)`
+                    color: `hsla(${Utils.fastHash(i.toString()) % 360}, 80%, 60%, 0.8)`
                 });
             }
+        }
+
+        updateForecastNodes(data) {
+            this.#forecastNodes = data.forecasts.map((f, i) => ({
+                step: f.step,
+                high: f.high,
+                low: f.low,
+                // Map to canvas width
+                targetX: (this.#width / 6) * (i + 1),
+                targetY: this.#height / 2, // Centered vertically for now
+                radius: 5
+            }));
         }
 
         start() {
@@ -277,16 +342,16 @@ const TensorApp = (function() {
                 this.#lastTime = time;
             }
 
-            // Draw Background (Trails)
-            this.#ctx.fillStyle = 'rgba(10, 10, 18, 0.2)';
+            // Draw Background (Trails effect)
+            this.#ctx.fillStyle = 'rgba(10, 10, 18, 0.3)';
             this.#ctx.fillRect(0, 0, this.#width, this.#height);
 
             // Simulate "Data Differential Calculus" connections
+            this.#ctx.lineWidth = 0.5;
             for(let i=0; i<this.#particles.length; i++) {
                 let p = this.#particles[i];
                 p.x += p.vx; p.y += p.vy;
 
-                // Bounce
                 if(p.x < 0 || p.x > this.#width) p.vx *= -1;
                 if(p.y < 0 || p.y > this.#height) p.vy *= -1;
 
@@ -295,18 +360,37 @@ const TensorApp = (function() {
                 this.#ctx.fillStyle = p.color;
                 this.#ctx.fill();
 
-                // Draw Tensor network map
                 for(let j=i+1; j<this.#particles.length; j++) {
                     let p2 = this.#particles[j];
                     let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-                    if(dist < 100) {
+                    if(dist < 80) {
                         this.#ctx.beginPath();
                         this.#ctx.moveTo(p.x, p.y);
                         this.#ctx.lineTo(p2.x, p2.y);
-                        this.#ctx.strokeStyle = `rgba(0, 255, 204, ${1 - dist/100})`;
+                        this.#ctx.strokeStyle = `rgba(0, 255, 204, ${1 - dist/80})`;
                         this.#ctx.stroke();
                     }
                 }
+            }
+
+            // Draw Data Nodes overlay if data exists
+            if (this.#forecastNodes.length > 0) {
+                this.#ctx.strokeStyle = '#fff';
+                this.#ctx.lineWidth = 2;
+                this.#ctx.beginPath();
+                
+                this.#forecastNodes.forEach((node, i) => {
+                    // Draw pulse
+                    this.#ctx.beginPath();
+                    this.#ctx.arc(node.targetX, node.targetY, node.radius + Math.sin(time/200)*3, 0, Math.PI*2);
+                    this.#ctx.fillStyle = 'rgba(255, 0, 100, 0.8)';
+                    this.#ctx.fill();
+                    
+                    // Connect nodes
+                    if (i === 0) this.#ctx.moveTo(node.targetX, node.targetY);
+                    else this.#ctx.lineTo(node.targetX, node.targetY);
+                });
+                this.#ctx.stroke();
             }
 
             this.#animId = requestAnimationFrame((t) => this.loop(t));
@@ -328,54 +412,82 @@ const TensorApp = (function() {
         bindEvents() {
             document.getElementById('btnStart').onclick = () => this.renderer.start();
             document.getElementById('btnStop').onclick = () => this.renderer.stop();
-            document.getElementById('btnSync').onclick = () => this.mockSyncGitDb();
+            document.getElementById('btnSync').onclick = () => this.syncGitDb();
             
-            // Listen to framework hooks
-            Utils.on('db_updated', () => this.refreshFsView());
+            Utils.on('data_parsed', (data) => this.updateUI(data));
         }
 
-        async mockSyncGitDb() {
-            document.getElementById('dbStatus').innerText = 'Git DB: SYNCING...';
-            document.getElementById('dbStatus').className = 'badge bg-warning border text-dark';
+        async updateUI(data) {
+            document.getElementById('syncTimestamp').innerText = `Last Sync: ${Utils.formatTime(data.timestamp)}`;
+            document.getElementById('latestClose').innerHTML = `Anchor Price: <span class="text-success">$${data.latest_close.toFixed(2)}</span>`;
             
-            // In a real scenario, this fetches from https://raw.githubusercontent.com/.../data_lake/latest_forecast.dat
-            // and uses pako.inflate() to decompress the GZIP.
-            // Mocking the binary processing here for demonstration of the API structure:
-            
-            setTimeout(async () => {
-                // Mock GZIP payload from GitHub Action
-                const mockObj = { timestamp: Date.now(), latest_close: 65000, forecasts: [] };
-                const strData = JSON.stringify(mockObj);
-                
-                // Compress via Pako (simulating the GZIP .dat format)
-                const compressed = pako.gzip(strData);
-                
-                // Save to IndexedDB (Object Mapping)
-                await this.db.saveDat(`data_lake/btc_forecast_${Date.now()}.dat.gz`, compressed);
-                
-                document.getElementById('dbStatus').innerText = 'Git DB: CONNECTED & SYNCED';
-                document.getElementById('dbStatus').className = 'badge bg-success border';
-                Utils.emit('db_updated');
-            }, 1500);
-        }
-
-        async refreshFsView() {
-            const paths = await this.db.getAllPaths();
-            const list = document.getElementById('fsList');
+            const list = document.getElementById('forecastList');
             list.innerHTML = '';
             
-            paths.forEach(p => {
-                // Bitwise formatting for file sizes
-                const mockSize = (Utils.fastHash(p) % 1024) | 0; 
-                list.innerHTML += `<li class="w3-text-green w3-small border-bottom border-dark py-1">
-                    <i class="w3-margin-right">📄</i> ${p} [${mockSize}b]
-                </li>`;
+            data.forecasts.forEach(f => {
+                const spread = (f.high - f.low).toFixed(2);
+                list.innerHTML += `
+                    <div class="forecast-item w3-animate-right">
+                        <div class="d-flex justify-content-between text-info fw-bold">
+                            <span>Step +${f.step} (15m)</span>
+                            <span class="text-warning">Spread: $${spread}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1 text-light">
+                            <span>High: $${f.high.toFixed(2)}</span>
+                            <span>Low: $${f.low.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
             });
         }
 
-        run() {
+        async syncGitDb() {
+            const statusEl = document.getElementById('dbStatus');
+            statusEl.innerText = 'Git DB: FETCHING...';
+            statusEl.className = 'badge bg-warning border border-warning text-dark';
+            
+            try {
+                // Fetch the binary GZIP file directly from the GitHub repository
+                const response = await fetch(GITHUB_RAW_URL + '?t=' + Date.now()); // cache buster
+                if (!response.ok) throw new Error('File not found or not deployed yet.');
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                // Decompress using Pako CDN
+                const decompressed = pako.ungzip(uint8Array, { to: 'string' });
+                const parsedData = JSON.parse(decompressed);
+                
+                // Save to IndexedDB (Virtual FS Mapping)
+                await this.db.saveDat('data_lake/latest_forecast.dat', uint8Array, parsedData);
+                
+                statusEl.innerText = 'Git DB: SYNCED';
+                statusEl.className = 'badge bg-success border border-success';
+                
+                // Trigger hooks
+                Utils.emit('data_parsed', parsedData);
+                
+            } catch (err) {
+                console.error("Sync Error:", err);
+                statusEl.innerText = 'Git DB: ERROR';
+                statusEl.className = 'badge bg-danger border border-danger';
+                
+                // Try fallback to local IndexedDB cache
+                const cached = await this.db.getDat('data_lake/latest_forecast.dat');
+                if (cached && cached.parsed) {
+                    Utils.emit('data_parsed', cached.parsed);
+                    statusEl.innerText = 'Git DB: OFFLINE CACHE';
+                    statusEl.className = 'badge bg-secondary border border-secondary';
+                }
+            }
+        }
+
+        async run() {
+            await this.db.init();
             this.renderer.start();
-            this.refreshFsView();
+            
+            // Auto-sync on load
+            this.syncGitDb();
             console.log("Tensor Framework Initialized. Waiting for GitHub Action Webhooks.");
         }
     }
@@ -390,7 +502,7 @@ const TensorApp = (function() {
 
 })();
 
-// Execute IIFE Module
+// Execute IIFE Module on load
 window.onload = TensorApp.bootstrap;
 
 </script>
