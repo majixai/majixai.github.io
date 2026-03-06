@@ -2,8 +2,10 @@ name: Tensor Calculus Market Forecaster
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch: # Allows manual triggering from Github UI
+    # Runs every 5 minutes. 
+    # Note: 1-minute intervals (* * * * *) often get queued/throttled by GitHub on free tiers.
+    - cron: '*/5 * * * *' 
+  workflow_dispatch: # Allows manual trigger button
 
 permissions:
   contents: write
@@ -12,18 +14,24 @@ jobs:
   matrix_computation:
     runs-on: ubuntu-latest
     
+    # CRITICAL: This tells the action runner to enter your subfolder before running commands
+    defaults:
+      run:
+        working-directory: jinx/Project
+    
     steps:
       - name: Checkout Repository Framework
         uses: actions/checkout@v4
         with:
-          # Uses the exact PAT provided to bypass standard token limitations
-          token: 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
+          # Standard token for safe checkout
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
           
       - name: Initialize Python Core
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip' # Utilize advanced caching protocols
+          cache: 'pip'
           
       - name: Inject Pip Dependencies
         run: |
@@ -32,12 +40,9 @@ jobs:
           
       - name: Execute Advanced Tensor Orchestrator
         env:
-          # Injecting secure variables
-          GITHUB_PAT: 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
+          # Your PAT specifically used by the Python REST API client to push binary data
+          GITHUB_PAT: ${{ secrets.MY_PAT }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+        # The script is executed from within jinx/Project/ due to the defaults setting above
         run: python ai_core_orchestrator.py
-        
-      # Note: Git push is handled directly inside the Python script via REST API.
-      # The script builds the GZIP files, does the bitwise mapping, and upserts directly.
-
