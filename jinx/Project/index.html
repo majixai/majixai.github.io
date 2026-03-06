@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Calculus Matrix Engine</title>
+    
+    <!-- CDNs -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <style>
+        /* CSS GRID & FLEXBOX */
+        :root {
+            --matrix-bg: #0a0a12;
+            --matrix-fg: #00ffcc;
+            --matrix-glow: rgba(0, 255, 204, 0.5);
+        }
+        
+        body {
+            background-color: var(--matrix-bg);
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* PARALLAX & ANIMATIONS */
+        .parallax-header {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.05"><rect width="100" height="100" fill="none" stroke="%2300ffcc" stroke-width="1"/></svg>');
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: repeat;
+            padding: 60px 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--matrix-fg);
+            -webkit-animation: pulse-border 4s infinite alternate;
+            animation: pulse-border 4s infinite alternate;
+        }
+
+        @-webkit-keyframes pulse-border {
+            0% { border-bottom-color: #004433; box-shadow: 0 0 10px #004433; }
+            100% { border-bottom-color: var(--matrix-fg); box-shadow: 0 0 30px var(--matrix-glow); }
+        }
+
+        /* CSS GRID LAYOUT */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 180px);
+        }
+
+        .canvas-container {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid #333;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-panel {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .data-panel {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+
+        /* SVG & CUSTOM UI */
+        .svg-icon {
+            width: 24px; height: 24px; fill: var(--matrix-fg); vertical-align: middle; margin-right: 8px;
+        }
+        
+        .btn-matrix {
+            background: transparent;
+            color: var(--matrix-fg);
+            border: 1px solid var(--matrix-fg);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .btn-matrix:hover {
+            background: var(--matrix-glow);
+            color: white;
+            box-shadow: 0 0 15px var(--matrix-fg);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="parallax-header w3-animate-top">
+        <h1 class="display-4 font-weight-bold">
+            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13.5h-13L12 6.5z"/></svg>
+            TENSOR FORECAST ENGINE
+        </h1>
+        <p class="lead">Multivariate Differential Data Visualization</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="canvas-container" id="canvasWrapper">
+            <!-- CANVAS FOR DATA & FS VISUALIZATION -->
+            <canvas id="matrixCanvas"></canvas>
+            
+            <!-- OVERLAY UI -->
+            <div style="position: absolute; top: 10px; left: 10px; z-index: 10;">
+                <span class="badge bg-dark border" id="fpsCounter">FPS: 0</span>
+                <span class="badge bg-dark border text-info" id="dbStatus">Git DB: DISCONNECTED</span>
+            </div>
+        </div>
+
+        <div class="controls-panel w3-card w3-padding w3-round-large w3-black border">
+            <h4 class="w3-text-teal">System Hooks</h4>
+            <button class="btn btn-matrix w-100" id="btnStart">Start GPU Render</button>
+            <button class="btn btn-matrix w-100" id="btnStop">Halt Render</button>
+            <hr class="border-secondary">
+            <button class="btn btn-outline-secondary w-100" id="btnSync">Sync Git Database (.dat)</button>
+        </div>
+
+        <div class="data-panel w3-card w3-black w3-round-large">
+            <h5 class="w3-text-teal border-bottom border-secondary pb-2">Virtual File System Cache</h5>
+            <ul class="list-unstyled" id="fsList">
+                <li class="text-muted"><small>Initializing IndexedDB Mapping...</small></li>
+            </ul>
+        </div>
+    </div>
+
+<script>
+/**
+ * ADVANCED OOP ARCHITECTURE (IIFE Module)
+ * Incorporates Classes, Private Fields, Decorators/Hooks, Bitwise Ops, IndexedDB, Object Mapping
+ */
+const TensorApp = (function() {
+    'use strict';
+
+    // --- PROTOCOLS & INTERFACES (JSDoc structural typing) ---
+    /**
+     * @typedef {Object} ForecastData
+     * @property {number} timestamp
+     * @property {number} latest_close
+     * @property {Array<{step: number, high: number, low: number}>} forecasts
+     */
+
+    // --- UTILITIES: BITWISE & CACHE ---
+    const Utils = {
+        /** Uses bitwise XOR and shifts for rapid hashing */
+        fastHash: (str) => {
+            let h = 0x811c9dc5; // FNV offset basis
+            for(let i=0; i<str.length; i++) {
+                h ^= str.charCodeAt(i);
+                h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+            }
+            return h >>> 0;
+        },
+        // Callbacks / Hooks registry
+        hooks: {},
+        on: (event, cb) => { (Utils.hooks[event] = Utils.hooks[event] || []).push(cb); },
+        emit: (event, data) => { (Utils.hooks[event] || []).forEach(cb => cb(data)); }
+    };
+
+    // --- INDEXEDDB STORAGE CLASS (PROMISIFIED) ---
+    class GitDatabaseMapper {
+        #dbName = 'TensorGitCache';
+        #storeName = 'dat_files';
+        #db = null;
+
+        constructor() {
+            this.init();
+        }
+
+        async init() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(this.#dbName, 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(this.#storeName)) {
+                        db.createObjectStore(this.#storeName, { keyPath: 'path' });
+                    }
+                };
+                req.onsuccess = (e) => { this.#db = e.target.result; resolve(); };
+                req.onerror = (e) => reject(e);
+            });
+        }
+
+        async saveDat(path, rawBytes) {
+            return new Promise((resolve) => {
+                const tx = this.#db.transaction(this.#storeName, 'readwrite');
+                const store = tx.objectStore(this.#storeName);
+                store.put({ path, data: rawBytes, ts: Date.now() });
+                tx.oncomplete = () => resolve(true);
+            });
+        }
+
+        async getAllPaths() {
+            return new Promise((resolve) => {
+                const tx = this.#db.transaction(this.#storeName, 'readonly');
+                const store = tx.objectStore(this.#storeName);
+                const req = store.getAllKeys();
+                req.onsuccess = () => resolve(req.result);
+            });
+        }
+    }
+
+    // --- CANVAS VISUALIZATION ENGINE ---
+    class WebGLRendererWrapper {
+        #canvas; #ctx; #animId; #isRunning = false;
+        #particles = []; #width; #height; #lastTime = performance.now();
+        #frameCount = 0;
+
+        constructor(canvasId) {
+            this.#canvas = document.getElementById(canvasId);
+            this.#ctx = this.#canvas.getContext('2d');
+            this.resize();
+            window.addEventListener('resize', () => this.resize());
+            this.initParticles();
+        }
+
+        resize() {
+            const wrapper = this.#canvas.parentElement;
+            this.#width = this.#canvas.width = wrapper.clientWidth;
+            this.#height = this.#canvas.height = wrapper.clientHeight;
+        }
+
+        initParticles() {
+            for(let i=0; i<50; i++) {
+                this.#particles.push({
+                    x: Math.random() * this.#width,
+                    y: Math.random() * this.#height,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    radius: Math.random() * 3 + 1,
+                    // Bitwise color extraction
+                    color: `hsl(${Utils.fastHash(i.toString()) % 360}, 100%, 50%)`
+                });
+            }
+        }
+
+        start() {
+            if(this.#isRunning) return;
+            this.#isRunning = true;
+            this.loop(performance.now());
+        }
+
+        stop() {
+            this.#isRunning = false;
+            cancelAnimationFrame(this.#animId);
+        }
+
+        loop(time) {
+            if(!this.#isRunning) return;
+            
+            // FPS Calculation
+            this.#frameCount++;
+            if (time - this.#lastTime >= 1000) {
+                document.getElementById('fpsCounter').innerText = `FPS: ${this.#frameCount}`;
+                this.#frameCount = 0;
+                this.#lastTime = time;
+            }
+
+            // Draw Background (Trails)
+            this.#ctx.fillStyle = 'rgba(10, 10, 18, 0.2)';
+            this.#ctx.fillRect(0, 0, this.#width, this.#height);
+
+            // Simulate "Data Differential Calculus" connections
+            for(let i=0; i<this.#particles.length; i++) {
+                let p = this.#particles[i];
+                p.x += p.vx; p.y += p.vy;
+
+                // Bounce
+                if(p.x < 0 || p.x > this.#width) p.vx *= -1;
+                if(p.y < 0 || p.y > this.#height) p.vy *= -1;
+
+                this.#ctx.beginPath();
+                this.#ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                this.#ctx.fillStyle = p.color;
+                this.#ctx.fill();
+
+                // Draw Tensor network map
+                for(let j=i+1; j<this.#particles.length; j++) {
+                    let p2 = this.#particles[j];
+                    let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                    if(dist < 100) {
+                        this.#ctx.beginPath();
+                        this.#ctx.moveTo(p.x, p.y);
+                        this.#ctx.lineTo(p2.x, p2.y);
+                        this.#ctx.strokeStyle = `rgba(0, 255, 204, ${1 - dist/100})`;
+                        this.#ctx.stroke();
+                    }
+                }
+            }
+
+            this.#animId = requestAnimationFrame((t) => this.loop(t));
+        }
+    }
+
+    // --- CONTROLLER: GLUES LOGIC TOGETHER ---
+    class AppController {
+        static #instance;
+        constructor() {
+            if(AppController.#instance) return AppController.#instance;
+            AppController.#instance = this;
+            
+            this.db = new GitDatabaseMapper();
+            this.renderer = new WebGLRendererWrapper('matrixCanvas');
+            this.bindEvents();
+        }
+
+        bindEvents() {
+            document.getElementById('btnStart').onclick = () => this.renderer.start();
+            document.getElementById('btnStop').onclick = () => this.renderer.stop();
+            document.getElementById('btnSync').onclick = () => this.mockSyncGitDb();
+            
+            // Listen to framework hooks
+            Utils.on('db_updated', () => this.refreshFsView());
+        }
+
+        async mockSyncGitDb() {
+            document.getElementById('dbStatus').innerText = 'Git DB: SYNCING...';
+            document.getElementById('dbStatus').className = 'badge bg-warning border text-dark';
+            
+            // In a real scenario, this fetches from https://raw.githubusercontent.com/.../data_lake/latest_forecast.dat
+            // and uses pako.inflate() to decompress the GZIP.
+            // Mocking the binary processing here for demonstration of the API structure:
+            
+            setTimeout(async () => {
+                // Mock GZIP payload from GitHub Action
+                const mockObj = { timestamp: Date.now(), latest_close: 65000, forecasts: [] };
+                const strData = JSON.stringify(mockObj);
+                
+                // Compress via Pako (simulating the GZIP .dat format)
+                const compressed = pako.gzip(strData);
+                
+                // Save to IndexedDB (Object Mapping)
+                await this.db.saveDat(`data_lake/btc_forecast_${Date.now()}.dat.gz`, compressed);
+                
+                document.getElementById('dbStatus').innerText = 'Git DB: CONNECTED & SYNCED';
+                document.getElementById('dbStatus').className = 'badge bg-success border';
+                Utils.emit('db_updated');
+            }, 1500);
+        }
+
+        async refreshFsView() {
+            const paths = await this.db.getAllPaths();
+            const list = document.getElementById('fsList');
+            list.innerHTML = '';
+            
+            paths.forEach(p => {
+                // Bitwise formatting for file sizes
+                const mockSize = (Utils.fastHash(p) % 1024) | 0; 
+                list.innerHTML += `<li class="w3-text-green w3-small border-bottom border-dark py-1">
+                    <i class="w3-margin-right">📄</i> ${p} [${mockSize}b]
+                </li>`;
+            });
+        }
+
+        run() {
+            this.renderer.start();
+            this.refreshFsView();
+            console.log("Tensor Framework Initialized. Waiting for GitHub Action Webhooks.");
+        }
+    }
+
+    // Return public facade
+    return {
+        bootstrap: () => {
+            const app = new AppController();
+            app.run();
+        }
+    };
+
+})();
+
+// Execute IIFE Module
+window.onload = TensorApp.bootstrap;
+
+</script>
+</body>
+</html>
+
