@@ -1,0 +1,46 @@
+name: Titan Quant Engine V3 Pipeline
+
+on:
+  schedule:
+    # Runs at 15:45 UTC (8:45 AM PDT) Monday through Friday - Daily Scalp
+    - cron: '45 15 * * 1-5'
+    # Runs at 16:00 UTC (9:00 AM PDT) Saturday and Sunday - Week Ahead
+    - cron: '0 16 * * 0,6'
+  workflow_dispatch: # Allows you to manually trigger the engine via a button in GitHub
+
+permissions:
+  contents: write # Grants the action permission to push the CSV back to the repo
+
+jobs:
+  execute-matrix:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip' # Speeds up future runs by caching dependencies
+
+      - name: Install Institutional Stack
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance tensorflow pandas numpy scipy opencv-python
+
+      - name: Execute Titan Core (engine.py)
+        run: |
+          python engine.py
+
+      - name: Commit and Push Matrix Results
+        run: |
+          git config --local user.email "titan-engine@majixai.com"
+          git config --local user.name "Titan AI Core"
+          git add SP500_ML_RESULTS.csv
+          
+          # This command ensures the workflow doesn't fail if the CSV values happen to be identical to the previous run
+          git commit -m "Automated Telemetry Update: Titan V3 Core" || echo "No changes to commit"
+          
+          git push origin main
