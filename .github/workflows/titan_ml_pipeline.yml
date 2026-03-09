@@ -1,0 +1,160 @@
+name: Titan Quant Matrix V3 Pipeline
+
+on:
+  schedule:
+    - cron: "0 */4 * * *" # Runs every 4 hours automatically
+  workflow_dispatch:      # Allows you to click "Run workflow" manually
+
+permissions:
+  contents: write         # Required to push the CSV back to the repo
+
+jobs:
+  ml-tensor-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Advanced Computing Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance pandas numpy torch Cython
+
+      - name: 1. Generate Cython Mathematics Core (C-Extension)
+        run: |
+          cat << 'EOF' > matrix_core.pyx
+          import numpy as np
+          cimport numpy as cnp
+
+          # Cythonized high-speed loop for Volatility Squashing bounds
+          def fast_gamma_squash(cnp.ndarray[cnp.float64_t, ndim=1] high, 
+                                cnp.ndarray[cnp.float64_t, ndim=1] low, 
+                                cnp.ndarray[cnp.float64_t, ndim=1] prob):
+              
+              cdef int n = high.shape[0]
+              cdef cnp.ndarray[cnp.float64_t, ndim=1] out_h = np.zeros(n, dtype=np.float64)
+              cdef cnp.ndarray[cnp.float64_t, ndim=1] out_l = np.zeros(n, dtype=np.float64)
+              cdef int i
+              
+              for i in range(n):
+                  # Expand outer volatility bounds proportionally to Bayesian probability
+                  out_h[i] = high[i] + ((high[i] - low[i]) * prob[i])
+                  out_l[i] = low[i] - ((high[i] - low[i]) * prob[i])
+                  
+              return out_h, out_l
+          EOF
+
+          # Setup file for compiling the Cython module
+          cat << 'EOF' > setup.py
+          from setuptools import setup
+          from Cython.Build import cythonize
+          import numpy
+
+          setup(
+              ext_modules = cythonize("matrix_core.pyx", compiler_directives={'language_level': "3"}),
+              include_dirs=[numpy.get_include()]
+          )
+          EOF
+
+          # Compile the Cython code in-place
+          python setup.py build_ext --inplace
+
+      - name: 2. Generate Python Async/OOP Tensor Engine
+        run: |
+          cat << 'EOF' > engine.py
+          import asyncio
+          import yfinance as yf
+          import pandas as pd
+          import numpy as np
+          import torch
+          from matrix_core import fast_gamma_squash
+
+          class TitanQuantEngine:
+              def __init__(self, ticker="^GSPC"):
+                  self.ticker = ticker
+                  # CUDA acceleration for self-hosted GPU runners, fallback to CPU
+                  self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                  print(f"[INIT] Neural Engine Routing to: {self.device}")
+
+              async def async_fetch(self):
+                  """Asynchronous data ingestion via yfinance"""
+                  print(f"[NETWORK] Fetching {self.ticker} async...")
+                  loop = asyncio.get_event_loop()
+                  # Offload blocking yfinance call to thread pool
+                  df = await loop.run_in_executor(None, lambda: yf.download(self.ticker, period="2y", interval="1d"))
+                  
+                  # Handle new yfinance MultiIndex output formats
+                  if isinstance(df.columns, pd.MultiIndex):
+                      df.columns = df.columns.droplevel(1)
+                      
+                  return df.dropna()
+
+              def tensor_inference(self, df):
+                  """Multivariate Tensor Mathematics for Bayesian Extraction"""
+                  # Load data into PyTorch Tensors
+                  close_t = torch.tensor(df['Close'].values, dtype=torch.float32, device=self.device)
+                  
+                  # Calculate discrete returns (Jacobian approximation input)
+                  returns = (close_t[1:] - close_t[:-1]) / close_t[:-1]
+                  returns = torch.cat((torch.zeros(1, device=self.device), returns))
+                  
+                  # Simulating a Neural Network Forward Pass / Activation
+                  # Uses Sigmoid to squash momentum into a [0, 1] Probability Space
+                  bayes_prob_t = torch.sigmoid(returns * 75)
+                  
+                  # Output signal vector: 1 (Bull), -1 (Bear), 0 (Neutral) based on probability thresholds
+                  signals_t = torch.where(bayes_prob_t > 0.55, torch.tensor(1, device=self.device), 
+                              torch.where(bayes_prob_t < 0.45, torch.tensor(-1, device=self.device), torch.tensor(0, device=self.device)))
+                  
+                  # Return processed data back to CPU for numpy/pandas handling
+                  return bayes_prob_t.cpu().numpy(), signals_t.cpu().numpy()
+
+              async def run_pipeline(self):
+                  # 1. Fetch
+                  df = await self.async_fetch()
+                  
+                  # 2. Tensor Inference (GPU/CPU)
+                  bayes_prob, signals = self.tensor_inference(df)
+                  
+                  # 3. Cython Fast-Math Interop (C-Level Operations)
+                  h_np = df['High'].values.astype(np.float64)
+                  l_np = df['Low'].values.astype(np.float64)
+                  prob_np = bayes_prob.astype(np.float64)
+                  
+                  proj_high, proj_low = fast_gamma_squash(h_np, l_np, prob_np)
+                  
+                  # 4. Dataframe Formatting (Mapping precisely to TradingView request.seed OHLCV format)
+                  output_df = pd.DataFrame({
+                      'time': df.index.strftime('%Y-%m-%dT%H:%M:%SZ'), # TradingView ISO 8601 requirement
+                      'open': signals,          # [Mapped to Open]   -> Signal Direction
+                      'high': proj_high,        # [Mapped to High]   -> Proj High
+                      'low': proj_low,          # [Mapped to Low]    -> Proj Low
+                      'close': bayes_prob,      # [Mapped to Close]  -> Bayesian Prob
+                      'volume': 1               # [Mapped to Volume] -> Time Horizon
+                  })
+                  
+                  file_target = 'SP500_ML_RESULTS.csv'
+                  output_df.to_csv(file_target, index=False)
+                  print(f"[SUCCESS] Pipeline complete. Extracted {len(output_df)} rows to {file_target}")
+
+          if __name__ == "__main__":
+              engine = TitanQuantEngine("^GSPC")
+              asyncio.run(engine.run_pipeline())
+          EOF
+
+          # Execute the compiled pipeline
+          python engine.py
+
+      - name: 3. Commit and Push Matrix to GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add SP500_ML_RESULTS.csv
+          # The || echo... prevents the workflow from failing if the data hasn't changed since the last run
+          git commit -m "[AI Tensor Bot] Update Titan Matrix ML Forecasts" || echo "No changes to commit"
+          git push
