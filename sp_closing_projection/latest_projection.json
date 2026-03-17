@@ -1,139 +1,129 @@
 {
   "ticker": "SPY (S&P 500 Proxy)",
-  "timestamp": "2026-03-17T18:05:46.814353+00:00",
-  "current_price": 671.78,
+  "timestamp": "2026-03-17T18:59:23.429492+00:00",
+  "current_price": 671.04,
   "market_state": {
     "is_open": true,
-    "minutes_to_close": 114,
+    "minutes_to_close": 60,
     "next_close_time": "2026-03-17 16:00:00 ET",
     "data_source": "yahoo_finance",
     "previous_close": 669.03,
     "day_high": 674.3499755859375,
     "day_low": 670.3499755859375,
-    "volume": 43210867
+    "volume": 49785611
   },
   "closing_projection": {
-    "projected_close": 671.76,
-    "median_close": 671.66,
-    "probability_above_current": 49.3,
-    "probability_below_current": 50.7,
+    "projected_close": 671.06,
+    "median_close": 671.06,
+    "probability_above_current": 50.36,
+    "probability_below_current": 49.64,
     "probability_ranges": {
-      "prob_above_current": 49.3,
-      "prob_below_current": 50.7,
-      "prob_up_0_5pct": 32.58,
-      "prob_up_1pct": 18.94,
-      "prob_down_0_5pct": 32.92,
-      "prob_down_1pct": 18.62,
-      "prob_within_0_5pct": 34.5,
-      "prob_within_1pct": 62.44
+      "prob_above_current": 50.36,
+      "prob_below_current": 49.64,
+      "prob_up_0_5pct": 6.2,
+      "prob_up_1pct": 0.06,
+      "prob_down_0_5pct": 5.84,
+      "prob_down_1pct": 0.04,
+      "prob_within_0_5pct": 87.96,
+      "prob_within_1pct": 99.9
     },
     "confidence_intervals": {
       "50%": [
-        666.68,
-        676.87
+        669.62,
+        672.49
       ],
       "80%": [
-        662.0,
-        681.65
+        668.3,
+        673.82
       ],
       "90%": [
-        658.99,
-        684.8
+        667.53,
+        674.63
       ]
     },
     "price_targets": {
-      "projected_close": 671.76,
-      "median_close": 671.66,
-      "support": 666.68,
-      "resistance": 676.87,
-      "strong_support": 658.99,
-      "strong_resistance": 684.8
+      "projected_close": 671.06,
+      "median_close": 671.06,
+      "support": 669.62,
+      "resistance": 672.49,
+      "strong_support": 667.53,
+      "strong_resistance": 674.63
     }
   },
   "minute_projection": {
-    "current_price": 671.78,
-    "projected_next_minute": 671.79,
-    "one_minute_std": 0.7217,
+    "current_price": 671.04,
+    "projected_next_minute": 671.04,
+    "one_minute_std": 0.2827,
     "one_minute_range": [
-      670.61,
-      672.98
+      670.57,
+      671.49
     ],
-    "prob_up_next_minute": 50.2,
-    "prob_down_next_minute": 49.8
+    "prob_up_next_minute": 50.08,
+    "prob_down_next_minute": 49.92
   },
   "hourly_projections": [
     {
       "hour_label": "+1h",
-      "projected_price": 671.81,
-      "probability_up": 49.86,
-      "probability_down": 50.14,
-      "confidence_interval_low": 664.83,
-      "confidence_interval_high": 678.96,
-      "expected_range": 14.12,
-      "volatility": 5.5305
-    },
-    {
-      "hour_label": "Close (1.9h)",
-      "projected_price": 671.93,
-      "probability_up": 50.02,
-      "probability_down": 49.98,
-      "confidence_interval_low": 662.19,
-      "confidence_interval_high": 681.79,
-      "expected_range": 19.6,
-      "volatility": 7.6675
+      "projected_price": 671.03,
+      "probability_up": 49.8,
+      "probability_down": 50.2,
+      "confidence_interval_low": 668.23,
+      "confidence_interval_high": 673.82,
+      "expected_range": 5.59,
+      "volatility": 2.1835
     }
   ],
   "technical_indicators": {
-    "rsi": 30.87,
+    "rsi": 39.05,
     "macd": {
-      "line": 3.6892,
-      "signal": 3.3203,
-      "histogram": 0.3689
+      "line": -3.0047,
+      "signal": -2.7042,
+      "histogram": -0.3005
     },
     "bollinger_bands": {
-      "upper": 756.33,
-      "middle": 719.23,
-      "lower": 682.13
+      "upper": 689.77,
+      "middle": 672.6,
+      "lower": 655.44
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.537,
-      "gamma": 0.006109,
-      "theta": -0.4785,
-      "vega": 0.765,
-      "rho": 0.274
+      "delta": 0.5531,
+      "gamma": 0.015668,
+      "theta": -0.218,
+      "vega": 0.7607,
+      "rho": 0.2956
     },
-    "atm_call_price": 27.35,
-    "atm_put_price": 24.46,
-    "implied_move_pct": 1.14
+    "atm_call_price": 11.56,
+    "atm_put_price": 8.67,
+    "implied_move_pct": 0.32
   },
   "simulation": {
     "statistics": {
-      "mean": 671.7636,
-      "std": 7.6798,
-      "p05": 658.9893,
-      "p10": 661.9962,
-      "p25": 666.6819,
-      "p50": 671.6591,
-      "p75": 676.8731,
-      "p90": 681.6547,
-      "p95": 684.8,
-      "min": 644.2963,
-      "max": 697.8193,
-      "skewness": 0.0034,
-      "kurtosis": -0.0183
+      "mean": 671.0615,
+      "std": 2.1364,
+      "p05": 667.5295,
+      "p10": 668.2992,
+      "p25": 669.6168,
+      "p50": 671.0619,
+      "p75": 672.494,
+      "p90": 673.8203,
+      "p95": 674.6321,
+      "min": 663.3029,
+      "max": 679.4191,
+      "skewness": 0.0093,
+      "kurtosis": -0.0951
     },
     "simulations": 5000,
-    "volatility": 0.3376,
-    "forecast_minutes": 114
+    "volatility": 0.1312,
+    "forecast_minutes": 60
   },
   "signal": "NEUTRAL",
   "confidence": 25.0,
   "data_sources_used": [
-    "yfinance_data/yfinance.dat",
-    "dji_1pm_close/prediction_results.json",
     "yahoo_finance",
-    "market_prediction/latest_prediction.json"
+    "market_prediction/latest_prediction.json",
+    "dji_1pm_close/prediction_results.json",
+    "yfinance_data/yfinance.dat"
   ]
 }
