@@ -1,58 +1,57 @@
 {
   "ticker": "SPY",
-  "timestamp": "2026-03-18T19:58:20.032974",
-  "current_price": 595.77,
+  "timestamp": "2026-03-18T20:19:48.647643",
+  "current_price": 592.44,
   "forecast_minutes": 60,
   "technical_indicators": {
-    "rsi": 77.48,
+    "rsi": 34.25,
     "macd": {
-      "line": 10.8415,
-      "signal": 9.7573,
-      "histogram": 1.0841
+      "line": 0.6616,
+      "signal": 0.5955,
+      "histogram": 0.0662
     },
     "bollinger_bands": {
-      "upper": 604.78,
-      "middle": 572.31,
-      "lower": 539.83
+      "upper": 630.6,
+      "middle": 613.64,
+      "lower": 596.69
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.5442,
-      "gamma": 0.013232,
-      "theta": -0.2427,
-      "vega": 0.6772,
-      "rho": 0.2556
+      "delta": 0.5408,
+      "gamma": 0.011315,
+      "theta": -0.2759,
+      "vega": 0.674,
+      "rho": 0.2508
     },
-    "atm_call_price": 13.25,
-    "atm_put_price": 10.69,
-    "implied_move": 0.44
+    "atm_call_price": 15.27,
+    "atm_put_price": 12.72,
+    "implied_move": 0.52
   },
   "prediction": {
     "signal": "NEUTRAL",
-    "score": -1,
+    "score": 1,
     "confidence": 25.0,
     "reasons": [
-      "RSI indicates overbought conditions",
       "MACD histogram positive (bullish momentum)"
     ],
-    "target_price": 595.84,
-    "support": 594.1,
-    "resistance": 597.68
+    "target_price": 592.5,
+    "support": 590.34,
+    "resistance": 594.63
   },
   "simulation": {
     "statistics": {
-      "mean": 595.8412286655158,
-      "std": 2.6362634262663827,
-      "p05": 591.5377233920374,
-      "p25": 594.0956601466933,
-      "p50": 595.8023240286118,
-      "p75": 597.6760252464445,
-      "p95": 600.1461210320709,
-      "min": 587.748842815187,
-      "max": 603.4342136544572
+      "mean": 592.4958741738411,
+      "std": 3.074017106602995,
+      "p05": 587.4487660070695,
+      "p25": 590.3393175929677,
+      "p50": 592.4561500159695,
+      "p75": 594.6312017299417,
+      "p95": 597.6222126427268,
+      "min": 582.3624375732303,
+      "max": 601.670342487954
     },
     "simulations": 1000,
-    "volatility": 0.1754
+    "volatility": 0.2065
   }
 }
