@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Creation State Manager</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h2 { margin-top: 0; }
+        .form-group {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+        label { margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        input {
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        .btn-export { background-color: #28a745; }
+        #status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+            text-align: center;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Menu Creation Setup</h2>
+    
+    <form id="menuForm">
+        <div class="form-group">
+            <label for="url">Menu/Main URL *</label>
+            <input type="url" id="url" required placeholder="https://example.com/menu">
+        </div>
+        
+        <div class="form-group">
+            <label for="companyName">Company Name (Optional URL)</label>
+            <input type="text" id="companyName" placeholder="Acme Corp or https://acme.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="appName">App Name *</label>
+            <input type="text" id="appName" required placeholder="My Restaurant App">
+        </div>
+        
+        <div class="form-group">
+            <label for="assistantUrl">Assistant URL *</label>
+            <input type="url" id="assistantUrl" required placeholder="https://api.assistant.com">
+        </div>
+
+        <div class="btn-group">
+            <button type="submit" id="saveBtn">Save State (IndexedDB)</button>
+            <button type="button" id="exportBtn" class="btn-export">Export Compressed (.dat)</button>
+        </div>
+    </form>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+    const DB_NAME = 'MenuCreationDB';
+    const STORE_NAME = 'MenuStateStore';
+    const DB_VERSION = 1;
+    let db;
+
+    // --- 1. IndexedDB Initialization ---
+    const initDB = () => {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+            
+            request.onupgradeneeded = (event) => {
+                db = event.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+            
+            request.onsuccess = (event) => {
+                db = event.target.result;
+                resolve(db);
+                loadState(); // Automatically load saved state if it exists
+            };
+            
+            request.onerror = (event) => reject(event.target.error);
+        });
+    };
+
+    // --- 2. Save Data to IndexedDB ---
+    const saveState = (stateData) => {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            
+            // Overwriting ID 'menu_config' each time so we maintain single state
+            const request = store.put({ id: 'menu_config', ...stateData });
+            
+            request.onsuccess = () => resolve();
+            request.onerror = (e) => reject(e.target.error);
+        });
+    };
+
+    // --- 3. Load Data from IndexedDB ---
+    const loadState = () => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get('menu_config');
+        
+        request.onsuccess = (event) => {
+            const data = event.target.result;
+            if (data) {
+                document.getElementById('url').value = data.url || '';
+                document.getElementById('companyName').value = data.companyName || '';
+                document.getElementById('appName').value = data.appName || '';
+                document.getElementById('assistantUrl').value = data.assistantUrl || '';
+                showStatus('State loaded from IndexedDB');
+            }
+        };
+    };
+
+    // --- 4. Compress State & Export as .dat ---
+    const exportCompressedDat = async () => {
+        try {
+            // Gather state directly from the form
+            const stateData = getFormData();
+            const jsonString = JSON.stringify(stateData);
+            
+            // Use native CompressionStream API (GZIP)
+            const stream = new Blob([jsonString]).stream();
+            const compressedStream = stream.pipeThrough(new CompressionStream('gzip'));
+            
+            // Convert to blob
+            const compressedResponse = new Response(compressedStream);
+            const blob = await compressedResponse.blob();
+            
+            // Create download link
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = 'menu_state.dat';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(downloadUrl);
+            
+            showStatus('Successfully exported compressed .dat file!');
+        } catch (error) {
+            console.error(error);
+            showStatus('Compression failed. See console for details.');
+        }
+    };
+
+    // --- Helper Functions ---
+    const getFormData = () => ({
+        url: document.getElementById('url').value,
+        companyName: document.getElementById('companyName').value,
+        appName: document.getElementById('appName').value,
+        assistantUrl: document.getElementById('assistantUrl').value,
+        timestamp: new Date().toISOString()
+    });
+
+    const showStatus = (msg) => {
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = msg;
+        setTimeout(() => statusEl.textContent = '', 3000);
+    };
+
+    // --- Event Listeners ---
+    document.getElementById('menuForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = getFormData();
+        try {
+            await saveState(data);
+            showStatus('State saved to IndexedDB!');
+        } catch (err) {
+            showStatus('Failed to save state.');
+        }
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+        if (!document.getElementById('menuForm').checkValidity()) {
+            document.getElementById('menuForm').reportValidity();
+            return;
+        }
+        exportCompressedDat();
+    });
+
+    // Initialize application
+    window.onload = async () => {
+        try {
+            await initDB();
+        } catch (err) {
+            console.error("IndexedDB initialization failed", err);
+            showStatus("Failed to initialize database.");
+        }
+    };
+
+// Here is a complete, single-file HTML boilerplate that implements your requirements. 
+
+// It includes a user interface for the requested inputs, uses **IndexedDB** to store the menu creation state locally, and utilizes the modern native browser **CompressionStream API** to compress the stored state and export it as a `.dat` file.
+
+// ### `index.html`
+
+// ```html
+
+// ```
+
+// ### How this boilerplate works:
+// 1. **HTML & CSS**: Basic responsive scaffolding containing the four inputs requested. Includes form validation handling (requiring URLs where appropriate).
+// 2. **IndexedDB Local State**: When the "Save State" button is clicked, it transforms the form into a JavaScript object and uses the asynchronous browser IndexedDB API to push this info into a persistent local datastore. When the page is reloaded, it automatically searches the IndexedDB instance to auto-fill the form with your last stored state.
+// 3. **Compression & .dat file**: When clicking "Export Compressed (.dat)", the app bundles the inputs into a JSON string and streams it through the native `CompressionStream('gzip')` API (which requires zero external libraries like pako/jszip). It outputs a compressed binary file labeled `menu_state.dat` and automatically triggers a download to the user's filesystem.
+</script>
+
+</body>
+</html>
