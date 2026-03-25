@@ -1,2074 +1,700 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#191c22" />
-  <meta name="description" content="Compressed Image Database Viewer with offline support and slideshow features." />
-  <title>Best Compressed Image DB Viewer</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css" />
+  <title>JINX | v3.0 Quantitative Grid</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+
   <style>
-    html, body { height: 100%; margin: 0; }
-    body { background: #101114; color: #f0f2f5; }
-    .wrap { max-width: 100%; margin: 0 auto; padding: 8px; min-height: 100%; }
-    h2 { margin: 4px 0 2px; font-size: 1.3rem; }
-    p { margin: 0 0 6px; }
-    .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-    .stat { background: #191c22; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
-    .grid { display: grid; gap: 8px; }
-    .card { background: #191c22; border-radius: 8px; overflow: hidden; border: 1px solid #2a2f39; position: relative; cursor: pointer; }
-    .card:hover { border-color: #4a5568; }
-    .card .card-slideshow { position: relative; width: 100%; height: 200px; background: #0f1115; }
-    .card .card-slideshow img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .card .card-slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0,0,0,0.6); color: #fff; width: 24px; height: 24px; border-radius: 12px; cursor: pointer; font-size: 14px; opacity: 0; transition: opacity 0.2s; z-index: 5; }
-    .card:hover .card-slide-nav { opacity: 1; }
-    .card .card-slide-prev { left: 4px; }
-    .card .card-slide-next { right: 4px; }
-    .card .slide-dots { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; z-index: 5; }
-    .card .slide-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; }
-    .card .slide-dot.active { background: #fff; }
-    .meta { padding: 8px; font-size: 12px; line-height: 1.35; }
-    .name { font-weight: 700; font-size: 14px; }
-    .muted { color: #a8afbb; }
-    .click-count { color: #6ee7b7; font-weight: 600; }
-    .score-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
-    .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-    .toolbar input { min-width: 260px; }
-    .slideshow { position: relative; border: 1px solid #2a2f39; border-radius: 10px; overflow: hidden; background: #0b0d11; margin-bottom: 8px; }
-    .slideshow img { width: 100%; height: 44vh; min-height: 280px; object-fit: cover; display: block; transition: opacity 0.3s ease; }
-    .slideshow img.fade-out { opacity: 0; }
-    .slide-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.78)); font-size: 13px; }
-    .slide-nav { position: absolute; top: 50%; transform: translateY(-50%); border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; z-index: 10; }
-    .slide-prev { left: 8px; }
-    .slide-next { right: 8px; }
-    .slide-pause-btn { position: absolute; top: 8px; right: 8px; border: none; background: rgba(0, 0, 0, 0.55); color: #fff; width: 28px; height: 28px; border-radius: 14px; cursor: pointer; z-index: 10; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-    .slide-pause-btn:hover { background: rgba(0, 0, 0, 0.8); }
-    .slide-progress { position: absolute; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width linear; z-index: 10; border-radius: 0 2px 2px 0; }
-    .slide-counter { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.55); color: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; z-index: 10; pointer-events: none; }
-    .image-recognition-panel { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
-    .image-recognition-panel input { background: #0f1115; color: #f0f2f5; border: 1px solid #2a2f39; padding: 6px 10px; font-size: 13px; }
-    .annotation-tool-btn { background: #2a2f39; border: none; color: #f0f2f5; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
-    .annotation-tool-btn:hover { background: #3a4049; }
-    .annotation-tool-btn.active { background: #667eea; color: #fff; }
-    .label-tag { background: #667eea; color: #fff; border-radius: 999px; padding: 2px 8px; font-size: 11px; margin: 2px 4px 2px 0; display: inline-block; }
-    .interest-panel { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-    .pill { border: 1px solid #2f3a48; background: #171b22; color: #e7ebf0; border-radius: 999px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
-    .pill:hover { background: #242a35; }
-    .tag-chip { border: 1px solid #354258; background: #1b2432; color: #dce6ff; border-radius: 999px; padding: 1px 7px; font-size: 11px; margin: 3px 4px 0 0; cursor: pointer; }
-    .tag-chip:hover { background: #2a3a4d; }
-    .custom-tag { background: #2d3748; border-color: #4a5568; }
-    /* Settings Panel */
-    .settings-panel { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; margin-bottom: 12px; display: none; }
-    .settings-panel.open { display: block; }
-    .settings-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
-    .settings-row label { font-size: 12px; color: #a8afbb; min-width: 100px; }
-    .settings-row input[type="range"] { flex: 1; min-width: 100px; max-width: 200px; }
-    .settings-row select { background: #0f1115; color: #f0f2f5; border: 1px solid #2a2f39; border-radius: 4px; padding: 4px 8px; }
-    .settings-btn { background: #2a2f39; border: none; color: #f0f2f5; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-    .settings-btn:hover { background: #3a4049; }
-    /* Context Menu */
-    .context-menu { position: fixed; background: #1e2228; border: 1px solid #3a4049; border-radius: 8px; padding: 6px 0; min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); z-index: 1000; display: none; }
-    .context-menu.visible { display: block; }
-    .context-menu-item { padding: 8px 14px; cursor: pointer; font-size: 13px; }
-    .context-menu-item:hover { background: #2a3140; }
-    .context-menu-divider { height: 1px; background: #3a4049; margin: 4px 0; }
-    /* Tag Input Modal */
-    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1001; display: none; align-items: center; justify-content: center; }
-    .modal-overlay.visible { display: flex; }
-    .modal-content { background: #1e2228; border: 1px solid #3a4049; border-radius: 12px; padding: 20px; width: 90%; max-width: 400px; }
-    .modal-header { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-    .modal-close { float: right; cursor: pointer; font-size: 20px; line-height: 1; }
-    .autocomplete-wrap { position: relative; }
-    .autocomplete-input { width: 100%; background: #0f1115; border: 1px solid #2a2f39; border-radius: 6px; padding: 10px; color: #f0f2f5; font-size: 14px; box-sizing: border-box; }
-    .autocomplete-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #1e2228; border: 1px solid #3a4049; border-radius: 6px; max-height: 200px; overflow-y: auto; z-index: 1002; display: none; }
-    .autocomplete-dropdown.visible { display: block; }
-    .autocomplete-item { padding: 8px 12px; cursor: pointer; font-size: 13px; }
-    .autocomplete-item:hover, .autocomplete-item.selected { background: #2a3140; }
-    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .tag-item { background: #2d3748; border: 1px solid #4a5568; border-radius: 999px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-    .tag-item .remove-tag { cursor: pointer; opacity: 0.7; }
-    .tag-item .remove-tag:hover { opacity: 1; }
-    .modal-actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
-    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; }
-    .btn-primary { background: #4f7cf7; color: #fff; }
-    .btn-primary:hover { background: #3b6ce8; }
-    .btn-secondary { background: #3a4049; color: #f0f2f5; }
-    .btn-secondary:hover { background: #4a5059; }
-    /* Pagination & Load More */
-    .load-more-container { text-align: center; padding: 16px 0; margin-top: 8px; }
-    .load-more-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .load-more-btn:hover { opacity: 0.9; }
-    .load-more-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .pagination-info { color: #a8afbb; font-size: 12px; margin-top: 8px; }
-    /* Offline Toggle */
-    .toggle-container { display: flex; align-items: center; gap: 8px; }
-    .toggle-switch { position: relative; width: 40px; height: 20px; }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #3a4049; border-radius: 20px; transition: 0.3s; }
-    .toggle-slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: 0.3s; }
-    .toggle-switch input:checked + .toggle-slider { background: #667eea; }
-    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
-    /* ML Feature Badge */
-    .ml-badge { background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 4px; }
-    .similarity-indicator { color: #10b981; font-size: 11px; }
-    /* List view layout */
-    .grid.list-view .card { display: flex; flex-direction: row; }
-    .grid.list-view .card .card-slideshow { width: 200px; height: 140px; flex-shrink: 0; }
-    .grid.list-view .card .meta { flex: 1; }
+    body { background-color: #0b0d11; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0b0d11; }
+    ::-webkit-scrollbar-thumb { background: #2a2f39; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+
+    /* Layout & Navigation */
+    .navbar { background-color: #11141a !important; border-bottom: 1px solid #2a2f39; }
+    .sidebar { background-color: #11141a; border-right: 1px solid #2a2f39; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; }
+    .main-content { min-height: calc(100vh - 56px); padding-bottom: 40px; }
+
+    /* Filter Controls */
+    .form-label { font-size: 0.85rem; font-weight: 600; color: #a8afbb; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-control, .form-select { background-color: #191c22; border: 1px solid #2a2f39; color: #e2e8f0; font-size: 0.9rem; }
+    .form-control:focus, .form-select:focus { background-color: #1f232b; border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); color: #fff; }
+    .form-range::-webkit-slider-thumb { background: #667eea; }
+
+    /* Grid & Cards */
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+    .user-card { 
+      background: #191c22; border: 1px solid #2a2f39; border-radius: 12px; 
+      overflow: hidden; position: relative; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .user-card:hover { transform: translateY(-4px) scale(1.02); border-color: #667eea; box-shadow: 0 10px 15px rgba(0,0,0,0.2); z-index: 2; }
+    
+    .slide-container { position: relative; width: 100%; height: 260px; background: #000; }
+    .slide-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.5s ease-in-out; }
+    
+    .card-overlay { 
+      position: absolute; bottom: 0; left: 0; right: 0; 
+      background: linear-gradient(to top, rgba(9, 11, 15, 0.95) 0%, rgba(9, 11, 15, 0.7) 60%, transparent 100%); 
+      padding: 15px 12px 10px; 
+    }
+    
+    /* Typography & Badges */
+    .username-title { color: #6ee7b7; font-weight: 700; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin: 0; }
+    .stat-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; backdrop-filter: blur(4px); }
+    .score-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; }
+    .tag-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .mini-tag { font-size: 0.65rem; background: #2a2f39; padding: 2px 6px; border-radius: 4px; color: #a8afbb; }
+
+    /* Utilities */
+    .loader-zone { height: 120px; display: flex; align-items: center; justify-content: center; color: #667eea; font-weight: 600; }
+    .progress-bar-custom { height: 3px; background: #2a2f39; width: 100%; position: absolute; top: 0; z-index: 10; }
+    .progress-fill { height: 100%; background: #6ee7b7; width: 0%; transition: width linear; }
+    
+    /* Dashboard Stats */
+    .dash-stat-box { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; text-align: center; }
+    .dash-stat-value { font-size: 1.5rem; font-weight: 700; color: #667eea; line-height: 1.2; }
+    .dash-stat-label { font-size: 0.75rem; color: #a8afbb; text-transform: uppercase; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h2 class="w3-margin-top">Best Compressed Image DB Viewer</h2>
-    <p class="muted">Data source: <code>best/dbs/performer_images_manifest.dat</code></p>
 
-    <div class="toolbar">
-      <input id="searchInput" class="w3-input w3-round" placeholder="Search username, tags, display name" />
-      <button id="reloadBtn" class="w3-button w3-round w3-blue">Reload</button>
-      <button id="settingsBtn" class="settings-btn">⚙️ Settings</button>
-      <span id="status" class="muted">Loading...</span>
-      <span id="offlineIndicator" class="muted" style="display:none;">📴 Offline Mode</span>
-    </div>
-
-    <!-- Settings Panel -->
-    <div id="settingsPanel" class="settings-panel">
-      <div class="settings-row">
-        <label>Grid Columns:</label>
-        <input type="range" id="columnSlider" min="1" max="8" value="4" />
-        <span id="columnValue">4</span>
-      </div>
-      <div class="settings-row">
-        <label>Grid Layout:</label>
-        <select id="layoutSelect">
-          <option value="auto">Auto-fill</option>
-          <option value="2">2 columns</option>
-          <option value="3">3 columns</option>
-          <option value="4">4 columns</option>
-          <option value="5">5 columns</option>
-          <option value="6">6 columns</option>
-          <option value="list">List view</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <label>Sort By:</label>
-        <select id="sortSelect">
-          <option value="score">Score (clicks + tags)</option>
-          <option value="clicks">Click Count</option>
-          <option value="viewers">Viewers</option>
-          <option value="recent">Recently Seen</option>
-          <option value="name">Name</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <label>Slideshow Speed:</label>
-        <input type="range" id="slideshowSpeed" min="1" max="10" value="3" />
-        <span id="speedValue">3s</span>
-      </div>
-      <div class="settings-row">
-        <label>Items per Page:</label>
-        <select id="itemsPerPageSelect">
-          <option value="20">20</option>
-          <option value="40" selected>40</option>
-          <option value="60">60</option>
-          <option value="100">100</option>
-        </select>
-      </div>
-      <div class="settings-row">
-        <label>Offline Only:</label>
-        <div class="toggle-container">
-          <label class="toggle-switch">
-            <input type="checkbox" id="offlineOnlyToggle" />
-            <span class="toggle-slider"></span>
-          </label>
-          <span id="offlineOnlyLabel" class="muted">Show all performers</span>
-        </div>
-      </div>
-      <div class="settings-row">
-        <label>ML Features:</label>
-        <div class="toggle-container">
-          <label class="toggle-switch">
-            <input type="checkbox" id="mlFeaturesToggle" checked />
-            <span class="toggle-slider"></span>
-          </label>
-          <span id="mlFeaturesLabel" class="muted">Enable ML similarity detection</span>
-        </div>
-      </div>
-    </div>
-
-    <div id="interestPanel" class="interest-panel"></div>
-
-    <div class="slideshow" id="slideshow">
-      <div id="slideProgress" class="slide-progress"></div>
-      <img id="slideImage" src="" alt="Featured" loading="eager" />
-      <canvas id="annotationCanvas" aria-label="Image annotation canvas for drawing shapes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></canvas>
-      <button class="slide-nav slide-prev" id="slidePrev" aria-label="Previous image">‹</button>
-      <button class="slide-nav slide-next" id="slideNext" aria-label="Next image">›</button>
-      <button class="slide-pause-btn" id="slidePauseBtn" aria-label="Pause slideshow" title="Pause / Resume slideshow">⏸</button>
-      <div id="slideCounter" class="slide-counter"></div>
-      <div id="slideCaption" class="slide-caption"></div>
-    </div>
-
-    <div class="image-recognition-panel">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
-        <label style="font-size: 13px; font-weight: 600;">Annotation Tools:</label>
-        <button id="drawCircleBtn" class="annotation-tool-btn" data-tool="circle" title="Draw Circle">⭕ Circle</button>
-        <button id="drawRectBtn" class="annotation-tool-btn" data-tool="rectangle" title="Draw Rectangle">⬜ Rectangle</button>
-        <button id="drawParallelBtn" class="annotation-tool-btn" data-tool="parallelogram" title="Draw Parallelogram">▱ Parallelogram</button>
-        <button id="drawTriangleBtn" class="annotation-tool-btn" data-tool="triangle" title="Draw Triangle">△ Triangle</button>
-        <button id="drawArrowBtn" class="annotation-tool-btn" data-tool="arrow" title="Draw Arrow">→ Arrow</button>
-        <button id="clearAnnotationsBtn" class="annotation-tool-btn" style="background: #f56565;">Clear Shapes</button>
-        <button id="toggleAnnotationsBtn" class="annotation-tool-btn" style="background: #48bb78;">Show/Hide</button>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-        <label for="imageLabel" style="font-size: 13px; font-weight: 600;">Label this image:</label>
-        <input type="text" id="imageLabel" class="w3-input" placeholder="e.g., smiling, blonde, tattoo" style="flex: 1; max-width: 300px;" />
-        <button id="saveLabelBtn" class="w3-button w3-round" style="background: #667eea; color: #fff;">Save Label</button>
-        <button id="viewLabelsBtn" class="w3-button w3-round" style="background: #4a5568; color: #fff;">View Labels</button>
-      </div>
-      <div id="currentImageLabels" style="font-size: 12px; color: #a8afbb;"></div>
-      <div id="annotationInfo" style="font-size: 11px; color: #718096; margin-top: 4px;"></div>
-    </div>
-
-    <div class="stats">
-      <div class="stat">Performers: <strong id="performerCount">0</strong></div>
-      <div class="stat">Images Cached: <strong id="imageCount">0</strong></div>
-      <div class="stat">Offline Images: <strong id="offlineImageCount">0</strong></div>
-      <div class="stat">Generated: <strong id="generatedAt">-</strong></div>
-      <div class="stat">Visible: <strong id="visibleCount">0</strong></div>
-      <div class="stat">Showing: <strong id="showingCount">0</strong> / <strong id="totalFilteredCount">0</strong></div>
-    </div>
-
-    <div id="grid" class="grid"></div>
-    
-    <!-- Load More / Pagination -->
-    <div id="loadMoreContainer" class="load-more-container" style="display: none;">
-      <button id="loadMoreBtn" class="load-more-btn">Load More</button>
-      <div id="paginationInfo" class="pagination-info"></div>
+<nav class="navbar navbar-dark sticky-top">
+  <div class="container-fluid">
+    <span class="navbar-brand mb-0 h1 d-flex align-items-center">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      JINX <span class="ms-2 fs-6 text-muted">v3.0 Quantitative Edition</span>
+    </span>
+    <div class="d-flex text-white-50 align-items-center fs-6" id="globalStatus">
+      Initializing parallel core...
     </div>
   </div>
+</nav>
 
-  <!-- Context Menu for Right-Click -->
-  <div id="contextMenu" class="context-menu">
-    <div class="context-menu-item" data-action="addTag">📝 Add Tag/Feature</div>
-    <div class="context-menu-item" data-action="viewTags">🏷️ View Tags</div>
-    <div class="context-menu-divider"></div>
-    <div class="context-menu-item" data-action="findSimilar">🔍 Find Similar</div>
-    <div class="context-menu-item" data-action="analyzeFeatures">🤖 Analyze Features (ML)</div>
-    <div class="context-menu-divider"></div>
-    <div class="context-menu-item" data-action="boostPopularity">⬆️ Boost Popularity</div>
-    <div class="context-menu-item" data-action="copyUsername">📋 Copy Username</div>
-  </div>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3 col-lg-2 sidebar p-3 d-none d-md-block">
+      <h6 class="text-uppercase text-muted mb-3 fw-bold border-bottom border-secondary pb-2">Analysis Parameters</h6>
+      
+      <div class="mb-3">
+        <label class="form-label">Search Identity</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="@username or alias..." />
+      </div>
 
-  <!-- Tag Input Modal -->
-  <div id="tagModal" class="modal-overlay">
-    <div class="modal-content">
-      <span class="modal-close" id="closeTagModal">&times;</span>
-      <div class="modal-header">Add Tags for <span id="tagModalUsername"></span></div>
-      <div class="autocomplete-wrap">
-        <input type="text" id="tagInput" class="autocomplete-input" placeholder="Type to add tags (e.g., smile, outdoor, etc.)" />
-        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+      <div class="mb-3">
+        <label class="form-label">Sort Algorithm</label>
+        <select id="sortAlgorithm" class="form-select">
+          <option value="bayesian">Bayesian Average (Quant)</option>
+          <option value="rawScore">Raw Score (Linear)</option>
+          <option value="engagement">Engagement Velocity</option>
+          <option value="viewers">Max Viewers</option>
+          <option value="random">Cryptographic Random</option>
+        </select>
       </div>
-      <p class="muted" style="margin-top: 8px; font-size: 11px;">Press Enter to add a tag, or select from suggestions</p>
-      <div id="selectedTags" class="tag-list"></div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="cancelTagModal">Cancel</button>
-        <button class="btn btn-primary" id="saveTagModal">Save Tags</button>
+
+      <div class="mb-3">
+        <label class="form-label">Min Viewers: <span id="viewerVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0">
       </div>
+
+      <div class="mb-3">
+        <label class="form-label">Min Base Score: <span id="scoreVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minScore" min="0" max="500" step="10" value="0">
+      </div>
+
+      <div class="mb-4 form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="requireHistory" checked>
+        <label class="form-check-label form-label mt-1" for="requireHistory">Require Image History</label>
+        <div class="form-text text-muted" style="font-size: 0.7rem;">Only show users with enough data for a slideshow.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Tag Inclusion (Comma separated)</label>
+        <input type="text" id="tagFilter" class="form-control" placeholder="e.g. verified, outdoor" />
+      </div>
+
+      <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold" style="background-color: #667eea; border: none;">Execute Query</button>
+      <button id="resetFiltersBtn" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Reset Matrix</button>
+    </div>
+
+    <div class="col-md-9 col-lg-10 main-content p-4">
+      
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statTotal">0</div>
+            <div class="dash-stat-label">Performers Parsed</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statActive">0</div>
+            <div class="dash-stat-label">Meeting Criteria</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statMean">0.0</div>
+            <div class="dash-stat-label">Global Mean Score</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statDev">0.0</div>
+            <div class="dash-stat-label">Standard Deviation</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="slideshowGrid" class="grid-container"></div>
+      
+      <div id="loadingTrigger" class="loader-zone mt-4">
+        <div class="spinner-border spinner-border-sm me-2" role="status" id="loadSpinner" style="display: none;"></div>
+        <span id="loadText">Awaiting concurrent data chunks...</span>
+      </div>
+
     </div>
   </div>
+</div>
 
-  <script>
-    // ============ STATE ============
-    const state = {
-      payload: null,
-      filtered: [],
-      displayedItems: [],
-      currentPage: 0,
-      slideshowIndex: 0,
-      slideshowImageIndex: 0,
-      slideshowTimer: null,
-      slideshowPaused: false,
-      interests: {},
-      clickCounts: {},
-      customTags: {},
-      allKnownTags: [],
-      mlFeatures: {},
-      similarityScores: {},
-      offlineImageUrls: new Set(),
-      imageRecognitionLabels: {},
-      imageAnnotations: {},
-      currentAnnotationTool: null,
-      annotationsVisible: true,
-      settings: {
-        columns: 4,
-        layout: 'auto',
-        sortBy: 'score',
-        slideshowSpeed: 3,
-        itemsPerPage: 40,
-        offlineOnly: false,
-        mlFeaturesEnabled: true
-      },
-      contextTarget: null,
-      tagModalTarget: null,
-      selectedTagsForModal: [],
-      cardSlideshowIndices: {},
-      isLoading: false,
-      offlineDb: null
-    };
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    // ============ CONFIGURATION CONSTANTS ============
-    // Offline caching limits
-    const OFFLINE_CACHE_LIMIT = 100; // Maximum images to cache for offline use
+<script>
+/**
+ * JINX v3.0 Core Engine
+ * Implements concurrent execution yielding, Bayesian average sorting,
+ * and dynamic hardware-accelerated intersection observing.
+ */
+
+const state = {
+  rawDataset: [],
+  filteredDataset: [],
+  itemsPerPage: 24,
+  currentPage: 0,
+  isProcessing: false,
+  
+  // Concurrency & Hardware Tracking
+  activeIntervals: new Map(),
+  preloadedImages: new Set(),
+  observer: null,
+  scrollObserver: null,
+  
+  // Persistent Local Data
+  clickCounts: JSON.parse(localStorage.getItem('jinx_clicks') || '{}'),
+  userInterests: JSON.parse(localStorage.getItem('jinx_interests') || '{}'),
+  
+  // Quantitative Globals
+  globalMean: 0,
+  globalVariance: 0
+};
+
+// ==========================================
+// QUANTITATIVE ANALYSIS MODULE
+// ==========================================
+const QuantEngine = {
+  /**
+   * Calculates standard raw score based on historical clicks and tag matches.
+   */
+  calculateRawScore(item) {
+    const user = item.username?.toLowerCase() || '';
+    let score = (state.clickCounts[user] || 0) * 15; // Base click weight
     
-    // ML Feature Detection thresholds
-    const SIMILARITY_THRESHOLD = 0.3; // Minimum Jaccard similarity to consider performers "similar"
-    const SIMILARITY_BOOST_MULTIPLIER = 5; // Score boost multiplier for similar performers
-    const TAG_POPULARITY_BOOST = 2; // Popularity boost per new tag added
+    if (item.tags && Array.isArray(item.tags)) {
+      item.tags.forEach(tag => {
+        if (state.userInterests[tag.toLowerCase()]) {
+          score += (state.userInterests[tag.toLowerCase()] * 5);
+        }
+      });
+    }
+    // Add minor fraction for viewers to break ties
+    score += Math.min(item.num_viewers || 0, 1000) * 0.01;
+    return score;
+  },
+
+  /**
+   * Computes the mathematical mean and standard deviation of the current dataset.
+   * Executed concurrently via yielding to prevent thread locking.
+   */
+  async calculateGlobalMetrics(dataset) {
+    if (!dataset.length) return;
     
-    // Pagination & UI
-    const SCROLL_LOAD_THRESHOLD = 200; // Pixels from bottom to trigger infinite scroll load
-    const LOAD_MORE_DELAY_MS = 100; // Artificial delay for smooth loading UX
+    let sum = 0;
+    // Time-sliced iteration for large datasets
+    for (let i = 0; i < dataset.length; i++) {
+      if (i % 1000 === 0) await yieldToMain();
+      dataset[i]._rawScore = this.calculateRawScore(dataset[i]);
+      sum += dataset[i]._rawScore;
+    }
     
-    // Scoring weights
-    const ML_SIMILARITY_WEIGHT = 2; // Multiplier for ML similarity scores in total score
-
-    // ============ UTILITIES ============
-    function esc(str) {
-      return String(str || '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+    state.globalMean = sum / dataset.length;
+    
+    let sqDiffSum = 0;
+    for (let i = 0; i < dataset.length; i++) {
+      if (i % 1000 === 0) await yieldToMain();
+      const diff = dataset[i]._rawScore - state.globalMean;
+      sqDiffSum += diff * diff;
     }
+    
+    state.globalVariance = Math.sqrt(sqDiffSum / dataset.length);
+    
+    // Update Dashboard UI
+    document.getElementById('statMean').innerText = state.globalMean.toFixed(2);
+    document.getElementById('statDev').innerText = state.globalVariance.toFixed(2);
+  },
 
-    function fmtTs(ts) {
-      if (!ts) return '-';
-      const d = new Date(ts * 1000);
-      return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString();
-    }
+  /**
+   * Bayesian Average Formula: (v / (v + m)) * R + (m / (v + m)) * C
+   * v = number of interactions (clicks)
+   * m = prior minimum interactions required (we use 3)
+   * R = item's raw score
+   * C = global mean score
+   */
+  getBayesianScore(item) {
+    const v = state.clickCounts[item.username?.toLowerCase()] || 0;
+    const m = 3; 
+    const R = item._rawScore || 0;
+    const C = state.globalMean;
+    
+    if (v === 0 && R === 0) return 0; // Optimization for untouched items
+    
+    return ((v / (v + m)) * R) + ((m / (v + m)) * C);
+  }
+};
 
-    // ============ LOCAL STORAGE ============
-    function loadFromStorage(key, defaultVal) {
-      try {
-        const saved = JSON.parse(localStorage.getItem(key));
-        return saved !== null ? saved : defaultVal;
-      } catch {
-        return defaultVal;
-      }
-    }
+// ==========================================
+// ASYNC CONCURRENCY UTILITIES
+// ==========================================
 
-    function saveToStorage(key, data) {
-      localStorage.setItem(key, JSON.stringify(data));
-    }
+// Allows the main thread to breathe during heavy loop calculations
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
-    function loadInterests() {
-      state.interests = loadFromStorage('best_user_interests', {});
-    }
-
-    function saveInterests() {
-      saveToStorage('best_user_interests', state.interests);
-    }
-
-    function loadClickCounts() {
-      state.clickCounts = loadFromStorage('best_click_counts', {});
-    }
-
-    function saveClickCounts() {
-      saveToStorage('best_click_counts', state.clickCounts);
-    }
-
-    function loadCustomTags() {
-      state.customTags = loadFromStorage('best_custom_tags', {});
-      rebuildKnownTags();
-    }
-
-    function saveCustomTags() {
-      saveToStorage('best_custom_tags', state.customTags);
-      rebuildKnownTags();
-    }
-
-    function loadSettings() {
-      state.settings = loadFromStorage('best_settings', state.settings);
-      applySettings();
-    }
-
-    function saveSettings() {
-      saveToStorage('best_settings', state.settings);
-    }
-
-    function rebuildKnownTags() {
-      const tagSet = new Set();
-      Object.values(state.customTags).forEach(tags => {
-        tags.forEach(t => tagSet.add(t.toLowerCase()));
-      });
-      (state.payload?.items || []).forEach(item => {
-        if (Array.isArray(item.tags)) {
-          item.tags.forEach(t => tagSet.add(t.toLowerCase()));
-        }
-      });
-      state.allKnownTags = Array.from(tagSet).sort();
-    }
-
-    // ============ INDEXEDDB OFFLINE STORAGE ============
-    const DB_NAME = 'best_viewer_offline';
-    const DB_VERSION = 2;
-    const STORE_DATA = 'performer_data';
-    const STORE_IMAGES = 'cached_images';
-    const STORE_ML_FEATURES = 'ml_features';
-
-    function initOfflineDb() {
-      return new Promise((resolve, reject) => {
-        if (state.offlineDb) {
-          resolve(state.offlineDb);
-          return;
-        }
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          state.offlineDb = request.result;
-          resolve(state.offlineDb);
-        };
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(STORE_DATA)) {
-            db.createObjectStore(STORE_DATA, { keyPath: 'id' });
-          }
-          if (!db.objectStoreNames.contains(STORE_IMAGES)) {
-            db.createObjectStore(STORE_IMAGES, { keyPath: 'url' });
-          }
-          if (!db.objectStoreNames.contains(STORE_ML_FEATURES)) {
-            db.createObjectStore(STORE_ML_FEATURES, { keyPath: 'username' });
-          }
-        };
-      });
-    }
-
-    async function saveOfflineData(payload) {
-      try {
-        const db = await initOfflineDb();
-        const tx = db.transaction(STORE_DATA, 'readwrite');
-        const store = tx.objectStore(STORE_DATA);
-        store.put({ id: 'manifest', ...payload, savedAt: Date.now() });
-        return new Promise((resolve, reject) => {
-          tx.oncomplete = resolve;
-          tx.onerror = () => reject(tx.error);
-        });
-      } catch (err) {
-        console.warn('Failed to save offline data:', err);
-      }
-    }
-
-    async function loadOfflineData() {
-      try {
-        const db = await initOfflineDb();
-        const tx = db.transaction(STORE_DATA, 'readonly');
-        const store = tx.objectStore(STORE_DATA);
-        return new Promise((resolve, reject) => {
-          const request = store.get('manifest');
-          request.onsuccess = () => resolve(request.result);
-          request.onerror = () => reject(request.error);
-        });
-      } catch (err) {
-        console.warn('Failed to load offline data:', err);
-        return null;
-      }
-    }
-
-    async function cacheImagesForOffline(items) {
-      if (!items || !items.length) return;
-      try {
-        const db = await initOfflineDb();
-        const tx = db.transaction(STORE_IMAGES, 'readwrite');
-        const store = tx.objectStore(STORE_IMAGES);
-        
-        // Cache images up to the configured limit for offline use
-        const imagesToCache = items.slice(0, OFFLINE_CACHE_LIMIT).map(item => item.image_url).filter(Boolean);
-        
-        for (const url of imagesToCache) {
-          try {
-            const response = await fetch(url);
-            if (response.ok) {
-              const blob = await response.blob();
-              store.put({ url, blob, cachedAt: Date.now() });
-              state.offlineImageUrls.add(url);
-            }
-          } catch {
-            // Skip failed image caches
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to cache images:', err);
-      }
-    }
-
-    async function updateOfflineImageCount() {
-      try {
-        const db = await initOfflineDb();
-        const tx = db.transaction(STORE_IMAGES, 'readonly');
-        const store = tx.objectStore(STORE_IMAGES);
-        const countReq = store.count();
-        countReq.onsuccess = () => {
-          document.getElementById('offlineImageCount').textContent = String(countReq.result || 0);
-        };
-        
-        // Also populate offlineImageUrls set
-        const getAllReq = store.getAllKeys();
-        getAllReq.onsuccess = () => {
-          state.offlineImageUrls = new Set(getAllReq.result || []);
-        };
-      } catch (err) {
-        document.getElementById('offlineImageCount').textContent = '0';
-      }
-    }
-
-    function updateOfflineStatus() {
-      const isOnline = navigator.onLine;
-      const indicator = document.getElementById('offlineIndicator');
-      indicator.style.display = isOnline ? 'none' : 'inline';
-    }
-
-    // Listen for online/offline status changes
-    window.addEventListener('online', updateOfflineStatus);
-    window.addEventListener('offline', updateOfflineStatus);
-
-    // ============ ML FEATURE DETECTION ============
-    // Predefined features that can be detected/assigned
-    const ML_FEATURES = [
-      'smile', 'glasses', 'hat', 'outdoor', 'indoor', 'close-up', 'full-body',
-      'natural-light', 'studio', 'casual', 'formal', 'athletic', 'artistic',
-      'colorful', 'minimal', 'warm-tones', 'cool-tones', 'high-contrast',
-      'soft-focus', 'sharp', 'portrait', 'candid', 'posed', 'professional',
-      'amateur', 'selfie', 'mirror', 'beach', 'city', 'nature', 'home'
-    ];
-
-    function loadMlFeatures() {
-      state.mlFeatures = loadFromStorage('best_ml_features', {});
-    }
-
-    function saveMlFeatures() {
-      saveToStorage('best_ml_features', state.mlFeatures);
-    }
-
-    function loadSimilarityScores() {
-      state.similarityScores = loadFromStorage('best_similarity_scores', {});
-    }
-
-    function saveSimilarityScores() {
-      saveToStorage('best_similarity_scores', state.similarityScores);
-    }
-
-    /**
-     * Simulates ML feature extraction for demonstration purposes.
-     * Uses a deterministic hash-based approach to generate consistent pseudo-random features
-     * for the same image URL. This ensures that the same image always gets the same features.
-     * 
-     * In production, this would be replaced with actual ML inference using TensorFlow.js,
-     * ONNX Runtime, or a similar framework to analyze image content.
-     * 
-     * @param {string} imageUrl - The URL of the image to analyze
-     * @returns {string[]} Array of detected feature labels
-     */
-    function extractImageFeatures(imageUrl) {
-      // Hash function creates deterministic output for consistent feature assignment
-      const hash = imageUrl.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
-      const features = [];
-      const featureCount = 3 + Math.abs(hash % 5);
+/**
+ * Concurrently filters the dataset array using chunks to maintain 60FPS UI
+ */
+async function filterDatasetConcurrently(dataset, filters) {
+  const result = [];
+  const chunkSize = 500;
+  
+  for (let i = 0; i < dataset.length; i += chunkSize) {
+    const chunk = dataset.slice(i, i + chunkSize);
+    
+    const processedChunk = chunk.filter(item => {
+      // Identity Search
+      if (filters.query && !(item.username || '').toLowerCase().includes(filters.query)) return false;
       
-      for (let i = 0; i < featureCount; i++) {
-        const featureIndex = Math.abs((hash * (i + 1)) % ML_FEATURES.length);
-        const feature = ML_FEATURES[featureIndex];
-        if (!features.includes(feature)) {
-          features.push(feature);
-        }
-      }
-      return features;
-    }
-
-    function analyzePerformerFeatures(username) {
-      const item = (state.payload?.items || []).find(i => i.username?.toLowerCase() === username);
-      if (!item) return [];
+      // Viewers
+      if ((item.num_viewers || 0) < filters.minViewers) return false;
       
-      const imageUrl = item.image_url;
-      if (!imageUrl) return [];
+      // Base Score
+      if ((item._rawScore || 0) < filters.minScore) return false;
       
-      // Check if already analyzed
-      if (state.mlFeatures[username]) {
-        return state.mlFeatures[username];
+      // History Requirement
+      const historyLen = (item.image_history || []).length;
+      if (filters.requireHistory && historyLen === 0) return false;
+      
+      // Tag Array Match
+      if (filters.tags.length > 0) {
+        const itemTags = (item.tags || []).map(t => t.toLowerCase());
+        const hasAllTags = filters.tags.every(targetTag => itemTags.includes(targetTag));
+        if (!hasAllTags) return false;
       }
       
-      // Extract features
-      const features = extractImageFeatures(imageUrl);
-      state.mlFeatures[username] = features;
-      saveMlFeatures();
-      
-      // Calculate similarity with other performers
-      calculateSimilarityScores(username, features);
-      
-      return features;
+      return true;
+    });
+    
+    result.push(...processedChunk);
+    await yieldToMain(); // Yield after processing chunk
+  }
+  return result;
+}
+
+/**
+ * Preloads the primary images for the next pagination batch concurrently 
+ * to ensure smooth scrolling without network waterfall delays.
+ */
+async function preloadNextBatchImages(startIndex, endIndex) {
+  const nextItems = state.filteredDataset.slice(startIndex, endIndex);
+  if (!nextItems.length) return;
+
+  const urlsToFetch = nextItems
+    .map(item => item.image_url)
+    .filter(url => url && !state.preloadedImages.has(url));
+
+  if (!urlsToFetch.length) return;
+
+  // Fire requests concurrently without awaiting them to block rendering
+  Promise.allSettled(urlsToFetch.map(url => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { state.preloadedImages.add(url); resolve(); };
+      img.onerror = resolve; // Ignore errors, let DOM handle broken images later
+      img.src = url;
+    });
+  }));
+}
+
+// ==========================================
+// CORE DATA PIPELINE
+// ==========================================
+
+async function fetchAndDecompress() {
+  updateStatus("Opening network stream...", true);
+  try {
+    const res = await fetch(`dbs/performer_images_manifest.dat?t=${Date.now()}`);
+    if (!res.ok) throw new Error("HTTP Status " + res.status);
+    
+    updateStatus("Decompressing binary blob...", true);
+    const compressed = await res.arrayBuffer();
+    
+    // Decompress asynchronously (Pako doesn't natively support promise, so we wrap it to yield UI)
+    await yieldToMain(); 
+    const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+    
+    updateStatus("Parsing JSON intelligence...", true);
+    await yieldToMain();
+    const data = JSON.parse(decompressed);
+    state.rawDataset = data.items || [];
+    
+    document.getElementById('statTotal').innerText = state.rawDataset.length.toLocaleString();
+    
+    updateStatus("Computing global statistics...", true);
+    await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+    
+    updateStatus("Grid Online.", false);
+    executePipeline();
+    
+  } catch (error) {
+    console.error(error);
+    updateStatus(`Critical Failure: ${error.message}`, false);
+  }
+}
+
+async function executePipeline() {
+  if (state.isProcessing) return;
+  state.isProcessing = true;
+  updateStatus("Executing Query Matrix...", true);
+  
+  // 1. Extract Filter Parameters
+  const filters = {
+    query: document.getElementById('searchInput').value.toLowerCase().trim(),
+    minViewers: parseInt(document.getElementById('minViewers').value, 10),
+    minScore: parseInt(document.getElementById('minScore').value, 10),
+    requireHistory: document.getElementById('requireHistory').checked,
+    tags: document.getElementById('tagFilter').value.split(',')
+          .map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+  };
+
+  const sortAlgo = document.getElementById('sortAlgorithm').value;
+
+  // 2. Concurrent Filtering
+  let processed = await filterDatasetConcurrently(state.rawDataset, filters);
+
+  // 3. Sorting Engine Application
+  updateStatus("Applying sorting algorithms...", true);
+  await yieldToMain(); // Yield before heavy sort
+  
+  processed.sort((a, b) => {
+    switch (sortAlgo) {
+      case 'bayesian':
+        return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
+      case 'engagement':
+        return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
+      case 'viewers':
+        return (b.num_viewers || 0) - (a.num_viewers || 0);
+      case 'random':
+        // Cryptographic random sort implementation using window.crypto
+        const array = new Uint32Array(2);
+        window.crypto.getRandomValues(array);
+        return array[0] - array[1];
+      case 'rawScore':
+      default:
+        return (b._rawScore || 0) - (a._rawScore || 0);
     }
+  });
 
-    function calculateSimilarityScores(sourceUsername, sourceFeatures) {
-      if (!state.settings.mlFeaturesEnabled) return;
-      
-      const items = state.payload?.items || [];
-      const sourceSet = new Set(sourceFeatures);
-      
-      items.forEach(item => {
-        const targetUsername = item.username?.toLowerCase();
-        if (targetUsername === sourceUsername) return;
-        
-        // Get or extract target features
-        let targetFeatures = state.mlFeatures[targetUsername];
-        if (!targetFeatures && item.image_url) {
-          targetFeatures = extractImageFeatures(item.image_url);
-          state.mlFeatures[targetUsername] = targetFeatures;
-        }
-        
-        if (!targetFeatures) return;
-        
-        // Calculate Jaccard similarity
-        const targetSet = new Set(targetFeatures);
-        const intersection = [...sourceSet].filter(f => targetSet.has(f)).length;
-        const union = new Set([...sourceFeatures, ...targetFeatures]).size;
-        const similarity = union > 0 ? intersection / union : 0;
-        
-        if (similarity > SIMILARITY_THRESHOLD) {
-          // Boost target performer's score based on similarity
-          const boost = Math.round(similarity * SIMILARITY_BOOST_MULTIPLIER);
-          state.similarityScores[targetUsername] = (state.similarityScores[targetUsername] || 0) + boost;
-        }
-      });
-      
-      saveMlFeatures();
-      saveSimilarityScores();
-    }
+  state.filteredDataset = processed;
+  document.getElementById('statActive').innerText = processed.length.toLocaleString();
+  
+  // 4. Reset & Render
+  state.currentPage = 0;
+  document.getElementById('slideshowGrid').innerHTML = '';
+  
+  // Clean up old observers
+  if(state.observer) state.observer.disconnect();
+  setupIntersectionObservers();
+  
+  await renderNextPage();
+  
+  state.isProcessing = false;
+  updateStatus("Grid Synchronized.", false);
+}
 
-    function boostPopularity(username) {
-      const key = String(username || '').toLowerCase();
-      if (!key) return;
-      state.clickCounts[key] = (state.clickCounts[key] || 0) + 5;
-      saveClickCounts();
-      document.getElementById('status').textContent = `Boosted popularity for @${username}`;
-      setTimeout(() => document.getElementById('status').textContent = '', 2000);
-      render();
-    }
+// ==========================================
+// RENDER & UI CONTROLLER
+// ==========================================
 
-    // ============ SCORING ============
-    function calculateScore(item) {
-      let score = 0;
-      const username = item.username?.toLowerCase();
-      
-      // Click-based scoring
-      score += (state.clickCounts[username] || 0) * 10;
-      
-      // Interest-based scoring (tags user has clicked)
-      const itemTags = Array.isArray(item.tags) ? item.tags.map(t => t.toLowerCase()) : [];
-      const customTagsForUser = state.customTags[username] || [];
-      const allTags = [...itemTags, ...customTagsForUser.map(t => t.toLowerCase())];
-      
-      allTags.forEach(tag => {
-        if (state.interests[tag]) {
-          score += state.interests[tag] * 5;
-        }
-      });
+async function renderNextPage() {
+  const start = state.currentPage * state.itemsPerPage;
+  const end = start + state.itemsPerPage;
+  const pageItems = state.filteredDataset.slice(start, end);
 
-      // Bonus for having custom tags (user showed interest)
-      score += customTagsForUser.length * 3;
-      
-      // ML similarity score bonus
-      if (state.settings.mlFeaturesEnabled) {
-        score += (state.similarityScores[username] || 0) * ML_SIMILARITY_WEIGHT;
-        
-        // Bonus for having ML-detected features
-        const mlFeatureCount = (state.mlFeatures[username] || []).length;
-        score += mlFeatureCount;
-      }
-      
-      // Viewers bonus (mild)
-      score += Math.min(item.num_viewers || 0, 100) * 0.1;
-      
-      return Math.round(score);
-    }
+  if (pageItems.length === 0) {
+    document.getElementById('loadText').innerText = "End of Matrix.";
+    return;
+  }
 
-    function sortItems(items) {
-      const sortBy = state.settings.sortBy;
-      return [...items].sort((a, b) => {
-        if (sortBy === 'score') {
-          return calculateScore(b) - calculateScore(a);
-        } else if (sortBy === 'clicks') {
-          const aClicks = state.clickCounts[a.username?.toLowerCase()] || 0;
-          const bClicks = state.clickCounts[b.username?.toLowerCase()] || 0;
-          return bClicks - aClicks;
-        } else if (sortBy === 'viewers') {
-          return (b.num_viewers || 0) - (a.num_viewers || 0);
-        } else if (sortBy === 'recent') {
-          return (b.last_seen || 0) - (a.last_seen || 0);
-        } else if (sortBy === 'name') {
-          return (a.username || '').localeCompare(b.username || '');
-        }
-        return 0;
-      });
-    }
+  // Use Document Fragment for bulk DOM insertion performance
+  const fragment = document.createDocumentFragment();
 
-    // ============ INTEREST TRACKING ============
-    function trackInterest(key) {
-      const normalized = String(key || '').trim().toLowerCase();
-      if (!normalized) return;
-      state.interests[normalized] = (state.interests[normalized] || 0) + 1;
-      saveInterests();
-      renderInterests();
-    }
+  for (const item of pageItems) {
+    const user = item.username || 'unknown';
+    // Combine primary image and history, removing duplicates via Set
+    const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
+    
+    // Fallback if no images exist
+    if(images.length === 0) images.push('https://via.placeholder.com/300x400/191c22/667eea?text=No+Image');
 
-    function trackClick(username) {
-      const key = String(username || '').toLowerCase();
-      if (!key) return;
-      state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
-      saveClickCounts();
-    }
+    const score = sortAlgoValue(item);
+    const tagsHtml = (item.tags || []).slice(0, 4).map(t => `<span class="mini-tag">${t}</span>`).join('');
 
-    function renderInterests() {
-      const panel = document.getElementById('interestPanel');
-      const top = Object.entries(state.interests)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 12);
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.dataset.user = user;
+    // Escape JSON securely
+    card.dataset.images = JSON.stringify(images).replace(/"/g, '&quot;');
+    card.dataset.idx = 0;
 
-      if (!top.length) {
-        panel.innerHTML = '<span class="muted">Interest profile: click tags to capture interaction insights.</span>';
-        return;
-      }
+    // Progress bar for slideshow timing feedback
+    const progressHtml = images.length > 1 ? `<div class="progress-bar-custom"><div class="progress-fill" id="prog-${user}"></div></div>` : '';
 
-      panel.innerHTML = `<span class="muted">Interests:</span>${top
-        .map(([k, v]) => `<span class="pill" data-interest="${esc(k)}">${esc(k)} · ${v}</span>`)
-        .join('')}`;
-    }
-
-    // ============ CARD SLIDESHOW ============
-    function getPerformerImages(item) {
-      // If performer has multiple images in history, use them
-      // For now, use single image but structure supports multiple
-      const images = [];
-      if (item.image_url) images.push(item.image_url);
-      if (item.image_history && Array.isArray(item.image_history)) {
-        item.image_history.forEach(img => {
-          if (img && !images.includes(img)) images.push(img);
-        });
-      }
-      return images.length ? images : [item.image_url || ''];
-    }
-
-    function cardHtml(item, index) {
-      const username = item.username?.toLowerCase() || '';
-      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 6) : [];
-      const customUserTags = state.customTags[username] || [];
-      // Use Set for O(1) lookup instead of O(n) includes check
-      const tagSet = new Set(tags.map(x => x.toLowerCase()));
-      const allDisplayTags = [...tags, ...customUserTags.filter(t => !tagSet.has(t.toLowerCase()))].slice(0, 8);
-      
-      const tagsHtml = allDisplayTags.map((tag, i) => {
-        const isCustom = i >= tags.length;
-        return `<button class="tag-chip${isCustom ? ' custom-tag' : ''}" data-tag="${esc(tag)}">${esc(tag)}</button>`;
-      }).join('');
-      
-      const clickCount = state.clickCounts[username] || 0;
-      const score = calculateScore(item);
-      const images = getPerformerImages(item);
-      const currentSlideIndex = state.cardSlideshowIndices[username] || 0;
-      
-      // ML features info
-      const mlFeatures = state.mlFeatures[username] || [];
-      const similarityScore = state.similarityScores[username] || 0;
-      const mlBadge = mlFeatures.length > 0 ? `<span class="ml-badge">🤖 ${mlFeatures.length}</span>` : '';
-      const similarityInfo = similarityScore > 0 ? `<span class="similarity-indicator">⚡${similarityScore}</span>` : '';
-      
-      const dotsHtml = images.length > 1 
-        ? `<div class="slide-dots">${images.map((_, i) => `<div class="slide-dot${i === currentSlideIndex ? ' active' : ''}" data-slide="${i}"></div>`).join('')}</div>` 
-        : '';
-      
-      const slideNavHtml = images.length > 1
-        ? `<button class="card-slide-nav card-slide-prev" data-dir="-1">‹</button><button class="card-slide-nav card-slide-next" data-dir="1">›</button>`
-        : '';
-
-      // Escape JSON for safe embedding in HTML attribute
-      const imagesJson = JSON.stringify(images).replace(/'/g, '&#39;');
-
-      return `
-        <div class="card" data-username="${esc(username)}" data-index="${index}">
-          <div class="card-slideshow">
-            <img src="${esc(images[currentSlideIndex] || '')}" alt="${esc(username)}" loading="lazy" data-images='${imagesJson}' />
-            ${slideNavHtml}
-            ${dotsHtml}
+    card.innerHTML = `
+      ${progressHtml}
+      <div class="slide-container">
+        <img src="${images[0]}" id="img-${user}" loading="lazy">
+        <div class="card-overlay">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+            <h3 class="username-title">@${user}</h3>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <span class="stat-badge score-badge shadow-sm" id="score-${user}">★ ${score.toFixed(1)}</span>
+              <span class="stat-badge">👁️ ${item.num_viewers || 0}</span>
+            </div>
           </div>
-          <div class="meta">
-            <div class="name">${esc(item.display_name || item.username)} ${score > 0 ? `<span class="score-badge">★ ${score}</span>` : ''} ${mlBadge}</div>
-            <div class="muted">@${esc(username)} ${clickCount > 0 ? `· <span class="click-count">${clickCount} clicks</span>` : ''} ${similarityInfo}</div>
-            <div>Age: ${item.age ?? 'N/A'} · Viewers: ${item.num_viewers ?? 0} · 📷 ${images.length}</div>
-            <div>${tagsHtml}</div>
-            <div class="muted">Seen: ${fmtTs(item.last_seen)}</div>
-          </div>
+          <div class="tag-container">${tagsHtml}</div>
+          ${images.length > 1 ? `<small class="text-muted d-block mt-2" style="font-size: 0.65rem" id="count-${user}">Img 1 of ${images.length}</small>` : ''}
         </div>
-      `;
-    }
-
-    // ============ SETTINGS ============
-    // Grid layout constants for responsive design
-    const GRID_MIN_CARD_WIDTH = 140;  // Minimum card width in pixels
-    const GRID_BASE_WIDTH = 300;      // Base width for auto-fill calculation
-    const GRID_COL_REDUCTION = 20;    // Width reduction per column
+      </div>
+    `;
     
-    function applySettings() {
-      const grid = document.getElementById('grid');
-      const layout = state.settings.layout;
-      const cols = state.settings.columns;
+    // Score update click handler
+    card.addEventListener('click', () => {
+      handleUserInteraction(user, item);
+      // Soft UI update
+      card.querySelector(`#score-${user}`).innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
+      card.style.borderColor = '#6ee7b7';
+      setTimeout(() => card.style.borderColor = '', 500);
+    });
 
-      if (layout === 'list') {
-        grid.style.gridTemplateColumns = '1fr';
-        grid.classList.add('list-view');
+    fragment.appendChild(card);
+  }
+
+  document.getElementById('slideshowGrid').appendChild(fragment);
+
+  // Observe newly added cards
+  const newCards = document.querySelectorAll('.user-card:not([data-observed="true"])');
+  newCards.forEach(card => {
+    card.dataset.observed = "true";
+    state.observer.observe(card);
+  });
+
+  // Concurrently preload the images for the *next* page while user is looking at this one
+  preloadNextBatchImages(end, end + state.itemsPerPage);
+  
+  document.getElementById('loadText').innerText = "Scroll down for deeper scanning...";
+}
+
+// Determines which score string to show based on selected filter
+function sortAlgoValue(item) {
+  const algo = document.getElementById('sortAlgorithm').value;
+  if(algo === 'bayesian') return QuantEngine.getBayesianScore(item);
+  if(algo === 'engagement') return state.clickCounts[item.username?.toLowerCase()] || 0;
+  return item._rawScore || 0;
+}
+
+function handleUserInteraction(user, item) {
+  const key = user.toLowerCase();
+  // Update Clicks
+  state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
+  localStorage.setItem('jinx_clicks', JSON.stringify(state.clickCounts));
+  
+  // Update Interest Vectors (Tags)
+  if (item.tags) {
+    item.tags.forEach(tag => {
+      const t = tag.toLowerCase();
+      state.userInterests[t] = (state.userInterests[t] || 0) + 1;
+    });
+    localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
+  }
+  
+  // Recalculate globals slightly to keep quantitative bounds fresh
+  state.globalMean += 0.0001; 
+}
+
+// ==========================================
+// HARDWARE OBSERVERS & SLIDESHOW MECHANICS
+// ==========================================
+
+function setupIntersectionObservers() {
+  // 1. Slideshow Viewport Observer (Pauses animations off-screen)
+  state.observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const user = entry.target.dataset.user;
+      if (entry.isIntersecting) {
+        initSlideshowRuntime(entry.target, user);
       } else {
-        grid.classList.remove('list-view');
-        if (layout === 'auto') {
-          // Calculate responsive min-width based on column count
-          const minWidth = Math.max(GRID_MIN_CARD_WIDTH, GRID_BASE_WIDTH - cols * GRID_COL_REDUCTION);
-          grid.style.gridTemplateColumns = `repeat(auto-fill, minmax(${minWidth}px, 1fr))`;
-        } else {
-          grid.style.gridTemplateColumns = `repeat(${parseInt(layout) || cols}, 1fr)`;
+        haltSlideshowRuntime(user);
+      }
+    });
+  }, { 
+    rootMargin: "50px", // Start animation slightly before it enters viewport
+    threshold: 0.1 
+  });
+
+  // 2. Infinite Scroll Observer
+  if (!state.scrollObserver) {
+    state.scrollObserver = new IntersectionObserver(async (entries) => {
+      const trigger = entries[0];
+      if (trigger.isIntersecting && !state.isProcessing) {
+        if (state.filteredDataset.length > (state.currentPage + 1) * state.itemsPerPage) {
+          state.currentPage++;
+          document.getElementById('loadSpinner').style.display = 'inline-block';
+          await renderNextPage();
+          document.getElementById('loadSpinner').style.display = 'none';
         }
       }
+    }, { rootMargin: "300px" }); // Trigger earlier to make scroll feel infinite
+    state.scrollObserver.observe(document.getElementById('loadingTrigger'));
+  }
+}
 
-      document.getElementById('columnSlider').value = cols;
-      document.getElementById('columnValue').textContent = cols;
-      document.getElementById('layoutSelect').value = layout;
-      document.getElementById('sortSelect').value = state.settings.sortBy;
-      document.getElementById('slideshowSpeed').value = state.settings.slideshowSpeed;
-      document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
-      document.getElementById('itemsPerPageSelect').value = state.settings.itemsPerPage;
-      document.getElementById('offlineOnlyToggle').checked = state.settings.offlineOnly;
-      document.getElementById('offlineOnlyLabel').textContent = state.settings.offlineOnly ? 'Show offline only' : 'Show all performers';
-      document.getElementById('mlFeaturesToggle').checked = state.settings.mlFeaturesEnabled;
-      document.getElementById('mlFeaturesLabel').textContent = state.settings.mlFeaturesEnabled ? 'ML similarity enabled' : 'ML similarity disabled';
-      
-      startSlideshow();
+function initSlideshowRuntime(card, user) {
+  const imagesStr = card.dataset.images;
+  if (!imagesStr) return;
+  
+  // Unescape securely
+  const images = JSON.parse(imagesStr.replace(/&quot;/g, '"'));
+  if (images.length <= 1) return;
+
+  // Prevent double allocation
+  if (state.activeIntervals.has(user)) return;
+
+  const progBar = document.getElementById(`prog-${user}`);
+  const duration = 3500 + Math.random() * 1500; // Staggered math distribution
+
+  // Animation CSS reset technique
+  const triggerProgressBar = () => {
+    if(progBar) {
+      progBar.style.transition = 'none';
+      progBar.style.width = '0%';
+      // Force reflow
+      void progBar.offsetWidth;
+      progBar.style.transition = `width ${duration}ms linear`;
+      progBar.style.width = '100%';
     }
+  };
 
-    function setupSettingsListeners() {
-      document.getElementById('settingsBtn').addEventListener('click', () => {
-        document.getElementById('settingsPanel').classList.toggle('open');
-      });
+  triggerProgressBar();
 
-      document.getElementById('columnSlider').addEventListener('input', (e) => {
-        state.settings.columns = parseInt(e.target.value);
-        document.getElementById('columnValue').textContent = state.settings.columns;
-        saveSettings();
-        applySettings();
-      });
-
-      document.getElementById('layoutSelect').addEventListener('change', (e) => {
-        state.settings.layout = e.target.value;
-        saveSettings();
-        applySettings();
-      });
-
-      document.getElementById('sortSelect').addEventListener('change', (e) => {
-        state.settings.sortBy = e.target.value;
-        saveSettings();
-        render();
-      });
-
-      document.getElementById('slideshowSpeed').addEventListener('input', (e) => {
-        state.settings.slideshowSpeed = parseInt(e.target.value);
-        document.getElementById('speedValue').textContent = state.settings.slideshowSpeed + 's';
-        saveSettings();
-        startSlideshow();
-        resetProgressBar();
-      });
-
-      document.getElementById('itemsPerPageSelect').addEventListener('change', (e) => {
-        state.settings.itemsPerPage = parseInt(e.target.value);
-        state.currentPage = 0;
-        saveSettings();
-        render();
-      });
-
-      document.getElementById('offlineOnlyToggle').addEventListener('change', (e) => {
-        state.settings.offlineOnly = e.target.checked;
-        document.getElementById('offlineOnlyLabel').textContent = e.target.checked ? 'Show offline only' : 'Show all performers';
-        state.currentPage = 0;
-        saveSettings();
-        applyFilters();
-        render(true);
-      });
-
-      document.getElementById('mlFeaturesToggle').addEventListener('change', (e) => {
-        state.settings.mlFeaturesEnabled = e.target.checked;
-        document.getElementById('mlFeaturesLabel').textContent = e.target.checked ? 'ML similarity enabled' : 'ML similarity disabled';
-        saveSettings();
-        render();
-      });
-    }
-
-    // ============ MAIN SLIDESHOW ============
-    function resetProgressBar() {
-      const bar = document.getElementById('slideProgress');
-      if (!bar) return;
-      const speed = (state.settings.slideshowSpeed || 3) * 1000;
-      bar.style.transition = 'none';
-      bar.style.width = '0%';
-      // Force reflow so the transition restart takes effect
-      void bar.offsetWidth;
-      if (!state.slideshowPaused) {
-        bar.style.transition = `width ${speed}ms linear`;
-        bar.style.width = '100%';
-      }
-    }
-
-    function setSlideshowIndex(nextIndex, imageIndexDelta = 1, absoluteImageIndex = null) {
-      if (!state.filtered.length) {
-        document.getElementById('slideImage').src = '';
-        document.getElementById('slideCaption').textContent = 'No results for slideshow';
-        return;
-      }
-
-      state.slideshowIndex = ((nextIndex % state.filtered.length) + state.filtered.length) % state.filtered.length;
-      const item = state.filtered[state.slideshowIndex];
-      const images = getPerformerImages(item);
-      
-      // Set image index based on parameters
-      if (absoluteImageIndex !== null) {
-        state.slideshowImageIndex = Math.max(0, Math.min(absoluteImageIndex, images.length - 1));
-      } else if (imageIndexDelta !== 0) {
-        state.slideshowImageIndex = (((state.slideshowImageIndex + imageIndexDelta) % images.length) + images.length) % images.length;
-      } else {
-        state.slideshowImageIndex = 0;
-      }
-      
-      const img = document.getElementById('slideImage');
-      // Set data attributes immediately for labels/annotations while applying fade transition
-      img.dataset.username = item.username || '';
-      img.dataset.imageUrl = images[state.slideshowImageIndex] || '';
-      // Fade transition
-      img.classList.add('fade-out');
+  const interval = setInterval(() => {
+    let idx = parseInt(card.dataset.idx);
+    idx = (idx + 1) % images.length;
+    card.dataset.idx = idx;
+    
+    const imgEl = document.getElementById(`img-${user}`);
+    const countEl = document.getElementById(`count-${user}`);
+    
+    if (imgEl) {
+      imgEl.style.opacity = '0.4';
       setTimeout(() => {
-        img.src = images[state.slideshowImageIndex] || '';
-        img.alt = item.username || 'featured image';
-        img.classList.remove('fade-out');
-      }, 150);
-      
-      const score = calculateScore(item);
-      const imageCounter = images.length > 1 ? ` · Image ${state.slideshowImageIndex + 1}/${images.length}` : '';
-      document.getElementById('slideCaption').textContent = `${item.display_name || item.username} · @${item.username} · viewers ${item.num_viewers ?? 0}${score > 0 ? ' · ★' + score : ''}${imageCounter}`;
-      
-      // Update slide counter
-      const counter = document.getElementById('slideCounter');
-      if (counter) {
-        const total = state.filtered.length;
-        counter.textContent = total > 0 ? `${state.slideshowIndex + 1} / ${total}` : '';
-      }
-      
-      // Reset progress bar for new slide
-      resetProgressBar();
-      
-      // Update image recognition labels display
-      updateCurrentImageLabels();
-      
-      // Update annotation info and redraw
-      updateAnnotationInfo();
-      setTimeout(() => redrawAnnotations(), 100);
-    }
-
-    function startSlideshow() {
-      if (state.slideshowTimer) clearInterval(state.slideshowTimer);
-      if (state.slideshowPaused) return;
-      const speed = (state.settings.slideshowSpeed || 3) * 1000;
-      state.slideshowTimer = setInterval(() => {
-        if (state.slideshowPaused) return;
-        const item = state.filtered[state.slideshowIndex];
-        if (!item) {
-          setSlideshowIndex(0, 0);
-          return;
-        }
-        
-        const images = getPerformerImages(item);
-        
-        // If we're at the last image of this performer, move to next performer
-        if (state.slideshowImageIndex >= images.length - 1) {
-          setSlideshowIndex(state.slideshowIndex + 1, 0);
-        } else {
-          // Otherwise, show next image of same performer
-          setSlideshowIndex(state.slideshowIndex, 1);
-        }
-      }, speed);
-    }
-
-    function toggleSlideshowPause() {
-      state.slideshowPaused = !state.slideshowPaused;
-      const btn = document.getElementById('slidePauseBtn');
-      if (btn) btn.textContent = state.slideshowPaused ? '▶' : '⏸';
-      if (state.slideshowPaused) {
-        if (state.slideshowTimer) clearInterval(state.slideshowTimer);
-        state.slideshowTimer = null;
-        const bar = document.getElementById('slideProgress');
-        if (bar) {
-          bar.style.transition = 'none';
-          bar.style.width = '0%';
-        }
-      } else {
-        startSlideshow();
-        resetProgressBar();
-      }
-    }
-
-    function initSlideshowInteractions() {
-      const slideshow = document.getElementById('slideshow');
-      // Touch / swipe support
-      let touchStartX = 0;
-      let touchStartY = 0;
-      slideshow.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].clientX;
-        touchStartY = e.changedTouches[0].clientY;
-      }, { passive: true });
-      slideshow.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-          if (dx < 0) {
-            document.getElementById('slideNext').click();
-          } else {
-            document.getElementById('slidePrev').click();
-          }
-        }
-      }, { passive: true });
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (e.key === 'ArrowRight') {
-          document.getElementById('slideNext').click();
-        } else if (e.key === 'ArrowLeft') {
-          document.getElementById('slidePrev').click();
-        } else if (e.code === 'Space') {
-          e.preventDefault();
-          toggleSlideshowPause();
-        }
-      });
-      // Pause/play button
-      document.getElementById('slidePauseBtn').addEventListener('click', toggleSlideshowPause);
-    }
-
-    // ============ IMAGE RECOGNITION LABELS ============
-    function saveImageLabel() {
-      const img = document.getElementById('slideImage');
-      const imageUrl = img.dataset.imageUrl;
-      const username = img.dataset.username;
-      const labelInput = document.getElementById('imageLabel');
-      const label = labelInput.value.trim();
-      
-      if (!label || !imageUrl) return;
-      
-      // Use consistent key generation
-      const imageKey = getImageKey(username, imageUrl);
-      
-      if (!state.imageRecognitionLabels[imageKey]) {
-        state.imageRecognitionLabels[imageKey] = {
-          username: username,
-          imageUrl: imageUrl,
-          labels: [],
-          timestamp: Date.now()
-        };
-      }
-      
-      // Add label if not already present
-      if (!state.imageRecognitionLabels[imageKey].labels.includes(label)) {
-        state.imageRecognitionLabels[imageKey].labels.push(label);
-        state.imageRecognitionLabels[imageKey].lastUpdated = Date.now();
-      }
-      
-      // Save to localStorage
-      try {
-        localStorage.setItem('imageRecognitionLabels', JSON.stringify(state.imageRecognitionLabels));
-        labelInput.value = '';
-        updateCurrentImageLabels();
-        showNotification('Label saved successfully!');
-      } catch (e) {
-        console.error('Failed to save label:', e);
-        showNotification('Failed to save label');
-      }
+        imgEl.src = images[idx];
+        imgEl.style.opacity = '1';
+        if(countEl) countEl.innerText = `Img ${idx + 1} of ${images.length}`;
+      }, 250); // Sync with CSS transition
     }
     
-    function updateCurrentImageLabels() {
-      const img = document.getElementById('slideImage');
-      const imageUrl = img.dataset.imageUrl;
-      const username = img.dataset.username;
-      const imageKey = getImageKey(username, imageUrl);
-      const labelsDiv = document.getElementById('currentImageLabels');
-      
-      const imageData = state.imageRecognitionLabels[imageKey];
-      if (imageData && imageData.labels.length > 0) {
-        const labelTags = imageData.labels.map(label => 
-          `<span class="label-tag">${esc(label)}</span>`
-        ).join('');
-        labelsDiv.innerHTML = `Current labels: ${labelTags}`;
-      } else {
-        labelsDiv.innerHTML = 'No labels for this image yet';
-      }
-    }
+    triggerProgressBar();
     
-    function showLabelsModal() {
-      const totalLabels = Object.keys(state.imageRecognitionLabels).length;
-      let totalLabelCount = 0;
-      Object.values(state.imageRecognitionLabels).forEach(data => {
-        totalLabelCount += data.labels.length;
-      });
-      
-      const labelsList = Object.entries(state.imageRecognitionLabels).map(([key, data]) => {
-        const labelTags = data.labels.map(l => `<span class="label-tag">${esc(l)}</span>`).join('');
-        return `<div style="margin-bottom: 12px; padding: 8px; background: #0f1115; border-radius: 6px;">
-          <div style="font-weight: 600; margin-bottom: 4px;">@${esc(data.username)}</div>
-          <div style="font-size: 11px; color: #a8afbb; margin-bottom: 4px;">${new Date(data.lastUpdated || data.timestamp).toLocaleString()}</div>
-          <div>${labelTags}</div>
-        </div>`;
-      }).join('');
-      
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 10000; overflow: auto; padding: 20px;';
-      modal.innerHTML = `
-        <div style="max-width: 800px; margin: 0 auto; background: #191c22; border-radius: 12px; padding: 20px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="margin: 0;">Image Recognition Labels</h3>
-            <button id="closeLabelsModal" style="background: #4a5568; border: none; color: #fff; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Close</button>
-          </div>
-          <div style="margin-bottom: 16px;">
-            <strong>${totalLabels}</strong> images labeled with <strong>${totalLabelCount}</strong> total labels
-          </div>
-          <div style="margin-bottom: 16px;">
-            <button id="exportLabelsBtn" style="background: #667eea; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-right: 8px;">Export as JSON</button>
-            <button id="clearLabelsBtn" style="background: #f56565; border: none; color: #fff; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Clear All Labels</button>
-          </div>
-          <div style="max-height: 60vh; overflow-y: auto;">
-            ${labelsList || '<div style="color: #a8afbb;">No labels saved yet</div>'}
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-      
-      document.getElementById('closeLabelsModal').addEventListener('click', () => {
-        document.body.removeChild(modal);
-      });
-      
-      document.getElementById('exportLabelsBtn').addEventListener('click', () => {
-        const exportData = {
-          labels: state.imageRecognitionLabels,
-          annotations: state.imageAnnotations,
-          exportedAt: new Date().toISOString(),
-          version: '1.0'
-        };
-        const dataStr = JSON.stringify(exportData, null, 2);
-        const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `image-recognition-data-${Date.now()}.json`;
-        link.click();
-        URL.revokeObjectURL(url);
-        showNotification('Data exported successfully!');
-      });
-      
-      document.getElementById('clearLabelsBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear all labels? This cannot be undone.')) {
-          state.imageRecognitionLabels = {};
-          localStorage.removeItem('imageRecognitionLabels');
-          document.body.removeChild(modal);
-          showNotification('All labels cleared');
-        }
-      });
-      
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-          document.body.removeChild(modal);
-        }
-      });
-    }
+  }, duration);
+
+  state.activeIntervals.set(user, interval);
+}
+
+function haltSlideshowRuntime(user) {
+  if (state.activeIntervals.has(user)) {
+    clearInterval(state.activeIntervals.get(user));
+    state.activeIntervals.delete(user);
     
-    function showNotification(message) {
-      const notif = document.createElement('div');
-      notif.textContent = message;
-      notif.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #667eea; color: #fff; padding: 12px 20px; border-radius: 8px; z-index: 10001; box-shadow: 0 4px 6px rgba(0,0,0,0.3);';
-      document.body.appendChild(notif);
-      setTimeout(() => {
-        notif.style.transition = 'opacity 0.3s';
-        notif.style.opacity = '0';
-        setTimeout(() => {
-          if (notif.parentNode) {
-            notif.parentNode.removeChild(notif);
-          }
-        }, 300);
-      }, 2000);
+    // Reset progress bar visually
+    const progBar = document.getElementById(`prog-${user}`);
+    if (progBar) {
+      progBar.style.transition = 'none';
+      progBar.style.width = '0%';
     }
-    
-    function loadImageRecognitionLabels() {
-      try {
-        const saved = localStorage.getItem('imageRecognitionLabels');
-        if (saved) {
-          state.imageRecognitionLabels = JSON.parse(saved);
-        }
-        const savedAnnotations = localStorage.getItem('imageAnnotations');
-        if (savedAnnotations) {
-          state.imageAnnotations = JSON.parse(savedAnnotations);
-        }
-      } catch (e) {
-        console.error('Failed to load image recognition data:', e);
-      }
-    }
+  }
+}
 
-    // ============ IMAGE ANNOTATIONS (SHAPES) ============
-    function getImageKey(username, imageUrl) {
-      // Create a more stable key using username and a hash-like identifier
-      const urlPart = imageUrl.split('/').pop() || imageUrl.substring(imageUrl.length - 20);
-      return `${username}_${urlPart}`;
-    }
-    
-    function initAnnotationCanvas() {
-      const canvas = document.getElementById('annotationCanvas');
-      const img = document.getElementById('slideImage');
-      const slideshow = document.getElementById('slideshow');
-      
-      // Size canvas to match image
-      const resizeCanvas = () => {
-        canvas.width = img.clientWidth;
-        canvas.height = img.clientHeight;
-        redrawAnnotations();
-      };
-      
-      img.addEventListener('load', resizeCanvas);
-      window.addEventListener('resize', resizeCanvas);
-      
-      let isDrawing = false;
-      let startX = 0;
-      let startY = 0;
-      
-      slideshow.addEventListener('mousedown', (e) => {
-        if (!state.currentAnnotationTool) return;
-        
-        // Check if click is within slideshow bounds (excluding nav buttons)
-        if (e.target.classList.contains('slide-nav') || e.target.classList.contains('slide-caption') || e.target.classList.contains('slide-pause-btn')) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        startX = (e.clientX - rect.left) / canvas.clientWidth;
-        startY = (e.clientY - rect.top) / canvas.clientHeight;
-        isDrawing = true;
-        canvas.style.pointerEvents = 'auto';
-      });
-      
-      slideshow.addEventListener('mousemove', (e) => {
-        if (!isDrawing || !state.currentAnnotationTool) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        const currentX = (e.clientX - rect.left) / canvas.clientWidth;
-        const currentY = (e.clientY - rect.top) / canvas.clientHeight;
-        
-        redrawAnnotations();
-        // Draw preview with blue color
-        const ctx = canvas.getContext('2d');
-        ctx.strokeStyle = '#667eea';
-        ctx.lineWidth = 3;
-        ctx.fillStyle = 'rgba(102, 126, 234, 0.2)';
-        drawShape(startX, startY, currentX, currentY, state.currentAnnotationTool);
-      });
-      
-      slideshow.addEventListener('mouseup', (e) => {
-        if (!isDrawing || !state.currentAnnotationTool) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        const endX = (e.clientX - rect.left) / canvas.clientWidth;
-        const endY = (e.clientY - rect.top) / canvas.clientHeight;
-        
-        saveAnnotation(startX, startY, endX, endY, state.currentAnnotationTool);
-        isDrawing = false;
-        canvas.style.pointerEvents = 'none';
-        redrawAnnotations();
-      });
-    }
-    
-    function drawShape(x1, y1, x2, y2, shapeType) {
-      const canvas = document.getElementById('annotationCanvas');
-      const ctx = canvas.getContext('2d');
-      
-      const pixelX1 = x1 * canvas.width;
-      const pixelY1 = y1 * canvas.height;
-      const pixelX2 = x2 * canvas.width;
-      const pixelY2 = y2 * canvas.height;
-      const width = pixelX2 - pixelX1;
-      const height = pixelY2 - pixelY1;
-      
-      ctx.beginPath();
-      switch (shapeType) {
-        case 'circle':
-          const radius = Math.sqrt(width * width + height * height) / 2;
-          const centerX = (pixelX1 + pixelX2) / 2;
-          const centerY = (pixelY1 + pixelY2) / 2;
-          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-          break;
-        case 'rectangle':
-          ctx.rect(pixelX1, pixelY1, width, height);
-          break;
-        case 'parallelogram':
-          const offset = width * 0.2;
-          ctx.moveTo(pixelX1 + offset, pixelY1);
-          ctx.lineTo(pixelX2, pixelY1);
-          ctx.lineTo(pixelX2 - offset, pixelY2);
-          ctx.lineTo(pixelX1, pixelY2);
-          ctx.closePath();
-          break;
-        case 'triangle':
-          ctx.moveTo((pixelX1 + pixelX2) / 2, pixelY1);
-          ctx.lineTo(pixelX2, pixelY2);
-          ctx.lineTo(pixelX1, pixelY2);
-          ctx.closePath();
-          break;
-        case 'arrow':
-          const headSize = 15;
-          const angle = Math.atan2(pixelY2 - pixelY1, pixelX2 - pixelX1);
-          ctx.moveTo(pixelX1, pixelY1);
-          ctx.lineTo(pixelX2, pixelY2);
-          ctx.lineTo(pixelX2 - headSize * Math.cos(angle - Math.PI / 6), pixelY2 - headSize * Math.sin(angle - Math.PI / 6));
-          ctx.moveTo(pixelX2, pixelY2);
-          ctx.lineTo(pixelX2 - headSize * Math.cos(angle + Math.PI / 6), pixelY2 - headSize * Math.sin(angle + Math.PI / 6));
-          break;
-      }
-      ctx.fill();
-      ctx.stroke();
-    }
-    
-    function saveAnnotation(x1, y1, x2, y2, shapeType) {
-      const img = document.getElementById('slideImage');
-      const username = img.dataset.username;
-      const imageUrl = img.dataset.imageUrl;
-      if (!username || !imageUrl) return;
-      
-      const imageKey = getImageKey(username, imageUrl);
-      
-      if (!state.imageAnnotations[imageKey]) {
-        state.imageAnnotations[imageKey] = {
-          username: username,
-          imageUrl: imageUrl,
-          shapes: [],
-          timestamp: Date.now()
-        };
-      }
-      
-      state.imageAnnotations[imageKey].shapes.push({
-        type: shapeType,
-        x1: x1,
-        y1: y1,
-        x2: x2,
-        y2: y2,
-        timestamp: Date.now()
-      });
-      
-      state.imageAnnotations[imageKey].lastUpdated = Date.now();
-      
-      try {
-        localStorage.setItem('imageAnnotations', JSON.stringify(state.imageAnnotations));
-        updateAnnotationInfo();
-      } catch (e) {
-        console.error('Failed to save annotation:', e);
-      }
-    }
-    
-    function redrawAnnotations() {
-      const canvas = document.getElementById('annotationCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = document.getElementById('slideImage');
-      const username = img.dataset.username;
-      const imageUrl = img.dataset.imageUrl;
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      if (!state.annotationsVisible || !username || !imageUrl) return;
-      
-      const imageKey = getImageKey(username, imageUrl);
-      const annotations = state.imageAnnotations[imageKey];
-      
-      if (!annotations || !annotations.shapes) return;
-      
-      // Draw saved annotations with green color
-      ctx.strokeStyle = '#48bb78';
-      ctx.lineWidth = 2;
-      ctx.fillStyle = 'rgba(72, 187, 120, 0.15)';
-      
-      annotations.shapes.forEach(shape => {
-        drawShape(shape.x1, shape.y1, shape.x2, shape.y2, shape.type);
-      });
-    }
-    
-    function clearAnnotations() {
-      const img = document.getElementById('slideImage');
-      const username = img.dataset.username;
-      const imageUrl = img.dataset.imageUrl;
-      if (!username || !imageUrl) return;
-      
-      const imageKey = getImageKey(username, imageUrl);
-      
-      if (state.imageAnnotations[imageKey]) {
-        delete state.imageAnnotations[imageKey];
-        try {
-          localStorage.setItem('imageAnnotations', JSON.stringify(state.imageAnnotations));
-          redrawAnnotations();
-          updateAnnotationInfo();
-          showNotification('Annotations cleared');
-        } catch (e) {
-          console.error('Failed to clear annotations:', e);
-        }
-      }
-    }
-    
-    function toggleAnnotationsVisibility() {
-      state.annotationsVisible = !state.annotationsVisible;
-      const canvas = document.getElementById('annotationCanvas');
-      canvas.style.display = state.annotationsVisible ? 'block' : 'none';
-      redrawAnnotations();
-    }
-    
-    function updateAnnotationInfo() {
-      const img = document.getElementById('slideImage');
-      const username = img.dataset.username;
-      const imageUrl = img.dataset.imageUrl;
-      const infoDiv = document.getElementById('annotationInfo');
-      
-      if (!username || !imageUrl) {
-        infoDiv.textContent = '';
-        return;
-      }
-      
-      const imageKey = getImageKey(username, imageUrl);
-      const annotations = state.imageAnnotations[imageKey];
-      
-      if (annotations && annotations.shapes && annotations.shapes.length > 0) {
-        const shapeCounts = {};
-        annotations.shapes.forEach(s => {
-          shapeCounts[s.type] = (shapeCounts[s.type] || 0) + 1;
-        });
-        const summary = Object.entries(shapeCounts).map(([type, count]) => `${count} ${type}${count > 1 ? 's' : ''}`).join(', ');
-        infoDiv.textContent = `Annotations on this image: ${summary}`;
-      } else {
-        infoDiv.textContent = 'No annotations on this image yet. Select a tool and draw on the image.';
-      }
-    }
-    
-    function setAnnotationTool(tool) {
-      state.currentAnnotationTool = state.currentAnnotationTool === tool ? null : tool;
-      
-      // Update button states
-      document.querySelectorAll('.annotation-tool-btn[data-tool]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tool === state.currentAnnotationTool);
-      });
-      
-      const canvas = document.getElementById('annotationCanvas');
-      if (state.currentAnnotationTool) {
-        canvas.style.pointerEvents = 'auto';
-        canvas.style.cursor = 'crosshair';
-      } else {
-        canvas.style.pointerEvents = 'none';
-        canvas.style.cursor = 'default';
-      }
-    }
+// ==========================================
+// UI BINDINGS & LISTENERS
+// ==========================================
 
-    // ============ RENDER ============
-    function render(resetSlideshow = false) {
-      const grid = document.getElementById('grid');
-      const sorted = sortItems(state.filtered);
-      const itemsPerPage = state.settings.itemsPerPage || 40;
-      const startIndex = 0;
-      const endIndex = (state.currentPage + 1) * itemsPerPage;
-      
-      // Get items to display (paginated)
-      state.displayedItems = sorted.slice(startIndex, endIndex);
-      
-      grid.innerHTML = state.displayedItems.map((item, i) => cardHtml(item, i)).join('');
-      
-      // Update stats
-      document.getElementById('visibleCount').textContent = String(state.filtered.length);
-      document.getElementById('showingCount').textContent = String(state.displayedItems.length);
-      document.getElementById('totalFilteredCount').textContent = String(state.filtered.length);
-      
-      // Update load more button
-      const loadMoreContainer = document.getElementById('loadMoreContainer');
-      const loadMoreBtn = document.getElementById('loadMoreBtn');
-      const paginationInfo = document.getElementById('paginationInfo');
-      
-      if (state.displayedItems.length < state.filtered.length) {
-        loadMoreContainer.style.display = 'block';
-        loadMoreBtn.disabled = state.isLoading;
-        loadMoreBtn.textContent = state.isLoading ? 'Loading...' : 'Load More';
-        const remaining = state.filtered.length - state.displayedItems.length;
-        paginationInfo.textContent = `${remaining} more performer${remaining !== 1 ? 's' : ''} available`;
-      } else {
-        loadMoreContainer.style.display = 'none';
-      }
-      
-      // Reset slideshow when explicitly requested or when the current performer left the filtered list
-      if (resetSlideshow || !state.filtered[state.slideshowIndex]) {
-        setSlideshowIndex(0, 0);
-      }
-      applySettings();
-    }
+function updateStatus(msg, isLoading) {
+  const el = document.getElementById('globalStatus');
+  el.innerHTML = isLoading 
+    ? `<div class="spinner-border spinner-border-sm text-info me-2" role="status"></div> ${msg}`
+    : `<span class="text-success fw-bold me-2">●</span> ${msg}`;
+}
 
-    function loadMore() {
-      if (state.isLoading) return;
-      state.isLoading = true;
-      state.currentPage++;
-      
-      // Brief delay for smooth UX transition (prevents jarring layout shifts)
-      setTimeout(() => {
-        state.isLoading = false;
-        render();
-      }, LOAD_MORE_DELAY_MS);
-    }
+// Range Slider Label Updaters
+document.getElementById('minViewers').addEventListener('input', (e) => {
+  document.getElementById('viewerVal').innerText = e.target.value;
+});
+document.getElementById('minScore').addEventListener('input', (e) => {
+  document.getElementById('scoreVal').innerText = e.target.value;
+});
 
-    function applyFilters() {
-      const items = state.payload?.items || [];
-      let filtered = items;
-      
-      // Apply offline-only filter
-      if (state.settings.offlineOnly) {
-        filtered = filtered.filter(item => {
-          return item.image_url && state.offlineImageUrls.has(item.image_url);
-        });
-      }
-      
-      state.filtered = filtered;
-    }
+// Trigger Execution
+document.getElementById('applyFiltersBtn').addEventListener('click', executePipeline);
+document.getElementById('sortAlgorithm').addEventListener('change', executePipeline);
 
-    function applySearch() {
-      const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
-      let items = state.payload?.items || [];
-      
-      // Apply offline-only filter first
-      if (state.settings.offlineOnly) {
-        items = items.filter(item => {
-          return item.image_url && state.offlineImageUrls.has(item.image_url);
-        });
-      }
-      
-      // Reset pagination on search
-      state.currentPage = 0;
-      
-      if (!query) {
-        state.filtered = items;
-        render(true);
-        return;
-      }
-      state.filtered = items.filter((item) => {
-        const tags = Array.isArray(item.tags) ? item.tags.join(' ').toLowerCase() : '';
-        const customTags = (state.customTags[item.username?.toLowerCase()] || []).join(' ').toLowerCase();
-        const mlFeatures = (state.mlFeatures[item.username?.toLowerCase()] || []).join(' ').toLowerCase();
-        return (
-          String(item.username || '').toLowerCase().includes(query) ||
-          String(item.display_name || '').toLowerCase().includes(query) ||
-          tags.includes(query) ||
-          customTags.includes(query) ||
-          mlFeatures.includes(query)
-        );
-      });
-      render(true);
-    }
+// Debounced Search Input
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(executePipeline, 400); // Wait 400ms after typing stops
+});
 
-    // ============ CONTEXT MENU ============
-    // Context menu dimensions for positioning
-    const CONTEXT_MENU_WIDTH = 200;
-    const CONTEXT_MENU_HEIGHT = 150;
-    
-    function showContextMenu(x, y, username) {
-      const menu = document.getElementById('contextMenu');
-      state.contextTarget = username;
-      menu.style.left = Math.min(x, window.innerWidth - CONTEXT_MENU_WIDTH) + 'px';
-      menu.style.top = Math.min(y, window.innerHeight - CONTEXT_MENU_HEIGHT) + 'px';
-      menu.classList.add('visible');
-    }
+// Reset Controls
+document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('minViewers').value = 0;
+  document.getElementById('viewerVal').innerText = '0';
+  document.getElementById('minScore').value = 0;
+  document.getElementById('scoreVal').innerText = '0';
+  document.getElementById('tagFilter').value = '';
+  document.getElementById('requireHistory').checked = false;
+  document.getElementById('sortAlgorithm').value = 'bayesian';
+  executePipeline();
+});
 
-    function hideContextMenu() {
-      document.getElementById('contextMenu').classList.remove('visible');
-      state.contextTarget = null;
-    }
+// Boot Sequence
+fetchAndDecompress();
 
-    function handleContextAction(action) {
-      const username = state.contextTarget;
-      if (!username) return;
-
-      if (action === 'addTag') {
-        openTagModal(username);
-      } else if (action === 'viewTags') {
-        const customTags = state.customTags[username] || [];
-        const mlFeatures = state.mlFeatures[username] || [];
-        const allInfo = [];
-        if (customTags.length) allInfo.push(`Custom tags: ${customTags.join(', ')}`);
-        if (mlFeatures.length) allInfo.push(`ML features: ${mlFeatures.join(', ')}`);
-        alert(`Tags for @${username}:\n${allInfo.length ? allInfo.join('\n') : 'No tags yet'}`);
-      } else if (action === 'findSimilar') {
-        findSimilarPerformers(username);
-      } else if (action === 'analyzeFeatures') {
-        const features = analyzePerformerFeatures(username);
-        document.getElementById('status').textContent = `ML Features detected: ${features.join(', ')}`;
-        setTimeout(() => document.getElementById('status').textContent = '', 3000);
-        render();
-      } else if (action === 'boostPopularity') {
-        boostPopularity(username);
-      } else if (action === 'copyUsername') {
-        navigator.clipboard.writeText(username).then(() => {
-          document.getElementById('status').textContent = `Copied: ${username}`;
-          setTimeout(() => document.getElementById('status').textContent = '', 2000);
-        });
-      }
-      hideContextMenu();
-    }
-
-    function findSimilarPerformers(username) {
-      const userTags = state.customTags[username] || [];
-      const item = (state.payload?.items || []).find(i => i.username?.toLowerCase() === username);
-      const itemTags = item && Array.isArray(item.tags) ? item.tags : [];
-      const allTags = [...userTags, ...itemTags].map(t => t.toLowerCase());
-      
-      if (!allTags.length) {
-        document.getElementById('status').textContent = 'No tags to match';
-        return;
-      }
-
-      // Filter to performers that share at least one tag and calculate similarity scores
-      const similarityScores = new Map();
-      state.filtered = (state.payload?.items || []).filter(p => {
-        const pTags = [...(p.tags || []), ...(state.customTags[p.username?.toLowerCase()] || [])].map(t => t.toLowerCase());
-        const sharedCount = pTags.filter(t => allTags.includes(t)).length;
-        if (sharedCount > 0) {
-          // Store similarity score separately (not in clickCounts)
-          similarityScores.set(p.username?.toLowerCase(), sharedCount);
-          return true;
-        }
-        return false;
-      });
-      
-      // Sort by similarity score (descending), then by existing score
-      state.filtered.sort((a, b) => {
-        const aSimScore = similarityScores.get(a.username?.toLowerCase()) || 0;
-        const bSimScore = similarityScores.get(b.username?.toLowerCase()) || 0;
-        if (bSimScore !== aSimScore) return bSimScore - aSimScore;
-        return calculateScore(b) - calculateScore(a);
-      });
-      
-      render(true);
-      document.getElementById('status').textContent = `Found ${state.filtered.length} similar performers`;
-    }
-
-    // ============ TAG MODAL ============
-    function openTagModal(username) {
-      state.tagModalTarget = username;
-      state.selectedTagsForModal = [...(state.customTags[username] || [])];
-      
-      document.getElementById('tagModalUsername').textContent = '@' + username;
-      document.getElementById('tagInput').value = '';
-      renderModalTags();
-      document.getElementById('tagModal').classList.add('visible');
-      document.getElementById('tagInput').focus();
-    }
-
-    function closeTagModal() {
-      document.getElementById('tagModal').classList.remove('visible');
-      state.tagModalTarget = null;
-      state.selectedTagsForModal = [];
-    }
-
-    function renderModalTags() {
-      const container = document.getElementById('selectedTags');
-      container.innerHTML = state.selectedTagsForModal.map(tag => 
-        `<span class="tag-item">${esc(tag)} <span class="remove-tag" data-tag="${esc(tag)}">&times;</span></span>`
-      ).join('');
-    }
-
-    function addTagToModal(tag) {
-      const normalized = tag.trim().toLowerCase();
-      if (!normalized || state.selectedTagsForModal.map(t => t.toLowerCase()).includes(normalized)) return;
-      state.selectedTagsForModal.push(tag.trim());
-      renderModalTags();
-      document.getElementById('tagInput').value = '';
-      hideAutocomplete();
-    }
-
-    function removeTagFromModal(tag) {
-      state.selectedTagsForModal = state.selectedTagsForModal.filter(t => t.toLowerCase() !== tag.toLowerCase());
-      renderModalTags();
-    }
-
-    function saveModalTags() {
-      if (state.tagModalTarget) {
-        const previousTags = state.customTags[state.tagModalTarget] || [];
-        const newTags = [...state.selectedTagsForModal];
-        state.customTags[state.tagModalTarget] = newTags;
-        saveCustomTags();
-        
-        // Calculate new tags added using Set for O(n) lookup instead of O(n²)
-        const previousTagsLower = new Set(previousTags.map(p => p.toLowerCase()));
-        const addedTags = newTags.filter(t => !previousTagsLower.has(t.toLowerCase()));
-        if (addedTags.length > 0) {
-          // Each new tag boosts popularity
-          state.clickCounts[state.tagModalTarget] = (state.clickCounts[state.tagModalTarget] || 0) + addedTags.length * TAG_POPULARITY_BOOST;
-          saveClickCounts();
-          
-          // Track these tags as interests
-          addedTags.forEach(tag => trackInterest(tag));
-          
-          // If ML features enabled, trigger similarity analysis
-          if (state.settings.mlFeaturesEnabled) {
-            // Merge custom tags with ML features for similarity
-            const features = [...(state.mlFeatures[state.tagModalTarget] || []), ...addedTags];
-            state.mlFeatures[state.tagModalTarget] = [...new Set(features)];
-            saveMlFeatures();
-            calculateSimilarityScores(state.tagModalTarget, state.mlFeatures[state.tagModalTarget]);
-          }
-        }
-        
-        render();
-        document.getElementById('status').textContent = `Tags saved for @${state.tagModalTarget}${addedTags.length ? ` (+${addedTags.length} popularity boost)` : ''}`;
-      }
-      closeTagModal();
-    }
-
-    // ============ AUTOCOMPLETE ============
-    function showAutocomplete(query) {
-      const dropdown = document.getElementById('autocompleteDropdown');
-      if (!query) {
-        hideAutocomplete();
-        return;
-      }
-      
-      // Combine known tags with ML features for autocomplete
-      const allSuggestions = new Set([...state.allKnownTags, ...ML_FEATURES]);
-      
-      const matches = Array.from(allSuggestions).filter(t => 
-        t.includes(query.toLowerCase()) && 
-        !state.selectedTagsForModal.map(s => s.toLowerCase()).includes(t)
-      ).slice(0, 10);
-      
-      // If query doesn't match any existing tag, show option to create new
-      const showCreateNew = query.length >= 2 && !matches.some(m => m === query.toLowerCase());
-      
-      if (!matches.length && !showCreateNew) {
-        hideAutocomplete();
-        return;
-      }
-      
-      let html = matches.map((tag, i) => 
-        `<div class="autocomplete-item${i === 0 && !showCreateNew ? ' selected' : ''}" data-tag="${esc(tag)}">${esc(tag)}</div>`
-      ).join('');
-      
-      if (showCreateNew) {
-        html = `<div class="autocomplete-item${matches.length === 0 ? ' selected' : ''}" data-tag="${esc(query)}" style="font-style: italic;">+ Create "${esc(query)}"</div>` + html;
-      }
-      
-      dropdown.innerHTML = html;
-      dropdown.classList.add('visible');
-    }
-
-    function hideAutocomplete() {
-      document.getElementById('autocompleteDropdown').classList.remove('visible');
-    }
-
-    function selectAutocompleteItem(direction) {
-      const items = document.querySelectorAll('#autocompleteDropdown .autocomplete-item');
-      const current = document.querySelector('#autocompleteDropdown .autocomplete-item.selected');
-      if (!items.length) return;
-      
-      let index = current ? Array.from(items).indexOf(current) : -1;
-      items.forEach(i => i.classList.remove('selected'));
-      
-      index += direction;
-      if (index < 0) index = items.length - 1;
-      if (index >= items.length) index = 0;
-      
-      items[index].classList.add('selected');
-    }
-
-    // ============ CARD SLIDESHOW HANDLERS ============
-    function handleCardSlideNav(card, direction) {
-      const username = card.dataset.username;
-      const img = card.querySelector('.card-slideshow img');
-      const images = JSON.parse(img.dataset.images || '[]');
-      if (images.length <= 1) return;
-      
-      let current = state.cardSlideshowIndices[username] || 0;
-      current = ((current + direction) % images.length + images.length) % images.length;
-      state.cardSlideshowIndices[username] = current;
-      
-      img.src = images[current];
-      
-      // Update dots
-      const dots = card.querySelectorAll('.slide-dot');
-      dots.forEach((dot, i) => dot.classList.toggle('active', i === current));
-    }
-
-    // ============ LOAD DATA ============
-    async function loadManifest() {
-      const status = document.getElementById('status');
-      status.textContent = 'Loading...';
-      
-      // Initialize offline database
-      try {
-        await initOfflineDb();
-      } catch {
-        console.warn('IndexedDB not available for offline storage');
-      }
-      
-      updateOfflineStatus();
-      
-      try {
-        const res = await fetch(`dbs/performer_images_manifest.dat?t=${Date.now()}`);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const compressed = await res.arrayBuffer();
-        const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
-        const payload = JSON.parse(decompressed);
-        state.payload = payload;
-        state.filtered = payload.items || [];
-
-        document.getElementById('performerCount').textContent = String(payload.performer_count || 0);
-        document.getElementById('imageCount').textContent = String(payload.image_count || 0);
-        document.getElementById('generatedAt').textContent = fmtTs(payload.generated_at);
-        rebuildKnownTags();
-        render(true);
-        status.textContent = `Loaded ${state.filtered.length} entries`;
-        
-        // Save data for offline use and proactively cache images
-        saveOfflineData(payload);
-        cacheImagesForOffline(payload.items || []).then(() => updateOfflineImageCount());
-        
-      } catch (error) {
-        // Try to load from offline cache
-        const offlinePayload = await loadOfflineData();
-        if (offlinePayload) {
-          state.payload = offlinePayload;
-          state.filtered = offlinePayload.items || [];
-          document.getElementById('performerCount').textContent = String(offlinePayload.performer_count || 0);
-          document.getElementById('imageCount').textContent = String(offlinePayload.image_count || 0);
-          document.getElementById('generatedAt').textContent = fmtTs(offlinePayload.generated_at);
-          render(true);
-          status.textContent = `📴 Offline: ${state.filtered.length} cached entries`;
-          updateOfflineImageCount();
-        } else {
-          status.textContent = `Failed: ${error.message}`;
-          document.getElementById('grid').innerHTML = '<div class="w3-panel w3-red">Unable to load data. No offline cache available.</div>';
-        }
-      }
-    }
-
-    // ============ EVENT LISTENERS ============
-    document.getElementById('reloadBtn').addEventListener('click', loadManifest);
-    document.getElementById('searchInput').addEventListener('input', applySearch);
-    document.getElementById('slidePrev').addEventListener('click', () => {
-      const item = state.filtered[state.slideshowIndex];
-      if (!item) return;
-      const images = getPerformerImages(item);
-      
-      // If at first image of performer, go to previous performer's last image
-      if (state.slideshowImageIndex === 0) {
-        const prevIndex = ((state.slideshowIndex - 1) % state.filtered.length + state.filtered.length) % state.filtered.length;
-        const prevItem = state.filtered[prevIndex];
-        const prevImages = getPerformerImages(prevItem);
-        setSlideshowIndex(prevIndex, 0, prevImages.length - 1);
-      } else {
-        // Otherwise show previous image of same performer
-        setSlideshowIndex(state.slideshowIndex, -1);
-      }
-    });
-    
-    document.getElementById('slideNext').addEventListener('click', () => {
-      const item = state.filtered[state.slideshowIndex];
-      if (!item) return;
-      const images = getPerformerImages(item);
-      
-      // If at last image of performer, go to next performer
-      if (state.slideshowImageIndex >= images.length - 1) {
-        setSlideshowIndex(state.slideshowIndex + 1, 0);
-      } else {
-        // Otherwise show next image of same performer
-        setSlideshowIndex(state.slideshowIndex, 1);
-      }
-    });
-    document.getElementById('loadMoreBtn').addEventListener('click', loadMore);
-    
-    // Infinite scroll support
-    let scrollThrottle = null;
-    window.addEventListener('scroll', () => {
-      if (scrollThrottle) return;
-      scrollThrottle = setTimeout(() => {
-        scrollThrottle = null;
-        const scrollY = window.scrollY;
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        
-        // Load more when user is near bottom
-        if (documentHeight - (scrollY + windowHeight) < SCROLL_LOAD_THRESHOLD) {
-          if (state.displayedItems.length < state.filtered.length && !state.isLoading) {
-            loadMore();
-          }
-        }
-      }, 100);
-    });
-    
-    // Grid click handlers
-    document.getElementById('grid').addEventListener('click', (event) => {
-      const tagBtn = event.target.closest('.tag-chip');
-      if (tagBtn) {
-        const tag = tagBtn.getAttribute('data-tag');
-        trackInterest(tag);
-        return;
-      }
-      
-      const slideNav = event.target.closest('.card-slide-nav');
-      if (slideNav) {
-        event.stopPropagation();
-        const card = slideNav.closest('.card');
-        const dir = parseInt(slideNav.dataset.dir);
-        handleCardSlideNav(card, dir);
-        return;
-      }
-      
-      const dot = event.target.closest('.slide-dot');
-      if (dot) {
-        event.stopPropagation();
-        const card = dot.closest('.card');
-        const username = card.dataset.username;
-        const slideIndex = parseInt(dot.dataset.slide);
-        state.cardSlideshowIndices[username] = slideIndex;
-        const img = card.querySelector('.card-slideshow img');
-        const images = JSON.parse(img.dataset.images || '[]');
-        img.src = images[slideIndex] || '';
-        card.querySelectorAll('.slide-dot').forEach((d, i) => d.classList.toggle('active', i === slideIndex));
-        return;
-      }
-      
-      const card = event.target.closest('.card');
-      if (card) {
-        const username = card.dataset.username;
-        trackClick(username);
-        render();
-      }
-    });
-
-    // Context menu (right-click)
-    document.getElementById('grid').addEventListener('contextmenu', (event) => {
-      const card = event.target.closest('.card');
-      if (card) {
-        event.preventDefault();
-        showContextMenu(event.clientX, event.clientY, card.dataset.username);
-      }
-    });
-
-    document.addEventListener('click', (event) => {
-      if (!event.target.closest('.context-menu')) {
-        hideContextMenu();
-      }
-    });
-
-    document.getElementById('contextMenu').addEventListener('click', (event) => {
-      const item = event.target.closest('.context-menu-item');
-      if (item) {
-        handleContextAction(item.dataset.action);
-      }
-    });
-
-    // Interest panel click
-    document.getElementById('interestPanel').addEventListener('click', (event) => {
-      const pill = event.target.closest('.pill');
-      if (pill) {
-        const interest = pill.dataset.interest;
-        document.getElementById('searchInput').value = interest;
-        applySearch();
-      }
-    });
-
-    // Tag modal
-    document.getElementById('closeTagModal').addEventListener('click', closeTagModal);
-    document.getElementById('cancelTagModal').addEventListener('click', closeTagModal);
-    document.getElementById('saveTagModal').addEventListener('click', saveModalTags);
-    
-    document.getElementById('tagModal').addEventListener('click', (event) => {
-      if (event.target.id === 'tagModal') closeTagModal();
-    });
-
-    document.getElementById('selectedTags').addEventListener('click', (event) => {
-      const removeBtn = event.target.closest('.remove-tag');
-      if (removeBtn) {
-        removeTagFromModal(removeBtn.dataset.tag);
-      }
-    });
-
-    document.getElementById('tagInput').addEventListener('input', (event) => {
-      showAutocomplete(event.target.value);
-    });
-
-    document.getElementById('tagInput').addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        const selected = document.querySelector('#autocompleteDropdown .autocomplete-item.selected');
-        if (selected) {
-          addTagToModal(selected.dataset.tag);
-        } else if (event.target.value.trim()) {
-          addTagToModal(event.target.value);
-        }
-      } else if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        selectAutocompleteItem(1);
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        selectAutocompleteItem(-1);
-      } else if (event.key === 'Escape') {
-        hideAutocomplete();
-      }
-    });
-
-    document.getElementById('autocompleteDropdown').addEventListener('click', (event) => {
-      const item = event.target.closest('.autocomplete-item');
-      if (item) {
-        addTagToModal(item.dataset.tag);
-      }
-    });
-
-    // ============ INIT ============
-    loadInterests();
-    loadClickCounts();
-    loadCustomTags();
-    loadMlFeatures();
-    loadSimilarityScores();
-    loadSettings();
-    setupSettingsListeners();
-    renderInterests();
-    loadImageRecognitionLabels();
-    
-    // Image recognition event listeners
-    document.getElementById('saveLabelBtn').addEventListener('click', saveImageLabel);
-    document.getElementById('viewLabelsBtn').addEventListener('click', showLabelsModal);
-    document.getElementById('imageLabel').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        saveImageLabel();
-      }
-    });
-    
-    // Annotation tool event listeners
-    document.getElementById('drawCircleBtn').addEventListener('click', () => setAnnotationTool('circle'));
-    document.getElementById('drawRectBtn').addEventListener('click', () => setAnnotationTool('rectangle'));
-    document.getElementById('drawParallelBtn').addEventListener('click', () => setAnnotationTool('parallelogram'));
-    document.getElementById('drawTriangleBtn').addEventListener('click', () => setAnnotationTool('triangle'));
-    document.getElementById('drawArrowBtn').addEventListener('click', () => setAnnotationTool('arrow'));
-    document.getElementById('clearAnnotationsBtn').addEventListener('click', clearAnnotations);
-    document.getElementById('toggleAnnotationsBtn').addEventListener('click', toggleAnnotationsVisibility);
-    
-    // Initialize annotation canvas
-    initAnnotationCanvas();
-    initSlideshowInteractions();
-    
-    loadManifest();
-  </script>
-  <script src="main.js"></script>
+</script>
 </body>
 </html>
