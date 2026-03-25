@@ -3,12 +3,647 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JINX | v3.0 Quantitative Grid</title>
+  <title>JINX | v3.5 Quantitative Grid</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-  <script>
-  // Add this near your boot sequence in the main HTML
+
+  <style>
+    body { background-color: #0b0d11; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0b0d11; }
+    ::-webkit-scrollbar-thumb { background: #2a2f39; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+
+    /* Layout & Navigation */
+    .navbar { background-color: #11141a !important; border-bottom: 1px solid #2a2f39; }
+    .sidebar { background-color: #11141a; border-right: 1px solid #2a2f39; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; }
+    .main-content { min-height: calc(100vh - 56px); padding-bottom: 40px; }
+
+    /* Filter Controls */
+    .form-label { font-size: 0.85rem; font-weight: 600; color: #a8afbb; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-control, .form-select { background-color: #191c22; border: 1px solid #2a2f39; color: #e2e8f0; font-size: 0.9rem; }
+    .form-control:focus, .form-select:focus { background-color: #1f232b; border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); color: #fff; }
+    .form-range::-webkit-slider-thumb { background: #667eea; }
+
+    /* Grid & Cards */
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+    .user-card { 
+      background: #191c22; border: 1px solid #2a2f39; border-radius: 12px; 
+      overflow: hidden; position: relative; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .user-card:hover { transform: translateY(-4px) scale(1.02); border-color: #667eea; box-shadow: 0 10px 15px rgba(0,0,0,0.2); z-index: 2; }
+    
+    .slide-container { position: relative; width: 100%; height: 260px; background: #000; }
+    .slide-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.4s ease-in-out; }
+    
+    .card-overlay { 
+      position: absolute; bottom: 0; left: 0; right: 0; 
+      background: linear-gradient(to top, rgba(9, 11, 15, 0.95) 0%, rgba(9, 11, 15, 0.7) 60%, transparent 100%); 
+      padding: 15px 12px 10px; 
+    }
+    
+    /* Typography & Badges */
+    .username-title { color: #6ee7b7; font-weight: 700; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin: 0; }
+    .stat-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; backdrop-filter: blur(4px); }
+    .score-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; }
+    .tag-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .mini-tag { font-size: 0.65rem; background: #2a2f39; padding: 2px 6px; border-radius: 4px; color: #a8afbb; }
+
+    /* Utilities */
+    .loader-zone { height: 120px; display: flex; align-items: center; justify-content: center; color: #667eea; font-weight: 600; }
+    .progress-bar-custom { height: 3px; background: #2a2f39; width: 100%; position: absolute; top: 0; z-index: 10; }
+    .progress-fill { height: 100%; background: #6ee7b7; width: 0%; transition: width linear; }
+    
+    /* Dashboard Stats */
+    .dash-stat-box { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; text-align: center; }
+    .dash-stat-value { font-size: 1.5rem; font-weight: 700; color: #667eea; line-height: 1.2; }
+    .dash-stat-label { font-size: 0.75rem; color: #a8afbb; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark sticky-top">
+  <div class="container-fluid">
+    <span class="navbar-brand mb-0 h1 d-flex align-items-center">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      JINX <span class="ms-2 fs-6 text-muted">v3.5 Quantitative Edition</span>
+    </span>
+    <div class="d-flex text-white-50 align-items-center fs-6" id="globalStatus">
+      Initializing parallel core...
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3 col-lg-2 sidebar p-3 d-none d-md-block">
+      <h6 class="text-uppercase text-muted mb-3 fw-bold border-bottom border-secondary pb-2">Analysis Parameters</h6>
+      
+      <div class="mb-3">
+        <label class="form-label">Search Identity</label>
+        <input type="text" id="searchInput" class="form-control" placeholder="@username or alias..." />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Sort Algorithm</label>
+        <select id="sortAlgorithm" class="form-select">
+          <option value="bayesian">Bayesian Average (Quant)</option>
+          <option value="rawScore">Raw Score (Linear)</option>
+          <option value="engagement">Engagement Velocity</option>
+          <option value="viewers">Max Viewers</option>
+          <option value="random">Cryptographic Random</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Min Viewers: <span id="viewerVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Min Base Score: <span id="scoreVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minScore" min="0" max="500" step="10" value="0">
+      </div>
+
+      <div class="mb-4 form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="requireHistory" checked>
+        <label class="form-check-label form-label mt-1" for="requireHistory">Require Image History</label>
+        <div class="form-text text-muted" style="font-size: 0.7rem;">Only show users with enough data for a slideshow.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Tag Inclusion (Comma separated)</label>
+        <input type="text" id="tagFilter" class="form-control" placeholder="e.g. verified, outdoor" />
+      </div>
+
+      <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold" style="background-color: #667eea; border: none;">Execute Query</button>
+      <button id="resetFiltersBtn" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Reset Matrix</button>
+    </div>
+
+    <div class="col-md-9 col-lg-10 main-content p-4">
+      
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statTotal">0</div>
+            <div class="dash-stat-label">Performers Parsed</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statActive">0</div>
+            <div class="dash-stat-label">Meeting Criteria</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statMean">0.0</div>
+            <div class="dash-stat-label">Global Mean Score</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="dash-stat-box">
+            <div class="dash-stat-value" id="statDev">0.0</div>
+            <div class="dash-stat-label">Standard Deviation</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="slideshowGrid" class="grid-container"></div>
+      
+      <div id="loadingTrigger" class="loader-zone mt-4">
+        <div class="spinner-border spinner-border-sm me-2" role="status" id="loadSpinner" style="display: none;"></div>
+        <span id="loadText">Awaiting concurrent data chunks...</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/**
+ * JINX v3.5 Core Engine
+ * Implements concurrent execution yielding, Bayesian average sorting,
+ * dynamic hardware-accelerated intersection observing, and Multi-Wave Interactions.
+ */
+
+const state = {
+  rawDataset: [],
+  filteredDataset: [],
+  itemsPerPage: 24,
+  currentPage: 0,
+  isProcessing: false,
+  
+  // Concurrency & Hardware Tracking
+  activeIntervals: new Map(),
+  preloadedImages: new Set(),
+  observer: null,
+  scrollObserver: null,
+  
+  // Persistent Local Data
+  clickCounts: JSON.parse(localStorage.getItem('jinx_clicks') || '{}'),
+  userInterests: JSON.parse(localStorage.getItem('jinx_interests') || '{}'),
+  
+  // Quantitative Globals
+  globalMean: 0,
+  globalVariance: 0
+};
+
+// ==========================================
+// QUANTITATIVE ANALYSIS MODULE
+// ==========================================
+const QuantEngine = {
+  calculateRawScore(item) {
+    const user = item.username?.toLowerCase() || '';
+    let score = (state.clickCounts[user] || 0) * 15; 
+    
+    if (item.tags && Array.isArray(item.tags)) {
+      item.tags.forEach(tag => {
+        if (state.userInterests[tag.toLowerCase()]) {
+          score += (state.userInterests[tag.toLowerCase()] * 5);
+        }
+      });
+    }
+    score += Math.min(item.num_viewers || 0, 1000) * 0.01;
+    return score;
+  },
+
+  async calculateGlobalMetrics(dataset) {
+    if (!dataset.length) return;
+    
+    let sum = 0;
+    for (let i = 0; i < dataset.length; i++) {
+      if (i % 1000 === 0) await yieldToMain();
+      dataset[i]._rawScore = this.calculateRawScore(dataset[i]);
+      sum += dataset[i]._rawScore;
+    }
+    
+    state.globalMean = sum / dataset.length;
+    
+    let sqDiffSum = 0;
+    for (let i = 0; i < dataset.length; i++) {
+      if (i % 1000 === 0) await yieldToMain();
+      const diff = dataset[i]._rawScore - state.globalMean;
+      sqDiffSum += diff * diff;
+    }
+    
+    state.globalVariance = Math.sqrt(sqDiffSum / dataset.length);
+    
+    document.getElementById('statMean').innerText = state.globalMean.toFixed(2);
+    document.getElementById('statDev').innerText = state.globalVariance.toFixed(2);
+  },
+
+  getBayesianScore(item) {
+    const v = state.clickCounts[item.username?.toLowerCase()] || 0;
+    const m = 5; 
+    const R = item._rawScore || 0; 
+    const C = state.globalMean;
+    
+    return (v + R > 0) ? ((v / (v + m)) * R) + ((m / (v + m)) * C) : 0;
+  }
+};
+
+// ==========================================
+// ASYNC CONCURRENCY UTILITIES
+// ==========================================
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
+/**
+ * JINX v3.5 Strategic Interaction Controller
+ * Handles the 3s Personalization and 10s Similarity Sweep
+ */
+async function handleUserInteraction(user, item) {
+  const key = user.toLowerCase();
+  
+  // Wave 0: Immediate Data Persistence
+  state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
+  localStorage.setItem('jinx_clicks', JSON.stringify(state.clickCounts));
+  
+  if (item.tags) {
+    item.tags.forEach(tag => {
+      const t = tag.toLowerCase();
+      state.userInterests[t] = (state.userInterests[t] || 0) + 1;
+    });
+    localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
+  }
+
+  updateStatus(`Captured interaction for @${user}. Processing Wave 1...`, true);
+
+  // Wave 1: 3-Second Re-Sort (Personalization)
+  setTimeout(async () => {
+    updateStatus("Wave 1: Updating personalization priority...", true);
+    await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+    await executePipeline();
+    updateStatus("Wave 1 Complete. Analyzing look-alikes...", false);
+  }, 3000);
+
+  // Wave 2: 10-Second Global Similarity Sweep
+  setTimeout(async () => {
+    updateStatus("Wave 2: Executing Similarity Discovery Sweep...", true);
+    
+    const sourceTags = new Set((item.tags || []).map(t => t.toLowerCase()));
+    if (sourceTags.size === 0) {
+        updateStatus("No tags available for similarity sweep.", false);
+        return;
+    }
+
+    const chunkSize = 400;
+    for (let i = 0; i < state.rawDataset.length; i += chunkSize) {
+      const chunk = state.rawDataset.slice(i, i + chunkSize);
+      
+      chunk.forEach(performer => {
+        if (performer.username === item.username) return;
+        
+        const pTags = (performer.tags || []).map(t => t.toLowerCase());
+        const intersection = pTags.filter(x => sourceTags.has(x)).length;
+        
+        if (intersection > 0) {
+          const similarity = intersection / (sourceTags.size + pTags.length - intersection);
+          performer._rawScore += (similarity * 50); 
+        }
+      });
+      
+      if (i % 800 === 0) await yieldToMain();
+    }
+
+    await executePipeline();
+    updateStatus("Similarity Matrix Synchronized.", false);
+  }, 10000);
+}
+
+async function filterDatasetConcurrently(dataset, filters) {
+  const result = [];
+  const chunkSize = 500;
+  
+  for (let i = 0; i < dataset.length; i += chunkSize) {
+    const chunk = dataset.slice(i, i + chunkSize);
+    
+    const processedChunk = chunk.filter(item => {
+      if (filters.query && !(item.username || '').toLowerCase().includes(filters.query)) return false;
+      if ((item.num_viewers || 0) < filters.minViewers) return false;
+      if ((item._rawScore || 0) < filters.minScore) return false;
+      
+      const historyLen = (item.image_history || []).length;
+      if (filters.requireHistory && historyLen === 0) return false;
+      
+      if (filters.tags.length > 0) {
+        const itemTags = (item.tags || []).map(t => t.toLowerCase());
+        const hasAllTags = filters.tags.every(targetTag => itemTags.includes(targetTag));
+        if (!hasAllTags) return false;
+      }
+      return true;
+    });
+    
+    result.push(...processedChunk);
+    await yieldToMain(); 
+  }
+  return result;
+}
+
+async function preloadNextBatchImages(startIndex, endIndex) {
+  const nextItems = state.filteredDataset.slice(startIndex, endIndex);
+  if (!nextItems.length) return;
+
+  const urlsToFetch = nextItems
+    .map(item => item.image_url)
+    .filter(url => url && !state.preloadedImages.has(url));
+
+  if (!urlsToFetch.length) return;
+
+  Promise.allSettled(urlsToFetch.map(url => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { state.preloadedImages.add(url); resolve(); };
+      img.onerror = resolve; 
+      img.src = url;
+    });
+  }));
+}
+
+// ==========================================
+// CORE DATA PIPELINE
+// ==========================================
+
+async function fetchAndDecompress() {
+  updateStatus("Opening network stream...", true);
+  try {
+    const res = await fetch(`dbs/performer_images_manifest.dat?t=${Date.now()}`);
+    if (!res.ok) throw new Error("HTTP Status " + res.status);
+    
+    updateStatus("Decompressing binary blob...", true);
+    const compressed = await res.arrayBuffer();
+    
+    await yieldToMain(); 
+    const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
+    
+    updateStatus("Parsing JSON intelligence...", true);
+    await yieldToMain();
+    const data = JSON.parse(decompressed);
+    state.rawDataset = data.items || [];
+    
+    document.getElementById('statTotal').innerText = state.rawDataset.length.toLocaleString();
+    
+    updateStatus("Computing global statistics...", true);
+    await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+    
+    updateStatus("Grid Online.", false);
+    executePipeline();
+    
+  } catch (error) {
+    console.error(error);
+    updateStatus(`Critical Failure: ${error.message}`, false);
+  }
+}
+
+async function executePipeline() {
+  if (state.isProcessing) return;
+  state.isProcessing = true;
+  updateStatus("Executing Query Matrix...", true);
+  
+  const filters = {
+    query: document.getElementById('searchInput').value.toLowerCase().trim(),
+    minViewers: parseInt(document.getElementById('minViewers').value, 10),
+    minScore: parseInt(document.getElementById('minScore').value, 10),
+    requireHistory: document.getElementById('requireHistory').checked,
+    tags: document.getElementById('tagFilter').value.split(',')
+          .map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+  };
+
+  const sortAlgo = document.getElementById('sortAlgorithm').value;
+  let processed = await filterDatasetConcurrently(state.rawDataset, filters);
+
+  updateStatus("Applying sorting algorithms...", true);
+  await yieldToMain(); 
+  
+  processed.sort((a, b) => {
+    switch (sortAlgo) {
+      case 'bayesian':
+        return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
+      case 'engagement':
+        return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
+      case 'viewers':
+        return (b.num_viewers || 0) - (a.num_viewers || 0);
+      case 'random':
+        const array = new Uint32Array(2);
+        window.crypto.getRandomValues(array);
+        return array[0] - array[1];
+      case 'rawScore':
+      default:
+        return (b._rawScore || 0) - (a._rawScore || 0);
+    }
+  });
+
+  state.filteredDataset = processed;
+  document.getElementById('statActive').innerText = processed.length.toLocaleString();
+  
+  state.currentPage = 0;
+  document.getElementById('slideshowGrid').innerHTML = '';
+  
+  setupIntersectionObservers();
+  await renderNextPage();
+  
+  state.isProcessing = false;
+  updateStatus("Grid Synchronized.", false);
+}
+
+// ==========================================
+// RENDER & UI CONTROLLER
+// ==========================================
+
+async function renderNextPage() {
+  const start = state.currentPage * state.itemsPerPage;
+  const end = start + state.itemsPerPage;
+  const pageItems = state.filteredDataset.slice(start, end);
+
+  if (pageItems.length === 0) {
+    document.getElementById('loadText').innerText = "End of Matrix.";
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  for (const item of pageItems) {
+    const user = item.username || 'unknown';
+    const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
+    
+    if(images.length === 0) images.push('https://via.placeholder.com/300x400/191c22/667eea?text=No+Image');
+
+    const score = sortAlgoValue(item);
+    const tagsHtml = (item.tags || []).slice(0, 4).map(t => `<span class="mini-tag">${t}</span>`).join('');
+
+    const card = document.createElement('div');
+    card.className = 'user-card';
+    card.dataset.user = user;
+    
+    // Safely encode images array for DOM attribute
+    card.setAttribute('data-images', JSON.stringify(images).replace(/"/g, '&quot;'));
+    card.dataset.idx = 0;
+
+    const progressHtml = images.length > 1 ? `<div class="progress-bar-custom"><div class="progress-fill" id="prog-${user}"></div></div>` : '';
+
+    card.innerHTML = `
+      ${progressHtml}
+      <div class="slide-container">
+        <img src="${images[0]}" id="img-${user}" loading="lazy">
+        <div class="card-overlay">
+          <div class="d-flex justify-content-between align-items-end mb-1">
+            <h3 class="username-title">@${user}</h3>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <span class="stat-badge score-badge shadow-sm" id="score-${user}">★ ${score.toFixed(1)}</span>
+              <span class="stat-badge">👁️ ${item.num_viewers || 0}</span>
+            </div>
+          </div>
+          <div class="tag-container">${tagsHtml}</div>
+          ${images.length > 1 ? `<small class="text-muted d-block mt-2" style="font-size: 0.65rem" id="count-${user}">Img 1 of ${images.length}</small>` : ''}
+        </div>
+      </div>
+    `;
+    
+    card.addEventListener('click', () => {
+      handleUserInteraction(user, item);
+      
+      card.style.transition = "all 0.3s";
+      card.style.boxShadow = "0 0 15px #6ee7b7";
+      card.style.borderColor = "#6ee7b7";
+      
+      const badge = card.querySelector(`#score-${user}`);
+      if(badge) badge.innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
+      
+      setTimeout(() => {
+        card.style.boxShadow = "";
+        card.style.borderColor = "";
+      }, 1000);
+    });
+
+    fragment.appendChild(card);
+  }
+
+  document.getElementById('slideshowGrid').appendChild(fragment);
+
+  // Observe newly added cards for slideshows
+  document.querySelectorAll('.user-card:not([data-observed="true"])').forEach(card => {
+    card.dataset.observed = "true";
+    state.observer.observe(card);
+  });
+
+  preloadNextBatchImages(end, end + state.itemsPerPage);
+  document.getElementById('loadText').innerText = "Scroll down for deeper scanning...";
+}
+
+function sortAlgoValue(item) {
+  const algo = document.getElementById('sortAlgorithm').value;
+  if(algo === 'bayesian') return QuantEngine.getBayesianScore(item);
+  if(algo === 'engagement') return state.clickCounts[item.username?.toLowerCase()] || 0;
+  return item._rawScore || 0;
+}
+
+// ==========================================
+// HARDWARE OBSERVERS & SLIDESHOW MECHANICS (v4.0)
+// ==========================================
+
+function setupIntersectionObservers() {
+  if (state.observer) state.observer.disconnect();
+
+  state.observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const user = entry.target.dataset.user;
+      if (entry.isIntersecting) {
+        initSlideshowRuntime(entry.target);
+      } else {
+        haltSlideshowRuntime(user);
+      }
+    });
+  }, { 
+    threshold: 0.1,
+    rootMargin: "100px" 
+  });
+
+  document.querySelectorAll('.user-card').forEach(card => {
+    state.observer.observe(card);
+  });
+
+  if (!state.scrollObserver) {
+    state.scrollObserver = new IntersectionObserver(async (entries) => {
+      const trigger = entries[0];
+      if (trigger.isIntersecting && !state.isProcessing) {
+        if (state.filteredDataset.length > (state.currentPage + 1) * state.itemsPerPage) {
+          state.currentPage++;
+          document.getElementById('loadSpinner').style.display = 'inline-block';
+          await renderNextPage();
+          document.getElementById('loadSpinner').style.display = 'none';
+        }
+      }
+    }, { rootMargin: "300px" }); 
+    state.scrollObserver.observe(document.getElementById('loadingTrigger'));
+  }
+}
+
+function initSlideshowRuntime(card) {
+  const user = card.dataset.user;
+  const imagesStr = card.getAttribute('data-images');
+  if (!imagesStr) return;
+
+  // Re-parse the safely encoded JSON
+  const images = JSON.parse(imagesStr.replace(/&quot;/g, '"'));
+  if (images.length <= 1) return; 
+
+  if (state.activeIntervals.has(user)) return;
+
+  const imgEl = document.getElementById(`img-${user}`);
+  const progBar = document.getElementById(`prog-${user}`);
+  const countEl = document.getElementById(`count-${user}`);
+  
+  const duration = 3500 + Math.random() * 1500;
+
+  const triggerStep = () => {
+    if (progBar) {
+      progBar.style.transition = 'none';
+      progBar.style.width = '0%';
+      void progBar.offsetWidth; 
+      progBar.style.transition = `width ${duration}ms linear`;
+      progBar.style.width = '100%';
+    }
+
+    let idx = parseInt(card.dataset.idx) || 0;
+    idx = (idx + 1) % images.length;
+    card.dataset.idx = idx;
+
+    if (imgEl) {
+      imgEl.style.opacity = '0.3'; 
+      setTimeout(() => {
+        imgEl.src = images[idx];
+        imgEl.style.opacity = '1'; 
+        if (countEl) countEl.innerText = `Img ${idx + 1} of ${images.length}`;
+      }, 300); 
+    }
+  };
+
+  triggerStep();
+  const intervalId = setInterval(triggerStep, duration);
+  state.activeIntervals.set(user, intervalId);
+}
+
+function haltSlideshowRuntime(user) {
+  if (state.activeIntervals.has(user)) {
+    clearInterval(state.activeIntervals.get(user));
+    state.activeIntervals.delete(user);
+    
+    const progBar = document.getElementById(`prog-${user}`);
+    if (progBar) {
+      progBar.style.transition = 'none';
+      progBar.style.width = '0%';
+    }
+  }
+}
+
+// ==========================================
+// BACKGROUND WORKER & LIVE SYNC
+// ==========================================
 
 function initializeBackgroundWorker() {
   if (window.Worker) {
@@ -17,31 +652,22 @@ function initializeBackgroundWorker() {
     worker.onmessage = async function(e) {
       if (e.data.type === 'DATA_UPDATE') {
         const newItems = e.data.items;
-        
-        // Smart Merge: Only add users we don't already have in state.rawDataset
         const existingUsers = new Set(state.rawDataset.map(item => item.username));
         const trulyNewItems = newItems.filter(item => !existingUsers.has(item.username));
         
         if (trulyNewItems.length > 0) {
           updateStatus(`Live Sync: Ingested ${trulyNewItems.length} new performers...`, true);
           
-          // Append new data
           state.rawDataset.push(...trulyNewItems);
-          
-          // Update Dashboard total
           document.getElementById('statTotal').innerText = state.rawDataset.length.toLocaleString();
           
-          // Re-calculate globals slightly to adjust the Bayesian mean
           await QuantEngine.calculateGlobalMetrics(state.rawDataset);
           
-          // If the new items match current filters, add them to the filtered set
-          const filteredNew = await filterDatasetConcurrently(trulyNewItems, currentFilters());
+          const filters = currentFilters();
+          const filteredNew = await filterDatasetConcurrently(trulyNewItems, filters);
           if (filteredNew.length > 0) {
             state.filteredDataset.push(...filteredNew);
             document.getElementById('statActive').innerText = state.filteredDataset.length.toLocaleString();
-            
-            // Note: We don't wipe the grid here. The infinite scroll observer 
-            // will naturally pick up these new items at the bottom of the list.
           }
           
           setTimeout(() => updateStatus("Grid Synchronized.", false), 2000);
@@ -53,7 +679,6 @@ function initializeBackgroundWorker() {
   }
 }
 
-// Helper to grab current UI filter state
 function currentFilters() {
   return {
     query: document.getElementById('searchInput').value.toLowerCase().trim(),
@@ -64,20 +689,53 @@ function currentFilters() {
   };
 }
 
-// Call this at the end of your fetchAndDecompress() boot sequence
-// initializeBackgroundWorker();
+// ==========================================
+// UI BINDINGS & LISTENERS
+// ==========================================
 
-  </script>
-  <style>
-    body { background-color: #0b0d11; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
-    
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #0b0d11; }
-    ::-webkit-scrollbar-thumb { background: #2a2f39; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+function updateStatus(msg, isLoading) {
+  const el = document.getElementById('globalStatus');
+  el.innerHTML = isLoading 
+    ? `<div class="spinner-border spinner-border-sm text-info me-2" role="status"></div> ${msg}`
+    : `<span class="text-success fw-bold me-2">●</span> ${msg}`;
+}
 
-    /* Layout & Navigation */
+document.getElementById('minViewers').addEventListener('input', (e) => {
+  document.getElementById('viewerVal').innerText = e.target.value;
+});
+document.getElementById('minScore').addEventListener('input', (e) => {
+  document.getElementById('scoreVal').innerText = e.target.value;
+});
+
+document.getElementById('applyFiltersBtn').addEventListener('click', executePipeline);
+document.getElementById('sortAlgorithm').addEventListener('change', executePipeline);
+
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(executePipeline, 400);
+});
+
+document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('minViewers').value = 0;
+  document.getElementById('viewerVal').innerText = '0';
+  document.getElementById('minScore').value = 0;
+  document.getElementById('scoreVal').innerText = '0';
+  document.getElementById('tagFilter').value = '';
+  document.getElementById('requireHistory').checked = false;
+  document.getElementById('sortAlgorithm').value = 'bayesian';
+  executePipeline();
+});
+
+// Boot Sequence
+fetchAndDecompress().then(() => {
+    // initializeBackgroundWorker(); // Uncomment this line if you have the worker.js file active!
+});
+
+</script>
+</body>
+</html>
     .navbar { background-color: #11141a !important; border-bottom: 1px solid #2a2f39; }
     .sidebar { background-color: #11141a; border-right: 1px solid #2a2f39; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; }
     .main-content { min-height: calc(100vh - 56px); padding-bottom: 40px; }
