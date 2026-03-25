@@ -316,16 +316,16 @@ const QuantEngine = {
    * R = item's raw score
    * C = global mean score
    */
-  getBayesianScore(item) {
-    const v = state.clickCounts[item.username?.toLowerCase()] || 0;
-    const m = 3; 
-    const R = item._rawScore || 0;
-    const C = state.globalMean;
-    
-    if (v === 0 && R === 0) return 0; // Optimization for untouched items
-    
-    return ((v / (v + m)) * R) + ((m / (v + m)) * C);
-  }
+      getBayesianScore(item) {
+      const v = state.clickCounts[item.username?.toLowerCase()] || 0;
+      const m = 5; 
+      const R = item._rawScore || 0; 
+      const C = state.globalMean;
+      
+      // Returns the weighted average of the item's score vs the global mean
+      return (v + R > 0) ? ((v / (v + m)) * R) + ((m / (v + m)) * C) : 0;
+    }
+
 };
 
 // ==========================================
@@ -334,6 +334,67 @@ const QuantEngine = {
 
 // Allows the main thread to breathe during heavy loop calculations
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+/**
+ * JINX v3.5 Strategic Interaction Controller
+ * Handles the 3s Personalization and 10s Similarity Sweep
+ */
+async function handleUserInteraction(user, item) {
+  const key = user.toLowerCase();
+  
+  // --- 0s: Immediate Data Persistence ---
+  state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
+  localStorage.setItem('jinx_clicks', JSON.stringify(state.clickCounts));
+  
+  if (item.tags) {
+    item.tags.forEach(tag => {
+      const t = tag.toLowerCase();
+      state.userInterests[t] = (state.userInterests[t] || 0) + 1;
+    });
+    localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
+  }
+
+  updateStatus(`Captured interaction for @${user}. Processing Wave 1...`, true);
+
+  // --- WAVE 1: 3-Second Re-Sort (Personalization) ---
+  setTimeout(async () => {
+    updateStatus("Wave 1: Updating personalization priority...", true);
+    await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+    await executePipeline();
+    updateStatus("Wave 1 Complete. Analyzing look-alikes...", false);
+  }, 3000);
+
+  // --- WAVE 2: 10-Second Global Similarity Sweep ---
+  setTimeout(async () => {
+    updateStatus("Wave 2: Executing Similarity Discovery Sweep...", true);
+    
+    const sourceTags = new Set((item.tags || []).map(t => t.toLowerCase()));
+    if (sourceTags.size === 0) return;
+
+    const chunkSize = 400;
+    for (let i = 0; i < state.rawDataset.length; i += chunkSize) {
+      const chunk = state.rawDataset.slice(i, i + chunkSize);
+      
+      chunk.forEach(performer => {
+        if (performer.username === item.username) return;
+        
+        const pTags = (performer.tags || []).map(t => t.toLowerCase());
+        const intersection = pTags.filter(x => sourceTags.has(x)).length;
+        
+        if (intersection > 0) {
+          // Similarity coefficient (Jaccard Index)
+          const similarity = intersection / (sourceTags.size + pTags.length - intersection);
+          // Boost performers with similar tag matrices
+          performer._rawScore += (similarity * 50); 
+        }
+      });
+      
+      if (i % 800 === 0) await yieldToMain();
+    }
+
+    await executePipeline();
+    updateStatus("Similarity Matrix Synchronized.", false);
+  }, 10000);
+}
 
 /**
  * Concurrently filters the dataset array using chunks to maintain 60FPS UI
@@ -552,14 +613,26 @@ async function renderNextPage() {
       </div>
     `;
     
-    // Score update click handler
+        // Update the click handler inside the render loop
     card.addEventListener('click', () => {
+      // Execute the multi-wave logic defined above
       handleUserInteraction(user, item);
-      // Soft UI update
-      card.querySelector(`#score-${user}`).innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
-      card.style.borderColor = '#6ee7b7';
-      setTimeout(() => card.style.borderColor = '', 500);
+      
+      // Immediate visual feedback
+      card.style.transition = "all 0.3s";
+      card.style.boxShadow = "0 0 15px #6ee7b7";
+      card.style.borderColor = "#6ee7b7";
+      
+      // Update the score badge on the card immediately
+      const badge = card.querySelector(`#score-${user}`);
+      if(badge) badge.innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
+      
+      setTimeout(() => {
+        card.style.boxShadow = "";
+        card.style.borderColor = "";
+      }, 1000);
     });
+
 
     fragment.appendChild(card);
   }
