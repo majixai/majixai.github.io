@@ -2,7 +2,7 @@ name: Fintech Async ML Pipeline
 on:
   schedule:
     - cron: '0 1 * * *' # Runs at 1 AM UTC
-  workflow_dispatch: # Allows manual triggering via GitHub UI
+  workflow_dispatch: # Allows manual triggering
 
 jobs:
   data-pipeline:
@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p fintech
 
-          # 1. Write the Cython Module (High-Speed Math)
+          # 1. Write the Cython Module
           cat << 'EOF' > conic_engine.pyx
           import numpy as np
           cimport numpy as np
@@ -39,9 +39,7 @@ jobs:
               cdef double t, growth
 
               for i in range(steps):
-                  # Parametric time step
                   t = (i * 5.0) / (steps - 1) if steps > 1 else 0.0
-                  # Hyperbolic growth factor
                   growth = (1.0 + t**2)**0.5 
                   
                   bounds[i, 0] = mid + (radius * growth)
@@ -57,34 +55,55 @@ jobs:
           import asyncio
           import torch
           import yfinance as yf
+          import datetime
           from concurrent.futures import ThreadPoolExecutor
 
           SYMBOLS = ["^GSPC", "BTC-USD", "ETH-USD", "^GSPTSE"]
           STEPS = 30
 
-          # PyTorch device check (GitHub standard runners default to CPU)
           device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
           print(f"Compute Engine: {device} + Cython C-Extensions")
 
           async def fetch_and_compute(ticker):
               loop = asyncio.get_event_loop()
               
-              # Async fetch to prevent blocking
+              # FIXED: Explicit keyword arguments for yfinance
               with ThreadPoolExecutor() as pool:
-                  df = await loop.run_in_executor(pool, yf.download, ticker, "7d", "1h", False)
+                  df = await loop.run_in_executor(
+                      pool, 
+                      lambda: yf.download(ticker, period="7d", interval="1h", progress=False)
+                  )
 
-              if df.empty: return
+              if df.empty: 
+                  print(f"[{ticker}] No data fetched.")
+                  return
 
               recent_high = float(df['High'].max())
               recent_low = float(df['Low'].min())
+              mid_price = (recent_high + recent_low) / 2.0
 
               # Execute Cython compiled math
               bounds = conic_engine.generate_conic_bounds(recent_high, recent_low, STEPS)
 
-              # Save format for TradingView
+              # Format for TradingView Pine Seeds (OHLCV + Time)
+              # Generate timestamps for the last 30 hours up to now
+              now = datetime.datetime.utcnow()
               clean_ticker = ticker.replace("^", "")
-              filename = f"fintech/{clean_ticker}_conic.csv"
-              np.savetxt(filename, bounds, delimiter=",", header="upper,lower", comments="")
+              filename = f"fintech/{clean_ticker}_CONIC.csv"
+              
+              with open(filename, 'w') as f:
+                  f.write("time,open,high,low,close,volume\n")
+                  for i in range(STEPS):
+                      # Stepping back in time to map to the last 30 bars on a 1H chart
+                      bar_time = now - datetime.timedelta(hours=(STEPS - 1 - i))
+                      time_str = bar_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                      
+                      high_bound = bounds[i, 0]
+                      low_bound = bounds[i, 1]
+                      
+                      # Mapping Upper to High, Lower to Low
+                      f.write(f"{time_str},{mid_price},{high_bound},{low_bound},{mid_price},0\n")
+              
               print(f"Data Compiled & Saved: {filename}")
 
           async def main():
@@ -103,6 +122,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add fintech/
-          # Fails silently if no new data was generated to prevent pipeline crash
+          # Fails silently if no new data was generated
           git commit -m "Auto-update Conic Forecasts [skip ci]" || exit 0
           git push
