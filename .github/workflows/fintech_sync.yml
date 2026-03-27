@@ -1,0 +1,108 @@
+name: Fintech Async ML Pipeline
+on:
+  schedule:
+    - cron: '0 1 * * *' # Runs at 1 AM UTC
+  workflow_dispatch: # Allows manual triggering via GitHub UI
+
+jobs:
+  data-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install yfinance torch cython numpy pandas
+
+      - name: Build, Compile, and Execute Pipeline
+        run: |
+          mkdir -p fintech
+
+          # 1. Write the Cython Module (High-Speed Math)
+          cat << 'EOF' > conic_engine.pyx
+          import numpy as np
+          cimport numpy as np
+          import cython
+
+          @cython.boundscheck(False)
+          @cython.wraparound(False)
+          def generate_conic_bounds(double high, double low, int steps=30):
+              cdef double mid = (high + low) / 2.0
+              cdef double radius = (high - low) / 2.0
+              cdef np.ndarray[np.float64_t, ndim=2] bounds = np.zeros((steps, 2), dtype=np.float64)
+              cdef int i
+              cdef double t, growth
+
+              for i in range(steps):
+                  # Parametric time step
+                  t = (i * 5.0) / (steps - 1) if steps > 1 else 0.0
+                  # Hyperbolic growth factor
+                  growth = (1.0 + t**2)**0.5 
+                  
+                  bounds[i, 0] = mid + (radius * growth)
+                  bounds[i, 1] = mid - (radius * growth)
+              return bounds
+          EOF
+
+          # 2. Write the Async Python Orchestrator
+          cat << 'EOF' > main_pipeline.py
+          import numpy as np
+          import pyximport; pyximport.install(setup_args={"include_dirs": np.get_include()})
+          import conic_engine
+          import asyncio
+          import torch
+          import yfinance as yf
+          from concurrent.futures import ThreadPoolExecutor
+
+          SYMBOLS = ["^GSPC", "BTC-USD", "ETH-USD", "^GSPTSE"]
+          STEPS = 30
+
+          # PyTorch device check (GitHub standard runners default to CPU)
+          device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+          print(f"Compute Engine: {device} + Cython C-Extensions")
+
+          async def fetch_and_compute(ticker):
+              loop = asyncio.get_event_loop()
+              
+              # Async fetch to prevent blocking
+              with ThreadPoolExecutor() as pool:
+                  df = await loop.run_in_executor(pool, yf.download, ticker, "7d", "1h", False)
+
+              if df.empty: return
+
+              recent_high = float(df['High'].max())
+              recent_low = float(df['Low'].min())
+
+              # Execute Cython compiled math
+              bounds = conic_engine.generate_conic_bounds(recent_high, recent_low, STEPS)
+
+              # Save format for TradingView
+              clean_ticker = ticker.replace("^", "")
+              filename = f"fintech/{clean_ticker}_conic.csv"
+              np.savetxt(filename, bounds, delimiter=",", header="upper,lower", comments="")
+              print(f"Data Compiled & Saved: {filename}")
+
+          async def main():
+              tasks = [fetch_and_compute(t) for t in SYMBOLS]
+              await asyncio.gather(*tasks)
+
+          if __name__ == "__main__":
+              asyncio.run(main())
+          EOF
+
+          # 3. Execute the generated Python file
+          python main_pipeline.py
+
+      - name: Commit and Push Updates
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add fintech/
+          # Fails silently if no new data was generated to prevent pipeline crash
+          git commit -m "Auto-update Conic Forecasts [skip ci]" || exit 0
+          git push
