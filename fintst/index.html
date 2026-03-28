@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Live - fintst</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
+</head>
+<body class="bg-dark text-light">
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h4 mb-0 text-warning">BTC-USD (1m)</h2>
+            <span id="last-update" class="badge bg-secondary">Syncing...</span>
+        </div>
+        <div class="card bg-dark border-secondary shadow-sm mb-4">
+            <div class="card-body"><canvas id="chartCanvas" style="height: 450px;"></canvas></div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover table-sm">
+                <thead>
+                    <tr class="text-secondary"><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th></tr>
+                </thead>
+                <tbody id="data-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        async function loadDashboard() {
+            try {
+                const res = await fetch('Copy_Of_Ledger.yml');
+                const yamlText = await res.text();
+                const data = jsyaml.load(yamlText) || [];
+                if (data.length === 0) return;
+
+                document.getElementById('last-update').innerText = "Last update: " + data[data.length - 1].t;
+                const formatted = data.map(d => ({
+                    x: luxon.DateTime.fromFormat(d.t, "yyyy-MM-dd HH:mm").valueOf(),
+                    o: d.o, h: d.h, l: d.l, c: d.c
+                }));
+
+                new Chart(document.getElementById('chartCanvas').getContext('2d'), {
+                    type: 'candlestick',
+                    data: { datasets: [{ label: 'BTC/USD', data: formatted, color: { up: '#26a69a', down: '#ef5350', unchanged: '#999' } }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'minute' } } } }
+                });
+
+                const tableBody = document.getElementById('data-table-body');
+                data.slice(-10).reverse().forEach(row => {
+                    tableBody.innerHTML += `<tr><td>${row.t}</td><td>$${row.o}</td><td>$${row.h}</td><td>$${row.l}</td><td class="${row.c >= row.o ? 'text-success' : 'text-danger'}"><strong>$${row.c}</strong></td></tr>`;
+                });
+            } catch (err) { console.error(err); }
+        }
+        loadDashboard();
+    </script>
+</body>
+</html>
