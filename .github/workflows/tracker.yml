@@ -28,9 +28,8 @@ jobs:
           import yaml
           import os
 
-          # Updated path to the subdirectory
           FOLDER = "fintst"
-          FILE = os.path.join(FOLDER, "Copy_Of_Ledger.yml")
+          FILE = os.path.join(FOLDER, "btc_data.yml")
           MAX_ROWS = 1000
 
           if not os.path.exists(FOLDER):
@@ -54,9 +53,11 @@ jobs:
                   with open(FILE, "r") as f:
                       data = yaml.safe_load(f) or []
 
+              # Prevent duplicates
               if not data or data[-1]['t'] != new_entry['t']:
                   data.append(new_entry)
 
+              # Compress via sliding window
               compressed_data = data[-MAX_ROWS:]
 
               with open(FILE, "w") as f:
@@ -67,6 +68,6 @@ jobs:
         run: |
           git config --global user.name "Database-Bot"
           git config --global user.email "bot@github.com"
-          git add fintst/Copy_Of_Ledger.yml
+          git add fintst/btc_data.yml
           git commit -m "DB Sync: fintst [skip ci]" || exit 0
           git push
