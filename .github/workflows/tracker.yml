@@ -1,0 +1,69 @@
+name: BTC Compressed Tracker
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-db-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install yfinance PyYAML pandas
+
+      - name: Fetch and Compress Data
+        run: |
+          python - <<'EOF'
+          import yfinance as yf
+          import yaml
+          import os
+
+          FILE = "Copy_Of_Ledger.yml"
+          MAX_ROWS = 1000
+
+          ticker = yf.Ticker("BTC-USD")
+          df = ticker.history(period="1d", interval="1m").tail(1)
+
+          if not df.empty:
+              new_entry = {
+                  "t": df.index[0].strftime('%Y-%m-%d %H:%M'),
+                  "o": round(float(df['Open'].iloc[0]), 2),
+                  "h": round(float(df['High'].iloc[0]), 2),
+                  "l": round(float(df['Low'].iloc[0]), 2),
+                  "c": round(float(df['Close'].iloc[0]), 2),
+                  "v": int(df['Volume'].iloc[0])
+              }
+
+              data = []
+              if os.path.exists(FILE):
+                  with open(FILE, "r") as f:
+                      data = yaml.safe_load(f) or []
+
+              # Prevent duplicates
+              if not data or data[-1]['t'] != new_entry['t']:
+                  data.append(new_entry)
+
+              # Compress via sliding window
+              compressed_data = data[-MAX_ROWS:]
+
+              with open(FILE, "w") as f:
+                  yaml.dump(compressed_data, f, sort_keys=False, default_flow_style=False)
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "Database-Bot"
+          git config --global user.email "bot@github.com"
+          git add Copy_Of_Ledger.yml
+          git commit -m "DB Sync [skip ci]" || exit 0
+          git push
