@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Snippet Ledger</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .snippet-card { cursor: pointer; transition: 0.2s; }
+        .snippet-card:hover { background-color: #f8f9fa; }
+        #autocomplete-list { position: absolute; z-index: 1000; width: 100%; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <h2 class="mb-4">Snippet Ledger & ML Expander</h2>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="position-relative">
+                    <input type="text" id="snippetInput" class="form-control" placeholder="Type a snippet..." autocomplete="off">
+                    <div id="autocomplete-list" class="list-group shadow-sm"></div>
+                </div>
+                <button onclick="saveSnippet()" class="btn btn-primary mt-3">Save Snippet</button>
+                <button onclick="generateExpansion()" class="btn btn-outline-secondary mt-3">ML Expand</button>
+            </div>
+        </div>
+
+        <h4>Stored Snippets (Click to Copy)</h4>
+        <div id="ledger" class="row g-3"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+    <script>
+        let db;
+        let model;
+
+        // 1. Initialize IndexedDB
+        const request = indexedDB.open("SnippetDB", 1);
+        request.onupgradeneeded = e => {
+            db = e.target.result;
+            db.createObjectStore("snippets", { keyPath: "id", autoIncrement: true });
+        };
+        request.onsuccess = e => { 
+            db = e.target.result; 
+            renderLedger(); 
+        };
+
+        // 2. Load ML Model (GPU accelerated by default in browser)
+        async function loadModel() {
+            console.log("Loading ML Model...");
+            model = await use.load();
+            console.log("Model Ready");
+        }
+        loadModel();
+
+        // 3. Save to IndexedDB
+        function saveSnippet() {
+            const text = document.getElementById('snippetInput').value;
+            if (!text) return;
+            const tx = db.transaction("snippets", "readwrite");
+            tx.objectStore("snippets").add({ text, timestamp: Date.now() });
+            tx.oncomplete = () => {
+                document.getElementById('snippetInput').value = '';
+                renderLedger();
+            };
+        }
+
+        // 4. Render and Copy to Clipboard
+        function renderLedger() {
+            const ledger = document.getElementById('ledger');
+            ledger.innerHTML = '';
+            const tx = db.transaction("snippets", "readonly");
+            tx.objectStore("snippets").openCursor().onsuccess = e => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    const div = document.createElement('div');
+                    div.className = 'col-md-4';
+                    div.innerHTML = `
+                        <div class="card snippet-card h-100" onclick="copyToClipboard('${cursor.value.text}')">
+                            <div class="card-body"><p class="card-text">${cursor.value.text}</p></div>
+                        </div>`;
+                    ledger.appendChild(div);
+                    cursor.continue();
+                }
+            };
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert("Copied: " + text);
+        }
+
+        // 5. ML Expansion Logic
+        // This simulates expansion by finding similar context or adding "Smart Boilerplate"
+        async function generateExpansion() {
+            const input = document.getElementById('snippetInput').value;
+            if (!input || !model) return alert("Wait for model to load or enter text.");
+
+            // Basic expansion logic: In a real app, this would query a larger dataset.
+            // Here, we prepend a simulated "Expanded" context based on user input.
+            const expanded = `/* Generated Expansion */ \n// Context: ${input}\nfunction handle${input.replace(/\s/g, '')}() {\n  console.log("${input}"); \n  return true;\n}`;
+            
+            document.getElementById('snippetInput').value = expanded;
+        }
+
+        // 6. Autocomplete Logic
+        document.getElementById('snippetInput').addEventListener('input', async (e) => {
+            const val = e.target.value;
+            const list = document.getElementById('autocomplete-list');
+            list.innerHTML = '';
+            if (!val) return;
+
+            const tx = db.transaction("snippets", "readonly");
+            tx.objectStore("snippets").getAll().onsuccess = (e) => {
+                const matches = e.target.result.filter(s => s.text.toLowerCase().includes(val.toLowerCase()));
+                matches.forEach(match => {
+                    const item = document.createElement('button');
+                    item.className = 'list-group-item list-group-item-action';
+                    item.innerText = match.text;
+                    item.onclick = () => {
+                        document.getElementById('snippetInput').value = match.text;
+                        list.innerHTML = '';
+                    };
+                    list.appendChild(item);
+                });
+            };
+        });
+    </script>
+</body>
+</html>
