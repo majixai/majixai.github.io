@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JINX | v3.5 Quantitative Grid</title>
+  <title>JINX | v5.0 Deep Learning Matrix</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -20,48 +20,81 @@
     /* Layout & Navigation */
     .navbar { background-color: #11141a !important; border-bottom: 1px solid #2a2f39; }
     .sidebar { background-color: #11141a; border-right: 1px solid #2a2f39; height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; }
-    .main-content { min-height: calc(100vh - 56px); padding-bottom: 40px; }
+    .main-content { min-height: calc(100vh - 56px); padding-bottom: 80px; }
 
     /* Filter Controls */
-    .form-label { font-size: 0.85rem; font-weight: 600; color: #a8afbb; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .form-control, .form-select { background-color: #191c22; border: 1px solid #2a2f39; color: #e2e8f0; font-size: 0.9rem; }
-    .form-control:focus, .form-select:focus { background-color: #1f232b; border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25); color: #fff; }
-    .form-range::-webkit-slider-thumb { background: #667eea; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: #a8afbb; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-control, .form-select { background-color: #191c22; border: 1px solid #2a2f39; color: #e2e8f0; font-size: 0.85rem; }
+    .form-control:focus, .form-select:focus { background-color: #1f232b; border-color: #f472b6; box-shadow: 0 0 0 0.2rem rgba(244, 114, 182, 0.25); color: #fff; }
+    .form-range::-webkit-slider-thumb { background: #f472b6; }
 
     /* Grid & Cards */
-    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+    .grid-container { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); 
+        gap: 1.25rem; 
+        transition: grid-template-columns 0.3s ease;
+    }
     .user-card { 
       background: #191c22; border: 1px solid #2a2f39; border-radius: 12px; 
       overflow: hidden; position: relative; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-    .user-card:hover { transform: translateY(-4px) scale(1.02); border-color: #667eea; box-shadow: 0 10px 15px rgba(0,0,0,0.2); z-index: 2; }
+    .user-card:hover { transform: translateY(-4px) scale(1.02); border-color: #f472b6; box-shadow: 0 10px 20px rgba(244,114,182,0.15); z-index: 2; }
     
+    /* Multi-select active state */
+    .user-card.selected-card { border: 2px solid #3b82f6; box-shadow: 0 0 15px rgba(59,130,246,0.5); transform: translateY(-2px) scale(1.01); }
+    .user-card.selected-card::before {
+        content: "✓"; position: absolute; top: 10px; right: 10px; background: #3b82f6; color: white;
+        width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-weight: bold; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
     .slide-container { position: relative; width: 100%; height: 260px; background: #000; }
     .slide-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.4s ease-in-out; }
     
     .card-overlay { 
       position: absolute; bottom: 0; left: 0; right: 0; 
-      background: linear-gradient(to top, rgba(9, 11, 15, 0.95) 0%, rgba(9, 11, 15, 0.7) 60%, transparent 100%); 
+      background: linear-gradient(to top, rgba(9, 11, 15, 0.95) 0%, rgba(9, 11, 15, 0.75) 60%, transparent 100%); 
       padding: 15px 12px 10px; 
     }
     
     /* Typography & Badges */
-    .username-title { color: #6ee7b7; font-weight: 700; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin: 0; }
-    .stat-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; backdrop-filter: blur(4px); }
-    .score-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; }
+    .username-title { color: #f472b6; font-weight: 700; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin: 0; }
+    .stat-badge { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #e2e8f0; padding: 2px 6px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; backdrop-filter: blur(4px); }
+    .score-badge { background: linear-gradient(135deg, #f472b6, #8b5cf6); color: #fff; border: none; }
     .tag-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
     .mini-tag { font-size: 0.65rem; background: #2a2f39; padding: 2px 6px; border-radius: 4px; color: #a8afbb; }
 
     /* Utilities */
-    .loader-zone { height: 120px; display: flex; align-items: center; justify-content: center; color: #667eea; font-weight: 600; }
+    .loader-zone { height: 120px; display: flex; align-items: center; justify-content: center; color: #f472b6; font-weight: 600; }
     .progress-bar-custom { height: 3px; background: #2a2f39; width: 100%; position: absolute; top: 0; z-index: 10; }
-    .progress-fill { height: 100%; background: #6ee7b7; width: 0%; transition: width linear; }
+    .progress-fill { height: 100%; background: #f472b6; width: 0%; transition: width linear; }
     
     /* Dashboard Stats */
-    .dash-stat-box { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 12px; text-align: center; }
-    .dash-stat-value { font-size: 1.5rem; font-weight: 700; color: #667eea; line-height: 1.2; }
-    .dash-stat-label { font-size: 0.75rem; color: #a8afbb; text-transform: uppercase; }
+    .dash-stat-box { background: #191c22; border: 1px solid #2a2f39; border-radius: 8px; padding: 10px; text-align: center; }
+    .dash-stat-value { font-size: 1.3rem; font-weight: 700; color: #f472b6; line-height: 1.2; }
+    .dash-stat-label { font-size: 0.7rem; color: #a8afbb; text-transform: uppercase; }
+
+    /* ML Modal Specifics */
+    .ml-tag-btn { background: rgba(15, 23, 42, 0.7); border: 1px solid #f472b6; color: #f472b6; backdrop-filter: blur(5px); transition: all 0.2s; }
+    .ml-tag-btn:hover { background: #f472b6; color: #000; box-shadow: 0 0 10px rgba(244,114,182,0.5); transform: translateY(-2px); }
+    .ml-tag-btn.active-template { background: #8b5cf6; border-color: #8b5cf6; color: #fff; box-shadow: 0 0 15px rgba(139,92,246,0.8); }
+    
+    /* Multi-Modal specific */
+    .multi-grid { display: grid; gap: 10px; padding: 10px; background: #000; height: 75vh; overflow-y: auto; }
+    .multi-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; }
+    .multi-cell img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
+    .multi-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; padding: 5px; font-size: 0.8rem; font-weight: bold; text-align: center; backdrop-filter: blur(2px); }
+
+    /* FAB Multi Play */
+    #fabMultiPlay {
+        position: fixed; bottom: 30px; right: 30px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        color: white; border: none; border-radius: 50px; padding: 12px 24px; font-weight: 800;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5); z-index: 1000; cursor: pointer;
+        display: none; transition: transform 0.2s;
+    }
+    #fabMultiPlay:hover { transform: scale(1.05); }
   </style>
 </head>
 <body>
@@ -69,8 +102,8 @@
 <nav class="navbar navbar-dark sticky-top">
   <div class="container-fluid">
     <span class="navbar-brand mb-0 h1 d-flex align-items-center">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-      JINX <span class="ms-2 fs-6 text-muted">v3.5 Quantitative Edition</span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+      JINX <span class="ms-2 fs-6 text-muted">v5.0 Deep Learning Matrix</span>
     </span>
     <div class="d-flex text-white-50 align-items-center fs-6" id="globalStatus">
       Initializing parallel core...
@@ -81,22 +114,52 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col-md-3 col-lg-2 sidebar p-3 d-none d-md-block">
-      <h6 class="text-uppercase text-muted mb-3 fw-bold border-bottom border-secondary pb-2">Analysis Parameters</h6>
+      
+      <!-- Selection Mode Toggle -->
+      <div class="p-2 mb-3 rounded" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="multiSelectMode">
+          <label class="form-check-label form-label mt-1 text-primary fw-bold" for="multiSelectMode">Multi-Select Mode</label>
+        </div>
+        <div class="form-text text-muted" style="font-size: 0.65rem;">Select multiple cards to view synchronous slideshows.</div>
+      </div>
+
+      <h6 class="text-uppercase text-muted mb-2 fw-bold border-bottom border-secondary pb-1">Matrix Controls</h6>
       
       <div class="mb-3">
         <label class="form-label">Search Identity</label>
-        <input type="text" id="searchInput" class="form-control" placeholder="@username or alias..." />
+        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="@username or alias..." />
       </div>
 
       <div class="mb-3">
         <label class="form-label">Sort Algorithm</label>
-        <select id="sortAlgorithm" class="form-select">
+        <select id="sortAlgorithm" class="form-select form-select-sm">
           <option value="bayesian">Bayesian Average (Quant)</option>
           <option value="rawScore">Raw Score (Linear)</option>
           <option value="engagement">Engagement Velocity</option>
           <option value="viewers">Max Viewers</option>
+          <option value="ageAsc">Age: Youngest First</option>
+          <option value="ageDesc">Age: Oldest First</option>
+          <option value="birthday">Upcoming Birthdays</option>
+          <option value="lastOnline">Recently Active</option>
           <option value="random">Cryptographic Random</option>
         </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Grid Layout: <span id="colCountVal" class="text-white">Responsive Auto</span></label>
+        <input type="range" class="form-range" id="gridColumns" min="0" max="8" step="1" value="0">
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label">Min Age</label>
+          <input type="number" id="minAge" class="form-control form-control-sm" value="18" min="18" max="99">
+        </div>
+        <div class="col-6">
+          <label class="form-label">Max Age</label>
+          <input type="number" id="maxAge" class="form-control form-control-sm" value="99" min="18" max="99">
+        </div>
       </div>
 
       <div class="mb-3">
@@ -104,52 +167,34 @@
         <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0">
       </div>
 
-      <div class="mb-3">
-        <label class="form-label">Min Base Score: <span id="scoreVal" class="text-white">0</span></label>
-        <input type="range" class="form-range" id="minScore" min="0" max="500" step="10" value="0">
-      </div>
-
-      <div class="mb-4 form-check form-switch">
+      <div class="mb-3 form-check form-switch">
         <input class="form-check-input" type="checkbox" role="switch" id="requireHistory" checked>
         <label class="form-check-label form-label mt-1" for="requireHistory">Require Image History</label>
-        <div class="form-text text-muted" style="font-size: 0.7rem;">Only show users with enough data for a slideshow.</div>
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Tag Inclusion (Comma separated)</label>
-        <input type="text" id="tagFilter" class="form-control" placeholder="e.g. verified, outdoor" />
+        <label class="form-label">Target Features (Tags)</label>
+        <input type="text" id="tagFilter" class="form-control form-control-sm" placeholder="e.g. verified, outdoor" />
       </div>
 
-      <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold" style="background-color: #667eea; border: none;">Execute Query</button>
-      <button id="resetFiltersBtn" class="btn btn-outline-secondary w-100 mt-2 btn-sm">Reset Matrix</button>
+      <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold btn-sm mb-2" style="background-color: #f472b6; border: none; color: black;">Execute Query</button>
+      <button id="resetFiltersBtn" class="btn btn-outline-secondary w-100 btn-sm">Reset Matrix</button>
     </div>
 
     <div class="col-md-9 col-lg-10 main-content p-4">
       
-      <div class="row g-3 mb-4">
+      <div class="row g-2 mb-3">
         <div class="col-6 col-md-3">
-          <div class="dash-stat-box">
-            <div class="dash-stat-value" id="statTotal">0</div>
-            <div class="dash-stat-label">Performers Parsed</div>
-          </div>
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statTotal">0</div><div class="dash-stat-label">Performers Parsed</div></div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="dash-stat-box">
-            <div class="dash-stat-value" id="statActive">0</div>
-            <div class="dash-stat-label">Meeting Criteria</div>
-          </div>
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statActive">0</div><div class="dash-stat-label">Meeting Criteria</div></div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="dash-stat-box">
-            <div class="dash-stat-value" id="statMean">0.0</div>
-            <div class="dash-stat-label">Global Mean Score</div>
-          </div>
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statMean">0.0</div><div class="dash-stat-label">Global Mean Score</div></div>
         </div>
         <div class="col-6 col-md-3">
-          <div class="dash-stat-box">
-            <div class="dash-stat-value" id="statDev">0.0</div>
-            <div class="dash-stat-label">Standard Deviation</div>
-          </div>
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statDev">0.0</div><div class="dash-stat-label">Standard Deviation</div></div>
         </div>
       </div>
 
@@ -164,13 +209,60 @@
   </div>
 </div>
 
+<button id="fabMultiPlay">▶ Play Selected (<span id="fabCount">0</span>)</button>
+
+<!-- ML Single Target Modal -->
+<div class="modal fade" id="performerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light border-secondary shadow-lg">
+      <div class="modal-header border-secondary" style="background: #11141a;">
+        <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+          <span id="modalUsername" class="text-white">@username</span>
+          <span id="modalBadge" class="stat-badge score-badge">★ 0.0</span>
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0 position-relative bg-black" id="modalBodyWrap">
+        <div class="progress-bar-custom"><div class="progress-fill" id="modalProg"></div></div>
+        <div style="height: 60vh; min-height: 400px; display: flex; justify-content: center; align-items: center;">
+            <img id="modalImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+        </div>
+        <div class="position-absolute bottom-0 w-100 p-3 pt-5 pb-4" style="background: linear-gradient(transparent, rgba(0,0,0,0.95));">
+          <p class="text-uppercase text-info mb-2 fw-bold" style="font-size: 0.75rem; letter-spacing: 1px;">
+            Select Feature Template for GPU Extraction
+          </p>
+          <div id="modalTags" class="d-flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-secondary justify-content-between" style="background: #11141a;">
+        <span id="modalImageCounter" class="text-muted small">Image 1 of X</span>
+        <span id="modalMlStatus" class="text-success fw-bold" style="font-size: 0.85rem;">Neural Engine: Awaiting Input</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Simultaneous Multi-Select Modal -->
+<div class="modal fade" id="multiPerformerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content bg-dark text-light border-secondary shadow-lg">
+      <div class="modal-header border-secondary" style="background: #11141a;">
+        <h5 class="modal-title fw-bold text-white">Synchronous Matrix View (<span id="multiModalCount">0</span>)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0 bg-black">
+        <div id="multiModalGrid" class="multi-grid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 /**
- * JINX v3.5 Core Engine
- * Implements strict one-slideshow-per-performer deduplication,
- * Bayesian average sorting, dynamic hardware-accelerated observers,
- * and component-bound animations.
+ * JINX v5.0 Core Engine
+ * Implements Multi-selection Sync Matrices, Dynamic Screen Routing, 
+ * Demographic Generation & Filtering (Age/Bday/Active), and ML Neural Tags.
  */
 
 const state = {
@@ -184,23 +276,56 @@ const state = {
   observer: null,
   scrollObserver: null,
   
-  // Persistent Local Data
   clickCounts: JSON.parse(localStorage.getItem('jinx_clicks') || '{}'),
   userInterests: JSON.parse(localStorage.getItem('jinx_interests') || '{}'),
   
-  // Quantitative Globals
   globalMean: 0,
-  globalVariance: 0
+  globalVariance: 0,
+
+  // Multi-select State
+  isMultiMode: false,
+  selectedItems: new Set(), // Store username strings
+
+  // Modals
+  singleModalObj: null,
+  singleModalInterval: null,
+  multiModalObj: null,
+  multiModalMasterInterval: null
 };
 
 // ==========================================
-// QUANTITATIVE ANALYSIS MODULE
+// QUANTITATIVE ANALYSIS & UTILS
 // ==========================================
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
+function calculateDaysUntilBirthday(mmdd) {
+    if (!mmdd) return 999;
+    const today = new Date();
+    // Simulate current context provided: March 28, 2026
+    const simToday = new Date(2026, 2, 28); 
+    
+    const [m, d] = mmdd.split('-');
+    let bday = new Date(simToday.getFullYear(), parseInt(m) - 1, parseInt(d));
+    
+    if (simToday.getTime() > bday.getTime()) {
+        bday.setFullYear(simToday.getFullYear() + 1);
+    }
+    return Math.ceil((bday.getTime() - simToday.getTime()) / (1000 * 3600 * 24));
+}
+
+function formatDaysAgo(timestamp) {
+    // Current simulated date: Mar 28, 2026 
+    const now = new Date(2026, 2, 28).getTime();
+    const diffDays = Math.floor((now - timestamp) / (1000 * 3600 * 24));
+    if(diffDays === 0) return "Today";
+    if(diffDays === 1) return "Yesterday";
+    return `${diffDays}d ago`;
+}
+
 const QuantEngine = {
   calculateRawScore(item) {
     const user = item.username?.toLowerCase() || '';
     let score = (state.clickCounts[user] || 0) * 15; 
-    
     if (item.tags && Array.isArray(item.tags)) {
       item.tags.forEach(tag => {
         if (state.userInterests[tag.toLowerCase()]) {
@@ -211,17 +336,14 @@ const QuantEngine = {
     score += Math.min(item.num_viewers || 0, 1000) * 0.01;
     return score;
   },
-
   async calculateGlobalMetrics(dataset) {
     if (!dataset.length) return;
-    
     let sum = 0;
     for (let i = 0; i < dataset.length; i++) {
       if (i % 1000 === 0) await yieldToMain();
       dataset[i]._rawScore = this.calculateRawScore(dataset[i]);
       sum += dataset[i]._rawScore;
     }
-    
     state.globalMean = sum / dataset.length;
     
     let sqDiffSum = 0;
@@ -230,140 +352,22 @@ const QuantEngine = {
       const diff = dataset[i]._rawScore - state.globalMean;
       sqDiffSum += diff * diff;
     }
-    
     state.globalVariance = Math.sqrt(sqDiffSum / dataset.length);
-    
     document.getElementById('statMean').innerText = state.globalMean.toFixed(2);
     document.getElementById('statDev').innerText = state.globalVariance.toFixed(2);
   },
-
   getBayesianScore(item) {
     const v = state.clickCounts[item.username?.toLowerCase()] || 0;
     const m = 5; 
     const R = item._rawScore || 0; 
     const C = state.globalMean;
-    
     return (v + R > 0) ? ((v / (v + m)) * R) + ((m / (v + m)) * C) : 0;
   }
 };
 
 // ==========================================
-// ASYNC CONCURRENCY UTILITIES
+// CORE DATA PIPELINE & MOCK DEMOGRAPHICS
 // ==========================================
-const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
-
-async function handleUserInteraction(user, item) {
-  const key = user.toLowerCase();
-  
-  // Wave 0: Immediate Data Persistence
-  state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
-  localStorage.setItem('jinx_clicks', JSON.stringify(state.clickCounts));
-  
-  if (item.tags) {
-    item.tags.forEach(tag => {
-      const t = tag.toLowerCase();
-      state.userInterests[t] = (state.userInterests[t] || 0) + 1;
-    });
-    localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
-  }
-
-  updateStatus(`Captured interaction for @${user}. Processing Wave 1...`, true);
-
-  // Wave 1: 3-Second Re-Sort (Personalization)
-  setTimeout(async () => {
-    updateStatus("Wave 1: Updating personalization priority...", true);
-    await QuantEngine.calculateGlobalMetrics(state.rawDataset);
-    await executePipeline();
-    updateStatus("Wave 1 Complete. Analyzing look-alikes...", false);
-  }, 3000);
-
-  // Wave 2: 10-Second Global Similarity Sweep
-  setTimeout(async () => {
-    updateStatus("Wave 2: Executing Similarity Discovery Sweep...", true);
-    
-    const sourceTags = new Set((item.tags ||[]).map(t => t.toLowerCase()));
-    if (sourceTags.size === 0) {
-        updateStatus("No tags available for similarity sweep.", false);
-        return;
-    }
-
-    const chunkSize = 400;
-    for (let i = 0; i < state.rawDataset.length; i += chunkSize) {
-      const chunk = state.rawDataset.slice(i, i + chunkSize);
-      
-      chunk.forEach(performer => {
-        if (performer.username === item.username) return;
-        
-        const pTags = (performer.tags ||[]).map(t => t.toLowerCase());
-        const intersection = pTags.filter(x => sourceTags.has(x)).length;
-        
-        if (intersection > 0) {
-          const similarity = intersection / (sourceTags.size + pTags.length - intersection);
-          performer._rawScore += (similarity * 50); 
-        }
-      });
-      
-      if (i % 800 === 0) await yieldToMain();
-    }
-
-    await executePipeline();
-    updateStatus("Similarity Matrix Synchronized.", false);
-  }, 10000);
-}
-
-async function filterDatasetConcurrently(dataset, filters) {
-  const result =[];
-  const chunkSize = 500;
-  
-  for (let i = 0; i < dataset.length; i += chunkSize) {
-    const chunk = dataset.slice(i, i + chunkSize);
-    
-    const processedChunk = chunk.filter(item => {
-      if (filters.query && !(item.username || '').toLowerCase().includes(filters.query)) return false;
-      if ((item.num_viewers || 0) < filters.minViewers) return false;
-      if ((item._rawScore || 0) < filters.minScore) return false;
-      
-      const historyLen = (item.image_history ||[]).length;
-      if (filters.requireHistory && historyLen === 0) return false;
-      
-      if (filters.tags.length > 0) {
-        const itemTags = (item.tags ||[]).map(t => t.toLowerCase());
-        const hasAllTags = filters.tags.every(targetTag => itemTags.includes(targetTag));
-        if (!hasAllTags) return false;
-      }
-      return true;
-    });
-    
-    result.push(...processedChunk);
-    await yieldToMain(); 
-  }
-  return result;
-}
-
-async function preloadNextBatchImages(startIndex, endIndex) {
-  const nextItems = state.filteredDataset.slice(startIndex, endIndex);
-  if (!nextItems.length) return;
-
-  const urlsToFetch = nextItems
-    .map(item => item.image_url)
-    .filter(url => url && !state.preloadedImages.has(url));
-
-  if (!urlsToFetch.length) return;
-
-  Promise.allSettled(urlsToFetch.map(url => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => { state.preloadedImages.add(url); resolve(); };
-      img.onerror = resolve; 
-      img.src = url;
-    });
-  }));
-}
-
-// ==========================================
-// CORE DATA PIPELINE
-// ==========================================
-
 async function fetchAndDecompress() {
   updateStatus("Opening network stream...", true);
   try {
@@ -372,47 +376,48 @@ async function fetchAndDecompress() {
     
     updateStatus("Decompressing binary blob...", true);
     const compressed = await res.arrayBuffer();
-    
     await yieldToMain(); 
     const decompressed = pako.inflate(new Uint8Array(compressed), { to: 'string' });
     
-    updateStatus("Parsing JSON intelligence...", true);
+    updateStatus("Parsing JSON intelligence & Synthesizing Demographics...", true);
     await yieldToMain();
     const data = JSON.parse(decompressed);
     
-    // Deduplicate to guarantee exactly ONE slideshow per performer globally
+    // Deduplication & Mock Data Injection
     const uniqueMap = new Map();
+    // Simulate Current Base Time: March 28, 2026
+    const baseTime = new Date(2026, 2, 28).getTime();
+    
     (data.items ||[]).forEach(item => {
       const u = (item.username || 'unknown').toLowerCase();
+      
+      // Inject pseudo-random demographics securely hashed from username
+      let charSum = 0; for(let i=0; i<u.length; i++) charSum += u.charCodeAt(i);
+      item.age = 18 + (charSum % 25); // 18-42
+      const month = 1 + (charSum % 12);
+      const day = 1 + ((charSum * 2) % 28);
+      item.birthday = `${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      item.lastOnline = baseTime - ((charSum * 1000000) % (30 * 24 * 3600 * 1000)); // up to 30 days ago
+
       if (!uniqueMap.has(u)) {
         uniqueMap.set(u, item);
       } else {
-        // Merge image histories to construct the largest possible unique slideshow
         const existing = uniqueMap.get(u);
-        const allImages = [
-          ...(existing.image_history || []),
-          ...(item.image_history || []),
-          item.image_url
-        ].filter(Boolean);
+        const allImages =[...(existing.image_history || []), ...(item.image_history ||[]), item.image_url].filter(Boolean);
         existing.image_history =[...new Set(allImages)];
         existing.num_viewers = Math.max(existing.num_viewers || 0, item.num_viewers || 0);
-        if (item.tags) {
-            existing.tags = [...new Set([...(existing.tags || []), ...item.tags])];
-        }
+        if (item.tags) existing.tags =[...new Set([...(existing.tags || []), ...item.tags])];
       }
     });
     
     state.rawDataset = Array.from(uniqueMap.values());
     document.getElementById('statTotal').innerText = state.rawDataset.length.toLocaleString();
     
-    updateStatus("Computing global statistics...", true);
     await QuantEngine.calculateGlobalMetrics(state.rawDataset);
-    
     updateStatus("Grid Online.", false);
     executePipeline();
     
   } catch (error) {
-    console.error(error);
     updateStatus(`Critical Failure: ${error.message}`, false);
   }
 }
@@ -426,41 +431,58 @@ async function executePipeline() {
     query: document.getElementById('searchInput').value.toLowerCase().trim(),
     minViewers: parseInt(document.getElementById('minViewers').value, 10),
     minScore: parseInt(document.getElementById('minScore').value, 10),
+    minAge: parseInt(document.getElementById('minAge').value, 10),
+    maxAge: parseInt(document.getElementById('maxAge').value, 10),
     requireHistory: document.getElementById('requireHistory').checked,
-    tags: document.getElementById('tagFilter').value.split(',')
-          .map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+    tags: document.getElementById('tagFilter').value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
   };
 
   const sortAlgo = document.getElementById('sortAlgorithm').value;
-  let processed = await filterDatasetConcurrently(state.rawDataset, filters);
+  
+  let processed =[];
+  const chunkSize = 500;
+  for (let i = 0; i < state.rawDataset.length; i += chunkSize) {
+    const chunk = state.rawDataset.slice(i, i + chunkSize);
+    processed.push(...chunk.filter(item => {
+      if (filters.query && !(item.username || '').toLowerCase().includes(filters.query)) return false;
+      if ((item.num_viewers || 0) < filters.minViewers) return false;
+      if ((item._rawScore || 0) < filters.minScore) return false;
+      if (item.age < filters.minAge || item.age > filters.maxAge) return false;
+      if (filters.requireHistory && (item.image_history ||[]).length === 0) return false;
+      if (filters.tags.length > 0) {
+        const itemTags = (item.tags ||[]).map(t => t.toLowerCase());
+        if (!filters.tags.every(targetTag => itemTags.includes(targetTag))) return false;
+      }
+      return true;
+    }));
+    await yieldToMain(); 
+  }
 
   updateStatus("Applying sorting algorithms...", true);
   await yieldToMain(); 
   
   processed.sort((a, b) => {
     switch (sortAlgo) {
-      case 'bayesian':
-        return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
-      case 'engagement':
-        return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
-      case 'viewers':
-        return (b.num_viewers || 0) - (a.num_viewers || 0);
-      case 'random':
+      case 'bayesian': return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
+      case 'engagement': return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
+      case 'viewers': return (b.num_viewers || 0) - (a.num_viewers || 0);
+      case 'ageAsc': return a.age - b.age;
+      case 'ageDesc': return b.age - a.age;
+      case 'birthday': return calculateDaysUntilBirthday(a.birthday) - calculateDaysUntilBirthday(b.birthday);
+      case 'lastOnline': return b.lastOnline - a.lastOnline;
+      case 'random': 
         const array = new Uint32Array(2);
         window.crypto.getRandomValues(array);
         return array[0] - array[1];
       case 'rawScore':
-      default:
-        return (b._rawScore || 0) - (a._rawScore || 0);
+      default: return (b._rawScore || 0) - (a._rawScore || 0);
     }
   });
 
   state.filteredDataset = processed;
   document.getElementById('statActive').innerText = processed.length.toLocaleString();
-  
   state.currentPage = 0;
   
-  // Safely halt running slideshows before wiping the grid DOM
   document.querySelectorAll('.user-card').forEach(card => haltSlideshowRuntime(card));
   document.getElementById('slideshowGrid').innerHTML = '';
   
@@ -474,7 +496,6 @@ async function executePipeline() {
 // ==========================================
 // RENDER & UI CONTROLLER
 // ==========================================
-
 async function renderNextPage() {
   const start = state.currentPage * state.itemsPerPage;
   const end = start + state.itemsPerPage;
@@ -490,18 +511,19 @@ async function renderNextPage() {
   for (const item of pageItems) {
     const user = item.username || 'unknown';
     const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
-    
-    if(images.length === 0) images.push('https://via.placeholder.com/300x400/191c22/667eea?text=No+Image');
+    if(images.length === 0) images.push('https://via.placeholder.com/300x400/191c22/f472b6?text=No+Image');
 
     const score = sortAlgoValue(item);
-    const tagsHtml = (item.tags ||[]).slice(0, 4).map(t => `<span class="mini-tag">${t}</span>`).join('');
+    const tagsHtml = (item.tags ||[]).slice(0, 3).map(t => `<span class="mini-tag">${t}</span>`).join('');
+    
+    const bdayStr = item.birthday || '--';
+    const ageStr = item.age || '--';
+    const lastOnStr = formatDaysAgo(item.lastOnline);
+    const isSelected = state.selectedItems.has(user);
 
     const card = document.createElement('div');
-    card.className = 'user-card';
+    card.className = `user-card ${isSelected ? 'selected-card' : ''}`;
     card.dataset.user = user;
-    
-    // Safely encode images array for DOM attribute
-    card.setAttribute('data-images', JSON.stringify(images).replace(/"/g, '&quot;'));
     card.dataset.idx = 0;
 
     const progressHtml = images.length > 1 ? `<div class="progress-bar-custom"><div class="progress-fill"></div></div>` : '';
@@ -514,45 +536,29 @@ async function renderNextPage() {
           <div class="d-flex justify-content-between align-items-end mb-1">
             <h3 class="username-title">@${user}</h3>
             <div class="d-flex flex-column align-items-end gap-1">
-              <span class="stat-badge score-badge shadow-sm score-badge-val">★ ${score.toFixed(1)}</span>
-              <span class="stat-badge">👁️ ${item.num_viewers || 0}</span>
+              <span class="stat-badge score-badge shadow-sm">★ ${score.toFixed(1)}</span>
+              <span class="stat-badge bg-dark border-0">🎂 ${bdayStr} (${ageStr})</span>
             </div>
           </div>
-          <div class="tag-container">${tagsHtml}</div>
-          ${images.length > 1 ? `<small class="text-muted d-block mt-2 slide-count" style="font-size: 0.65rem">Img 1 of ${images.length}</small>` : ''}
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <div class="tag-container mb-0">${tagsHtml}</div>
+            <span class="stat-badge bg-transparent border-0 text-white-50 px-0">🕒 ${lastOnStr}</span>
+          </div>
         </div>
       </div>
     `;
     
-    card.addEventListener('click', () => {
-      handleUserInteraction(user, item);
-      
-      card.style.transition = "all 0.3s";
-      card.style.boxShadow = "0 0 15px #6ee7b7";
-      card.style.borderColor = "#6ee7b7";
-      
-      const badge = card.querySelector('.score-badge-val');
-      if(badge) badge.innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
-      
-      setTimeout(() => {
-        card.style.boxShadow = "";
-        card.style.borderColor = "";
-      }, 1000);
-    });
-
+    card.addEventListener('click', () => handleCardClick(card, user, item, images));
+    card._imgArray = images;
     fragment.appendChild(card);
   }
 
   document.getElementById('slideshowGrid').appendChild(fragment);
 
-  // Observe newly added cards for slideshows
   document.querySelectorAll('.user-card:not([data-observed="true"])').forEach(card => {
     card.dataset.observed = "true";
     state.observer.observe(card);
   });
-
-  preloadNextBatchImages(end, end + state.itemsPerPage);
-  document.getElementById('loadText').innerText = "Scroll down for deeper scanning...";
 }
 
 function sortAlgoValue(item) {
@@ -563,29 +569,223 @@ function sortAlgoValue(item) {
 }
 
 // ==========================================
-// HARDWARE OBSERVERS & COMPONENT SLIDESHOW MECHANICS
+// INTERACTION & SELECTION MODES
 // ==========================================
+function handleCardClick(cardElement, user, item, images) {
+  // Always log interaction for ML matrix
+  const key = user.toLowerCase();
+  state.clickCounts[key] = (state.clickCounts[key] || 0) + 1;
+  localStorage.setItem('jinx_clicks', JSON.stringify(state.clickCounts));
+  
+  if (item.tags) {
+    item.tags.forEach(t => state.userInterests[t.toLowerCase()] = (state.userInterests[t.toLowerCase()] || 0) + 1);
+    localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
+  }
 
+  if (state.isMultiMode) {
+    // Multi-Select Logic
+    if (state.selectedItems.has(user)) {
+        state.selectedItems.delete(user);
+        cardElement.classList.remove('selected-card');
+    } else {
+        state.selectedItems.add(user);
+        cardElement.classList.add('selected-card');
+    }
+    updateFab();
+  } else {
+    // Single Modal Launch
+    openSingleModal(item, images);
+    // Silent background resort
+    setTimeout(async () => {
+        await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+    }, 1000);
+  }
+}
+
+function updateFab() {
+    const fab = document.getElementById('fabMultiPlay');
+    const count = state.selectedItems.size;
+    document.getElementById('fabCount').innerText = count;
+    fab.style.display = count > 0 ? 'block' : 'none';
+}
+
+document.getElementById('multiSelectMode').addEventListener('change', (e) => {
+    state.isMultiMode = e.target.checked;
+    if (!state.isMultiMode) {
+        state.selectedItems.clear();
+        document.querySelectorAll('.user-card').forEach(c => c.classList.remove('selected-card'));
+        updateFab();
+    }
+});
+
+// ==========================================
+// GRID COLUMNS ROUTING
+// ==========================================
+document.getElementById('gridColumns').addEventListener('input', (e) => {
+    const val = parseInt(e.target.value);
+    const grid = document.getElementById('slideshowGrid');
+    if (val === 0) {
+        document.getElementById('colCountVal').innerText = 'Responsive Auto';
+        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
+    } else {
+        document.getElementById('colCountVal').innerText = `${val} Columns`;
+        grid.style.gridTemplateColumns = `repeat(${val}, 1fr)`;
+    }
+});
+
+// ==========================================
+// MULTI-MODAL SYNCHRONOUS SLIDESHOW
+// ==========================================
+document.getElementById('fabMultiPlay').addEventListener('click', openMultiModal);
+
+function openMultiModal() {
+    const selectedUsers = Array.from(state.selectedItems);
+    if(selectedUsers.length === 0) return;
+
+    document.getElementById('multiModalCount').innerText = selectedUsers.length;
+    
+    // Find item data for selected users
+    const items = state.filteredDataset.filter(i => selectedUsers.includes(i.username));
+    
+    const grid = document.getElementById('multiModalGrid');
+    grid.innerHTML = '';
+    
+    // Dynamic grid template for optimal viewing
+    const cols = selectedUsers.length <= 2 ? selectedUsers.length : (selectedUsers.length <= 6 ? 3 : 4);
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    
+    items.forEach(item => {
+        const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
+        if(images.length === 0) return;
+        
+        const cell = document.createElement('div');
+        cell.className = 'multi-cell';
+        // Safely store object array ref
+        cell._images = images;
+        cell._idx = 0;
+        
+        cell.innerHTML = `
+            <img src="${images[0]}">
+            <div class="multi-label">@${item.username}</div>
+        `;
+        grid.appendChild(cell);
+    });
+
+    if(!state.multiModalObj) {
+        state.multiModalObj = new bootstrap.Modal(document.getElementById('multiPerformerModal'));
+        document.getElementById('multiPerformerModal').addEventListener('hidden.bs.modal', () => {
+            clearInterval(state.multiModalMasterInterval);
+        });
+    }
+    
+    // Start synchronous master ticker
+    clearInterval(state.multiModalMasterInterval);
+    state.multiModalMasterInterval = setInterval(() => {
+        grid.querySelectorAll('.multi-cell').forEach(cell => {
+            const imgs = cell._images;
+            if(!imgs || imgs.length <= 1) return;
+            
+            cell._idx = (cell._idx + 1) % imgs.length;
+            const imgEl = cell.querySelector('img');
+            imgEl.style.opacity = '0.5';
+            setTimeout(() => {
+                imgEl.src = imgs[cell._idx];
+                imgEl.style.opacity = '1';
+            }, 150);
+        });
+    }, 2800); // Fast cycle for multi-view
+
+    state.multiModalObj.show();
+}
+
+// ==========================================
+// SINGLE ML MODAL (From v4.0)
+// ==========================================
+function openSingleModal(item, images) {
+  const user = item.username || 'unknown';
+  document.getElementById('modalUsername').innerText = `@${user}`;
+  document.getElementById('modalBadge').innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
+  document.getElementById('modalImageCounter').innerText = `Image 1 of ${images.length}`;
+  document.getElementById('modalImg').src = images[0];
+  document.getElementById('modalMlStatus').innerText = "Neural Engine: Awaiting Input";
+  document.getElementById('modalMlStatus').className = "text-muted small";
+
+  const tagsHtml = (item.tags ||[]).map(t => `<button class="btn btn-sm ml-tag-btn fw-bold rounded-pill px-3 shadow-sm" data-tag="${t}">#${t}</button>`).join('');
+  document.getElementById('modalTags').innerHTML = tagsHtml || `<span class="text-muted small">No extractable features found.</span>`;
+  
+  document.getElementById('modalTags').querySelectorAll('.ml-tag-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+          const clickedTag = e.target.getAttribute('data-tag');
+          document.querySelectorAll('.ml-tag-btn').forEach(b => b.classList.remove('active-template'));
+          e.target.classList.add('active-template');
+          
+          const statusEl = document.getElementById('modalMlStatus');
+          statusEl.innerText = `Neural Extraction Active: Enhancing feature [#${clickedTag}] globally...`;
+          statusEl.className = "text-info fw-bold";
+          
+          state.userInterests[clickedTag.toLowerCase()] = (state.userInterests[clickedTag.toLowerCase()] || 0) + 25;
+          localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
+          
+          // Background recompilation
+          for(let i=0; i < state.rawDataset.length; i+= 500) {
+              state.rawDataset.slice(i, i + 500).forEach(p => {
+                  const pTags = (p.tags ||[]).map(t => t.toLowerCase());
+                  if(pTags.includes(clickedTag.toLowerCase())) {
+                      p._rawScore += 150; 
+                  }
+              });
+              await yieldToMain();
+          }
+          await QuantEngine.calculateGlobalMetrics(state.rawDataset);
+          await executePipeline();
+          statusEl.innerText = `GPU Optimization Complete: Grid re-sorted by[#${clickedTag}]`;
+          statusEl.className = "text-success fw-bold";
+      });
+  });
+
+  clearInterval(state.singleModalInterval);
+  let idx = 0;
+  if(images.length > 1) {
+      const progBar = document.getElementById('modalProg');
+      const step = () => {
+          progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; 
+          progBar.style.transition = `width 4000ms linear`; progBar.style.width = '100%';
+          idx = (idx + 1) % images.length;
+          document.getElementById('modalImg').style.opacity = '0.5';
+          setTimeout(() => {
+              document.getElementById('modalImg').src = images[idx];
+              document.getElementById('modalImg').style.opacity = '1';
+              document.getElementById('modalImageCounter').innerText = `Image ${idx + 1} of ${images.length}`;
+          }, 300);
+      };
+      progBar.style.transition = `width 4000ms linear`; progBar.style.width = '100%';
+      state.singleModalInterval = setInterval(step, 4000);
+  } else {
+      document.getElementById('modalProg').style.width = '0%';
+  }
+
+  if(!state.singleModalObj) {
+      state.singleModalObj = new bootstrap.Modal(document.getElementById('performerModal'));
+      document.getElementById('performerModal').addEventListener('hidden.bs.modal', () => clearInterval(state.singleModalInterval));
+  }
+  state.singleModalObj.show();
+}
+
+// ==========================================
+// BACKGROUND SLIDESHOW HARDWARE OBSERVERS
+// ==========================================
 function setupIntersectionObservers() {
   if (state.observer) state.observer.disconnect();
-
   state.observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        initSlideshowRuntime(entry.target);
-      } else {
-        haltSlideshowRuntime(entry.target);
-      }
+      if (entry.isIntersecting) initSlideshowRuntime(entry.target);
+      else haltSlideshowRuntime(entry.target);
     });
-  }, { 
-    threshold: 0.1,
-    rootMargin: "100px" 
-  });
+  }, { threshold: 0.1, rootMargin: "100px" });
 
   if (!state.scrollObserver) {
     state.scrollObserver = new IntersectionObserver(async (entries) => {
-      const trigger = entries[0];
-      if (trigger.isIntersecting && !state.isProcessing) {
+      if (entries[0].isIntersecting && !state.isProcessing) {
         if (state.filteredDataset.length > (state.currentPage + 1) * state.itemsPerPage) {
           state.currentPage++;
           document.getElementById('loadSpinner').style.display = 'inline-block';
@@ -599,48 +799,30 @@ function setupIntersectionObservers() {
 }
 
 function initSlideshowRuntime(card) {
-  // Prevent duplicate execution on the same card component
   if (card.dataset.intervalId) return; 
-
-  const imagesStr = card.getAttribute('data-images');
-  if (!imagesStr) return;
-
-  const images = JSON.parse(imagesStr.replace(/&quot;/g, '"'));
-  if (images.length <= 1) return; 
+  const images = card._imgArray;
+  if (!images || images.length <= 1) return; 
 
   const imgEl = card.querySelector('.slide-img');
   const progBar = card.querySelector('.progress-fill');
-  const countEl = card.querySelector('.slide-count');
   
   const duration = 3500 + Math.random() * 1500;
-
   const triggerStep = () => {
     if (progBar) {
-      progBar.style.transition = 'none';
-      progBar.style.width = '0%';
-      void progBar.offsetWidth; 
-      progBar.style.transition = `width ${duration}ms linear`;
-      progBar.style.width = '100%';
+      progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; 
+      progBar.style.transition = `width ${duration}ms linear`; progBar.style.width = '100%';
     }
-
     let idx = parseInt(card.dataset.idx) || 0;
     idx = (idx + 1) % images.length;
     card.dataset.idx = idx;
 
     if (imgEl) {
       imgEl.style.opacity = '0.3'; 
-      setTimeout(() => {
-        imgEl.src = images[idx];
-        imgEl.style.opacity = '1'; 
-        if (countEl) countEl.innerText = `Img ${idx + 1} of ${images.length}`;
-      }, 300); 
+      setTimeout(() => { imgEl.src = images[idx]; imgEl.style.opacity = '1'; }, 300); 
     }
   };
-
   triggerStep();
-  const intervalId = setInterval(triggerStep, duration);
-  // Store reference locally on the component to encapsulate lifecycle
-  card.dataset.intervalId = intervalId;
+  card.dataset.intervalId = setInterval(triggerStep, duration);
 }
 
 function haltSlideshowRuntime(card) {
@@ -648,33 +830,12 @@ function haltSlideshowRuntime(card) {
   if (intervalId) {
     clearInterval(parseInt(intervalId, 10));
     card.dataset.intervalId = '';
-    
     const progBar = card.querySelector('.progress-fill');
-    if (progBar) {
-      progBar.style.transition = 'none';
-      progBar.style.width = '0%';
-    }
+    if (progBar) { progBar.style.transition = 'none'; progBar.style.width = '0%'; }
   }
 }
 
-// ==========================================
-// UI BINDINGS & LISTENERS
-// ==========================================
-
-function updateStatus(msg, isLoading) {
-  const el = document.getElementById('globalStatus');
-  el.innerHTML = isLoading 
-    ? `<div class="spinner-border spinner-border-sm text-info me-2" role="status"></div> ${msg}`
-    : `<span class="text-success fw-bold me-2">●</span> ${msg}`;
-}
-
-document.getElementById('minViewers').addEventListener('input', (e) => {
-  document.getElementById('viewerVal').innerText = e.target.value;
-});
-document.getElementById('minScore').addEventListener('input', (e) => {
-  document.getElementById('scoreVal').innerText = e.target.value;
-});
-
+// UI Triggers
 document.getElementById('applyFiltersBtn').addEventListener('click', executePipeline);
 document.getElementById('sortAlgorithm').addEventListener('change', executePipeline);
 
@@ -686,15 +847,30 @@ document.getElementById('searchInput').addEventListener('input', () => {
 
 document.getElementById('resetFiltersBtn').addEventListener('click', () => {
   document.getElementById('searchInput').value = '';
-  document.getElementById('minViewers').value = 0;
-  document.getElementById('viewerVal').innerText = '0';
+  document.getElementById('minViewers').value = 0; document.getElementById('viewerVal').innerText = '0';
   document.getElementById('minScore').value = 0;
-  document.getElementById('scoreVal').innerText = '0';
+  document.getElementById('minAge').value = 18; document.getElementById('maxAge').value = 99;
+  document.getElementById('gridColumns').value = 0; document.getElementById('colCountVal').innerText = 'Responsive Auto';
+  document.getElementById('slideshowGrid').style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
   document.getElementById('tagFilter').value = '';
   document.getElementById('requireHistory').checked = false;
   document.getElementById('sortAlgorithm').value = 'bayesian';
+  
+  // Clear Multi-Select
+  state.selectedItems.clear();
+  document.getElementById('multiSelectMode').checked = false;
+  state.isMultiMode = false;
+  updateFab();
+  
   executePipeline();
 });
+
+function updateStatus(msg, isLoading) {
+  const el = document.getElementById('globalStatus');
+  el.innerHTML = isLoading 
+    ? `<div class="spinner-border spinner-border-sm text-info me-2" role="status"></div> ${msg}`
+    : `<span class="text-success fw-bold me-2">●</span> ${msg}`;
+}
 
 // Boot Sequence
 fetchAndDecompress();
