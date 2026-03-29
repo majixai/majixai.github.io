@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Snippet Ledger - Advanced Architecture</title>
+    <title>Master Snippet Ledger - Tensor RAG Edition</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -143,7 +143,7 @@
     </div>
 
     <ul id="customContextMenu">
-        <li><h6 class="dropdown-header text-primary fw-bold">AI Variations</h6></li>
+        <li><h6 class="dropdown-header text-primary fw-bold">Local Tensor Variations</h6></li>
         <li><a href="#" data-action="ai-var" data-length="1 sentence">1 Sentence Summary</a></li>
         <li><a href="#" data-action="ai-var" data-length="1 paragraph">1 Paragraph Expansion</a></li>
         <li><a href="#" data-action="ai-var" data-length="1 page">1 Page Document</a></li>
@@ -161,20 +161,15 @@
          * ==========================================================================
          * ADVANCED ARCHITECTURE MASTER
          * An encapsulating Immediately Invoked Function Expression (IIFE) that creates
-         * a private scope for all classes, memory maps, and logic, preventing global namespace pollution.
+         * a private scope for all classes, memory maps, and logic.
          * ==========================================================================
          */
         const AppCore = (function() {
             "use strict";
 
             // --- 1. CONFIG, FLAGS & UTILITIES ---
-            // Bitwise flags for efficient boolean state management
             const FLAGS = Object.freeze({ NONE: 0, LOCAL: 1 << 0, CLOUD: 1 << 1, CACHED: 1 << 2, ACTIVE: 1 << 3 });
-            
-            // WeakMap for memory-safe DOM-to-State association (prevents memory leaks on destroyed elements)
             const DOMStateMap = new WeakMap();
-            
-            // Hybrid scoring algorithm weights
             const MATCH_WEIGHT = 0.7; 
             const CLICK_WEIGHT = 0.3;
 
@@ -186,69 +181,58 @@
             }
 
             class Utils {
-                // Aggressive HTML sanitization to prevent Cross-Site Scripting (XSS)
                 static escape(str) { 
                     return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); 
                 }
                 
-                // Detects raw HTML tags for sandboxed Iframe rendering
                 static containsHTML(str) { return /<[a-z][\s\S]*>/i.test(str); }
                 
-                // Maps arbitrary user categories to Prism.js supported languages
                 static getPrismClass(sub) {
                     const s = sub.toLowerCase();
-                    if (s.includes('js') || s.includes('javascript') || s.includes('script')) return 'language-javascript';
+                    if (s.includes('js') || s.includes('javascript') || s.includes('script') || s.includes('pine')) return 'language-javascript';
                     if (s.includes('css') || s.includes('bootstrap')) return 'language-css';
                     if (s.includes('html')) return 'language-markup';
                     return 'language-none';
                 }
                 
-                // Natural Language Processing logic to isolate core topic tags
                 static extractTags(text) {
                     const stopWords = new Set(['the','and','is','in','to','a','of','for','on','with','as','by','this','it','function','const','let','var','return','class']);
                     const counts = {};
                     text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).forEach(w => {
                         if (w.length > 2 && !stopWords.has(w)) counts[w] = (counts[w] || 0) + 1;
                     });
-                    // Sort descending by frequency, return top 4
                     return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 4).map(e => e[0]);
                 }
                 
-                // Higher-order function decorator for system telemetry mapping
                 static performanceLogger(targetFunction) {
                     return async function(...args) {
                         const start = performance.now();
                         const result = await targetFunction.apply(this, args);
-                        // console.log(`[SYS] ${targetFunction.name}: ${(performance.now() - start).toFixed(2)}ms`);
                         return result;
                     };
                 }
             }
 
-            // --- 2. DATA STRUCTURES ---
-            // Simulates strict C-style memory structures using Typed Arrays
             class StatsStruct {
                 constructor() { this.buffer = new ArrayBuffer(8); this.view = new DataView(this.buffer); }
                 get statusFlags() { return this.view.getUint8(4); }
                 set statusFlags(val) { this.view.setUint8(4, val); }
             }
 
-            // --- 3. ML & GPU ENGINE (TensorFlow.js) ---
+            // --- 2. LOCAL TENSORFLOW.JS RAG ENGINE ---
             class MLEngine {
                 constructor() { this.model = null; this.ready = false; }
                 
                 async init(onReadyCallback) {
                     try {
-                        // Loads the Universal Sentence Encoder into the WebGL GPU backend
                         this.model = await use.load();
                         this.ready = true;
                         const b = document.getElementById('mlStatus');
-                        b.className = "w3-tag w3-green w3-round w3-small"; b.innerText = "ML Ready";
+                        b.className = "w3-tag w3-green w3-round w3-small"; b.innerText = "Tensor Core Ready";
                         if (onReadyCallback) onReadyCallback();
-                    } catch(e) { console.warn("ML Engine Offline - Operating in degraded text-only mode"); }
+                    } catch(e) { console.warn("Tensor Core Offline"); }
                 }
 
-                // Mathematical comparison of high-dimensional vectors (512 dimensions)
                 cosineSimilarity(a, b) {
                     const dot = a.reduce((s, v, i) => s + v * b[i], 0);
                     const magA = Math.sqrt(a.reduce((s, v) => s + v * v, 0));
@@ -256,12 +240,12 @@
                     return dot / (magA * magB);
                 }
 
-                // Analyzes entire blocks of texts in parallel utilizing GPU threading
                 async getBatchEmbeddings(texts) {
                     if (!this.ready || texts.length === 0) return [];
                     return await (await this.model.embed(texts)).array();
                 }
 
+                // Strictly matches against known dictionary semantic vectors
                 async expand(input, dictionary) {
                     if (!this.ready || !input) return null;
                     const texts = [input, ...dictionary.map(d => d.trigger)];
@@ -273,11 +257,35 @@
                         const score = this.cosineSimilarity(inputVec, vectors[i]);
                         if (score > highest) { highest = score; bestIdx = i - 1; }
                     }
-                    return highest > 0.3 ? dictionary[bestIdx] : null;
+                    return highest > 0.35 ? dictionary[bestIdx] : null;
+                }
+
+                // Generates code by mapping prompt against entire local historical ledger
+                async retrieveBestLocalMatch(prompt, localSnippets) {
+                    if (!this.ready || localSnippets.length === 0) return null;
+                    
+                    // Embed the user prompt alongside all local descriptions AND local code blocks
+                    const textsToEmbed = [prompt, ...localSnippets.map(s => (s.description || "") + " " + s.text)];
+                    const vectors = await this.getBatchEmbeddings(textsToEmbed);
+                    const promptVec = vectors[0];
+                    
+                    let bestMatch = null; 
+                    let highestScore = 0;
+                    
+                    for (let i = 1; i < vectors.length; i++) {
+                        const score = this.cosineSimilarity(promptVec, vectors[i]);
+                        if (score > highestScore) { 
+                            highestScore = score; 
+                            bestMatch = localSnippets[i - 1]; 
+                        }
+                    }
+                    
+                    // Requires a strong semantic match to prevent returning garbage code
+                    return highestScore > 0.40 ? bestMatch : null;
                 }
             }
 
-            // --- 4. HYBRID STORAGE ARCHITECTURE (IndexedDB + Firebase) ---
+            // --- 3. HYBRID STORAGE ARCHITECTURE (IndexedDB + Firebase) ---
             class StorageService {
                 #dbName = "SmartLedgerDB"; #version = 11; #storeName = "snippets"; #dbInstance = null;
 
@@ -299,13 +307,11 @@
                     return new Promise(res => {
                         if (!data.id) data.id = this.#genId();
                         
-                        // Optimistic UI commit
                         const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
                         tx.objectStore(this.#storeName).put(data);
                         
                         tx.oncomplete = async () => {
                             res(data);
-                            // Background Cloud Synchronization
                             if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT") {
                                 try { await firestoreDb.collection(this.#storeName).doc(data.id).set(data); } catch (e) {}
                             }
@@ -340,7 +346,6 @@
                     });
                 }
 
-                // Implements Websocket driven Realtime Subscriptions
                 startRealtimeSync(cb) {
                     if (!firestoreDb || firebaseConfig.projectId === "YOUR_PROJECT") return;
                     document.getElementById('syncIndicator').style.display = "inline-block";
@@ -365,17 +370,16 @@
             }
             StorageService.prototype.save = Utils.performanceLogger(StorageService.prototype.save);
 
-            // --- 5. DISTRIBUTED BACKGROUND WORKER ---
+            // --- 4. DISTRIBUTED BACKGROUND WORKER ---
             class WorkerService {
                 constructor() {
-                    // Blob instantiation avoids needing a separate external script file
                     const code = `self.onmessage = e => postMessage({ id: e.data.id, count: e.data.text.split(/\\s+/).length });`;
                     this.worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
                 }
                 analyze(id, text) { this.worker.postMessage({ id, text }); }
             }
 
-            // --- 6. CORE APPLICATION CONTROLLER ---
+            // --- 5. CORE APPLICATION CONTROLLER ---
             class LedgerApp {
                 constructor() {
                     this.storage = new StorageService();
@@ -383,7 +387,7 @@
                     this.worker = new WorkerService();
                     this.activeCtxId = null;
                     
-                    // Intelligent Boilerplate Dictionary (Expandable based on stack)
+                    // Local fallback dictionary for foundational concepts
                     this.expansionDict = [
                         { trigger: "html starter", text: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Document</title>\n</head>\n<body>\n  \n</body>\n</html>", sub: "HTML" },
                         { trigger: "bootstrap container flex grid", text: "<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col-md-12 d-flex justify-content-center\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
@@ -395,7 +399,6 @@
 
                 async bootstrap() {
                     await this.storage.connect();
-                    // Pass the rendering hook to the ML engine so neural links calculate once loaded
                     this.ml.init(() => this.renderGrid()); 
                     
                     this.#buildUI();
@@ -413,13 +416,19 @@
                             <div class="card-body">
                                 <div class="row g-3">
                                     <div class="col-md-7 position-relative">
-                                        <label class="form-label fw-bold text-primary small mb-1">Raw Code Snippet</label>
-                                        <textarea id="snipInput" class="form-control text-monospace" rows="5" placeholder="Paste code here, or type semantic keywords to trigger AI expansion..."></textarea>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label fw-bold text-primary small mb-0">Raw Code Snippet</label>
+                                            <button id="genCodeBtn" class="btn btn-sm btn-outline-primary py-0 px-2 fw-bold" style="font-size:0.75rem;" title="Generates Code locally via TensorFlow RAG">✨ Tensor-Code</button>
+                                        </div>
+                                        <textarea id="snipInput" class="form-control text-monospace" rows="5" placeholder="Paste code here, or type semantic keywords to trigger local tensor expansion..."></textarea>
                                         <div id="autocompleteList" class="list-group autocomplete-dropdown shadow-lg"></div>
                                     </div>
                                     <div class="col-md-5 d-flex flex-column">
-                                        <label class="form-label fw-bold text-secondary small mb-1">Contextual Description</label>
-                                        <textarea id="descInput" class="form-control flex-grow-1" placeholder="What does this code do? Why did you save it?"></textarea>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label fw-bold text-secondary small mb-0">Contextual Description</label>
+                                            <button id="genDescBtn" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-bold" style="font-size:0.75rem;" title="Auto-Summarizes code tags">✨ Tensor-Desc</button>
+                                        </div>
+                                        <textarea id="descInput" class="form-control flex-grow-1" placeholder="What does this code do?"></textarea>
                                     </div>
                                 </div>
                                 <hr class="my-3">
@@ -429,7 +438,7 @@
                                         <datalist id="catList"></datalist>
                                     </div>
                                     <div class="col-md-3">
-                                        <button id="aiExpandBtn" class="btn btn-outline-primary w-100 fw-bold">✨ AI Expand</button>
+                                        <button id="aiExpandBtn" class="btn btn-outline-primary w-100 fw-bold">🧠 Semantic Match</button>
                                     </div>
                                     <div class="col-md-3">
                                         <button id="saveBtn" class="btn btn-primary w-100 fw-bold">Save Snippet</button>
@@ -445,6 +454,10 @@
                     document.getElementById('saveBtn').addEventListener('click', () => this.handleSave());
                     document.getElementById('exportBtn').addEventListener('click', () => this.handleExport());
                     document.getElementById('aiExpandBtn').addEventListener('click', () => this.handleAIExpand());
+                    
+                    // Tensor Local Generation Triggers
+                    document.getElementById('genCodeBtn').addEventListener('click', () => this.handleGenCodeFromDesc());
+                    document.getElementById('genDescBtn').addEventListener('click', () => this.handleGenDescFromCode());
                     
                     document.getElementById('snipInput').addEventListener('input', () => this.handleInput());
                     document.getElementById('filterSub').addEventListener('change', () => this.renderGrid());
@@ -471,7 +484,7 @@
                         }
                     });
 
-                    // Neural Link Delegation (Scroll & Highlight)
+                    // Neural Link Delegation
                     document.getElementById('ledgerGrid').addEventListener('click', (e) => {
                         const neuralLink = e.target.closest('.neural-link');
                         if (neuralLink) {
@@ -510,6 +523,67 @@
                     });
                 }
 
+                // --- NEW TENSOR LOCAL GENERATION LOGIC ---
+                
+                async handleGenCodeFromDesc() {
+                    const descElem = document.getElementById('descInput');
+                    const snipElem = document.getElementById('snipInput');
+                    const desc = descElem.value.trim();
+                    
+                    if (!desc) return alert("Please provide a description first for Tensor mapping.");
+                    if (!this.ml.ready) return alert("Tensor Core is still loading. Please wait.");
+
+                    snipElem.value = "// Engaging Local Tensor Space RAG Engine...";
+                    
+                    // 1. Try hitting the semantic knowledge dictionary
+                    const dictMatch = await this.ml.expand(desc, this.expansionDict);
+                    if (dictMatch) {
+                        snipElem.value = dictMatch.text;
+                        document.getElementById('catInput').value = dictMatch.sub;
+                        return;
+                    }
+
+                    // 2. Fallback to searching the user's entire local historical ledger
+                    const allLocal = await this.storage.getAll();
+                    const localMatch = await this.ml.retrieveBestLocalMatch(desc, allLocal);
+                    
+                    if (localMatch) {
+                        snipElem.value = `// Found semantic match in local history (Confidence > 40%)\n\n${localMatch.text}`;
+                        document.getElementById('catInput').value = localMatch.category;
+                    } else {
+                        snipElem.value = "// Tensor Engine could not find a highly correlated snippet in your local dictionary or historical ledger.\n// Expand your ledger to improve local inference capabilities.";
+                    }
+                }
+
+                async handleGenDescFromCode() {
+                    const snipElem = document.getElementById('snipInput');
+                    const descElem = document.getElementById('descInput');
+                    const code = snipElem.value.trim();
+                    
+                    if (!code) return alert("Please provide code first.");
+                    
+                    descElem.value = "Analyzing tensor execution context locally...";
+                    
+                    // Extract core NLP tags
+                    const tags = Utils.extractTags(code);
+                    
+                    // Reverse dictionary mapping
+                    const match = await this.ml.expand(code, this.expansionDict);
+                    
+                    let finalDesc = "";
+                    if (match) {
+                        finalDesc = `Standard implementation of: ${match.trigger}. Categorized locally under ${match.sub}. `;
+                    }
+                    
+                    if (tags.length > 0) {
+                        finalDesc += `Core operational execution context involves: ${tags.join(', ')}.`;
+                    } else {
+                        finalDesc += "Unable to securely infer linguistic context without external API.";
+                    }
+                    
+                    descElem.value = finalDesc.trim();
+                }
+
                 async handleSave() {
                     const text = document.getElementById('snipInput').value.trim();
                     const desc = document.getElementById('descInput').value.trim();
@@ -529,7 +603,6 @@
                     this.updateFilters(); this.renderGrid();
                 }
 
-                // Autocomplete & Real-time Grid Sorting
                 async handleInput() {
                     this.renderGrid(); 
                     
@@ -579,18 +652,18 @@
                         document.getElementById('snipInput').value = match.text;
                         document.getElementById('catInput').value = match.sub;
                         this.handleInput();
-                    } else alert("AI Expansion requires semantic ML keywords (e.g., 'pine script indicator' or 'html starter').");
+                    } else alert("Tensor Engine requires semantic ML keywords (e.g., 'pine script indicator' or 'html starter').");
                 }
 
                 async generateAIVariation(id, length) {
                     const item = await this.storage.get(id);
                     if (!item) return;
                     
-                    const prompt = `Act as an expert developer. Expand/summarize this code to strictly fit a ${length} format.\nSource:\n${item.text}`;
-                    const simulated = `/* AI Var: ${length} */\n/* Source Tag: ${item.tags ? item.tags[0] : 'code'} */\n\n${item.text}\n\n// Integrate actual LLM API endpoint logic here based on the selected prompt parameter.`;
+                    // As requested, keeping this local and mimicking generation via dictionary/context
+                    const simulated = `/* \n * Local Tensor Var: ${length} \n * Root Context: ${item.tags ? item.tags[0] : 'code'} \n */\n\n${item.text}\n\n// True expansive generation of ${length} requires a large external LLM.\n// This acts as a semantic scaffolding placeholder.`;
                     
                     document.getElementById('snipInput').value = simulated;
-                    document.getElementById('descInput').value = `Generated ${length} variation of original snippet.`;
+                    document.getElementById('descInput').value = `Scaffolded ${length} variation using local tensor mapping.`;
                     document.getElementById('catInput').value = `${item.category}-VAR`;
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
@@ -658,16 +731,15 @@
                         const vecA = vectors[i];
                         let related = [];
                         
-                        // Compare current snippet against all others
                         for (let j = 0; j < vectors.length; j++) {
                             if (i === j) continue; 
                             const score = this.ml.cosineSimilarity(vecA, vectors[j]);
-                            // 0.45 threshold ensures links are mathematically related, not random
+                            // 0.45 threshold ensures links are mathematically related
                             if (score > 0.45) related.push({ id: snippets[j].id, category: snippets[j].category, score });
                         }
                         
                         related.sort((a,b) => b.score - a.score);
-                        const topRelated = related.slice(0, 3); // Capped at Top 3 to prevent UI clutter
+                        const topRelated = related.slice(0, 3); // Max 3 links
 
                         if (topRelated.length > 0) {
                             const card = document.querySelector(`[data-snip-id="${snip.id}"]`);
@@ -682,7 +754,7 @@
                         }
                     });
 
-                    document.getElementById('mlStatus').innerText = "ML Ready";
+                    document.getElementById('mlStatus').innerText = "Tensor Core Ready";
                     document.getElementById('mlStatus').className = "w3-tag w3-green w3-round w3-small";
                 }
 
@@ -742,7 +814,7 @@
                     }
                     if(window.Prism) Prism.highlightAllUnder(grid);
 
-                    // Push neural linking task to the end of the event loop to ensure smooth UI rendering
+                    // Push neural linking task to the end of the event loop
                     setTimeout(() => this.injectNeuralLinks(snippets), 150);
                 }
             }
