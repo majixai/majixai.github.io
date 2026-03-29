@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Copy Of Ledger</title>
+    <title>Copy Of Ledger - Master Edition</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -15,6 +15,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     
     <style>
+        /* WebKit, Parallax & Theming */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
@@ -23,419 +24,607 @@
         body { 
             margin: 0; padding: 0;
             background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1920&q=80');
-            background-attachment: fixed; 
-            background-position: center;
-            background-size: cover;
+            background-attachment: fixed; background-position: center; background-size: cover;
             color: #333;
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px);
+            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
-        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.2rem; }
+        /* Layout & Cards */
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.2rem; }
         
         .snippet-card { 
-            transition: transform 0.2s, box-shadow 0.2s; 
-            border-left: 5px solid #0d6efd; 
-            cursor: pointer; 
-            position: relative;
-            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s; border-left: 5px solid #0d6efd; 
+            cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column;
         }
-        .snippet-card:hover { 
-            transform: translateY(-3px); 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important; 
-        }
+        .snippet-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important; }
         
-        pre { max-height: 200px; overflow-y: auto; font-size: 0.85rem; }
+        pre { max-height: 250px; overflow-y: auto; font-size: 0.85rem; margin: 0; flex-grow: 1; border-radius: 0; }
+        .description-box { font-size: 0.85rem; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef; }
+        .miniature-preview { pointer-events: none; height: 100px; width: 100%; border: 1px solid #dee2e6; background: #fff; margin-top: 0.5rem; }
+        .tag-badge { font-size: 0.7rem; font-weight: normal; margin-right: 0.2rem; margin-bottom: 0.4rem; display: inline-block; }
 
-        .btn-delete { 
-            position: absolute; 
-            top: 10px; right: 10px; 
-            z-index: 10; 
-            display: none; 
-            padding: 0.1rem 0.4rem; 
-            font-size: 0.75rem; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        /* Overlays & Dropdowns */
+        .autocomplete-dropdown { position: absolute; z-index: 1050; width: 100%; max-height: 350px; overflow-y: auto; display: none; border-radius: 0.5rem; }
+        .subsection-header { background-color: #e9ecef; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        
+        #dropOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(13, 110, 253, 0.9); z-index: 10000;
+            display: none; justify-content: center; align-items: center;
+            color: white; font-size: 3rem; font-weight: bold; border: 10px dashed rgba(255,255,255,0.5);
         }
-        .snippet-card:hover .btn-delete { display: block; }
+
+        #customContextMenu {
+            display: none; position: absolute; z-index: 9999;
+            min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 0.5rem; background: white; padding: 0.5rem 0; list-style: none; margin: 0;
+        }
+        #customContextMenu li a { display: block; padding: 0.5rem 1rem; color: #333; text-decoration: none; font-size: 0.85rem; }
+        #customContextMenu li a:hover { background-color: #f8f9fa; }
+        #customContextMenu li a.text-danger:hover { background-color: #ffeeba; }
+        .copy-toast { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: none; }
+
+        /* Animations */
+        @keyframes syncPulse {
+            0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0); }
+        }
+        .sync-active { animation: syncPulse 2s infinite; }
     </style>
 </head>
 <body class="w3-animate-opacity pb-5">
 
+    <div id="dropOverlay">Drop JSON File Here to Import</div>
+
     <div class="container py-4 glass-panel mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
             <h1 class="h2 fw-bold text-dark d-flex align-items-center gap-2">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 Copy Of Ledger
             </h1>
             <div>
-                <button id="cloudSyncBtn" class="w3-button w3-blue w3-round-large w3-small me-2">Force Cloud Sync</button>
-                <span id="sysStatus" class="w3-tag w3-yellow w3-round">Booting Modules...</span>
+                <button id="exportBtn" class="w3-button w3-black w3-round-large w3-small me-2">Export JSON</button>
+                <span id="syncIndicator" class="w3-tag w3-teal w3-round w3-small me-2" style="display:none;">Cloud Sync On</span>
+                <span id="mlStatus" class="w3-tag w3-yellow w3-round w3-small">ML Booting...</span>
             </div>
         </div>
 
         <div id="app-root"></div>
+
+        <div class="row mb-4 mt-4 g-3 bg-white p-3 rounded shadow-sm border mx-1">
+            <div class="col-md-6">
+                <select id="filterSub" class="form-select border-0 bg-light">
+                    <option value="ALL">All Subsections</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <select id="sortMode" class="form-select border-0 bg-light">
+                    <option value="RELEVANCE">Hybrid Relevance (Keywords + Clicks)</option>
+                    <option value="NEWEST" selected>Chronological (Newest First)</option>
+                    <option value="CLICKS">Favorites (Most Clicked)</option>
+                </select>
+            </div>
+        </div>
+
         <div id="ledgerGrid" class="grid-layout mt-4"></div>
     </div>
+
+    <div id="copyToast" class="toast copy-toast align-items-center text-white bg-success border-0" role="alert">
+        <div class="d-flex"><div class="toast-body fw-bold">✓ Copied to clipboard!</div></div>
+    </div>
+
+    <ul id="customContextMenu">
+        <li><h6 class="dropdown-header text-primary fw-bold">AI Variations</h6></li>
+        <li><a href="#" data-action="ai-var" data-length="1 sentence">1 Sentence Summary</a></li>
+        <li><a href="#" data-action="ai-var" data-length="1 paragraph">1 Paragraph Expansion</a></li>
+        <li><a href="#" data-action="ai-var" data-length="1 page">1 Page Document</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a href="#" data-action="ai-var" data-length="100 words">~ 100 Words</a></li>
+        <li><a href="#" data-action="ai-var" data-length="1000 words">~ 1000 Words</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a href="#" data-action="delete" class="text-danger fw-bold">Delete Snippet</a></li>
+    </ul>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
     <script type="module">
         /**
          * ==========================================
-         * MODULE 1: CONFIG & UTILITIES
+         * ADVANCED ARCHITECTURE MASTER
          * ==========================================
          */
-        const FLAGS = Object.freeze({
-            NONE: 0,
-            LOCAL: 1 << 0,  // 1
-            CLOUD: 1 << 1,  // 2
-            CACHED: 1 << 2, // 4
-            ACTIVE: 1 << 3  // 8
-        });
+        const AppCore = (function() {
+            "use strict";
 
-        const DOMStateMap = new WeakMap();
+            // --- 1. CONFIG, FLAGS & UTILS ---
+            const FLAGS = Object.freeze({ NONE: 0, LOCAL: 1 << 0, CLOUD: 1 << 1, CACHED: 1 << 2, ACTIVE: 1 << 3 });
+            const DOMStateMap = new WeakMap();
+            const MATCH_WEIGHT = 0.7; 
+            const CLICK_WEIGHT = 0.3;
 
-        // ** FIREBASE CONFIGURATION **
-        // Replace these values with your actual Firebase Project settings
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID"
-        };
-
-        let firestoreDb = null;
-        if (typeof firebase !== 'undefined' && !firebase.apps.length) {
-            try {
-                firebase.initializeApp(firebaseConfig);
-                firestoreDb = firebase.firestore();
-                console.log("[SYS] Firebase Initialized");
-            } catch (e) {
-                console.warn("[SYS] Firebase init failed (check config). Running local-only mode.");
-            }
-        }
-
-        class Utils {
-            static escape(str) { 
-                return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); 
-            }
-            static performanceLogger(targetFunction) {
-                return async function(...args) {
-                    const start = performance.now();
-                    const result = await targetFunction.apply(this, args);
-                    console.log(`[SYS] ${targetFunction.name} executed in ${(performance.now() - start).toFixed(2)}ms`);
-                    return result;
-                };
-            }
-        }
-
-        /**
-         * ==========================================
-         * MODULE 2: DATA STRUCTURES
-         * ==========================================
-         */
-        class StatsStruct {
-            constructor() {
-                this.buffer = new ArrayBuffer(8);
-                this.view = new DataView(this.buffer);
-            }
-            get clicks() { return this.view.getUint32(0); }
-            set clicks(val) { this.view.setUint32(0, val); }
-            get statusFlags() { return this.view.getUint8(4); }
-            set statusFlags(val) { this.view.setUint8(4, val); }
-        }
-
-        /**
-         * ==========================================
-         * MODULE 3: HYBRID STORAGE SERVICE 
-         * Handles IndexedDB (Local) & Firestore (Cloud)
-         * ==========================================
-         */
-        class StorageService {
-            #dbName = "SmartLedgerDB";
-            #version = 7; 
-            #storeName = "snippets";
-            #dbInstance = null;
-
-            async connect() {
-                return new Promise((resolve, reject) => {
-                    const req = indexedDB.open(this.#dbName, this.#version);
-                    req.onupgradeneeded = (e) => {
-                        let db = e.target.result;
-                        if (!db.objectStoreNames.contains(this.#storeName)) {
-                            db.createObjectStore(this.#storeName, { keyPath: "id" }); // Removed autoIncrement to sync IDs with Cloud
-                        }
-                    };
-                    req.onsuccess = (e) => { this.#dbInstance = e.target.result; resolve(); };
-                    req.onerror = (e) => reject(e.target.error);
-                });
+            const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT.firebaseapp.com", projectId: "YOUR_PROJECT" };
+            let firestoreDb = null;
+            if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                try { firebase.initializeApp(firebaseConfig); firestoreDb = firebase.firestore(); } catch (e) { }
             }
 
-            // Generate unique ID suitable for both local and cloud
-            #generateId() { return Date.now().toString() + Math.random().toString(36).substr(2, 5); }
-
-            async save(data) {
-                return new Promise(async (resolve) => {
-                    // 1. Assign ID if new
-                    if (!data.id) data.id = this.#generateId();
-                    
-                    // 2. Save locally first (Optimistic UI)
-                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
-                    tx.objectStore(this.#storeName).put(data);
-                    
-                    tx.oncomplete = async () => {
-                        resolve(data); // Resolve immediately for UI rendering
-                        
-                        // 3. Async Push to Firebase
-                        if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT_ID") {
-                            try {
-                                await firestoreDb.collection(this.#storeName).doc(data.id).set(data);
-                                
-                                // 4. If cloud succeeds, update local flag to CLOUD
-                                data.status = (data.status & ~FLAGS.LOCAL) | FLAGS.CLOUD;
-                                const updateTx = this.#dbInstance.transaction(this.#storeName, "readwrite");
-                                updateTx.objectStore(this.#storeName).put(data);
-                                console.log(`[CLOUD] Synced snippet ${data.id}`);
-                            } catch (e) {
-                                console.error("[CLOUD] Sync failed", e);
-                            }
-                        }
-                    };
-                });
-            }
-
-            async getAll() {
-                return new Promise(resolve => {
-                    const tx = this.#dbInstance.transaction(this.#storeName, "readonly");
-                    tx.objectStore(this.#storeName).getAll().onsuccess = e => resolve(e.target.result);
-                });
-            }
-
-            async delete(id) {
-                return new Promise(async (resolve) => {
-                    // 1. Delete Locally
-                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
-                    tx.objectStore(this.#storeName).delete(id);
-                    
-                    tx.oncomplete = async () => {
-                        resolve(true);
-                        
-                        // 2. Delete from Cloud
-                        if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT_ID") {
-                            try {
-                                await firestoreDb.collection(this.#storeName).doc(id).delete();
-                                console.log(`[CLOUD] Deleted snippet ${id}`);
-                            } catch (e) {
-                                console.error("[CLOUD] Delete failed", e);
-                            }
-                        }
-                    };
-                });
-            }
-
-            // Pull down from Cloud and update Local DB
-            async syncDown() {
-                if (!firestoreDb || firebaseConfig.projectId === "YOUR_PROJECT_ID") return false;
-                
-                try {
-                    const snapshot = await firestoreDb.collection(this.#storeName).get();
-                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
-                    const store = tx.objectStore(this.#storeName);
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        data.status = (data.status & ~FLAGS.LOCAL) | FLAGS.CLOUD;
-                        store.put(data);
+            class Utils {
+                static escape(str) { return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); }
+                static containsHTML(str) { return /<[a-z][\s\S]*>/i.test(str); }
+                static getPrismClass(sub) {
+                    const s = sub.toLowerCase();
+                    if (s.includes('js') || s.includes('javascript')) return 'language-javascript';
+                    if (s.includes('css') || s.includes('bootstrap')) return 'language-css';
+                    if (s.includes('html')) return 'language-markup';
+                    return 'language-none';
+                }
+                static extractTags(text) {
+                    const stopWords = new Set(['the','and','is','in','to','a','of','for','on','with','as','by','this','it','function','const','let','var','return','class']);
+                    const counts = {};
+                    text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).forEach(w => {
+                        if (w.length > 2 && !stopWords.has(w)) counts[w] = (counts[w] || 0) + 1;
                     });
-                    
-                    return new Promise(resolve => {
-                        tx.oncomplete = () => resolve(true);
-                    });
-                } catch(e) {
-                    console.error("[CLOUD] Sync Down failed", e);
-                    return false;
+                    return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 4).map(e => e[0]);
+                }
+                // Decorator
+                static performanceLogger(targetFunction) {
+                    return async function(...args) {
+                        const start = performance.now();
+                        const result = await targetFunction.apply(this, args);
+                        // console.log(`[SYS] ${targetFunction.name}: ${(performance.now() - start).toFixed(2)}ms`);
+                        return result;
+                    };
                 }
             }
-        }
 
-        StorageService.prototype.save = Utils.performanceLogger(StorageService.prototype.save);
-
-        /**
-         * ==========================================
-         * MODULE 4: BACKGROUND WORKERS
-         * ==========================================
-         */
-        class DistributedWorkerService {
-            constructor() {
-                this.worker = this.#initWorker();
-                this.worker.onmessage = this.#handleMessage;
+            // --- 2. DATA STRUCTURES (Structs via ArrayBuffer) ---
+            class StatsStruct {
+                constructor() { this.buffer = new ArrayBuffer(8); this.view = new DataView(this.buffer); }
+                get statusFlags() { return this.view.getUint8(4); }
+                set statusFlags(val) { this.view.setUint8(4, val); }
             }
 
-            #initWorker() {
-                const workerCode = `
-                    self.onmessage = function(e) {
-                        const words = e.data.text.split(/\\s+/).filter(w => w.length > 0).length;
-                        postMessage({ id: e.data.id, words });
-                    };
-                `;
-                return new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
-            }
-
-            #handleMessage(e) {
-                console.log(`[WORKER] Analyzed snippet ${e.data.id}: ${e.data.words} words.`);
-            }
-
-            analyzePayload(id, text) {
-                this.worker.postMessage({ id, text });
-            }
-        }
-
-        /**
-         * ==========================================
-         * MODULE 5: APPLICATION CONTROLLER
-         * ==========================================
-         */
-        class LedgerApp {
-            constructor() {
-                this.storage = new StorageService();
-                this.workers = new DistributedWorkerService();
-            }
-
-            async bootstrap() {
-                await this.storage.connect();
-                this.#buildUI();
-                this.#bindGlobalEvents();
+            // --- 3. ML & GPU ENGINE (TensorFlow.js) ---
+            class MLEngine {
+                constructor() { this.model = null; this.ready = false; }
                 
-                // Optional: Attempt to sync on boot
-                await this.storage.syncDown();
-                
-                const sysTag = document.getElementById('sysStatus');
-                sysTag.innerText = "System Ready";
-                sysTag.className = "w3-tag w3-green w3-round";
-                
-                this.renderGrid();
+                async init() {
+                    try {
+                        this.model = await use.load();
+                        this.ready = true;
+                        const b = document.getElementById('mlStatus');
+                        b.className = "w3-tag w3-green w3-round w3-small"; b.innerText = "ML Ready";
+                    } catch(e) { console.warn("ML Offline"); }
+                }
+
+                cosineSimilarity(a, b) {
+                    const dot = a.reduce((s, v, i) => s + v * b[i], 0);
+                    const magA = Math.sqrt(a.reduce((s, v) => s + v * v, 0));
+                    const magB = Math.sqrt(b.reduce((s, v) => s + v * v, 0));
+                    return dot / (magA * magB);
+                }
+
+                async expand(input, dictionary) {
+                    if (!this.ready || !input) return null;
+                    const texts = [input, ...dictionary.map(d => d.trigger)];
+                    const vectors = await (await this.model.embed(texts)).array();
+                    const inputVec = vectors[0];
+                    let bestIdx = -1, highest = 0;
+                    
+                    for (let i = 1; i < vectors.length; i++) {
+                        const score = this.cosineSimilarity(inputVec, vectors[i]);
+                        if (score > highest) { highest = score; bestIdx = i - 1; }
+                    }
+                    return highest > 0.3 ? dictionary[bestIdx] : null;
+                }
             }
 
-            #buildUI() {
-                document.getElementById('app-root').innerHTML = `
-                    <div class="card shadow-sm border-0 w3-animate-bottom" id="inputCard">
-                        <div class="card-body">
-                            <textarea id="snipInput" class="form-control mb-3 text-monospace" rows="3" placeholder="Enter HTML, CSS/Bootstrap, JS/CDN snippet..."></textarea>
-                            <div class="row g-2">
-                                <div class="col-md-8">
-                                    <input type="text" id="catInput" class="form-control" placeholder="Category (e.g., JS, HTML)">
+            // --- 4. HYBRID STORAGE (IndexedDB + Firebase) ---
+            class StorageService {
+                #dbName = "SmartLedgerDB"; #version = 11; #storeName = "snippets"; #dbInstance = null;
+
+                async connect() {
+                    return new Promise((res, rej) => {
+                        const req = indexedDB.open(this.#dbName, this.#version);
+                        req.onupgradeneeded = e => {
+                            let db = e.target.result;
+                            if (!db.objectStoreNames.contains(this.#storeName)) db.createObjectStore(this.#storeName, { keyPath: "id" });
+                        };
+                        req.onsuccess = e => { this.#dbInstance = e.target.result; res(); };
+                        req.onerror = e => rej(e.target.error);
+                    });
+                }
+
+                #genId() { return Date.now().toString() + Math.random().toString(36).substr(2, 5); }
+
+                async save(data) {
+                    return new Promise(res => {
+                        if (!data.id) data.id = this.#genId();
+                        const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                        tx.objectStore(this.#storeName).put(data);
+                        tx.oncomplete = async () => {
+                            res(data);
+                            if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT") {
+                                try { await firestoreDb.collection(this.#storeName).doc(data.id).set(data); } catch (e) {}
+                            }
+                        };
+                    });
+                }
+
+                async get(id) {
+                    return new Promise(res => {
+                        const tx = this.#dbInstance.transaction(this.#storeName, "readonly");
+                        tx.objectStore(this.#storeName).get(id).onsuccess = e => res(e.target.result);
+                    });
+                }
+
+                async getAll() {
+                    return new Promise(res => {
+                        const tx = this.#dbInstance.transaction(this.#storeName, "readonly");
+                        tx.objectStore(this.#storeName).getAll().onsuccess = e => res(e.target.result);
+                    });
+                }
+
+                async delete(id) {
+                    return new Promise(res => {
+                        const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                        tx.objectStore(this.#storeName).delete(id);
+                        tx.oncomplete = async () => {
+                            res(true);
+                            if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT") {
+                                try { await firestoreDb.collection(this.#storeName).doc(id).delete(); } catch (e) {}
+                            }
+                        };
+                    });
+                }
+
+                startRealtimeSync(cb) {
+                    if (!firestoreDb || firebaseConfig.projectId === "YOUR_PROJECT") return;
+                    document.getElementById('syncIndicator').style.display = "inline-block";
+                    document.getElementById('syncIndicator').classList.add("sync-active");
+
+                    firestoreDb.collection(this.#storeName).onSnapshot(snap => {
+                        let hasChanges = false;
+                        const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                        const store = tx.objectStore(this.#storeName);
+
+                        snap.docChanges().forEach(change => {
+                            hasChanges = true;
+                            const d = change.doc.data();
+                            if (change.type === "added" || change.type === "modified") {
+                                d.status = (d.status & ~FLAGS.LOCAL) | FLAGS.CLOUD;
+                                store.put(d);
+                            } else if (change.type === "removed") store.delete(change.doc.id);
+                        });
+                        tx.oncomplete = () => { if (hasChanges && cb) cb(); };
+                    });
+                }
+            }
+            StorageService.prototype.save = Utils.performanceLogger(StorageService.prototype.save);
+
+            // --- 5. DISTRIBUTED WORKER ---
+            class WorkerService {
+                constructor() {
+                    const code = `self.onmessage = e => postMessage({ id: e.data.id, count: e.data.text.split(/\\s+/).length });`;
+                    this.worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
+                    // this.worker.onmessage = e => console.log(\`[WORKER] Processed ID: \${e.data.id}\`);
+                }
+                analyze(id, text) { this.worker.postMessage({ id, text }); }
+            }
+
+            // --- 6. APP CONTROLLER ---
+            class LedgerApp {
+                constructor() {
+                    this.storage = new StorageService();
+                    this.ml = new MLEngine();
+                    this.worker = new WorkerService();
+                    this.activeCtxId = null;
+                    this.expansionDict = [
+                        { trigger: "html starter", text: "<!DOCTYPE html>\n<html>\n<head><title>Doc</title></head>\n<body></body>\n</html>", sub: "HTML" },
+                        { trigger: "bootstrap container", text: "<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
+                        { trigger: "fetch api js", text: "async function getData(url) {\n  const res = await fetch(url);\n  return await res.json();\n}", sub: "JS/CDN" }
+                    ];
+                }
+
+                async bootstrap() {
+                    await this.storage.connect();
+                    this.ml.init();
+                    this.#buildUI();
+                    this.#bindEvents();
+                    this.#bindDragDrop();
+                    
+                    this.storage.startRealtimeSync(() => this.renderGrid());
+                    this.renderGrid();
+                    this.updateFilters();
+                }
+
+                #buildUI() {
+                    document.getElementById('app-root').innerHTML = `
+                        <div class="card shadow-sm border-0 w3-animate-bottom position-relative" id="inputCard">
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-7 position-relative">
+                                        <label class="form-label fw-bold text-primary small mb-1">Raw Code Snippet</label>
+                                        <textarea id="snipInput" class="form-control text-monospace" rows="4" placeholder="Code or search keywords..."></textarea>
+                                        <div id="autocompleteList" class="list-group autocomplete-dropdown shadow-lg"></div>
+                                    </div>
+                                    <div class="col-md-5 d-flex flex-column">
+                                        <label class="form-label fw-bold text-secondary small mb-1">Description</label>
+                                        <textarea id="descInput" class="form-control flex-grow-1" placeholder="What does this code do?"></textarea>
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <button id="saveBtn" class="btn btn-primary w-100 fw-bold">Save Snippet</button>
+                                <hr class="my-3">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <input type="text" id="catInput" class="form-control" placeholder="Category (e.g., JS, HTML)" list="catList">
+                                        <datalist id="catList"></datalist>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button id="aiExpandBtn" class="btn btn-outline-primary w-100 fw-bold">✨ AI Expand</button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button id="saveBtn" class="btn btn-primary w-100 fw-bold">Save Snippet</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                DOMStateMap.set(document.getElementById('inputCard'), { isMounted: true });
-            }
-
-            #bindGlobalEvents() {
-                document.getElementById('saveBtn').addEventListener('click', () => this.handleSave());
-                document.getElementById('cloudSyncBtn').addEventListener('click', async () => {
-                    document.getElementById('sysStatus').innerText = "Syncing...";
-                    document.getElementById('sysStatus').className = "w3-tag w3-blue w3-round";
-                    await this.storage.syncDown();
-                    this.renderGrid();
-                    document.getElementById('sysStatus').innerText = "System Ready";
-                    document.getElementById('sysStatus').className = "w3-tag w3-green w3-round";
-                });
-            }
-
-            async handleSave() {
-                const text = document.getElementById('snipInput').value.trim();
-                const cat = document.getElementById('catInput').value.trim().toUpperCase() || "GENERAL";
-                if (!text) return;
-
-                const stats = new StatsStruct();
-                stats.statusFlags = FLAGS.LOCAL | FLAGS.ACTIVE;
-
-                const savedData = await this.storage.save({ 
-                    text, 
-                    category: cat, 
-                    timestamp: Date.now(),
-                    status: stats.statusFlags 
-                });
-
-                this.workers.analyzePayload(savedData.id, text);
-                
-                document.getElementById('snipInput').value = '';
-                this.renderGrid();
-            }
-
-            async handleDelete(e, id) {
-                e.stopPropagation(); 
-                if (confirm("Are you sure you want to permanently delete this snippet? (Will delete from Cloud as well)")) {
-                    await this.storage.delete(id);
-                    this.renderGrid();
-                }
-            }
-
-            handleCopy(text, cardElement) {
-                navigator.clipboard.writeText(text);
-                cardElement.style.opacity = '0.5';
-                setTimeout(() => cardElement.style.opacity = '1', 200);
-            }
-
-            async renderGrid() {
-                const snippets = await this.storage.getAll();
-                const grid = document.getElementById('ledgerGrid');
-                grid.innerHTML = '';
-
-                // Generator Protocol implementation
-                const generator = function*(items) {
-                    for (let item of items) yield item;
-                }(snippets.sort((a,b) => b.timestamp - a.timestamp));
-
-                for (let item of generator) {
-                    const card = document.createElement('div');
-                    const isLocal = (item.status & FLAGS.LOCAL) !== 0;
-                    const isCloud = (item.status & FLAGS.CLOUD) !== 0;
-                    
-                    let badgeClass = "bg-secondary";
-                    let stateText = "LOCAL";
-                    if (isCloud) { badgeClass = "bg-primary"; stateText = "CLOUD"; }
-
-                    card.className = "card snippet-card shadow-sm w3-animate-zoom bg-white";
-                    card.innerHTML = `
-                        <button class="btn btn-danger btn-delete w3-circle" title="Delete Snippet">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
-                        </button>
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">${Utils.escape(item.category)}</span>
-                            <span class="badge ${badgeClass}" style="font-size: 0.65rem;">${stateText}</span>
-                        </div>
-                        <div class="card-body p-0">
-                            <pre class="m-0 p-3 language-javascript"><code class="language-javascript">${Utils.escape(item.text)}</code></pre>
-                        </div>
                     `;
-                    
-                    card.addEventListener('click', () => this.handleCopy(item.text, card));
-                    card.querySelector('.btn-delete').addEventListener('click', (e) => this.handleDelete(e, item.id));
-
-                    grid.appendChild(card);
+                    DOMStateMap.set(document.getElementById('inputCard'), { isMounted: true });
                 }
-                
-                if(window.Prism) Prism.highlightAllUnder(grid);
-            }
-        }
 
-        // ==========================================
-        // INITIALIZATION
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', () => {
-            const app = new LedgerApp();
-            app.bootstrap();
-        });
+                #bindEvents() {
+                    document.getElementById('saveBtn').addEventListener('click', () => this.handleSave());
+                    document.getElementById('exportBtn').addEventListener('click', () => this.handleExport());
+                    document.getElementById('aiExpandBtn').addEventListener('click', () => this.handleAIExpand());
+                    
+                    // Autocomplete & Scoring hook
+                    document.getElementById('snipInput').addEventListener('input', () => this.handleInput());
+                    document.getElementById('filterSub').addEventListener('change', () => this.renderGrid());
+                    document.getElementById('sortMode').addEventListener('change', () => this.renderGrid());
+
+                    // Global Clicks (Close Menus)
+                    document.addEventListener('click', (e) => {
+                        if (!e.target.closest('#snipInput') && !e.target.closest('#autocompleteList')) 
+                            document.getElementById('autocompleteList').style.display = 'none';
+                        document.getElementById('customContextMenu').style.display = 'none';
+                    });
+
+                    // Context Menu Actions
+                    document.getElementById('customContextMenu').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const target = e.target.closest('a');
+                        if (!target || !this.activeCtxId) return;
+                        
+                        const action = target.getAttribute('data-action');
+                        if (action === 'delete') {
+                            if (confirm("Permanently delete this snippet?")) this.handleDelete(this.activeCtxId);
+                        } else if (action === 'ai-var') {
+                            this.generateAIVariation(this.activeCtxId, target.getAttribute('data-length'));
+                        }
+                    });
+                }
+
+                #bindDragDrop() {
+                    const dz = document.getElementById('dropOverlay');
+                    window.addEventListener('dragover', e => { e.preventDefault(); dz.style.display = 'flex'; });
+                    window.addEventListener('dragleave', e => { if (e.relatedTarget === null) dz.style.display = 'none'; });
+                    window.addEventListener('drop', async e => {
+                        e.preventDefault(); dz.style.display = 'none';
+                        if (e.dataTransfer.files.length && e.dataTransfer.files[0].type.includes("json")) {
+                            const reader = new FileReader();
+                            reader.onload = async ev => {
+                                try {
+                                    const data = JSON.parse(ev.target.result);
+                                    if (Array.isArray(data)) {
+                                        for (let item of data) await this.storage.save(item);
+                                        this.renderGrid(); this.updateFilters();
+                                        alert(`Imported ${data.length} snippets.`);
+                                    }
+                                } catch (err) { alert("Invalid JSON format."); }
+                            };
+                            reader.readAsText(e.dataTransfer.files[0]);
+                        }
+                    });
+                }
+
+                async handleSave() {
+                    const text = document.getElementById('snipInput').value.trim();
+                    const desc = document.getElementById('descInput').value.trim();
+                    const cat = document.getElementById('catInput').value.trim().toUpperCase() || "GENERAL";
+                    if (!text) return;
+
+                    const stats = new StatsStruct(); stats.statusFlags = FLAGS.LOCAL | FLAGS.ACTIVE;
+                    const tags = Utils.extractTags(text + " " + desc);
+
+                    const data = await this.storage.save({ 
+                        text, description: desc, category: cat, tags, clicks: 0, 
+                        timestamp: Date.now(), status: stats.statusFlags 
+                    });
+                    
+                    this.worker.analyze(data.id, text);
+                    document.getElementById('snipInput').value = ''; document.getElementById('descInput').value = '';
+                    this.updateFilters(); this.renderGrid();
+                }
+
+                async handleInput() {
+                    this.renderGrid(); // Re-sort main grid via hybrid math instantly
+                    
+                    const query = document.getElementById('snipInput').value.trim();
+                    const autoList = document.getElementById('autocompleteList');
+                    if (!query) { autoList.style.display = 'none'; return; }
+
+                    const scored = await this.scoreSnippets(query);
+                    const matches = scored.filter(s => s.totalScore > 0).sort((a, b) => b.totalScore - a.totalScore);
+                    
+                    if (matches.length === 0) { autoList.style.display = 'none'; return; }
+
+                    autoList.innerHTML = '';
+                    // Grouping for autocomplete
+                    const grouped = matches.reduce((r, c) => { (r[c.category] = r[c.category] || []).push(c); return r; }, {});
+                    
+                    for (const [sub, items] of Object.entries(grouped)) {
+                        autoList.innerHTML += `<div class="list-group-item subsection-header px-3 py-1">${Utils.escape(sub)}</div>`;
+                        items.forEach(item => {
+                            const prev = item.text.replace(/[\r\n]+/g, ' ');
+                            const trunc = prev.length > 50 ? prev.substring(0, 50) + '...' : prev;
+                            autoList.innerHTML += `
+                                <button type="button" class="list-group-item list-group-item-action border-0 border-bottom px-3" data-id="${item.id}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <code class="text-dark bg-transparent p-0">${Utils.escape(trunc)}</code>
+                                        <span class="badge bg-primary rounded-pill shadow-sm">${Math.round(item.totalScore)}%</span>
+                                    </div>
+                                </button>`;
+                        });
+                    }
+                    
+                    autoList.querySelectorAll('button').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const item = await this.storage.get(btn.getAttribute('data-id'));
+                            document.getElementById('snipInput').value = item.text;
+                            document.getElementById('descInput').value = item.description || "";
+                            document.getElementById('catInput').value = item.category;
+                            autoList.style.display = 'none';
+                        });
+                    });
+                    autoList.style.display = 'block';
+                }
+
+                async handleAIExpand() {
+                    const input = document.getElementById('snipInput').value.trim();
+                    const match = await this.ml.expand(input, this.expansionDict);
+                    if (match) {
+                        document.getElementById('snipInput').value = match.text;
+                        document.getElementById('catInput').value = match.sub;
+                        this.handleInput();
+                    } else alert("AI Expansion requires ML keywords (e.g. 'html starter')");
+                }
+
+                async generateAIVariation(id, length) {
+                    const item = await this.storage.get(id);
+                    if (!item) return;
+                    // Stub for LLM generation
+                    const prompt = `Act as an expert developer. Expand/summarize this code to strictly fit a ${length} format.\nSource:\n${item.text}`;
+                    const simulated = `/* AI Var: ${length} */\n/* Source Tag: ${item.tags ? item.tags[0] : 'code'} */\n\n${item.text}\n\n// Integrate actual LLM API here with prompt logic.`;
+                    
+                    document.getElementById('snipInput').value = simulated;
+                    document.getElementById('descInput').value = `Generated ${length} variation of original snippet.`;
+                    document.getElementById('catInput').value = `${item.category}-VAR`;
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+
+                async scoreSnippets(query) {
+                    const snippets = await this.storage.getAll();
+                    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w);
+                    const maxClicks = Math.max(...snippets.map(s => s.clicks || 0), 1);
+
+                    return snippets.map(s => {
+                        const words = s.text.toLowerCase().split(/\s+/);
+                        let matches = 0;
+                        queryWords.forEach(w => { if (words.includes(w)) matches++; });
+                        const matchScore = queryWords.length > 0 ? (matches / queryWords.length) * 100 : 0;
+                        const clickScore = ((s.clicks || 0) / maxClicks) * 100;
+                        return { ...s, totalScore: (matchScore * MATCH_WEIGHT) + (clickScore * CLICK_WEIGHT) };
+                    });
+                }
+
+                async handleCopy(item, card) {
+                    item.clicks = (item.clicks || 0) + 1;
+                    await this.storage.save(item); // Update clicks for hybrid scoring
+                    
+                    navigator.clipboard.writeText(item.text);
+                    const toast = document.getElementById('copyToast');
+                    toast.style.display = 'block';
+                    setTimeout(() => toast.style.display = 'none', 2000);
+                    
+                    card.style.opacity = '0.5'; setTimeout(() => card.style.opacity = '1', 200);
+                }
+
+                async handleDelete(id) { await this.storage.delete(id); this.renderGrid(); this.updateFilters(); }
+                async handleExport() {
+                    const snips = await this.storage.getAll();
+                    const a = document.createElement('a');
+                    a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snips, null, 2));
+                    a.download = `ledger_export_${Date.now()}.json`;
+                    document.body.appendChild(a); a.click(); a.remove();
+                }
+
+                async updateFilters() {
+                    const snippets = await this.storage.getAll();
+                    const subs = [...new Set(snippets.map(s => s.category))].sort();
+                    
+                    document.getElementById('catList').innerHTML = subs.map(s => `<option value="${Utils.escape(s)}">`).join('');
+                    
+                    const filter = document.getElementById('filterSub');
+                    const cVal = filter.value;
+                    filter.innerHTML = `<option value="ALL">All Subsections</option>` + subs.map(s => `<option value="${Utils.escape(s)}">${Utils.escape(s)}</option>`).join('');
+                    if (subs.includes(cVal)) filter.value = Utils.escape(cVal);
+                }
+
+                async renderGrid() {
+                    const query = document.getElementById('snipInput').value.trim();
+                    let snippets = query ? await this.scoreSnippets(query) : await this.storage.getAll();
+                    
+                    const filterVal = document.getElementById('filterSub').value;
+                    const sortMode = document.getElementById('sortMode').value;
+
+                    if (filterVal !== "ALL") snippets = snippets.filter(s => s.category === filterVal);
+
+                    if (sortMode === "RELEVANCE" && query) snippets.sort((a, b) => b.totalScore - a.totalScore);
+                    else if (sortMode === "CLICKS") snippets.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+                    else snippets.sort((a, b) => b.timestamp - a.timestamp); // NEWEST
+
+                    const grid = document.getElementById('ledgerGrid');
+                    grid.innerHTML = '';
+
+                    const generator = function*(items) { for (let item of items) yield item; }(snippets);
+
+                    for (let item of generator) {
+                        const card = document.createElement('div');
+                        const isCloud = (item.status & FLAGS.CLOUD) !== 0;
+                        
+                        const scoreDisp = (query && item.totalScore > 0) ? `<span class="badge bg-success-subtle text-success border border-success-subtle ms-2">${Math.round(item.totalScore)}% Match</span>` : '';
+                        const descHTML = item.description ? `<div class="p-2 description-box text-muted">${Utils.escape(item.description)}</div>` : '';
+                        const tagsHTML = (item.tags || []).map(t => `<span class="badge bg-secondary tag-badge">#${Utils.escape(t)}</span>`).join('');
+                        const iframeHTML = Utils.containsHTML(item.text) ? `<iframe sandbox="" srcdoc="${Utils.escape(item.text)}" class="miniature-preview mx-2 mb-2 w-auto"></iframe>` : '';
+                        const syntaxClass = Utils.getPrismClass(item.category);
+
+                        card.className = "card snippet-card shadow-sm w3-animate-zoom bg-white";
+                        card.innerHTML = `
+                            <div class="card-header bg-light d-flex flex-column p-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div><span class="fw-bold text-dark fs-6">${Utils.escape(item.category)}</span>${scoreDisp}</div>
+                                    <span class="badge ${isCloud ? 'bg-primary' : 'bg-secondary'}">${isCloud ? 'CLOUD' : 'LOCAL'}</span>
+                                </div>
+                                <div>${tagsHTML}</div>
+                            </div>
+                            ${descHTML}
+                            <pre class="${syntaxClass} p-3 border-top"><code class="${syntaxClass}">${Utils.escape(item.text)}</code></pre>
+                            ${iframeHTML}
+                        `;
+                        
+                        card.addEventListener('click', () => this.handleCopy(item, card));
+                        card.addEventListener('contextmenu', (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            this.activeCtxId = item.id;
+                            const ctx = document.getElementById('customContextMenu');
+                            ctx.style.display = 'block'; ctx.style.left = `${e.pageX}px`; ctx.style.top = `${e.pageY}px`;
+                        });
+
+                        grid.appendChild(card);
+                    }
+                    if(window.Prism) Prism.highlightAllUnder(grid);
+                }
+            }
+
+            return { start: () => { const app = new LedgerApp(); app.bootstrap(); } };
+        })();
+
+        document.addEventListener('DOMContentLoaded', AppCore.start);
     </script>
 </body>
 </html>
