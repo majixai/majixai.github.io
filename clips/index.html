@@ -2,24 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Weighted Snippet Ledger</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copy Of Ledger</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .snippet-card { cursor: pointer; transition: 0.3s; border-left: 5px solid #0d6efd; }
-        .snippet-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .relevance-bar { height: 5px; border-radius: 2px; }
+        .snippet-card { cursor: pointer; transition: 0.2s; border-left: 4px solid #0d6efd; }
+        .snippet-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .autocomplete-dropdown { position: absolute; z-index: 1050; width: 100%; max-height: 300px; overflow-y: auto; display: none; }
+        .subsection-header { background-color: #f8f9fa; font-weight: bold; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <input type="text" id="userInput" class="form-control form-control-lg mb-4" placeholder="Search or add snippet..." oninput="rankSnippets()">
-                <button onclick="saveSnippet()" class="btn btn-primary mb-4 w-100">Save Snippet</button>
-                
-                <div id="ledger" class="list-group"></div>
+<body class="bg-light pb-5">
+    <div class="container py-4">
+        <h2 class="mb-4">Copy Of Ledger</h2>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-2 mb-3 position-relative">
+                    <div class="col-md-8 relative">
+                        <input type="text" id="userInput" class="form-control form-control-lg" placeholder="Type to search or add snippet..." autocomplete="off" oninput="handleInput()">
+                        <div id="autocompleteList" class="list-group autocomplete-dropdown shadow"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" id="subInput" class="form-control form-control-lg" placeholder="Subsection (e.g. JS, CSS)" list="subDatalist">
+                        <datalist id="subDatalist"></datalist>
+                    </div>
+                </div>
+                <button onclick="saveSnippet()" class="btn btn-primary w-100">Save Snippet</button>
             </div>
         </div>
+
+        <div class="row mb-3 g-2">
+            <div class="col-md-6">
+                <select id="filterSub" class="form-select" onchange="renderMainLedger()">
+                    <option value="ALL">All Subsections</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <select id="sortMode" class="form-select" onchange="renderMainLedger()">
+                    <option value="RELEVANCE">Sort by Relevance (Match + Clicks)</option>
+                    <option value="CLICKS">Sort by Most Clicked</option>
+                    <option value="NEWEST">Sort by Newest</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="mainLedger"></div>
     </div>
 
     <script>
@@ -27,27 +55,32 @@
         const MATCH_WEIGHT = 0.7;
         const CLICK_WEIGHT = 0.3;
 
-        // 1. IndexedDB Setup
-        const request = indexedDB.open("SmartLedger", 1);
+        // 1. Initialize IndexedDB
+        const request = indexedDB.open("SnippetLedgerDB", 2);
         request.onupgradeneeded = e => {
             db = e.target.result;
-            db.createObjectStore("snippets", { keyPath: "id", autoIncrement: true });
+            if (!db.objectStoreNames.contains("snippets")) {
+                db.createObjectStore("snippets", { keyPath: "id", autoIncrement: true });
+            }
         };
-        request.onsuccess = e => { db = e.target.result; rankSnippets(); };
+        request.onsuccess = e => { db = e.target.result; updateDynamicUI(); };
 
-        // 2. Save Snippet
+        // 2. Save Data
         function saveSnippet() {
-            const text = document.getElementById('userInput').value;
+            const text = document.getElementById('userInput').value.trim();
+            const subsection = document.getElementById('subInput').value.trim().toUpperCase() || 'GENERAL';
             if (!text) return;
+
             const tx = db.transaction("snippets", "readwrite");
-            tx.objectStore("snippets").add({ text, clicks: 0, timestamp: Date.now() });
+            tx.objectStore("snippets").add({ text, subsection, clicks: 0, timestamp: Date.now() });
             tx.oncomplete = () => {
                 document.getElementById('userInput').value = '';
-                rankSnippets();
+                document.getElementById('autocompleteList').style.display = 'none';
+                updateDynamicUI();
             };
         }
 
-        // 3. Track Interaction (Clicks)
+        // 3. Track Clicks
         function registerClick(id, text) {
             const tx = db.transaction("snippets", "readwrite");
             const store = tx.objectStore("snippets");
@@ -56,65 +89,164 @@
                 data.clicks = (data.clicks || 0) + 1;
                 store.put(data);
                 navigator.clipboard.writeText(text);
-                rankSnippets(); // Re-rank after interaction
+                
+                // Show brief visual feedback
+                const btn = document.getElementById('autocompleteList');
+                btn.style.display = 'none'; // hide autocomplete if open
+                updateDynamicUI();
             };
         }
 
-        // 4. Hybrid Ranking Algorithm
-        async function rankSnippets() {
-            const input = document.getElementById('userInput').value.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-            const tx = db.transaction("snippets", "readonly");
-            const store = tx.objectStore("snippets");
+        // 4. Input Handler (Triggers Autocomplete & Main Render)
+        function handleInput() {
+            const query = document.getElementById('userInput').value.trim();
+            renderMainLedger();
             
-            store.getAll().onsuccess = e => {
-                let snippets = e.target.result;
-                if (snippets.length === 0) return;
+            const autoList = document.getElementById('autocompleteList');
+            if (!query) {
+                autoList.style.display = 'none';
+                return;
+            }
+            renderAutocomplete(query);
+        }
 
-                // Find max clicks for normalization
-                const maxClicks = Math.max(...snippets.map(s => s.clicks || 0), 1);
+        // 5. Core Data Fetch & Scoring Engine
+        async function fetchAndScoreSnippets() {
+            return new Promise(resolve => {
+                const tx = db.transaction("snippets", "readonly");
+                tx.objectStore("snippets").getAll().onsuccess = e => {
+                    const snippets = e.target.result;
+                    const queryWords = document.getElementById('userInput').value.toLowerCase().split(/\s+/).filter(w => w);
+                    const maxClicks = Math.max(...snippets.map(s => s.clicks || 0), 1);
 
-                const scored = snippets.map(s => {
-                    const snippetWords = s.text.toLowerCase().split(/\s+/);
-                    
-                    // Word Match Score (0 to 100)
-                    let matches = 0;
-                    if (input.length > 0) {
-                        input.forEach(word => { if (snippetWords.includes(word)) matches++; });
-                    }
-                    const matchScore = input.length > 0 ? (matches / input.length) * 100 : 0;
+                    const scored = snippets.map(s => {
+                        const snippetWords = s.text.toLowerCase().split(/\s+/);
+                        let matches = 0;
+                        queryWords.forEach(word => { if (snippetWords.includes(word)) matches++; });
+                        
+                        const matchScore = queryWords.length > 0 ? (matches / queryWords.length) * 100 : 0;
+                        const clickScore = ((s.clicks || 0) / maxClicks) * 100;
+                        const totalScore = (matchScore * MATCH_WEIGHT) + (clickScore * CLICK_WEIGHT);
+                        
+                        return { ...s, totalScore };
+                    });
+                    resolve(scored);
+                };
+            });
+        }
 
-                    // Click Score (0 to 100 relative to most clicked item)
-                    const clickScore = ((s.clicks || 0) / maxClicks) * 100;
+        // 6. Autocomplete Dropdown
+        async function renderAutocomplete(query) {
+            const snippets = await fetchAndScoreSnippets();
+            // Filter only items that have SOME match score for autocomplete
+            const matches = snippets.filter(s => s.totalScore > 0).sort((a, b) => b.totalScore - a.totalScore);
+            
+            const autoList = document.getElementById('autocompleteList');
+            if (matches.length === 0) {
+                autoList.style.display = 'none';
+                return;
+            }
 
-                    // Final Weighted Total
-                    const totalScore = (matchScore * MATCH_WEIGHT) + (clickScore * CLICK_WEIGHT);
-                    
-                    return { ...s, totalScore };
+            // Group by Subsection
+            const grouped = groupBy(matches, 'subsection');
+            autoList.innerHTML = '';
+            
+            for (const [sub, items] of Object.entries(grouped)) {
+                autoList.innerHTML += `<div class="list-group-item subsection-header py-1 text-muted">${sub}</div>`;
+                items.forEach(item => {
+                    autoList.innerHTML += `
+                        <button type="button" class="list-group-item list-group-item-action" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${item.text}</span>
+                                <span class="badge bg-light text-dark border">${Math.round(item.totalScore)}</span>
+                            </div>
+                        </button>`;
                 });
+            }
+            autoList.style.display = 'block';
+        }
 
-                // Sort by descending score
-                renderLedger(scored.sort((a, b) => b.totalScore - a.totalScore));
+        // 7. Main Ledger Render (Sorting, Filtering, Grouping)
+        async function renderMainLedger() {
+            let snippets = await fetchAndScoreSnippets();
+            const filterVal = document.getElementById('filterSub').value;
+            const sortMode = document.getElementById('sortMode').value;
+
+            // Apply Filter
+            if (filterVal !== "ALL") {
+                snippets = snippets.filter(s => s.subsection === filterVal);
+            }
+
+            // Apply Sort
+            if (sortMode === "RELEVANCE") snippets.sort((a, b) => b.totalScore - a.totalScore);
+            if (sortMode === "CLICKS") snippets.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
+            if (sortMode === "NEWEST") snippets.sort((a, b) => b.timestamp - a.timestamp);
+
+            // Group & Render
+            const grouped = groupBy(snippets, 'subsection');
+            const container = document.getElementById('mainLedger');
+            container.innerHTML = '';
+
+            for (const [sub, items] of Object.entries(grouped)) {
+                let sectionHTML = `<h4 class="mt-4 mb-3 border-bottom pb-2 text-secondary">${sub}</h4><div class="row g-2">`;
+                
+                items.forEach(item => {
+                    const scoreDisplay = document.getElementById('userInput').value ? `<small class="text-primary">${Math.round(item.totalScore)}% Match</small>` : '';
+                    sectionHTML += `
+                        <div class="col-12">
+                            <div class="card snippet-card h-100" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fs-6">${item.text}</span>
+                                        <div class="text-end">
+                                            ${scoreDisplay}
+                                            <span class="badge bg-secondary rounded-pill ms-2" title="Clicks">${item.clicks || 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                sectionHTML += `</div>`;
+                container.innerHTML += sectionHTML;
+            }
+        }
+
+        // Helper: Group Array of Objects by Key
+        function groupBy(array, key) {
+            return array.reduce((result, currentValue) => {
+                (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
+                return result;
+            }, {});
+        }
+
+        // Update Filters & Datalists dynamically based on DB contents
+        async function updateDynamicUI() {
+            const tx = db.transaction("snippets", "readonly");
+            tx.objectStore("snippets").getAll().onsuccess = e => {
+                const snippets = e.target.result;
+                const subs = [...new Set(snippets.map(s => s.subsection))].sort();
+                
+                // Update Datalist (for input suggestions)
+                document.getElementById('subDatalist').innerHTML = subs.map(s => `<option value="${s}">`).join('');
+                
+                // Update Filter Dropdown (preserve current selection if possible)
+                const filter = document.getElementById('filterSub');
+                const currentVal = filter.value;
+                filter.innerHTML = `<option value="ALL">All Subsections</option>` + 
+                                   subs.map(s => `<option value="${s}">${s}</option>`).join('');
+                if (subs.includes(currentVal)) filter.value = currentVal;
+
+                renderMainLedger();
             };
         }
 
-        // 5. UI Rendering
-        function renderLedger(items) {
-            const container = document.getElementById('ledger');
-            container.innerHTML = items.map(item => `
-                <div class="card mb-2 snippet-card" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <p class="mb-1"><strong>${item.text}</strong></p>
-                            <small class="text-muted">${Math.round(item.totalScore)}% Match</small>
-                        </div>
-                        <div class="progress relevance-bar">
-                            <div class="progress-bar bg-primary" style="width: ${item.totalScore}%"></div>
-                        </div>
-                        <small class="text-muted" style="font-size: 0.7rem;">Clicks: ${item.clicks}</small>
-                    </div>
-                </div>
-            `).join('');
-        }
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#userInput') && !e.target.closest('#autocompleteList')) {
+                document.getElementById('autocompleteList').style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
