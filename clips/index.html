@@ -2,131 +2,119 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Snippet Ledger</title>
+    <title>Weighted Snippet Ledger</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .snippet-card { cursor: pointer; transition: 0.2s; }
-        .snippet-card:hover { background-color: #f8f9fa; }
-        #autocomplete-list { position: absolute; z-index: 1000; width: 100%; }
+        .snippet-card { cursor: pointer; transition: 0.3s; border-left: 5px solid #0d6efd; }
+        .snippet-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .relevance-bar { height: 5px; border-radius: 2px; }
     </style>
 </head>
 <body class="bg-light">
     <div class="container py-5">
-        <h2 class="mb-4">Snippet Ledger & ML Expander</h2>
-        
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <div class="position-relative">
-                    <input type="text" id="snippetInput" class="form-control" placeholder="Type a snippet..." autocomplete="off">
-                    <div id="autocomplete-list" class="list-group shadow-sm"></div>
-                </div>
-                <button onclick="saveSnippet()" class="btn btn-primary mt-3">Save Snippet</button>
-                <button onclick="generateExpansion()" class="btn btn-outline-secondary mt-3">ML Expand</button>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <input type="text" id="userInput" class="form-control form-control-lg mb-4" placeholder="Search or add snippet..." oninput="rankSnippets()">
+                <button onclick="saveSnippet()" class="btn btn-primary mb-4 w-100">Save Snippet</button>
+                
+                <div id="ledger" class="list-group"></div>
             </div>
         </div>
-
-        <h4>Stored Snippets (Click to Copy)</h4>
-        <div id="ledger" class="row g-3"></div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
     <script>
         let db;
-        let model;
+        const MATCH_WEIGHT = 0.7;
+        const CLICK_WEIGHT = 0.3;
 
-        // 1. Initialize IndexedDB
-        const request = indexedDB.open("SnippetDB", 1);
+        // 1. IndexedDB Setup
+        const request = indexedDB.open("SmartLedger", 1);
         request.onupgradeneeded = e => {
             db = e.target.result;
             db.createObjectStore("snippets", { keyPath: "id", autoIncrement: true });
         };
-        request.onsuccess = e => { 
-            db = e.target.result; 
-            renderLedger(); 
-        };
+        request.onsuccess = e => { db = e.target.result; rankSnippets(); };
 
-        // 2. Load ML Model (GPU accelerated by default in browser)
-        async function loadModel() {
-            console.log("Loading ML Model...");
-            model = await use.load();
-            console.log("Model Ready");
-        }
-        loadModel();
-
-        // 3. Save to IndexedDB
+        // 2. Save Snippet
         function saveSnippet() {
-            const text = document.getElementById('snippetInput').value;
+            const text = document.getElementById('userInput').value;
             if (!text) return;
             const tx = db.transaction("snippets", "readwrite");
-            tx.objectStore("snippets").add({ text, timestamp: Date.now() });
+            tx.objectStore("snippets").add({ text, clicks: 0, timestamp: Date.now() });
             tx.oncomplete = () => {
-                document.getElementById('snippetInput').value = '';
-                renderLedger();
+                document.getElementById('userInput').value = '';
+                rankSnippets();
             };
         }
 
-        // 4. Render and Copy to Clipboard
-        function renderLedger() {
-            const ledger = document.getElementById('ledger');
-            ledger.innerHTML = '';
+        // 3. Track Interaction (Clicks)
+        function registerClick(id, text) {
+            const tx = db.transaction("snippets", "readwrite");
+            const store = tx.objectStore("snippets");
+            store.get(id).onsuccess = e => {
+                const data = e.target.result;
+                data.clicks = (data.clicks || 0) + 1;
+                store.put(data);
+                navigator.clipboard.writeText(text);
+                rankSnippets(); // Re-rank after interaction
+            };
+        }
+
+        // 4. Hybrid Ranking Algorithm
+        async function rankSnippets() {
+            const input = document.getElementById('userInput').value.toLowerCase().split(/\s+/).filter(w => w.length > 0);
             const tx = db.transaction("snippets", "readonly");
-            tx.objectStore("snippets").openCursor().onsuccess = e => {
-                const cursor = e.target.result;
-                if (cursor) {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-4';
-                    div.innerHTML = `
-                        <div class="card snippet-card h-100" onclick="copyToClipboard('${cursor.value.text}')">
-                            <div class="card-body"><p class="card-text">${cursor.value.text}</p></div>
-                        </div>`;
-                    ledger.appendChild(div);
-                    cursor.continue();
-                }
-            };
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            alert("Copied: " + text);
-        }
-
-        // 5. ML Expansion Logic
-        // This simulates expansion by finding similar context or adding "Smart Boilerplate"
-        async function generateExpansion() {
-            const input = document.getElementById('snippetInput').value;
-            if (!input || !model) return alert("Wait for model to load or enter text.");
-
-            // Basic expansion logic: In a real app, this would query a larger dataset.
-            // Here, we prepend a simulated "Expanded" context based on user input.
-            const expanded = `/* Generated Expansion */ \n// Context: ${input}\nfunction handle${input.replace(/\s/g, '')}() {\n  console.log("${input}"); \n  return true;\n}`;
+            const store = tx.objectStore("snippets");
             
-            document.getElementById('snippetInput').value = expanded;
+            store.getAll().onsuccess = e => {
+                let snippets = e.target.result;
+                if (snippets.length === 0) return;
+
+                // Find max clicks for normalization
+                const maxClicks = Math.max(...snippets.map(s => s.clicks || 0), 1);
+
+                const scored = snippets.map(s => {
+                    const snippetWords = s.text.toLowerCase().split(/\s+/);
+                    
+                    // Word Match Score (0 to 100)
+                    let matches = 0;
+                    if (input.length > 0) {
+                        input.forEach(word => { if (snippetWords.includes(word)) matches++; });
+                    }
+                    const matchScore = input.length > 0 ? (matches / input.length) * 100 : 0;
+
+                    // Click Score (0 to 100 relative to most clicked item)
+                    const clickScore = ((s.clicks || 0) / maxClicks) * 100;
+
+                    // Final Weighted Total
+                    const totalScore = (matchScore * MATCH_WEIGHT) + (clickScore * CLICK_WEIGHT);
+                    
+                    return { ...s, totalScore };
+                });
+
+                // Sort by descending score
+                renderLedger(scored.sort((a, b) => b.totalScore - a.totalScore));
+            };
         }
 
-        // 6. Autocomplete Logic
-        document.getElementById('snippetInput').addEventListener('input', async (e) => {
-            const val = e.target.value;
-            const list = document.getElementById('autocomplete-list');
-            list.innerHTML = '';
-            if (!val) return;
-
-            const tx = db.transaction("snippets", "readonly");
-            tx.objectStore("snippets").getAll().onsuccess = (e) => {
-                const matches = e.target.result.filter(s => s.text.toLowerCase().includes(val.toLowerCase()));
-                matches.forEach(match => {
-                    const item = document.createElement('button');
-                    item.className = 'list-group-item list-group-item-action';
-                    item.innerText = match.text;
-                    item.onclick = () => {
-                        document.getElementById('snippetInput').value = match.text;
-                        list.innerHTML = '';
-                    };
-                    list.appendChild(item);
-                });
-            };
-        });
+        // 5. UI Rendering
+        function renderLedger(items) {
+            const container = document.getElementById('ledger');
+            container.innerHTML = items.map(item => `
+                <div class="card mb-2 snippet-card" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <p class="mb-1"><strong>${item.text}</strong></p>
+                            <small class="text-muted">${Math.round(item.totalScore)}% Match</small>
+                        </div>
+                        <div class="progress relevance-bar">
+                            <div class="progress-bar bg-primary" style="width: ${item.totalScore}%"></div>
+                        </div>
+                        <small class="text-muted" style="font-size: 0.7rem;">Clicks: ${item.clicks}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
     </script>
 </body>
 </html>
