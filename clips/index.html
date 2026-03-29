@@ -3,19 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Copy Of Ledger - Master Edition</title>
+    <title>Master Snippet Ledger - Advanced Architecture</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     
     <style>
-        /* WebKit, Parallax & Theming */
+        /* ==========================================================================
+           1. WebKit, Parallax, and Global Theming
+           ========================================================================== */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
@@ -24,21 +28,32 @@
         body { 
             margin: 0; padding: 0;
             background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1920&q=80');
-            background-attachment: fixed; background-position: center; background-size: cover;
+            background-attachment: fixed; 
+            background-position: center; 
+            background-size: cover;
             color: #333;
         }
 
         .glass-panel {
-            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(10px);
-            border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.92); 
+            backdrop-filter: blur(10px);
+            border-radius: 12px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         }
 
-        /* Layout & Cards */
+        /* ==========================================================================
+           2. Layout & Card Behaviors
+           ========================================================================== */
         .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1.2rem; }
         
         .snippet-card { 
-            transition: transform 0.2s, box-shadow 0.2s; border-left: 5px solid #0d6efd; 
-            cursor: pointer; position: relative; overflow: hidden; display: flex; flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s; 
+            border-left: 5px solid #0d6efd; 
+            cursor: pointer; 
+            position: relative; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column;
         }
         .snippet-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important; }
         
@@ -47,7 +62,9 @@
         .miniature-preview { pointer-events: none; height: 100px; width: 100%; border: 1px solid #dee2e6; background: #fff; margin-top: 0.5rem; }
         .tag-badge { font-size: 0.7rem; font-weight: normal; margin-right: 0.2rem; margin-bottom: 0.4rem; display: inline-block; }
 
-        /* Overlays & Dropdowns */
+        /* ==========================================================================
+           3. Overlays, Dropdowns & Context Menus
+           ========================================================================== */
         .autocomplete-dropdown { position: absolute; z-index: 1050; width: 100%; max-height: 350px; overflow-y: auto; display: none; border-radius: 0.5rem; }
         .subsection-header { background-color: #e9ecef; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; }
         
@@ -66,9 +83,16 @@
         #customContextMenu li a { display: block; padding: 0.5rem 1rem; color: #333; text-decoration: none; font-size: 0.85rem; }
         #customContextMenu li a:hover { background-color: #f8f9fa; }
         #customContextMenu li a.text-danger:hover { background-color: #ffeeba; }
+        
         .copy-toast { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: none; }
 
-        /* Animations */
+        /* ==========================================================================
+           4. Neural Links & CSS Animations
+           ========================================================================== */
+        .neural-link { cursor: pointer; transition: 0.2s; }
+        .neural-link:hover { background-color: #e2e3e5 !important; transform: scale(1.05); }
+        .highlight-focus { box-shadow: 0 0 0 4px #0dcaf0 !important; transition: box-shadow 0.3s ease-out; }
+
         @keyframes syncPulse {
             0% { box-shadow: 0 0 0 0 rgba(13, 202, 240, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(13, 202, 240, 0); }
@@ -85,7 +109,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
             <h1 class="h2 fw-bold text-dark d-flex align-items-center gap-2">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                Copy Of Ledger
+                Master Snippet Ledger
             </h1>
             <div>
                 <button id="exportBtn" class="w3-button w3-black w3-round-large w3-small me-2">Export JSON</button>
@@ -134,19 +158,27 @@
 
     <script type="module">
         /**
-         * ==========================================
+         * ==========================================================================
          * ADVANCED ARCHITECTURE MASTER
-         * ==========================================
+         * An encapsulating Immediately Invoked Function Expression (IIFE) that creates
+         * a private scope for all classes, memory maps, and logic, preventing global namespace pollution.
+         * ==========================================================================
          */
         const AppCore = (function() {
             "use strict";
 
-            // --- 1. CONFIG, FLAGS & UTILS ---
+            // --- 1. CONFIG, FLAGS & UTILITIES ---
+            // Bitwise flags for efficient boolean state management
             const FLAGS = Object.freeze({ NONE: 0, LOCAL: 1 << 0, CLOUD: 1 << 1, CACHED: 1 << 2, ACTIVE: 1 << 3 });
+            
+            // WeakMap for memory-safe DOM-to-State association (prevents memory leaks on destroyed elements)
             const DOMStateMap = new WeakMap();
+            
+            // Hybrid scoring algorithm weights
             const MATCH_WEIGHT = 0.7; 
             const CLICK_WEIGHT = 0.3;
 
+            // Firebase Initialization Stub
             const firebaseConfig = { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT.firebaseapp.com", projectId: "YOUR_PROJECT" };
             let firestoreDb = null;
             if (typeof firebase !== 'undefined' && !firebase.apps.length) {
@@ -154,24 +186,35 @@
             }
 
             class Utils {
-                static escape(str) { return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); }
+                // Aggressive HTML sanitization to prevent Cross-Site Scripting (XSS)
+                static escape(str) { 
+                    return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); 
+                }
+                
+                // Detects raw HTML tags for sandboxed Iframe rendering
                 static containsHTML(str) { return /<[a-z][\s\S]*>/i.test(str); }
+                
+                // Maps arbitrary user categories to Prism.js supported languages
                 static getPrismClass(sub) {
                     const s = sub.toLowerCase();
-                    if (s.includes('js') || s.includes('javascript')) return 'language-javascript';
+                    if (s.includes('js') || s.includes('javascript') || s.includes('script')) return 'language-javascript';
                     if (s.includes('css') || s.includes('bootstrap')) return 'language-css';
                     if (s.includes('html')) return 'language-markup';
                     return 'language-none';
                 }
+                
+                // Natural Language Processing logic to isolate core topic tags
                 static extractTags(text) {
                     const stopWords = new Set(['the','and','is','in','to','a','of','for','on','with','as','by','this','it','function','const','let','var','return','class']);
                     const counts = {};
                     text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).forEach(w => {
                         if (w.length > 2 && !stopWords.has(w)) counts[w] = (counts[w] || 0) + 1;
                     });
+                    // Sort descending by frequency, return top 4
                     return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 4).map(e => e[0]);
                 }
-                // Decorator
+                
+                // Higher-order function decorator for system telemetry mapping
                 static performanceLogger(targetFunction) {
                     return async function(...args) {
                         const start = performance.now();
@@ -182,7 +225,8 @@
                 }
             }
 
-            // --- 2. DATA STRUCTURES (Structs via ArrayBuffer) ---
+            // --- 2. DATA STRUCTURES ---
+            // Simulates strict C-style memory structures using Typed Arrays
             class StatsStruct {
                 constructor() { this.buffer = new ArrayBuffer(8); this.view = new DataView(this.buffer); }
                 get statusFlags() { return this.view.getUint8(4); }
@@ -193,15 +237,18 @@
             class MLEngine {
                 constructor() { this.model = null; this.ready = false; }
                 
-                async init() {
+                async init(onReadyCallback) {
                     try {
+                        // Loads the Universal Sentence Encoder into the WebGL GPU backend
                         this.model = await use.load();
                         this.ready = true;
                         const b = document.getElementById('mlStatus');
                         b.className = "w3-tag w3-green w3-round w3-small"; b.innerText = "ML Ready";
-                    } catch(e) { console.warn("ML Offline"); }
+                        if (onReadyCallback) onReadyCallback();
+                    } catch(e) { console.warn("ML Engine Offline - Operating in degraded text-only mode"); }
                 }
 
+                // Mathematical comparison of high-dimensional vectors (512 dimensions)
                 cosineSimilarity(a, b) {
                     const dot = a.reduce((s, v, i) => s + v * b[i], 0);
                     const magA = Math.sqrt(a.reduce((s, v) => s + v * v, 0));
@@ -209,10 +256,16 @@
                     return dot / (magA * magB);
                 }
 
+                // Analyzes entire blocks of texts in parallel utilizing GPU threading
+                async getBatchEmbeddings(texts) {
+                    if (!this.ready || texts.length === 0) return [];
+                    return await (await this.model.embed(texts)).array();
+                }
+
                 async expand(input, dictionary) {
                     if (!this.ready || !input) return null;
                     const texts = [input, ...dictionary.map(d => d.trigger)];
-                    const vectors = await (await this.model.embed(texts)).array();
+                    const vectors = await this.getBatchEmbeddings(texts);
                     const inputVec = vectors[0];
                     let bestIdx = -1, highest = 0;
                     
@@ -224,7 +277,7 @@
                 }
             }
 
-            // --- 4. HYBRID STORAGE (IndexedDB + Firebase) ---
+            // --- 4. HYBRID STORAGE ARCHITECTURE (IndexedDB + Firebase) ---
             class StorageService {
                 #dbName = "SmartLedgerDB"; #version = 11; #storeName = "snippets"; #dbInstance = null;
 
@@ -245,10 +298,14 @@
                 async save(data) {
                     return new Promise(res => {
                         if (!data.id) data.id = this.#genId();
+                        
+                        // Optimistic UI commit
                         const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
                         tx.objectStore(this.#storeName).put(data);
+                        
                         tx.oncomplete = async () => {
                             res(data);
+                            // Background Cloud Synchronization
                             if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT") {
                                 try { await firestoreDb.collection(this.#storeName).doc(data.id).set(data); } catch (e) {}
                             }
@@ -283,6 +340,7 @@
                     });
                 }
 
+                // Implements Websocket driven Realtime Subscriptions
                 startRealtimeSync(cb) {
                     if (!firestoreDb || firebaseConfig.projectId === "YOUR_PROJECT") return;
                     document.getElementById('syncIndicator').style.display = "inline-block";
@@ -307,33 +365,39 @@
             }
             StorageService.prototype.save = Utils.performanceLogger(StorageService.prototype.save);
 
-            // --- 5. DISTRIBUTED WORKER ---
+            // --- 5. DISTRIBUTED BACKGROUND WORKER ---
             class WorkerService {
                 constructor() {
+                    // Blob instantiation avoids needing a separate external script file
                     const code = `self.onmessage = e => postMessage({ id: e.data.id, count: e.data.text.split(/\\s+/).length });`;
                     this.worker = new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
-                    // this.worker.onmessage = e => console.log(\`[WORKER] Processed ID: \${e.data.id}\`);
                 }
                 analyze(id, text) { this.worker.postMessage({ id, text }); }
             }
 
-            // --- 6. APP CONTROLLER ---
+            // --- 6. CORE APPLICATION CONTROLLER ---
             class LedgerApp {
                 constructor() {
                     this.storage = new StorageService();
                     this.ml = new MLEngine();
                     this.worker = new WorkerService();
                     this.activeCtxId = null;
+                    
+                    // Intelligent Boilerplate Dictionary (Expandable based on stack)
                     this.expansionDict = [
-                        { trigger: "html starter", text: "<!DOCTYPE html>\n<html>\n<head><title>Doc</title></head>\n<body></body>\n</html>", sub: "HTML" },
-                        { trigger: "bootstrap container", text: "<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
-                        { trigger: "fetch api js", text: "async function getData(url) {\n  const res = await fetch(url);\n  return await res.json();\n}", sub: "JS/CDN" }
+                        { trigger: "html starter", text: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Document</title>\n</head>\n<body>\n  \n</body>\n</html>", sub: "HTML" },
+                        { trigger: "bootstrap container flex grid", text: "<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col-md-12 d-flex justify-content-center\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
+                        { trigger: "fetch api js async await", text: "async function getData(url) {\n  try {\n    const res = await fetch(url);\n    return await res.json();\n  } catch (err) {\n    console.error(err);\n  }\n}", sub: "JS/CDN" },
+                        { trigger: "pine script indicator tradingview", text: "//@version=5\nindicator(\"AI Trend Analyzer\", overlay=true)\nsrc = close\nplot(src, color=color.blue, linewidth=2)", sub: "PINE SCRIPT" },
+                        { trigger: "google apps script web app rest api", text: "function doGet(e) {\n  const result = { status: 'success', data: 'Processed' };\n  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);\n}", sub: "APPS SCRIPT" }
                     ];
                 }
 
                 async bootstrap() {
                     await this.storage.connect();
-                    this.ml.init();
+                    // Pass the rendering hook to the ML engine so neural links calculate once loaded
+                    this.ml.init(() => this.renderGrid()); 
+                    
                     this.#buildUI();
                     this.#bindEvents();
                     this.#bindDragDrop();
@@ -350,18 +414,18 @@
                                 <div class="row g-3">
                                     <div class="col-md-7 position-relative">
                                         <label class="form-label fw-bold text-primary small mb-1">Raw Code Snippet</label>
-                                        <textarea id="snipInput" class="form-control text-monospace" rows="4" placeholder="Code or search keywords..."></textarea>
+                                        <textarea id="snipInput" class="form-control text-monospace" rows="5" placeholder="Paste code here, or type semantic keywords to trigger AI expansion..."></textarea>
                                         <div id="autocompleteList" class="list-group autocomplete-dropdown shadow-lg"></div>
                                     </div>
                                     <div class="col-md-5 d-flex flex-column">
-                                        <label class="form-label fw-bold text-secondary small mb-1">Description</label>
-                                        <textarea id="descInput" class="form-control flex-grow-1" placeholder="What does this code do?"></textarea>
+                                        <label class="form-label fw-bold text-secondary small mb-1">Contextual Description</label>
+                                        <textarea id="descInput" class="form-control flex-grow-1" placeholder="What does this code do? Why did you save it?"></textarea>
                                     </div>
                                 </div>
                                 <hr class="my-3">
                                 <div class="row g-2">
                                     <div class="col-md-6">
-                                        <input type="text" id="catInput" class="form-control" placeholder="Category (e.g., JS, HTML)" list="catList">
+                                        <input type="text" id="catInput" class="form-control" placeholder="Tech Stack Category (e.g., JS, HTML, PINE SCRIPT)" list="catList">
                                         <datalist id="catList"></datalist>
                                     </div>
                                     <div class="col-md-3">
@@ -382,19 +446,18 @@
                     document.getElementById('exportBtn').addEventListener('click', () => this.handleExport());
                     document.getElementById('aiExpandBtn').addEventListener('click', () => this.handleAIExpand());
                     
-                    // Autocomplete & Scoring hook
                     document.getElementById('snipInput').addEventListener('input', () => this.handleInput());
                     document.getElementById('filterSub').addEventListener('change', () => this.renderGrid());
                     document.getElementById('sortMode').addEventListener('change', () => this.renderGrid());
 
-                    // Global Clicks (Close Menus)
+                    // Global Document Clicks
                     document.addEventListener('click', (e) => {
                         if (!e.target.closest('#snipInput') && !e.target.closest('#autocompleteList')) 
                             document.getElementById('autocompleteList').style.display = 'none';
                         document.getElementById('customContextMenu').style.display = 'none';
                     });
 
-                    // Context Menu Actions
+                    // Context Menu Routing
                     document.getElementById('customContextMenu').addEventListener('click', (e) => {
                         e.preventDefault();
                         const target = e.target.closest('a');
@@ -402,9 +465,24 @@
                         
                         const action = target.getAttribute('data-action');
                         if (action === 'delete') {
-                            if (confirm("Permanently delete this snippet?")) this.handleDelete(this.activeCtxId);
+                            if (confirm("Permanently delete this snippet globally?")) this.handleDelete(this.activeCtxId);
                         } else if (action === 'ai-var') {
                             this.generateAIVariation(this.activeCtxId, target.getAttribute('data-length'));
+                        }
+                    });
+
+                    // Neural Link Delegation (Scroll & Highlight)
+                    document.getElementById('ledgerGrid').addEventListener('click', (e) => {
+                        const neuralLink = e.target.closest('.neural-link');
+                        if (neuralLink) {
+                            e.stopPropagation(); 
+                            const targetId = neuralLink.getAttribute('data-target-id');
+                            const targetCard = document.querySelector(`[data-snip-id="${targetId}"]`);
+                            if (targetCard) {
+                                targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                targetCard.classList.add('highlight-focus');
+                                setTimeout(() => targetCard.classList.remove('highlight-focus'), 2000);
+                            }
                         }
                     });
                 }
@@ -423,9 +501,9 @@
                                     if (Array.isArray(data)) {
                                         for (let item of data) await this.storage.save(item);
                                         this.renderGrid(); this.updateFilters();
-                                        alert(`Imported ${data.length} snippets.`);
+                                        alert(`Imported ${data.length} snippets successfully.`);
                                     }
-                                } catch (err) { alert("Invalid JSON format."); }
+                                } catch (err) { alert("Invalid JSON Schema."); }
                             };
                             reader.readAsText(e.dataTransfer.files[0]);
                         }
@@ -451,8 +529,9 @@
                     this.updateFilters(); this.renderGrid();
                 }
 
+                // Autocomplete & Real-time Grid Sorting
                 async handleInput() {
-                    this.renderGrid(); // Re-sort main grid via hybrid math instantly
+                    this.renderGrid(); 
                     
                     const query = document.getElementById('snipInput').value.trim();
                     const autoList = document.getElementById('autocompleteList');
@@ -464,7 +543,6 @@
                     if (matches.length === 0) { autoList.style.display = 'none'; return; }
 
                     autoList.innerHTML = '';
-                    // Grouping for autocomplete
                     const grouped = matches.reduce((r, c) => { (r[c.category] = r[c.category] || []).push(c); return r; }, {});
                     
                     for (const [sub, items] of Object.entries(grouped)) {
@@ -501,15 +579,15 @@
                         document.getElementById('snipInput').value = match.text;
                         document.getElementById('catInput').value = match.sub;
                         this.handleInput();
-                    } else alert("AI Expansion requires ML keywords (e.g. 'html starter')");
+                    } else alert("AI Expansion requires semantic ML keywords (e.g., 'pine script indicator' or 'html starter').");
                 }
 
                 async generateAIVariation(id, length) {
                     const item = await this.storage.get(id);
                     if (!item) return;
-                    // Stub for LLM generation
+                    
                     const prompt = `Act as an expert developer. Expand/summarize this code to strictly fit a ${length} format.\nSource:\n${item.text}`;
-                    const simulated = `/* AI Var: ${length} */\n/* Source Tag: ${item.tags ? item.tags[0] : 'code'} */\n\n${item.text}\n\n// Integrate actual LLM API here with prompt logic.`;
+                    const simulated = `/* AI Var: ${length} */\n/* Source Tag: ${item.tags ? item.tags[0] : 'code'} */\n\n${item.text}\n\n// Integrate actual LLM API endpoint logic here based on the selected prompt parameter.`;
                     
                     document.getElementById('snipInput').value = simulated;
                     document.getElementById('descInput').value = `Generated ${length} variation of original snippet.`;
@@ -534,7 +612,7 @@
 
                 async handleCopy(item, card) {
                     item.clicks = (item.clicks || 0) + 1;
-                    await this.storage.save(item); // Update clicks for hybrid scoring
+                    await this.storage.save(item); 
                     
                     navigator.clipboard.writeText(item.text);
                     const toast = document.getElementById('copyToast');
@@ -545,6 +623,7 @@
                 }
 
                 async handleDelete(id) { await this.storage.delete(id); this.renderGrid(); this.updateFilters(); }
+                
                 async handleExport() {
                     const snips = await this.storage.getAll();
                     const a = document.createElement('a');
@@ -565,6 +644,48 @@
                     if (subs.includes(cVal)) filter.value = Utils.escape(cVal);
                 }
 
+                // AI Neural Similarity Matrix Injection
+                async injectNeuralLinks(snippets) {
+                    if (!this.ml.ready || snippets.length < 2) return;
+                    
+                    document.getElementById('mlStatus').innerText = "Mapping Cortex...";
+                    document.getElementById('mlStatus').className = "w3-tag w3-blue w3-round w3-small";
+
+                    const texts = snippets.map(s => s.text);
+                    const vectors = await this.ml.getBatchEmbeddings(texts);
+
+                    snippets.forEach((snip, i) => {
+                        const vecA = vectors[i];
+                        let related = [];
+                        
+                        // Compare current snippet against all others
+                        for (let j = 0; j < vectors.length; j++) {
+                            if (i === j) continue; 
+                            const score = this.ml.cosineSimilarity(vecA, vectors[j]);
+                            // 0.45 threshold ensures links are mathematically related, not random
+                            if (score > 0.45) related.push({ id: snippets[j].id, category: snippets[j].category, score });
+                        }
+                        
+                        related.sort((a,b) => b.score - a.score);
+                        const topRelated = related.slice(0, 3); // Capped at Top 3 to prevent UI clutter
+
+                        if (topRelated.length > 0) {
+                            const card = document.querySelector(`[data-snip-id="${snip.id}"]`);
+                            if (card) {
+                                const relContainer = card.querySelector('.neural-suggestions-container');
+                                if (relContainer) {
+                                    relContainer.style.display = 'block';
+                                    relContainer.innerHTML = '<span class="text-muted small fw-bold me-1">Neural Links:</span>' + 
+                                        topRelated.map(r => `<span class="badge bg-light text-primary border border-primary-subtle neural-link me-1" data-target-id="${r.id}" title="${Math.round(r.score*100)}% Match">🔗 ${Utils.escape(r.category)}</span>`).join('');
+                                }
+                            }
+                        }
+                    });
+
+                    document.getElementById('mlStatus').innerText = "ML Ready";
+                    document.getElementById('mlStatus').className = "w3-tag w3-green w3-round w3-small";
+                }
+
                 async renderGrid() {
                     const query = document.getElementById('snipInput').value.trim();
                     let snippets = query ? await this.scoreSnippets(query) : await this.storage.getAll();
@@ -576,7 +697,7 @@
 
                     if (sortMode === "RELEVANCE" && query) snippets.sort((a, b) => b.totalScore - a.totalScore);
                     else if (sortMode === "CLICKS") snippets.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-                    else snippets.sort((a, b) => b.timestamp - a.timestamp); // NEWEST
+                    else snippets.sort((a, b) => b.timestamp - a.timestamp); 
 
                     const grid = document.getElementById('ledgerGrid');
                     grid.innerHTML = '';
@@ -594,6 +715,7 @@
                         const syntaxClass = Utils.getPrismClass(item.category);
 
                         card.className = "card snippet-card shadow-sm w3-animate-zoom bg-white";
+                        card.setAttribute('data-snip-id', item.id);
                         card.innerHTML = `
                             <div class="card-header bg-light d-flex flex-column p-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -605,6 +727,7 @@
                             ${descHTML}
                             <pre class="${syntaxClass} p-3 border-top"><code class="${syntaxClass}">${Utils.escape(item.text)}</code></pre>
                             ${iframeHTML}
+                            <div class="neural-suggestions-container px-3 pb-2 pt-1" style="display:none; background-color: #f8f9fa;"></div>
                         `;
                         
                         card.addEventListener('click', () => this.handleCopy(item, card));
@@ -618,6 +741,9 @@
                         grid.appendChild(card);
                     }
                     if(window.Prism) Prism.highlightAllUnder(grid);
+
+                    // Push neural linking task to the end of the event loop to ensure smooth UI rendering
+                    setTimeout(() => this.injectNeuralLinks(snippets), 150);
                 }
             }
 
