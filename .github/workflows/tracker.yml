@@ -1,4 +1,4 @@
-name: BTC Compressed Tracker
+name: BTC AI Forecast & Ledger
 on:
   schedule:
     - cron: '*/5 * * * *'
@@ -19,55 +19,127 @@ jobs:
           python-version: '3.10'
 
       - name: Install Dependencies
-        run: pip install yfinance PyYAML pandas
+        # Added torch for tensor/gpu operations and scikit-learn for scaling
+        run: pip install yfinance PyYAML pandas torch scikit-learn
 
-      - name: Fetch and Compress Data
+      - name: Fetch, Train, and Forecast
         run: |
           python - <<'EOF'
           import yfinance as yf
           import yaml
           import os
+          import torch
+          import torch.nn as nn
+          from sklearn.preprocessing import MinMaxScaler
+          import pandas as pd
+          from datetime import timedelta
 
           FOLDER = "fintst"
-          FILE = os.path.join(FOLDER, "btc_data.yml")
+          FILE = os.path.join(FOLDER, "Copy_Of_Ledger.yml")
           MAX_ROWS = 1000
 
           if not os.path.exists(FOLDER):
               os.makedirs(FOLDER)
 
+          # Fetch larger dataset to train the AI
           ticker = yf.Ticker("BTC-USD")
-          df = ticker.history(period="1d", interval="1m").tail(1)
+          df = ticker.history(period="5d", interval="1m")
 
-          if not df.empty:
-              new_entry = {
-                  "t": df.index[0].strftime('%Y-%m-%d %H:%M'),
-                  "o": round(float(df['Open'].iloc[0]), 2),
-                  "h": round(float(df['High'].iloc[0]), 2),
-                  "l": round(float(df['Low'].iloc[0]), 2),
-                  "c": round(float(df['Close'].iloc[0]), 2),
-                  "v": int(df['Volume'].iloc[0])
-              }
+          if df.empty:
+              exit(0)
 
-              data = []
-              if os.path.exists(FILE):
-                  with open(FILE, "r") as f:
-                      data = yaml.safe_load(f) or []
+          # --- ML / TENSOR DATA PREP ---
+          # We use OHLC for multivariate forecasting
+          features = ['Open', 'High', 'Low', 'Close']
+          data_raw = df[features].values
+          
+          scaler = MinMaxScaler()
+          data_scaled = scaler.fit_transform(data_raw)
 
-              # Prevent duplicates
-              if not data or data[-1]['t'] != new_entry['t']:
-                  data.append(new_entry)
+          # Convert to PyTorch Tensors and move to GPU if available
+          device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+          X = torch.tensor(data_scaled[:-1], dtype=torch.float32).unsqueeze(1).to(device)
+          y = torch.tensor(data_scaled[1:], dtype=torch.float32).to(device)
 
-              # Compress via sliding window
-              compressed_data = data[-MAX_ROWS:]
+          # --- ADVANCED MULTIVARIATE MODEL ---
+          class OHLCTensorNet(nn.Module):
+              def __init__(self):
+                  super().__init__()
+                  # Matrix transformations for OHLC forecasting
+                  self.lstm = nn.LSTM(input_size=4, hidden_size=16, num_layers=2, batch_first=True)
+                  self.fc = nn.Linear(16, 4)
 
-              with open(FILE, "w") as f:
-                  yaml.dump(compressed_data, f, sort_keys=False, default_flow_style=False)
+              def forward(self, x):
+                  out, _ = self.lstm(x)
+                  return self.fc(out[:, -1, :])
+
+          model = OHLCTensorNet().to(device)
+          optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+          criterion = nn.MSELoss()
+
+          # Rapid mini-training loop utilizing differential calculus (backprop)
+          model.train()
+          for epoch in range(50):
+              optimizer.zero_grad()
+              predictions = model(X)
+              loss = criterion(predictions, y)
+              loss.backward()
+              optimizer.step()
+
+          # --- FORECASTING T+1 ---
+          model.eval()
+          with torch.no_grad():
+              last_sequence = torch.tensor(data_scaled[-1:], dtype=torch.float32).unsqueeze(1).to(device)
+              predicted_tensor = model(last_sequence).cpu().numpy()
+              predicted_ohlc = scaler.inverse_transform(predicted_tensor)[0]
+
+          # --- LEDGER UPDATING ---
+          # Structure historical data
+          latest_actual = df.tail(1)
+          new_entry = {
+              "t": latest_actual.index[0].strftime('%Y-%m-%d %H:%M'),
+              "o": round(float(latest_actual['Open'].iloc[0]), 2),
+              "h": round(float(latest_actual['High'].iloc[0]), 2),
+              "l": round(float(latest_actual['Low'].iloc[0]), 2),
+              "c": round(float(latest_actual['Close'].iloc[0]), 2),
+              "v": int(latest_actual['Volume'].iloc[0]),
+              "type": "actual"
+          }
+
+          # Structure AI Prediction
+          next_time = latest_actual.index[0] + timedelta(minutes=1)
+          ai_entry = {
+              "t": next_time.strftime('%Y-%m-%d %H:%M'),
+              "o": round(float(predicted_ohlc[0]), 2),
+              "h": round(float(predicted_ohlc[1]), 2),
+              "l": round(float(predicted_ohlc[2]), 2),
+              "c": round(float(predicted_ohlc[3]), 2),
+              "v": 0,
+              "type": "forecast"
+          }
+
+          ledger_data = []
+          if os.path.exists(FILE):
+              with open(FILE, "r") as f:
+                  # Filter out old forecasts, keep actuals
+                  ledger_data = [row for row in (yaml.safe_load(f) or []) if row.get('type') != 'forecast']
+
+          if not ledger_data or ledger_data[-1]['t'] != new_entry['t']:
+              ledger_data.append(new_entry)
+
+          ledger_data = ledger_data[-MAX_ROWS:]
+          
+          # Append the new prediction at the end
+          ledger_data.append(ai_entry)
+
+          with open(FILE, "w") as f:
+              yaml.dump(ledger_data, f, sort_keys=False, default_flow_style=False)
           EOF
 
       - name: Commit and Push
         run: |
-          git config --global user.name "Database-Bot"
+          git config --global user.name "AI-Forecaster-Bot"
           git config --global user.email "bot@github.com"
-          git add fintst/btc_data.yml
-          git commit -m "DB Sync: fintst [skip ci]" || exit 0
+          git add fintst/Copy_Of_Ledger.yml
+          git commit -m "AI Forecast & Ledger Sync [skip ci]" || exit 0
           git push
