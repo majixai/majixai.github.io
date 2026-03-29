@@ -6,476 +6,435 @@
     <title>Copy Of Ledger</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     
     <style>
-        body { background-color: #f4f6f9; padding-bottom: 5rem; }
-        
-        /* Snippet Card Styling */
-        .snippet-card { cursor: pointer; transition: all 0.2s ease-in-out; border: none; border-left: 5px solid #0d6efd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .snippet-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); border-left-color: #0b5ed7; }
-        
-        /* Autocomplete Styling */
-        .autocomplete-dropdown { position: absolute; z-index: 1050; width: 100%; max-height: 350px; overflow-y: auto; display: none; border-radius: 0.5rem; }
-        .subsection-header { background-color: #e9ecef; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #495057; border-top: 1px solid #dee2e6; }
-        
-        /* Code Block & Iframe */
-        pre[class*="language-"] { max-height: 200px; border-radius: 0.375rem; margin: 0; font-size: 0.85rem; }
-        .miniature-preview { pointer-events: none; height: 100px; width: 100%; border: 1px solid #dee2e6; border-radius: 0.375rem; background: #fff; margin-top: 0.5rem; }
-        
-        /* Toast Notification */
-        .copy-toast { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: none; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* Custom Context Menu Styling */
-        #customContextMenu {
-            display: none;
-            position: absolute;
-            z-index: 9999;
-            min-width: 180px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            border-radius: 0.5rem;
+        body { 
+            margin: 0; padding: 0;
+            background-image: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1920&q=80');
+            background-attachment: fixed; 
+            background-position: center;
+            background-size: cover;
+            color: #333;
         }
-        .tag-badge { font-size: 0.7rem; font-weight: normal; margin-right: 0.2rem; margin-bottom: 0.4rem; display: inline-block; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.2rem; }
+        
+        .snippet-card { 
+            transition: transform 0.2s, box-shadow 0.2s; 
+            border-left: 5px solid #0d6efd; 
+            cursor: pointer; 
+            position: relative;
+            overflow: hidden;
+        }
+        .snippet-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important; 
+        }
+        
+        pre { max-height: 200px; overflow-y: auto; font-size: 0.85rem; }
+
+        .btn-delete { 
+            position: absolute; 
+            top: 10px; right: 10px; 
+            z-index: 10; 
+            display: none; 
+            padding: 0.1rem 0.4rem; 
+            font-size: 0.75rem; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .snippet-card:hover .btn-delete { display: block; }
     </style>
 </head>
-<body>
-    <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h2 fw-bold text-dark">Copy Of Ledger</h1>
-            <span id="mlStatus" class="badge bg-warning text-dark">Loading ML Engine...</span>
-        </div>
-        
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body p-4">
-                <div class="position-relative mb-3">
-                    <label class="form-label fw-bold">Snippet Source / Search</label>
-                    <textarea id="userInput" class="form-control form-control-lg text-monospace" rows="3" placeholder="Paste code to save, or type keywords to search/expand..." autocomplete="off" oninput="handleInput()"></textarea>
-                    
-                    <div id="autocompleteList" class="list-group autocomplete-dropdown shadow-lg"></div>
-                </div>
+<body class="w3-animate-opacity pb-5">
 
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Subsection</label>
-                        <input type="text" id="subInput" class="form-control" placeholder="e.g. HTML, CSS/BOOTSTRAP, JS/CDN" list="subDatalist">
-                        <datalist id="subDatalist">
-                            <option value="HTML"></option>
-                            <option value="CSS/BOOTSTRAP"></option>
-                            <option value="JS/CDN"></option>
-                        </datalist>
-                    </div>
-                    <div class="col-md-6 d-flex gap-2">
-                        <button onclick="saveSnippet()" class="btn btn-primary flex-grow-1 fw-bold">Save Snippet</button>
-                        <button onclick="expandSnippetML()" class="btn btn-outline-primary" title="Use ML to generate a full boilerplate based on your input text">
-                            ✨ AI Expand
-                        </button>
-                    </div>
-                </div>
+    <div class="container py-4 glass-panel mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+            <h1 class="h2 fw-bold text-dark d-flex align-items-center gap-2">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Copy Of Ledger
+            </h1>
+            <div>
+                <button id="cloudSyncBtn" class="w3-button w3-blue w3-round-large w3-small me-2">Force Cloud Sync</button>
+                <span id="sysStatus" class="w3-tag w3-yellow w3-round">Booting Modules...</span>
             </div>
         </div>
 
-        <div class="row mb-4 g-3 bg-white p-3 rounded shadow-sm border">
-            <div class="col-md-6">
-                <label class="form-label text-muted small mb-1">Filter by Tech Stack</label>
-                <select id="filterSub" class="form-select border-0 bg-light" onchange="renderMainLedger()">
-                    <option value="ALL">All Subsections</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label text-muted small mb-1">Sorting Algorithm</label>
-                <select id="sortMode" class="form-select border-0 bg-light" onchange="renderMainLedger()">
-                    <option value="RELEVANCE">Hybrid Match (Keywords + Clicks)</option>
-                    <option value="CLICKS">Most Clicked (Favorites)</option>
-                    <option value="NEWEST">Chronological (Newest First)</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="mainLedger"></div>
+        <div id="app-root"></div>
+        <div id="ledgerGrid" class="grid-layout mt-4"></div>
     </div>
 
-    <div id="copyToast" class="toast copy-toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body fw-bold">
-                ✓ Snippet copied to clipboard!
-            </div>
-        </div>
-    </div>
-
-    <ul id="customContextMenu" class="dropdown-menu">
-        <li><h6 class="dropdown-header text-primary fw-bold">AI Variations</h6></li>
-        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 sentence')">1 Sentence Summary</a></li>
-        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 paragraph')">1 Paragraph Expansion</a></li>
-        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 page')">1 Page Document</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" onclick="generateVariation('100 words')">~ 100 Words</a></li>
-        <li><a class="dropdown-item" href="#" onclick="generateVariation('1000 words')">~ 1000 Words</a></li>
-    </ul>
-
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script> 
-    
-    <script>
-        // --- 1. CONFIGURATION & STATE ---
-        let db;
-        let mlModel = null;
-        let activeContextMenuId = null;
-        const MATCH_WEIGHT = 0.7; 
-        const CLICK_WEIGHT = 0.3; 
 
-        // --- 2. SECURITY UTILITY ---
-        function escapeHTML(str) {
-            if (typeof str !== 'string') return str;
-            return str.replace(/[&<>'"]/g, tag => ({
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-            }[tag] || tag));
-        }
+    <script type="module">
+        /**
+         * ==========================================
+         * MODULE 1: CONFIG & UTILITIES
+         * ==========================================
+         */
+        const FLAGS = Object.freeze({
+            NONE: 0,
+            LOCAL: 1 << 0,  // 1
+            CLOUD: 1 << 1,  // 2
+            CACHED: 1 << 2, // 4
+            ACTIVE: 1 << 3  // 8
+        });
 
-        // --- NEW: AUTO-TAGGING ENGINE ---
-        function extractTags(text) {
-            const stopWords = new Set(['the','and','is','in','to','a','of','for','on','with','as','by','this','it','that','an','from','be','are','function','const','let','var','return','class','div','span']);
-            const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/);
-            const counts = {};
-            
-            words.forEach(w => {
-                if (w.length > 2 && !stopWords.has(w)) counts[w] = (counts[w] || 0) + 1;
-            });
-            
-            // Return top 4 most frequent words as tags
-            return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 4).map(e => e[0]);
-        }
+        const DOMStateMap = new WeakMap();
 
-        // --- 3. ML EXPANSION (GPU ACCELERATED) ---
-        const expansionDictionary = [
-            { trigger: "html template starter", text: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Document</title>\n</head>\n<body>\n  \n</body>\n</html>", sub: "HTML" },
-            { trigger: "css bootstrap cdn layout", text: "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col-md-12\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
-            { trigger: "javascript fetch api cdn", text: "<script src=\"https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js\"><\/script>\n<script>\nasync function fetchData(url) {\n  try {\n    const response = await fetch(url);\n    const data = await response.json();\n    console.log(data);\n  } catch (error) {\n    console.error('Error:', error);\n  }\n}\n<\/script>", sub: "JS/CDN" }
-        ];
+        // ** FIREBASE CONFIGURATION **
+        // Replace these values with your actual Firebase Project settings
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID"
+        };
 
-        async function initML() {
+        let firestoreDb = null;
+        if (typeof firebase !== 'undefined' && !firebase.apps.length) {
             try {
-                mlModel = await use.load();
-                const badge = document.getElementById('mlStatus');
-                badge.className = "badge bg-success";
-                badge.innerText = "GPU ML Ready";
+                firebase.initializeApp(firebaseConfig);
+                firestoreDb = firebase.firestore();
+                console.log("[SYS] Firebase Initialized");
             } catch (e) {
-                console.error("ML Load Failed", e);
-                document.getElementById('mlStatus').className = "badge bg-danger";
-                document.getElementById('mlStatus').innerText = "ML Offline";
+                console.warn("[SYS] Firebase init failed (check config). Running local-only mode.");
             }
         }
-        initML();
 
-        function cosineSimilarity(a, b) {
-            const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
-            const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
-            const magB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-            return dotProduct / (magA * magB);
+        class Utils {
+            static escape(str) { 
+                return typeof str !== 'string' ? str : str.replace(/[&<>'"]/g, t => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[t] || t)); 
+            }
+            static performanceLogger(targetFunction) {
+                return async function(...args) {
+                    const start = performance.now();
+                    const result = await targetFunction.apply(this, args);
+                    console.log(`[SYS] ${targetFunction.name} executed in ${(performance.now() - start).toFixed(2)}ms`);
+                    return result;
+                };
+            }
         }
 
-        async function expandSnippetML() {
-            const input = document.getElementById('userInput').value.trim();
-            if (!input || !mlModel) return alert("Enter a keyword (e.g., 'html' or 'fetch') and wait for ML to load.");
+        /**
+         * ==========================================
+         * MODULE 2: DATA STRUCTURES
+         * ==========================================
+         */
+        class StatsStruct {
+            constructor() {
+                this.buffer = new ArrayBuffer(8);
+                this.view = new DataView(this.buffer);
+            }
+            get clicks() { return this.view.getUint32(0); }
+            set clicks(val) { this.view.setUint32(0, val); }
+            get statusFlags() { return this.view.getUint8(4); }
+            set statusFlags(val) { this.view.setUint8(4, val); }
+        }
 
-            const textsToEmbed = [input, ...expansionDictionary.map(d => d.trigger)];
-            const embeddings = await mlModel.embed(textsToEmbed);
-            const vectors = await embeddings.array();
+        /**
+         * ==========================================
+         * MODULE 3: HYBRID STORAGE SERVICE 
+         * Handles IndexedDB (Local) & Firestore (Cloud)
+         * ==========================================
+         */
+        class StorageService {
+            #dbName = "SmartLedgerDB";
+            #version = 7; 
+            #storeName = "snippets";
+            #dbInstance = null;
 
-            const inputVector = vectors[0];
-            let bestMatchIndex = -1;
-            let highestScore = 0;
+            async connect() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(this.#dbName, this.#version);
+                    req.onupgradeneeded = (e) => {
+                        let db = e.target.result;
+                        if (!db.objectStoreNames.contains(this.#storeName)) {
+                            db.createObjectStore(this.#storeName, { keyPath: "id" }); // Removed autoIncrement to sync IDs with Cloud
+                        }
+                    };
+                    req.onsuccess = (e) => { this.#dbInstance = e.target.result; resolve(); };
+                    req.onerror = (e) => reject(e.target.error);
+                });
+            }
 
-            for (let i = 1; i < vectors.length; i++) {
-                const score = cosineSimilarity(inputVector, vectors[i]);
-                if (score > highestScore) {
-                    highestScore = score;
-                    bestMatchIndex = i - 1;
+            // Generate unique ID suitable for both local and cloud
+            #generateId() { return Date.now().toString() + Math.random().toString(36).substr(2, 5); }
+
+            async save(data) {
+                return new Promise(async (resolve) => {
+                    // 1. Assign ID if new
+                    if (!data.id) data.id = this.#generateId();
+                    
+                    // 2. Save locally first (Optimistic UI)
+                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                    tx.objectStore(this.#storeName).put(data);
+                    
+                    tx.oncomplete = async () => {
+                        resolve(data); // Resolve immediately for UI rendering
+                        
+                        // 3. Async Push to Firebase
+                        if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT_ID") {
+                            try {
+                                await firestoreDb.collection(this.#storeName).doc(data.id).set(data);
+                                
+                                // 4. If cloud succeeds, update local flag to CLOUD
+                                data.status = (data.status & ~FLAGS.LOCAL) | FLAGS.CLOUD;
+                                const updateTx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                                updateTx.objectStore(this.#storeName).put(data);
+                                console.log(`[CLOUD] Synced snippet ${data.id}`);
+                            } catch (e) {
+                                console.error("[CLOUD] Sync failed", e);
+                            }
+                        }
+                    };
+                });
+            }
+
+            async getAll() {
+                return new Promise(resolve => {
+                    const tx = this.#dbInstance.transaction(this.#storeName, "readonly");
+                    tx.objectStore(this.#storeName).getAll().onsuccess = e => resolve(e.target.result);
+                });
+            }
+
+            async delete(id) {
+                return new Promise(async (resolve) => {
+                    // 1. Delete Locally
+                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                    tx.objectStore(this.#storeName).delete(id);
+                    
+                    tx.oncomplete = async () => {
+                        resolve(true);
+                        
+                        // 2. Delete from Cloud
+                        if (firestoreDb && firebaseConfig.projectId !== "YOUR_PROJECT_ID") {
+                            try {
+                                await firestoreDb.collection(this.#storeName).doc(id).delete();
+                                console.log(`[CLOUD] Deleted snippet ${id}`);
+                            } catch (e) {
+                                console.error("[CLOUD] Delete failed", e);
+                            }
+                        }
+                    };
+                });
+            }
+
+            // Pull down from Cloud and update Local DB
+            async syncDown() {
+                if (!firestoreDb || firebaseConfig.projectId === "YOUR_PROJECT_ID") return false;
+                
+                try {
+                    const snapshot = await firestoreDb.collection(this.#storeName).get();
+                    const tx = this.#dbInstance.transaction(this.#storeName, "readwrite");
+                    const store = tx.objectStore(this.#storeName);
+                    
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        data.status = (data.status & ~FLAGS.LOCAL) | FLAGS.CLOUD;
+                        store.put(data);
+                    });
+                    
+                    return new Promise(resolve => {
+                        tx.oncomplete = () => resolve(true);
+                    });
+                } catch(e) {
+                    console.error("[CLOUD] Sync Down failed", e);
+                    return false;
+                }
+            }
+        }
+
+        StorageService.prototype.save = Utils.performanceLogger(StorageService.prototype.save);
+
+        /**
+         * ==========================================
+         * MODULE 4: BACKGROUND WORKERS
+         * ==========================================
+         */
+        class DistributedWorkerService {
+            constructor() {
+                this.worker = this.#initWorker();
+                this.worker.onmessage = this.#handleMessage;
+            }
+
+            #initWorker() {
+                const workerCode = `
+                    self.onmessage = function(e) {
+                        const words = e.data.text.split(/\\s+/).filter(w => w.length > 0).length;
+                        postMessage({ id: e.data.id, words });
+                    };
+                `;
+                return new Worker(URL.createObjectURL(new Blob([workerCode], { type: 'application/javascript' })));
+            }
+
+            #handleMessage(e) {
+                console.log(`[WORKER] Analyzed snippet ${e.data.id}: ${e.data.words} words.`);
+            }
+
+            analyzePayload(id, text) {
+                this.worker.postMessage({ id, text });
+            }
+        }
+
+        /**
+         * ==========================================
+         * MODULE 5: APPLICATION CONTROLLER
+         * ==========================================
+         */
+        class LedgerApp {
+            constructor() {
+                this.storage = new StorageService();
+                this.workers = new DistributedWorkerService();
+            }
+
+            async bootstrap() {
+                await this.storage.connect();
+                this.#buildUI();
+                this.#bindGlobalEvents();
+                
+                // Optional: Attempt to sync on boot
+                await this.storage.syncDown();
+                
+                const sysTag = document.getElementById('sysStatus');
+                sysTag.innerText = "System Ready";
+                sysTag.className = "w3-tag w3-green w3-round";
+                
+                this.renderGrid();
+            }
+
+            #buildUI() {
+                document.getElementById('app-root').innerHTML = `
+                    <div class="card shadow-sm border-0 w3-animate-bottom" id="inputCard">
+                        <div class="card-body">
+                            <textarea id="snipInput" class="form-control mb-3 text-monospace" rows="3" placeholder="Enter HTML, CSS/Bootstrap, JS/CDN snippet..."></textarea>
+                            <div class="row g-2">
+                                <div class="col-md-8">
+                                    <input type="text" id="catInput" class="form-control" placeholder="Category (e.g., JS, HTML)">
+                                </div>
+                                <div class="col-md-4">
+                                    <button id="saveBtn" class="btn btn-primary w-100 fw-bold">Save Snippet</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                DOMStateMap.set(document.getElementById('inputCard'), { isMounted: true });
+            }
+
+            #bindGlobalEvents() {
+                document.getElementById('saveBtn').addEventListener('click', () => this.handleSave());
+                document.getElementById('cloudSyncBtn').addEventListener('click', async () => {
+                    document.getElementById('sysStatus').innerText = "Syncing...";
+                    document.getElementById('sysStatus').className = "w3-tag w3-blue w3-round";
+                    await this.storage.syncDown();
+                    this.renderGrid();
+                    document.getElementById('sysStatus').innerText = "System Ready";
+                    document.getElementById('sysStatus').className = "w3-tag w3-green w3-round";
+                });
+            }
+
+            async handleSave() {
+                const text = document.getElementById('snipInput').value.trim();
+                const cat = document.getElementById('catInput').value.trim().toUpperCase() || "GENERAL";
+                if (!text) return;
+
+                const stats = new StatsStruct();
+                stats.statusFlags = FLAGS.LOCAL | FLAGS.ACTIVE;
+
+                const savedData = await this.storage.save({ 
+                    text, 
+                    category: cat, 
+                    timestamp: Date.now(),
+                    status: stats.statusFlags 
+                });
+
+                this.workers.analyzePayload(savedData.id, text);
+                
+                document.getElementById('snipInput').value = '';
+                this.renderGrid();
+            }
+
+            async handleDelete(e, id) {
+                e.stopPropagation(); 
+                if (confirm("Are you sure you want to permanently delete this snippet? (Will delete from Cloud as well)")) {
+                    await this.storage.delete(id);
+                    this.renderGrid();
                 }
             }
 
-            if (highestScore > 0.3) {
-                const match = expansionDictionary[bestMatchIndex];
-                document.getElementById('userInput').value = match.text;
-                document.getElementById('subInput').value = match.sub;
-                handleInput(); 
-            } else {
-                alert("No semantic expansion found for those keywords.");
-            }
-        }
-
-        // --- 4. DATABASE INITIALIZATION ---
-        // Incremented to v4 to support the new "tags" schema
-        const request = indexedDB.open("SnippetLedgerDB", 4);
-        request.onupgradeneeded = e => {
-            db = e.target.result;
-            if (!db.objectStoreNames.contains("snippets")) {
-                db.createObjectStore("snippets", { keyPath: "id", autoIncrement: true });
-            }
-        };
-        request.onsuccess = e => { db = e.target.result; updateDynamicUI(); };
-
-        // --- 5. CORE FUNCTIONS ---
-        function saveSnippet() {
-            const text = document.getElementById('userInput').value.trim();
-            let subsection = document.getElementById('subInput').value.trim().toUpperCase();
-            if (!text) return;
-            if (!subsection) subsection = inferSubsection(text); 
-
-            // Extract tags automatically
-            const tags = extractTags(text);
-
-            const tx = db.transaction("snippets", "readwrite");
-            tx.objectStore("snippets").add({ text, subsection, tags, clicks: 0, timestamp: Date.now() });
-            tx.oncomplete = () => {
-                document.getElementById('userInput').value = '';
-                document.getElementById('autocompleteList').style.display = 'none';
-                updateDynamicUI();
-            };
-        }
-
-        // --- NEW: RIGHT CLICK HANDLERS ---
-        function handleRightClick(e, id) {
-            e.preventDefault(); 
-            activeContextMenuId = id;
-            
-            const menu = document.getElementById('customContextMenu');
-            menu.style.display = 'block';
-            menu.style.left = `${e.pageX}px`;
-            menu.style.top = `${e.pageY}px`;
-        }
-
-        function generateVariation(lengthTarget) {
-            if (!activeContextMenuId) return;
-
-            const tx = db.transaction("snippets", "readonly");
-            tx.objectStore("snippets").get(activeContextMenuId).onsuccess = e => {
-                const data = e.target.result;
-                if (!data) return;
-
-                // MOCK API BEHAVIOR for Variation Stub
-                const generatedTag = data.tags && data.tags.length > 0 ? data.tags[0] : 'code';
-                const simulatedResponse = `/* AI Generated Variation: ${lengthTarget} */\n/* Topic: ${generatedTag} */\n\n${data.text}\n\n// Add your external LLM API fetch logic here matching the ${lengthTarget} parameter.`;
-                
-                document.getElementById('userInput').value = simulatedResponse;
-                document.getElementById('subInput').value = `${data.subsection} - VARIATION`;
-                
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                document.getElementById('userInput').focus();
-            };
-        }
-
-        function registerClick(id) {
-            const tx = db.transaction("snippets", "readwrite");
-            const store = tx.objectStore("snippets");
-            store.get(id).onsuccess = e => {
-                const data = e.target.result;
-                if (!data) return;
-                
-                data.clicks = (data.clicks || 0) + 1;
-                store.put(data);
-                
-                navigator.clipboard.writeText(data.text);
-                
-                showToast();
-                document.getElementById('autocompleteList').style.display = 'none';
-                updateDynamicUI();
-            };
-        }
-
-        function showToast() {
-            const toast = document.getElementById('copyToast');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
-        }
-
-        function handleInput() {
-            const query = document.getElementById('userInput').value.trim();
-            renderMainLedger();
-            
-            const autoList = document.getElementById('autocompleteList');
-            if (!query) {
-                autoList.style.display = 'none';
-                return;
-            }
-            renderAutocomplete(query);
-        }
-
-        // --- 6. HYBRID SCORING ENGINE ---
-        async function fetchAndScoreSnippets() {
-            return new Promise(resolve => {
-                const tx = db.transaction("snippets", "readonly");
-                tx.objectStore("snippets").getAll().onsuccess = e => {
-                    const snippets = e.target.result;
-                    const queryWords = document.getElementById('userInput').value.toLowerCase().split(/\s+/).filter(w => w);
-                    const maxClicks = Math.max(...snippets.map(s => s.clicks || 0), 1);
-
-                    const scored = snippets.map(s => {
-                        const snippetWords = s.text.toLowerCase().split(/\s+/);
-                        let matches = 0;
-                        queryWords.forEach(word => { if (snippetWords.includes(word)) matches++; });
-                        
-                        const matchScore = queryWords.length > 0 ? (matches / queryWords.length) * 100 : 0;
-                        const clickScore = ((s.clicks || 0) / maxClicks) * 100;
-                        const totalScore = (matchScore * MATCH_WEIGHT) + (clickScore * CLICK_WEIGHT);
-                        
-                        return { ...s, totalScore };
-                    });
-                    resolve(scored);
-                };
-            });
-        }
-
-        // --- 7. RENDERING LOGIC ---
-        function getPrismClass(sub) {
-            const s = sub.toLowerCase();
-            if (s.includes('js') || s.includes('javascript')) return 'language-javascript';
-            if (s.includes('css') || s.includes('bootstrap')) return 'language-css';
-            if (s.includes('html')) return 'language-markup';
-            return 'language-none';
-        }
-
-        function inferSubsection(text) {
-            const lower = text.toLowerCase();
-            if (lower.includes('</div>') || lower.includes('<html>')) return 'HTML';
-            if (lower.includes('{') && lower.includes('margin:')) return 'CSS/BOOTSTRAP';
-            if (lower.includes('function') || lower.includes('const ')) return 'JS/CDN';
-            return 'GENERAL';
-        }
-
-        function containsHTML(str) {
-            return /<[a-z][\s\S]*>/i.test(str);
-        }
-
-        function groupBy(array, key) {
-            return array.reduce((result, cv) => {
-                (result[cv[key]] = result[cv[key]] || []).push(cv);
-                return result;
-            }, {});
-        }
-
-        async function renderAutocomplete(query) {
-            const snippets = await fetchAndScoreSnippets();
-            const matches = snippets.filter(s => s.totalScore > 0).sort((a, b) => b.totalScore - a.totalScore);
-            const autoList = document.getElementById('autocompleteList');
-            
-            if (matches.length === 0) {
-                autoList.style.display = 'none';
-                return;
+            handleCopy(text, cardElement) {
+                navigator.clipboard.writeText(text);
+                cardElement.style.opacity = '0.5';
+                setTimeout(() => cardElement.style.opacity = '1', 200);
             }
 
-            const grouped = groupBy(matches, 'subsection');
-            autoList.innerHTML = '';
-            
-            for (const [sub, items] of Object.entries(grouped)) {
-                autoList.innerHTML += `<div class="list-group-item subsection-header px-3 py-2">${escapeHTML(sub)}</div>`;
-                items.forEach(item => {
-                    const flatText = item.text.replace(/[\r\n]+/g, ' ');
-                    const previewText = flatText.length > 65 ? flatText.substring(0, 65) + '...' : flatText;
+            async renderGrid() {
+                const snippets = await this.storage.getAll();
+                const grid = document.getElementById('ledgerGrid');
+                grid.innerHTML = '';
+
+                // Generator Protocol implementation
+                const generator = function*(items) {
+                    for (let item of items) yield item;
+                }(snippets.sort((a,b) => b.timestamp - a.timestamp));
+
+                for (let item of generator) {
+                    const card = document.createElement('div');
+                    const isLocal = (item.status & FLAGS.LOCAL) !== 0;
+                    const isCloud = (item.status & FLAGS.CLOUD) !== 0;
                     
-                    autoList.innerHTML += `
-                        <button type="button" class="list-group-item list-group-item-action border-0 border-bottom px-3" onclick="registerClick(${item.id})">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <code class="text-dark bg-transparent p-0">${escapeHTML(previewText)}</code>
-                                <span class="badge bg-primary rounded-pill shadow-sm">${Math.round(item.totalScore)}%</span>
-                            </div>
-                        </button>`;
-                });
-            }
-            autoList.style.display = 'block';
-        }
+                    let badgeClass = "bg-secondary";
+                    let stateText = "LOCAL";
+                    if (isCloud) { badgeClass = "bg-primary"; stateText = "CLOUD"; }
 
-        async function renderMainLedger() {
-            let snippets = await fetchAndScoreSnippets();
-            const filterVal = document.getElementById('filterSub').value;
-            const sortMode = document.getElementById('sortMode').value;
-
-            if (filterVal !== "ALL") snippets = snippets.filter(s => s.subsection === filterVal);
-
-            if (sortMode === "RELEVANCE") snippets.sort((a, b) => b.totalScore - a.totalScore);
-            if (sortMode === "CLICKS") snippets.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
-            if (sortMode === "NEWEST") snippets.sort((a, b) => b.timestamp - a.timestamp);
-
-            const grouped = groupBy(snippets, 'subsection');
-            const container = document.getElementById('mainLedger');
-            container.innerHTML = '';
-
-            for (const [sub, items] of Object.entries(grouped)) {
-                const syntaxClass = getPrismClass(sub);
-                let sectionHTML = `<div class="mb-5"><h4 class="mb-3 border-bottom pb-2 text-primary fw-bold">${escapeHTML(sub)}</h4><div class="row g-4">`;
-                
-                items.forEach(item => {
-                    const isSearching = document.getElementById('userInput').value.trim() !== '';
-                    const scoreDisplay = isSearching ? `<span class="badge bg-success-subtle text-success border border-success-subtle">${Math.round(item.totalScore)}% Match</span>` : '';
+                    card.className = "card snippet-card shadow-sm w3-animate-zoom bg-white";
+                    card.innerHTML = `
+                        <button class="btn btn-danger btn-delete w3-circle" title="Delete Snippet">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                        </button>
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark" style="font-size: 0.9rem;">${Utils.escape(item.category)}</span>
+                            <span class="badge ${badgeClass}" style="font-size: 0.65rem;">${stateText}</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <pre class="m-0 p-3 language-javascript"><code class="language-javascript">${Utils.escape(item.text)}</code></pre>
+                        </div>
+                    `;
                     
-                    const tagHTML = (item.tags || []).map(t => `<span class="badge bg-secondary tag-badge">#${escapeHTML(t)}</span>`).join('');
+                    card.addEventListener('click', () => this.handleCopy(item.text, card));
+                    card.querySelector('.btn-delete').addEventListener('click', (e) => this.handleDelete(e, item.id));
 
-                    const iframePreview = containsHTML(item.text) 
-                        ? `<div class="mt-3 border-top pt-2"><small class="text-muted fw-bold d-block mb-1">Visual Render:</small><iframe sandbox="" srcdoc="${escapeHTML(item.text)}" class="miniature-preview shadow-sm"></iframe></div>` 
-                        : '';
-
-                    // Injected oncontextmenu to override right click behavior
-                    sectionHTML += `
-                        <div class="col-md-6 col-xl-4">
-                            <div class="card snippet-card h-100 bg-white" 
-                                 onclick="registerClick(${item.id})" 
-                                 oncontextmenu="handleRightClick(event, ${item.id})">
-                                <div class="card-body p-3 d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="badge bg-secondary rounded-pill" title="Interaction Frequency">${item.clicks || 0} Clicks</span>
-                                        ${scoreDisplay}
-                                    </div>
-                                    
-                                    ${tagHTML ? `<div class="mb-2">${tagHTML}</div>` : ''}
-                                    
-                                    <div class="flex-grow-1 position-relative">
-                                        <pre class="${syntaxClass} shadow-sm"><code class="${syntaxClass}">${escapeHTML(item.text)}</code></pre>
-                                    </div>
-                                    
-                                    ${iframePreview}
-                                </div>
-                            </div>
-                        </div>`;
-                });
-                sectionHTML += `</div></div>`;
-                container.innerHTML += sectionHTML;
+                    grid.appendChild(card);
+                }
+                
+                if(window.Prism) Prism.highlightAllUnder(grid);
             }
-            
-            Prism.highlightAllUnder(document.getElementById('mainLedger'));
         }
 
-        async function updateDynamicUI() {
-            const tx = db.transaction("snippets", "readonly");
-            tx.objectStore("snippets").getAll().onsuccess = e => {
-                const snippets = e.target.result;
-                const subs = [...new Set(snippets.map(s => s.subsection))].sort();
-                
-                const defaultSubs = ['HTML', 'CSS/BOOTSTRAP', 'JS/CDN'];
-                const mergedSubs = [...new Set([...defaultSubs, ...subs])].sort();
-                
-                document.getElementById('subDatalist').innerHTML = mergedSubs.map(s => `<option value="${escapeHTML(s)}">`).join('');
-                
-                const filter = document.getElementById('filterSub');
-                const currentVal = filter.value;
-                filter.innerHTML = `<option value="ALL">All Subsections</option>` + 
-                                   subs.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('');
-                if (subs.includes(currentVal)) filter.value = escapeHTML(currentVal);
-
-                renderMainLedger();
-            };
-        }
-
-        // --- 8. EVENT LISTENERS ---
-        // Hide autocomplete and context menus when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#userInput') && !e.target.closest('#autocompleteList')) {
-                document.getElementById('autocompleteList').style.display = 'none';
-            }
-            // Always hide custom context menu on regular click
-            document.getElementById('customContextMenu').style.display = 'none';
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new LedgerApp();
+            app.bootstrap();
         });
     </script>
 </body>
