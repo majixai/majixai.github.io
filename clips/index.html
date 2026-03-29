@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Copy Of Ledger</title>
+    <title>Copy Of Ledger - Secured</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .snippet-card { cursor: pointer; transition: 0.2s; border-left: 4px solid #0d6efd; }
@@ -55,7 +55,19 @@
         const MATCH_WEIGHT = 0.7;
         const CLICK_WEIGHT = 0.3;
 
-        // 1. Initialize IndexedDB
+        // --- SECURITY UTILITY ---
+        // Converts dangerous characters into safe HTML entities
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag] || tag));
+        }
+
         const request = indexedDB.open("SnippetLedgerDB", 2);
         request.onupgradeneeded = e => {
             db = e.target.result;
@@ -65,13 +77,13 @@
         };
         request.onsuccess = e => { db = e.target.result; updateDynamicUI(); };
 
-        // 2. Save Data
         function saveSnippet() {
             const text = document.getElementById('userInput').value.trim();
             const subsection = document.getElementById('subInput').value.trim().toUpperCase() || 'GENERAL';
             if (!text) return;
 
             const tx = db.transaction("snippets", "readwrite");
+            // Save the raw text to DB. We only escape when rendering.
             tx.objectStore("snippets").add({ text, subsection, clicks: 0, timestamp: Date.now() });
             tx.oncomplete = () => {
                 document.getElementById('userInput').value = '';
@@ -80,24 +92,26 @@
             };
         }
 
-        // 3. Track Clicks
-        function registerClick(id, text) {
+        // --- SECURED CLICK HANDLER ---
+        // Only accepts the ID, eliminating injection via inline HTML attributes
+        function registerClick(id) {
             const tx = db.transaction("snippets", "readwrite");
             const store = tx.objectStore("snippets");
             store.get(id).onsuccess = e => {
                 const data = e.target.result;
+                if (!data) return;
+                
                 data.clicks = (data.clicks || 0) + 1;
                 store.put(data);
-                navigator.clipboard.writeText(text);
                 
-                // Show brief visual feedback
-                const btn = document.getElementById('autocompleteList');
-                btn.style.display = 'none'; // hide autocomplete if open
+                // Copy pristine, unescaped text to clipboard safely
+                navigator.clipboard.writeText(data.text);
+                
+                document.getElementById('autocompleteList').style.display = 'none';
                 updateDynamicUI();
             };
         }
 
-        // 4. Input Handler (Triggers Autocomplete & Main Render)
         function handleInput() {
             const query = document.getElementById('userInput').value.trim();
             renderMainLedger();
@@ -110,7 +124,6 @@
             renderAutocomplete(query);
         }
 
-        // 5. Core Data Fetch & Scoring Engine
         async function fetchAndScoreSnippets() {
             return new Promise(resolve => {
                 const tx = db.transaction("snippets", "readonly");
@@ -135,10 +148,8 @@
             });
         }
 
-        // 6. Autocomplete Dropdown
         async function renderAutocomplete(query) {
             const snippets = await fetchAndScoreSnippets();
-            // Filter only items that have SOME match score for autocomplete
             const matches = snippets.filter(s => s.totalScore > 0).sort((a, b) => b.totalScore - a.totalScore);
             
             const autoList = document.getElementById('autocompleteList');
@@ -147,17 +158,18 @@
                 return;
             }
 
-            // Group by Subsection
             const grouped = groupBy(matches, 'subsection');
             autoList.innerHTML = '';
             
             for (const [sub, items] of Object.entries(grouped)) {
-                autoList.innerHTML += `<div class="list-group-item subsection-header py-1 text-muted">${sub}</div>`;
+                // Escape subsection header
+                autoList.innerHTML += `<div class="list-group-item subsection-header py-1 text-muted">${escapeHTML(sub)}</div>`;
                 items.forEach(item => {
+                    // Pass ONLY the ID to registerClick, escape the display text
                     autoList.innerHTML += `
-                        <button type="button" class="list-group-item list-group-item-action" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
+                        <button type="button" class="list-group-item list-group-item-action" onclick="registerClick(${item.id})">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span>${item.text}</span>
+                                <span>${escapeHTML(item.text)}</span>
                                 <span class="badge bg-light text-dark border">${Math.round(item.totalScore)}</span>
                             </div>
                         </button>`;
@@ -166,38 +178,34 @@
             autoList.style.display = 'block';
         }
 
-        // 7. Main Ledger Render (Sorting, Filtering, Grouping)
         async function renderMainLedger() {
             let snippets = await fetchAndScoreSnippets();
             const filterVal = document.getElementById('filterSub').value;
             const sortMode = document.getElementById('sortMode').value;
 
-            // Apply Filter
-            if (filterVal !== "ALL") {
-                snippets = snippets.filter(s => s.subsection === filterVal);
-            }
+            if (filterVal !== "ALL") snippets = snippets.filter(s => s.subsection === filterVal);
 
-            // Apply Sort
             if (sortMode === "RELEVANCE") snippets.sort((a, b) => b.totalScore - a.totalScore);
             if (sortMode === "CLICKS") snippets.sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
             if (sortMode === "NEWEST") snippets.sort((a, b) => b.timestamp - a.timestamp);
 
-            // Group & Render
             const grouped = groupBy(snippets, 'subsection');
             const container = document.getElementById('mainLedger');
             container.innerHTML = '';
 
             for (const [sub, items] of Object.entries(grouped)) {
-                let sectionHTML = `<h4 class="mt-4 mb-3 border-bottom pb-2 text-secondary">${sub}</h4><div class="row g-2">`;
+                // Escape subsection header
+                let sectionHTML = `<h4 class="mt-4 mb-3 border-bottom pb-2 text-secondary">${escapeHTML(sub)}</h4><div class="row g-2">`;
                 
                 items.forEach(item => {
                     const scoreDisplay = document.getElementById('userInput').value ? `<small class="text-primary">${Math.round(item.totalScore)}% Match</small>` : '';
+                    // Pass ONLY the ID to registerClick, escape the display text
                     sectionHTML += `
                         <div class="col-12">
-                            <div class="card snippet-card h-100" onclick="registerClick(${item.id}, '${item.text.replace(/'/g, "\\'")}')">
+                            <div class="card snippet-card h-100" onclick="registerClick(${item.id})">
                                 <div class="card-body p-3">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <span class="fs-6">${item.text}</span>
+                                        <span class="fs-6">${escapeHTML(item.text)}</span>
                                         <div class="text-end">
                                             ${scoreDisplay}
                                             <span class="badge bg-secondary rounded-pill ms-2" title="Clicks">${item.clicks || 0}</span>
@@ -212,7 +220,6 @@
             }
         }
 
-        // Helper: Group Array of Objects by Key
         function groupBy(array, key) {
             return array.reduce((result, currentValue) => {
                 (result[currentValue[key]] = result[currentValue[key]] || []).push(currentValue);
@@ -220,28 +227,26 @@
             }, {});
         }
 
-        // Update Filters & Datalists dynamically based on DB contents
         async function updateDynamicUI() {
             const tx = db.transaction("snippets", "readonly");
             tx.objectStore("snippets").getAll().onsuccess = e => {
                 const snippets = e.target.result;
                 const subs = [...new Set(snippets.map(s => s.subsection))].sort();
                 
-                // Update Datalist (for input suggestions)
-                document.getElementById('subDatalist').innerHTML = subs.map(s => `<option value="${s}">`).join('');
+                // Escape datalist options
+                document.getElementById('subDatalist').innerHTML = subs.map(s => `<option value="${escapeHTML(s)}">`).join('');
                 
-                // Update Filter Dropdown (preserve current selection if possible)
                 const filter = document.getElementById('filterSub');
                 const currentVal = filter.value;
+                // Escape filter options
                 filter.innerHTML = `<option value="ALL">All Subsections</option>` + 
-                                   subs.map(s => `<option value="${s}">${s}</option>`).join('');
-                if (subs.includes(currentVal)) filter.value = currentVal;
+                                   subs.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('');
+                if (subs.includes(currentVal)) filter.value = escapeHTML(currentVal);
 
                 renderMainLedger();
             };
         }
 
-        // Close autocomplete when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#userInput') && !e.target.closest('#autocompleteList')) {
                 document.getElementById('autocompleteList').style.display = 'none';
