@@ -1,0 +1,25 @@
+<script>
+  document.getElementById('basic-email-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const data = {
+      to: form.to.value,
+      subject: form.subject.value,
+      body: form.body.value
+    };
+
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerHTML = 'Sending...';
+
+    google.script.run
+      .withSuccessHandler(function() {
+        statusDiv.innerHTML = 'Email sent successfully!';
+        form.reset();
+      })
+      .withFailureHandler(function(error) {
+        statusDiv.innerHTML = 'Error: ' + error.message;
+      })
+      .sendEmail(data.to, data.subject, data.body);
+  });
+</script>
