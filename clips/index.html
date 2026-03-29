@@ -6,7 +6,6 @@
     <title>Copy Of Ledger</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     
     <style>
@@ -26,6 +25,17 @@
         
         /* Toast Notification */
         .copy-toast { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: none; }
+
+        /* Custom Context Menu Styling */
+        #customContextMenu {
+            display: none;
+            position: absolute;
+            z-index: 9999;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 0.5rem;
+        }
+        .tag-badge { font-size: 0.7rem; font-weight: normal; margin-right: 0.2rem; margin-bottom: 0.4rem; display: inline-block; }
     </style>
 </head>
 <body>
@@ -92,18 +102,30 @@
         </div>
     </div>
 
+    <ul id="customContextMenu" class="dropdown-menu">
+        <li><h6 class="dropdown-header text-primary fw-bold">AI Variations</h6></li>
+        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 sentence')">1 Sentence Summary</a></li>
+        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 paragraph')">1 Paragraph Expansion</a></li>
+        <li><a class="dropdown-item" href="#" onclick="generateVariation('1 page')">1 Page Document</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="#" onclick="generateVariation('100 words')">~ 100 Words</a></li>
+        <li><a class="dropdown-item" href="#" onclick="generateVariation('1000 words')">~ 1000 Words</a></li>
+    </ul>
+
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script> <script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script> 
+    
+    <script>
         // --- 1. CONFIGURATION & STATE ---
         let db;
         let mlModel = null;
-        const MATCH_WEIGHT = 0.7; // 70% of score comes from keyword hits
-        const CLICK_WEIGHT = 0.3; // 30% of score comes from historical clicks
+        let activeContextMenuId = null;
+        const MATCH_WEIGHT = 0.7; 
+        const CLICK_WEIGHT = 0.3; 
 
         // --- 2. SECURITY UTILITY ---
         function escapeHTML(str) {
@@ -113,8 +135,21 @@
             }[tag] || tag));
         }
 
+        // --- NEW: AUTO-TAGGING ENGINE ---
+        function extractTags(text) {
+            const stopWords = new Set(['the','and','is','in','to','a','of','for','on','with','as','by','this','it','that','an','from','be','are','function','const','let','var','return','class','div','span']);
+            const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/);
+            const counts = {};
+            
+            words.forEach(w => {
+                if (w.length > 2 && !stopWords.has(w)) counts[w] = (counts[w] || 0) + 1;
+            });
+            
+            // Return top 4 most frequent words as tags
+            return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 4).map(e => e[0]);
+        }
+
         // --- 3. ML EXPANSION (GPU ACCELERATED) ---
-        // Hidden dictionary of expanded boilerplates
         const expansionDictionary = [
             { trigger: "html template starter", text: "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Document</title>\n</head>\n<body>\n  \n</body>\n</html>", sub: "HTML" },
             { trigger: "css bootstrap cdn layout", text: "<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css\" rel=\"stylesheet\">\n<div class=\"container\">\n  <div class=\"row\">\n    <div class=\"col-md-12\">\n      \n    </div>\n  </div>\n</div>", sub: "CSS/BOOTSTRAP" },
@@ -135,7 +170,6 @@
         }
         initML();
 
-        // Cosine Similarity Math
         function cosineSimilarity(a, b) {
             const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
             const magA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
@@ -147,7 +181,6 @@
             const input = document.getElementById('userInput').value.trim();
             if (!input || !mlModel) return alert("Enter a keyword (e.g., 'html' or 'fetch') and wait for ML to load.");
 
-            // Vectorize input and dictionary triggers
             const textsToEmbed = [input, ...expansionDictionary.map(d => d.trigger)];
             const embeddings = await mlModel.embed(textsToEmbed);
             const vectors = await embeddings.array();
@@ -156,7 +189,6 @@
             let bestMatchIndex = -1;
             let highestScore = 0;
 
-            // Find closest semantic match
             for (let i = 1; i < vectors.length; i++) {
                 const score = cosineSimilarity(inputVector, vectors[i]);
                 if (score > highestScore) {
@@ -165,19 +197,19 @@
                 }
             }
 
-            // Threshold for expanding (prevents random expansions)
             if (highestScore > 0.3) {
                 const match = expansionDictionary[bestMatchIndex];
                 document.getElementById('userInput').value = match.text;
                 document.getElementById('subInput').value = match.sub;
-                handleInput(); // Re-trigger search/autocomplete based on new text
+                handleInput(); 
             } else {
                 alert("No semantic expansion found for those keywords.");
             }
         }
 
         // --- 4. DATABASE INITIALIZATION ---
-        const request = indexedDB.open("SnippetLedgerDB", 3);
+        // Incremented to v4 to support the new "tags" schema
+        const request = indexedDB.open("SnippetLedgerDB", 4);
         request.onupgradeneeded = e => {
             db = e.target.result;
             if (!db.objectStoreNames.contains("snippets")) {
@@ -191,14 +223,48 @@
             const text = document.getElementById('userInput').value.trim();
             let subsection = document.getElementById('subInput').value.trim().toUpperCase();
             if (!text) return;
-            if (!subsection) subsection = inferSubsection(text); // Fallback inference
+            if (!subsection) subsection = inferSubsection(text); 
+
+            // Extract tags automatically
+            const tags = extractTags(text);
 
             const tx = db.transaction("snippets", "readwrite");
-            tx.objectStore("snippets").add({ text, subsection, clicks: 0, timestamp: Date.now() });
+            tx.objectStore("snippets").add({ text, subsection, tags, clicks: 0, timestamp: Date.now() });
             tx.oncomplete = () => {
                 document.getElementById('userInput').value = '';
                 document.getElementById('autocompleteList').style.display = 'none';
                 updateDynamicUI();
+            };
+        }
+
+        // --- NEW: RIGHT CLICK HANDLERS ---
+        function handleRightClick(e, id) {
+            e.preventDefault(); 
+            activeContextMenuId = id;
+            
+            const menu = document.getElementById('customContextMenu');
+            menu.style.display = 'block';
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+        }
+
+        function generateVariation(lengthTarget) {
+            if (!activeContextMenuId) return;
+
+            const tx = db.transaction("snippets", "readonly");
+            tx.objectStore("snippets").get(activeContextMenuId).onsuccess = e => {
+                const data = e.target.result;
+                if (!data) return;
+
+                // MOCK API BEHAVIOR for Variation Stub
+                const generatedTag = data.tags && data.tags.length > 0 ? data.tags[0] : 'code';
+                const simulatedResponse = `/* AI Generated Variation: ${lengthTarget} */\n/* Topic: ${generatedTag} */\n\n${data.text}\n\n// Add your external LLM API fetch logic here matching the ${lengthTarget} parameter.`;
+                
+                document.getElementById('userInput').value = simulatedResponse;
+                document.getElementById('subInput').value = `${data.subsection} - VARIATION`;
+                
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                document.getElementById('userInput').focus();
             };
         }
 
@@ -214,7 +280,6 @@
                 
                 navigator.clipboard.writeText(data.text);
                 
-                // Show Toast, hide autocomplete, re-render ranks
                 showToast();
                 document.getElementById('autocompleteList').style.display = 'none';
                 updateDynamicUI();
@@ -273,7 +338,6 @@
             return 'language-none';
         }
 
-        // Auto-detect subsection if user leaves it blank
         function inferSubsection(text) {
             const lower = text.toLowerCase();
             if (lower.includes('</div>') || lower.includes('<html>')) return 'HTML';
@@ -309,7 +373,6 @@
             for (const [sub, items] of Object.entries(grouped)) {
                 autoList.innerHTML += `<div class="list-group-item subsection-header px-3 py-2">${escapeHTML(sub)}</div>`;
                 items.forEach(item => {
-                    // Flatten multiline text for single-line autocomplete preview
                     const flatText = item.text.replace(/[\r\n]+/g, ' ');
                     const previewText = flatText.length > 65 ? flatText.substring(0, 65) + '...' : flatText;
                     
@@ -348,18 +411,25 @@
                     const isSearching = document.getElementById('userInput').value.trim() !== '';
                     const scoreDisplay = isSearching ? `<span class="badge bg-success-subtle text-success border border-success-subtle">${Math.round(item.totalScore)}% Match</span>` : '';
                     
+                    const tagHTML = (item.tags || []).map(t => `<span class="badge bg-secondary tag-badge">#${escapeHTML(t)}</span>`).join('');
+
                     const iframePreview = containsHTML(item.text) 
                         ? `<div class="mt-3 border-top pt-2"><small class="text-muted fw-bold d-block mb-1">Visual Render:</small><iframe sandbox="" srcdoc="${escapeHTML(item.text)}" class="miniature-preview shadow-sm"></iframe></div>` 
                         : '';
 
+                    // Injected oncontextmenu to override right click behavior
                     sectionHTML += `
                         <div class="col-md-6 col-xl-4">
-                            <div class="card snippet-card h-100 bg-white" onclick="registerClick(${item.id})">
+                            <div class="card snippet-card h-100 bg-white" 
+                                 onclick="registerClick(${item.id})" 
+                                 oncontextmenu="handleRightClick(event, ${item.id})">
                                 <div class="card-body p-3 d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="badge bg-secondary rounded-pill" title="Interaction Frequency">${item.clicks || 0} Clicks</span>
                                         ${scoreDisplay}
                                     </div>
+                                    
+                                    ${tagHTML ? `<div class="mb-2">${tagHTML}</div>` : ''}
                                     
                                     <div class="flex-grow-1 position-relative">
                                         <pre class="${syntaxClass} shadow-sm"><code class="${syntaxClass}">${escapeHTML(item.text)}</code></pre>
@@ -374,7 +444,6 @@
                 container.innerHTML += sectionHTML;
             }
             
-            // Trigger Prism.js to apply colors to the newly injected <code> blocks
             Prism.highlightAllUnder(document.getElementById('mainLedger'));
         }
 
@@ -384,7 +453,6 @@
                 const snippets = e.target.result;
                 const subs = [...new Set(snippets.map(s => s.subsection))].sort();
                 
-                // Keep default stack suggestions, append custom ones
                 const defaultSubs = ['HTML', 'CSS/BOOTSTRAP', 'JS/CDN'];
                 const mergedSubs = [...new Set([...defaultSubs, ...subs])].sort();
                 
@@ -401,11 +469,13 @@
         }
 
         // --- 8. EVENT LISTENERS ---
-        // Close autocomplete when clicking outside
+        // Hide autocomplete and context menus when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#userInput') && !e.target.closest('#autocompleteList')) {
                 document.getElementById('autocompleteList').style.display = 'none';
             }
+            // Always hide custom context menu on regular click
+            document.getElementById('customContextMenu').style.display = 'none';
         });
     </script>
 </body>
