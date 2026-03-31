@@ -1,0 +1,38 @@
+//@version=5
+indicator("Neural Network ML Indicator", overlay=true)
+
+// Input parameters
+rsi_period = input(14, title="RSI Period")
+macd_fast_length = input(12, title="MACD Fast Length")
+macd_slow_length = input(26, title="MACD Slow Length")
+macd_signal_length = input(9, title="MACD Signal Length")
+bb_length = input(20, title="Bollinger Bands Length")
+bb_std_dev = input(2.0, title="Bollinger Bands Std Dev")
+volume_threshold = input(100000, title="Volume Threshold")
+
+// RSI Calculation
+rsi_value = ta.rsi(close, rsi_period)
+
+// MACD Calculation
+[macd_line, signal_line, _] = ta.macd(close, macd_fast_length, macd_slow_length, macd_signal_length)
+
+// Bollinger Bands Calculation
+[bb_upper, bb_middle, bb_lower] = ta.bb(close, bb_length, bb_std_dev)
+
+// Volume Analysis
+volume_signal = volume > volume_threshold ? 1 : 0
+
+// Neural Network Scoring System (dummy implementation)
+score = (rsi_value / 100) + (macd_line - signal_line) + (close - bb_middle) / (bb_upper - bb_lower) + volume_signal
+
+// Buy/Sell Thresholds
+buy_threshold = input(2.0, title="Buy Threshold")
+sell_threshold = input(-2.0, title="Sell Threshold")
+
+// Buy/Sell Signals
+buy_signal = score >= buy_threshold
+sell_signal = score <= sell_threshold
+
+// Plotting Signals
+plotshape(buy_signal, style=shape.labelup, location=location.belowbar, color=color.green, size=size.small, title="Buy Signal")
+plotshape(sell_signal, style=shape.labeldown, location=location.abovebar, color=color.red, size=size.small, title="Sell Signal")
