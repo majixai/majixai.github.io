@@ -4,9 +4,6 @@ on:
     - cron: '* * * * *' # Unrelenting minute-by-minute execution
   workflow_dispatch:
 
-# The Concurrency group is the secret to the Overlap.
-# Because cancel-in-progress is false, when the 1:01 PM trigger fires, 
-# it DOES NOT kill the 1:00 PM trigger. They run simultaneously.
 concurrency:
   group: ouroboros-compute-cluster
   cancel-in-progress: false 
@@ -27,17 +24,15 @@ jobs:
           cache: 'pip'
 
       - name: 3. Restore Distributed SQLite WAL Database
-        # This step pulls the database from the previous minute's execution.
-        # It allows the LSTM to have months of historical memory despite ephemeral hardware.
         uses: actions/cache@v3
         with:
-          path: market_compression.db
+          # UPDATED: Pointing the cache directly to the jacmy directory
+          path: jacmy/market_compression.db
           key: ${{ runner.os }}-market-db-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-market-db-
 
       - name: 4. Install ML, OpenMP, and Cython Toolchains
-        # Installs build-essential to ensure GCC is available for on-the-fly engine.pyx OpenMP compilation
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libgomp1
@@ -45,26 +40,23 @@ jobs:
           pip install yfinance tensorflow plotly scipy cython pandas numpy asyncio
 
       - name: 5. Execute Ouroboros Core Engine (--duration 120)
-        # This locks the runner into a 2-minute cycle. 
-        # Minute 1: Gathers high-frequency data alongside the previous runner.
-        # Minute 2: Takes over ML inference while the previous runner terminates, 
-        #           and the NEXT runner boots up to begin gathering data.
+        # UPDATED: Tells the runner to execute inside the jacmy folder
+        working-directory: ./jacmy
         run: |
           python ouroboros.py --duration 120
 
       - name: 6. Deploy Matrix Outputs to Edge Network (GitHub Pages)
-        # We push ONLY the HTML dashboards and the CSV files.
-        # We target the gh-pages branch to isolate the deployment from the main codebase.
-        # force_orphan ensures we don't build an infinitely growing, massive git history.
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output_html
+          # UPDATED: Pointing the deployment to look inside jacmy/output_html
+          publish_dir: ./jacmy/output_html
           publish_branch: gh-pages
           force_orphan: true
           commit_message: "QUANTUM OVERLAP: Matrix Refresh [Skip CI]"
           
       - name: 7. Vacuum and Optimize Market Database
-        # Cleans the WAL logs and compresses the SQLite file before it gets cached for the next runner
+        # UPDATED: Executes the cleanup inside the jacmy folder
+        working-directory: ./jacmy
         run: |
           sqlite3 market_compression.db "VACUUM;"
