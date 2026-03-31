@@ -453,7 +453,7 @@
 
             this.#lastFilteredUsers=this.#allOnlineUsersData.filter(u=>{ 
                 if(!u||!u.username)return false;
-                const isPublic=u.current_show==='public';
+                const isPublic=u.current_show==='public' || u.current_show == null;
                 let hasTags=true;
                 if(filterTags.length>0){
                     const userTagsLower=(u.tags&&Array.isArray(u.tags))?u.tags.map(t=>typeof t==='string'?t.toLowerCase():''):[];
