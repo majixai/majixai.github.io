@@ -1,0 +1,120 @@
+name: Update Recently Edited Directories
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  update_recent_dirs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Generate recent_dirs.json
+        run: |
+          python3 << 'EOF'
+          import subprocess
+          import json
+          import os
+          from datetime import timezone
+
+          AUTHOR = 'majixai'
+          TOP_N = 20
+          EXCLUDE = {'.git', '.github', '__pycache__', 'node_modules', 'icons', '.vscode'}
+
+          # Get all commits by the author, newest first, with changed files
+          result = subprocess.run(
+              [
+                  'git', 'log',
+                  '--author=' + AUTHOR,
+                  '--name-only',
+                  '--format=%H|%aI|%s|%aN',
+                  '--diff-filter=ACDMR',
+              ],
+              capture_output=True,
+              text=True
+          )
+
+          seen_dirs = {}   # dir_name -> {date, message, author, sha}
+          current_meta = None
+
+          for line in result.stdout.splitlines():
+              line = line.rstrip()
+              if not line:
+                  continue
+              if '|' in line and line.count('|') >= 3:
+                  # Metadata line: sha|date|subject|author
+                  parts = line.split('|', 3)
+                  current_meta = {
+                      'sha': parts[0],
+                      'date': parts[1],
+                      'message': parts[2],
+                      'author': parts[3]
+                  }
+              elif current_meta:
+                  # File path line
+                  parts = line.split('/')
+                  top_dir = parts[0]
+                  if (
+                      top_dir
+                      and not top_dir.startswith('.')
+                      and top_dir not in EXCLUDE
+                      and os.path.isdir(top_dir)
+                      and top_dir not in seen_dirs
+                  ):
+                      seen_dirs[top_dir] = {
+                          'name': top_dir,
+                          'path': top_dir + '/',
+                          'lastCommitDate': current_meta['date'],
+                          'lastCommitMessage': current_meta['message'],
+                          'lastCommitAuthor': current_meta['author'],
+                          'lastCommitSha': current_meta['sha'][:7]
+                      }
+                      if len(seen_dirs) >= TOP_N:
+                          break
+
+          recent = list(seen_dirs.values())
+
+          with open('recent_dirs.json', 'w', encoding='utf-8') as f:
+              json.dump(recent, f, indent=2)
+
+          print(f'Generated recent_dirs.json with {len(recent)} entries')
+          EOF
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push changes
+        run: |
+          git add recent_dirs.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: Update recent_dirs.json - $TIMESTAMP"
+            git push
+            echo "Changes pushed successfully"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Recently Edited Directories Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          COUNT=$(python3 -c "import json; print(len(json.load(open('recent_dirs.json'))))")
+          echo "**Entries:** $COUNT" >> $GITHUB_STEP_SUMMARY

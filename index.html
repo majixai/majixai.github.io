@@ -266,6 +266,67 @@
     }
     .stat-value { font-size: 2rem; font-weight: 700; }
     .stat-label { font-size: 0.85rem; opacity: 0.9; }
+    /* Recently Edited Directories */
+    .recent-dirs-section {
+      padding: 1.5rem 2rem;
+      background: rgba(255,255,255,0.85);
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .recent-dirs-section h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+    .recent-dirs-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .recent-dir-item {
+      background: #fff;
+      border: 1px solid #dde3ec;
+      border-radius: 0.6rem;
+      padding: 0.6rem 1rem;
+      min-width: 220px;
+      max-width: 320px;
+      flex: 1 1 220px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+      transition: box-shadow 0.2s, border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .recent-dir-item:hover {
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13);
+      border-color: var(--secondary-color);
+    }
+    .recent-dir-name {
+      font-weight: 600;
+      color: var(--secondary-color);
+      font-size: 0.95rem;
+      text-decoration: none;
+    }
+    .recent-dir-name:hover { text-decoration: underline; }
+    .recent-dir-meta {
+      font-size: 0.78rem;
+      color: #888;
+    }
+    .recent-dir-msg {
+      font-size: 0.82rem;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .recent-dirs-empty {
+      color: #aaa;
+      font-style: italic;
+      font-size: 0.9rem;
+    }
     /* Footer */
     .main-footer {
       background: var(--primary-color);
@@ -408,6 +469,14 @@
     </div>
   </div>
 
+  <!-- Recently Edited Directories -->
+  <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
+    <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
+    <ul class="recent-dirs-list" id="recentDirsList">
+      <li class="recent-dirs-empty">Loading&hellip;</li>
+    </ul>
+  </section>
+
   <!-- Main Project Container -->
   <main>
     <div id="projectContainer" class="project-container"></div>
@@ -428,6 +497,43 @@
    * Object Mapping, IIFE, Interfaces, Cache Management, Bitwise Operations, and more.
    */
   'use strict';
+
+  // ============================================================================
+  // Recently Edited Directories Loader
+  // ============================================================================
+  async function loadRecentDirs() {
+    const list = document.getElementById('recentDirsList');
+    if (!list) return;
+    try {
+      const resp = await fetch('./recent_dirs.json');
+      if (!resp.ok) throw new Error('fetch failed');
+      const dirs = await resp.json();
+      if (!Array.isArray(dirs) || dirs.length === 0) {
+        list.innerHTML = '<li class="recent-dirs-empty">No recently edited directories found.</li>';
+        return;
+      }
+      list.innerHTML = dirs.map(d => {
+        const date = d.lastCommitDate
+          ? new Date(d.lastCommitDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+          : '';
+        const sha = d.lastCommitSha ? `<span title="Commit ${d.lastCommitSha}">#${d.lastCommitSha}</span>` : '';
+        const msg = d.lastCommitMessage
+          ? `<div class="recent-dir-msg" title="${d.lastCommitMessage.replace(/"/g, '&quot;')}">${d.lastCommitMessage}</div>`
+          : '';
+        return `<li class="recent-dir-item">
+          <a class="recent-dir-name" href="${d.path}">
+            <i class="fas fa-folder me-1"></i>${d.name}
+          </a>
+          <div class="recent-dir-meta">${date}${sha ? ' &bull; ' + sha : ''}</div>
+          ${msg}
+        </li>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = '<li class="recent-dirs-empty">Could not load recently edited directories.</li>';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadRecentDirs);
 
   // ============================================================================
   // IIFE Module: Configuration & Constants
