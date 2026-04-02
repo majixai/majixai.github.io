@@ -759,6 +759,22 @@
     return map[(cat || '').toLowerCase()] || 'cat-default';
   }
 
+  // ---- Constants ----
+  const RECENT_DIRS = Object.freeze({
+    // Upgrade hint age thresholds (days)
+    AGE_STALE_DAYS:     180,   // trigger "Maintenance needed"
+    AGE_REVIEW_DAYS:    60,    // trigger "Consider review"
+    AGE_ACTIVE_DAYS:    7,     // trigger "Active — add tests"
+    // Progressive card stagger (applied to the first N cards)
+    STAGGER_CARD_COUNT: 8,     // cards beyond this index render immediately
+    STAGGER_DELAY_MS:   18,    // base ms multiplied by card index for stagger
+    // Upgrade pills: how many to show before "more" button
+    MAX_VISIBLE_PILLS:  2,
+    // Progress bar: render-stage range (start% to start%+range%)
+    RENDER_STAGE_START: 66,
+    RENDER_STAGE_RANGE: 24
+  });
+
   // ---- Stage helpers ----
 
   function setRecentDirsProgress(label, pct) {
@@ -786,9 +802,9 @@
       const ageDays = d.lastCommitDate
         ? (Date.now() - new Date(d.lastCommitDate).getTime()) / 86400000
         : Infinity;
-      if (ageDays > 180)            hints.push('Maintenance needed');
-      else if (ageDays > 60)        hints.push('Consider review');
-      if (ageDays <= 7)             hints.push('Active — add tests');
+      if (ageDays > RECENT_DIRS.AGE_STALE_DAYS)            hints.push('Maintenance needed');
+      else if (ageDays > RECENT_DIRS.AGE_REVIEW_DAYS)        hints.push('Consider review');
+      if (ageDays <= RECENT_DIRS.AGE_ACTIVE_DAYS)             hints.push('Active — add tests');
       const msg = (d.lastCommitMessage || '').toLowerCase();
       if (/\b(create|init|initial)\b/.test(msg)) hints.push('Add documentation');
       if (/\b(fix|bug|patch|hotfix)\b/.test(msg)) hints.push('Add regression tests');
@@ -806,8 +822,10 @@
       const d     = dirs[i];
       const proj  = projMap[d.name.toLowerCase()] || null;
       const hints = upgradesMap[d.name.toLowerCase()] || [];
-      // Stagger first few cards for a progressive-load feel; rest are immediate
-      if (i > 0 && i < 8) await new Promise(r => setTimeout(r, 18 * i));
+      // Stagger first STAGGER_CARD_COUNT cards for a progressive-load feel; rest are immediate
+      if (i > 0 && i < RECENT_DIRS.STAGGER_CARD_COUNT) {
+        await new Promise(r => setTimeout(r, RECENT_DIRS.STAGGER_DELAY_MS * i));
+      }
       yield { html: buildRecentDirCard(d, proj, hints, i), index: i, total: dirs.length };
     }
   }
@@ -832,7 +850,7 @@
     const allPills = [...hintPills, ...recPills];
     if (allPills.length === 0) return '';
 
-    const MAX_VISIBLE = 2;
+    const MAX_VISIBLE = RECENT_DIRS.MAX_VISIBLE_PILLS;
     const visible = allPills.slice(0, MAX_VISIBLE).join('');
     const overflow = allPills.slice(MAX_VISIBLE);
     const overflowId = `upgradeMore-${idx}`;
@@ -978,11 +996,14 @@
       const upgradesMap = await deriveUpgradesMap(dirs);
 
       // Stage 4: Progressive card rendering via async generator
-      setRecentDirsProgress('Rendering directory cards…', 66);
+      setRecentDirsProgress('Rendering directory cards…', RECENT_DIRS.RENDER_STAGE_START);
       list.innerHTML = '';
       for await (const { html, index, total } of asyncDirCardGenerator(dirs, projMap, upgradesMap)) {
         list.insertAdjacentHTML('beforeend', html);
-        setRecentDirsProgress(`Rendering card ${index + 1} of ${total}…`, 66 + Math.round(((index + 1) / total) * 24));
+        setRecentDirsProgress(
+          `Rendering card ${index + 1} of ${total}…`,
+          RECENT_DIRS.RENDER_STAGE_START + Math.round(((index + 1) / total) * RECENT_DIRS.RENDER_STAGE_RANGE)
+        );
       }
 
       // Stage 5: Wire up filter/sort controls
