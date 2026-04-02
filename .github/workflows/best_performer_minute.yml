@@ -322,8 +322,7 @@ jobs:
           #   best/*.dat                             (any other generated .dat files)
           git add best/ || true
 
-          # Default to 0 so CHANGED_COUNT is always defined (used in commit message)
-          CHANGED_COUNT=0
+          # Default to 0 so CHANGED_COUNT is always defined (used in the commit message step)
           echo "CHANGED_COUNT=0" >> $GITHUB_ENV
 
           # Check if there's anything to commit
@@ -332,10 +331,10 @@ jobs:
             echo "No changes detected under best/ in this cycle."
           else
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
-            # Report exactly what changed for transparency in the commit log
             CHANGED_COUNT=$(git diff --staged --name-only | wc -l | tr -d ' ')
             echo "CHANGED_COUNT=$CHANGED_COUNT" >> $GITHUB_ENV
             echo "Modifications detected ($CHANGED_COUNT file(s)). Preparing for commit."
+            # Log up to 20 changed filenames for transparency in the run log
             git diff --staged --name-only | head -20
           fi
 
