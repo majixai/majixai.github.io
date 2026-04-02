@@ -78,7 +78,7 @@ class UIManager {
         }
 
         userElement.innerHTML = `
-            <div class="user-image-container slideshow-carousel" data-images='[]' data-idx="0">
+            <div class="user-image-container slideshow-carousel" data-images='[]'>
                 <img src="${user.image_url}" alt="${user.username} thumbnail" loading="lazy" class="w3-image slide-img" style="cursor:zoom-in;">
                 <div class="slide-progress"></div>
                 <span class="slide-counter" style="display:none;">1/1</span>

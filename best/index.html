@@ -770,6 +770,7 @@ function openSingleModal(item, images) {
   } else {
       document.getElementById('modalProg').style.width = '0%';
       // Single image — add subtle Ken Burns animation
+      // void forces a layout reflow so the browser restarts the animation cleanly
       void document.getElementById('modalImg').offsetWidth;
       document.getElementById('modalImg').style.animation = 'kenBurns 8s ease-in-out infinite alternate';
   }
