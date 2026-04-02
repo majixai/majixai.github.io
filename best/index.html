@@ -312,20 +312,17 @@ const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 function calculateDaysUntilBirthday(mmdd) {
     if (!mmdd) return 999;
     const today = new Date();
-    // Simulate current context provided: March 28, 2026
-    const simToday = new Date(); 
     
     const [m, d] = mmdd.split('-');
-    let bday = new Date(simToday.getFullYear(), parseInt(m) - 1, parseInt(d));
+    let bday = new Date(today.getFullYear(), parseInt(m) - 1, parseInt(d));
     
-    if (simToday.getTime() > bday.getTime()) {
-        bday.setFullYear(simToday.getFullYear() + 1);
+    if (today.getTime() > bday.getTime()) {
+        bday.setFullYear(today.getFullYear() + 1);
     }
-    return Math.ceil((bday.getTime() - simToday.getTime()) / (1000 * 3600 * 24));
+    return Math.ceil((bday.getTime() - today.getTime()) / (1000 * 3600 * 24));
 }
 
 function formatDaysAgo(timestamp) {
-    // Current simulated date: Mar 28, 2026 
     const now = new Date().getTime();
     const diffDays = Math.floor((now - timestamp) / (1000 * 3600 * 24));
     if(diffDays === 0) return "Today";
@@ -396,7 +393,6 @@ async function fetchAndDecompress() {
     
     // Deduplication & Mock Data Injection
     const uniqueMap = new Map();
-    // Simulate Current Base Time: March 28, 2026
     const baseTime = new Date().getTime();
     
     (data.items ||[]).forEach(item => {
