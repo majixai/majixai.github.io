@@ -906,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgEl = document.getElementById('modalImg');
             const iframeEl = document.getElementById('modalLiveIframe');
             if (_modalLiveMode) {
-                const username = document.getElementById('modalUsername').innerText.replace('@','').trim();
+                const username = encodeURIComponent(document.getElementById('modalUsername').innerText.replace('@','').trim());
                 iframeEl.src = `https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&room=${username}`;
                 imgEl.style.display = 'none';
                 iframeEl.style.display = 'block';
