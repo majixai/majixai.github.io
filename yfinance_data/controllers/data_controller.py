@@ -97,7 +97,7 @@ class FetchProgress:
 @dataclass
 class FetchConfig:
     """Configuration for data fetch operations."""
-    period: str = "2y"
+    period: str = "5y"
     interval: str = "1d"
     batch_size: int = 50
     max_workers: int = 8

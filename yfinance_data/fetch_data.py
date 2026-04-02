@@ -25,6 +25,7 @@ import requests
 import json
 import sys
 import time
+import threading
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass, field
@@ -56,7 +57,7 @@ DB_NAME = "yfinance.db"
 COMPRESSED_DB_NAME = "yfinance_data/yfinance.dat"
 
 # Configuration defaults
-DEFAULT_PERIOD = "2y"
+DEFAULT_PERIOD = "5y"
 DEFAULT_INTERVAL = "1d"
 MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 2.0
@@ -269,7 +270,7 @@ def fetch_and_store_data(
     
     start_time = time.time()
     conn = create_database()
-    conn_lock = __import__('threading').Lock()
+    conn_lock = threading.Lock()
 
     results: List[FetchResult] = []
     total_records = 0

@@ -56,8 +56,8 @@ def main():
     )
     parser.add_argument(
         "--period",
-        default="2y",
-        help="Data period (e.g., '1y', '2y', '6mo', '1mo'). Default: 2y"
+        default="5y",
+        help="Data period (e.g., '1y', '2y', '5y', '10y', 'max'). Default: 5y"
     )
     parser.add_argument(
         "--interval",

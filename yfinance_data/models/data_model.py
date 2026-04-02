@@ -58,7 +58,7 @@ class DataModel:
     def fetch_ticker_data(
         self,
         ticker: str,
-        period: str = "2y",
+        period: str = "5y",
         interval: str = "1d"
     ) -> Optional[pd.DataFrame]:
         """
@@ -104,7 +104,7 @@ class DataModel:
     def fetch_multiple_tickers(
         self,
         tickers: List[str],
-        period: str = "2y",
+        period: str = "5y",
         interval: str = "1d"
     ) -> Dict[str, pd.DataFrame]:
         """
