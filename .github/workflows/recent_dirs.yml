@@ -5,6 +5,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      author:
+        description: 'GitHub username to filter commits by'
+        required: false
+        default: 'majixai'
   schedule:
     - cron: '0 * * * *'
 
@@ -23,14 +28,15 @@ jobs:
           fetch-depth: 0
 
       - name: Generate recent_dirs.json
+        env:
+          AUTHOR: ${{ github.event.inputs.author || 'majixai' }}
         run: |
           python3 << 'EOF'
           import subprocess
           import json
           import os
-          from datetime import timezone
 
-          AUTHOR = 'majixai'
+          AUTHOR = os.environ.get('AUTHOR', 'majixai')
           TOP_N = 20
           EXCLUDE = {'.git', '.github', '__pycache__', 'node_modules', 'icons', '.vscode'}
 

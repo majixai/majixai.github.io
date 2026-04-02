@@ -501,6 +501,14 @@
   // ============================================================================
   // Recently Edited Directories Loader
   // ============================================================================
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
   async function loadRecentDirs() {
     const list = document.getElementById('recentDirsList');
     if (!list) return;
@@ -516,9 +524,11 @@
         const date = d.lastCommitDate
           ? new Date(d.lastCommitDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
           : '';
-        const sha = d.lastCommitSha ? `<span title="Commit ${d.lastCommitSha}">#${d.lastCommitSha}</span>` : '';
+        const sha = d.lastCommitSha
+          ? `<span title="Commit ${escHtml(d.lastCommitSha)}">#${escHtml(d.lastCommitSha)}</span>`
+          : '';
         const msg = d.lastCommitMessage
-          ? `<div class="recent-dir-msg" title="${d.lastCommitMessage.replace(/"/g, '&quot;')}">${d.lastCommitMessage}</div>`
+          ? `<div class="recent-dir-msg" title="${escHtml(d.lastCommitMessage)}">${escHtml(d.lastCommitMessage)}</div>`
           : '';
         return `<li class="recent-dir-item">
           <a class="recent-dir-name" href="${d.path}">
