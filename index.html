@@ -276,7 +276,52 @@
       font-size: 1.25rem;
       font-weight: 600;
       color: var(--primary-color);
+      margin-bottom: 0.75rem;
+    }
+    .recent-dirs-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
       margin-bottom: 1rem;
+    }
+    .recent-dirs-search {
+      flex: 1 1 180px;
+      max-width: 280px;
+      padding: 0.35rem 0.75rem;
+      border: 1px solid #ccd4e0;
+      border-radius: 1.5rem;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .recent-dirs-search:focus { border-color: var(--secondary-color); }
+    .recent-dirs-sort {
+      padding: 0.35rem 0.75rem;
+      border: 1px solid #ccd4e0;
+      border-radius: 1.5rem;
+      font-size: 0.85rem;
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .recent-dirs-sort:focus { border-color: var(--secondary-color); }
+    .recent-dirs-filter-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 1rem;
+      border: 1px solid #ccd4e0;
+      background: #fff;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .recent-dirs-filter-badge.active,
+    .recent-dirs-filter-badge:hover {
+      background: var(--secondary-color);
+      color: #fff;
+      border-color: var(--secondary-color);
     }
     .recent-dirs-list {
       display: flex;
@@ -291,30 +336,74 @@
       border: 1px solid #dde3ec;
       border-radius: 0.6rem;
       padding: 0.6rem 1rem;
-      min-width: 220px;
-      max-width: 320px;
-      flex: 1 1 220px;
+      min-width: 240px;
+      max-width: 340px;
+      flex: 1 1 240px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.07);
       transition: box-shadow 0.2s, border-color 0.2s;
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.25rem;
     }
     .recent-dir-item:hover {
       box-shadow: 0 4px 14px rgba(0,0,0,0.13);
       border-color: var(--secondary-color);
+    }
+    .recent-dir-item.hidden { display: none; }
+    .recent-dir-header {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
     }
     .recent-dir-name {
       font-weight: 600;
       color: var(--secondary-color);
       font-size: 0.95rem;
       text-decoration: none;
+      flex: 1 1 auto;
     }
     .recent-dir-name:hover { text-decoration: underline; }
+    .recent-dir-badge-new {
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+      border-radius: 0.9rem;
+      padding: 0.05rem 0.45rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .recent-dir-cat-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      border-radius: 0.9rem;
+      padding: 0.05rem 0.5rem;
+      white-space: nowrap;
+      text-transform: capitalize;
+    }
+    .cat-finance   { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .cat-gaming    { background: #fce4ec; color: #880e4f; border: 1px solid #f48fb1; }
+    .cat-tools     { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+    .cat-data      { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+    .cat-ai        { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
+    .cat-default   { background: #f5f5f5; color: #616161; border: 1px solid #bdbdbd; }
     .recent-dir-meta {
       font-size: 0.78rem;
       color: #888;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      flex-wrap: wrap;
     }
+    .recent-dir-sha-link {
+      color: #888;
+      text-decoration: none;
+      font-family: monospace;
+      font-size: 0.75rem;
+    }
+    .recent-dir-sha-link:hover { color: var(--secondary-color); text-decoration: underline; }
     .recent-dir-msg {
       font-size: 0.82rem;
       color: #555;
@@ -322,10 +411,132 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .recent-dir-desc {
+      font-size: 0.8rem;
+      color: #666;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .recent-dir-expand-btn {
+      font-size: 0.75rem;
+      color: var(--secondary-color);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 0.1rem;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .recent-dir-expand-btn:hover { text-decoration: underline; }
+    .recent-dir-details {
+      display: none;
+      margin-top: 0.35rem;
+      padding-top: 0.35rem;
+      border-top: 1px dashed #e0e0e0;
+      font-size: 0.78rem;
+      color: #444;
+    }
+    .recent-dir-details.open { display: block; }
+    .recent-dir-details ul {
+      margin: 0.15rem 0 0.25rem 1.1rem;
+      padding: 0;
+    }
+    .recent-dir-details li { margin-bottom: 0.1rem; }
+    .recent-dir-details strong { color: var(--primary-color); }
     .recent-dirs-empty {
       color: #aaa;
       font-style: italic;
       font-size: 0.9rem;
+    }
+    /* Loading progress bar */
+    .recent-dirs-progress {
+      display: none;
+      margin-bottom: 0.85rem;
+    }
+    .recent-dirs-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+    .recent-dirs-progress-track {
+      height: 4px;
+      background: #e8eaf0;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .recent-dirs-progress-fill {
+      height: 100%;
+      background: var(--secondary-color);
+      border-radius: 2px;
+      transition: width 0.35s ease;
+      width: 0%;
+    }
+    /* Recommended Upgrades inline section */
+    .recent-dir-upgrades {
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid #f0f2f7;
+    }
+    .recent-dir-upgrades-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #7c88a0;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .recent-dir-upgrades-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .upgrade-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      background: #f0f7ff;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+      border-radius: 0.9rem;
+      font-size: 0.68rem;
+      padding: 0.1rem 0.5rem;
+      white-space: nowrap;
+    }
+    .upgrade-pill.hint {
+      background: #fff8e1;
+      color: #e65100;
+      border-color: #ffcc80;
+    }
+    .upgrade-pill-more {
+      background: none;
+      border: none;
+      color: var(--secondary-color);
+      font-size: 0.68rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline dotted;
+      white-space: nowrap;
+    }
+    .upgrade-pill-more:hover { opacity: 0.75; }
+    .upgrade-pills-overflow {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .upgrade-pills-overflow.open {
+      display: contents;
     }
     /* Footer */
     .main-footer {
@@ -472,6 +683,23 @@
   <!-- Recently Edited Directories -->
   <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
     <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
+    <div class="recent-dirs-progress" id="recentDirsProgress" aria-live="polite" aria-label="Loading progress">
+      <div class="recent-dirs-progress-label">
+        <span id="recentDirsProgressLabel">Initializing&hellip;</span>
+        <span id="recentDirsProgressPct">0%</span>
+      </div>
+      <div class="recent-dirs-progress-track">
+        <div class="recent-dirs-progress-fill" id="recentDirsProgressFill"></div>
+      </div>
+    </div>
+    <div class="recent-dirs-controls" id="recentDirsControls" style="display:none">
+      <input class="recent-dirs-search" id="recentDirsSearch" type="search" placeholder="Search directories&hellip;" aria-label="Search directories">
+      <select class="recent-dirs-sort" id="recentDirsSort" aria-label="Sort order">
+        <option value="date">Sort: Newest first</option>
+        <option value="name">Sort: A &ndash; Z</option>
+      </select>
+      <span id="recentDirsCatFilters"></span>
+    </div>
     <ul class="recent-dirs-list" id="recentDirsList">
       <li class="recent-dirs-empty">Loading&hellip;</li>
     </ul>
@@ -499,7 +727,7 @@
   'use strict';
 
   // ============================================================================
-  // Recently Edited Directories Loader
+  // Recently Edited Directories Loader (Enhanced — multi-stage async pipeline)
   // ============================================================================
   function escHtml(str) {
     return String(str)
@@ -509,38 +737,343 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+
+  function relativeTime(isoDate) {
+    if (!isoDate) return '';
+    const diff = Date.now() - new Date(isoDate).getTime();
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+    if (mins < 1)   return 'just now';
+    if (mins < 60)  return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 30)  return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months}mo ago`;
+    return `${Math.floor(months / 12)}y ago`;
+  }
+
+  function catBadgeClass(cat) {
+    const map = { finance: 'cat-finance', gaming: 'cat-gaming', tools: 'cat-tools',
+                  data: 'cat-data', ai: 'cat-ai' };
+    return map[(cat || '').toLowerCase()] || 'cat-default';
+  }
+
+  // ---- Constants ----
+  const RECENT_DIRS = Object.freeze({
+    // Upgrade hint age thresholds (days)
+    AGE_STALE_DAYS:     180,   // trigger "Maintenance needed"
+    AGE_REVIEW_DAYS:    60,    // trigger "Consider review"
+    AGE_ACTIVE_DAYS:    7,     // trigger "Active — add tests"
+    // Progressive card stagger (applied to the first N cards)
+    STAGGER_CARD_COUNT: 8,     // cards beyond this index render immediately
+    STAGGER_DELAY_MS:   18,    // base ms multiplied by card index for stagger
+    // Upgrade pills: how many to show before "more" button
+    MAX_VISIBLE_PILLS:  2,
+    // Progress bar: render-stage range (start% to start%+range%)
+    RENDER_STAGE_START: 66,
+    RENDER_STAGE_RANGE: 24
+  });
+
+  // ---- Stage helpers ----
+
+  function setRecentDirsProgress(label, pct) {
+    const prog  = document.getElementById('recentDirsProgress');
+    const lblEl = document.getElementById('recentDirsProgressLabel');
+    const pctEl = document.getElementById('recentDirsProgressPct');
+    const fill  = document.getElementById('recentDirsProgressFill');
+    if (!prog) return;
+    if (prog.style.display === 'none' || prog.style.display === '') prog.style.display = '';
+    if (lblEl) lblEl.textContent = label;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (fill)  fill.style.width  = `${Math.min(pct, 100)}%`;
+    if (pct >= 100) {
+      setTimeout(() => { if (prog) prog.style.display = 'none'; }, 700);
+    }
+  }
+
+  // ---- Stage 3: derive context-aware upgrade hints from commit metadata ----
+
+  async function deriveUpgradesMap(dirs) {
+    await new Promise(r => setTimeout(r, 0)); // yield to event loop
+    const map = {};
+    for (const d of dirs) {
+      const hints = [];
+      const ageDays = d.lastCommitDate
+        ? (Date.now() - new Date(d.lastCommitDate).getTime()) / 86400000
+        : Infinity;
+      if (ageDays > RECENT_DIRS.AGE_STALE_DAYS)            hints.push('Maintenance needed');
+      else if (ageDays > RECENT_DIRS.AGE_REVIEW_DAYS)        hints.push('Consider review');
+      if (ageDays <= RECENT_DIRS.AGE_ACTIVE_DAYS)             hints.push('Active — add tests');
+      const msg = (d.lastCommitMessage || '').toLowerCase();
+      if (/\b(create|init|initial)\b/.test(msg)) hints.push('Add documentation');
+      if (/\b(fix|bug|patch|hotfix)\b/.test(msg)) hints.push('Add regression tests');
+      if (/\b(update|upgrade|bump)\b/.test(msg))  hints.push('Review dependencies');
+      if (/\b(feat|feature|add)\b/.test(msg))     hints.push('Update changelog');
+      map[d.name.toLowerCase()] = hints;
+    }
+    return map;
+  }
+
+  // ---- Stage 4: async generator for progressive card rendering ----
+
+  async function* asyncDirCardGenerator(dirs, projMap, upgradesMap) {
+    for (let i = 0; i < dirs.length; i++) {
+      const d     = dirs[i];
+      const proj  = projMap[d.name.toLowerCase()] || null;
+      const hints = upgradesMap[d.name.toLowerCase()] || [];
+      // Stagger first STAGGER_CARD_COUNT cards for a progressive-load feel; rest are immediate
+      if (i > 0 && i < RECENT_DIRS.STAGGER_CARD_COUNT) {
+        await new Promise(r => setTimeout(r, RECENT_DIRS.STAGGER_DELAY_MS * i));
+      }
+      yield { html: buildRecentDirCard(d, proj, hints, i), index: i, total: dirs.length };
+    }
+  }
+
+  // ---- Card building ----
+
+  function buildUpgradesSection(projRecs, hints, idx) {
+    // Combine hint pills (amber) + project-recommendation pills (blue), deduplicated
+    const seen = new Set();
+    const hintPills = hints.filter(h => {
+      if (seen.has(h.toLowerCase())) return false;
+      seen.add(h.toLowerCase()); return true;
+    }).map(h =>
+      `<span class="upgrade-pill hint"><i class="fas fa-arrow-trend-up" style="font-size:0.6rem"></i>${escHtml(h)}</span>`
+    );
+    const recPills = projRecs.filter(r => {
+      if (seen.has(r.toLowerCase())) return false;
+      seen.add(r.toLowerCase()); return true;
+    }).map(r =>
+      `<span class="upgrade-pill"><i class="fas fa-arrow-up" style="font-size:0.6rem"></i>${escHtml(r)}</span>`
+    );
+    const allPills = [...hintPills, ...recPills];
+    if (allPills.length === 0) return '';
+
+    const MAX_VISIBLE = RECENT_DIRS.MAX_VISIBLE_PILLS;
+    const visible = allPills.slice(0, MAX_VISIBLE).join('');
+    const overflow = allPills.slice(MAX_VISIBLE);
+    const overflowId = `upgradeMore-${idx}`;
+    const moreBtn = overflow.length > 0
+      ? `<button class="upgrade-pill-more" aria-expanded="false" aria-controls="${overflowId}"
+             onclick="toggleUpgradeMore('${overflowId}', this)">+${overflow.length} more</button>
+         <span id="${overflowId}" class="upgrade-pills-overflow">${overflow.join('')}</span>`
+      : '';
+
+    return `<div class="recent-dir-upgrades">
+      <div class="recent-dir-upgrades-title">
+        <i class="fas fa-circle-up" style="color:var(--secondary-color);font-size:0.65rem"></i>Recommended Upgrades
+      </div>
+      <div class="recent-dir-upgrades-pills">${visible}${moreBtn}</div>
+    </div>`;
+  }
+
+  function buildRecentDirCard(d, proj, hints, idx) {
+    const isNew = d.lastCommitDate
+      ? (Date.now() - new Date(d.lastCommitDate).getTime()) < 7 * 86400000
+      : false;
+    const rel     = relativeTime(d.lastCommitDate);
+    const absDate = d.lastCommitDate
+      ? new Date(d.lastCommitDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : '';
+    const newBadge = isNew ? `<span class="recent-dir-badge-new" title="Updated in the last 7 days">NEW</span>` : '';
+    const cat      = proj ? proj.category : '';
+    const catBadge = cat
+      ? `<span class="recent-dir-cat-badge ${catBadgeClass(cat)}" title="Category">${escHtml(cat)}</span>`
+      : '';
+    const shaLink  = d.lastCommitSha
+      ? `<a class="recent-dir-sha-link" href="https://github.com/majixai/majixai.github.io/commit/${escHtml(d.lastCommitSha)}" target="_blank" rel="noopener" title="View commit ${escHtml(d.lastCommitSha)}">#${escHtml(d.lastCommitSha)}</a>`
+      : '';
+    const msg = d.lastCommitMessage
+      ? `<div class="recent-dir-msg" title="${escHtml(d.lastCommitMessage)}"><i class="fas fa-code-commit me-1" style="font-size:0.7rem;opacity:0.6"></i>${escHtml(d.lastCommitMessage)}</div>`
+      : '';
+    const desc = proj && proj.desc && proj.desc !== 'No description'
+      ? `<div class="recent-dir-desc" title="${escHtml(proj.desc)}">${escHtml(proj.desc)}</div>`
+      : '';
+
+    // Recommended Upgrades section (always visible, inline pills)
+    const projRecs = proj && Array.isArray(proj.recommendations) ? proj.recommendations : [];
+    const upgradesSection = buildUpgradesSection(projRecs, hints, idx);
+
+    // Collapsible Recommendations & Enhancements panel (full detail)
+    const recs = projRecs;
+    const enhs = proj && Array.isArray(proj.enhancements) ? proj.enhancements : [];
+    const hasDetails = recs.length > 0 || enhs.length > 0;
+    const detailsId  = `rdDetails-${idx}`;
+    const expandBtn  = hasDetails
+      ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" aria-label="Show recommendations and enhancements for ${escHtml(d.name)}" onclick="toggleRecentDirDetails('${detailsId}', this)">
+           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Recommendations &amp; Enhancements
+         </button>`
+      : '';
+    let detailsHtml = '';
+    if (hasDetails) {
+      const recsHtml = recs.length
+        ? `<strong><i class="fas fa-lightbulb me-1" style="color:#f0a500"></i>Recommendations</strong><ul>${recs.map(r => `<li>${escHtml(r)}</li>`).join('')}</ul>`
+        : '';
+      const enhsHtml = enhs.length
+        ? `<strong><i class="fas fa-rocket me-1" style="color:var(--secondary-color)"></i>Enhancements</strong><ul>${enhs.map(e => `<li>${escHtml(e)}</li>`).join('')}</ul>`
+        : '';
+      detailsHtml = `<div class="recent-dir-details" id="${detailsId}">${recsHtml}${enhsHtml}</div>`;
+    }
+
+    return `<li class="recent-dir-item" data-name="${escHtml(d.name.toLowerCase())}" data-cat="${escHtml(cat.toLowerCase())}" data-date="${escHtml(d.lastCommitDate || '')}">
+      <div class="recent-dir-header">
+        <a class="recent-dir-name" href="${escHtml(d.path)}">
+          <i class="fas fa-folder me-1"></i>${escHtml(d.name)}
+        </a>
+        ${newBadge}${catBadge}
+      </div>
+      <div class="recent-dir-meta">
+        <span title="${absDate}"><i class="fas fa-clock me-1" style="opacity:0.55"></i>${escHtml(rel || absDate)}</span>
+        ${shaLink ? `<span>&bull;</span>${shaLink}` : ''}
+      </div>
+      ${desc}
+      ${msg}
+      ${upgradesSection}
+      ${expandBtn}
+      ${detailsHtml}
+    </li>`;
+  }
+
+  function toggleRecentDirDetails(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const icon = btn.querySelector('i');
+    const open = el.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open);
+    if (icon) icon.style.transform = open ? 'rotate(90deg)' : '';
+  }
+
+  function toggleUpgradeMore(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const opening = !el.classList.contains('open');
+    el.classList.toggle('open', opening);
+    const count = el.querySelectorAll('.upgrade-pill').length;
+    btn.textContent = opening ? 'less' : `+${count} more`;
+    btn.setAttribute('aria-expanded', opening);
+  }
+
+  // ---- Main loader (5-stage async pipeline) ----
+
   async function loadRecentDirs() {
     const list = document.getElementById('recentDirsList');
     if (!list) return;
+    setRecentDirsProgress('Fetching directory data…', 10);
     try {
-      const resp = await fetch('./recent_dirs.json');
-      if (!resp.ok) throw new Error('fetch failed');
-      const dirs = await resp.json();
+      // Stage 1: Parallel fetch of recent_dirs.json + projects.json
+      const [recentResp, projResp] = await Promise.allSettled([
+        fetch('./recent_dirs.json'),
+        fetch('./projects.json')
+      ]);
+
+      if (recentResp.status === 'rejected' || !recentResp.value.ok) {
+        throw new Error('fetch recent_dirs failed');
+      }
+
+      // Stage 2: Parse & build project lookup map
+      setRecentDirsProgress('Parsing directory list…', 28);
+      const dirs = await recentResp.value.json();
       if (!Array.isArray(dirs) || dirs.length === 0) {
         list.innerHTML = '<li class="recent-dirs-empty">No recently edited directories found.</li>';
+        setRecentDirsProgress('Done', 100);
         return;
       }
-      list.innerHTML = dirs.map(d => {
-        const date = d.lastCommitDate
-          ? new Date(d.lastCommitDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-          : '';
-        const sha = d.lastCommitSha
-          ? `<span title="Commit ${escHtml(d.lastCommitSha)}">#${escHtml(d.lastCommitSha)}</span>`
-          : '';
-        const msg = d.lastCommitMessage
-          ? `<div class="recent-dir-msg" title="${escHtml(d.lastCommitMessage)}">${escHtml(d.lastCommitMessage)}</div>`
-          : '';
-        return `<li class="recent-dir-item">
-          <a class="recent-dir-name" href="${d.path}">
-            <i class="fas fa-folder me-1"></i>${d.name}
-          </a>
-          <div class="recent-dir-meta">${date}${sha ? ' &bull; ' + sha : ''}</div>
-          ${msg}
-        </li>`;
-      }).join('');
+
+      setRecentDirsProgress('Loading project metadata…', 42);
+      const projMap = {};
+      if (projResp.status === 'fulfilled' && projResp.value.ok) {
+        try {
+          const projects = await projResp.value.json();
+          if (Array.isArray(projects)) {
+            projects.forEach(p => { if (p.name) projMap[p.name.toLowerCase()] = p; });
+          }
+        } catch (_) { /* projects.json optional */ }
+      }
+
+      // Stage 3: Async enrichment — derive context-aware upgrade hints
+      setRecentDirsProgress('Computing upgrade recommendations…', 56);
+      const upgradesMap = await deriveUpgradesMap(dirs);
+
+      // Stage 4: Progressive card rendering via async generator
+      setRecentDirsProgress('Rendering directory cards…', RECENT_DIRS.RENDER_STAGE_START);
+      list.innerHTML = '';
+      for await (const { html, index, total } of asyncDirCardGenerator(dirs, projMap, upgradesMap)) {
+        list.insertAdjacentHTML('beforeend', html);
+        setRecentDirsProgress(
+          `Rendering card ${index + 1} of ${total}…`,
+          RECENT_DIRS.RENDER_STAGE_START + Math.round(((index + 1) / total) * RECENT_DIRS.RENDER_STAGE_RANGE)
+        );
+      }
+
+      // Stage 5: Wire up filter/sort controls
+      setRecentDirsProgress('Finalizing controls…', 92);
+      const cats = [...new Set(dirs.map(d => {
+        const p = projMap[d.name.toLowerCase()];
+        return p ? (p.category || '').toLowerCase() : '';
+      }).filter(Boolean))].sort();
+
+      const controls = document.getElementById('recentDirsControls');
+      const filtersEl = document.getElementById('recentDirsCatFilters');
+      if (controls) controls.style.display = '';
+
+      if (filtersEl && cats.length > 0) {
+        const allBtn = `<button class="recent-dirs-filter-badge active" data-cat="" onclick="filterRecentDirsCat(this)">All</button>`;
+        filtersEl.innerHTML = allBtn + cats.map(c =>
+          `<button class="recent-dirs-filter-badge" data-cat="${escHtml(c)}" onclick="filterRecentDirsCat(this)">${escHtml(c)}</button>`
+        ).join('');
+      }
+
+      const searchInput = document.getElementById('recentDirsSearch');
+      if (searchInput) searchInput.addEventListener('input', applyRecentDirsFilters);
+      const sortSelect = document.getElementById('recentDirsSort');
+      if (sortSelect) sortSelect.addEventListener('change', applyRecentDirsFilters);
+
+      setRecentDirsProgress('Done', 100);
     } catch (e) {
       list.innerHTML = '<li class="recent-dirs-empty">Could not load recently edited directories.</li>';
+      setRecentDirsProgress('Error', 100);
     }
+  }
+
+  function filterRecentDirsCat(btn) {
+    const filtersEl = document.getElementById('recentDirsCatFilters');
+    if (filtersEl) {
+      filtersEl.querySelectorAll('.recent-dirs-filter-badge').forEach(b => b.classList.remove('active'));
+    }
+    btn.classList.add('active');
+    applyRecentDirsFilters();
+  }
+
+  function applyRecentDirsFilters() {
+    const list = document.getElementById('recentDirsList');
+    if (!list) return;
+    const searchInput = document.getElementById('recentDirsSearch');
+    const sortSelect  = document.getElementById('recentDirsSort');
+    const filtersEl   = document.getElementById('recentDirsCatFilters');
+    const query  = (searchInput ? searchInput.value.trim().toLowerCase() : '');
+    const sortBy = sortSelect ? sortSelect.value : 'date';
+    const activeBtn = filtersEl ? filtersEl.querySelector('.recent-dirs-filter-badge.active') : null;
+    const catFilter = activeBtn ? (activeBtn.dataset.cat || '') : '';
+
+    const items = [...list.querySelectorAll('li.recent-dir-item')];
+    items.forEach(li => {
+      const name = li.dataset.name || '';
+      const cat  = li.dataset.cat  || '';
+      const matchesSearch = !query || name.includes(query);
+      const matchesCat    = !catFilter || cat === catFilter;
+      li.classList.toggle('hidden', !(matchesSearch && matchesCat));
+    });
+
+    // Sort visible items
+    const visible = items.filter(li => !li.classList.contains('hidden'));
+    visible.sort((a, b) => {
+      if (sortBy === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
+      const da = a.dataset.date ? new Date(a.dataset.date).getTime() : 0;
+      const db = b.dataset.date ? new Date(b.dataset.date).getTime() : 0;
+      return db - da;
+    });
+    visible.forEach(li => list.appendChild(li));
   }
 
   document.addEventListener('DOMContentLoaded', loadRecentDirs);
