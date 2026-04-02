@@ -95,6 +95,10 @@
         display: none; transition: transform 0.2s;
     }
     #fabMultiPlay:hover { transform: scale(1.05); }
+  @keyframes kenBurns {
+    from { transform: scale(1);    transform-origin: center center; }
+    to   { transform: scale(1.08); transform-origin: 60% 40%; }
+  }
   </style>
 </head>
 <body>
@@ -226,6 +230,7 @@
         <div class="progress-bar-custom"><div class="progress-fill" id="modalProg"></div></div>
         <div style="height: 60vh; min-height: 400px; display: flex; justify-content: center; align-items: center;">
             <img id="modalImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+            <iframe id="modalLiveIframe" src="about:blank" style="display:none;width:100%;height:60vh;border:none;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads"></iframe>
         </div>
         <div class="position-absolute bottom-0 w-100 p-3 pt-5 pb-4" style="background: linear-gradient(transparent, rgba(0,0,0,0.95));">
           <p class="text-uppercase text-info mb-2 fw-bold" style="font-size: 0.75rem; letter-spacing: 1px;">
@@ -236,6 +241,7 @@
       </div>
       <div class="modal-footer border-secondary justify-content-between" style="background: #11141a;">
         <span id="modalImageCounter" class="text-muted small">Image 1 of X</span>
+        <button id="modalWatchLiveBtn" class="btn btn-sm btn-outline-success">📺 Watch Live</button>
         <span id="modalMlStatus" class="text-success fw-bold" style="font-size: 0.85rem;">Neural Engine: Awaiting Input</span>
       </div>
     </div>
@@ -744,6 +750,7 @@ function openSingleModal(item, images) {
   });
 
   clearInterval(state.singleModalInterval);
+  document.getElementById('modalImg').style.animation = 'none';
   let idx = 0;
   if(images.length > 1) {
       const progBar = document.getElementById('modalProg');
@@ -762,11 +769,25 @@ function openSingleModal(item, images) {
       state.singleModalInterval = setInterval(step, 4000);
   } else {
       document.getElementById('modalProg').style.width = '0%';
+      // Single image — add subtle Ken Burns animation
+      // void forces a layout reflow so the browser restarts the animation cleanly
+      void document.getElementById('modalImg').offsetWidth;
+      document.getElementById('modalImg').style.animation = 'kenBurns 8s ease-in-out infinite alternate';
   }
 
   if(!state.singleModalObj) {
       state.singleModalObj = new bootstrap.Modal(document.getElementById('performerModal'));
-      document.getElementById('performerModal').addEventListener('hidden.bs.modal', () => clearInterval(state.singleModalInterval));
+      document.getElementById('performerModal').addEventListener('hidden.bs.modal', () => {
+          clearInterval(state.singleModalInterval);
+          // Reset live mode
+          _modalLiveMode = false;
+          const btn = document.getElementById('modalWatchLiveBtn');
+          if (btn) { btn.innerText = '📺 Watch Live'; btn.classList.remove('btn-success'); btn.classList.add('btn-outline-success'); }
+          const iframeEl = document.getElementById('modalLiveIframe');
+          if (iframeEl) { iframeEl.src = 'about:blank'; iframeEl.style.display = 'none'; }
+          const imgEl = document.getElementById('modalImg');
+          if (imgEl) { imgEl.style.display = 'block'; imgEl.style.animation = 'none'; }
+      });
   }
   state.singleModalObj.show();
 }
@@ -874,6 +895,36 @@ function updateStatus(msg, isLoading) {
 
 // Boot Sequence
 fetchAndDecompress();
+
+// Watch Live toggle in single modal
+let _modalLiveMode = false;
+document.addEventListener('DOMContentLoaded', () => {
+    const watchBtn = document.getElementById('modalWatchLiveBtn');
+    if (watchBtn) {
+        watchBtn.addEventListener('click', function() {
+            _modalLiveMode = !_modalLiveMode;
+            const imgEl = document.getElementById('modalImg');
+            const iframeEl = document.getElementById('modalLiveIframe');
+            if (_modalLiveMode) {
+                const username = encodeURIComponent(document.getElementById('modalUsername').innerText.replace('@','').trim());
+                iframeEl.src = `https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&room=${username}`;
+                imgEl.style.display = 'none';
+                iframeEl.style.display = 'block';
+                this.innerText = '📷 Show Images';
+                this.classList.remove('btn-outline-success');
+                this.classList.add('btn-success');
+                clearInterval(state.singleModalInterval);
+            } else {
+                iframeEl.src = 'about:blank';
+                iframeEl.style.display = 'none';
+                imgEl.style.display = 'block';
+                this.innerText = '📺 Watch Live';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-outline-success');
+            }
+        });
+    }
+});
 </script>
 </body>
 </html>
