@@ -258,7 +258,7 @@ class UIManager {
         if (!carousel || !imgEl) return;
 
         const datPath = `../${user.username}_image_history.dat`;
-        fetch(datPath).then(r => r.ok ? r.text() : Promise.reject()).then(text => {
+        fetch(datPath).then(r => r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status} for ${datPath}`))).then(text => {
             const urls = [...new Set(
                 text.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'))
             )];

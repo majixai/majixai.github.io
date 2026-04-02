@@ -45,7 +45,8 @@ class SlideshowManager {
 
     /** Go to a specific index */
     goTo(index) {
-        this.currentIndex = ((index % this.images.length) + this.images.length) % this.images.length;
+        const len = this.images.length;
+        this.currentIndex = index < 0 ? (index % len) + len : index % len;
         this._showCurrent();
     }
 
