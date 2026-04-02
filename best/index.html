@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>JINX | v5.0 Deep Learning Matrix</title>
   
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin="anonymous">
+  <link rel="preconnect" href="https://cbxyz.com" crossorigin="anonymous">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="revealTheme">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 
   <style>
@@ -95,6 +100,60 @@
         display: none; transition: transform 0.2s;
     }
     #fabMultiPlay:hover { transform: scale(1.05); }
+
+    /* Favorites button on card */
+    .fav-btn {
+      position: absolute; top: 10px; left: 10px; z-index: 15;
+      background: rgba(0,0,0,0.55); border: none; border-radius: 50%;
+      width: 30px; height: 30px; color: #888; font-size: 1rem;
+      cursor: pointer; transition: all 0.2s; backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; padding: 0;
+    }
+    .fav-btn:hover { color: #f472b6; transform: scale(1.25); }
+    .fav-btn.active { color: #f472b6; text-shadow: 0 0 8px rgba(244,114,182,0.8); }
+
+    /* Modal keyboard-nav arrows */
+    .modal-nav-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.55); color: #fff; border: none;
+      border-radius: 50%; width: 42px; height: 42px; font-size: 1.3rem;
+      cursor: pointer; z-index: 30; backdrop-filter: blur(4px);
+      transition: background 0.2s; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-nav-prev { left: 12px; }
+    .modal-nav-next { right: 12px; }
+    .modal-nav-btn:hover { background: rgba(244,114,182,0.55); }
+
+    /* Card fade-in */
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .user-card { animation: cardFadeIn 0.35s ease-out both; }
+
+    /* Quick-tag chips */
+    .quick-tag {
+      display: inline-block; cursor: pointer; font-size: 0.68rem; padding: 3px 9px;
+      border-radius: 12px; border: 1px solid #2a2f39; background: #191c22; color: #a8afbb;
+      transition: all 0.18s; user-select: none;
+    }
+    .quick-tag:hover { border-color: #f472b6; color: #f472b6; }
+    .quick-tag.active { background: #f472b6; color: #000; border-color: #f472b6; font-weight: 700; }
+
+    /* Reveal.js presenter modal */
+    #revealModal .modal-dialog { max-width: 100vw; width: 100vw; margin: 0; height: 100vh; }
+    #revealModal .modal-content { height: 100vh; border-radius: 0; background: #000; border: none; }
+    #revealModal .modal-body { padding: 0; height: calc(100vh - 44px); position: relative; }
+    #revealContainer { width: 100%; height: 100%; }
+    #revealContainer .reveal { width: 100%; height: 100%; }
+    .reveal-slide-meta { font-size: 0.9rem; color: #ccc; margin-top: 8px; }
+    .reveal-slide-tags { margin-top: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .reveal-close-btn {
+      position: absolute; top: 8px; right: 12px; z-index: 9999;
+      background: rgba(244,114,182,0.8); color: #000; border: none;
+      border-radius: 20px; padding: 4px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    }
+
   @keyframes kenBurns {
     from { transform: scale(1);    transform-origin: center center; }
     to   { transform: scale(1.08); transform-origin: 60% 40%; }
@@ -142,6 +201,7 @@
           <option value="rawScore">Raw Score (Linear)</option>
           <option value="engagement">Engagement Velocity</option>
           <option value="viewers">Max Viewers</option>
+          <option value="imageCount">Most Images</option>
           <option value="ageAsc">Age: Youngest First</option>
           <option value="ageDesc">Age: Oldest First</option>
           <option value="birthday">Upcoming Birthdays</option>
@@ -171,14 +231,45 @@
         <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0">
       </div>
 
+      <div class="mb-3">
+        <label class="form-label">Min Score: <span id="scoreVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minScore" min="0" max="500" step="5" value="0">
+      </div>
+
       <div class="mb-3 form-check form-switch">
         <input class="form-check-input" type="checkbox" role="switch" id="requireHistory" checked>
         <label class="form-check-label form-label mt-1" for="requireHistory">Require Image History</label>
       </div>
 
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" id="favoritesOnly">
+        <label class="form-check-label form-label mt-1" for="favoritesOnly">❤ Favorites Only</label>
+      </div>
+
       <div class="mb-3">
         <label class="form-label">Target Features (Tags)</label>
         <input type="text" id="tagFilter" class="form-control form-control-sm" placeholder="e.g. verified, outdoor" />
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Quick Tags</label>
+        <div id="quickTagsStrip" class="d-flex flex-wrap gap-1">
+          <span class="quick-tag" data-tag="verified">verified</span>
+          <span class="quick-tag" data-tag="lovense">lovense</span>
+          <span class="quick-tag" data-tag="new">new</span>
+          <span class="quick-tag" data-tag="bigboobs">bigboobs</span>
+          <span class="quick-tag" data-tag="latina">latina</span>
+          <span class="quick-tag" data-tag="asian">asian</span>
+          <span class="quick-tag" data-tag="blonde">blonde</span>
+          <span class="quick-tag" data-tag="teen">teen</span>
+          <span class="quick-tag" data-tag="squirt">squirt</span>
+          <span class="quick-tag" data-tag="pvt">pvt</span>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Slide Speed: <span id="speedVal" class="text-white">3.5s</span></label>
+        <input type="range" class="form-range" id="slideshowSpeed" min="1500" max="8000" step="500" value="3500">
       </div>
 
       <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold btn-sm mb-2" style="background-color: #f472b6; border: none; color: black;">Execute Query</button>
@@ -187,6 +278,16 @@
 
     <div class="col-md-9 col-lg-10 main-content p-4">
       
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex gap-2">
+          <button id="presentModeBtn" class="btn btn-sm fw-bold" style="background: linear-gradient(135deg,#f472b6,#8b5cf6); color:#fff; border:none; border-radius:20px; padding: 6px 18px;">
+            ▶ Present Mode
+          </button>
+          <button id="clearFavsBtn" class="btn btn-sm btn-outline-secondary" title="Clear all favorites">🗑 Favs</button>
+        </div>
+        <span id="activeFilterBadge" class="text-muted small"></span>
+      </div>
+
       <div class="row g-2 mb-3">
         <div class="col-6 col-md-3">
           <div class="dash-stat-box"><div class="dash-stat-value" id="statTotal">0</div><div class="dash-stat-label">Performers Parsed</div></div>
@@ -228,6 +329,8 @@
       </div>
       <div class="modal-body p-0 position-relative bg-black" id="modalBodyWrap">
         <div class="progress-bar-custom"><div class="progress-fill" id="modalProg"></div></div>
+        <button class="modal-nav-btn modal-nav-prev" id="modalNavPrev" title="Previous image">&#8249;</button>
+        <button class="modal-nav-btn modal-nav-next" id="modalNavNext" title="Next image">&#8250;</button>
         <div style="height: 60vh; min-height: 400px; display: flex; justify-content: center; align-items: center;">
             <img id="modalImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
             <iframe id="modalLiveIframe" src="about:blank" style="display:none;width:100%;height:60vh;border:none;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads"></iframe>
@@ -263,7 +366,37 @@
   </div>
 </div>
 
+<!-- Reveal.js Fullscreen Presenter Modal -->
+<div class="modal fade" id="revealModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog" style="max-width:100vw;width:100vw;margin:0;height:100vh;">
+    <div class="modal-content" style="height:100vh;border-radius:0;background:#000;border:none;">
+      <div class="modal-header p-1 px-3 border-0" style="background:#0b0d11;min-height:44px;">
+        <span class="text-white-50 small fw-bold me-auto" id="revealSlideCount"></span>
+        <div class="d-flex gap-2 align-items-center me-3">
+          <label class="form-label text-white-50 mb-0 small">Theme</label>
+          <select id="revealThemeSelect" class="form-select form-select-sm" style="width:auto;background:#191c22;color:#e2e8f0;border-color:#2a2f39;font-size:0.75rem;">
+            <option value="black">Black</option>
+            <option value="white">White</option>
+            <option value="night">Night</option>
+            <option value="moon">Moon</option>
+            <option value="sky">Sky</option>
+          </select>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-0" style="height:calc(100vh - 44px);position:relative;">
+        <div id="revealContainer">
+          <div class="reveal">
+            <div class="slides" id="revealSlides"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 <script>
 /**
  * JINX v5.0 Core Engine
@@ -284,7 +417,9 @@ const state = {
   
   clickCounts: JSON.parse(localStorage.getItem('jinx_clicks') || '{}'),
   userInterests: JSON.parse(localStorage.getItem('jinx_interests') || '{}'),
-  
+  favorites: new Set(JSON.parse(localStorage.getItem('jinx_favs') || '[]')),
+  slideshowSpeed: 3500,
+
   globalMean: 0,
   globalVariance: 0,
 
@@ -295,8 +430,12 @@ const state = {
   // Modals
   singleModalObj: null,
   singleModalInterval: null,
+  singleModalImages: [],
+  singleModalIdx: 0,
   multiModalObj: null,
-  multiModalMasterInterval: null
+  multiModalMasterInterval: null,
+  revealModalObj: null,
+  revealInstance: null
 };
 
 // ==========================================
@@ -307,21 +446,16 @@ const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 function calculateDaysUntilBirthday(mmdd) {
     if (!mmdd) return 999;
     const today = new Date();
-    // Simulate current context provided: March 28, 2026
-    const simToday = new Date(2026, 2, 28); 
-    
     const [m, d] = mmdd.split('-');
-    let bday = new Date(simToday.getFullYear(), parseInt(m) - 1, parseInt(d));
-    
-    if (simToday.getTime() > bday.getTime()) {
-        bday.setFullYear(simToday.getFullYear() + 1);
+    let bday = new Date(today.getFullYear(), parseInt(m) - 1, parseInt(d));
+    if (today.getTime() > bday.getTime()) {
+        bday.setFullYear(today.getFullYear() + 1);
     }
-    return Math.ceil((bday.getTime() - simToday.getTime()) / (1000 * 3600 * 24));
+    return Math.ceil((bday.getTime() - today.getTime()) / (1000 * 3600 * 24));
 }
 
 function formatDaysAgo(timestamp) {
-    // Current simulated date: Mar 28, 2026 
-    const now = new Date(2026, 2, 28).getTime();
+    const now = Date.now();
     const diffDays = Math.floor((now - timestamp) / (1000 * 3600 * 24));
     if(diffDays === 0) return "Today";
     if(diffDays === 1) return "Yesterday";
@@ -391,8 +525,7 @@ async function fetchAndDecompress() {
     
     // Deduplication & Mock Data Injection
     const uniqueMap = new Map();
-    // Simulate Current Base Time: March 28, 2026
-    const baseTime = new Date(2026, 2, 28).getTime();
+    const baseTime = Date.now();
     
     (data.items ||[]).forEach(item => {
       const u = (item.username || 'unknown').toLowerCase();
@@ -436,10 +569,11 @@ async function executePipeline() {
   const filters = {
     query: document.getElementById('searchInput').value.toLowerCase().trim(),
     minViewers: parseInt(document.getElementById('minViewers').value, 10),
-    minScore: parseInt(document.getElementById('minScore').value, 10),
+    minScore: parseInt(document.getElementById('minScore').value, 10) || 0,
     minAge: parseInt(document.getElementById('minAge').value, 10),
     maxAge: parseInt(document.getElementById('maxAge').value, 10),
     requireHistory: document.getElementById('requireHistory').checked,
+    favoritesOnly: document.getElementById('favoritesOnly').checked,
     tags: document.getElementById('tagFilter').value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
   };
 
@@ -455,6 +589,7 @@ async function executePipeline() {
       if ((item._rawScore || 0) < filters.minScore) return false;
       if (item.age < filters.minAge || item.age > filters.maxAge) return false;
       if (filters.requireHistory && (item.image_history ||[]).length === 0) return false;
+      if (filters.favoritesOnly && !state.favorites.has((item.username || '').toLowerCase())) return false;
       if (filters.tags.length > 0) {
         const itemTags = (item.tags ||[]).map(t => t.toLowerCase());
         if (!filters.tags.every(targetTag => itemTags.includes(targetTag))) return false;
@@ -465,13 +600,19 @@ async function executePipeline() {
   }
 
   updateStatus("Applying sorting algorithms...", true);
-  await yieldToMain(); 
-  
+  await yieldToMain();
+
+  // Pre-compute per-item image counts once so the sort comparator is O(1)
+  processed.forEach(item => {
+    item._imageCount = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean).length;
+  });
+
   processed.sort((a, b) => {
     switch (sortAlgo) {
       case 'bayesian': return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
       case 'engagement': return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
       case 'viewers': return (b.num_viewers || 0) - (a.num_viewers || 0);
+      case 'imageCount': return (b._imageCount || 0) - (a._imageCount || 0);
       case 'ageAsc': return a.age - b.age;
       case 'ageDesc': return b.age - a.age;
       case 'birthday': return calculateDaysUntilBirthday(a.birthday) - calculateDaysUntilBirthday(b.birthday);
@@ -488,12 +629,24 @@ async function executePipeline() {
   state.filteredDataset = processed;
   document.getElementById('statActive').innerText = processed.length.toLocaleString();
   state.currentPage = 0;
+
+  // Update active-filter badge
+  const activeParts = [];
+  if (filters.query) activeParts.push(`"${filters.query}"`);
+  if (filters.minViewers > 0) activeParts.push(`≥${filters.minViewers} viewers`);
+  if (filters.minScore > 0) activeParts.push(`score≥${filters.minScore}`);
+  if (filters.favoritesOnly) activeParts.push('❤ favs');
+  if (filters.tags.length) activeParts.push(filters.tags.map(t=>`#${t}`).join(' '));
+  document.getElementById('activeFilterBadge').innerText = activeParts.length ? `Active: ${activeParts.join(' · ')}` : '';
   
   document.querySelectorAll('.user-card').forEach(card => haltSlideshowRuntime(card));
   document.getElementById('slideshowGrid').innerHTML = '';
   
   setupIntersectionObservers();
   await renderNextPage();
+
+  // Preload next page images during browser idle time
+  scheduleNextPagePreload();
   
   state.isProcessing = false;
   updateStatus("Grid Synchronized.", false);
@@ -532,10 +685,12 @@ async function renderNextPage() {
     card.dataset.user = user;
     card.dataset.idx = 0;
 
+    const isFav = state.favorites.has(user.toLowerCase());
     const progressHtml = images.length > 1 ? `<div class="progress-bar-custom"><div class="progress-fill"></div></div>` : '';
 
     card.innerHTML = `
       ${progressHtml}
+      <button class="fav-btn${isFav ? ' active' : ''}" data-fav="${user}" title="Favorite">♥</button>
       <div class="slide-container">
         <img src="${images[0]}" class="slide-img" loading="lazy">
         <div class="card-overlay">
@@ -554,7 +709,16 @@ async function renderNextPage() {
       </div>
     `;
     
-    card.addEventListener('click', () => handleCardClick(card, user, item, images));
+    card.addEventListener('click', (e) => {
+      // Fav button — toggle without opening modal
+      const favBtn = e.target.closest('.fav-btn');
+      if (favBtn) {
+        e.stopPropagation();
+        toggleFavorite(favBtn.dataset.fav, favBtn);
+        return;
+      }
+      handleCardClick(card, user, item, images);
+    });
     card._imgArray = images;
     fragment.appendChild(card);
   }
@@ -750,19 +914,20 @@ function openSingleModal(item, images) {
   });
 
   clearInterval(state.singleModalInterval);
+  state.singleModalImages = images;
+  state.singleModalIdx = 0;
   document.getElementById('modalImg').style.animation = 'none';
-  let idx = 0;
   if(images.length > 1) {
       const progBar = document.getElementById('modalProg');
       const step = () => {
           progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; 
           progBar.style.transition = `width 4000ms linear`; progBar.style.width = '100%';
-          idx = (idx + 1) % images.length;
+          state.singleModalIdx = (state.singleModalIdx + 1) % images.length;
           document.getElementById('modalImg').style.opacity = '0.5';
           setTimeout(() => {
-              document.getElementById('modalImg').src = images[idx];
+              document.getElementById('modalImg').src = images[state.singleModalIdx];
               document.getElementById('modalImg').style.opacity = '1';
-              document.getElementById('modalImageCounter').innerText = `Image ${idx + 1} of ${images.length}`;
+              document.getElementById('modalImageCounter').innerText = `Image ${state.singleModalIdx + 1} of ${images.length}`;
           }, 300);
       };
       progBar.style.transition = `width 4000ms linear`; progBar.style.width = '100%';
@@ -827,7 +992,7 @@ function initSlideshowRuntime(card) {
   const imgEl = card.querySelector('.slide-img');
   const progBar = card.querySelector('.progress-fill');
   
-  const duration = 3500 + Math.random() * 1500;
+  const duration = state.slideshowSpeed + Math.random() * 1500;
   const triggerStep = () => {
     if (progBar) {
       progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; 
@@ -869,13 +1034,15 @@ document.getElementById('searchInput').addEventListener('input', () => {
 document.getElementById('resetFiltersBtn').addEventListener('click', () => {
   document.getElementById('searchInput').value = '';
   document.getElementById('minViewers').value = 0; document.getElementById('viewerVal').innerText = '0';
-  document.getElementById('minScore').value = 0;
+  document.getElementById('minScore').value = 0; document.getElementById('scoreVal').innerText = '0';
   document.getElementById('minAge').value = 18; document.getElementById('maxAge').value = 99;
   document.getElementById('gridColumns').value = 0; document.getElementById('colCountVal').innerText = 'Responsive Auto';
   document.getElementById('slideshowGrid').style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
   document.getElementById('tagFilter').value = '';
   document.getElementById('requireHistory').checked = false;
+  document.getElementById('favoritesOnly').checked = false;
   document.getElementById('sortAlgorithm').value = 'bayesian';
+  document.querySelectorAll('.quick-tag').forEach(t => t.classList.remove('active'));
   
   // Clear Multi-Select
   state.selectedItems.clear();
@@ -925,6 +1092,210 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-</script>
+
+// ==========================================
+// RANGE SLIDER LIVE-LABELS
+// ==========================================
+document.getElementById('minViewers').addEventListener('input', (e) => {
+    document.getElementById('viewerVal').innerText = parseInt(e.target.value).toLocaleString();
+});
+document.getElementById('minScore').addEventListener('input', (e) => {
+    document.getElementById('scoreVal').innerText = e.target.value;
+});
+document.getElementById('slideshowSpeed').addEventListener('input', (e) => {
+    const ms = parseInt(e.target.value);
+    state.slideshowSpeed = ms;
+    document.getElementById('speedVal').innerText = (ms / 1000).toFixed(1) + 's';
+});
+
+// ==========================================
+// FAVORITES
+// ==========================================
+function toggleFavorite(username, btnEl) {
+    const key = (username || '').toLowerCase();
+    if (state.favorites.has(key)) {
+        state.favorites.delete(key);
+        btnEl.classList.remove('active');
+    } else {
+        state.favorites.add(key);
+        btnEl.classList.add('active');
+    }
+    localStorage.setItem('jinx_favs', JSON.stringify([...state.favorites]));
+}
+
+document.getElementById('favoritesOnly').addEventListener('change', executePipeline);
+
+document.getElementById('clearFavsBtn').addEventListener('click', () => {
+    if (!confirm('Clear all favorites?')) return;
+    state.favorites.clear();
+    localStorage.removeItem('jinx_favs');
+    document.querySelectorAll('.fav-btn.active').forEach(b => b.classList.remove('active'));
+    if (document.getElementById('favoritesOnly').checked) executePipeline();
+});
+
+// ==========================================
+// QUICK-TAG CHIPS
+// ==========================================
+document.getElementById('quickTagsStrip').addEventListener('click', (e) => {
+    const chip = e.target.closest('.quick-tag');
+    if (!chip) return;
+    chip.classList.toggle('active');
+    const activeTags = [...document.querySelectorAll('.quick-tag.active')].map(c => c.dataset.tag);
+    document.getElementById('tagFilter').value = activeTags.join(', ');
+    executePipeline();
+});
+
+// ==========================================
+// KEYBOARD NAVIGATION FOR SINGLE MODAL
+// ==========================================
+document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('performerModal');
+    if (!modal.classList.contains('show')) return;
+    if (e.key === 'ArrowRight') navigateModal(1);
+    else if (e.key === 'ArrowLeft') navigateModal(-1);
+});
+
+document.getElementById('modalNavPrev').addEventListener('click', () => navigateModal(-1));
+document.getElementById('modalNavNext').addEventListener('click', () => navigateModal(1));
+
+function navigateModal(delta) {
+    if (!state.singleModalImages || state.singleModalImages.length <= 1) return;
+    clearInterval(state.singleModalInterval);
+    state.singleModalIdx = ((state.singleModalIdx + delta) + state.singleModalImages.length) % state.singleModalImages.length;
+    const imgEl = document.getElementById('modalImg');
+    const progBar = document.getElementById('modalProg');
+    imgEl.style.opacity = '0.5';
+    setTimeout(() => {
+        imgEl.src = state.singleModalImages[state.singleModalIdx];
+        imgEl.style.opacity = '1';
+        document.getElementById('modalImageCounter').innerText = `Image ${state.singleModalIdx + 1} of ${state.singleModalImages.length}`;
+    }, 150);
+    if (progBar) { progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; progBar.style.transition = 'width 4000ms linear'; progBar.style.width = '100%'; }
+    state.singleModalInterval = setInterval(() => navigateModal(1), 4000);
+}
+
+// ==========================================
+// NEXT-PAGE IMAGE PRELOADING (IDLE)
+// ==========================================
+function scheduleNextPagePreload() {
+    const nextStart = (state.currentPage + 1) * state.itemsPerPage;
+    const nextItems = state.filteredDataset.slice(nextStart, nextStart + state.itemsPerPage);
+    if (!nextItems.length) return;
+    const preload = () => {
+        nextItems.forEach(item => {
+            if (item.image_url && !state.preloadedImages.has(item.image_url)) {
+                state.preloadedImages.add(item.image_url);
+                const img = new Image();
+                img.src = item.image_url;
+            }
+        });
+    };
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(preload, { timeout: 3000 });
+    } else {
+        setTimeout(preload, 500);
+    }
+}
+
+// ==========================================
+// REVEAL.JS PRESENTER MODE
+// ==========================================
+document.getElementById('presentModeBtn').addEventListener('click', openRevealPresenter);
+
+function openRevealPresenter() {
+    const items = state.filteredDataset.slice(0, 60);
+    if (!items.length) { alert('No performers match current filters.'); return; }
+
+    const slidesEl = document.getElementById('revealSlides');
+    slidesEl.innerHTML = '';
+
+    items.forEach(item => {
+        const user = item.username || 'unknown';
+        const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
+        const firstImg = images[0] || '';
+        const tagsHtml = (item.tags || []).slice(0, 6).map(t =>
+            `<span style="background:rgba(244,114,182,0.2);border:1px solid #f472b6;color:#f472b6;padding:2px 8px;border-radius:10px;font-size:0.75rem;">#${t}</span>`
+        ).join(' ');
+        const score = QuantEngine.getBayesianScore(item);
+        const imgCount = images.length;
+
+        if (images.length > 1) {
+            const section = document.createElement('section');
+            section.innerHTML = images.slice(0, 8).map(imgUrl => `
+              <section data-background-image="${imgUrl}" data-background-size="cover" data-background-opacity="0.38">
+                <div style="background:rgba(0,0,0,0.62);padding:18px 24px;border-radius:12px;display:inline-block;max-width:88%;">
+                  <h2 style="color:#f472b6;margin:0 0 6px;font-size:1.6rem;">@${user}</h2>
+                  <div style="font-size:0.82rem;color:#ccc;">★ ${score.toFixed(1)} &nbsp;|&nbsp; ${imgCount} images &nbsp;|&nbsp; ${item.num_viewers||0} viewers &nbsp;|&nbsp; Age ${item.age||'?'}</div>
+                  <div style="margin-top:10px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px;">${tagsHtml}</div>
+                </div>
+              </section>`).join('');
+            slidesEl.appendChild(section);
+        } else {
+            const section = document.createElement('section');
+            if (firstImg) {
+                section.setAttribute('data-background-image', firstImg);
+                section.setAttribute('data-background-size', 'cover');
+                section.setAttribute('data-background-opacity', '0.38');
+            }
+            section.innerHTML = `
+              <div style="background:rgba(0,0,0,0.65);padding:20px 28px;border-radius:12px;display:inline-block;max-width:88%;">
+                <h2 style="color:#f472b6;margin:0 0 8px;font-size:1.6rem;">@${user}</h2>
+                <div style="font-size:0.82rem;color:#ccc;">★ ${score.toFixed(1)} &nbsp;|&nbsp; ${imgCount} image &nbsp;|&nbsp; ${item.num_viewers||0} viewers &nbsp;|&nbsp; Age ${item.age||'?'}</div>
+                <div style="margin-top:10px;display:flex;flex-wrap:wrap;justify-content:center;gap:5px;">${tagsHtml}</div>
+              </div>`;
+            slidesEl.appendChild(section);
+        }
+    });
+
+    document.getElementById('revealSlideCount').innerText = `${items.length} performers`;
+
+    if (!state.revealModalObj) {
+        state.revealModalObj = new bootstrap.Modal(document.getElementById('revealModal'));
+        document.getElementById('revealModal').addEventListener('hidden.bs.modal', () => {
+            if (state.revealInstance) {
+                try { state.revealInstance.destroy(); } catch(e) {}
+                state.revealInstance = null;
+            }
+        });
+    }
+    state.revealModalObj.show();
+
+    document.getElementById('revealModal').addEventListener('shown.bs.modal', function initReveal() {
+        this.removeEventListener('shown.bs.modal', initReveal);
+        if (typeof Reveal !== 'undefined') {
+            try {
+                const revealEl = document.querySelector('#revealContainer .reveal');
+                state.revealInstance = new Reveal(revealEl, {
+                    hash: false,
+                    transition: 'slide',
+                    transitionSpeed: 'default',
+                    backgroundTransition: 'fade',
+                    controls: true,
+                    progress: true,
+                    slideNumber: 'c/t',
+                    autoSlide: 0,
+                    loop: false,
+                    keyboard: true,
+                    touch: true,
+                    center: true,
+                    embedded: true,
+                    width: '100%',
+                    height: '100%',
+                    margin: 0.04,
+                });
+            } catch (err) {
+                console.error('Reveal.js init failed:', err);
+                updateStatus('Presenter init failed — try refreshing.', false);
+            }
+        } else {
+            updateStatus('Reveal.js not loaded — check your connection.', false);
+        }
+    });
+}
+
+document.getElementById('revealThemeSelect').addEventListener('change', (e) => {
+    document.getElementById('revealTheme').href =
+        `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/${e.target.value}.css`;
+});</script>
 </body>
 </html>
