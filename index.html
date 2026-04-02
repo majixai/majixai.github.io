@@ -599,7 +599,7 @@
   <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
     <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
     <div class="recent-dirs-controls" id="recentDirsControls" style="display:none">
-      <input class="recent-dirs-search" id="recentDirsSearch" type="search" placeholder="&#xf002; Search directories&hellip;" aria-label="Search directories">
+      <input class="recent-dirs-search" id="recentDirsSearch" type="search" placeholder="Search directories&hellip;" aria-label="Search directories">
       <select class="recent-dirs-sort" id="recentDirsSort" aria-label="Sort order">
         <option value="date">Sort: Newest first</option>
         <option value="name">Sort: A &ndash; Z</option>
@@ -671,7 +671,7 @@
       : false;
     const rel    = relativeTime(d.lastCommitDate);
     const absDate = d.lastCommitDate
-      ? new Date(d.lastCommitDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+      ? new Date(d.lastCommitDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       : '';
     const newBadge = isNew ? `<span class="recent-dir-badge-new" title="Updated in the last 7 days">NEW</span>` : '';
     const cat      = proj ? proj.category : '';
@@ -696,7 +696,7 @@
     const hasDetails = recs.length > 0 || enhs.length > 0;
     const detailsId  = `rdDetails-${idx}`;
     const expandBtn  = hasDetails
-      ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" onclick="toggleRecentDirDetails('${detailsId}', this)">
+      ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" aria-label="Show recommendations and enhancements for ${escHtml(d.name)}" onclick="toggleRecentDirDetails('${detailsId}', this)">
            <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> Recommendations &amp; Enhancements
          </button>`
       : '';
@@ -757,7 +757,7 @@
       }
 
       // Build a lookup map from projects.json (case-insensitive by name)
-      let projMap = {};
+      const projMap = {};
       if (projResp.status === 'fulfilled' && projResp.value.ok) {
         try {
           const projects = await projResp.value.json();
@@ -839,7 +839,9 @@
     const visible = items.filter(li => !li.classList.contains('hidden'));
     visible.sort((a, b) => {
       if (sortBy === 'name') return (a.dataset.name || '').localeCompare(b.dataset.name || '');
-      return new Date(b.dataset.date || 0) - new Date(a.dataset.date || 0);
+      const da = a.dataset.date ? new Date(a.dataset.date).getTime() : 0;
+      const db = b.dataset.date ? new Date(b.dataset.date).getTime() : 0;
+      return db - da;
     });
     visible.forEach(li => list.appendChild(li));
   }
