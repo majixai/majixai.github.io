@@ -96,8 +96,8 @@
     }
     #fabMultiPlay:hover { transform: scale(1.05); }
   @keyframes kenBurns {
-    from { transform: scale(1);    transform-origin: center center; }
-    to   { transform: scale(1.08); transform-origin: 60% 40%; }
+    from { transform: scale(1) translate(0, 0); }
+    to   { transform: scale(1.08) translate(-3%, -2%); }
   }
   </style>
 </head>
@@ -168,7 +168,12 @@
 
       <div class="mb-3">
         <label class="form-label">Min Viewers: <span id="viewerVal" class="text-white">0</span></label>
-        <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0">
+        <input type="range" class="form-range" id="minViewers" min="0" max="5000" step="50" value="0" oninput="document.getElementById('viewerVal').innerText=this.value">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Min Score: <span id="scoreVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minScore" min="0" max="50" step="1" value="0" oninput="document.getElementById('scoreVal').innerText=this.value">
       </div>
 
       <div class="mb-3 form-check form-switch">
@@ -307,21 +312,18 @@ const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 function calculateDaysUntilBirthday(mmdd) {
     if (!mmdd) return 999;
     const today = new Date();
-    // Simulate current context provided: March 28, 2026
-    const simToday = new Date(2026, 2, 28); 
     
     const [m, d] = mmdd.split('-');
-    let bday = new Date(simToday.getFullYear(), parseInt(m) - 1, parseInt(d));
+    let bday = new Date(today.getFullYear(), parseInt(m) - 1, parseInt(d));
     
-    if (simToday.getTime() > bday.getTime()) {
-        bday.setFullYear(simToday.getFullYear() + 1);
+    if (today.getTime() > bday.getTime()) {
+        bday.setFullYear(today.getFullYear() + 1);
     }
-    return Math.ceil((bday.getTime() - simToday.getTime()) / (1000 * 3600 * 24));
+    return Math.ceil((bday.getTime() - today.getTime()) / (1000 * 3600 * 24));
 }
 
 function formatDaysAgo(timestamp) {
-    // Current simulated date: Mar 28, 2026 
-    const now = new Date(2026, 2, 28).getTime();
+    const now = new Date().getTime();
     const diffDays = Math.floor((now - timestamp) / (1000 * 3600 * 24));
     if(diffDays === 0) return "Today";
     if(diffDays === 1) return "Yesterday";
@@ -391,8 +393,7 @@ async function fetchAndDecompress() {
     
     // Deduplication & Mock Data Injection
     const uniqueMap = new Map();
-    // Simulate Current Base Time: March 28, 2026
-    const baseTime = new Date(2026, 2, 28).getTime();
+    const baseTime = new Date().getTime();
     
     (data.items ||[]).forEach(item => {
       const u = (item.username || 'unknown').toLowerCase();
@@ -467,6 +468,13 @@ async function executePipeline() {
   updateStatus("Applying sorting algorithms...", true);
   await yieldToMain(); 
   
+  if (sortAlgo === 'random') {
+    // Fisher-Yates shuffle — correct O(n) random ordering
+    for (let i = processed.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [processed[i], processed[j]] = [processed[j], processed[i]];
+    }
+  } else {
   processed.sort((a, b) => {
     switch (sortAlgo) {
       case 'bayesian': return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
@@ -476,14 +484,11 @@ async function executePipeline() {
       case 'ageDesc': return b.age - a.age;
       case 'birthday': return calculateDaysUntilBirthday(a.birthday) - calculateDaysUntilBirthday(b.birthday);
       case 'lastOnline': return b.lastOnline - a.lastOnline;
-      case 'random': 
-        const array = new Uint32Array(2);
-        window.crypto.getRandomValues(array);
-        return array[0] - array[1];
       case 'rawScore':
       default: return (b._rawScore || 0) - (a._rawScore || 0);
     }
   });
+  }
 
   state.filteredDataset = processed;
   document.getElementById('statActive').innerText = processed.length.toLocaleString();
@@ -517,7 +522,7 @@ async function renderNextPage() {
   for (const item of pageItems) {
     const user = item.username || 'unknown';
     const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
-    if(images.length === 0) images.push('https://via.placeholder.com/300x400/191c22/f472b6?text=No+Image');
+    if(images.length === 0) images.push('https://placehold.co/300x400/191c22/f472b6?text=No+Image');
 
     const score = sortAlgoValue(item);
     const tagsHtml = (item.tags ||[]).slice(0, 3).map(t => `<span class="mini-tag">${t}</span>`).join('');
@@ -729,7 +734,7 @@ function openSingleModal(item, images) {
           statusEl.innerText = `Neural Extraction Active: Enhancing feature [#${clickedTag}] globally...`;
           statusEl.className = "text-info fw-bold";
           
-          state.userInterests[clickedTag.toLowerCase()] = (state.userInterests[clickedTag.toLowerCase()] || 0) + 25;
+          state.userInterests[clickedTag.toLowerCase()] = Math.min((state.userInterests[clickedTag.toLowerCase()] || 0) + 25, 100);
           localStorage.setItem('jinx_interests', JSON.stringify(state.userInterests));
           
           // Background recompilation
@@ -869,7 +874,7 @@ document.getElementById('searchInput').addEventListener('input', () => {
 document.getElementById('resetFiltersBtn').addEventListener('click', () => {
   document.getElementById('searchInput').value = '';
   document.getElementById('minViewers').value = 0; document.getElementById('viewerVal').innerText = '0';
-  document.getElementById('minScore').value = 0;
+  document.getElementById('minScore').value = 0; document.getElementById('scoreVal').innerText = '0';
   document.getElementById('minAge').value = 18; document.getElementById('maxAge').value = 99;
   document.getElementById('gridColumns').value = 0; document.getElementById('colCountVal').innerText = 'Responsive Auto';
   document.getElementById('slideshowGrid').style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
