@@ -195,6 +195,248 @@ static int sha256_selftest(void)
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+ * §2b  Scalar unrolled SHA-256 — optimised primitives + 64 explicit rounds
+ *
+ * Why unroll?
+ * -----------
+ * The standard for(i=0;i<64;i++) loop forces the CPU to evaluate a loop
+ * counter and branch every round.  On an in-order core this costs one
+ * pipeline stall per round; on an out-of-order core it wastes a dispatch
+ * slot.  Explicit unrolling removes the branch entirely: the CPU sees a
+ * linear stream of instructions and can fill all execution ports.
+ *
+ * Optimised MAJ (4 bitwise operations instead of 5):
+ * ---------------------------------------------------
+ * Standard:  (a&b) ^ (a&c) ^ (b&c)        — 2 AND + 2 XOR  = 4 ops
+ * Optimised: (a & (b|c)) | (b & c)         — 1 OR + 2 AND + 1 OR = 4 ops
+ *            but the dependency chain is shorter on superscalar CPUs
+ *            because the two AND operations are independent.
+ *
+ * SHA256_ROUND_SCALAR variable rotation:
+ * ---------------------------------------
+ * The caller rotates the a..h argument list so that no runtime shifting
+ * is ever needed.  After 8 round invocations the register assignment has
+ * cycled back to its original mapping.  The compiler can therefore keep
+ * all eight working variables in dedicated architectural registers for
+ * the entire 64-round sequence.
+ *
+ * Block-2 padding sparsity:
+ * -------------------------
+ * The second 64-byte block of a Bitcoin header has the layout:
+ *   W[0..3]  : last 16 bytes of header (merkle tail, timestamp, bits, nonce)
+ *   W[4]     : 0x80000000  (SHA-256 padding sentinel)
+ *   W[5..14] : 0x00000000  (zero padding)
+ *   W[15]    : 0x00000280  (message length: 640 bits)
+ *
+ * Because W[5..14] are zero, many of the σ₀/σ₁ terms in the schedule
+ * expansion for W[16..30] collapse to simpler expressions.  The unrolled
+ * function below uses the generic schedule so it works for any input;
+ * a further specialised "block-2 fast path" can pre-compute the invariant
+ * schedule words once per job and reuse them across all nonces.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Optimised primitives ───────────────────────────────────────────────
+ * EP0/EP1 = Σ₀/Σ₁  (state mixing — capital sigma)
+ * SIG0/SIG1 = σ₀/σ₁ (schedule mixing — lowercase sigma)
+ * MAJ_OPT uses the 4-op form: (a & (b|c)) | (b & c)
+ */
+#define EP0_S(x)      (ror32((x), 2) ^ ror32((x),13) ^ ror32((x),22))
+#define EP1_S(x)      (ror32((x), 6) ^ ror32((x),11) ^ ror32((x),25))
+#define SIG0_S(x)     (ror32((x), 7) ^ ror32((x),18) ^ ((x)>> 3))
+#define SIG1_S(x)     (ror32((x),17) ^ ror32((x),19) ^ ((x)>>10))
+#define CH_S(x,y,z)   (((x)&(y))^(~(x)&(z)))
+#define MAJ_OPT(a,b,c) (((a)&((b)|(c)))|((b)&(c)))
+
+/* ── SHA256_ROUND_SCALAR ────────────────────────────────────────────────
+ * One complete SHA-256 round.  After the macro:
+ *   d ← d + T1          (becomes new e)
+ *   h ← T1 + T2         (becomes new a)
+ * The caller passes the variable names in the rotating order so that the
+ * assignments are trivially register renames — zero extra instructions.
+ */
+#define SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w,k) do { \
+    uint32_t _t1 = (h) + EP1_S(e) + CH_S((e),(f),(g)) + (k) + (w); \
+    uint32_t _t2 = EP0_S(a) + MAJ_OPT((a),(b),(c)); \
+    (d) += _t1; \
+    (h)  = _t1 + _t2; \
+} while(0)
+
+/* ── compute_sha256_scalar_unrolled ─────────────────────────────────────
+ *
+ * All 64 rounds written out with explicit argument rotation.
+ * The schedule W[16..63] is still expanded in a short loop (48 iters)
+ * because those words are inputs, not the round computation itself.
+ * The hot part — the 64 compression rounds — contains no branches.
+ */
+static void compute_sha256_scalar_unrolled(uint32_t st[8],
+                                            const uint32_t W_in[16])
+{
+    uint32_t w[64];
+    /* Copy the first 16 words (block-2 data + SHA-256 padding) */
+    for(int i=0;i<16;i++) w[i]=W_in[i];
+    /* Expand W[16..63] — standard σ recurrence */
+    for(int i=16;i<64;i++)
+        w[i]=w[i-16]+SIG0_S(w[i-15])+w[i-7]+SIG1_S(w[i-2]);
+
+    uint32_t a=st[0],b=st[1],c=st[2],d=st[3];
+    uint32_t e=st[4],f=st[5],g=st[6],h=st[7];
+
+    /* ── Rounds 0-7 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[ 0],K[ 0]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[ 1],K[ 1]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[ 2],K[ 2]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[ 3],K[ 3]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[ 4],K[ 4]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[ 5],K[ 5]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[ 6],K[ 6]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[ 7],K[ 7]);
+    /* ── Rounds 8-15 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[ 8],K[ 8]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[ 9],K[ 9]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[10],K[10]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[11],K[11]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[12],K[12]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[13],K[13]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[14],K[14]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[15],K[15]);
+    /* ── Rounds 16-23 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[16],K[16]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[17],K[17]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[18],K[18]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[19],K[19]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[20],K[20]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[21],K[21]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[22],K[22]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[23],K[23]);
+    /* ── Rounds 24-31 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[24],K[24]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[25],K[25]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[26],K[26]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[27],K[27]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[28],K[28]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[29],K[29]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[30],K[30]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[31],K[31]);
+    /* ── Rounds 32-39 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[32],K[32]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[33],K[33]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[34],K[34]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[35],K[35]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[36],K[36]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[37],K[37]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[38],K[38]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[39],K[39]);
+    /* ── Rounds 40-47 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[40],K[40]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[41],K[41]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[42],K[42]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[43],K[43]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[44],K[44]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[45],K[45]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[46],K[46]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[47],K[47]);
+    /* ── Rounds 48-55 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[48],K[48]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[49],K[49]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[50],K[50]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[51],K[51]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[52],K[52]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[53],K[53]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[54],K[54]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[55],K[55]);
+    /* ── Rounds 56-63 ── */
+    SHA256_ROUND_SCALAR(a,b,c,d,e,f,g,h,w[56],K[56]);
+    SHA256_ROUND_SCALAR(h,a,b,c,d,e,f,g,w[57],K[57]);
+    SHA256_ROUND_SCALAR(g,h,a,b,c,d,e,f,w[58],K[58]);
+    SHA256_ROUND_SCALAR(f,g,h,a,b,c,d,e,w[59],K[59]);
+    SHA256_ROUND_SCALAR(e,f,g,h,a,b,c,d,w[60],K[60]);
+    SHA256_ROUND_SCALAR(d,e,f,g,h,a,b,c,w[61],K[61]);
+    SHA256_ROUND_SCALAR(c,d,e,f,g,h,a,b,w[62],K[62]);
+    SHA256_ROUND_SCALAR(b,c,d,e,f,g,h,a,w[63],K[63]);
+
+    st[0]+=a; st[1]+=b; st[2]+=c; st[3]+=d;
+    st[4]+=e; st[5]+=f; st[6]+=g; st[7]+=h;
+}
+
+/* ── sha256_compress_unrolled ────────────────────────────────────────────
+ * Drop-in replacement for sha256_compress() that uses the unrolled path.
+ * The raw 64-byte block is first split into 16 big-endian 32-bit words,
+ * then handed to compute_sha256_scalar_unrolled().
+ */
+static inline void sha256_compress_unrolled(uint32_t st[8],
+                                             const uint8_t blk[64])
+{
+    uint32_t W[16];
+    for(int i=0;i<16;i++) W[i]=BE32_LOAD(blk+i*4);
+    compute_sha256_scalar_unrolled(st, W);
+}
+
+/* ── build_block_b_words ─────────────────────────────────────────────────
+ * Produce the 16-word message schedule for block-B of an 80-byte Bitcoin
+ * header, exploiting the known-sparse padding layout:
+ *
+ *   W[ 0] = BE32(hdr[64..67])  — merkle tail bytes 28-31
+ *   W[ 1] = BE32(hdr[68..71])  — timestamp
+ *   W[ 2] = BE32(hdr[72..75])  — bits (compact target)
+ *   W[ 3] = nonce (big-endian) — the only word that changes per hash
+ *   W[ 4] = 0x80000000         — SHA-256 padding sentinel
+ *   W[ 5..14] = 0x00000000     — zero padding
+ *   W[15] = 0x00000280         — message length: 640 bits
+ *
+ * Keeping this in a function (rather than inlining into the hot loop)
+ * lets the compiler cache W[0..2] and W[4..15] in registers across
+ * nonce iterations, only reloading W[3] (the nonce) each time.
+ */
+static inline void build_block_b_words(const uint8_t hdr[80],
+                                        uint32_t nonce_be,
+                                        uint32_t W[16])
+{
+    W[0] = BE32_LOAD(hdr+64);
+    W[1] = BE32_LOAD(hdr+68);
+    W[2] = BE32_LOAD(hdr+72);
+    W[3] = nonce_be;
+    W[4] = 0x80000000u;
+    W[5]=W[6]=W[7]=W[8]=W[9]=W[10]=W[11]=W[12]=W[13]=W[14]=0u;
+    W[15]= 0x00000280u;
+}
+
+/* ── dsha256_unrolled_from_midstate ──────────────────────────────────────
+ * Double-SHA256 using the cached midstate + unrolled scalar hot loop.
+ * ~50% faster for the first pass vs a fresh sha256_full() call because
+ * block-A compression is elided entirely.
+ */
+static void dsha256_unrolled_from_midstate(const uint32_t mid[8],
+                                            const uint8_t  hdr[80],
+                                            uint8_t        out[32])
+{
+    /* Pass 1: start from midstate, compress block-B only */
+    uint32_t st[8]; memcpy(st,mid,32);
+    uint32_t W[16];
+    /* nonce is in hdr[76..79] little-endian; convert to big-endian word */
+    uint32_t nonce_le; memcpy(&nonce_le, hdr+76, 4);
+    uint32_t nonce_be = __builtin_bswap32(nonce_le);
+    build_block_b_words(hdr, nonce_be, W);
+    compute_sha256_scalar_unrolled(st, W);
+
+    /* Serialise first-pass hash */
+    uint8_t h1[32];
+    for(int k=0;k<8;k++) BE32_STORE(h1+k*4,st[k]);
+
+    /* Pass 2: hash the 32-byte intermediate — known sparse padding */
+    uint32_t W2[16];
+    for(int k=0;k<8;k++) W2[k]=BE32_LOAD(h1+k*4);
+    W2[8]=0x80000000u;
+    W2[9]=W2[10]=W2[11]=W2[12]=W2[13]=W2[14]=0u;
+    W2[15]=0x00000100u;   /* 256 bits */
+    uint32_t st2[8]; memcpy(st2,H0,32);
+    compute_sha256_scalar_unrolled(st2, W2);
+    for(int k=0;k<8;k++) BE32_STORE(out+k*4,st2[k]);
+
+    /* Byte-reverse to Bitcoin display order */
+    for(int i=0;i<16;i++){uint8_t t=out[i];out[i]=out[31-i];out[31-i]=t;}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
  * §3  SHA-256 midstate & double-hash with midstate
  * ═══════════════════════════════════════════════════════════════════════ */
 static void sha256_midstate(const uint8_t hdr[80],uint32_t mid[8])
