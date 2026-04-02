@@ -453,6 +453,91 @@
       font-style: italic;
       font-size: 0.9rem;
     }
+    /* Loading progress bar */
+    .recent-dirs-progress {
+      display: none;
+      margin-bottom: 0.85rem;
+    }
+    .recent-dirs-progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 0.25rem;
+    }
+    .recent-dirs-progress-track {
+      height: 4px;
+      background: #e8eaf0;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .recent-dirs-progress-fill {
+      height: 100%;
+      background: var(--secondary-color);
+      border-radius: 2px;
+      transition: width 0.35s ease;
+      width: 0%;
+    }
+    /* Recommended Upgrades inline section */
+    .recent-dir-upgrades {
+      margin-top: 0.4rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid #f0f2f7;
+    }
+    .recent-dir-upgrades-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #7c88a0;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .recent-dir-upgrades-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .upgrade-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      background: #f0f7ff;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+      border-radius: 0.9rem;
+      font-size: 0.68rem;
+      padding: 0.1rem 0.5rem;
+      white-space: nowrap;
+    }
+    .upgrade-pill.hint {
+      background: #fff8e1;
+      color: #e65100;
+      border-color: #ffcc80;
+    }
+    .upgrade-pill-more {
+      background: none;
+      border: none;
+      color: var(--secondary-color);
+      font-size: 0.68rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline dotted;
+      white-space: nowrap;
+    }
+    .upgrade-pill-more:hover { opacity: 0.75; }
+    .upgrade-pills-overflow {
+      display: none;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      align-items: center;
+    }
+    .upgrade-pills-overflow.open {
+      display: contents;
+    }
     /* Footer */
     .main-footer {
       background: var(--primary-color);
@@ -598,6 +683,15 @@
   <!-- Recently Edited Directories -->
   <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
     <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
+    <div class="recent-dirs-progress" id="recentDirsProgress" aria-live="polite" aria-label="Loading progress">
+      <div class="recent-dirs-progress-label">
+        <span id="recentDirsProgressLabel">Initializing&hellip;</span>
+        <span id="recentDirsProgressPct">0%</span>
+      </div>
+      <div class="recent-dirs-progress-track">
+        <div class="recent-dirs-progress-fill" id="recentDirsProgressFill"></div>
+      </div>
+    </div>
     <div class="recent-dirs-controls" id="recentDirsControls" style="display:none">
       <input class="recent-dirs-search" id="recentDirsSearch" type="search" placeholder="Search directories&hellip;" aria-label="Search directories">
       <select class="recent-dirs-sort" id="recentDirsSort" aria-label="Sort order">
@@ -633,7 +727,7 @@
   'use strict';
 
   // ============================================================================
-  // Recently Edited Directories Loader (Enhanced)
+  // Recently Edited Directories Loader (Enhanced — multi-stage async pipeline)
   // ============================================================================
   function escHtml(str) {
     return String(str)
@@ -665,11 +759,102 @@
     return map[(cat || '').toLowerCase()] || 'cat-default';
   }
 
-  function buildRecentDirCard(d, proj, idx) {
+  // ---- Stage helpers ----
+
+  function setRecentDirsProgress(label, pct) {
+    const prog  = document.getElementById('recentDirsProgress');
+    const lblEl = document.getElementById('recentDirsProgressLabel');
+    const pctEl = document.getElementById('recentDirsProgressPct');
+    const fill  = document.getElementById('recentDirsProgressFill');
+    if (!prog) return;
+    if (prog.style.display === 'none' || prog.style.display === '') prog.style.display = '';
+    if (lblEl) lblEl.textContent = label;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (fill)  fill.style.width  = `${Math.min(pct, 100)}%`;
+    if (pct >= 100) {
+      setTimeout(() => { if (prog) prog.style.display = 'none'; }, 700);
+    }
+  }
+
+  // ---- Stage 3: derive context-aware upgrade hints from commit metadata ----
+
+  async function deriveUpgradesMap(dirs) {
+    await new Promise(r => setTimeout(r, 0)); // yield to event loop
+    const map = {};
+    for (const d of dirs) {
+      const hints = [];
+      const ageDays = d.lastCommitDate
+        ? (Date.now() - new Date(d.lastCommitDate).getTime()) / 86400000
+        : Infinity;
+      if (ageDays > 180)            hints.push('Maintenance needed');
+      else if (ageDays > 60)        hints.push('Consider review');
+      if (ageDays <= 7)             hints.push('Active — add tests');
+      const msg = (d.lastCommitMessage || '').toLowerCase();
+      if (/\b(create|init|initial)\b/.test(msg)) hints.push('Add documentation');
+      if (/\b(fix|bug|patch|hotfix)\b/.test(msg)) hints.push('Add regression tests');
+      if (/\b(update|upgrade|bump)\b/.test(msg))  hints.push('Review dependencies');
+      if (/\b(feat|feature|add)\b/.test(msg))     hints.push('Update changelog');
+      map[d.name.toLowerCase()] = hints;
+    }
+    return map;
+  }
+
+  // ---- Stage 4: async generator for progressive card rendering ----
+
+  async function* asyncDirCardGenerator(dirs, projMap, upgradesMap) {
+    for (let i = 0; i < dirs.length; i++) {
+      const d     = dirs[i];
+      const proj  = projMap[d.name.toLowerCase()] || null;
+      const hints = upgradesMap[d.name.toLowerCase()] || [];
+      // Stagger first few cards for a progressive-load feel; rest are immediate
+      if (i > 0 && i < 8) await new Promise(r => setTimeout(r, 18 * i));
+      yield { html: buildRecentDirCard(d, proj, hints, i), index: i, total: dirs.length };
+    }
+  }
+
+  // ---- Card building ----
+
+  function buildUpgradesSection(projRecs, hints, idx) {
+    // Combine hint pills (amber) + project-recommendation pills (blue), deduplicated
+    const seen = new Set();
+    const hintPills = hints.filter(h => {
+      if (seen.has(h.toLowerCase())) return false;
+      seen.add(h.toLowerCase()); return true;
+    }).map(h =>
+      `<span class="upgrade-pill hint"><i class="fas fa-arrow-trend-up" style="font-size:0.6rem"></i>${escHtml(h)}</span>`
+    );
+    const recPills = projRecs.filter(r => {
+      if (seen.has(r.toLowerCase())) return false;
+      seen.add(r.toLowerCase()); return true;
+    }).map(r =>
+      `<span class="upgrade-pill"><i class="fas fa-arrow-up" style="font-size:0.6rem"></i>${escHtml(r)}</span>`
+    );
+    const allPills = [...hintPills, ...recPills];
+    if (allPills.length === 0) return '';
+
+    const MAX_VISIBLE = 2;
+    const visible = allPills.slice(0, MAX_VISIBLE).join('');
+    const overflow = allPills.slice(MAX_VISIBLE);
+    const overflowId = `upgradeMore-${idx}`;
+    const moreBtn = overflow.length > 0
+      ? `<button class="upgrade-pill-more" aria-expanded="false" aria-controls="${overflowId}"
+             onclick="toggleUpgradeMore('${overflowId}', this)">+${overflow.length} more</button>
+         <span id="${overflowId}" class="upgrade-pills-overflow">${overflow.join('')}</span>`
+      : '';
+
+    return `<div class="recent-dir-upgrades">
+      <div class="recent-dir-upgrades-title">
+        <i class="fas fa-circle-up" style="color:var(--secondary-color);font-size:0.65rem"></i>Recommended Upgrades
+      </div>
+      <div class="recent-dir-upgrades-pills">${visible}${moreBtn}</div>
+    </div>`;
+  }
+
+  function buildRecentDirCard(d, proj, hints, idx) {
     const isNew = d.lastCommitDate
       ? (Date.now() - new Date(d.lastCommitDate).getTime()) < 7 * 86400000
       : false;
-    const rel    = relativeTime(d.lastCommitDate);
+    const rel     = relativeTime(d.lastCommitDate);
     const absDate = d.lastCommitDate
       ? new Date(d.lastCommitDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
       : '';
@@ -688,16 +873,18 @@
       ? `<div class="recent-dir-desc" title="${escHtml(proj.desc)}">${escHtml(proj.desc)}</div>`
       : '';
 
-    // Recommendations & Enhancements
-    const recs  = proj && Array.isArray(proj.recommendations) && proj.recommendations.length
-      ? proj.recommendations : [];
-    const enhs  = proj && Array.isArray(proj.enhancements) && proj.enhancements.length
-      ? proj.enhancements : [];
+    // Recommended Upgrades section (always visible, inline pills)
+    const projRecs = proj && Array.isArray(proj.recommendations) ? proj.recommendations : [];
+    const upgradesSection = buildUpgradesSection(projRecs, hints, idx);
+
+    // Collapsible Recommendations & Enhancements panel (full detail)
+    const recs = projRecs;
+    const enhs = proj && Array.isArray(proj.enhancements) ? proj.enhancements : [];
     const hasDetails = recs.length > 0 || enhs.length > 0;
     const detailsId  = `rdDetails-${idx}`;
     const expandBtn  = hasDetails
       ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" aria-label="Show recommendations and enhancements for ${escHtml(d.name)}" onclick="toggleRecentDirDetails('${detailsId}', this)">
-           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> Recommendations &amp; Enhancements
+           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Recommendations &amp; Enhancements
          </button>`
       : '';
     let detailsHtml = '';
@@ -724,6 +911,7 @@
       </div>
       ${desc}
       ${msg}
+      ${upgradesSection}
       ${expandBtn}
       ${detailsHtml}
     </li>`;
@@ -738,10 +926,24 @@
     if (icon) icon.style.transform = open ? 'rotate(90deg)' : '';
   }
 
+  function toggleUpgradeMore(id, btn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const opening = !el.classList.contains('open');
+    el.classList.toggle('open', opening);
+    const count = el.querySelectorAll('.upgrade-pill').length;
+    btn.textContent = opening ? 'less' : `+${count} more`;
+    btn.setAttribute('aria-expanded', opening);
+  }
+
+  // ---- Main loader (5-stage async pipeline) ----
+
   async function loadRecentDirs() {
     const list = document.getElementById('recentDirsList');
     if (!list) return;
+    setRecentDirsProgress('Fetching directory data…', 10);
     try {
+      // Stage 1: Parallel fetch of recent_dirs.json + projects.json
       const [recentResp, projResp] = await Promise.allSettled([
         fetch('./recent_dirs.json'),
         fetch('./projects.json')
@@ -750,13 +952,17 @@
       if (recentResp.status === 'rejected' || !recentResp.value.ok) {
         throw new Error('fetch recent_dirs failed');
       }
+
+      // Stage 2: Parse & build project lookup map
+      setRecentDirsProgress('Parsing directory list…', 28);
       const dirs = await recentResp.value.json();
       if (!Array.isArray(dirs) || dirs.length === 0) {
         list.innerHTML = '<li class="recent-dirs-empty">No recently edited directories found.</li>';
+        setRecentDirsProgress('Done', 100);
         return;
       }
 
-      // Build a lookup map from projects.json (case-insensitive by name)
+      setRecentDirsProgress('Loading project metadata…', 42);
       const projMap = {};
       if (projResp.status === 'fulfilled' && projResp.value.ok) {
         try {
@@ -767,13 +973,20 @@
         } catch (_) { /* projects.json optional */ }
       }
 
-      // Render all cards
-      list.innerHTML = dirs.map((d, i) => {
-        const proj = projMap[d.name.toLowerCase()] || null;
-        return buildRecentDirCard(d, proj, i);
-      }).join('');
+      // Stage 3: Async enrichment — derive context-aware upgrade hints
+      setRecentDirsProgress('Computing upgrade recommendations…', 56);
+      const upgradesMap = await deriveUpgradesMap(dirs);
 
-      // Collect categories and wire up controls
+      // Stage 4: Progressive card rendering via async generator
+      setRecentDirsProgress('Rendering directory cards…', 66);
+      list.innerHTML = '';
+      for await (const { html, index, total } of asyncDirCardGenerator(dirs, projMap, upgradesMap)) {
+        list.insertAdjacentHTML('beforeend', html);
+        setRecentDirsProgress(`Rendering card ${index + 1} of ${total}…`, 66 + Math.round(((index + 1) / total) * 24));
+      }
+
+      // Stage 5: Wire up filter/sort controls
+      setRecentDirsProgress('Finalizing controls…', 92);
       const cats = [...new Set(dirs.map(d => {
         const p = projMap[d.name.toLowerCase()];
         return p ? (p.category || '').toLowerCase() : '';
@@ -790,19 +1003,15 @@
         ).join('');
       }
 
-      // Search input
       const searchInput = document.getElementById('recentDirsSearch');
-      if (searchInput) {
-        searchInput.addEventListener('input', applyRecentDirsFilters);
-      }
-      // Sort select
+      if (searchInput) searchInput.addEventListener('input', applyRecentDirsFilters);
       const sortSelect = document.getElementById('recentDirsSort');
-      if (sortSelect) {
-        sortSelect.addEventListener('change', applyRecentDirsFilters);
-      }
+      if (sortSelect) sortSelect.addEventListener('change', applyRecentDirsFilters);
 
+      setRecentDirsProgress('Done', 100);
     } catch (e) {
       list.innerHTML = '<li class="recent-dirs-empty">Could not load recently edited directories.</li>';
+      setRecentDirsProgress('Error', 100);
     }
   }
 
