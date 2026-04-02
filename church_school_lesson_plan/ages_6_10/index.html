@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Church School Curriculum – Ages 6–10 (9-Month Plan)</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        :root {
+            --theme-color-main: #8C1515;
+            --theme-color-light: #fde0e0;
+            --theme-color-bright: #D9534F;
+            --theme-color-dark: #701111;
+            --text-on-main: white;
+            --text-on-light: #5D4037;
+            --font-head: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', sans-serif;
+            --font-body: 'Arial', sans-serif;
+        }
+        body { font-family: var(--font-body); background-color: #fffcfc; }
+        h1, h2, h3, h4 { font-family: var(--font-head); font-weight: bold; }
+
+        .main-header {
+            background-color: var(--theme-color-main);
+            color: var(--text-on-main);
+            border-bottom: 5px solid var(--theme-color-dark);
+            position: relative;
+            padding: 20px 0 12px;
+        }
+        .logo-container { position: absolute; top: 10px; left: 10px; width: 60px; }
+        .logo-svg .book-fill { fill: #f0f8ff; }
+        .logo-svg .book-stroke { stroke: var(--theme-color-dark); stroke-width: 1.5; }
+        .logo-svg .sprout-fill { fill: #8fbc8f; }
+        .logo-svg .church-stroke { stroke: var(--theme-color-dark); stroke-width: 2; fill: none; }
+
+        .welcome-panel {
+            background-color: var(--theme-color-light);
+            border-left: 5px solid var(--theme-color-bright);
+            padding: 20px; color: var(--text-on-light);
+            border-radius: 8px;
+        }
+        .welcome-panel h2 { color: var(--theme-color-main); margin-top: 0; }
+
+        .age-badge {
+            display: inline-block;
+            padding: 4px 12px; border-radius: 20px;
+            font-weight: bold; font-size: 0.85em; margin: 3px 3px 3px 0;
+        }
+        .badge-young { background-color: #4CAF50; color: white; }
+        .badge-older { background-color: #2196F3; color: white; }
+
+        .month-card {
+            margin-bottom: 20px; border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        .month-header {
+            padding: 12px 16px;
+            color: white;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .month-header h3 { margin: 0; font-size: 1.3em; }
+        .month-header .month-num { font-size: 2em; opacity: 0.35; font-weight: bold; }
+        .month-body { padding: 16px; background: white; }
+
+        .week-row { border-bottom: 1px solid #f0e0e0; padding: 8px 0; }
+        .week-row:last-child { border-bottom: none; }
+        .week-label { font-weight: bold; color: var(--theme-color-dark); min-width: 80px; display: inline-block; }
+
+        .diff-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .diff-table th { background-color: var(--theme-color-light); color: var(--theme-color-dark);
+            padding: 8px 12px; text-align: left; font-size: 0.9em; }
+        .diff-table td { padding: 8px 12px; vertical-align: top; font-size: 0.9em;
+            border-top: 1px solid #f0e0e0; }
+        .diff-table tr:nth-child(even) td { background-color: #fffafa; }
+
+        .values-chip {
+            display: inline-block; background-color: var(--theme-color-light);
+            color: var(--theme-color-dark); border-radius: 12px;
+            padding: 3px 10px; margin: 2px; font-size: 0.82em; font-weight: bold;
+        }
+        .memory-verse {
+            background: #fff8f0; border-left: 4px solid #ff9800;
+            padding: 10px 14px; border-radius: 6px; margin-top: 10px;
+            font-style: italic; color: #5D4037; font-size: 0.93em;
+        }
+        .memory-verse strong { color: #e65100; font-style: normal; }
+
+        .special-event-tag {
+            display: inline-block; background: #ffe0b2; color: #e65100;
+            border-radius: 10px; padding: 2px 10px; font-size: 0.8em;
+            font-weight: bold; margin: 2px;
+        }
+
+        /* Month color palette */
+        .m1 { background-color: #388E3C; }
+        .m2 { background-color: #1565C0; }
+        .m3 { background-color: #6A1B9A; }
+        .m4 { background-color: #B71C1C; }
+        .m5 { background-color: #00838F; }
+        .m6 { background-color: #C62828; }
+        .m7 { background-color: #4527A0; }
+        .m8 { background-color: #558B2F; }
+        .m9 { background-color: #1976D2; }
+
+        .footer { background-color: var(--theme-color-dark); color: var(--theme-color-light); padding: 18px 0; margin-top: 30px; }
+
+        @media print {
+            body { font-size: 9pt; }
+            .main-header { display: none; }
+            .print-title { display: block !important; text-align: center; margin-bottom: 12px; }
+            .month-card { break-inside: avoid; }
+            @page { size: A4 portrait; margin: 0.6in; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="w3-container main-header w3-center">
+    <div class="logo-container no-print">
+        <svg class="logo-svg" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+            <path class="church-stroke" d="M30 35 L50 15 L70 35"/>
+            <rect class="church-stroke" x="35" y="35" width="30" height="20" stroke-linejoin="round"/>
+            <path class="book-fill book-stroke" d="M10 60 Q20 50,50 50 Q80 50,90 60 L90 65 L10 65 Z"/>
+            <path class="book-stroke" d="M50 50 L50 65"/>
+            <path class="sprout-fill book-stroke" d="M50 50 Q50 35,53 30 Q56 25,50 20 Q44 25,47 30 Q50 35,50 50"/>
+            <path class="sprout-fill book-stroke" d="M50 30 C45 28,42 22,50 25"/>
+            <path class="sprout-fill book-stroke" d="M50 30 C55 28,58 22,50 25"/>
+        </svg>
+    </div>
+    <h1 style="margin:0; font-size:2.2em;">Church School Curriculum</h1>
+    <p class="w3-large" style="margin:6px 0 0;">Ages 6–10 &nbsp;|&nbsp; 9-Month School Year (September – May)</p>
+</header>
+
+<div class="print-title" style="display:none;">
+    <h1 style="font-family:var(--font-head); color:var(--theme-color-main); margin:0;">Church School Curriculum — Ages 6–10</h1>
+    <p style="margin:4px 0;">9-Month School Year (September – May)</p>
+</div>
+
+<div class="w3-container w3-padding-16">
+
+    <!-- Welcome -->
+    <div class="w3-panel welcome-panel w3-card w3-margin-top">
+        <h2>Welcome, Teacher!</h2>
+        <p>This curriculum is designed for children <strong>ages 6–10</strong> in a church school setting. It spans <strong>nine months</strong> (September through May) and covers a full arc of Scripture — from Creation to the Early Church — while developing Christian values, literacy, creative arts, and community service.</p>
+        <p>
+            <span class="age-badge badge-young">🌱 Ages 6–7</span> activities are simpler, more sensory, story-focused, and craft-heavy.<br>
+            <span class="age-badge badge-older">📖 Ages 8–10</span> activities involve deeper reading, writing, discussion, and independent projects.
+        </p>
+        <p><a href="../index.html" style="color:var(--theme-color-main); font-weight:bold;">← Back to Main Hub</a></p>
+    </div>
+
+    <!-- Quick Nav -->
+    <div class="w3-panel w3-pale-blue w3-card" style="border-radius:8px; padding:14px 20px;">
+        <strong>Quick Navigation:</strong>
+        <a href="#sep" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Sep</a>
+        <a href="#oct" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Oct</a>
+        <a href="#nov" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Nov</a>
+        <a href="#dec" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Dec</a>
+        <a href="#jan" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Jan</a>
+        <a href="#feb" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Feb</a>
+        <a href="#mar" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Mar</a>
+        <a href="#apr" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">Apr</a>
+        <a href="#may" class="w3-button w3-small w3-round" style="background:var(--theme-color-light);color:var(--theme-color-dark);margin:3px;">May</a>
+    </div>
+
+    <!-- ==================== MONTH 1: SEPTEMBER ==================== -->
+    <div id="sep" class="month-card">
+        <div class="month-header m1">
+            <div>
+                <h3>Month 1 — September</h3>
+                <div style="font-size:0.95em; opacity:0.9;">God's Amazing Creation &amp; Who We Are</div>
+            </div>
+            <div class="month-num">1</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> We begin the year with wonder! Students explore the creation story, learn that God made them uniquely and lovingly, and welcome each other into the church family.</p>
+            <div>
+                <span class="values-chip">Wonder &amp; Awe</span>
+                <span class="values-chip">Stewardship</span>
+                <span class="values-chip">Identity in God</span>
+                <span class="values-chip">Community</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "In the beginning God created the heavens and the earth." — Genesis 1:1</div>
+            <div class="special-event-tag">🎉 Welcome Back Sunday</div>
+            <div class="special-event-tag">📸 Class Photo Day</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young" style="font-size:0.8em;">Ages 6–7</span> Activities</th>
+                    <th><span class="age-badge badge-older" style="font-size:0.8em;">Ages 8–10</span> Activities</th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Creation Days 1–4 (Light, Sky, Land, Stars)</td>
+                    <td>Sing "He's Got the Whole World"; color a day-by-day creation wheel; act out light vs. dark with flashlights</td>
+                    <td>Read Genesis 1:1–19; create an illustrated timeline of creation; write 2 sentences on what they would create if they were God</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>Creation Days 5–6: Animals &amp; People</td>
+                    <td>Animal collage craft; "God Made…" fill-in song; name their favorite animal and why God made it</td>
+                    <td>Research one animal and explain its design to the class; read Psalm 8; discuss what "image of God" means</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>Day 7: Rest (Sabbath) &amp; God's Love for Me</td>
+                    <td>Make a "God Made Me" mirror craft; draw self-portrait; group prayer thanking God for bodies</td>
+                    <td>Read Genesis 2:1–3; journal prompt: "How do I rest and honor God each week?"; design a personal "Sabbath plan"</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Adam, Eve &amp; The Garden; The Fall</td>
+                    <td>Act out Garden story with simple props; discuss good choices vs. bad choices; make a simple garden craft</td>
+                    <td>Read Genesis 3; write a short newspaper report ("Breaking News from Eden"); discuss consequences and grace</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft/Art:</strong> Nature walk and leaf rubbings; creation mobile using paper plates &amp; string. &nbsp;|&nbsp; <strong>Music:</strong> "All Things Bright and Beautiful"; "He's Got the Whole World in His Hands"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 2: OCTOBER ==================== -->
+    <div id="oct" class="month-card">
+        <div class="month-header m2">
+            <div>
+                <h3>Month 2 — October</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Heroes of Faith: Abraham, Isaac &amp; Joseph</div>
+            </div>
+            <div class="month-num">2</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> Students discover that God keeps His promises and that ordinary people can trust God even in hard times.</p>
+            <div>
+                <span class="values-chip">Faith</span>
+                <span class="values-chip">Trust</span>
+                <span class="values-chip">Forgiveness</span>
+                <span class="values-chip">Obedience</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "Trust in the Lord with all your heart." — Proverbs 3:5a</div>
+            <div class="special-event-tag">🍂 Harvest Festival / All Saints Sunday</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>God Calls Abraham (Leave Your Home)</td>
+                    <td>Pack a pretend "travel bag"; discuss a time you had to trust someone; star-counting activity (God's promise)</td>
+                    <td>Read Genesis 12:1–9; map Abraham's journey; write about a time they had to trust God or someone else</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>God's Promise: Abraham &amp; Isaac (Three Visitors)</td>
+                    <td>Felt board story; make a "promise star" ornament; discuss: what is a promise?</td>
+                    <td>Read Genesis 18:1–15, 21:1–7; compare God's promises to human promises; create a "Promises of God" booklet starter</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>Joseph's Coat &amp; His Brothers' Jealousy</td>
+                    <td>Make a colorful "coat of many colors" paper craft; discuss jealousy and how it hurts; role-play</td>
+                    <td>Read Genesis 37; write a short story from a brother's perspective; explore the theme of favoritism</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Joseph in Egypt: God Turns Bad to Good</td>
+                    <td>Puppet show retelling; discuss: even when things seem bad, God has a plan; share a "hard thing God helped you with"</td>
+                    <td>Read Genesis 45:1–15; discuss forgiveness deeply; write a letter Joseph might send to his brothers; discuss Romans 8:28</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Joseph's coat paper weaving; star-count canvas. &nbsp;|&nbsp; <strong>Music:</strong> "Father Abraham"; "Trust and Obey"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 3: NOVEMBER ==================== -->
+    <div id="nov" class="month-card">
+        <div class="month-header m3">
+            <div>
+                <h3>Month 3 — November</h3>
+                <div style="font-size:0.95em; opacity:0.9;">God's Rescue Plan: Moses &amp; The Exodus</div>
+            </div>
+            <div class="month-num">3</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> God hears the cries of His people and sends a rescuer. Students learn about courage, God's power, and gratitude — timed beautifully with Thanksgiving.</p>
+            <div>
+                <span class="values-chip">Courage</span>
+                <span class="values-chip">Gratitude</span>
+                <span class="values-chip">God's Power</span>
+                <span class="values-chip">Justice</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "Give thanks to the Lord, for he is good; his love endures forever." — Psalm 107:1</div>
+            <div class="special-event-tag">🦃 Thanksgiving Service</div>
+            <div class="special-event-tag">🕯️ Advent Begins (late Nov)</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Baby Moses: God Protects His Servant</td>
+                    <td>Make a basket boat craft; act out the story; discuss: how does God protect you?</td>
+                    <td>Read Exodus 2:1–10; write a journal entry from Miriam's perspective; map Egypt geography</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>The Burning Bush: God's Call to Moses</td>
+                    <td>Tissue-paper fire craft; discuss: God calls even shy people; practice saying "Here I am, Lord"</td>
+                    <td>Read Exodus 3–4; discuss Moses's excuses vs. God's assurances; write about a time they felt called to do something scary</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>The Plagues &amp; Passover (Simplified)</td>
+                    <td>Visual plagues chart; Passover meal elements introduction; discuss protection through faith</td>
+                    <td>Read Exodus 12:1–14; create a Passover seder plate diagram with meaning; explore links to Jesus as the Passover Lamb</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Crossing the Red Sea &amp; Thanksgiving to God</td>
+                    <td>Rip-paper Red Sea craft; Thanksgiving prayer chain; discuss things to thank God for</td>
+                    <td>Read Exodus 14; write a praise song like Miriam's; create a personal "Thanksgiving List" to God</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Plagues flip book; Red Sea watercolor. &nbsp;|&nbsp; <strong>Music:</strong> "Go Down, Moses"; "Give Thanks"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 4: DECEMBER ==================== -->
+    <div id="dec" class="month-card">
+        <div class="month-header m4">
+            <div>
+                <h3>Month 4 — December</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Advent: Waiting for Jesus &amp; The Christmas Story</div>
+            </div>
+            <div class="month-num">4</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> The four weeks of Advent build anticipation for Jesus's birth. Students explore Hope, Peace, Joy, and Love through prophecy, angels, shepherds, and the manger.</p>
+            <div>
+                <span class="values-chip">Hope</span>
+                <span class="values-chip">Peace</span>
+                <span class="values-chip">Joy</span>
+                <span class="values-chip">Love</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "For to us a child is born, to us a son is given." — Isaiah 9:6a</div>
+            <div class="special-event-tag">🕯️ Advent Candle Lighting</div>
+            <div class="special-event-tag">🎄 Christmas Pageant / Nativity Play</div>
+            <div class="special-event-tag">🎉 Class Christmas Party</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Advent Theme / Story</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong><br><em>Hope</em></td>
+                    <td>Old Testament Prophecies &amp; Simeon's Hope (Luke 2:25–35)</td>
+                    <td>Make an Advent wreath; light the Hope candle; discuss: what are you hoping for?</td>
+                    <td>Read Isaiah 7:14, 9:6; compare prophecy to fulfillment; write a short prayer of hope for the world</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong><br><em>Peace</em></td>
+                    <td>The Angel Gabriel Visits Mary (Luke 1:26–38)</td>
+                    <td>Angel craft (paper plate + coffee filter wings); discuss: Peace means trusting God; sing "Silent Night"</td>
+                    <td>Read Luke 1:26–56; read Mary's Magnificat; write their own prayer/poem in response to God's calling</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong><br><em>Joy</em></td>
+                    <td>The Shepherds &amp; Angels (Luke 2:8–20)</td>
+                    <td>Shepherd's staff craft; act out the angel announcement; shout "Good news of great joy!"</td>
+                    <td>Read Luke 2:8–20; discuss: why did God tell shepherds first?; write what the "good news" means to them personally</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong><br><em>Love</em></td>
+                    <td>Jesus Is Born — The Nativity (Luke 2:1–7; Matthew 2)</td>
+                    <td>Build a nativity scene from paper; place baby Jesus and sing "Away in a Manger"; gift-giving discussion</td>
+                    <td>Read Luke 2:1–20 + Matthew 2:1–12; write a newspaper front page about the Nativity; discuss gifts we give God</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Nativity scene; Advent calendar countdown. &nbsp;|&nbsp; <strong>Music:</strong> "O Come All Ye Faithful"; "Hark! The Herald Angels Sing"; "Away in a Manger"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 5: JANUARY ==================== -->
+    <div id="jan" class="month-card">
+        <div class="month-header m5">
+            <div>
+                <h3>Month 5 — January</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Jesus Begins His Ministry</div>
+            </div>
+            <div class="month-num">5</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> A new year! Students meet Jesus as He grows up, gets baptized, calls His disciples, and performs His first miracle. We explore what it means to follow Jesus.</p>
+            <div>
+                <span class="values-chip">Discipleship</span>
+                <span class="values-chip">Listening to God</span>
+                <span class="values-chip">Courage</span>
+                <span class="values-chip">New Beginnings</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "Come, follow me." — Matthew 4:19a</div>
+            <div class="special-event-tag">🎊 New Year Blessings Activity</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Jesus as a Boy in the Temple (Luke 2:41–52)</td>
+                    <td>Draw Jesus as a child; talk about learning at church; discuss: "Did you know I must be about my Father's business?"</td>
+                    <td>Read Luke 2:41–52; compare Jesus growing up to their own growth; write a "Growing in Wisdom" goal for the new year</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>Jesus's Baptism &amp; Temptation in the Desert</td>
+                    <td>Water/baptism sensory activity; discuss: the Holy Spirit is like a dove; simple craft — dove from paper</td>
+                    <td>Read Matthew 3:13–4:11; explore what it means to be "tempted"; create a "Temptation Shield" showing how to resist with Scripture</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>Calling the First Disciples (Peter, Andrew, James, John)</td>
+                    <td>Fishing boat craft; game: "Follow the Leader"; discuss: Jesus chose regular people like you</td>
+                    <td>Read Matthew 4:18–22; write brief character sketches of the disciples; discuss: what would you leave behind to follow Jesus?</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Water to Wine: Jesus's First Miracle (John 2:1–11)</td>
+                    <td>Simple "water experiment" with food coloring; discuss: Jesus can do amazing things; what would your miracle be?</td>
+                    <td>Read John 2:1–11; discuss what this miracle reveals about Jesus's nature; write about a time God did something unexpected</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Disciple name tags; dove mobile. &nbsp;|&nbsp; <strong>Music:</strong> "I Have Decided to Follow Jesus"; "Lord, I Want to Be a Christian"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 6: FEBRUARY ==================== -->
+    <div id="feb" class="month-card">
+        <div class="month-header m6">
+            <div>
+                <h3>Month 6 — February</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Jesus Teaches Us to Love</div>
+            </div>
+            <div class="month-num">6</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> February focuses on Jesus's teachings — the Sermon on the Mount, parables of love, and how to pray. Perfectly aligned with Valentine's Day as God's Love Day!</p>
+            <div>
+                <span class="values-chip">Love</span>
+                <span class="values-chip">Kindness</span>
+                <span class="values-chip">Forgiveness</span>
+                <span class="values-chip">Prayer</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "Love one another as I have loved you." — John 15:12</div>
+            <div class="special-event-tag">❤️ Valentine's Day: God's Love Celebration</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Sermon on the Mount: The Beatitudes (Matthew 5:1–12)</td>
+                    <td>Beatitudes illustrated chart; role-play being "peacemakers"; make heart craft with a Beatitude</td>
+                    <td>Read Matthew 5:1–12; write a modern paraphrase of each Beatitude; discuss: who in your life lives like this?</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>The Lord's Prayer (Matthew 6:9–13)</td>
+                    <td>Teach the Lord's Prayer line by line with actions/motions; make a "prayer rainbow" banner</td>
+                    <td>Read Matthew 6:5–13; break down each petition and explain it in their own words; create a personal prayer template</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>The Good Samaritan (Luke 10:25–37)</td>
+                    <td>Puppet show; identify helpers in your community; make a "Help Others" bookmark to give away</td>
+                    <td>Read Luke 10:25–37; roleplay updated "Good Samaritan" scenarios; write a reflection on being a neighbor in their school</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>The Prodigal Son: God's Forgiving Love (Luke 15:11–32)</td>
+                    <td>Act out the story with costumes; talk about "running to meet someone"; create a "Welcome Home" card</td>
+                    <td>Read Luke 15:11–32; explore the older brother's reaction; write from the perspective of each character; discuss God's radical forgiveness</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Heart-shaped prayer cards; "Love Your Neighbor" poster. &nbsp;|&nbsp; <strong>Music:</strong> "Jesus Loves Me"; "Love the Lord Your God"; "They'll Know We Are Christians"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 7: MARCH ==================== -->
+    <div id="mar" class="month-card">
+        <div class="month-header m7">
+            <div>
+                <h3>Month 7 — March</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Lent: Following Jesus to the Cross</div>
+            </div>
+            <div class="month-num">7</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> Lent is a season of reflection and preparation. Students explore Jesus as healer, His entry into Jerusalem, the Last Supper, and the events of Holy Week in age-appropriate ways.</p>
+            <div>
+                <span class="values-chip">Sacrifice</span>
+                <span class="values-chip">Humility</span>
+                <span class="values-chip">Compassion</span>
+                <span class="values-chip">Reflection</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "For God so loved the world that he gave his one and only Son." — John 3:16</div>
+            <div class="special-event-tag">🌿 Palm Sunday Preparation</div>
+            <div class="special-event-tag">✝️ Ash Wednesday / Lenten Activities</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Jesus Heals: The Blind Man &amp; The Ten Lepers</td>
+                    <td>Blindfold trust walk; discuss: how does it feel to be healed?; "Thank You Jesus" card craft</td>
+                    <td>Read John 9:1–12; Luke 17:11–19; write a comparison of the grateful leper vs. the nine; discuss healing and gratitude</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>Jesus as Servant: Washing Disciples' Feet (John 13)</td>
+                    <td>Simple foot-washing activity (optional); make "Servant's Heart" wristbands; discuss humble service</td>
+                    <td>Read John 13:1–17; write a "Service Plan" — three ways to serve others this week; discuss: why did Jesus wash feet?</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>The Last Supper (Matthew 26:17–30)</td>
+                    <td>Simple bread &amp; grape juice communion reflection; explain the meaning of sharing; make a "Remember Me" cross craft</td>
+                    <td>Read Matthew 26:17–30; discuss the Passover connection; write a reflection on what communion means to them</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Palm Sunday: Jesus Enters Jerusalem (Mark 11:1–11)</td>
+                    <td>Wave palm branches; sing "Hosanna"; make a donkey/palm-branch diorama</td>
+                    <td>Read Mark 11:1–11; compare crowd's expectations to Jesus's actual mission; write: "What kind of king did people expect? What kind of king did Jesus become?"</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Cross from palm leaves; purple Lent banner. &nbsp;|&nbsp; <strong>Music:</strong> "Hosanna (Praise Is Rising)"; "Were You There"; "What Wondrous Love Is This"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 8: APRIL ==================== -->
+    <div id="apr" class="month-card">
+        <div class="month-header m8">
+            <div>
+                <h3>Month 8 — April</h3>
+                <div style="font-size:0.95em; opacity:0.9;">Easter: Jesus Lives! New Life!</div>
+            </div>
+            <div class="month-num">8</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> The heart of the Christian year! Students explore the crucifixion with sensitivity, celebrate the resurrection with joy, and begin to understand what Jesus's victory means for us.</p>
+            <div>
+                <span class="values-chip">Resurrection Hope</span>
+                <span class="values-chip">New Life</span>
+                <span class="values-chip">Joy</span>
+                <span class="values-chip">Testimony</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "He is not here; he has risen, just as he said." — Matthew 28:6</div>
+            <div class="special-event-tag">🌸 Easter Celebration Sunday</div>
+            <div class="special-event-tag">🥚 Easter Egg Hunt</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Good Friday: Jesus Dies for Us (Age-Appropriate)</td>
+                    <td>Torn red paper cross craft; gentle story focus: "Jesus loved us so much He gave everything"; simple prayer of thanks</td>
+                    <td>Read Luke 23:26–49; discuss: what was Jesus thinking/feeling?; write a "Thank You" letter to Jesus</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>Easter Sunday: The Empty Tomb!</td>
+                    <td>Resurrection Eggs® (12-scene Easter eggs); celebrate with shouts of "He is Risen!"; bright Easter butterfly craft</td>
+                    <td>Read Matthew 28:1–10; explore the different appearances of the risen Jesus; write an "eyewitness" news report of the resurrection</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>Jesus Appears to Disciples (Road to Emmaus; Thomas)</td>
+                    <td>Walk "the road to Emmaus" as a group activity; discuss: Jesus is always with us; make "Jesus is Here" door hanger</td>
+                    <td>Read Luke 24:13–35; John 20:24–29; compare Thomas's doubt to his confession; write about questions they have about faith</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>The Great Commission &amp; Ascension (Matthew 28:18–20)</td>
+                    <td>Make a "Go and Tell!" badge; practice saying the memory verse; simple globe craft — "All the World"</td>
+                    <td>Read Matthew 28:18–20 + Acts 1:1–11; write a personal "mission statement" as a follower of Jesus; discuss global missions</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> Resurrection garden in a pot; butterfly life-cycle craft (new life). &nbsp;|&nbsp; <strong>Music:</strong> "Christ the Lord Is Risen Today"; "Because He Lives"; "Low in the Grave He Lay"</p>
+        </div>
+    </div>
+
+    <!-- ==================== MONTH 9: MAY ==================== -->
+    <div id="may" class="month-card">
+        <div class="month-header m9">
+            <div>
+                <h3>Month 9 — May</h3>
+                <div style="font-size:0.95em; opacity:0.9;">The Early Church &amp; Living for God</div>
+            </div>
+            <div class="month-num">9</div>
+        </div>
+        <div class="month-body">
+            <p><strong>Overview:</strong> We close the year by exploring the birth of the Church at Pentecost, key early believers, and what it means to live as God's children in the world today. Finish with a celebration of the year's journey!</p>
+            <div>
+                <span class="values-chip">The Holy Spirit</span>
+                <span class="values-chip">Community</span>
+                <span class="values-chip">Sharing Faith</span>
+                <span class="values-chip">Service</span>
+            </div>
+            <div class="memory-verse"><strong>Memory Verse:</strong> "Be strong and courageous. Do not be afraid; the Lord your God will be with you." — Joshua 1:9</div>
+            <div class="special-event-tag">🔥 Pentecost Sunday</div>
+            <div class="special-event-tag">🎓 End-of-Year Ceremony &amp; Awards</div>
+            <div class="special-event-tag">🌸 Mother's Day Activity</div>
+
+            <table class="diff-table w3-margin-top">
+                <tr>
+                    <th>Week</th>
+                    <th>Bible Story / Theme</th>
+                    <th><span class="age-badge badge-young">Ages 6–7</span></th>
+                    <th><span class="age-badge badge-older">Ages 8–10</span></th>
+                </tr>
+                <tr>
+                    <td><strong>Week 1</strong></td>
+                    <td>Pentecost: The Holy Spirit Comes! (Acts 2:1–21)</td>
+                    <td>Red and orange tissue-paper "flame" hats; discuss: the Holy Spirit helps us; wind/fire sensory exploration</td>
+                    <td>Read Acts 2:1–41; discuss Peter's sermon; create a "gifts of the Spirit" mind map; compare before/after for the disciples</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 2</strong></td>
+                    <td>The Early Church: Sharing Everything (Acts 2:42–47)</td>
+                    <td>Class sharing activity; make a "Community Jar" — paper strips of how we help each other; sing "They'll Know We Are Christians"</td>
+                    <td>Read Acts 2:42–47; compare the early church community to your own church; write: "What would our church look like if we lived like Acts 2?"</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 3</strong></td>
+                    <td>Paul's Missions &amp; Heroes of the Early Church</td>
+                    <td>Map Paul's journeys with stickers; discuss: being brave for God even far from home; simple cross-shaped craft</td>
+                    <td>Read Acts 9:1–19 (Paul's conversion); map one of Paul's missionary journeys; write a short biography of a favorite Bible person from the year</td>
+                </tr>
+                <tr>
+                    <td><strong>Week 4</strong></td>
+                    <td>Year Wrap-Up: My Story of Faith — Who I Am in Christ</td>
+                    <td>Create a "Faith Book" (drawing what I learned, my favorite Bible story, my favorite verse); present to class</td>
+                    <td>Write a personal faith statement ("I believe…"); create a "Faith Portfolio" highlighting their best work; share three things God taught them this year</td>
+                </tr>
+            </table>
+            <p class="w3-small w3-text-grey" style="margin-top:10px;"><strong>Craft:</strong> "Fruits of the Spirit" tree; personal "faith book" scrapbook. &nbsp;|&nbsp; <strong>Music:</strong> "Spirit of the Living God"; "This Little Light of Mine"; "Here I Am, Lord"</p>
+        </div>
+    </div>
+
+    <!-- ==================== YEARLY SUMMARY ==================== -->
+    <div class="w3-panel w3-pale-yellow w3-card" style="border-radius:10px; padding:20px; margin-top:10px;">
+        <h2 style="color:var(--theme-color-main); margin-top:0;">📅 9-Month Curriculum At a Glance</h2>
+        <div class="w3-responsive">
+            <table class="w3-table w3-bordered w3-striped" style="font-size:0.9em;">
+                <tr style="background-color:var(--theme-color-main); color:white;">
+                    <th>Month</th><th>Theme</th><th>Key Bible Books</th><th>Core Value</th>
+                </tr>
+                <tr><td>September</td><td>God's Amazing Creation &amp; Who We Are</td><td>Genesis 1–3</td><td>Wonder &amp; Stewardship</td></tr>
+                <tr><td>October</td><td>Heroes of Faith: Abraham &amp; Joseph</td><td>Genesis 12–50</td><td>Faith &amp; Forgiveness</td></tr>
+                <tr><td>November</td><td>God's Rescue: Moses &amp; Exodus</td><td>Exodus 1–15</td><td>Courage &amp; Gratitude</td></tr>
+                <tr><td>December</td><td>Advent &amp; The Birth of Jesus</td><td>Isaiah 9; Luke 1–2; Matthew 2</td><td>Hope, Peace, Joy, Love</td></tr>
+                <tr><td>January</td><td>Jesus Begins His Ministry</td><td>Luke 2; Matthew 3–4; John 2</td><td>Discipleship</td></tr>
+                <tr><td>February</td><td>Jesus Teaches Us to Love</td><td>Matthew 5–6; Luke 10; 15</td><td>Love &amp; Kindness</td></tr>
+                <tr><td>March</td><td>Lent: Following Jesus to the Cross</td><td>John 9; 13; Matthew 26; Mark 11</td><td>Sacrifice &amp; Humility</td></tr>
+                <tr><td>April</td><td>Easter: Jesus Lives!</td><td>Luke 23–24; Matthew 28</td><td>Resurrection Hope</td></tr>
+                <tr><td>May</td><td>The Early Church &amp; Living for God</td><td>Acts 1–2; 9</td><td>Community &amp; Service</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ==================== DIFFERENTIATION GUIDE ==================== -->
+    <div class="w3-panel w3-light-grey w3-card" style="border-radius:10px; padding:20px; margin-top:10px;">
+        <h2 style="color:var(--theme-color-main); margin-top:0;">🧒 Age Differentiation Guide</h2>
+        <div class="w3-row-padding">
+            <div class="w3-col m6">
+                <div class="w3-card w3-padding" style="border-radius:8px; border-top: 4px solid #4CAF50;">
+                    <h3 style="color:#2E7D32; margin-top:0;"><span class="age-badge badge-young">Ages 6–7</span></h3>
+                    <ul class="w3-ul">
+                        <li>Short attention spans — keep activities under 20 min</li>
+                        <li>Lots of movement, songs with actions</li>
+                        <li>Simple crafts using scissors, glue, crayons</li>
+                        <li>Draw pictures + dictate or write 1–2 sentences</li>
+                        <li>Repeat stories multiple times for retention</li>
+                        <li>Concrete, literal understanding of stories</li>
+                        <li>Celebrate participation, not perfection</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="w3-col m6">
+                <div class="w3-card w3-padding" style="border-radius:8px; border-top: 4px solid #2196F3;">
+                    <h3 style="color:#1565C0; margin-top:0;"><span class="age-badge badge-older">Ages 8–10</span></h3>
+                    <ul class="w3-ul">
+                        <li>Can read Bible passages independently or in groups</li>
+                        <li>Capable of journaling, short essays, reflection writing</li>
+                        <li>Enjoy debates, discussions, and questions</li>
+                        <li>Can work on multi-week projects independently</li>
+                        <li>Begin exploring "why" — deeper theology</li>
+                        <li>Respond well to real-world application</li>
+                        <li>Can take on leadership roles in group activities</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== RESOURCES ==================== -->
+    <div class="w3-panel w3-pale-green w3-card" style="border-radius:10px; padding:20px; margin-top:10px;">
+        <h2 style="color:#2E7D32; margin-top:0;">📚 Suggested Resources</h2>
+        <div class="w3-row-padding">
+            <div class="w3-col m4">
+                <strong>Bibles &amp; Story Books</strong>
+                <ul>
+                    <li>The Beginner's Bible (6–7)</li>
+                    <li>The Jesus Storybook Bible (all ages)</li>
+                    <li>NIrV Children's Bible (8–10)</li>
+                    <li>Big Picture Interactive Bible (8–10)</li>
+                </ul>
+            </div>
+            <div class="w3-col m4">
+                <strong>Supplies Needed</strong>
+                <ul>
+                    <li>Construction paper, scissors, glue sticks</li>
+                    <li>Crayons, markers, watercolors</li>
+                    <li>Craft sticks, tissue paper, felt</li>
+                    <li>Journal/composition notebooks (8–10)</li>
+                    <li>World map or Bible maps poster</li>
+                </ul>
+            </div>
+            <div class="w3-col m4">
+                <strong>Other Materials</strong>
+                <ul>
+                    <li>Felt board or whiteboard</li>
+                    <li>Puppets or simple costumes</li>
+                    <li>Memory verse flashcards</li>
+                    <li>Resurrection Eggs® set</li>
+                    <li>Praise music playlist</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <p class="w3-center w3-margin-top">
+        <a href="../index.html" class="w3-button w3-round" style="background-color:var(--theme-color-main); color:white; padding:12px 24px;">
+            ← Back to Main Hub
+        </a>
+    </p>
+
+</div><!-- end container -->
+
+<footer class="w3-container footer w3-center">
+    <p>&copy; <span id="year"></span> Your Church Name Here — Sunday School Resources | Ages 6–10 Curriculum</p>
+</footer>
+
+<script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+
+</body>
+</html>
