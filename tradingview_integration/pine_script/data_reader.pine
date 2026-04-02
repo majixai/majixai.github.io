@@ -1,8 +1,6 @@
 //@version=5
 indicator("External Data Reader", overlay=true)
 
-import TickerQ/_stdlib/src/stdlib.pinescript as std
-
 // This script demonstrates how to read external data from a GitHub repository
 // using the request.seed() function.
 
@@ -15,7 +13,7 @@ var string dataUrl = "https://raw.githubusercontent.com/your-username/your-repos
 var string csvData = request.seed(dataUrl, "")
 
 // We need to parse the CSV data. We'll split the string into an array of lines.
-var string[] lines = str.split(csvData, "\\n")
+var string[] lines = str.split(csvData, "\n")
 
 // Let's create an array to hold the close prices.
 var float[] closePrices = array.new_float()
@@ -27,10 +25,11 @@ if (array.size(lines) > 1)
         string line = array.get(lines, i)
         if str.length(line) > 0 // Ensure the line is not empty
             string[] values = str.split(line, ",")
-            if array.size(values) == 3
+            if array.size(values) >= 2
                 // The price is the second value in our CSV
-                float price = std.str_to_float(array.get(values, 1))
-                array.push(closePrices, price)
+                float price = str.tonumber(array.get(values, 1))
+                if not na(price)
+                    array.push(closePrices, price)
 
 // Now we can use the data. For this example, we'll just plot the last price from our data.
 // In a real script, you might want to find the price corresponding to the current bar's timestamp.
