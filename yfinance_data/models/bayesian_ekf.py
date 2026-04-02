@@ -218,7 +218,8 @@ class ExtendedKalmanFilter:
         innovation = float(z_observed) - z_hat
 
         # Innovation covariance  S = H P H' + R  (scalar)
-        S = float(H @ self.P_cov @ H.T) + self.R
+        # Use .item() rather than float() so numpy 2.x (1,1)-arrays are safe.
+        S = float((H @ self.P_cov @ H.T).item()) + self.R
         S = max(S, 1e-14)
 
         # Kalman gain  K = P H' / S  —  shape (3, 1)

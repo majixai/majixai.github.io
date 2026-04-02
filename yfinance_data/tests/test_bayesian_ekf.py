@@ -69,7 +69,7 @@ class TestEKFInit(unittest.TestCase):
         ekf = _make_ekf()
         # H = [1, 0, 0] so it picks out the log-price component
         x = np.array([4.6, 1e-4, 0.1])
-        self.assertAlmostEqual(float(ekf.H @ x), 4.6)
+        self.assertAlmostEqual(float((ekf.H @ x).item()), 4.6)
 
     def test_custom_x0(self):
         ekf = ExtendedKalmanFilter(x0=[1.0, 2e-4, 0.5])
