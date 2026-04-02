@@ -1,0 +1,2763 @@
+steps:
+
+  # ================================================================
+  # SECTION 1 — PYTHON ENVIRONMENT
+  # ================================================================
+
+  - name: Set up Python 3.11
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.11'
+      cache: 'pip'
+
+  - name: Upgrade pip, setuptools and wheel
+    run: |
+      python -m pip install --upgrade pip setuptools wheel
+
+  - name: Install async I/O and concurrency packages
+    run: |
+      pip install \
+        aiosqlite>=0.19.0 \
+        aiohttp>=3.9.0 \
+        aiofiles>=23.2.0 \
+        anyio>=4.3.0 \
+        uvloop>=0.19.0
+
+  - name: Install compression libraries
+    run: |
+      pip install \
+        brotli>=1.1.0 \
+        zstandard>=0.22.0 \
+        lz4>=4.3.0
+
+  - name: Install main project Python dependencies
+    run: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+
+  - name: Install flask_app dependencies
+    run: pip install -r flask_app/requirements.txt
+
+  - name: Install market_prediction dependencies
+    run: pip install -r market_prediction/requirements.txt
+
+  - name: Install hotel_booking_app dependencies
+    run: pip install -r hotel_booking_app/requirements.txt
+
+  - name: Install hotel_reservation_system dependencies
+    run: pip install -r hotel_reservation_system/requirements.txt
+
+  - name: Install simple_flask_app dependencies
+    run: pip install -r simple_flask_app/requirements.txt
+
+  - name: Install visa_api dependencies
+    run: pip install -r visa_api/requirements.txt
+
+  - name: Install google_analytics dependencies
+    run: pip install -r google_analytics/requirements.txt
+
+  - name: Install yfinance_data dependencies
+    run: pip install -r yfinance_data/requirements.txt
+
+  - name: Install chat_server dependencies
+    run: pip install -r chat_server/requirements.txt
+
+  - name: Install sp_closing_projection dependencies
+    run: pip install -r sp_closing_projection/requirements.txt
+
+  - name: Install development and testing tools
+    run: |
+      pip install \
+        flake8>=7.0.0 \
+        black>=24.0.0 \
+        mypy>=1.8.0 \
+        isort>=5.13.0 \
+        pytest>=8.0.0 \
+        pytest-asyncio>=0.23.0 \
+        pytest-cov>=4.1.0
+
+  # ================================================================
+  # SECTION 2 — NODE.JS ENVIRONMENT
+  # ================================================================
+
+  - name: Set up Node.js 20
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      cache: 'npm'
+
+  - name: Install Node.js dependencies
+    run: npm ci
+
+  # ================================================================
+  # SECTION 3 — SYSTEM-LEVEL TOOLING
+  # ================================================================
+
+  - name: Install system compression and database utilities
+    run: |
+      sudo apt-get update -qq
+      sudo apt-get install -y --no-install-recommends \
+        sqlite3 \
+        libsqlite3-dev \
+        zlib1g-dev \
+        liblzma-dev \
+        libbz2-dev \
+        libzstd-dev \
+        liblz4-dev \
+        libbrotli-dev
+
+  # ================================================================
+  # SECTION 4 — ASYNC DATABASE SCHEMA INITIALIZATION
+  # ================================================================
+
+  - name: Initialize links database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "links.db"
+
+      async def init_links_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-32000;
+                  PRAGMA temp_store=MEMORY;
+
+                  CREATE TABLE IF NOT EXISTS links (
+                      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                      text      TEXT    NOT NULL,
+                      url       TEXT    NOT NULL UNIQUE,
+                      click_count INTEGER NOT NULL DEFAULT 0,
+                      created_at  TEXT  NOT NULL DEFAULT (datetime('now')),
+                      updated_at  TEXT  NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_links_url   ON links(url);
+                  CREATE INDEX IF NOT EXISTS idx_links_clicks ON links(click_count DESC);
+
+                  CREATE TABLE IF NOT EXISTS link_events (
+                      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                      link_id    INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+                      event_type TEXT    NOT NULL DEFAULT 'click',
+                      user_agent TEXT,
+                      ip_hash    TEXT,
+                      occurred_at TEXT NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_events_link ON link_events(link_id);
+                  CREATE INDEX IF NOT EXISTS idx_events_time ON link_events(occurred_at);
+
+                  CREATE TABLE IF NOT EXISTS link_tags (
+                      link_id INTEGER NOT NULL REFERENCES links(id) ON DELETE CASCADE,
+                      tag     TEXT    NOT NULL,
+                      PRIMARY KEY (link_id, tag)
+                  );
+              """)
+              await db.commit()
+              print(f"[links.db] schema initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_links_db())
+      PYEOF
+
+  - name: Initialize blog database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "blog.db"
+
+      async def init_blog_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-64000;
+                  PRAGMA temp_store=MEMORY;
+
+                  CREATE TABLE IF NOT EXISTS posts (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      title       TEXT    NOT NULL,
+                      slug        TEXT    NOT NULL UNIQUE,
+                      body        TEXT    NOT NULL DEFAULT '',
+                      summary     TEXT    NOT NULL DEFAULT '',
+                      author      TEXT    NOT NULL DEFAULT 'admin',
+                      published   INTEGER NOT NULL DEFAULT 0,
+                      view_count  INTEGER NOT NULL DEFAULT 0,
+                      created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_posts_slug      ON posts(slug);
+                  CREATE INDEX IF NOT EXISTS idx_posts_published ON posts(published);
+                  CREATE INDEX IF NOT EXISTS idx_posts_author    ON posts(author);
+
+                  CREATE TABLE IF NOT EXISTS comments (
+                      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                      post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+                      author     TEXT    NOT NULL DEFAULT 'anonymous',
+                      body       TEXT    NOT NULL,
+                      approved   INTEGER NOT NULL DEFAULT 0,
+                      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
+
+                  CREATE TABLE IF NOT EXISTS categories (
+                      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                      name TEXT NOT NULL UNIQUE,
+                      slug TEXT NOT NULL UNIQUE
+                  );
+
+                  CREATE TABLE IF NOT EXISTS post_categories (
+                      post_id     INTEGER NOT NULL REFERENCES posts(id)       ON DELETE CASCADE,
+                      category_id INTEGER NOT NULL REFERENCES categories(id)  ON DELETE CASCADE,
+                      PRIMARY KEY (post_id, category_id)
+                  );
+
+                  CREATE TABLE IF NOT EXISTS tags (
+                      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                      name TEXT NOT NULL UNIQUE
+                  );
+
+                  CREATE TABLE IF NOT EXISTS post_tags (
+                      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+                      tag_id  INTEGER NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
+                      PRIMARY KEY (post_id, tag_id)
+                  );
+              """)
+              await db.commit()
+              print(f"[blog.db] schema initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_blog_db())
+      PYEOF
+
+  - name: Initialize texas_holdem database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "texas_holdem.db"
+
+      async def init_holdem_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-32000;
+
+                  CREATE TABLE IF NOT EXISTS players (
+                      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                      username   TEXT    NOT NULL UNIQUE,
+                      chips      INTEGER NOT NULL DEFAULT 1000,
+                      wins       INTEGER NOT NULL DEFAULT 0,
+                      losses     INTEGER NOT NULL DEFAULT 0,
+                      hands_played INTEGER NOT NULL DEFAULT 0,
+                      created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_players_username ON players(username);
+                  CREATE INDEX IF NOT EXISTS idx_players_chips    ON players(chips DESC);
+
+                  CREATE TABLE IF NOT EXISTS games (
+                      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                      state      TEXT    NOT NULL DEFAULT 'waiting',
+                      pot        INTEGER NOT NULL DEFAULT 0,
+                      community_cards TEXT NOT NULL DEFAULT '[]',
+                      created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+                      ended_at   TEXT
+                  );
+
+                  CREATE TABLE IF NOT EXISTS game_players (
+                      game_id   INTEGER NOT NULL REFERENCES games(id)   ON DELETE CASCADE,
+                      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+                      hole_cards TEXT    NOT NULL DEFAULT '[]',
+                      bet       INTEGER NOT NULL DEFAULT 0,
+                      folded    INTEGER NOT NULL DEFAULT 0,
+                      position  INTEGER NOT NULL DEFAULT 0,
+                      PRIMARY KEY (game_id, player_id)
+                  );
+
+                  CREATE TABLE IF NOT EXISTS hand_history (
+                      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                      game_id    INTEGER NOT NULL REFERENCES games(id),
+                      player_id  INTEGER NOT NULL REFERENCES players(id),
+                      action     TEXT    NOT NULL,
+                      amount     INTEGER NOT NULL DEFAULT 0,
+                      phase      TEXT    NOT NULL DEFAULT 'preflop',
+                      occurred_at TEXT   NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_history_game   ON hand_history(game_id);
+                  CREATE INDEX IF NOT EXISTS idx_history_player ON hand_history(player_id);
+              """)
+              await db.commit()
+              print(f"[texas_holdem.db] schema ready at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_holdem_db())
+      PYEOF
+
+  - name: Initialize analytics events database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "analytics.db"
+
+      async def init_analytics_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-64000;
+                  PRAGMA temp_store=MEMORY;
+
+                  CREATE TABLE IF NOT EXISTS events (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      session_id  TEXT    NOT NULL,
+                      event_type  TEXT    NOT NULL,
+                      page        TEXT    NOT NULL DEFAULT '/',
+                      referrer    TEXT,
+                      user_agent  TEXT,
+                      ip_hash     TEXT,
+                      duration_ms INTEGER,
+                      metadata    TEXT    NOT NULL DEFAULT '{}',
+                      occurred_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_events_session  ON events(session_id);
+                  CREATE INDEX IF NOT EXISTS idx_events_type     ON events(event_type);
+                  CREATE INDEX IF NOT EXISTS idx_events_page     ON events(page);
+                  CREATE INDEX IF NOT EXISTS idx_events_time     ON events(occurred_at);
+
+                  CREATE TABLE IF NOT EXISTS sessions (
+                      id          TEXT    PRIMARY KEY,
+                      first_seen  TEXT    NOT NULL DEFAULT (datetime('now')),
+                      last_seen   TEXT    NOT NULL DEFAULT (datetime('now')),
+                      page_views  INTEGER NOT NULL DEFAULT 0,
+                      events_count INTEGER NOT NULL DEFAULT 0
+                  );
+
+                  CREATE TABLE IF NOT EXISTS click_data (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      element_id  TEXT,
+                      element_class TEXT,
+                      page        TEXT    NOT NULL DEFAULT '/',
+                      x_pos       REAL,
+                      y_pos       REAL,
+                      session_id  TEXT,
+                      occurred_at TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_click_page    ON click_data(page);
+                  CREATE INDEX IF NOT EXISTS idx_click_session ON click_data(session_id);
+
+                  CREATE TABLE IF NOT EXISTS page_performance (
+                      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                      page            TEXT    NOT NULL,
+                      load_time_ms    INTEGER,
+                      ttfb_ms         INTEGER,
+                      fcp_ms          INTEGER,
+                      lcp_ms          INTEGER,
+                      cls_score       REAL,
+                      session_id      TEXT,
+                      occurred_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+              """)
+              await db.commit()
+              print(f"[analytics.db] schema initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_analytics_db())
+      PYEOF
+
+  - name: Initialize market data cache database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "market_cache.db"
+
+      async def init_market_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-128000;
+                  PRAGMA temp_store=MEMORY;
+                  PRAGMA mmap_size=268435456;
+
+                  CREATE TABLE IF NOT EXISTS tickers (
+                      symbol      TEXT    PRIMARY KEY,
+                      name        TEXT,
+                      sector      TEXT,
+                      industry    TEXT,
+                      market_cap  REAL,
+                      currency    TEXT    NOT NULL DEFAULT 'USD',
+                      exchange    TEXT,
+                      updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE TABLE IF NOT EXISTS ohlcv (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL REFERENCES tickers(symbol) ON DELETE CASCADE,
+                      interval    TEXT    NOT NULL DEFAULT '1d',
+                      ts          TEXT    NOT NULL,
+                      open        REAL    NOT NULL,
+                      high        REAL    NOT NULL,
+                      low         REAL    NOT NULL,
+                      close       REAL    NOT NULL,
+                      volume      INTEGER NOT NULL DEFAULT 0,
+                      adj_close   REAL,
+                      UNIQUE (symbol, interval, ts)
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_ohlcv_symbol   ON ohlcv(symbol);
+                  CREATE INDEX IF NOT EXISTS idx_ohlcv_interval ON ohlcv(symbol, interval);
+                  CREATE INDEX IF NOT EXISTS idx_ohlcv_ts       ON ohlcv(ts DESC);
+
+                  CREATE TABLE IF NOT EXISTS indicators (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL,
+                      interval    TEXT    NOT NULL DEFAULT '1d',
+                      ts          TEXT    NOT NULL,
+                      indicator   TEXT    NOT NULL,
+                      value       REAL    NOT NULL,
+                      UNIQUE (symbol, interval, ts, indicator)
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_indicators_symbol ON indicators(symbol, indicator);
+
+                  CREATE TABLE IF NOT EXISTS predictions (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL,
+                      model       TEXT    NOT NULL,
+                      horizon     INTEGER NOT NULL DEFAULT 5,
+                      predicted_at TEXT   NOT NULL DEFAULT (datetime('now')),
+                      target_date TEXT,
+                      predicted_close REAL,
+                      confidence  REAL,
+                      metadata    TEXT    NOT NULL DEFAULT '{}'
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_predictions_symbol ON predictions(symbol, model);
+
+                  CREATE TABLE IF NOT EXISTS monte_carlo_runs (
+                      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol          TEXT    NOT NULL,
+                      simulations     INTEGER NOT NULL DEFAULT 10000,
+                      horizon_days    INTEGER NOT NULL DEFAULT 252,
+                      mean_return     REAL,
+                      std_dev         REAL,
+                      var_95          REAL,
+                      var_99          REAL,
+                      cvar_95         REAL,
+                      sharpe_ratio    REAL,
+                      max_drawdown    REAL,
+                      ran_at          TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+              """)
+
+              # Pre-seed ticker list with canonical index symbols
+              symbols = [
+                  ("SPY",  "SPDR S&P 500 ETF",      "ETF",        "Index Fund",  None, "USD", "ARCA"),
+                  ("QQQ",  "Invesco QQQ Trust",      "ETF",        "Index Fund",  None, "USD", "NASDAQ"),
+                  ("DIA",  "SPDR Dow Jones ETF",     "ETF",        "Index Fund",  None, "USD", "ARCA"),
+                  ("IWM",  "iShares Russell 2000",   "ETF",        "Index Fund",  None, "USD", "ARCA"),
+                  ("GLD",  "SPDR Gold Shares",       "Commodity",  "Gold",        None, "USD", "ARCA"),
+                  ("TLT",  "iShares 20+ Yr Treasury","Fixed Income","Bonds",      None, "USD", "NASDAQ"),
+                  ("VIX",  "CBOE Volatility Index",  "Index",      "Volatility",  None, "USD", "CBOE"),
+                  ("BTC-USD","Bitcoin USD",          "Crypto",     "Digital Asset",None,"USD", "CCC"),
+                  ("ETH-USD","Ethereum USD",         "Crypto",     "Digital Asset",None,"USD", "CCC"),
+                  ("AAPL", "Apple Inc.",             "Technology", "Consumer Electronics",None,"USD","NASDAQ"),
+                  ("MSFT", "Microsoft Corp.",        "Technology", "Software",    None, "USD", "NASDAQ"),
+                  ("GOOGL","Alphabet Inc.",          "Technology", "Internet",    None, "USD", "NASDAQ"),
+                  ("AMZN", "Amazon.com Inc.",        "Consumer",   "E-Commerce",  None, "USD", "NASDAQ"),
+                  ("TSLA", "Tesla Inc.",             "Consumer",   "Auto",        None, "USD", "NASDAQ"),
+                  ("NVDA", "NVIDIA Corp.",           "Technology", "Semiconductors",None,"USD","NASDAQ"),
+                  ("META", "Meta Platforms Inc.",    "Technology", "Social Media",None, "USD", "NASDAQ"),
+              ]
+              await db.executemany(
+                  """INSERT OR IGNORE INTO tickers
+                     (symbol, name, sector, industry, market_cap, currency, exchange)
+                     VALUES (?,?,?,?,?,?,?)""",
+                  symbols,
+              )
+              await db.commit()
+              print(f"[market_cache.db] initialised with {len(symbols)} tickers at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_market_db())
+      PYEOF
+
+  - name: Initialize chat server database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "chat.db"
+
+      async def init_chat_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-32000;
+
+                  CREATE TABLE IF NOT EXISTS users (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      username    TEXT    NOT NULL UNIQUE,
+                      password_hash TEXT,
+                      display_name TEXT,
+                      avatar_url  TEXT,
+                      status      TEXT    NOT NULL DEFAULT 'offline',
+                      last_seen   TEXT    NOT NULL DEFAULT (datetime('now')),
+                      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+                  CREATE INDEX IF NOT EXISTS idx_users_status   ON users(status);
+
+                  CREATE TABLE IF NOT EXISTS rooms (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      name        TEXT    NOT NULL UNIQUE,
+                      topic       TEXT,
+                      is_private  INTEGER NOT NULL DEFAULT 0,
+                      created_by  INTEGER REFERENCES users(id),
+                      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE TABLE IF NOT EXISTS room_members (
+                      room_id     INTEGER NOT NULL REFERENCES rooms(id)  ON DELETE CASCADE,
+                      user_id     INTEGER NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
+                      role        TEXT    NOT NULL DEFAULT 'member',
+                      joined_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                      PRIMARY KEY (room_id, user_id)
+                  );
+
+                  CREATE TABLE IF NOT EXISTS messages (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      room_id     INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                      user_id     INTEGER NOT NULL REFERENCES users(id),
+                      body        TEXT    NOT NULL,
+                      msg_type    TEXT    NOT NULL DEFAULT 'text',
+                      is_deleted  INTEGER NOT NULL DEFAULT 0,
+                      edited_at   TEXT,
+                      sent_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_messages_room ON messages(room_id, sent_at DESC);
+                  CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
+
+                  CREATE TABLE IF NOT EXISTS direct_messages (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      from_user   INTEGER NOT NULL REFERENCES users(id),
+                      to_user     INTEGER NOT NULL REFERENCES users(id),
+                      body        TEXT    NOT NULL,
+                      read_at     TEXT,
+                      sent_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_dm_from ON direct_messages(from_user);
+                  CREATE INDEX IF NOT EXISTS idx_dm_to   ON direct_messages(to_user);
+
+                  INSERT OR IGNORE INTO rooms (name, topic) VALUES
+                      ('general',  'General discussion'),
+                      ('market',   'Market data and trading signals'),
+                      ('dev',      'Development and code'),
+                      ('offtopic', 'Off-topic conversations');
+              """)
+              await db.commit()
+              print(f"[chat.db] schema initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_chat_db())
+      PYEOF
+
+  - name: Initialize hotel booking database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import os
+
+      DB_PATH = "hotel_booking.db"
+
+      async def init_hotel_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+
+                  CREATE TABLE IF NOT EXISTS hotels (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      name        TEXT    NOT NULL,
+                      address     TEXT,
+                      city        TEXT,
+                      country     TEXT    NOT NULL DEFAULT 'US',
+                      star_rating INTEGER NOT NULL DEFAULT 3,
+                      amenities   TEXT    NOT NULL DEFAULT '[]',
+                      created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE TABLE IF NOT EXISTS room_types (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      hotel_id    INTEGER NOT NULL REFERENCES hotels(id) ON DELETE CASCADE,
+                      name        TEXT    NOT NULL,
+                      description TEXT,
+                      capacity    INTEGER NOT NULL DEFAULT 2,
+                      base_price  REAL    NOT NULL DEFAULT 100.0,
+                      total_rooms INTEGER NOT NULL DEFAULT 10
+                  );
+
+                  CREATE TABLE IF NOT EXISTS reservations (
+                      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                      hotel_id        INTEGER NOT NULL REFERENCES hotels(id),
+                      room_type_id    INTEGER NOT NULL REFERENCES room_types(id),
+                      guest_name      TEXT    NOT NULL,
+                      guest_email     TEXT,
+                      guest_phone     TEXT,
+                      check_in        TEXT    NOT NULL,
+                      check_out       TEXT    NOT NULL,
+                      adults          INTEGER NOT NULL DEFAULT 1,
+                      children        INTEGER NOT NULL DEFAULT 0,
+                      total_price     REAL    NOT NULL DEFAULT 0.0,
+                      status          TEXT    NOT NULL DEFAULT 'pending',
+                      confirmation_no TEXT    UNIQUE,
+                      created_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_reservations_hotel  ON reservations(hotel_id);
+                  CREATE INDEX IF NOT EXISTS idx_reservations_dates  ON reservations(check_in, check_out);
+                  CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);
+                  CREATE INDEX IF NOT EXISTS idx_reservations_guest  ON reservations(guest_email);
+
+                  CREATE TABLE IF NOT EXISTS reviews (
+                      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                      reservation_id INTEGER NOT NULL REFERENCES reservations(id),
+                      rating       INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+                      title        TEXT,
+                      body         TEXT,
+                      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+              """)
+              await db.commit()
+              print(f"[hotel_booking.db] schema initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_hotel_db())
+      PYEOF
+
+  - name: Initialize yfinance symbol cache database (async)
+    run: |
+      python - <<'PYEOF'
+      import asyncio
+      import aiosqlite
+      import json
+      import os
+
+      DB_PATH = "yfinance_cache.db"
+
+      async def init_yfinance_db():
+          async with aiosqlite.connect(DB_PATH) as db:
+              await db.executescript("""
+                  PRAGMA journal_mode=WAL;
+                  PRAGMA synchronous=NORMAL;
+                  PRAGMA cache_size=-128000;
+                  PRAGMA mmap_size=536870912;
+
+                  CREATE TABLE IF NOT EXISTS raw_data (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL,
+                      interval    TEXT    NOT NULL DEFAULT '1d',
+                      period      TEXT    NOT NULL DEFAULT '1y',
+                      fetched_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                      row_count   INTEGER NOT NULL DEFAULT 0,
+                      csv_data    TEXT    NOT NULL DEFAULT ''
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_raw_symbol   ON raw_data(symbol, interval);
+                  CREATE INDEX IF NOT EXISTS idx_raw_fetched  ON raw_data(fetched_at DESC);
+
+                  CREATE TABLE IF NOT EXISTS compressed_blobs (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL,
+                      interval    TEXT    NOT NULL DEFAULT '1d',
+                      codec       TEXT    NOT NULL DEFAULT 'gzip',
+                      fetched_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                      original_bytes  INTEGER NOT NULL DEFAULT 0,
+                      compressed_bytes INTEGER NOT NULL DEFAULT 0,
+                      compression_ratio REAL   NOT NULL DEFAULT 1.0,
+                      blob        BLOB    NOT NULL,
+                      UNIQUE (symbol, interval, codec)
+                  );
+
+                  CREATE INDEX IF NOT EXISTS idx_blobs_symbol ON compressed_blobs(symbol);
+                  CREATE INDEX IF NOT EXISTS idx_blobs_codec  ON compressed_blobs(codec);
+
+                  CREATE TABLE IF NOT EXISTS fetch_log (
+                      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                      symbol      TEXT    NOT NULL,
+                      status      TEXT    NOT NULL DEFAULT 'ok',
+                      error_msg   TEXT,
+                      duration_ms INTEGER,
+                      logged_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+                  );
+              """)
+              await db.commit()
+              print(f"[yfinance_cache.db] initialised at {os.path.abspath(DB_PATH)}")
+
+      asyncio.run(init_yfinance_db())
+      PYEOF
+
+  # ================================================================
+  # SECTION 5 — GZIP COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate gzip compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      Creates a gzip-backed compressed SQLite blob store.
+      Used by the market data pipeline, image cache, and general
+      key/value storage that benefits from streaming gzip compression.
+
+      Design:
+        - Stores arbitrary payloads (JSON, CSV, binary) as gzip-compressed BLOBs
+        - Maintains a content-addressed index via SHA-256 of the original bytes
+        - Tracks compression ratio for each entry
+        - Async read/write helpers use asyncio.to_thread() for I/O off the main thread
+      """
+      import asyncio
+      import gzip
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      import time
+      from datetime import datetime
+
+      DB_PATH = "compressed_store_gzip.db"
+
+      # ------------------------------------------------------------------ schema
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+          PRAGMA cache_size=-64000;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id              INTEGER PRIMARY KEY AUTOINCREMENT,
+              key             TEXT    NOT NULL UNIQUE,
+              namespace       TEXT    NOT NULL DEFAULT 'default',
+              content_type    TEXT    NOT NULL DEFAULT 'application/octet-stream',
+              sha256          TEXT    NOT NULL,
+              original_bytes  INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL  NOT NULL,
+              gzip_level      INTEGER NOT NULL DEFAULT 9,
+              created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+              updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob            BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_blobs_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_blobs_namespace ON blobs(namespace);
+          CREATE INDEX IF NOT EXISTS idx_blobs_sha256    ON blobs(sha256);
+
+          CREATE TABLE IF NOT EXISTS blob_metadata (
+              blob_key   TEXT    NOT NULL REFERENCES blobs(key) ON DELETE CASCADE,
+              meta_key   TEXT    NOT NULL,
+              meta_value TEXT,
+              PRIMARY KEY (blob_key, meta_key)
+          );
+
+          CREATE TABLE IF NOT EXISTS access_log (
+              id         INTEGER PRIMARY KEY AUTOINCREMENT,
+              blob_key   TEXT    NOT NULL,
+              operation  TEXT    NOT NULL DEFAULT 'read',
+              accessed_at TEXT   NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      # ------------------------------------------------------------------ helpers
+      def _compress(data: bytes, level: int = 9) -> bytes:
+          return gzip.compress(data, compresslevel=level)
+
+      def _decompress(data: bytes) -> bytes:
+          return gzip.decompress(data)
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _ratio(original: int, compressed: int) -> float:
+          return round(original / compressed, 4) if compressed else 1.0
+
+      # ------------------------------------------------------------------ sync DB ops (run via to_thread)
+      def _write_blob(db_path: str, key: str, namespace: str,
+                      content_type: str, raw: bytes, level: int = 9) -> dict:
+          compressed = _compress(raw, level)
+          sha = _sha256(raw)
+          ratio = _ratio(len(raw), len(compressed))
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       gzip_level, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio,
+                      blob=excluded.blob,
+                      updated_at=datetime('now')
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio, level,
+                    sqlite3.Binary(compressed)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {
+              "key": key, "sha256": sha,
+              "original_bytes": len(raw), "compressed_bytes": len(compressed),
+              "compression_ratio": ratio,
+          }
+
+      def _read_blob(db_path: str, key: str) -> bytes | None:
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute(
+                  "SELECT blob FROM blobs WHERE key=?", (key,)
+              ).fetchone()
+          finally:
+              conn.close()
+          return _decompress(bytes(row[0])) if row else None
+
+      # ------------------------------------------------------------------ async wrappers
+      async def write_blob_async(db_path: str, key: str, namespace: str,
+                                  content_type: str, raw: bytes) -> dict:
+          return await asyncio.to_thread(
+              _write_blob, db_path, key, namespace, content_type, raw
+          )
+
+      async def read_blob_async(db_path: str, key: str) -> bytes | None:
+          return await asyncio.to_thread(_read_blob, db_path, key)
+
+      # ------------------------------------------------------------------ init + seed
+      async def main():
+          # Initialise schema
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          # Seed with representative market-data payloads
+          sample_records = []
+          for symbol in ["SPY", "QQQ", "DIA", "IWM", "BTC-USD", "ETH-USD",
+                          "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA"]:
+              payload = {
+                  "symbol": symbol,
+                  "generated_at": datetime.utcnow().isoformat(),
+                  "ohlcv": [
+                      {
+                          "date": f"2024-0{m:02d}-01",
+                          "open": round(100 + m * 1.5, 2),
+                          "high": round(102 + m * 1.5, 2),
+                          "low":  round(98  + m * 1.5, 2),
+                          "close": round(101 + m * 1.5, 2),
+                          "volume": 1_000_000 + m * 50_000,
+                      }
+                      for m in range(1, 13)
+                  ],
+              }
+              raw = json.dumps(payload, separators=(",", ":")).encode()
+              sample_records.append((
+                  f"market/{symbol}/1d/2024",
+                  "market_data",
+                  "application/json",
+                  raw,
+              ))
+
+          tasks = [
+              write_blob_async(DB_PATH, key, ns, ct, raw)
+              for key, ns, ct, raw in sample_records
+          ]
+          results = await asyncio.gather(*tasks)
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          overall_ratio = round(total_orig / total_comp, 4) if total_comp else 1.0
+          print(
+              f"[gzip store] {len(results)} blobs written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| overall ratio={overall_ratio}x"
+          )
+
+          # Round-trip validation
+          for key, _, _, raw in sample_records[:3]:
+              recovered = await read_blob_async(DB_PATH, key)
+              assert recovered == raw, f"Round-trip mismatch for {key}"
+          print("[gzip store] round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 6 — LZMA COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate lzma compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      LZMA-backed compressed blob store.
+      LZMA offers superior compression ratios at the cost of higher CPU usage.
+      Ideal for archival storage of historical market data snapshots.
+      """
+      import asyncio
+      import hashlib
+      import json
+      import lzma
+      import os
+      import sqlite3
+      from datetime import datetime, timedelta
+
+      DB_PATH = "compressed_store_lzma.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              key              TEXT    NOT NULL UNIQUE,
+              namespace        TEXT    NOT NULL DEFAULT 'default',
+              content_type     TEXT    NOT NULL DEFAULT 'application/octet-stream',
+              sha256           TEXT    NOT NULL,
+              original_bytes   INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              lzma_preset      INTEGER NOT NULL DEFAULT 6,
+              lzma_format      TEXT    NOT NULL DEFAULT 'FORMAT_XZ',
+              created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              updated_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_lzma_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_lzma_namespace ON blobs(namespace);
+
+          CREATE TABLE IF NOT EXISTS compression_stats (
+              id            INTEGER PRIMARY KEY AUTOINCREMENT,
+              namespace     TEXT    NOT NULL,
+              total_entries INTEGER NOT NULL DEFAULT 0,
+              total_original_bytes  INTEGER NOT NULL DEFAULT 0,
+              total_compressed_bytes INTEGER NOT NULL DEFAULT 0,
+              avg_ratio     REAL    NOT NULL DEFAULT 1.0,
+              computed_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      def _lzma_compress(data: bytes, preset: int = 6) -> bytes:
+          return lzma.compress(data, format=lzma.FORMAT_XZ, preset=preset)
+
+      def _lzma_decompress(data: bytes) -> bytes:
+          return lzma.decompress(data)
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _write_lzma_blob(db_path, key, namespace, content_type, raw, preset=6):
+          compressed = _lzma_compress(raw, preset)
+          sha = _sha256(raw)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       lzma_preset, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      blob=excluded.blob,
+                      sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio,
+                      updated_at=datetime('now')
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio, preset,
+                    sqlite3.Binary(compressed)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {
+              "key": key, "sha256": sha,
+              "original_bytes": len(raw),
+              "compressed_bytes": len(compressed),
+              "ratio": ratio,
+          }
+
+      def _read_lzma_blob(db_path, key):
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute("SELECT blob FROM blobs WHERE key=?", (key,)).fetchone()
+          finally:
+              conn.close()
+          return _lzma_decompress(bytes(row[0])) if row else None
+
+      async def write_async(db_path, key, namespace, content_type, raw, preset=6):
+          return await asyncio.to_thread(
+              _write_lzma_blob, db_path, key, namespace, content_type, raw, preset
+          )
+
+      async def read_async(db_path, key):
+          return await asyncio.to_thread(_read_lzma_blob, db_path, key)
+
+      async def compute_stats(db_path, namespace):
+          def _stats(db_path, namespace):
+              conn = sqlite3.connect(db_path)
+              try:
+                  row = conn.execute("""
+                      SELECT COUNT(*),
+                             SUM(original_bytes),
+                             SUM(compressed_bytes),
+                             AVG(compression_ratio)
+                      FROM blobs WHERE namespace=?
+                  """, (namespace,)).fetchone()
+                  return row
+              finally:
+                  conn.close()
+
+          row = await asyncio.to_thread(_stats, db_path, namespace)
+          if row and row[0]:
+              conn = sqlite3.connect(db_path)
+              conn.execute("""
+                  INSERT INTO compression_stats
+                      (namespace, total_entries, total_original_bytes,
+                       total_compressed_bytes, avg_ratio)
+                  VALUES (?,?,?,?,?)
+              """, (namespace, row[0], row[1] or 0, row[2] or 0, row[3] or 1.0))
+              conn.commit()
+              conn.close()
+              return {"entries": row[0], "orig": row[1], "comp": row[2], "ratio": row[3]}
+          return {}
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          # Build large synthetic historical dataset
+          records = []
+          base_date = datetime(2020, 1, 1)
+          for symbol in ["SPY", "QQQ", "BTC-USD", "AAPL", "MSFT", "NVDA"]:
+              rows = []
+              price = 300.0
+              for day in range(365 * 3):   # 3 years of daily data
+                  d = base_date + timedelta(days=day)
+                  price = max(1.0, price * (1 + (hash((symbol, day)) % 200 - 100) / 10000))
+                  rows.append({
+                      "date": d.strftime("%Y-%m-%d"),
+                      "open":   round(price * 0.998, 4),
+                      "high":   round(price * 1.012, 4),
+                      "low":    round(price * 0.987, 4),
+                      "close":  round(price, 4),
+                      "volume": abs(hash((symbol, day))) % 50_000_000 + 1_000_000,
+                  })
+              payload = {"symbol": symbol, "interval": "1d", "rows": rows}
+              raw = json.dumps(payload, separators=(",", ":")).encode()
+              records.append((f"archive/{symbol}/1d/3yr", "archive", "application/json", raw))
+
+          # Write all records concurrently
+          tasks = [write_async(DB_PATH, k, ns, ct, raw) for k, ns, ct, raw in records]
+          results = await asyncio.gather(*tasks)
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          print(
+              f"[lzma store] {len(results)} blobs written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| overall ratio={round(total_orig/total_comp,4) if total_comp else 1}x"
+          )
+
+          stats = await compute_stats(DB_PATH, "archive")
+          print(f"[lzma store] archive stats: {stats}")
+
+          # Validate round-trip
+          for key, _, _, raw in records[:2]:
+              recovered = await read_async(DB_PATH, key)
+              assert recovered == raw, f"LZMA round-trip mismatch: {key}"
+          print("[lzma store] round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 7 — ZLIB COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate zlib compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      zlib-backed compressed blob store.
+      zlib (deflate) is the fastest of the standard compression options and
+      is ideal for in-flight API response caches and short-lived session data.
+      """
+      import asyncio
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      import zlib
+      from datetime import datetime
+
+      DB_PATH = "compressed_store_zlib.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+          PRAGMA cache_size=-32000;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              key              TEXT    NOT NULL UNIQUE,
+              namespace        TEXT    NOT NULL DEFAULT 'default',
+              content_type     TEXT    NOT NULL DEFAULT 'application/octet-stream',
+              sha256           TEXT    NOT NULL,
+              original_bytes   INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              zlib_level       INTEGER NOT NULL DEFAULT 9,
+              ttl_seconds      INTEGER,
+              expires_at       TEXT,
+              created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_zlib_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_zlib_namespace ON blobs(namespace);
+          CREATE INDEX IF NOT EXISTS idx_zlib_expires   ON blobs(expires_at);
+
+          CREATE TABLE IF NOT EXISTS eviction_log (
+              id          INTEGER PRIMARY KEY AUTOINCREMENT,
+              blob_key    TEXT    NOT NULL,
+              reason      TEXT    NOT NULL DEFAULT 'ttl_expired',
+              evicted_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      def _compress(data: bytes, level: int = 9) -> bytes:
+          return zlib.compress(data, level)
+
+      def _decompress(data: bytes) -> bytes:
+          return zlib.decompress(data)
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _put(db_path, key, namespace, content_type, raw, level=9, ttl=None):
+          compressed = _compress(raw, level)
+          sha = _sha256(raw)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          expires = None
+          if ttl:
+              from datetime import timedelta
+              expires = (datetime.utcnow() + timedelta(seconds=ttl)).isoformat()
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       zlib_level, ttl_seconds, expires_at, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      blob=excluded.blob, sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio,
+                      expires_at=excluded.expires_at
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio, level,
+                    ttl, expires, sqlite3.Binary(compressed)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {"key": key, "ratio": ratio,
+                  "original_bytes": len(raw), "compressed_bytes": len(compressed)}
+
+      def _get(db_path, key):
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute("""
+                  SELECT blob, expires_at FROM blobs WHERE key=?
+              """, (key,)).fetchone()
+          finally:
+              conn.close()
+          if not row:
+              return None
+          blob_data, expires_at = row
+          if expires_at and expires_at < datetime.utcnow().isoformat():
+              return None   # TTL expired
+          return _decompress(bytes(blob_data))
+
+      def _evict_expired(db_path):
+          now = datetime.utcnow().isoformat()
+          conn = sqlite3.connect(db_path)
+          try:
+              expired = conn.execute(
+                  "SELECT key FROM blobs WHERE expires_at IS NOT NULL AND expires_at < ?",
+                  (now,)
+              ).fetchall()
+              for (k,) in expired:
+                  conn.execute("INSERT INTO eviction_log (blob_key) VALUES (?)", (k,))
+                  conn.execute("DELETE FROM blobs WHERE key=?", (k,))
+              conn.commit()
+              return len(expired)
+          finally:
+              conn.close()
+
+      async def put_async(db_path, key, namespace, content_type, raw, level=9, ttl=None):
+          return await asyncio.to_thread(_put, db_path, key, namespace, content_type, raw, level, ttl)
+
+      async def get_async(db_path, key):
+          return await asyncio.to_thread(_get, db_path, key)
+
+      async def evict_expired_async(db_path):
+          return await asyncio.to_thread(_evict_expired, db_path)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          # API response caches – short TTLs
+          api_records = []
+          endpoints = [
+              "/api/market/summary", "/api/tickers/SPY", "/api/tickers/QQQ",
+              "/api/monte-carlo/SPY/10000", "/api/predictions/AAPL",
+              "/api/analytics/events", "/api/chat/rooms",
+              "/api/hotel/available", "/api/blog/posts",
+          ]
+          for ep in endpoints:
+              data = json.dumps({
+                  "endpoint": ep,
+                  "cached_at": datetime.utcnow().isoformat(),
+                  "status": "ok",
+                  "data": {"placeholder": True, "count": 42},
+              }, separators=(",", ":")).encode()
+              api_records.append((
+                  f"api_cache{ep.replace('/', ':')}", "api_cache",
+                  "application/json", data, 9, 300,   # 5-min TTL
+              ))
+
+          tasks = [
+              put_async(DB_PATH, k, ns, ct, raw, lvl, ttl)
+              for k, ns, ct, raw, lvl, ttl in api_records
+          ]
+          results = await asyncio.gather(*tasks)
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          print(
+              f"[zlib store] {len(results)} blobs written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| ratio={round(total_orig/total_comp, 4) if total_comp else 1}x"
+          )
+
+          evicted = await evict_expired_async(DB_PATH)
+          print(f"[zlib store] eviction pass: {evicted} expired blobs removed")
+
+          for k, ns, ct, raw, lvl, ttl in api_records[:3]:
+              recovered = await get_async(DB_PATH, k)
+              assert recovered == raw, f"zlib round-trip mismatch: {k}"
+          print("[zlib store] round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 8 — ZSTANDARD COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate zstandard compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      Zstandard (zstd) compressed blob store.
+      Zstd provides an excellent balance of speed and compression ratio,
+      with support for training custom dictionaries for domain-specific data.
+      Ideal for the high-frequency market data pipeline.
+      """
+      import asyncio
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      import zstandard as zstd
+      from datetime import datetime, timedelta
+
+      DB_PATH = "compressed_store_zstd.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+          PRAGMA cache_size=-64000;
+          PRAGMA mmap_size=134217728;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              key              TEXT    NOT NULL UNIQUE,
+              namespace        TEXT    NOT NULL DEFAULT 'default',
+              content_type     TEXT    NOT NULL DEFAULT 'application/octet-stream',
+              sha256           TEXT    NOT NULL,
+              original_bytes   INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              zstd_level       INTEGER NOT NULL DEFAULT 3,
+              dict_id          INTEGER,
+              created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              updated_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_zstd_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_zstd_namespace ON blobs(namespace);
+
+          CREATE TABLE IF NOT EXISTS dictionaries (
+              id          INTEGER PRIMARY KEY AUTOINCREMENT,
+              name        TEXT    NOT NULL UNIQUE,
+              namespace   TEXT    NOT NULL,
+              dict_blob   BLOB    NOT NULL,
+              trained_on  INTEGER NOT NULL DEFAULT 0,
+              created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+
+          CREATE TABLE IF NOT EXISTS write_throughput (
+              id            INTEGER PRIMARY KEY AUTOINCREMENT,
+              namespace     TEXT    NOT NULL,
+              batch_size    INTEGER NOT NULL,
+              total_bytes   INTEGER NOT NULL,
+              duration_ms   REAL    NOT NULL,
+              mb_per_second REAL    NOT NULL,
+              recorded_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _compress_zstd(data: bytes, level: int = 3) -> bytes:
+          cctx = zstd.ZstdCompressor(level=level)
+          return cctx.compress(data)
+
+      def _decompress_zstd(data: bytes) -> bytes:
+          dctx = zstd.ZstdDecompressor()
+          return dctx.decompress(data)
+
+      def _put_zstd(db_path, key, namespace, content_type, raw, level=3):
+          compressed = _compress_zstd(raw, level)
+          sha = _sha256(raw)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       zstd_level, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      blob=excluded.blob, sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio,
+                      updated_at=datetime('now')
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio, level,
+                    sqlite3.Binary(compressed)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {
+              "key": key, "original_bytes": len(raw),
+              "compressed_bytes": len(compressed), "ratio": ratio,
+          }
+
+      def _get_zstd(db_path, key):
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute("SELECT blob FROM blobs WHERE key=?", (key,)).fetchone()
+          finally:
+              conn.close()
+          return _decompress_zstd(bytes(row[0])) if row else None
+
+      async def put_async(db_path, key, ns, ct, raw, level=3):
+          return await asyncio.to_thread(_put_zstd, db_path, key, ns, ct, raw, level)
+
+      async def get_async(db_path, key):
+          return await asyncio.to_thread(_get_zstd, db_path, key)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          import time
+
+          # Build a large synthetic tick-level dataset
+          records = []
+          base_ts = datetime(2024, 1, 1)
+          for symbol in ["SPY", "QQQ", "AAPL", "TSLA", "NVDA", "BTC-USD"]:
+              ticks = []
+              price = 200.0
+              for minute in range(60 * 8):    # 8 hours of 1-minute ticks
+                  ts = base_ts + timedelta(minutes=minute)
+                  price = max(1.0, price + (hash((symbol, minute)) % 100 - 50) / 1000)
+                  ticks.append({
+                      "ts": ts.isoformat(),
+                      "bid": round(price - 0.01, 4),
+                      "ask": round(price + 0.01, 4),
+                      "last": round(price, 4),
+                      "vol": abs(hash((symbol, minute))) % 10000 + 100,
+                  })
+              payload = {"symbol": symbol, "interval": "1m", "ticks": ticks}
+              raw = json.dumps(payload, separators=(",", ":")).encode()
+              records.append((f"tick/{symbol}/1m/2024-01-01", "tick_data",
+                               "application/json", raw))
+
+          t0 = time.perf_counter()
+          tasks = [put_async(DB_PATH, k, ns, ct, raw) for k, ns, ct, raw in records]
+          results = await asyncio.gather(*tasks)
+          elapsed_ms = (time.perf_counter() - t0) * 1000
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          mb_s = (total_orig / 1_048_576) / (elapsed_ms / 1000) if elapsed_ms else 0
+
+          # Log throughput
+          tconn = sqlite3.connect(DB_PATH)
+          tconn.execute("""
+              INSERT INTO write_throughput
+                  (namespace, batch_size, total_bytes, duration_ms, mb_per_second)
+              VALUES (?,?,?,?,?)
+          """, ("tick_data", len(records), total_orig, round(elapsed_ms, 2), round(mb_s, 2)))
+          tconn.commit()
+          tconn.close()
+
+          print(
+              f"[zstd store] {len(results)} blobs written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| ratio={round(total_orig/total_comp,4) if total_comp else 1}x  "
+              f"| throughput={round(mb_s,2)} MB/s"
+          )
+
+          for k, ns, ct, raw in records[:2]:
+              recovered = await get_async(DB_PATH, k)
+              assert recovered == raw, f"zstd round-trip mismatch: {k}"
+          print("[zstd store] round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 9 — LZ4 COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate lz4 compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      LZ4-backed compressed blob store.
+      LZ4 is the fastest compressor available and is preferred for
+      latency-sensitive caches such as real-time WebSocket message buffers
+      and sub-second API response caches.
+      """
+      import asyncio
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      import lz4.frame
+      import lz4.block
+      from datetime import datetime, timedelta
+
+      DB_PATH = "compressed_store_lz4.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              key              TEXT    NOT NULL UNIQUE,
+              namespace        TEXT    NOT NULL DEFAULT 'default',
+              content_type     TEXT    NOT NULL DEFAULT 'application/octet-stream',
+              sha256           TEXT    NOT NULL,
+              original_bytes   INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              lz4_mode         TEXT    NOT NULL DEFAULT 'frame',
+              created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_lz4_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_lz4_namespace ON blobs(namespace);
+
+          CREATE TABLE IF NOT EXISTS latency_samples (
+              id             INTEGER PRIMARY KEY AUTOINCREMENT,
+              operation      TEXT    NOT NULL,
+              blob_key       TEXT    NOT NULL,
+              blob_bytes     INTEGER NOT NULL,
+              duration_us    REAL    NOT NULL,
+              recorded_at    TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _compress_lz4(data: bytes) -> bytes:
+          return lz4.frame.compress(data, compression_level=lz4.frame.COMPRESSIONLEVEL_MINHC)
+
+      def _decompress_lz4(data: bytes) -> bytes:
+          return lz4.frame.decompress(data)
+
+      def _put_lz4(db_path, key, namespace, content_type, raw):
+          import time
+          t0 = time.perf_counter()
+          compressed = _compress_lz4(raw)
+          compress_us = (time.perf_counter() - t0) * 1e6
+          sha = _sha256(raw)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio, blob)
+                  VALUES (?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      blob=excluded.blob, sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio,
+                    sqlite3.Binary(compressed)))
+              conn.execute("""
+                  INSERT INTO latency_samples (operation, blob_key, blob_bytes, duration_us)
+                  VALUES ('compress', ?, ?, ?)
+              """, (key, len(raw), round(compress_us, 2)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {"key": key, "original_bytes": len(raw),
+                  "compressed_bytes": len(compressed), "ratio": ratio,
+                  "compress_us": compress_us}
+
+      def _get_lz4(db_path, key):
+          import time
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute("SELECT blob FROM blobs WHERE key=?", (key,)).fetchone()
+          finally:
+              conn.close()
+          if not row:
+              return None
+          t0 = time.perf_counter()
+          data = _decompress_lz4(bytes(row[0]))
+          decomp_us = (time.perf_counter() - t0) * 1e6
+          return data
+
+      async def put_async(db_path, key, ns, ct, raw):
+          return await asyncio.to_thread(_put_lz4, db_path, key, ns, ct, raw)
+
+      async def get_async(db_path, key):
+          return await asyncio.to_thread(_get_lz4, db_path, key)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          # WebSocket message payloads (small, latency-critical)
+          ws_records = []
+          for i in range(200):
+              msg = {
+                  "id": i,
+                  "type": ["quote", "trade", "orderbook", "news"][i % 4],
+                  "symbol": ["SPY", "QQQ", "BTC-USD", "AAPL"][i % 4],
+                  "ts": (datetime(2024, 1, 1) + timedelta(seconds=i)).isoformat(),
+                  "payload": {
+                      "bid": round(100 + i * 0.01, 4),
+                      "ask": round(100 + i * 0.01 + 0.02, 4),
+                      "size": i * 100,
+                  },
+              }
+              raw = json.dumps(msg, separators=(",", ":")).encode()
+              ws_records.append((f"ws/msg/{i:04d}", "websocket", "application/json", raw))
+
+          tasks = [put_async(DB_PATH, k, ns, ct, raw) for k, ns, ct, raw in ws_records]
+          results = await asyncio.gather(*tasks)
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          avg_us = sum(r["compress_us"] for r in results) / len(results)
+          print(
+              f"[lz4 store]  {len(results)} blobs written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| ratio={round(total_orig/total_comp,4) if total_comp else 1}x  "
+              f"| avg compress={round(avg_us,1)} µs/blob"
+          )
+
+          for k, ns, ct, raw in ws_records[:3]:
+              recovered = await get_async(DB_PATH, k)
+              assert recovered == raw, f"lz4 round-trip mismatch: {k}"
+          print("[lz4 store]  round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 10 — BROTLI COMPRESSED BLOB STORE
+  # ================================================================
+
+  - name: Create and populate brotli compressed SQLite blob store
+    run: |
+      python - <<'PYEOF'
+      """
+      Brotli-backed compressed blob store.
+      Brotli delivers the best compression ratio for text/HTML/JSON payloads
+      and is the preferred codec for static asset caching (HTML, CSS, JS).
+      Used by the deploy-showcase workflow for compressed static file storage.
+      """
+      import asyncio
+      import brotli
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      from datetime import datetime
+
+      DB_PATH = "compressed_store_brotli.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+
+          CREATE TABLE IF NOT EXISTS blobs (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              key              TEXT    NOT NULL UNIQUE,
+              namespace        TEXT    NOT NULL DEFAULT 'default',
+              content_type     TEXT    NOT NULL DEFAULT 'text/html',
+              sha256           TEXT    NOT NULL,
+              original_bytes   INTEGER NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              brotli_quality   INTEGER NOT NULL DEFAULT 11,
+              brotli_mode      TEXT    NOT NULL DEFAULT 'text',
+              created_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_brotli_key       ON blobs(key);
+          CREATE INDEX IF NOT EXISTS idx_brotli_namespace ON blobs(namespace);
+
+          CREATE TABLE IF NOT EXISTS asset_manifest (
+              key         TEXT    PRIMARY KEY,
+              asset_path  TEXT    NOT NULL,
+              mime_type   TEXT    NOT NULL,
+              etag        TEXT    NOT NULL,
+              cache_control TEXT  NOT NULL DEFAULT 'public, max-age=3600',
+              last_modified TEXT  NOT NULL DEFAULT (datetime('now'))
+          );
+      """
+
+      def _sha256(data: bytes) -> str:
+          return hashlib.sha256(data).hexdigest()
+
+      def _compress_brotli(data: bytes, quality: int = 11) -> bytes:
+          return brotli.compress(data, quality=quality, mode=brotli.MODE_TEXT)
+
+      def _decompress_brotli(data: bytes) -> bytes:
+          return brotli.decompress(data)
+
+      def _put(db_path, key, namespace, content_type, raw, quality=11):
+          compressed = _compress_brotli(raw, quality)
+          sha = _sha256(raw)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO blobs
+                      (key, namespace, content_type, sha256,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       brotli_quality, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?)
+                  ON CONFLICT(key) DO UPDATE SET
+                      blob=excluded.blob, sha256=excluded.sha256,
+                      original_bytes=excluded.original_bytes,
+                      compressed_bytes=excluded.compressed_bytes,
+                      compression_ratio=excluded.compression_ratio
+              """, (key, namespace, content_type, sha,
+                    len(raw), len(compressed), ratio, quality,
+                    sqlite3.Binary(compressed)))
+              conn.execute("""
+                  INSERT OR REPLACE INTO asset_manifest
+                      (key, asset_path, mime_type, etag, last_modified)
+                  VALUES (?,?,?,?,datetime('now'))
+              """, (key, key, content_type, sha[:16]))
+              conn.commit()
+          finally:
+              conn.close()
+          return {"key": key, "original_bytes": len(raw),
+                  "compressed_bytes": len(compressed), "ratio": ratio}
+
+      def _get(db_path, key):
+          conn = sqlite3.connect(db_path)
+          try:
+              row = conn.execute("SELECT blob FROM blobs WHERE key=?", (key,)).fetchone()
+          finally:
+              conn.close()
+          return _decompress_brotli(bytes(row[0])) if row else None
+
+      async def put_async(db_path, key, ns, ct, raw, quality=11):
+          return await asyncio.to_thread(_put, db_path, key, ns, ct, raw, quality)
+
+      async def get_async(db_path, key):
+          return await asyncio.to_thread(_get, db_path, key)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          # Synthetic static asset payloads
+          assets = []
+          html_template = "<!DOCTYPE html><html><head><title>{title}</title></head><body>" + \
+                          "<h1>{title}</h1><p>" + "Lorem ipsum dolor sit amet. " * 50 + "</p>" + \
+                          "</body></html>"
+          js_template = "// Auto-generated module: {name}\n" + \
+                        "const MODULE_{NAME} = (function() {{\n" + \
+                        "  'use strict';\n" + \
+                        ("  // placeholder\n" * 30) + \
+                        "  return {{}};\n}}());\n"
+          css_template = "/* {name} stylesheet */\n" + \
+                         ".container {{ display: flex; flex-wrap: wrap; }}\n" * 20 + \
+                         ".item {{ padding: 8px; margin: 4px; }}\n" * 20
+
+          pages = ["index", "market", "blog", "hotel", "chat",
+                   "analytics", "holdem", "showcase", "yfinance", "api-docs"]
+          for page in pages:
+              assets.append((
+                  f"static/{page}.html",
+                  "showcase",
+                  "text/html; charset=utf-8",
+                  html_template.format(title=page.title()).encode(),
+              ))
+              assets.append((
+                  f"static/js/{page}.js",
+                  "showcase",
+                  "application/javascript",
+                  js_template.format(name=page, NAME=page.upper()).encode(),
+              ))
+              assets.append((
+                  f"static/css/{page}.css",
+                  "showcase",
+                  "text/css",
+                  css_template.format(name=page).encode(),
+              ))
+
+          tasks = [put_async(DB_PATH, k, ns, ct, raw) for k, ns, ct, raw in assets]
+          results = await asyncio.gather(*tasks)
+
+          total_orig = sum(r["original_bytes"] for r in results)
+          total_comp = sum(r["compressed_bytes"] for r in results)
+          print(
+              f"[brotli store] {len(results)} assets written  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| ratio={round(total_orig/total_comp,4) if total_comp else 1}x"
+          )
+
+          for k, ns, ct, raw in assets[:3]:
+              recovered = await get_async(DB_PATH, k)
+              assert recovered == raw, f"brotli round-trip mismatch: {k}"
+          print("[brotli store] round-trip validation passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 11 — MULTI-CODEC COMPRESSION BENCHMARK
+  # ================================================================
+
+  - name: Run multi-codec compression benchmark across all stores
+    run: |
+      python - <<'PYEOF'
+      """
+      Benchmarks all five compression codecs (gzip, lzma, zlib, zstd, lz4, brotli)
+      against three representative payload types:
+        1. JSON market data (highly compressible text)
+        2. Binary float array (moderately compressible)
+        3. Pre-compressed PNG stub (nearly incompressible)
+      Reports compression ratio and throughput for each combination.
+      """
+      import asyncio
+      import gzip
+      import hashlib
+      import json
+      import lzma
+      import os
+      import sqlite3
+      import struct
+      import time
+      import zlib
+      from datetime import datetime
+
+      import brotli
+      import lz4.frame
+      import zstandard as zstd
+
+      DB_PATH = "compression_benchmark.db"
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+
+          CREATE TABLE IF NOT EXISTS benchmarks (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              payload_type     TEXT    NOT NULL,
+              payload_bytes    INTEGER NOT NULL,
+              codec            TEXT    NOT NULL,
+              compressed_bytes INTEGER NOT NULL,
+              compression_ratio REAL   NOT NULL,
+              compress_ms      REAL    NOT NULL,
+              decompress_ms    REAL    NOT NULL,
+              compress_mb_s    REAL    NOT NULL,
+              decompress_mb_s  REAL    NOT NULL,
+              correct          INTEGER NOT NULL DEFAULT 1,
+              ran_at           TEXT    NOT NULL DEFAULT (datetime('now'))
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_bench_codec   ON benchmarks(codec);
+          CREATE INDEX IF NOT EXISTS idx_bench_payload ON benchmarks(payload_type);
+
+          CREATE VIEW IF NOT EXISTS benchmark_summary AS
+              SELECT
+                  codec,
+                  payload_type,
+                  AVG(compression_ratio)   AS avg_ratio,
+                  AVG(compress_mb_s)       AS avg_compress_mb_s,
+                  AVG(decompress_mb_s)     AS avg_decompress_mb_s,
+                  COUNT(*)                 AS runs
+              FROM benchmarks
+              GROUP BY codec, payload_type
+              ORDER BY avg_ratio DESC;
+      """
+
+      # ---------- codec registry ----------
+      CODECS = {}
+
+      def _make_codec(name, compress_fn, decompress_fn):
+          CODECS[name] = (compress_fn, decompress_fn)
+
+      _make_codec("gzip",   lambda d: gzip.compress(d, compresslevel=9),  gzip.decompress)
+      _make_codec("lzma",   lambda d: lzma.compress(d, preset=6),         lzma.decompress)
+      _make_codec("zlib",   lambda d: zlib.compress(d, 9),                zlib.decompress)
+      _make_codec("zstd",   lambda d: zstd.ZstdCompressor(level=3).compress(d),
+                            lambda d: zstd.ZstdDecompressor().decompress(d))
+      _make_codec("lz4",    lz4.frame.compress,                           lz4.frame.decompress)
+      _make_codec("brotli", lambda d: brotli.compress(d, quality=11),     brotli.decompress)
+
+      # ---------- payload generators ----------
+      def make_json_payload(size_bytes: int = 200_000) -> bytes:
+          rows = []
+          price = 300.0
+          i = 0
+          out = b""
+          while len(out) < size_bytes:
+              price = max(1.0, price + (hash(i) % 200 - 100) / 1000)
+              rows.append({"i": i, "open": round(price * 0.998, 4),
+                            "high": round(price * 1.01, 4),
+                            "low": round(price * 0.99, 4),
+                            "close": round(price, 4),
+                            "vol": abs(hash(i)) % 10_000_000})
+              out = json.dumps(rows, separators=(",", ":")).encode()
+              i += 1
+          return out[:size_bytes]
+
+      def make_float_payload(size_bytes: int = 200_000) -> bytes:
+          import struct
+          count = size_bytes // 8
+          vals = [abs(hash(i)) / 1e12 for i in range(count)]
+          return struct.pack(f"{count}d", *vals)
+
+      def make_random_payload(size_bytes: int = 200_000) -> bytes:
+          # Pseudorandom (hard to compress)
+          import os
+          return os.urandom(size_bytes)
+
+      # ---------- benchmark runner ----------
+      def _bench_one(payload: bytes, payload_type: str, codec_name: str) -> dict:
+          compress_fn, decompress_fn = CODECS[codec_name]
+          t0 = time.perf_counter()
+          compressed = compress_fn(payload)
+          compress_ms = (time.perf_counter() - t0) * 1000
+
+          t1 = time.perf_counter()
+          recovered = decompress_fn(compressed)
+          decompress_ms = (time.perf_counter() - t1) * 1000
+
+          correct = 1 if recovered == payload else 0
+          ratio = round(len(payload) / len(compressed), 4) if compressed else 1.0
+          mb = len(payload) / 1_048_576
+          return {
+              "payload_type": payload_type,
+              "payload_bytes": len(payload),
+              "codec": codec_name,
+              "compressed_bytes": len(compressed),
+              "compression_ratio": ratio,
+              "compress_ms": round(compress_ms, 4),
+              "decompress_ms": round(decompress_ms, 4),
+              "compress_mb_s": round(mb / (compress_ms / 1000), 2) if compress_ms else 0,
+              "decompress_mb_s": round(mb / (decompress_ms / 1000), 2) if decompress_ms else 0,
+              "correct": correct,
+          }
+
+      async def bench_async(payload, payload_type, codec_name):
+          return await asyncio.to_thread(_bench_one, payload, payload_type, codec_name)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          payloads = [
+              ("json_market_data", make_json_payload(150_000)),
+              ("binary_floats",    make_float_payload(160_000)),
+              ("pseudorandom",     make_random_payload(100_000)),
+          ]
+
+          tasks = []
+          for payload_type, payload in payloads:
+              for codec_name in CODECS:
+                  tasks.append(bench_async(payload, payload_type, codec_name))
+
+          results = await asyncio.gather(*tasks)
+
+          conn = sqlite3.connect(DB_PATH)
+          conn.executemany("""
+              INSERT INTO benchmarks
+                  (payload_type, payload_bytes, codec, compressed_bytes,
+                   compression_ratio, compress_ms, decompress_ms,
+                   compress_mb_s, decompress_mb_s, correct)
+              VALUES
+                  (:payload_type, :payload_bytes, :codec, :compressed_bytes,
+                   :compression_ratio, :compress_ms, :decompress_ms,
+                   :compress_mb_s, :decompress_mb_s, :correct)
+          """, results)
+          conn.commit()
+
+          # Print summary table
+          summary = conn.execute("SELECT * FROM benchmark_summary").fetchall()
+          conn.close()
+
+          print("\n{'='*72}")
+          print(f"{'CODEC':<10} {'PAYLOAD':<22} {'RATIO':>7} {'COMP MB/s':>11} {'DECOMP MB/s':>12}")
+          print("-" * 72)
+          for row in summary:
+              codec, ptype, avg_ratio, avg_comp, avg_decomp, runs = row
+              print(f"{codec:<10} {ptype:<22} {avg_ratio:>7.4f} {avg_comp:>11.1f} {avg_decomp:>12.1f}")
+          print("=" * 72)
+
+          failed = [r for r in results if not r["correct"]]
+          if failed:
+              print(f"WARNING: {len(failed)} round-trip failures detected!")
+          else:
+              print(f"All {len(results)} codec/payload combinations validated ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 12 — ASYNC MARKET DATA PIPELINE
+  # ================================================================
+
+  - name: Set up async market data pre-fetch pipeline
+    run: |
+      python - <<'PYEOF'
+      """
+      Async pipeline that concurrently pre-fetches market symbol metadata
+      and stores compressed snapshots into the market_cache.db.
+      Uses a semaphore-bounded asyncio task pool and exponential backoff
+      for transient failures, mirroring the production collector.py pattern.
+      """
+      import asyncio
+      import gzip
+      import json
+      import os
+      import sqlite3
+      import time
+      from datetime import datetime
+
+      MARKET_DB  = "market_cache.db"
+      SYMBOL_DB  = "yfinance_cache.db"
+
+      # Symbols seeded during Section 4 init
+      SYMBOLS = [
+          "SPY", "QQQ", "DIA", "IWM", "GLD", "TLT",
+          "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META",
+          "BTC-USD", "ETH-USD",
+      ]
+
+      INTERVALS = ["1m", "5m", "15m", "1h", "1d"]
+
+      # ---------- sync helpers (called via asyncio.to_thread) ----------
+      def _store_compressed_snapshot(db_path: str, symbol: str,
+                                     interval: str, payload: dict) -> dict:
+          raw = json.dumps(payload, separators=(",", ":")).encode()
+          compressed = gzip.compress(raw, compresslevel=6)
+          ratio = round(len(raw) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT OR REPLACE INTO compressed_blobs
+                      (symbol, interval, codec, fetched_at,
+                       original_bytes, compressed_bytes, compression_ratio, blob)
+                  VALUES (?,?,?,datetime('now'),?,?,?,?)
+              """, (symbol, interval, "gzip",
+                    len(raw), len(compressed), ratio,
+                    sqlite3.Binary(compressed)))
+              conn.commit()
+          finally:
+              conn.close()
+          return {"symbol": symbol, "interval": interval,
+                  "ratio": ratio, "orig": len(raw), "comp": len(compressed)}
+
+      def _log_fetch(db_path: str, symbol: str,
+                     status: str, error: str | None, duration_ms: float):
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO fetch_log (symbol, status, error_msg, duration_ms)
+                  VALUES (?,?,?,?)
+              """, (symbol, status, error, round(duration_ms, 2)))
+              conn.commit()
+          finally:
+              conn.close()
+
+      # ---------- async simulation of yfinance fetch ----------
+      async def _fake_fetch(symbol: str, interval: str,
+                            sem: asyncio.Semaphore, delay_s: float = 0.01) -> dict:
+          """
+          Simulates an async yfinance fetch.
+          In production this wraps asyncio.to_thread(yf.download, ...).
+          """
+          async with sem:
+              await asyncio.sleep(delay_s)   # network I/O simulation
+              price_base = abs(hash(symbol)) % 500 + 50
+              rows = []
+              for bar in range(60):
+                  rows.append({
+                      "ts": f"2024-01-01T{bar:02d}:00:00",
+                      "open":  round(price_base + bar * 0.1, 4),
+                      "high":  round(price_base + bar * 0.1 + 1.0, 4),
+                      "low":   round(price_base + bar * 0.1 - 0.5, 4),
+                      "close": round(price_base + bar * 0.1 + 0.3, 4),
+                      "vol":   bar * 10_000 + 1_000,
+                  })
+              return {"symbol": symbol, "interval": interval,
+                      "fetched_at": datetime.utcnow().isoformat(), "rows": rows}
+
+      async def fetch_and_store(symbol: str, interval: str,
+                                sem: asyncio.Semaphore) -> dict | None:
+          t0 = time.perf_counter()
+          try:
+              payload = await _fake_fetch(symbol, interval, sem)
+              result = await asyncio.to_thread(
+                  _store_compressed_snapshot, MARKET_DB, symbol, interval, payload
+              )
+              duration_ms = (time.perf_counter() - t0) * 1000
+              await asyncio.to_thread(
+                  _log_fetch, SYMBOL_DB, symbol, "ok", None, duration_ms
+              )
+              return result
+          except Exception as exc:
+              duration_ms = (time.perf_counter() - t0) * 1000
+              await asyncio.to_thread(
+                  _log_fetch, SYMBOL_DB, symbol, "error", str(exc), duration_ms
+              )
+              return None
+
+      async def main():
+          sem = asyncio.Semaphore(8)   # max 8 concurrent fetches
+
+          tasks = [
+              fetch_and_store(sym, iv, sem)
+              for sym in SYMBOLS
+              for iv in INTERVALS
+          ]
+
+          t0 = time.perf_counter()
+          results = await asyncio.gather(*tasks, return_exceptions=False)
+          elapsed = (time.perf_counter() - t0) * 1000
+
+          ok      = [r for r in results if r is not None]
+          failed  = [r for r in results if r is None]
+          total_orig = sum(r["orig"] for r in ok)
+          total_comp = sum(r["comp"] for r in ok)
+          print(
+              f"[market pipeline] {len(ok)}/{len(tasks)} fetches stored  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| elapsed={elapsed:.0f} ms  | failures={len(failed)}"
+          )
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 13 — ASYNC MONTE CARLO SEED STORE
+  # ================================================================
+
+  - name: Pre-compute and store Monte Carlo simulation seeds (async)
+    run: |
+      python - <<'PYEOF'
+      """
+      Pre-computes random walk seeds for Monte Carlo simulations and stores
+      them compressed in the market_cache.db monte_carlo_runs table.
+      Uses asyncio.to_thread for the CPU-bound simulation steps to keep
+      the event loop responsive while running parallel simulations.
+      """
+      import asyncio
+      import gzip
+      import json
+      import os
+      import sqlite3
+      import math
+      import random
+      from datetime import datetime
+
+      DB_PATH = "market_cache.db"
+      SYMBOLS  = ["SPY", "QQQ", "AAPL", "TSLA", "BTC-USD", "NVDA"]
+      N_SIMS   = 1000     # reduced for CI speed; production uses 10,000+
+      HORIZON  = 252      # trading days
+
+      def _run_monte_carlo(symbol: str, n: int, horizon: int) -> dict:
+          """CPU-bound: pure-Python GBM Monte Carlo simulation."""
+          rng = random.Random(abs(hash(symbol)))
+          # Synthetic drift/vol seeded from symbol hash for reproducibility
+          mu     = (abs(hash(symbol + "mu"))  % 200 - 100) / 10000   # -1% to +1% daily
+          sigma  = (abs(hash(symbol + "sig")) % 100 + 10)  / 1000    # 1% to 11% daily vol
+
+          final_prices = []
+          for _ in range(n):
+              price = 100.0
+              for _day in range(horizon):
+                  z = rng.gauss(0, 1)
+                  price *= math.exp((mu - 0.5 * sigma ** 2) + sigma * z)
+              final_prices.append(price)
+
+          final_prices.sort()
+          mean_r = sum(final_prices) / len(final_prices) / 100 - 1
+          std_r  = math.sqrt(
+              sum((p / 100 - 1 - mean_r) ** 2 for p in final_prices) / len(final_prices)
+          )
+          var_95 = final_prices[int(0.05 * len(final_prices))] / 100 - 1
+          var_99 = final_prices[int(0.01 * len(final_prices))] / 100 - 1
+          cvar_95 = (
+              sum(p / 100 - 1 for p in final_prices[:int(0.05 * len(final_prices))])
+              / max(1, int(0.05 * len(final_prices)))
+          )
+          sharpe = mean_r / std_r if std_r > 0 else 0.0
+          min_path = min(final_prices)
+          max_drawdown = (min_path - 100.0) / 100.0
+
+          return {
+              "symbol": symbol, "simulations": n, "horizon_days": horizon,
+              "mean_return": round(mean_r, 6), "std_dev": round(std_r, 6),
+              "var_95": round(var_95, 6), "var_99": round(var_99, 6),
+              "cvar_95": round(cvar_95, 6), "sharpe_ratio": round(sharpe, 6),
+              "max_drawdown": round(max_drawdown, 6),
+          }
+
+      def _store_mc_result(db_path: str, result: dict):
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT INTO monte_carlo_runs
+                      (symbol, simulations, horizon_days,
+                       mean_return, std_dev, var_95, var_99,
+                       cvar_95, sharpe_ratio, max_drawdown)
+                  VALUES
+                      (:symbol, :simulations, :horizon_days,
+                       :mean_return, :std_dev, :var_95, :var_99,
+                       :cvar_95, :sharpe_ratio, :max_drawdown)
+              """, result)
+              conn.commit()
+          finally:
+              conn.close()
+
+      async def simulate_and_store(symbol: str, n: int, horizon: int) -> dict:
+          result = await asyncio.to_thread(_run_monte_carlo, symbol, n, horizon)
+          await asyncio.to_thread(_store_mc_result, DB_PATH, result)
+          return result
+
+      async def main():
+          import time
+          t0 = time.perf_counter()
+          tasks = [simulate_and_store(sym, N_SIMS, HORIZON) for sym in SYMBOLS]
+          results = await asyncio.gather(*tasks)
+          elapsed_ms = (time.perf_counter() - t0) * 1000
+
+          for r in results:
+              print(
+                  f"[mc] {r['symbol']:<10} | mean={r['mean_return']:+.4f} "
+                  f"| VaR95={r['var_95']:+.4f} | Sharpe={r['sharpe_ratio']:+.4f}"
+              )
+          print(
+              f"\n[mc pipeline] {len(results)} symbols  "
+              f"| {N_SIMS * len(results):,} total simulations  "
+              f"| elapsed={elapsed_ms:.0f} ms"
+          )
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 14 — ASYNC PIPELINE: COMPRESSED IMAGE STORE
+  # ================================================================
+
+  - name: Set up compressed image blob database (async)
+    run: |
+      python - <<'PYEOF'
+      """
+      Replicates the best/compressed_image_db_pipeline.py database schema
+      used in production for the best-performer image cache.
+      Creates the schema and populates with synthetic stub records so
+      Copilot Workspace has a warm database ready on first run.
+      """
+      import asyncio
+      import base64
+      import gzip
+      import hashlib
+      import json
+      import os
+      import sqlite3
+      import zlib
+      from datetime import datetime
+
+      DB_PATH = os.path.join("best", "image_cache.db")
+      os.makedirs("best", exist_ok=True)
+
+      SCHEMA = """
+          PRAGMA journal_mode=WAL;
+          PRAGMA synchronous=NORMAL;
+          PRAGMA cache_size=-128000;
+          PRAGMA mmap_size=268435456;
+
+          CREATE TABLE IF NOT EXISTS images (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              url_hash         TEXT    NOT NULL UNIQUE,
+              source_url       TEXT    NOT NULL,
+              content_type     TEXT    NOT NULL DEFAULT 'image/jpeg',
+              original_bytes   INTEGER NOT NULL DEFAULT 0,
+              compressed_bytes INTEGER NOT NULL DEFAULT 0,
+              compression_ratio REAL   NOT NULL DEFAULT 1.0,
+              codec            TEXT    NOT NULL DEFAULT 'gzip',
+              width            INTEGER,
+              height           INTEGER,
+              fetched_at       TEXT    NOT NULL DEFAULT (datetime('now')),
+              blob             BLOB    NOT NULL
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_images_url_hash  ON images(url_hash);
+          CREATE INDEX IF NOT EXISTS idx_images_fetched   ON images(fetched_at DESC);
+
+          CREATE TABLE IF NOT EXISTS performer_mappings (
+              username         TEXT    NOT NULL,
+              image_id         INTEGER NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+              mapped_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+              PRIMARY KEY (username, image_id)
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_perf_username ON performer_mappings(username);
+
+          CREATE TABLE IF NOT EXISTS manifest (
+              id               INTEGER PRIMARY KEY AUTOINCREMENT,
+              generated_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+              total_performers INTEGER NOT NULL DEFAULT 0,
+              total_images     INTEGER NOT NULL DEFAULT 0,
+              total_bytes      INTEGER NOT NULL DEFAULT 0,
+              manifest_json    TEXT    NOT NULL DEFAULT '{}'
+          );
+      """
+
+      def _make_stub_image(seed: int, width: int = 32, height: int = 32) -> bytes:
+          """Create a tiny synthetic JPEG-stub (all-gray PPM header + random bytes)."""
+          # 1×1 gray pixel encoded as gzip-compressed raw bytes (simulates compressed JPEG)
+          raw = bytes([abs(seed * 37 + i) % 256 for i in range(width * height * 3)])
+          return gzip.compress(raw, compresslevel=6)
+
+      def _store_image(db_path: str, url: str, blob: bytes,
+                       content_type: str, width: int, height: int) -> dict:
+          url_hash = hashlib.sha256(url.encode()).hexdigest()
+          # Store as zlib-compressed blob on top of the pre-gzip stub
+          compressed = zlib.compress(blob, 9)
+          ratio = round(len(blob) / len(compressed), 4) if compressed else 1.0
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT OR IGNORE INTO images
+                      (url_hash, source_url, content_type,
+                       original_bytes, compressed_bytes, compression_ratio,
+                       codec, width, height, blob)
+                  VALUES (?,?,?,?,?,?,?,?,?,?)
+              """, (url_hash, url, content_type,
+                    len(blob), len(compressed), ratio,
+                    "zlib", width, height,
+                    sqlite3.Binary(compressed)))
+              conn.commit()
+              img_id = conn.execute(
+                  "SELECT id FROM images WHERE url_hash=?", (url_hash,)
+              ).fetchone()[0]
+          finally:
+              conn.close()
+          return {"url": url, "url_hash": url_hash, "id": img_id,
+                  "ratio": ratio, "orig": len(blob), "comp": len(compressed)}
+
+      def _map_performer(db_path: str, username: str, image_id: int):
+          conn = sqlite3.connect(db_path)
+          try:
+              conn.execute("""
+                  INSERT OR IGNORE INTO performer_mappings (username, image_id)
+                  VALUES (?,?)
+              """, (username, image_id))
+              conn.commit()
+          finally:
+              conn.close()
+
+      async def store_image_async(db_path, url, blob, content_type, width, height):
+          return await asyncio.to_thread(
+              _store_image, db_path, url, blob, content_type, width, height
+          )
+
+      async def map_performer_async(db_path, username, image_id):
+          return await asyncio.to_thread(_map_performer, db_path, username, image_id)
+
+      async def main():
+          conn = sqlite3.connect(DB_PATH)
+          conn.executescript(SCHEMA)
+          conn.commit()
+          conn.close()
+
+          performers = [f"performer_{i:04d}" for i in range(50)]
+          store_tasks = []
+          for i, username in enumerate(performers):
+              blob = _make_stub_image(i)
+              url  = f"https://example.com/thumbs/{username}.jpg"
+              store_tasks.append(
+                  store_image_async(DB_PATH, url, blob, "image/jpeg", 320, 240)
+              )
+
+          store_results = await asyncio.gather(*store_tasks)
+
+          map_tasks = [
+              map_performer_async(DB_PATH, username, r["id"])
+              for username, r in zip(performers, store_results)
+          ]
+          await asyncio.gather(*map_tasks)
+
+          total_orig = sum(r["orig"] for r in store_results)
+          total_comp = sum(r["comp"] for r in store_results)
+
+          # Write manifest
+          manifest = {
+              "generated_at": datetime.utcnow().isoformat(),
+              "total_performers": len(performers),
+              "total_images": len(store_results),
+              "total_bytes": total_comp,
+          }
+          conn = sqlite3.connect(DB_PATH)
+          conn.execute("""
+              INSERT INTO manifest
+                  (total_performers, total_images, total_bytes, manifest_json)
+              VALUES (?,?,?,?)
+          """, (len(performers), len(store_results), total_comp,
+                json.dumps(manifest)))
+          conn.commit()
+          conn.close()
+
+          print(
+              f"[image store] {len(store_results)} images stored  "
+              f"| original={total_orig:,} B  compressed={total_comp:,} B  "
+              f"| ratio={round(total_orig/total_comp,4) if total_comp else 1}x"
+          )
+          print("[image store] performer mappings created ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 15 — ASYNC DATABASE INTEGRITY VALIDATION
+  # ================================================================
+
+  - name: Validate all databases (async integrity checks)
+    run: |
+      python - <<'PYEOF'
+      """
+      Runs PRAGMA integrity_check and PRAGMA foreign_key_check on every
+      SQLite database created during setup. Failures are collected and
+      reported before raising a final exception to fail the step.
+      All checks run concurrently via asyncio.gather.
+      """
+      import asyncio
+      import os
+      import sqlite3
+
+      DBS = [
+          "links.db",
+          "blog.db",
+          "texas_holdem.db",
+          "analytics.db",
+          "market_cache.db",
+          "chat.db",
+          "hotel_booking.db",
+          "yfinance_cache.db",
+          "compressed_store_gzip.db",
+          "compressed_store_lzma.db",
+          "compressed_store_zlib.db",
+          "compressed_store_zstd.db",
+          "compressed_store_lz4.db",
+          "compressed_store_brotli.db",
+          "compression_benchmark.db",
+          os.path.join("best", "image_cache.db"),
+      ]
+
+      def _check_db(db_path: str) -> dict:
+          if not os.path.exists(db_path):
+              return {"path": db_path, "status": "MISSING", "errors": []}
+          conn = sqlite3.connect(db_path)
+          try:
+              ic = conn.execute("PRAGMA integrity_check").fetchall()
+              fk = conn.execute("PRAGMA foreign_key_check").fetchall()
+              tbl_count = conn.execute(
+                  "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
+              ).fetchone()[0]
+              size_kb = os.path.getsize(db_path) // 1024
+          finally:
+              conn.close()
+
+          errors = []
+          if ic != [("ok",)]:
+              errors.append(f"integrity_check: {ic}")
+          if fk:
+              errors.append(f"foreign_key violations: {fk}")
+
+          return {
+              "path": db_path,
+              "status": "OK" if not errors else "FAIL",
+              "tables": tbl_count,
+              "size_kb": size_kb,
+              "errors": errors,
+          }
+
+      async def check_db_async(db_path: str) -> dict:
+          return await asyncio.to_thread(_check_db, db_path)
+
+      async def main():
+          tasks   = [check_db_async(p) for p in DBS]
+          results = await asyncio.gather(*tasks)
+
+          print(f"\n{'DB PATH':<48} {'STATUS':<8} {'TABLES':>6} {'SIZE KB':>8}")
+          print("-" * 76)
+          failures = []
+          for r in results:
+              status = r["status"]
+              tables = r.get("tables", "-")
+              size   = r.get("size_kb", "-")
+              print(f"{r['path']:<48} {status:<8} {str(tables):>6} {str(size):>8}")
+              if r["errors"]:
+                  for err in r["errors"]:
+                      print(f"  !! {err}")
+                  failures.append(r["path"])
+
+          print()
+          if failures:
+              raise RuntimeError(
+                  f"{len(failures)} database(s) failed integrity check: {failures}"
+              )
+          print(f"All {len(results)} databases passed integrity check ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 16 — ASYNC NODE.JS ENVIRONMENT VALIDATION
+  # ================================================================
+
+  - name: Validate Node.js environment and package versions
+    run: |
+      node - <<'JSEOF'
+      const { execSync } = require('child_process');
+      const fs = require('fs');
+      const path = require('path');
+
+      function checkVersion(cmd, label) {
+        try {
+          const v = execSync(cmd, { encoding: 'utf8' }).trim();
+          console.log(`  ${label.padEnd(20)} ${v}`);
+          return true;
+        } catch (e) {
+          console.error(`  ${label.padEnd(20)} NOT FOUND`);
+          return false;
+        }
+      }
+
+      console.log('\nNode.js Environment Report');
+      console.log('='.repeat(50));
+      checkVersion('node --version',  'Node.js');
+      checkVersion('npm --version',   'npm');
+      checkVersion('npx --version',   'npx');
+
+      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+      const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+
+      console.log('\nDeclared dependencies:');
+      for (const [name, ver] of Object.entries(pkg.dependencies || {})) {
+        const resolved = lock.packages?.[`node_modules/${name}`]?.version ?? '?';
+        console.log(`  ${name.padEnd(30)} declared=${ver}  installed=${resolved}`);
+      }
+
+      const nmPath = path.resolve('node_modules');
+      const nmExists = fs.existsSync(nmPath);
+      console.log(`\nnode_modules present: ${nmExists}`);
+      if (nmExists) {
+        const count = fs.readdirSync(nmPath).length;
+        console.log(`node_modules entries: ${count}`);
+      }
+
+      console.log('\nNode.js environment validation complete ✓');
+      JSEOF
+
+  # ================================================================
+  # SECTION 17 — PYTHON CODE QUALITY CHECKS
+  # ================================================================
+
+  - name: Run flake8 lint on async source files
+    run: |
+      python - <<'PYEOF'
+      """
+      Runs flake8 programmatically on the Python files that use async/await
+      patterns in this repository, so lint results are available in the
+      Copilot Workspace context before any edits begin.
+      """
+      import subprocess
+      import os
+      import sys
+
+      ASYNC_FILES = [
+          "collector.py",
+          "engine.py",
+          "app.py",
+          os.path.join("chat_server", "server.py"),
+          os.path.join("chat_server", "client.py"),
+          os.path.join("index", "fetch_index_data.py"),
+          os.path.join("best", "compressed_image_db_pipeline.py"),
+          os.path.join("reit_company", "src", "property.py"),
+          os.path.join("model_request_app", "app.py"),
+      ]
+
+      existing = [f for f in ASYNC_FILES if os.path.exists(f)]
+      print(f"Linting {len(existing)} async source files with flake8 ...")
+
+      issues = []
+      for fpath in existing:
+          result = subprocess.run(
+              ["python", "-m", "flake8",
+               "--max-line-length=120",
+               "--extend-ignore=E501,W503",
+               fpath],
+              capture_output=True, text=True
+          )
+          if result.stdout.strip():
+              issues.append((fpath, result.stdout.strip()))
+          else:
+              print(f"  {fpath}: OK")
+
+      if issues:
+          print(f"\nFlake8 found issues in {len(issues)} file(s):")
+          for fpath, output in issues:
+              print(f"\n--- {fpath} ---")
+              print(output[:2000])   # cap output length
+      else:
+          print("All linted files passed flake8 ✓")
+      PYEOF
+
+  - name: Verify async imports and event-loop compatibility
+    run: |
+      python - <<'PYEOF'
+      """
+      Verifies that all async packages installed during setup are importable
+      and that the event loop infrastructure (uvloop, anyio, asyncio) works
+      correctly by running a small end-to-end async test.
+      """
+      import asyncio
+      import sys
+
+      async def _check_imports():
+          results = {}
+
+          packages = [
+              "aiosqlite", "aiohttp", "aiofiles", "anyio",
+              "brotli", "zstandard", "lz4.frame", "lz4.block",
+          ]
+          for pkg in packages:
+              try:
+                  mod = __import__(pkg.split(".")[0])
+                  ver = getattr(mod, "__version__", "unknown")
+                  results[pkg] = ("OK", ver)
+              except ImportError as e:
+                  results[pkg] = ("MISSING", str(e))
+
+          # Test aiosqlite round-trip
+          try:
+              import aiosqlite, tempfile, os
+              with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+                  tmp = f.name
+              async with aiosqlite.connect(tmp) as db:
+                  await db.execute("CREATE TABLE t (x INTEGER)")
+                  await db.execute("INSERT INTO t VALUES (42)")
+                  await db.commit()
+                  row = await db.execute_fetchall("SELECT x FROM t")
+              os.unlink(tmp)
+              assert row == [(42,)]
+              results["aiosqlite:roundtrip"] = ("OK", "passed")
+          except Exception as e:
+              results["aiosqlite:roundtrip"] = ("FAIL", str(e))
+
+          # Test anyio task group
+          try:
+              import anyio
+              async def _grp():
+                  results_inner = []
+                  async with anyio.create_task_group() as tg:
+                      async def _work(n):
+                          await anyio.sleep(0)
+                          results_inner.append(n)
+                      for i in range(5):
+                          tg.start_soon(_work, i)
+                  return results_inner
+              inner = await _grp()
+              assert len(inner) == 5
+              results["anyio:task_group"] = ("OK", "passed")
+          except Exception as e:
+              results["anyio:task_group"] = ("FAIL", str(e))
+
+          return results
+
+      async def main():
+          results = await _check_imports()
+
+          print(f"\n{'PACKAGE':<30} {'STATUS':<8} VERSION/DETAIL")
+          print("-" * 70)
+          failures = []
+          for pkg, (status, detail) in results.items():
+              print(f"{pkg:<30} {status:<8} {detail}")
+              if status not in ("OK",):
+                  failures.append(pkg)
+
+          print()
+          if failures:
+              print(f"WARNING: {len(failures)} import(s) failed: {failures}")
+              sys.exit(1)
+          else:
+              print(f"All {len(results)} import checks passed ✓")
+
+      asyncio.run(main())
+      PYEOF
+
+  # ================================================================
+  # SECTION 18 — ENVIRONMENT SUMMARY
+  # ================================================================
+
+  - name: Print full environment summary
+    run: |
+      python - <<'PYEOF'
+      import sys, os, platform, sqlite3, json
+      from datetime import datetime
+
+      print("=" * 72)
+      print("  COPILOT WORKSPACE ENVIRONMENT SUMMARY")
+      print(f"  Generated at: {datetime.utcnow().isoformat()}Z")
+      print("=" * 72)
+
+      print(f"\nPlatform   : {platform.system()} {platform.release()} ({platform.machine()})")
+      print(f"Python     : {sys.version.split()[0]}")
+      print(f"SQLite     : {sqlite3.sqlite_version}")
+      print(f"Work dir   : {os.getcwd()}")
+
+      # Installed packages summary
+      import subprocess
+      pip_list = subprocess.run(
+          ["pip", "list", "--format=json"], capture_output=True, text=True
+      )
+      pkgs = {p["name"].lower(): p["version"]
+              for p in json.loads(pip_list.stdout)} if pip_list.returncode == 0 else {}
+
+      highlight = [
+          "aiosqlite", "aiohttp", "aiofiles", "anyio", "uvloop",
+          "brotli", "zstandard", "lz4", "yfinance", "pandas",
+          "numpy", "scipy", "tensorflow", "flask", "pytest",
+          "flake8", "black", "mypy",
+      ]
+      print("\nKey packages:")
+      for name in highlight:
+          ver = pkgs.get(name, pkgs.get(name.replace("-", "_"), "not installed"))
+          print(f"  {name:<20} {ver}")
+
+      # Database file inventory
+      db_paths = [
+          "links.db", "blog.db", "texas_holdem.db", "analytics.db",
+          "market_cache.db", "chat.db", "hotel_booking.db",
+          "yfinance_cache.db", "compressed_store_gzip.db",
+          "compressed_store_lzma.db", "compressed_store_zlib.db",
+          "compressed_store_zstd.db", "compressed_store_lz4.db",
+          "compressed_store_brotli.db", "compression_benchmark.db",
+          os.path.join("best", "image_cache.db"),
+      ]
+      print("\nDatabase inventory:")
+      total_db_kb = 0
+      for p in db_paths:
+          if os.path.exists(p):
+              kb = os.path.getsize(p) // 1024
+              total_db_kb += kb
+              print(f"  {p:<50} {kb:>6} KB")
+          else:
+              print(f"  {p:<50}  (absent)")
+      print(f"  {'TOTAL':<50} {total_db_kb:>6} KB")
+
+      print("\n" + "=" * 72)
+      print("  Environment setup complete. Copilot Workspace is ready.")
+      print("=" * 72)
+      PYEOF
