@@ -97,13 +97,13 @@ class FetchProgress:
 @dataclass
 class FetchConfig:
     """Configuration for data fetch operations."""
-    period: str = "1y"
+    period: str = "2y"
     interval: str = "1d"
-    batch_size: int = 10
-    max_workers: int = 4
+    batch_size: int = 50
+    max_workers: int = 8
     retry_attempts: int = 2
     retry_delay: float = 1.0
-    timeout_per_ticker: float = 30.0
+    timeout_per_ticker: float = 60.0
     send_notifications: bool = True
     output_filename: Optional[str] = None
     incremental_mode: bool = False
@@ -602,7 +602,7 @@ class DataController:
             data_dict: Dict[str, Any] = {}
             for ticker in targets:
                 try:
-                    df = self.model.read_data(ticker=ticker, limit=500, dat_file=dat_file)
+                    df = self.model.read_data(ticker=ticker, limit=1000, dat_file=dat_file)
                     if not df.empty:
                         data_dict[ticker] = df
                 except Exception as exc:  # noqa: BLE001

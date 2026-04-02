@@ -56,11 +56,11 @@ DB_NAME = "yfinance.db"
 COMPRESSED_DB_NAME = "yfinance_data/yfinance.dat"
 
 # Configuration defaults
-DEFAULT_PERIOD = "1y"
+DEFAULT_PERIOD = "2y"
 DEFAULT_INTERVAL = "1d"
 MAX_RETRY_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 2.0
-REQUEST_TIMEOUT = 30
+REQUEST_TIMEOUT = 60
 
 # Webhook notification colors (Discord embed colors)
 WEBHOOK_SUCCESS_COLOR = 5025616  # Green
@@ -251,7 +251,7 @@ def fetch_and_store_data(
     tickers: Optional[List[str]] = None,
     period: str = DEFAULT_PERIOD,
     interval: str = DEFAULT_INTERVAL,
-    max_workers: int = 4,
+    max_workers: int = 8,
 ) -> FetchSummary:
     """Fetch data for multiple tickers and store in database.
     
@@ -269,65 +269,87 @@ def fetch_and_store_data(
     
     start_time = time.time()
     conn = create_database()
-    
+    conn_lock = __import__('threading').Lock()
+
     results: List[FetchResult] = []
     total_records = 0
-    
-    for ticker in tickers:
-        print(f"Fetching data for {ticker}...")
-        try:
-            data = yf.download(ticker, period=period, interval=interval, progress=False)
-            
-            if data.empty:
+
+    def _fetch_one(ticker: str):
+        """Fetch data for one ticker and return (FetchResult, DataFrame or None)."""
+        tick_start = time.time()
+        for attempt in range(MAX_RETRY_ATTEMPTS):
+            try:
+                data = yf.download(
+                    ticker,
+                    period=period,
+                    interval=interval,
+                    progress=False,
+                    timeout=REQUEST_TIMEOUT,
+                )
+                is_valid, error = validate_data(data)
+                if not is_valid:
+                    if attempt < MAX_RETRY_ATTEMPTS - 1:
+                        time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+                        continue
+                    return FetchResult(ticker=ticker, success=False, error=error,
+                                       duration_seconds=time.time() - tick_start), None
+
+                data.reset_index(inplace=True)
+                data['Ticker'] = ticker
+                data['FetchedAt'] = datetime.now(timezone.utc).isoformat()
+                data['Period'] = period
+                data['Interval'] = interval
+
+                if 'Date' in data.columns:
+                    data['Date'] = data['Date'].astype(str)
+                elif 'Datetime' in data.columns:
+                    data['Date'] = data['Datetime'].astype(str)
+                else:
+                    data['Date'] = data.index.astype(str)
+
+                data_to_store = pd.DataFrame({
+                    'Date': data['Date'],
+                    'Open': data['Open'] if 'Open' in data.columns else np.nan,
+                    'High': data['High'] if 'High' in data.columns else np.nan,
+                    'Low': data['Low'] if 'Low' in data.columns else np.nan,
+                    'Close': data['Close'] if 'Close' in data.columns else np.nan,
+                    'Volume': data['Volume'] if 'Volume' in data.columns else 0,
+                    'Ticker': data['Ticker'],
+                    'FetchedAt': data['FetchedAt'],
+                    'Period': data['Period'],
+                    'Interval': data['Interval'],
+                })
+
+                return FetchResult(ticker=ticker, success=True, records=len(data_to_store),
+                                   duration_seconds=time.time() - tick_start), data_to_store
+
+            except Exception as e:
+                if attempt < MAX_RETRY_ATTEMPTS - 1:
+                    time.sleep(RETRY_DELAY_SECONDS * (attempt + 1))
+                    continue
+                return FetchResult(ticker=ticker, success=False, error=str(e),
+                                   duration_seconds=time.time() - tick_start), None
+
+        return FetchResult(ticker=ticker, success=False, error="Max retries exceeded",
+                           duration_seconds=time.time() - tick_start), None
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_ticker = {executor.submit(_fetch_one, t): t for t in tickers}
+        for future in as_completed(future_to_ticker):
+            ticker = future_to_ticker[future]
+            try:
+                result, data_to_store = future.result()
+                results.append(result)
+                if result.success and data_to_store is not None:
+                    with conn_lock:
+                        data_to_store.to_sql('prices', conn, if_exists='append', index=False)
+                    total_records += len(data_to_store)
+            except Exception as e:
                 results.append(FetchResult(
                     ticker=ticker,
                     success=False,
-                    error="No data returned",
+                    error=str(e),
                 ))
-                continue
-            
-            data.reset_index(inplace=True)
-            data['Ticker'] = ticker
-            data['FetchedAt'] = datetime.now(timezone.utc).isoformat()
-            data['Period'] = period
-            data['Interval'] = interval
-
-            # Handle column naming for different yfinance versions
-            if 'Date' in data.columns:
-                data['Date'] = data['Date'].astype(str)
-            elif 'Datetime' in data.columns:
-                data['Date'] = data['Datetime'].astype(str)
-            else:
-                data['Date'] = data.index.astype(str)
-
-            # Prepare data for storage
-            data_to_store = pd.DataFrame()
-            data_to_store['Date'] = data['Date']
-            data_to_store['Open'] = data['Open'] if 'Open' in data.columns else np.nan
-            data_to_store['High'] = data['High'] if 'High' in data.columns else np.nan
-            data_to_store['Low'] = data['Low'] if 'Low' in data.columns else np.nan
-            data_to_store['Close'] = data['Close'] if 'Close' in data.columns else np.nan
-            data_to_store['Volume'] = data['Volume'] if 'Volume' in data.columns else 0
-            data_to_store['Ticker'] = data['Ticker']
-            data_to_store['FetchedAt'] = data['FetchedAt']
-            data_to_store['Period'] = data['Period']
-            data_to_store['Interval'] = data['Interval']
-
-            data_to_store.to_sql('prices', conn, if_exists='append', index=False)
-            
-            results.append(FetchResult(
-                ticker=ticker,
-                success=True,
-                records=len(data_to_store),
-            ))
-            total_records += len(data_to_store)
-            
-        except Exception as e:
-            results.append(FetchResult(
-                ticker=ticker,
-                success=False,
-                error=str(e),
-            ))
     
     conn.close()
     
