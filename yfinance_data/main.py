@@ -129,6 +129,36 @@ def main():
         help="Show summary of data in the database"
     )
     parser.add_argument(
+        "--run-ekf",
+        action="store_true",
+        help=(
+            "After fetching data, run Extended Kalman Filter Bayesian state "
+            "estimation and store predictions under states/ and predictions/."
+        ),
+    )
+    parser.add_argument(
+        "--ekf-only",
+        action="store_true",
+        help=(
+            "Skip data fetch; run EKF on the existing .dat database only. "
+            "Requires a pre-existing yfinance.dat (or --output file)."
+        ),
+    )
+    parser.add_argument(
+        "--ekf-tickers",
+        help="Comma-separated subset of tickers to run EKF on (default: all).",
+    )
+    parser.add_argument(
+        "--ekf-forecast-days",
+        type=int,
+        default=5,
+        help="Trading days to forecast ahead in EKF (default: 5).",
+    )
+    parser.add_argument(
+        "--show-ekf",
+        help="Show EKF next-close prediction for a specific ticker and exit.",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=100,
@@ -153,6 +183,46 @@ def main():
 
     # Handle data display commands
     script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # --show-ekf: display a stored EKF prediction and exit
+    if args.show_ekf:
+        from models.ekf_runner import EKFRunner, _read_dat
+        pred_path = os.path.join(script_dir, "predictions", f"{args.show_ekf}_next_close.dat")
+        try:
+            pred = _read_dat(pred_path)
+            print("\n" + "=" * 60)
+            print(f"EKF PREDICTION — {args.show_ekf}")
+            print("=" * 60)
+            print(f"  Last Close          : ${pred.get('last_close', 'N/A'):.4f}")
+            print(f"  Predicted Close     : ${pred.get('predicted_close', 'N/A'):.4f}")
+            print(f"  Predicted Return    : {pred.get('predicted_return_pct', 0):+.2f}%")
+            print(f"  Filtered Volatility : {pred.get('filtered_volatility', 'N/A'):.6f}")
+            print(f"  Momentum Angle (Θ)  : {pred.get('filtered_momentum_angle', 'N/A'):.4f} rad")
+            print(f"  Posterior Cov Trace : {pred.get('posterior_cov_trace', 'N/A'):.6f}")
+            print(f"  Forecast Horizon    : {pred.get('forecast_horizon_days', 'N/A')} days")
+            print(f"  Observations Used   : {pred.get('n_observations', 'N/A')}")
+            print(f"  Filtered At         : {pred.get('filtered_at', 'N/A')}")
+            forecasts = pred.get("forecasts", [])
+            if forecasts:
+                print("\n  Forward Forecast (log-price → price):")
+                for i, fc in enumerate(forecasts, 1):
+                    price = float("nan")
+                    try:
+                        price = round(2.718281828 ** fc["log_price"], 4)
+                    except Exception:
+                        pass
+                    print(
+                        f"    Day +{i}: ${price:.4f} "
+                        f"(vol={fc.get('volatility', 0):.6f}, "
+                        f"Θ={fc.get('momentum_angle', 0):.4f})"
+                    )
+            print("=" * 60)
+        except FileNotFoundError:
+            logger.error(
+                "No EKF prediction found for %s. Run with --run-ekf first.", args.show_ekf
+            )
+            return 1
+        return 0
 
     if args.show_summary:
         from models.data_model import DataModel
@@ -199,6 +269,26 @@ def main():
             logger.error(f"Error: {e}")
             return 1
         return 0
+
+    # --ekf-only: skip fetch, run EKF on the existing database
+    if args.ekf_only:
+        controller = DataController(data_dir=script_dir)
+        ekf_tickers = (
+            [t.strip() for t in args.ekf_tickers.split(",")]
+            if args.ekf_tickers
+            else None
+        )
+        ekf_results = controller.run_ekf_analysis(
+            tickers=ekf_tickers,
+            dat_file=args.output,
+            forecast_days=args.ekf_forecast_days,
+        )
+        if ekf_results.get("success"):
+            _print_ekf_summary(ekf_results["results"])
+            return 0
+        else:
+            logger.error("EKF analysis failed: %s", ekf_results.get("error"))
+            return 1
 
     # Determine which tickers to fetch
     if args.tickers:
@@ -251,10 +341,56 @@ def main():
         logger.info(f"Success! Fetched {summary.get('total_tickers', 0)} tickers, "
                    f"{summary.get('total_records', 0)} records")
         logger.info(f"Output file: {results.get('output_file', 'N/A')}")
-        return 0
     else:
         logger.error(f"Failed: {results.get('error', 'Unknown error')}")
         return 1
+
+    # Optionally run EKF analysis after a successful fetch
+    if args.run_ekf and results.get("success"):
+        ekf_tickers = (
+            [t.strip() for t in args.ekf_tickers.split(",")]
+            if args.ekf_tickers
+            else None
+        )
+        logger.info("Running EKF Bayesian state estimation…")
+        ekf_results = controller.run_ekf_analysis(
+            tickers=ekf_tickers,
+            dat_file=results.get("output_file"),
+            forecast_days=args.ekf_forecast_days,
+        )
+        if ekf_results.get("success"):
+            _print_ekf_summary(ekf_results["results"])
+        else:
+            logger.warning("EKF analysis failed: %s", ekf_results.get("error"))
+
+    return 0
+
+
+def _print_ekf_summary(ekf_results: dict) -> None:
+    """Pretty-print a table of EKF next-close predictions."""
+    if not ekf_results:
+        logger.info("No EKF results to display.")
+        return
+    print("\n" + "=" * 80)
+    print("EKF BAYESIAN STATE ESTIMATION — NEXT-CLOSE PREDICTIONS")
+    print("=" * 80)
+    print(f"{'Ticker':<10} {'Last Close':>12} {'Pred Close':>12} {'Return':>9}"
+          f"  {'Volatility':>12}  {'Θ (rad)':>10}  {'Cov Trace':>10}")
+    print("-" * 80)
+    for ticker, res in sorted(ekf_results.items()):
+        print(
+            f"{ticker:<10} "
+            f"${res.get('last_close', 0):>11.4f} "
+            f"${res.get('predicted_close', 0):>11.4f} "
+            f"{res.get('predicted_return_pct', 0):>+8.2f}%  "
+            f"{res.get('filtered_volatility', 0):>12.6f}  "
+            f"{res.get('filtered_momentum_angle', 0):>10.4f}  "
+            f"{res.get('posterior_cov_trace', 0):>10.6f}"
+        )
+    print("=" * 80)
+    print(f"States stored in:      <data_dir>/states/")
+    print(f"Predictions stored in: <data_dir>/predictions/")
+    print("Use --show-ekf TICKER to inspect any prediction.\n")
 
 
 if __name__ == "__main__":

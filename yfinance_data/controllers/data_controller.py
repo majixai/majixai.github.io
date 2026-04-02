@@ -550,6 +550,80 @@ class DataController:
         # In incremental mode, we append to existing data
         return self.fetch_and_store_with_config(tickers, config)
 
+    def run_ekf_analysis(
+        self,
+        tickers: Optional[List[str]] = None,
+        dat_file: Optional[str] = None,
+        forecast_days: int = 5,
+        ekf_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run Extended Kalman Filter Bayesian state estimation on stored price data.
+
+        Reads OHLCV data from the compressed ``.dat`` database, fits a
+        three-state EKF  [P_t, V_t, Θ_t]  for each ticker, and writes
+        state vectors and next-close predictions to::
+
+            <data_dir>/states/TICKER_YYYY.dat
+            <data_dir>/predictions/TICKER_next_close.dat
+
+        Parameters
+        ----------
+        tickers : list of str, optional
+            Ticker symbols to analyse.  If ``None``, all tickers present
+            in the database are analysed.
+        dat_file : str, optional
+            Path to the ``.dat`` price database.  Defaults to
+            ``yfinance.dat`` inside ``data_dir``.
+        forecast_days : int
+            Number of trading days to forecast ahead (default 5).
+        ekf_params : dict, optional
+            Override any :class:`~models.bayesian_ekf.ExtendedKalmanFilter`
+            constructor keyword arguments (e.g. ``{"kappa": 3.0}``).
+
+        Returns
+        -------
+        dict
+            ``{"success": bool, "tickers_analyzed": int, "results": {...}}``
+            or ``{"success": False, "error": str}`` on failure.
+        """
+        from models.ekf_runner import EKFRunner
+
+        try:
+            available = self.model.get_available_tickers(dat_file)
+            targets = tickers if tickers else available
+
+            if not targets:
+                return {"success": False, "error": "No tickers available in database"}
+
+            logger.info("Running EKF analysis for %d tickers…", len(targets))
+            runner = EKFRunner(data_dir=self.data_dir, forecast_days=forecast_days)
+
+            data_dict: Dict[str, Any] = {}
+            for ticker in targets:
+                try:
+                    df = self.model.read_data(ticker=ticker, limit=500, dat_file=dat_file)
+                    if not df.empty:
+                        data_dict[ticker] = df
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Could not load data for %s: %s", ticker, exc)
+
+            if not data_dict:
+                return {"success": False, "error": "No data loaded for EKF analysis"}
+
+            results = runner.run_batch(data_dict, ekf_params)
+            logger.info("EKF analysis complete: %d/%d tickers succeeded", len(results), len(targets))
+
+            return {
+                "success": True,
+                "tickers_analyzed": len(results),
+                "results": results,
+            }
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("EKF analysis failed: %s", exc)
+            return {"success": False, "error": str(exc)}
+
     def get_results(self) -> Dict[str, Any]:
         """Get the results of the last operation."""
         return self.results
