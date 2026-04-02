@@ -5,6 +5,9 @@
  * (relative to the page), hashes passwords with SHA-256 via SubtleCrypto,
  * and stores a timestamped session token in localStorage.
  *
+ * After a successful login the page shows an explicit "Go to App" button —
+ * the user navigates only when they click it (no automatic redirect).
+ *
  * Dependencies: none (vanilla JS, modern browsers only).
  */
 
@@ -62,7 +65,7 @@
       const raw = localStorage.getItem(config.sessionKey);
       if (!raw) return false;
       const session = JSON.parse(raw);
-      if (Date.now() - session.createdAt > config.sessionDuration) {
+      if (Date.now() - session.createdAt > session.sessionDuration) {
         localStorage.removeItem(config.sessionKey);
         return false;
       }
@@ -72,12 +75,22 @@
     }
   }
 
-  function createSession(config, username) {
+  function createSession(config, username, rememberMe) {
+    const duration = rememberMe ? 30 * 24 * 60 * 60 * 1000 : config.sessionDuration;
     localStorage.setItem(config.sessionKey, JSON.stringify({
       username,
       createdAt: Date.now(),
+      sessionDuration: duration,
       appName: config.appName
     }));
+  }
+
+  function getSession(config) {
+    try {
+      return JSON.parse(localStorage.getItem(config.sessionKey) || '{}');
+    } catch {
+      return {};
+    }
   }
 
   function logout(config) {
@@ -94,28 +107,64 @@
     el.textContent = '';
   }
 
+  function formatExpiry(session) {
+    const expiresAt = session.createdAt + session.sessionDuration;
+    const ms = expiresAt - Date.now();
+    if (ms <= 0) return 'expired';
+    const hours = Math.floor(ms / 3600000);
+    if (hours < 1) {
+      const mins = Math.floor(ms / 60000);
+      return `${mins} minute${mins !== 1 ? 's' : ''}`;
+    }
+    if (hours < 48) return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? 's' : ''}`;
+  }
+
   /* ── render ───────────────────────────────────────────────────── */
 
   function renderAlreadyLoggedIn(config) {
-    const session = JSON.parse(localStorage.getItem(config.sessionKey) || '{}');
+    const session = getSession(config);
+    const expiry  = formatExpiry(session);
+
     document.querySelector('.login-card').innerHTML = `
       <div class="login-header">
         <span class="icon">${config.appIcon || '🔐'}</span>
         <h1>${config.appName}</h1>
-        <p>Welcome back, <strong>${session.username || 'user'}</strong></p>
+        <p>Welcome back, <strong>${session.username || 'user'}</strong>.</p>
       </div>
       <div class="already-logged">
-        <p>You are already signed in.</p>
-        <a href="${config.redirectOnSuccess}">Continue to App →</a>
+        <p>You are already signed in. Click the button below to continue.</p>
+        <div class="session-info">
+          <strong>Session expires in:</strong> ${expiry}<br>
+          <strong>Signed in as:</strong> ${session.username || '—'}<br>
+          <strong>App:</strong> ${session.appName || config.appName}
+        </div>
+        <a class="btn-go" href="${config.redirectOnSuccess}">Go to App →</a>
       </div>
+      <div class="login-divider"></div>
       <div class="login-footer">
-        <a href="#" id="logout-link">Sign out</a>
+        <a href="#" id="logout-link">Sign out &amp; switch account</a>
       </div>`;
 
     document.getElementById('logout-link').addEventListener('click', e => {
       e.preventDefault();
       logout(config);
       location.reload();
+    });
+  }
+
+  function wireShowPasswordToggle() {
+    const toggle = document.getElementById('toggle-password');
+    const pwInput = document.getElementById('password');
+    const icon = document.getElementById('toggle-pw-icon');
+    if (!toggle || !pwInput) return;
+
+    toggle.addEventListener('click', () => {
+      const isHidden = pwInput.type === 'password';
+      pwInput.type = isHidden ? 'text' : 'password';
+      icon.textContent = isHidden ? '🙈' : '👁';
+      toggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
     });
   }
 
@@ -126,6 +175,8 @@
     if (icon)   icon.textContent   = config.appIcon || '🔐';
     document.title = config.appName;
 
+    wireShowPasswordToggle();
+
     const form  = document.getElementById('login-form');
     const alert = document.getElementById('login-alert');
     const btn   = document.getElementById('login-btn');
@@ -135,8 +186,11 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       hideAlert(alert);
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
+      const username   = document.getElementById('username').value.trim();
+      const password   = document.getElementById('password').value;
+      const rememberMe = document.getElementById('remember-me')
+                           ? document.getElementById('remember-me').checked
+                           : false;
 
       if (!username || !password) {
         showAlert(alert, 'error', 'Please enter both username and password.');
@@ -147,7 +201,7 @@
       btn.innerHTML = '<span class="spinner"></span>Signing in…';
 
       try {
-        await onSubmit(username, password);
+        await onSubmit(username, password, rememberMe);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -166,7 +220,7 @@
       return;
     }
 
-    renderLoginForm(config, async (username, password) => {
+    renderLoginForm(config, async (username, password, rememberMe) => {
       const hash  = await sha256(password);
       const alert = document.getElementById('login-alert');
 
@@ -179,12 +233,22 @@
         return;
       }
 
-      createSession(config, username);
-      showAlert(alert, 'success', 'Login successful! Redirecting…');
+      createSession(config, username, rememberMe);
 
-      setTimeout(() => {
-        window.location.href = config.redirectOnSuccess;
-      }, 900);
+      /* Hide the form and show an explicit "Go to App" button — no auto-redirect */
+      const form = document.getElementById('login-form');
+      if (form) form.style.display = 'none';
+
+      const infoStrip = document.querySelector('.login-info');
+      if (infoStrip) infoStrip.style.display = 'none';
+
+      showAlert(alert, 'success', `✔ Signed in as ${username}. Click the button below to continue.`);
+
+      const goBtn = document.createElement('a');
+      goBtn.href      = config.redirectOnSuccess;
+      goBtn.className = 'btn-go';
+      goBtn.textContent = 'Go to App →';
+      alert.insertAdjacentElement('afterend', goBtn);
     });
   }
 
@@ -208,3 +272,4 @@
     init();
   }
 })();
+

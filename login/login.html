@@ -11,7 +11,7 @@
     <div class="login-header">
       <span class="icon" id="login-app-icon">🔐</span>
       <h1 id="login-app-name">Login</h1>
-      <p>Sign in to continue</p>
+      <p id="login-subtitle">Enter your credentials below and click <strong>Sign In</strong> when you are ready.</p>
     </div>
 
     <div class="alert" id="login-alert" role="alert" aria-live="polite"></div>
@@ -23,7 +23,7 @@
           type="text"
           id="username"
           name="username"
-          placeholder="Enter username"
+          placeholder="Enter your username"
           autocomplete="username"
           required
           autofocus>
@@ -31,17 +31,40 @@
 
       <div class="form-group">
         <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          placeholder="Enter password"
-          autocomplete="current-password"
-          required>
+        <div class="input-wrap">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required>
+          <button
+            type="button"
+            class="btn-toggle-pw"
+            id="toggle-password"
+            aria-label="Show password"
+            title="Show / hide password">
+            <span id="toggle-pw-icon">👁</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-row remember-row">
+        <label class="checkbox-label" for="remember-me">
+          <input type="checkbox" id="remember-me" name="remember-me">
+          <span>Remember me for 30 days</span>
+        </label>
       </div>
 
       <button type="submit" class="btn-login" id="login-btn">Sign In</button>
     </form>
+
+    <div class="login-divider"></div>
+
+    <div class="login-info">
+      <p>🔒 Passwords are hashed with SHA-256 and sessions are stored locally in your browser. No data is sent to a server.</p>
+    </div>
 
     <div class="login-footer">
       <span>MajixAI &mdash; Standalone Login</span>

@@ -16,7 +16,18 @@ A self-contained, zero-dependency login system that can be dropped into any dire
 
 ---
 
-## How It Works
+## Login page features
+
+The login page (`login.html`) is intentionally self-contained and enriched:
+
+| Feature | Details |
+|---------|---------|
+| **Show / hide password** | Eye-icon toggle inside the password field |
+| **Remember Me** | Checkbox extends the session to 30 days instead of the default 24 hours |
+| **Explicit navigation** | After a successful login a **"Go to App →"** button is shown — the user navigates only when they click it. There is no automatic redirect. |
+| **Session info** | When already logged in the card shows the session expiry countdown, signed-in username, and app name before the "Go to App" button |
+| **Privacy strip** | A small notice below the form explains that passwords are SHA-256 hashed and no data is sent to a server |
+
 
 ### Automatic (via GitHub Actions)
 
