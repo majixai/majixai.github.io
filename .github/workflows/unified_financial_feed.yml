@@ -1,0 +1,167 @@
+name: unified financial feed
+
+on:
+  schedule:
+    - cron: "*/15 13-21 * * 1-5"
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "comma-separated tickers (default: all)"
+        required: false
+        default: "spy,qqq,dia,iwm,aapl,msft,nvda,tsla,btc-usd"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: unified-feed
+  cancel-in-progress: true
+
+jobs:
+  sp-projection:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.run.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r sp_closing_projection/requirements.txt
+      - id: run
+        run: |
+          python sp_closing_projection/sp_closing_projection.py || true
+          echo "status=ok" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sp-projection
+          path: sp_closing_projection/latest_projection.json
+          retention-days: 1
+
+  market-prediction:
+    runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.run.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r market_prediction/requirements.txt
+      - id: run
+        run: |
+          python market_prediction/market_predictor.py || true
+          echo "status=ok" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: market-prediction
+          path: market_prediction/latest_prediction.json
+          retention-days: 1
+
+  yfinance-fetch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - group: "spy,qqq,dia,iwm"
+            artifact: "yfinance-core"
+          - group: "aapl,msft,nvda,tsla"
+            artifact: "yfinance-tech"
+      fail-fast: false
+    outputs:
+      status: ${{ steps.run.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r yfinance_data/requirements.txt
+      - id: run
+        env:
+          TICKERS: ${{ matrix.group }}
+        run: |
+          python yfinance_data/main.py || true
+          echo "status=ok" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: yfinance_data/yfinance.dat
+          retention-days: 1
+
+  google-finance-quotes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install requests
+      - run: python tradingview_integration/pine_poi_updater.py || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gf-quotes
+          path: tradingview_integration/data/google_finance_quotes.json
+          retention-days: 1
+
+  unified-seed-writer:
+    runs-on: ubuntu-latest
+    needs: [sp-projection, market-prediction, yfinance-fetch, google-finance-quotes]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r tradingview_integration/unified_feed/requirements.txt
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sp-projection
+          path: sp_closing_projection/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: market-prediction
+          path: market_prediction/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: yfinance-core
+          path: yfinance_data/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: yfinance-tech
+          path: yfinance_data/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: gf-quotes
+          path: tradingview_integration/data/
+        continue-on-error: true
+
+      - name: run unified feed
+        run: |
+          python tradingview_integration/unified_feed/feed.py
+
+      - name: commit pine seeds
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tradingview_integration/pine_seeds/
+          git diff --cached --quiet || git commit -m "chore: update unified pine seeds [skip ci]"
+          git push
