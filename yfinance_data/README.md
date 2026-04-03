@@ -1,6 +1,6 @@
 # YFinance Data
 
-A Python-based Progressive Web App (PWA) that fetches historical and real-time price data for 1 300+ stock tickers using [yfinance](https://pypi.org/project/yfinance/), stores the data in a compressed SQLite `.dat` file, and serves it to a browser-based viewer with charting support.
+A Python-based Progressive Web App (PWA) that fetches historical and real-time price data for 1,300+ stock tickers using [yfinance](https://pypi.org/project/yfinance/), stores the data in a compressed SQLite `.dat` file, and serves it to a browser-based viewer with charting support.
 
 ## Architecture (MVC)
 
@@ -8,7 +8,7 @@ A Python-based Progressive Web App (PWA) that fetches historical and real-time p
 yfinance_data/
 ├── main.py                   # CLI entry point
 ├── fetch_data.py             # Legacy standalone fetcher (webhook support)
-├── tickers.py                # 1 300+ tickers grouped by sector/index/category
+├── tickers.py                # 1,300+ tickers grouped by sector/index/category
 ├── requirements.txt          # Python dependencies
 ├── controllers/
 │   └── data_controller.py    # Orchestrates fetch, store, notify; progress tracking
