@@ -1,0 +1,694 @@
+//@version=5
+// =============================================================================
+// Advanced Multi-Indicator Strategy  |  Pine Script v5
+// Combines: RSI · MACD · Bollinger Bands · ATR · Stochastic · ADX · VWAP
+//           Candlestick patterns · Support/Resistance · MTF signals
+//           Pine Seeds external data integration
+// =============================================================================
+indicator("Advanced Multi-Indicator Strategy", overlay=true, max_lines_count=500,
+         max_labels_count=500, max_boxes_count=200)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 1 · INPUT GROUPS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// RSI
+var GRP_RSI   = "RSI Settings"
+rsiLen        = input.int(14,  "RSI Length",        minval=2,  group=GRP_RSI)
+rsiOB         = input.float(70,"RSI Overbought",    minval=50, group=GRP_RSI)
+rsiOS         = input.float(30,"RSI Oversold",      maxval=50, group=GRP_RSI)
+showRsiSig    = input.bool(true,"Show RSI Signals", group=GRP_RSI)
+
+// MACD
+var GRP_MACD  = "MACD Settings"
+macdFast      = input.int(12,  "Fast Length",       minval=2,  group=GRP_MACD)
+macdSlow      = input.int(26,  "Slow Length",       minval=5,  group=GRP_MACD)
+macdSig       = input.int(9,   "Signal Length",     minval=2,  group=GRP_MACD)
+
+// Bollinger Bands
+var GRP_BB    = "Bollinger Bands"
+bbLen         = input.int(20,  "BB Length",         minval=2,  group=GRP_BB)
+bbMult        = input.float(2.0,"BB Std Dev",       minval=0.5,group=GRP_BB)
+showBB        = input.bool(true,"Show BB",          group=GRP_BB)
+
+// ATR
+var GRP_ATR   = "ATR / Volatility"
+atrLen        = input.int(14,  "ATR Length",        minval=2,  group=GRP_ATR)
+atrMult       = input.float(1.5,"ATR Multiplier",  minval=0.5,group=GRP_ATR)
+
+// Stochastic
+var GRP_STOCH = "Stochastic"
+stochK        = input.int(14,  "Stoch %K",          minval=2,  group=GRP_STOCH)
+stochD        = input.int(3,   "Stoch %D",          minval=1,  group=GRP_STOCH)
+stochSmooth   = input.int(3,   "Stoch Smooth",      minval=1,  group=GRP_STOCH)
+stochOB       = input.float(80,"Stoch Overbought",  group=GRP_STOCH)
+stochOS       = input.float(20,"Stoch Oversold",    group=GRP_STOCH)
+
+// ADX
+var GRP_ADX   = "ADX / Trend Strength"
+adxLen        = input.int(14,  "ADX Length",        minval=2,  group=GRP_ADX)
+adxThresh     = input.float(25,"ADX Threshold",     minval=10, group=GRP_ADX)
+
+// VWAP
+var GRP_VWAP  = "VWAP"
+showVWAP      = input.bool(true,"Show VWAP",        group=GRP_VWAP)
+vwapBands     = input.bool(true,"Show VWAP Bands",  group=GRP_VWAP)
+vwapBandMult  = input.float(1.0,"VWAP Band Mult",   minval=0.25, group=GRP_VWAP)
+
+// Support / Resistance
+var GRP_SR    = "Support & Resistance"
+srLookback    = input.int(50,  "Pivot Lookback",    minval=5,  group=GRP_SR)
+srLeft        = input.int(10,  "Left Bars",         minval=1,  group=GRP_SR)
+srRight       = input.int(10,  "Right Bars",        minval=1,  group=GRP_SR)
+showSR        = input.bool(true,"Show S/R Levels",  group=GRP_SR)
+
+// Candlestick Patterns
+var GRP_PAT   = "Candlestick Patterns"
+showCandle    = input.bool(true,"Show Patterns",    group=GRP_PAT)
+dojiThresh    = input.float(0.1,"Doji Body %",      minval=0.01, maxval=0.5, group=GRP_PAT)
+
+// MTF
+var GRP_MTF   = "Multi-Timeframe"
+htfTf         = input.timeframe("D","Higher TF",   group=GRP_MTF)
+showMTF       = input.bool(true,"Show HTF Bias",   group=GRP_MTF)
+
+// Signal scoring
+var GRP_SIG   = "Signal Settings"
+minScore      = input.int(3,   "Min Score for Alert", minval=1, maxval=10, group=GRP_SIG)
+showScore     = input.bool(true,"Show Score Label",   group=GRP_SIG)
+showTable     = input.bool(true,"Show Dashboard",     group=GRP_SIG)
+
+// External data (Pine Seeds)
+var GRP_SEED  = "External Data (Pine Seeds)"
+seedUrl       = input.string("", "Seed Data URL", group=GRP_SEED,
+                tooltip="Optional: raw URL to a .dat file produced by Pine Seeds request.seed()")
+useSeedData   = input.bool(false,"Use Seed Data",  group=GRP_SEED)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 2 · CORE CALCULATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 2.1 RSI
+rsiVal    = ta.rsi(close, rsiLen)
+rsiSlope  = rsiVal - rsiVal[1]
+
+// 2.2 MACD
+[macdLine, signalLine, macdHist] = ta.macd(close, macdFast, macdSlow, macdSig)
+macdBull  = macdLine > signalLine
+macdCross = ta.crossover(macdLine, signalLine)
+macdCrossDown = ta.crossunder(macdLine, signalLine)
+
+// 2.3 Bollinger Bands
+[bbUpper, bbBasis, bbLower] = ta.bb(close, bbLen, bbMult)
+bbWidth   = (bbUpper - bbLower) / bbBasis
+bbSqueeze = bbWidth < ta.sma(bbWidth, bbLen)
+bbExpand  = bbWidth > ta.sma(bbWidth, bbLen)
+priceAboveBB = close > bbBasis
+priceBelowBB = close < bbBasis
+bbPctB    = (close - bbLower) / (bbUpper - bbLower)
+
+// 2.4 ATR
+atrVal    = ta.atr(atrLen)
+stopLong  = close - atrMult * atrVal
+stopShort = close + atrMult * atrVal
+
+// 2.5 Stochastic
+stochKVal = ta.sma(ta.stoch(close, high, low, stochK), stochSmooth)
+stochDVal = ta.sma(stochKVal, stochD)
+stochBull = ta.crossover(stochKVal, stochDVal) and stochKVal < stochOS
+stochBear = ta.crossunder(stochKVal, stochDVal) and stochKVal > stochOB
+
+// 2.6 ADX (manual computation — DI+ DI-)
+trueRange = math.max(high - low, math.abs(high - close[1]), math.abs(low - close[1]))
+dmPlus    = high - high[1] > low[1] - low ? math.max(high - high[1], 0) : 0
+dmMinus   = low[1] - low > high - high[1] ? math.max(low[1] - low, 0) : 0
+
+smTR      = ta.rma(trueRange, adxLen)
+smDMPlus  = ta.rma(dmPlus,    adxLen)
+smDMMinus = ta.rma(dmMinus,   adxLen)
+
+diPlus    = smTR != 0 ? 100 * smDMPlus  / smTR : 0
+diMinus   = smTR != 0 ? 100 * smDMMinus / smTR : 0
+dx        = (diPlus + diMinus) != 0 ? 100 * math.abs(diPlus - diMinus) / (diPlus + diMinus) : 0
+adxVal    = ta.rma(dx, adxLen)
+
+trendStrong = adxVal > adxThresh
+bullTrend   = diPlus  > diMinus and trendStrong
+bearTrend   = diMinus > diPlus  and trendStrong
+
+// 2.7 VWAP
+vwapVal   = ta.vwap(hlc3)
+// VWAP standard deviation bands
+vwapDev   = ta.stdev(hlc3, 20)
+vwapHigh  = vwapVal + vwapBandMult * vwapDev
+vwapLow   = vwapVal - vwapBandMult * vwapDev
+aboveVWAP = close > vwapVal
+belowVWAP = close < vwapVal
+
+// 2.8 EMA Ribbon (short-term trend filter)
+ema8      = ta.ema(close, 8)
+ema21     = ta.ema(close, 21)
+ema50     = ta.ema(close, 50)
+ema200    = ta.ema(close, 200)
+emaRibbonBull = ema8 > ema21 and ema21 > ema50
+emaRibbonBear = ema8 < ema21 and ema21 < ema50
+
+// 2.9 Volume analysis
+volSma    = ta.sma(volume, 20)
+highVol   = volume > volSma * 1.5
+lowVol    = volume < volSma * 0.5
+obv       = ta.cum(close > close[1] ? volume : close < close[1] ? -volume : 0)
+obvEma    = ta.ema(obv, 20)
+obvBull   = obv > obvEma
+obvBear   = obv < obvEma
+
+// 2.10 Momentum
+roc       = ta.roc(close, 10)
+cmo       = ta.cmo(close, 14)
+cci       = (close - ta.sma(close, 20)) / (0.015 * ta.dev(close, 20))
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 3 · CANDLESTICK PATTERN DETECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Helper values
+bodySize   = math.abs(close - open)
+fullRange  = high - low
+upperWick  = close >= open ? high - close : high - open
+lowerWick  = close >= open ? open - low   : close - low
+isBull     = close > open
+isBear     = close < open
+
+// Doji
+isDoji = bodySize / fullRange < dojiThresh and fullRange > 0
+
+// Hammer  (small body near top, long lower wick, tiny upper wick)
+isHammer = lowerWick >= 2.0 * bodySize and upperWick <= 0.3 * bodySize and
+           bodySize > 0 and not isBull[1]
+
+// Inverted Hammer
+isInvHammer = upperWick >= 2.0 * bodySize and lowerWick <= 0.3 * bodySize and bodySize > 0
+
+// Shooting Star
+isShootingStar = upperWick >= 2.0 * bodySize and lowerWick <= 0.3 * bodySize and
+                 isBear and (high[1] < high)
+
+// Hanging Man
+isHangingMan = lowerWick >= 2.0 * bodySize and upperWick <= 0.3 * bodySize and
+               isBear and (close[1] > close)
+
+// Bullish Engulfing
+isBullEngulfing = isBull and isBear[1] and
+                  open <= close[1] and close >= open[1]
+
+// Bearish Engulfing
+isBearEngulfing = isBear and isBull[1] and
+                  open >= close[1] and close <= open[1]
+
+// Morning Star (3-bar)
+isMorningStar = isBear[2] and isDoji[1] and isBull and
+                close > (open[2] + close[2]) / 2
+
+// Evening Star (3-bar)
+isEveningStar = isBull[2] and isDoji[1] and isBear and
+                close < (open[2] + close[2]) / 2
+
+// Three White Soldiers
+is3WhiteSoldiers = isBull and isBull[1] and isBull[2] and
+                   close > close[1] and close[1] > close[2] and
+                   open > open[1] and open[1] > open[2]
+
+// Three Black Crows
+is3BlackCrows = isBear and isBear[1] and isBear[2] and
+                close < close[1] and close[1] < close[2] and
+                open < open[1] and open[1] < open[2]
+
+// Bullish Harami
+isBullHarami = isBull and isBear[1] and
+               open > close[1] and close < open[1]
+
+// Bearish Harami
+isBearHarami = isBear and isBull[1] and
+               open < close[1] and close > open[1]
+
+// Dark Cloud Cover
+isDarkCloud = isBear and isBull[1] and
+              open > high[1] and close < (open[1] + close[1]) / 2
+
+// Piercing Line
+isPiercing = isBull and isBear[1] and
+             open < low[1] and close > (open[1] + close[1]) / 2
+
+// Bullish pattern count
+bullPatterns = (isHammer        ? 1 : 0) +
+               (isBullEngulfing ? 1 : 0) +
+               (isMorningStar   ? 1 : 0) +
+               (is3WhiteSoldiers? 1 : 0) +
+               (isBullHarami    ? 1 : 0) +
+               (isPiercing      ? 1 : 0) +
+               (isInvHammer     ? 1 : 0)
+
+// Bearish pattern count
+bearPatterns = (isShootingStar  ? 1 : 0) +
+               (isHangingMan    ? 1 : 0) +
+               (isBearEngulfing ? 1 : 0) +
+               (isEveningStar   ? 1 : 0) +
+               (is3BlackCrows   ? 1 : 0) +
+               (isBearHarami    ? 1 : 0) +
+               (isDarkCloud     ? 1 : 0)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 4 · SUPPORT & RESISTANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+pivotHigh = ta.pivothigh(high, srLeft, srRight)
+pivotLow  = ta.pivotlow (low,  srLeft, srRight)
+
+// Track recent pivot highs and lows (rolling)
+var float[] resLevels = array.new_float(0)
+var float[] supLevels = array.new_float(0)
+
+if not na(pivotHigh)
+    array.push(resLevels, pivotHigh)
+    if array.size(resLevels) > 5
+        array.shift(resLevels)
+
+if not na(pivotLow)
+    array.push(supLevels, pivotLow)
+    if array.size(supLevels) > 5
+        array.shift(supLevels)
+
+nearSupport    = array.size(supLevels) > 0 and math.abs(close - array.get(supLevels, array.size(supLevels)-1)) / close < 0.005
+nearResistance = array.size(resLevels) > 0 and math.abs(close - array.get(resLevels, array.size(resLevels)-1)) / close < 0.005
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 5 · MULTI-TIMEFRAME BIAS
+// ─────────────────────────────────────────────────────────────────────────────
+
+htfClose  = request.security(syminfo.tickerid, htfTf, close)
+htfEma21  = request.security(syminfo.tickerid, htfTf, ta.ema(close, 21))
+htfEma50  = request.security(syminfo.tickerid, htfTf, ta.ema(close, 50))
+htfRsi    = request.security(syminfo.tickerid, htfTf, ta.rsi(close, 14))
+htfMacdH  = request.security(syminfo.tickerid, htfTf,
+               (ta.macd(close, 12, 26, 9))[2])   // histogram on HTF
+
+htfBull = htfClose > htfEma21 and htfEma21 > htfEma50 and htfRsi > 50
+htfBear = htfClose < htfEma21 and htfEma21 < htfEma50 and htfRsi < 50
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 6 · PINE SEEDS EXTERNAL DATA INTEGRATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// When useSeedData is enabled and a valid URL is provided, this block fetches
+// an external CSV / .dat file published via Pine Seeds and extracts the most
+// recent price entry to overlay on the chart.
+
+var float seedPrice = na
+
+if useSeedData and str.length(seedUrl) > 0
+    var string rawSeed = request.seed(seedUrl, "")
+    if not na(rawSeed) and str.length(rawSeed) > 0
+        var string[] seedLines = str.split(rawSeed, "\n")
+        int nLines = array.size(seedLines)
+        if nLines > 1
+            // Walk backwards to find the last non-empty data line
+            int idx = nLines - 1
+            while idx > 0
+                string ln = array.get(seedLines, idx)
+                if str.length(ln) > 0
+                    string[] parts = str.split(ln, ",")
+                    if array.size(parts) >= 2
+                        float p = str.tonumber(array.get(parts, 1))
+                        if not na(p)
+                            seedPrice := p
+                            break
+                idx := idx - 1
+
+// Plot external seed price as a dashed horizontal reference
+plot(useSeedData ? seedPrice : na, title="Seed Reference Price",
+     color=color.new(color.purple, 0), style=plot.style_circles,
+     linewidth=2)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 7 · COMPOSITE SIGNAL SCORING
+// ─────────────────────────────────────────────────────────────────────────────
+// Each confirmed signal adds +1 to bullScore or bearScore.
+// A total ≥ minScore triggers a trade signal.
+
+bullScore = 0
+bearScore = 0
+
+// RSI
+bullScore += rsiVal < rsiOS and rsiSlope > 0 ? 1 : 0
+bearScore += rsiVal > rsiOB and rsiSlope < 0 ? 1 : 0
+
+// MACD
+bullScore += macdCross ? 1 : 0
+bearScore += macdCrossDown ? 1 : 0
+bullScore += macdHist > 0 and macdHist > macdHist[1] ? 1 : 0
+bearScore += macdHist < 0 and macdHist < macdHist[1] ? 1 : 0
+
+// BB
+bullScore += close < bbLower ? 1 : 0
+bearScore += close > bbUpper ? 1 : 0
+bullScore += bbSqueeze and close > bbBasis ? 1 : 0
+bearScore += bbSqueeze and close < bbBasis ? 1 : 0
+
+// Stochastic
+bullScore += stochBull ? 1 : 0
+bearScore += stochBear ? 1 : 0
+
+// ADX / Trend
+bullScore += bullTrend ? 1 : 0
+bearScore += bearTrend ? 1 : 0
+
+// VWAP
+bullScore += aboveVWAP ? 1 : 0
+bearScore += belowVWAP ? 1 : 0
+
+// EMA Ribbon
+bullScore += emaRibbonBull ? 1 : 0
+bearScore += emaRibbonBear ? 1 : 0
+
+// OBV
+bullScore += obvBull ? 1 : 0
+bearScore += obvBear ? 1 : 0
+
+// Candlestick patterns
+bullScore += bullPatterns > 0 ? math.min(bullPatterns, 2) : 0
+bearScore += bearPatterns > 0 ? math.min(bearPatterns, 2) : 0
+
+// HTF alignment (worth 2 points)
+bullScore += htfBull ? 2 : 0
+bearScore += htfBear ? 2 : 0
+
+// S/R context
+bullScore += nearSupport    ? 1 : 0
+bearScore += nearResistance ? 1 : 0
+
+// Final signal
+longSignal  = bullScore >= minScore and bullScore > bearScore
+shortSignal = bearScore >= minScore and bearScore > bullScore
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 8 · PLOTTING
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 8.1 Bollinger Bands
+bbUpperPlot = plot(showBB ? bbUpper : na, "BB Upper", color=color.new(color.blue, 70))
+bbBasisPlot = plot(showBB ? bbBasis : na, "BB Basis", color=color.new(color.blue, 40), linewidth=1)
+bbLowerPlot = plot(showBB ? bbLower : na, "BB Lower", color=color.new(color.blue, 70))
+fill(bbUpperPlot, bbLowerPlot, color=color.new(color.blue, 92), title="BB Fill")
+
+// 8.2 EMA Lines
+plot(ema8,   "EMA 8",   color=color.new(color.yellow, 20), linewidth=1)
+plot(ema21,  "EMA 21",  color=color.new(color.orange, 20), linewidth=1)
+plot(ema50,  "EMA 50",  color=color.new(color.red,    20), linewidth=2)
+plot(ema200, "EMA 200", color=color.new(color.white,   0), linewidth=2)
+
+// 8.3 VWAP
+vwapPlot = plot(showVWAP ? vwapVal : na, "VWAP",
+                color=color.new(color.teal, 0), linewidth=2, style=plot.style_line)
+plot(vwapBands and showVWAP ? vwapHigh : na, "VWAP +1σ",
+     color=color.new(color.teal, 60), linewidth=1, style=plot.style_line)
+plot(vwapBands and showVWAP ? vwapLow  : na, "VWAP -1σ",
+     color=color.new(color.teal, 60), linewidth=1, style=plot.style_line)
+
+// 8.4 Signal shapes on chart
+plotshape(longSignal,  title="Long Signal",  style=shape.triangleup,
+          location=location.belowbar, color=color.new(color.lime, 0),
+          size=size.normal, text="BUY")
+plotshape(shortSignal, title="Short Signal", style=shape.triangledown,
+          location=location.abovebar, color=color.new(color.red, 0),
+          size=size.normal, text="SELL")
+
+// 8.5 Candlestick pattern labels
+if showCandle
+    if isBullEngulfing
+        label.new(bar_index, low, "BullEng", style=label.style_label_up,
+                  color=color.new(color.green, 20), textcolor=color.white, size=size.tiny)
+    if isBearEngulfing
+        label.new(bar_index, high, "BearEng", style=label.style_label_down,
+                  color=color.new(color.red, 20), textcolor=color.white, size=size.tiny)
+    if isHammer
+        label.new(bar_index, low, "Hmr", style=label.style_label_up,
+                  color=color.new(color.lime, 30), textcolor=color.white, size=size.tiny)
+    if isShootingStar
+        label.new(bar_index, high, "ShStar", style=label.style_label_down,
+                  color=color.new(color.orange, 20), textcolor=color.white, size=size.tiny)
+    if isMorningStar
+        label.new(bar_index, low, "MornStar", style=label.style_label_up,
+                  color=color.new(color.teal, 20), textcolor=color.white, size=size.tiny)
+    if isEveningStar
+        label.new(bar_index, high, "EveStar", style=label.style_label_down,
+                  color=color.new(color.purple, 20), textcolor=color.white, size=size.tiny)
+    if is3WhiteSoldiers
+        label.new(bar_index, low, "3WS", style=label.style_label_up,
+                  color=color.new(color.green, 10), textcolor=color.white, size=size.tiny)
+    if is3BlackCrows
+        label.new(bar_index, high, "3BC", style=label.style_label_down,
+                  color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
+    if isDoji
+        label.new(bar_index, high, "Doji", style=label.style_label_down,
+                  color=color.new(color.gray, 30), textcolor=color.white, size=size.tiny)
+    if isDarkCloud
+        label.new(bar_index, high, "DarkCld", style=label.style_label_down,
+                  color=color.new(color.maroon, 20), textcolor=color.white, size=size.tiny)
+    if isPiercing
+        label.new(bar_index, low, "Piercing", style=label.style_label_up,
+                  color=color.new(color.blue, 20), textcolor=color.white, size=size.tiny)
+
+// 8.6 Score label on signal bars
+if showScore and (longSignal or shortSignal)
+    lbl_y     = longSignal ? low  - atrVal * 0.5 : high + atrVal * 0.5
+    lbl_style = longSignal ? label.style_label_up : label.style_label_down
+    lbl_col   = longSignal ? color.new(color.lime, 10) : color.new(color.red, 10)
+    lbl_score = longSignal ? bullScore : bearScore
+    label.new(bar_index, lbl_y,
+              (longSignal ? "▲ " : "▼ ") + str.tostring(lbl_score) + "pt",
+              style=lbl_style, color=lbl_col, textcolor=color.white, size=size.small)
+
+// 8.7 ATR-based stop levels (plotted as background bands)
+stopPlot = longSignal ? stopLong : shortSignal ? stopShort : na
+plot(stopPlot, "ATR Stop", color=color.new(color.yellow, 40),
+     style=plot.style_circles, linewidth=1)
+
+// 8.8 S/R pivot lines
+if showSR and not na(pivotHigh)
+    line.new(bar_index[srRight], pivotHigh, bar_index, pivotHigh,
+             color=color.new(color.red, 40), style=line.style_dotted, width=1)
+
+if showSR and not na(pivotLow)
+    line.new(bar_index[srRight], pivotLow, bar_index, pivotLow,
+             color=color.new(color.green, 40), style=line.style_dotted, width=1)
+
+// 8.9 HTF bias background
+bgcolor(showMTF and htfBull ? color.new(color.green, 95) : na, title="HTF Bull Bg")
+bgcolor(showMTF and htfBear ? color.new(color.red,   95) : na, title="HTF Bear Bg")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 9 · DASHBOARD TABLE
+// ─────────────────────────────────────────────────────────────────────────────
+
+if showTable and barstate.islast
+    var table dash = table.new(position.top_right, 3, 18,
+                               border_width=1,
+                               border_color=color.new(color.gray, 50),
+                               frame_color=color.new(color.gray, 30),
+                               frame_width=1)
+
+    // Header row
+    table.cell(dash, 0, 0, "Indicator",  text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+    table.cell(dash, 1, 0, "Value",      text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+    table.cell(dash, 2, 0, "Signal",     text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+
+    // Helper: colour cell by direction
+    f_sigCol(cond) => cond ? color.new(color.green, 30) : color.new(color.red, 30)
+
+    // RSI row
+    table.cell(dash, 0, 1, "RSI(" + str.tostring(rsiLen) + ")",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 1, str.tostring(math.round(rsiVal, 1)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 1, rsiVal > rsiOB ? "OB" : rsiVal < rsiOS ? "OS" : "—",
+               bgcolor=f_sigCol(rsiVal < rsiOS), text_color=color.white, text_size=size.small)
+
+    // MACD row
+    table.cell(dash, 0, 2, "MACD",       text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 2, str.tostring(math.round(macdHist, 4)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 2, macdBull ? "Bull" : "Bear",
+               bgcolor=f_sigCol(macdBull), text_color=color.white, text_size=size.small)
+
+    // BB row
+    table.cell(dash, 0, 3, "BB %B",      text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 3, str.tostring(math.round(bbPctB * 100, 1)) + "%",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 3, bbPctB < 0.2 ? "Low" : bbPctB > 0.8 ? "High" : "—",
+               bgcolor=f_sigCol(bbPctB < 0.2), text_color=color.white, text_size=size.small)
+
+    // Stoch row
+    table.cell(dash, 0, 4, "Stoch %K",   text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 4, str.tostring(math.round(stochKVal, 1)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 4, stochKVal < stochOS ? "OS" : stochKVal > stochOB ? "OB" : "—",
+               bgcolor=f_sigCol(stochKVal < stochOS), text_color=color.white, text_size=size.small)
+
+    // ADX row
+    table.cell(dash, 0, 5, "ADX",         text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 5, str.tostring(math.round(adxVal, 1)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 5, trendStrong ? "Trend" : "Range",
+               bgcolor=f_sigCol(bullTrend), text_color=color.white, text_size=size.small)
+
+    // VWAP row
+    table.cell(dash, 0, 6, "VWAP",        text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 6, str.tostring(math.round(vwapVal, 2)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 6, aboveVWAP ? "Above" : "Below",
+               bgcolor=f_sigCol(aboveVWAP), text_color=color.white, text_size=size.small)
+
+    // EMA Ribbon row
+    table.cell(dash, 0, 7, "EMA Ribbon",  text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 7, str.tostring(math.round(ema21, 2)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 7, emaRibbonBull ? "Bull" : emaRibbonBear ? "Bear" : "Mix",
+               bgcolor=f_sigCol(emaRibbonBull), text_color=color.white, text_size=size.small)
+
+    // OBV row
+    table.cell(dash, 0, 8, "OBV Trend",   text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 8, obvBull ? "Rising" : "Falling",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 8, obvBull ? "Bull" : "Bear",
+               bgcolor=f_sigCol(obvBull), text_color=color.white, text_size=size.small)
+
+    // Volume row
+    table.cell(dash, 0, 9, "Volume",      text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 9, highVol ? "HIGH" : lowVol ? "LOW" : "Avg",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 9, highVol ? "Active" : "Quiet",
+               bgcolor=f_sigCol(highVol), text_color=color.white, text_size=size.small)
+
+    // CCI row
+    table.cell(dash, 0, 10, "CCI(20)",    text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 10, str.tostring(math.round(cci, 1)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 10, cci > 100 ? "OB" : cci < -100 ? "OS" : "—",
+               bgcolor=f_sigCol(cci < -100), text_color=color.white, text_size=size.small)
+
+    // HTF bias row
+    table.cell(dash, 0, 11, "HTF " + htfTf, text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 11, str.tostring(math.round(htfRsi, 1)) + " RSI",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 11, htfBull ? "Bull" : htfBear ? "Bear" : "Neutral",
+               bgcolor=f_sigCol(htfBull), text_color=color.white, text_size=size.small)
+
+    // S/R row
+    table.cell(dash, 0, 12, "S/R Zone",   text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 12, nearSupport ? "Near Sup" : nearResistance ? "Near Res" : "—",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 12, nearSupport ? "Sup" : nearResistance ? "Res" : "—",
+               bgcolor=f_sigCol(nearSupport), text_color=color.white, text_size=size.small)
+
+    // Candle Patterns row
+    table.cell(dash, 0, 13, "Candle Pat", text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 13, str.tostring(bullPatterns) + "B / " + str.tostring(bearPatterns) + "S",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 13, bullPatterns > bearPatterns ? "Bull" :
+               bearPatterns > bullPatterns ? "Bear" : "—",
+               bgcolor=f_sigCol(bullPatterns > bearPatterns), text_color=color.white, text_size=size.small)
+
+    // ATR row
+    table.cell(dash, 0, 14, "ATR(" + str.tostring(atrLen) + ")",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 14, str.tostring(math.round(atrVal, 4)),
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 14, atrVal / close > 0.02 ? "High Vol" : "Low Vol",
+               bgcolor=color.new(color.gray, 50), text_color=color.white, text_size=size.small)
+
+    // BB Squeeze row
+    table.cell(dash, 0, 15, "BB Squeeze", text_color=color.white, text_size=size.small)
+    table.cell(dash, 1, 15, str.tostring(math.round(bbWidth * 100, 2)) + "%",
+               text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 15, bbSqueeze ? "Squeeze" : "Expand",
+               bgcolor=f_sigCol(bbExpand), text_color=color.white, text_size=size.small)
+
+    // Total Score row
+    table.cell(dash, 0, 16, "Bull Score", text_color=color.white,
+               bgcolor=color.new(color.green, 30), text_size=size.small)
+    table.cell(dash, 1, 16, str.tostring(bullScore),
+               text_color=color.white, bgcolor=color.new(color.green, 50), text_size=size.small)
+    table.cell(dash, 2, 16, bullScore >= minScore ? "▲ Signal" : "—",
+               bgcolor=bullScore >= minScore ? color.new(color.lime, 20) : color.new(color.gray, 60),
+               text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 17, "Bear Score", text_color=color.white,
+               bgcolor=color.new(color.red, 30), text_size=size.small)
+    table.cell(dash, 1, 17, str.tostring(bearScore),
+               text_color=color.white, bgcolor=color.new(color.red, 50), text_size=size.small)
+    table.cell(dash, 2, 17, bearScore >= minScore ? "▼ Signal" : "—",
+               bgcolor=bearScore >= minScore ? color.new(color.red, 20) : color.new(color.gray, 60),
+               text_color=color.white, text_size=size.small)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 10 · ALERTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+alertcondition(longSignal,  title="Long Signal",
+               message="{{ticker}} — LONG signal: bullScore={{plot_0}}")
+alertcondition(shortSignal, title="Short Signal",
+               message="{{ticker}} — SHORT signal: bearScore={{plot_0}}")
+alertcondition(macdCross,   title="MACD Bullish Cross",
+               message="{{ticker}} MACD bullish crossover")
+alertcondition(macdCrossDown, title="MACD Bearish Cross",
+               message="{{ticker}} MACD bearish crossover")
+alertcondition(rsiVal < rsiOS, title="RSI Oversold",
+               message="{{ticker}} RSI oversold: " + str.tostring(math.round(rsiVal, 1)))
+alertcondition(rsiVal > rsiOB, title="RSI Overbought",
+               message="{{ticker}} RSI overbought: " + str.tostring(math.round(rsiVal, 1)))
+alertcondition(stochBull,   title="Stoch Bull Cross",
+               message="{{ticker}} Stochastic bullish crossover in oversold zone")
+alertcondition(stochBear,   title="Stoch Bear Cross",
+               message="{{ticker}} Stochastic bearish crossover in overbought zone")
+alertcondition(isBullEngulfing, title="Bullish Engulfing",
+               message="{{ticker}} Bullish Engulfing pattern detected")
+alertcondition(isBearEngulfing, title="Bearish Engulfing",
+               message="{{ticker}} Bearish Engulfing pattern detected")
+alertcondition(is3WhiteSoldiers, title="Three White Soldiers",
+               message="{{ticker}} Three White Soldiers — strong bullish reversal")
+alertcondition(is3BlackCrows, title="Three Black Crows",
+               message="{{ticker}} Three Black Crows — strong bearish reversal")
+alertcondition(isMorningStar, title="Morning Star",
+               message="{{ticker}} Morning Star — potential bottom reversal")
+alertcondition(isEveningStar, title="Evening Star",
+               message="{{ticker}} Evening Star — potential top reversal")
+alertcondition(bbSqueeze,   title="BB Squeeze Active",
+               message="{{ticker}} Bollinger Band Squeeze — breakout may be imminent")
+alertcondition(nearSupport, title="Price Near Support",
+               message="{{ticker}} Price approaching key support level")
+alertcondition(nearResistance, title="Price Near Resistance",
+               message="{{ticker}} Price approaching key resistance level")
+alertcondition(htfBull and not htfBull[1], title="HTF Turned Bullish",
+               message="{{ticker}} Higher timeframe bias flipped to BULLISH")
+alertcondition(htfBear and not htfBear[1], title="HTF Turned Bearish",
+               message="{{ticker}} Higher timeframe bias flipped to BEARISH")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 11 · SUPPLEMENTARY OSCILLATOR RIBBON (off-chart pane reference)
+// ─────────────────────────────────────────────────────────────────────────────
+// The values below are exported as named plots so that users can create a
+// separate pane indicator from this script's outputs or use them in strategies.
+
+plot(rsiVal,    "RSI Value",      color=color.new(color.yellow, 100), display=display.data_window)
+plot(macdLine,  "MACD Line",      color=color.new(color.blue,   100), display=display.data_window)
+plot(macdHist,  "MACD Histogram", color=color.new(color.green,  100), display=display.data_window)
+plot(stochKVal, "Stoch %K",       color=color.new(color.orange, 100), display=display.data_window)
+plot(adxVal,    "ADX Value",      color=color.new(color.red,    100), display=display.data_window)
+plot(bullScore, "Bull Score",     color=color.new(color.lime,   100), display=display.data_window)
+plot(bearScore, "Bear Score",     color=color.new(color.maroon, 100), display=display.data_window)
+plot(cci,       "CCI",            color=color.new(color.aqua,   100), display=display.data_window)
+plot(roc,       "ROC(10)",        color=color.new(color.fuchsia,100), display=display.data_window)
+plot(cmo,       "CMO(14)",        color=color.new(color.silver, 100), display=display.data_window)
