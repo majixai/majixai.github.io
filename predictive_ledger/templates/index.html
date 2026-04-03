@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predictive Ledger Engine</title>
+
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+        crossorigin="anonymous">
+  <!-- Font Awesome -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb"
+        crossorigin="anonymous">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+          integrity="sha384-3hr+a6ovtzXA2voZ0GyzNjTp8NQmkRsGXNfjFbTqIlzF4EBXn6HxM5QQDuGD4gJQ"
+          crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --primary:   #00539B;
+      --accent:    #f7931a;
+      --success:   #00b894;
+      --warning:   #fdcb6e;
+      --danger:    #d63031;
+      --dark-bg:   #0d1b2a;
+      --panel-bg:  #112240;
+      --text-mute: #8892a4;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--dark-bg);
+      color: #ccd6f6;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── navbar ── */
+    .navbar-brand span { color: var(--accent); }
+
+    /* ── panels ── */
+    .panel {
+      background: var(--panel-bg);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .panel-title {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+
+    /* ── stat cards ── */
+    .stat-card {
+      background: rgba(255,255,255,.04);
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+    .stat-label { font-size: .72rem; color: var(--text-mute); margin-top: 2px; }
+
+    /* ── ledger table ── */
+    #ledger-table-wrap { max-height: 320px; overflow-y: auto; }
+    table { font-size: .82rem; }
+    th { color: var(--accent); border-color: rgba(255,255,255,.08) !important; }
+    td { border-color: rgba(255,255,255,.06) !important; color: #ccd6f6; }
+    tr:hover td { background: rgba(255,255,255,.03); }
+
+    /* ── status badge ── */
+    .badge-local  { background: #6c757d; }
+    .badge-cloud  { background: var(--success); }
+    .badge-syncing{ background: var(--warning); color: #222; }
+
+    /* ── prediction indicator ── */
+    .pred-up   { color: var(--success); }
+    .pred-down { color: var(--danger); }
+
+    /* ── form ── */
+    .form-control, .form-select {
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.12);
+      color: #ccd6f6;
+    }
+    .form-control:focus, .form-select:focus {
+      background: rgba(255,255,255,.08);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 0 2px rgba(0,83,155,.35);
+    }
+    .form-control::placeholder { color: var(--text-mute); }
+
+    /* ── button ── */
+    .btn-primary-custom {
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      border-radius: 8px;
+      padding: 10px 24px;
+      transition: opacity .2s;
+    }
+    .btn-primary-custom:hover { opacity: .85; }
+
+    /* ── optimizer panel ── */
+    #optimizer-result pre {
+      background: rgba(0,0,0,.35);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: .74rem;
+      color: #a8d8a8;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    /* ── log ── */
+    #activity-log {
+      font-family: 'Courier New', monospace;
+      font-size: .73rem;
+      background: rgba(0,0,0,.3);
+      border-radius: 6px;
+      padding: 10px 14px;
+      max-height: 160px;
+      overflow-y: auto;
+      color: #8892a4;
+    }
+    #activity-log .log-ok   { color: var(--success); }
+    #activity-log .log-warn { color: var(--warning); }
+    #activity-log .log-err  { color: var(--danger); }
+
+    /* ── math annotation ── */
+    .math-note {
+      background: rgba(0,83,155,.18);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 6px 6px 0;
+      padding: 10px 14px;
+      font-size: .8rem;
+      color: #a8c4e0;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navbar ── -->
+<nav class="navbar navbar-dark" style="background:var(--panel-bg); border-bottom:1px solid rgba(255,255,255,.06);">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">
+      <i class="fa fa-chart-line me-2" style="color:var(--accent);"></i>
+      Predictive <span>Ledger</span> Engine
+    </span>
+    <span style="font-size:.75rem; color:var(--text-mute);">
+      Kinematic · Bayesian · Optimistic UI
+    </span>
+  </div>
+</nav>
+
+<div class="container-fluid" style="max-width:1200px; padding:28px 16px;">
+
+  <!-- ── Top Stats ── -->
+  <div class="row g-3 mb-2">
+    <div class="col-6 col-sm-3">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-entries">0</div>
+        <div class="stat-label">Ledger Entries</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-prediction">—</div>
+        <div class="stat-label">Next-Close Prediction</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-posterior-prob">—</div>
+        <div class="stat-label">Bayesian P(up)</div>
+      </div>
+    </div>
+    <div class="col-6 col-sm-3">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-sync-status">
+          <i class="fa fa-circle" style="color:#6c757d; font-size:1rem;"></i>
+        </div>
+        <div class="stat-label">Sync Status</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- ── Left column ── -->
+    <div class="col-lg-7">
+
+      <!-- Add Entry -->
+      <div class="panel">
+        <div class="panel-title"><i class="fa fa-plus-circle me-1"></i> Add Ledger Entry</div>
+        <div class="row g-2">
+          <div class="col-sm-3">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">Symbol</label>
+            <input type="text" class="form-control" id="inp-symbol" placeholder="BTC" maxlength="10">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">Close Price</label>
+            <input type="number" class="form-control" id="inp-close" placeholder="45000" step="0.01">
+          </div>
+          <div class="col-sm-3">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">Volume</label>
+            <input type="number" class="form-control" id="inp-volume" placeholder="1200" step="1">
+          </div>
+          <div class="col-sm-3 d-flex align-items-end">
+            <button class="btn-primary-custom w-100" onclick="addEntry()">
+              <i class="fa fa-plus me-1"></i> Add
+            </button>
+          </div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadDemo()">
+            <i class="fa fa-bolt me-1"></i> Load 20 demo candles
+          </button>
+          <button class="btn btn-sm btn-outline-danger ms-2" onclick="clearLedger()">
+            <i class="fa fa-trash me-1"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="panel">
+        <div class="panel-title"><i class="fa fa-chart-area me-1"></i> Price History + Prediction</div>
+        <canvas id="price-chart" height="180"></canvas>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="panel">
+        <div class="panel-title"><i class="fa fa-table me-1"></i> Ledger Records</div>
+        <div id="ledger-table-wrap">
+          <table class="table table-borderless table-hover mb-0">
+            <thead>
+              <tr>
+                <th>ID</th><th>Symbol</th><th>Close</th>
+                <th>Volume</th><th>Timestamp</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody">
+              <tr><td colspan="6" class="text-center" style="color:var(--text-mute);">
+                No entries yet — add one above or load demo data.
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right column ── -->
+    <div class="col-lg-5">
+
+      <!-- Math annotations -->
+      <div class="panel">
+        <div class="panel-title"><i class="fa fa-square-root-variable me-1"></i> Prediction Model</div>
+
+        <div class="math-note mb-2">
+          <strong>Kinematic Projection:</strong><br>
+          p̂ = p_t + v_t + 0.5·a_t<br>
+          v_t = p_t − p_{t−1} &nbsp;&nbsp; a_t = v_t − v_{t−1}
+        </div>
+
+        <div class="math-note mb-2">
+          <strong>Bayesian Posterior P(up):</strong><br>
+          P(up|data) = P(data|up)·P(up) / P(data)<br>
+          prior = 0.52 &nbsp; likelihood from 14-period SMA bias
+        </div>
+
+        <div class="math-note mb-3">
+          <strong>Synthesis:</strong><br>
+          prediction = 0.70·p̂_kinematic + 0.30·(p_t + bayesAdj)
+        </div>
+
+        <!-- Live prediction detail -->
+        <div id="pred-detail" style="font-size:.8rem; color:var(--text-mute);">
+          Add ≥ 14 entries to see a live prediction.
+        </div>
+      </div>
+
+      <!-- Python Optimizer -->
+      <div class="panel">
+        <div class="panel-title">
+          <i class="fa fa-python me-1"></i> Python Optimizer
+          <span style="font-size:.7rem; color:var(--text-mute);">(Bayesian weight update)</span>
+        </div>
+
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">Noise variance σ²</label>
+            <input type="number" class="form-control" id="opt-noise" value="0.01"
+                   step="0.001" min="0.001">
+          </div>
+          <div class="col-6">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">Features (auto from ledger)</label>
+            <input type="text" class="form-control" id="opt-features"
+                   value="close, volume" disabled>
+          </div>
+        </div>
+
+        <button class="btn-primary-custom w-100 mb-3" onclick="runOptimizer()">
+          <i class="fa fa-gears me-1"></i> Run Bayesian Weight Update
+        </button>
+
+        <div id="optimizer-result" style="display:none;">
+          <div style="font-size:.75rem; color:var(--text-mute); margin-bottom:4px;">
+            Posterior summary from Python backend:
+          </div>
+          <pre id="optimizer-json">—</pre>
+        </div>
+
+        <!-- Jacobian calculator -->
+        <hr style="border-color:rgba(255,255,255,.08);">
+        <div class="panel-title" style="margin-top:4px;">
+          <i class="fa fa-function me-1"></i> Arctan Jacobian  d/dx arctan(u)
+        </div>
+        <div class="math-note mb-2">
+          J(u, du) = (1 / (1 + u²)) · du
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">u values (comma-sep)</label>
+            <input type="text" class="form-control" id="jac-u" value="0.5, 1.0, 2.0">
+          </div>
+          <div class="col-6">
+            <label class="form-label" style="font-size:.75rem; color:var(--text-mute);">du/dx values</label>
+            <input type="text" class="form-control" id="jac-du" value="1.0, 1.0, 1.0">
+          </div>
+        </div>
+        <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="runJacobian()">
+          Compute Jacobian
+        </button>
+        <div id="jac-result" style="font-size:.8rem; color: var(--success);"></div>
+      </div>
+
+      <!-- Activity log -->
+      <div class="panel">
+        <div class="panel-title"><i class="fa fa-terminal me-1"></i> Activity Log</div>
+        <div id="activity-log"><span style="color:var(--text-mute);">Ready.</span></div>
+      </div>
+
+    </div><!-- /right col -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   PredictiveLedger — Unified Ledger with Kinematic + Bayesian
+   prediction and Optimistic UI sync.
+
+   Design:
+     • Private class fields (#) hold auth key and sync-queue.
+     • WeakMap stores per-instance metadata without preventing GC.
+     • Bitwise flags track record state: LOCAL | CLOUD | SYNCING.
+     • Async/await handles IndexedDB transactions and cloud sync.
+     • Optimistic UI: record is committed to IDB instantly; cloud
+       sync runs in the background and updates the status flag.
+   ═══════════════════════════════════════════════════════════════ */
+
+const internalState = new WeakMap();
+
+class PredictiveLedger {
+  /* Private fields — not accessible outside the class */
+  #privateKey = Symbol('ledger_auth');
+  #syncQueue  = [];
+
+  static instanceCount = 0;
+
+  /* Bitwise status flags for distributed state tracking */
+  flags = { LOCAL: 0x01, CLOUD: 0x02, SYNCING: 0x04 };
+
+  constructor(dbInstance, storeName = 'Copy Of Ledger') {
+    this.db        = dbInstance;
+    this.storeName = storeName;
+    internalState.set(this, { lastAccessed: Date.now(), totalSynced: 0 });
+    PredictiveLedger.instanceCount++;
+    appLog(`PredictiveLedger #${PredictiveLedger.instanceCount} initialised.`);
+  }
+
+  /* ── Prediction ─────────────────────────────────────────────── */
+
+  /**
+   * calculatePrediction(data)
+   *
+   * Combines two models for a single next-close estimate:
+   *
+   * 1. Kinematic projection (second-order finite difference):
+   *    v_t = p_t − p_{t−1}          (velocity)
+   *    a_t = v_t − v_{t−1}          (acceleration)
+   *    p̂   = p_t + v_t + 0.5 · a_t  (constant-acceleration extrapolation)
+   *
+   * 2. Bayesian posterior P(up|data):
+   *    prior P(up) = 0.52   (slight upward bias, typical equity markets)
+   *    likelihood  = 0.65 if price > 14-period SMA, else 0.35
+   *    posterior   = likelihood × prior / P(data)   [unnormalised OK for direction]
+   *
+   *    Adjustment applied to the Bayes component:
+   *      bayesAdj = ±(latest_close × 0.5%)
+   *
+   * Synthesis (weighted average of the two projections):
+   *    prediction = 0.70 × p̂_kinematic + 0.30 × (p_t + bayesAdj)
+   */
+  calculatePrediction(data) {
+    if (data.length < 14) return null;
+
+    const [prev2, prev, latest] = data.slice(-3);
+
+    /* 1. Kinematics */
+    const v_t          = latest.close - prev.close;
+    const a_t          = v_t - (prev.close - prev2.close);
+    const calcProjection = latest.close + v_t + (0.5 * a_t);
+
+    /* 2. Bayesian inference */
+    const priorUp        = 0.52;
+    const sma14          = data.slice(-14).reduce((s, d) => s + d.close, 0) / 14;
+    const indicatorBias  = latest.close > sma14 ? 1 : -1;
+    const likelihoodUp   = indicatorBias > 0 ? 0.65 : 0.35;
+    /* P(data) approximated as 0.50 (uniform prior on evidence) */
+    const posteriorUpProb = (likelihoodUp * priorUp) / 0.50;
+
+    /* 3. Synthesis */
+    const expectedVol  = latest.close * 0.005;
+    const bayesAdj     = posteriorUpProb > 0.5 ? expectedVol : -expectedVol;
+    const prediction   = (calcProjection * 0.70) + ((latest.close + bayesAdj) * 0.30);
+
+    return { prediction, posteriorUpProb, sma14, v_t, a_t, calcProjection };
+  }
+
+  /* ── Persistence (Optimistic UI) ───────────────────────────── */
+
+  /**
+   * saveRecord(entry)
+   *
+   * Implements the Optimistic UI pattern:
+   *   Step 1 — Commit to local IndexedDB immediately (no network wait).
+   *            The UI reflects the new record at once.
+   *   Step 2 — After the IDB transaction completes, kick off an async
+   *            background cloud sync. On success, flip the status flag
+   *            from LOCAL to CLOUD using bitwise operations:
+   *              status = (status & ~LOCAL) | CLOUD
+   *            On failure, record stays LOCAL and retries are queued.
+   *
+   * Bitwise flag semantics:
+   *   0x01  LOCAL   — persisted in IndexedDB only
+   *   0x02  CLOUD   — confirmed on cloud backend
+   *   0x04  SYNCING — cloud push in-flight
+   */
+  async saveRecord(entry) {
+    entry.id     ||= `L-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    entry.status   = this.flags.LOCAL;     /* optimistic: mark as local */
+
+    /* Step 1: Immediate local commit */
+    await new Promise((resolve, reject) => {
+      const tx    = this.db.transaction(this.storeName, 'readwrite');
+      const store = tx.objectStore(this.storeName);
+      store.put(entry);
+      tx.oncomplete = resolve;
+      tx.onerror    = () => reject(tx.error);
+    });
+
+    /* Step 2: Async cloud sync — does not block the caller */
+    this.#syncRecord(entry).catch(() => {
+      this.#syncQueue.push(entry);     /* queue for retry */
+    });
+
+    /* Update per-instance metadata */
+    const meta = internalState.get(this);
+    if (meta) meta.lastAccessed = Date.now();
+
+    return entry;
+  }
+
+  async #syncRecord(entry) {
+    /* Mark as syncing (set SYNCING bit) */
+    entry.status = (entry.status | this.flags.SYNCING);
+    renderTable();                        /* reflect SYNCING badge */
+
+    await this.#pushToCloud(entry);       /* simulate cloud write */
+
+    /* Success: remove LOCAL+SYNCING bits, set CLOUD bit */
+    entry.status = (entry.status & ~(this.flags.LOCAL | this.flags.SYNCING))
+                   | this.flags.CLOUD;
+
+    const meta = internalState.get(this);
+    if (meta) meta.totalSynced++;
+
+    renderTable();
+    appLog(`[OK] ${entry.id} synced to cloud.`, 'ok');
+  }
+
+  async #pushToCloud(data) {
+    /* Simulated Firebase / cloud write — 600–1400 ms latency */
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (Math.random() > 0.05) {      /* 95% success rate */
+          resolve(data);
+        } else {
+          reject(new Error('Simulated network error'));
+        }
+      }, 600 + Math.random() * 800);
+    });
+  }
+
+  /** Flush any records that failed their first sync attempt */
+  async flushRetryQueue() {
+    while (this.#syncQueue.length > 0) {
+      const entry = this.#syncQueue.shift();
+      appLog(`[RETRY] Retrying sync for ${entry.id}`, 'warn');
+      await this.#syncRecord(entry).catch(() => {
+        this.#syncQueue.push(entry);   /* re-queue if still failing */
+      });
+    }
+  }
+
+  /** Retrieve all records from IndexedDB */
+  async getAllRecords() {
+    return new Promise((resolve, reject) => {
+      const tx    = this.db.transaction(this.storeName, 'readonly');
+      const store = tx.objectStore(this.storeName);
+      const req   = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   IndexedDB bootstrap
+   ═══════════════════════════════════════════════════════════════ */
+const DB_NAME    = 'PredictiveLedgerDB';
+const STORE_NAME = 'Copy Of Ledger';
+const DB_VERSION = 1;
+
+let db;
+let ledger;       /* PredictiveLedger instance */
+let chartInst;    /* Chart.js instance         */
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   App helpers
+   ═══════════════════════════════════════════════════════════════ */
+
+function appLog(msg, cls = '') {
+  const log  = document.getElementById('activity-log');
+  const line = document.createElement('div');
+  const ts   = new Date().toLocaleTimeString();
+  line.className = cls ? `log-${cls}` : '';
+  /* Escape any HTML in the message to prevent XSS */
+  const safe = document.createTextNode(`[${ts}] ${msg}`);
+  line.appendChild(safe);
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  while (log.childElementCount > 120) log.removeChild(log.firstChild);
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(str)));
+  return d.innerHTML;
+}
+
+function statusBadge(status) {
+  const flags = ledger ? ledger.flags : { LOCAL: 1, CLOUD: 2, SYNCING: 4 };
+  if (status & flags.SYNCING) return `<span class="badge badge-syncing">syncing</span>`;
+  if (status & flags.CLOUD)   return `<span class="badge badge-cloud">cloud</span>`;
+  return `<span class="badge badge-local">local</span>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Render functions
+   ═══════════════════════════════════════════════════════════════ */
+
+async function renderAll() {
+  const records = await ledger.getAllRecords();
+  records.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+  renderStats(records);
+  renderTable(records);
+  renderChart(records);
+  renderPrediction(records);
+}
+
+function renderStats(records) {
+  document.getElementById('stat-entries').textContent = records.length;
+
+  const anyCloud   = records.some(r => r.status & 0x02);
+  const anySyncing = records.some(r => r.status & 0x04);
+  const syncEl     = document.getElementById('stat-sync-status');
+  if (anySyncing) {
+    syncEl.innerHTML = `<i class="fa fa-circle-notch fa-spin" style="color:var(--warning); font-size:1rem;"></i>`;
+  } else if (anyCloud) {
+    syncEl.innerHTML = `<i class="fa fa-circle-check" style="color:var(--success); font-size:1rem;"></i>`;
+  } else {
+    syncEl.innerHTML = `<i class="fa fa-circle" style="color:#6c757d; font-size:1rem;"></i>`;
+  }
+}
+
+function renderTable(records) {
+  if (!records) {
+    ledger.getAllRecords().then(r => renderTable(r.sort((a, b) => (a.timestamp||0)-(b.timestamp||0))));
+    return;
+  }
+  const tbody = document.getElementById('ledger-tbody');
+  if (!records.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="color:var(--text-mute);">
+      No entries yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = records.map(r => `
+    <tr>
+      <td style="font-family:monospace; font-size:.68rem;">${escapeHtml(r.id)}</td>
+      <td>${escapeHtml(r.symbol)}</td>
+      <td>${Number(r.close).toFixed(2)}</td>
+      <td>${Number(r.volume).toLocaleString()}</td>
+      <td style="font-size:.7rem;">${new Date(r.timestamp).toLocaleTimeString()}</td>
+      <td>${statusBadge(r.status)}</td>
+    </tr>`).join('');
+
+  renderStats(records);
+}
+
+function renderChart(records) {
+  const labels = records.map((_, i) => i + 1);
+  const closes = records.map(r => r.close);
+  const pred   = document.getElementById('stat-prediction').textContent;
+  const predVal = parseFloat(pred);
+  const predData = closes.map(() => null);
+  if (!isNaN(predVal) && closes.length > 0) predData.push(predVal);
+  else predData.push(null);
+
+  const ctx = document.getElementById('price-chart').getContext('2d');
+  if (chartInst) chartInst.destroy();
+
+  chartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [...labels, labels.length + 1],
+      datasets: [
+        {
+          label: 'Close',
+          data: [...closes, null],
+          borderColor: '#00539B',
+          backgroundColor: 'rgba(0,83,155,.12)',
+          pointRadius: 3,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Prediction',
+          data: predData,
+          borderColor: '#f7931a',
+          borderDash: [6, 3],
+          pointRadius: 6,
+          pointStyle: 'star',
+          tension: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      animation: { duration: 300 },
+      plugins: {
+        legend: { labels: { color: '#ccd6f6', font: { size: 11 } } },
+      },
+      scales: {
+        x: { ticks: { color: '#8892a4' }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { ticks: { color: '#8892a4' }, grid: { color: 'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+}
+
+function renderPrediction(records) {
+  if (!ledger) return;
+  const result = ledger.calculatePrediction(records);
+  const predEl  = document.getElementById('stat-prediction');
+  const probEl  = document.getElementById('stat-posterior-prob');
+  const detailEl= document.getElementById('pred-detail');
+
+  if (!result) {
+    predEl.textContent  = '—';
+    probEl.textContent  = '—';
+    detailEl.textContent = `Add ≥ 14 entries to see a live prediction (have ${records.length}).`;
+    return;
+  }
+
+  const { prediction, posteriorUpProb, sma14, v_t, a_t, calcProjection } = result;
+  const dir  = prediction >= records.at(-1).close ? 'up' : 'down';
+  const icon = dir === 'up' ? '▲' : '▼';
+  const cls  = dir === 'up' ? 'var(--success)' : 'var(--danger)';
+
+  predEl.innerHTML = `<span style="color:${cls};">${icon} ${prediction.toFixed(2)}</span>`;
+  probEl.innerHTML = `<span style="color:${cls};">${(posteriorUpProb * 100).toFixed(1)}%</span>`;
+  detailEl.innerHTML = `
+    <div><span style="color:var(--text-mute);">Velocity v_t:</span> ${v_t.toFixed(4)}</div>
+    <div><span style="color:var(--text-mute);">Acceleration a_t:</span> ${a_t.toFixed(4)}</div>
+    <div><span style="color:var(--text-mute);">Kinematic p̂:</span> ${calcProjection.toFixed(4)}</div>
+    <div><span style="color:var(--text-mute);">14-period SMA:</span> ${sma14.toFixed(4)}</div>
+    <div><span style="color:var(--text-mute);">P(up | data):</span> ${(posteriorUpProb*100).toFixed(2)}%</div>
+  `;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   User actions
+   ═══════════════════════════════════════════════════════════════ */
+
+async function addEntry() {
+  const symbol = document.getElementById('inp-symbol').value.trim().toUpperCase() || 'BTC';
+  const close  = parseFloat(document.getElementById('inp-close').value);
+  const volume = parseInt(document.getElementById('inp-volume').value, 10) || 0;
+
+  if (isNaN(close) || close <= 0) {
+    appLog('Please enter a valid close price.', 'warn'); return;
+  }
+
+  const entry = { symbol, close, volume, timestamp: Date.now() };
+  await ledger.saveRecord(entry);
+  appLog(`Entry added: ${symbol} @ ${close}`, '');
+  await renderAll();
+}
+
+async function clearLedger() {
+  if (!confirm('Clear all ledger entries from IndexedDB?')) return;
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = resolve;
+    tx.onerror    = () => reject(tx.error);
+  });
+  appLog('Ledger cleared.', 'warn');
+  await renderAll();
+}
+
+async function loadDemo() {
+  /* Generate 20 synthetic OHLC-style candles with a slight trend + noise */
+  let price = 44000 + Math.random() * 2000;
+  for (let i = 0; i < 20; i++) {
+    price += (Math.random() - 0.48) * 400;
+    const entry = {
+      symbol   : 'BTC',
+      close    : Math.max(1, parseFloat(price.toFixed(2))),
+      volume   : Math.floor(800 + Math.random() * 800),
+      timestamp: Date.now() - (20 - i) * 60_000,
+    };
+    await ledger.saveRecord(entry);
+  }
+  appLog('Loaded 20 demo candles.', 'ok');
+  await renderAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Python backend integration
+   ═══════════════════════════════════════════════════════════════ */
+
+async function runOptimizer() {
+  const records = await ledger.getAllRecords();
+  if (records.length < 3) {
+    appLog('Need ≥ 3 entries to run optimizer.', 'warn'); return;
+  }
+
+  /* Build design matrix X = [close, volume] and target y = next_close */
+  const n   = records.length - 1;
+  const X   = records.slice(0, n).map(r => [r.close / 1e4, r.volume / 1e3]);
+  const y   = records.slice(1).map(r => r.close / 1e4);
+  const d   = 2;                                    /* features            */
+  const priorMu  = Array(d).fill(0);                /* zero prior mean     */
+  const priorCov = Array.from({ length: d }, (_, i) =>
+    Array.from({ length: d }, (_, j) => i === j ? 1.0 : 0.0)  /* identity */
+  );
+
+  const noiseVar = parseFloat(document.getElementById('opt-noise').value) || 0.01;
+
+  appLog('Sending to Python optimizer…');
+
+  try {
+    const resp = await fetch('/api/optimize', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ X, y, prior_mu: priorMu, prior_cov: priorCov, noise_var: noiseVar }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || resp.statusText);
+    }
+    const result = await resp.json();
+    document.getElementById('optimizer-result').style.display = '';
+    document.getElementById('optimizer-json').textContent = JSON.stringify(result, null, 2);
+    appLog('Bayesian weight update complete.', 'ok');
+  } catch (err) {
+    appLog(`Optimizer error: ${err.message}`, 'err');
+    document.getElementById('optimizer-result').style.display = '';
+    document.getElementById('optimizer-json').textContent =
+      '(Backend unavailable — run app.py to enable)\n' + err.message;
+  }
+}
+
+async function runJacobian() {
+  const parseList = s => s.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x));
+  const u  = parseList(document.getElementById('jac-u').value);
+  const du = parseList(document.getElementById('jac-du').value);
+
+  if (!u.length || u.length !== du.length) {
+    appLog('u and du must be non-empty comma-separated lists of equal length.', 'warn');
+    return;
+  }
+
+  /* Compute locally as fallback (same formula as Python) */
+  const localResult = u.map((ui, i) => (1 / (1 + ui * ui)) * du[i]);
+
+  try {
+    const resp = await fetch('/api/jacobian', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ u, du }),
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const data = await resp.json();
+    const jac  = data.jacobian;
+    document.getElementById('jac-result').textContent =
+      `J = [${jac.map(v => v.toFixed(6)).join(', ')}]  (from Python)`;
+    appLog('Jacobian computed by Python backend.', 'ok');
+  } catch (_) {
+    /* Graceful degradation: compute in JS if backend is offline */
+    document.getElementById('jac-result').textContent =
+      `J = [${localResult.map(v => v.toFixed(6)).join(', ')}]  (JS fallback)`;
+    appLog('Jacobian computed in JS (backend offline).', 'warn');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════════════════════ */
+(async () => {
+  try {
+    db     = await openDatabase();
+    ledger = new PredictiveLedger(db, STORE_NAME);
+    await renderAll();
+    appLog('IndexedDB ready.', 'ok');
+
+    /* Periodic retry flush every 30 s */
+    setInterval(() => ledger.flushRetryQueue(), 30_000);
+  } catch (err) {
+    appLog(`Boot error: ${err.message}`, 'err');
+    console.error(err);
+  }
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmBJu8GmPOSQHbj2FuN6CKTbZM+t"
+        crossorigin="anonymous"></script>
+</body>
+</html>

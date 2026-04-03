@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitcoin Mining Demo — Educational Proof-of-Work Simulator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous">
+  <style>
+    :root {
+      --btc-orange: #f7931a;
+      --btc-dark:   #1a1a2e;
+      --btc-mid:    #16213e;
+      --btc-panel:  #0f3460;
+      --btc-green:  #00b894;
+      --btc-red:    #d63031;
+      --hash-color: #74b9ff;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, var(--btc-dark) 0%, var(--btc-mid) 100%);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+    h1 .btc-icon { color: var(--btc-orange); }
+    .badge-edu {
+      background: var(--btc-orange);
+      color: #fff;
+      font-size: .65rem;
+      vertical-align: middle;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+    }
+    .panel {
+      background: var(--btc-panel);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    }
+    .panel-title {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--btc-orange);
+      margin-bottom: 12px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,.05);
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--btc-orange);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label { font-size: .72rem; color: #aaa; margin-top: 2px; }
+    #current-hash {
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      word-break: break-all;
+      background: rgba(0,0,0,.3);
+      padding: 10px 14px;
+      border-radius: 6px;
+      min-height: 44px;
+      color: var(--hash-color);
+    }
+    #current-hash.valid { color: var(--btc-green); font-weight: 700; }
+    #difficulty-display {
+      font-family: monospace;
+      font-size: .9rem;
+      color: var(--btc-orange);
+      letter-spacing: 1px;
+    }
+    .progress { background: rgba(255,255,255,.1); height: 8px; border-radius: 4px; }
+    .progress-bar { background: var(--btc-orange); border-radius: 4px; transition: width .3s; }
+    .btn-mine {
+      background: var(--btc-orange);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-mine:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
+    .btn-stop {
+      background: var(--btc-red);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .chain-wrapper {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      gap: 0;
+    }
+    .block-card {
+      min-width: 220px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(247,147,26,.35);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: .74rem;
+      flex-shrink: 0;
+    }
+    .block-card .blk-num {
+      color: var(--btc-orange);
+      font-weight: 700;
+      font-size: .9rem;
+      margin-bottom: 6px;
+    }
+    .block-card .blk-field { color: #aaa; margin-bottom: 2px; }
+    .block-card .blk-val {
+      font-family: monospace;
+      color: var(--hash-color);
+      word-break: break-all;
+      font-size: .68rem;
+    }
+    .chain-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      color: var(--btc-orange);
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    #mine-log {
+      font-family: 'Courier New', monospace;
+      font-size: .75rem;
+      max-height: 180px;
+      overflow-y: auto;
+      background: rgba(0,0,0,.3);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #ccc;
+    }
+    #mine-log .log-found { color: var(--btc-green); font-weight: 700; }
+    #mine-log .log-info  { color: #aaa; }
+    .notice {
+      background: rgba(247,147,26,.12);
+      border-left: 3px solid var(--btc-orange);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      font-size: .82rem;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid" style="max-width:960px; padding:30px 16px 0;">
+
+  <!-- Header -->
+  <div class="text-center mb-4">
+    <h1 class="fw-bold mb-1">
+      <i class="fa-brands fa-bitcoin btc-icon"></i> Bitcoin Mining Demo
+      <span class="badge-edu">EDUCATIONAL</span>
+    </h1>
+    <p class="text-secondary mb-0" style="font-size:.9rem;">
+      A real SHA-256 proof-of-work simulator running entirely in your browser.
+      No real Bitcoin is mined. No external connections are made.
+    </p>
+  </div>
+
+  <!-- Notice -->
+  <div class="notice mb-4">
+    <i class="fa fa-circle-info me-2" style="color:var(--btc-orange);"></i>
+    <strong>How Bitcoin mining works:</strong> Miners repeatedly hash a block header (data&nbsp;+&nbsp;nonce)
+    with SHA-256 until the result starts with enough leading zeros — the <em>difficulty target</em>.
+    Finding that nonce is pure trial-and-error, illustrating why real-world mining requires
+    specialised hardware. Adjust the difficulty slider to experience this first-hand.
+  </div>
+
+  <!-- Controls -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-sliders me-1"></i> Controls</div>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-5">
+        <label class="form-label" style="font-size:.82rem; color:#aaa;">
+          Difficulty — leading zeros required
+        </label>
+        <input type="range" class="form-range" id="difficulty" min="1" max="6" value="4"
+               oninput="updateDifficultyDisplay()">
+        <div class="mt-1" style="font-size:.82rem;">
+          Target prefix: <span id="difficulty-display">0000</span>
+        </div>
+      </div>
+      <div class="col-sm-5">
+        <label class="form-label" style="font-size:.82rem; color:#aaa;">
+          Block data (simulated transactions)
+        </label>
+        <input type="text" class="form-control" id="block-data"
+               value="Alice→Bob: 1.5 BTC; Bob→Carol: 0.3 BTC"
+               style="background:rgba(255,255,255,.07); color:#e0e0e0;
+                      border-color:rgba(255,255,255,.2); font-size:.82rem;">
+      </div>
+      <div class="col-sm-2 d-flex gap-2 justify-content-end">
+        <button class="btn-mine" id="btn-start" onclick="startMining()">
+          <i class="fa fa-play me-1"></i> Mine
+        </button>
+        <button class="btn-stop d-none" id="btn-stop" onclick="stopMining()">
+          <i class="fa fa-stop me-1"></i> Stop
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live stats -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-chart-line me-1"></i> Live Stats</div>
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-sm-3">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-hashrate">0</div>
+          <div class="stat-label">Hashes / sec</div>
+        </div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-attempts">0</div>
+          <div class="stat-label">Attempts this block</div>
+        </div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-blocks">0</div>
+          <div class="stat-label">Blocks mined</div>
+        </div>
+      </div>
+      <div class="col-6 col-sm-3">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-nonce" style="font-size:1.1rem;">—</div>
+          <div class="stat-label">Current nonce</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.75rem; color:#aaa; margin-bottom:4px;">Current hash attempt:</div>
+    <div id="current-hash">—</div>
+
+    <div class="mt-3" style="font-size:.75rem; color:#aaa; margin-bottom:4px;">
+      Estimated cumulative probability of success: <span id="prob-label">0%</span>
+    </div>
+    <div class="progress"><div class="progress-bar" id="prob-bar" style="width:0%"></div></div>
+  </div>
+
+  <!-- Blockchain -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-link me-1"></i> Blockchain (this session)</div>
+    <div class="chain-wrapper" id="chain-container">
+      <div class="block-card">
+        <div class="blk-num">#0 — Genesis Block</div>
+        <div class="blk-field">Previous Hash</div>
+        <div class="blk-val">0000…0000</div>
+        <div class="blk-field mt-1">Hash</div>
+        <div class="blk-val" id="genesis-hash-val">computing…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-terminal me-1"></i> Mining Log</div>
+    <div id="mine-log"><span class="log-info">Waiting to start…</span></div>
+  </div>
+
+</div>
+
+<script>
+  /* ── HTML escape helper ── */
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  /* ── SHA-256 via Web Crypto API ── */
+  const buf2hex = buf =>
+    Array.from(new Uint8Array(buf))
+         .map(b => b.toString(16).padStart(2, '0'))
+         .join('');
+
+  async function sha256(msg) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
+    return buf2hex(buf);
+  }
+
+  /* ── State ── */
+  let mining      = false;
+  let blocksMined = 0;
+  let prevHash    = '0000000000000000000000000000000000000000000000000000000000000000';
+  let hashCount   = 0;
+  let lastTick    = 0;
+
+  /* ── Genesis block hash ── */
+  (async () => {
+    const h = await sha256('Genesis Block — majixai bitcoin mining demo');
+    prevHash = h;
+    document.getElementById('genesis-hash-val').textContent = h.slice(0, 20) + '…';
+  })();
+
+  /* ── UI helpers ── */
+  function updateDifficultyDisplay() {
+    const d = document.getElementById('difficulty').value;
+    document.getElementById('difficulty-display').textContent = '0'.repeat(d);
+  }
+
+  function appendLog(html) {
+    const log  = document.getElementById('mine-log');
+    const line = document.createElement('div');
+    /* html is always constructed from internal computed values (integers, hex hashes)
+       and fixed string literals — never from raw user input */
+    line.innerHTML = html;
+    log.appendChild(line);
+    log.scrollTop  = log.scrollHeight;
+    while (log.childElementCount > 200) log.removeChild(log.firstChild);
+  }
+
+  function setHashDisplay(hash, valid) {
+    const el = document.getElementById('current-hash');
+    el.textContent = hash || '—';
+    el.className   = valid ? 'valid' : '';
+  }
+
+  function addBlockToChain(num, data, nonce, hash) {
+    const c = document.getElementById('chain-container');
+    const a = document.createElement('div');
+    a.className   = 'chain-arrow';
+    a.innerHTML   = '<i class="fa fa-arrow-right"></i>';
+    c.appendChild(a);
+    const card = document.createElement('div');
+    card.className = 'block-card';
+    card.innerHTML = `
+      <div class="blk-num">#${escapeHtml(String(num))}</div>
+      <div class="blk-field">Data</div>
+      <div class="blk-val">${escapeHtml(data.slice(0, 40))}${data.length > 40 ? '…' : ''}</div>
+      <div class="blk-field mt-1">Nonce</div>
+      <div class="blk-val">${escapeHtml(nonce.toLocaleString())}</div>
+      <div class="blk-field mt-1">Hash</div>
+      <div class="blk-val">${escapeHtml(hash.slice(0, 20))}…</div>`;
+    c.appendChild(card);
+    c.scrollLeft = c.scrollWidth;
+  }
+
+  function updateProbBar(attempts, difficulty) {
+    const p   = 1 - Math.pow(1 - Math.pow(16, -difficulty), attempts);
+    const pct = Math.min(99.9, p * 100).toFixed(1);
+    document.getElementById('prob-bar').style.width  = pct + '%';
+    document.getElementById('prob-label').textContent = pct + '%';
+  }
+
+  /* ── Mining loop ── */
+  async function mineBlock() {
+    const difficulty = parseInt(document.getElementById('difficulty').value, 10);
+    const target     = '0'.repeat(difficulty);
+    const data       = document.getElementById('block-data').value || 'Empty block';
+    const blockNum   = blocksMined + 1;
+    let   nonce      = 0;
+    let   attempts   = 0;
+
+    lastTick   = performance.now();
+    hashCount  = 0;
+
+    document.getElementById('stat-attempts').textContent = '0';
+    document.getElementById('stat-nonce').textContent    = '0';
+
+    appendLog(`<span class="log-info">⛏ Mining block #${blockNum} | difficulty: ${difficulty} | target prefix: ${target}…</span>`);
+
+    const BATCH = 100; // hashes per micro-tick
+
+    while (mining) {
+      for (let i = 0; i < BATCH; i++) {
+        const hash = await sha256(`${prevHash}|${blockNum}|${data}|${nonce}`);
+        hashCount++;
+        attempts++;
+
+        if (hash.startsWith(target)) {
+          /* ── block found ── */
+          setHashDisplay(hash, true);
+          document.getElementById('stat-attempts').textContent = attempts.toLocaleString();
+          document.getElementById('stat-nonce').textContent    = nonce.toLocaleString();
+          const elapsed = (performance.now() - lastTick) / 1000;
+          const hr = elapsed > 0 ? Math.round(hashCount / elapsed) : 0;
+          document.getElementById('stat-hashrate').textContent = hr.toLocaleString();
+          updateProbBar(attempts, difficulty);
+          blocksMined++;
+          document.getElementById('stat-blocks').textContent = blocksMined;
+          appendLog(`<span class="log-found">✅ Block #${blockNum} found! Nonce: ${nonce.toLocaleString()} | Hash: ${hash.slice(0,16)}… | Attempts: ${attempts.toLocaleString()}</span>`);
+          addBlockToChain(blockNum, data, nonce, hash);
+          prevHash = hash;
+          await new Promise(r => setTimeout(r, 700));
+          if (mining) mineBlock();
+          return;
+        }
+        nonce++;
+      }
+
+      /* yield to browser every batch */
+      const elapsed = (performance.now() - lastTick) / 1000;
+      if (elapsed > 0) {
+        document.getElementById('stat-hashrate').textContent =
+          Math.round(hashCount / elapsed).toLocaleString();
+      }
+      document.getElementById('stat-attempts').textContent = attempts.toLocaleString();
+      document.getElementById('stat-nonce').textContent    = (nonce - 1).toLocaleString();
+      setHashDisplay(await sha256(`${prevHash}|${blockNum}|${data}|${nonce - 1}`));
+      updateProbBar(attempts, difficulty);
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+
+  function startMining() {
+    if (mining) return;
+    mining = true;
+    document.getElementById('btn-start').classList.add('d-none');
+    document.getElementById('btn-stop').classList.remove('d-none');
+    document.getElementById('mine-log').innerHTML = '';
+    appendLog('<span class="log-info">Mining started…</span>');
+    mineBlock();
+  }
+
+  function stopMining() {
+    mining = false;
+    document.getElementById('btn-stop').classList.add('d-none');
+    document.getElementById('btn-start').classList.remove('d-none');
+    appendLog('<span style="color:var(--btc-red)">⏹ Mining stopped.</span>');
+  }
+
+  updateDifficultyDisplay();
+</script>
+</body>
+</html>

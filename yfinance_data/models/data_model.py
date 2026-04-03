@@ -58,7 +58,7 @@ class DataModel:
     def fetch_ticker_data(
         self,
         ticker: str,
-        period: str = "1y",
+        period: str = "5y",
         interval: str = "1d"
     ) -> Optional[pd.DataFrame]:
         """
@@ -104,7 +104,7 @@ class DataModel:
     def fetch_multiple_tickers(
         self,
         tickers: List[str],
-        period: str = "1y",
+        period: str = "5y",
         interval: str = "1d"
     ) -> Dict[str, pd.DataFrame]:
         """
@@ -200,7 +200,7 @@ class DataModel:
 
         with open(self.db_name, "rb") as f_in:
             with gzip.open(output_path, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+                shutil.copyfileobj(f_in, f_out, length=2 * 1024 * 1024)
 
         logger.info(f"Database compressed to {output_path}")
 
@@ -267,7 +267,7 @@ class DataModel:
 
         with gzip.open(dat_file, "rb") as f_in:
             with open(temp_db, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+                shutil.copyfileobj(f_in, f_out, length=2 * 1024 * 1024)
 
         logger.info(f"Decompressed {dat_file} to {temp_db}")
         return temp_db

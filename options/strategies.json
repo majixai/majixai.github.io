@@ -20,7 +20,12 @@
       "example": "Buy 1 MES JUN13 5980 Call for 83.00 (Ask). The call strike is 5980.00. The premium paid is 83.00. Break-even: 5980.00 + 83.00 = 6063.00.",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-long-call",
-      "parameters": { "type": "call", "position": "long", "strike": 5980, "premium": 83.00 }
+      "parameters": {
+        "type": "call",
+        "position": "long",
+        "strike": 5980,
+        "premium": 83.0
+      }
     },
     {
       "id": "short-put",
@@ -42,7 +47,12 @@
       "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid). The put strike is 5970.00. The premium received is 104.50. Break-even: 5970.00 - 104.50 = 5865.50.",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-short-put",
-      "parameters": { "type": "put", "position": "short", "strike": 5970, "premium": 104.50 }
+      "parameters": {
+        "type": "put",
+        "position": "short",
+        "strike": 5970,
+        "premium": 104.5
+      }
     },
     {
       "id": "short-call",
@@ -64,7 +74,12 @@
       "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid). The call strike is 5970.00. The premium received is 83.25. Break-even: 5970.00 + 83.25 = 6053.25.",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-short-call",
-      "parameters": { "type": "call", "position": "short", "strike": 5970, "premium": 83.25 }
+      "parameters": {
+        "type": "call",
+        "position": "short",
+        "strike": 5970,
+        "premium": 83.25
+      }
     },
     {
       "id": "long-put",
@@ -86,7 +101,12 @@
       "example": "Buy 1 MES JUN13 5970 Put for 109.50 (Ask). The put strike is 5970.00. The premium paid is 109.50. Break-even: 5970.00 - 109.50 = 5860.50.",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-long-put",
-      "parameters": { "type": "put", "position": "long", "strike": 5970, "premium": 109.50 }
+      "parameters": {
+        "type": "put",
+        "position": "long",
+        "strike": 5970,
+        "premium": 109.5
+      }
     },
     {
       "id": "covered-call",
@@ -110,7 +130,11 @@
       "example": "Hypothetical Stock Example: Own 100 shares of XYZ bought at $100/share. Sell 1 XYZ 105 Call for $1.50. Break-even: 100 - 1.50 = 98.50. Max Profit at/above 105: (105 - 100) + 1.50 = $6.50 per share or $650 total.",
       "plotFunction": "plotCoveredCall",
       "plotlyDivId": "plotly-covered-call",
-      "parameters": { "stockPrice": 100.00, "callStrike": 105, "callPremium": 1.50 }
+      "parameters": {
+        "stockPrice": 100.0,
+        "callStrike": 105,
+        "callPremium": 1.5
+      }
     },
     {
       "id": "cash-secured-put",
@@ -134,7 +158,12 @@
       "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid). The strike is 5970.00. The premium received is 104.50. Break-even: 5970.00 - 104.50 = 5865.50. Cash requirement (notional): 5970 * 5 = 29850 (this cash is needed only if assigned below the strike).",
       "plotFunction": "plotBasicOption",
       "plotlyDivId": "plotly-cash-secured-put",
-      "parameters": { "type": "put", "position": "short", "strike": 5970, "premium": 104.50 }
+      "parameters": {
+        "type": "put",
+        "position": "short",
+        "strike": 5970,
+        "premium": 104.5
+      }
     },
     {
       "id": "protective-put",
@@ -146,7 +175,7 @@
         "Buy 1 Put Option against the position"
       ],
       "notes": "Used by investors holding a long position who want to hedge against potential price drops.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Reduced positive delta compared to owning the underlying alone. As the underlying price falls towards the put strike, the delta approaches zero, reflecting the limited downside.",
         "gamma": "Slightly positive due to the long put position.",
         "theta": "Negative. The premium paid for the put is the cost of the insurance, which decays over time.",
@@ -158,7 +187,11 @@
       "example": "Hypothetical Stock Example: Own 100 shares of XYZ bought at $100/share. Sell 1 XYZ 105 Call for $1.50. Break-even: 100 + 1.80 = 101.80. Max Loss at/below 95: (100 - 95) + 1.80 = $6.80 per share or $680 total.",
       "plotFunction": "plotProtectivePut",
       "plotlyDivId": "plotly-protective-put",
-      "parameters": { "stockPrice": 100.00, "putStrike": 95, "putPremium": 1.80 }
+      "parameters": {
+        "stockPrice": 100.0,
+        "putStrike": 95,
+        "putPremium": 1.8
+      }
     }
   ],
   "twoLeg": [
@@ -183,7 +216,14 @@
       "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 1 MES JUN13 5980 Call for 78.00 (Bid). Net Debit: 93.75 - 78.00 = 15.75. Max Profit: (5980 - 5960) - 15.75 = 20 - 15.75 = 4.25. Max Loss: 15.75. Break-even: 5960 + 15.75 = 5975.75.",
       "plotFunction": "plotVerticalSpread",
       "plotlyDivId": "plotly-bull-call-spread",
-      "parameters": { "type": "call", "position": "debit", "strike1": 5960, "strike2": 5980, "premium1": 93.75, "premium2": 78.00 }
+      "parameters": {
+        "type": "call",
+        "position": "debit",
+        "strike1": 5960,
+        "strike2": 5980,
+        "premium1": 93.75,
+        "premium2": 78.0
+      }
     },
     {
       "id": "bear-put-spread",
@@ -194,7 +234,7 @@
         "Buy 1 Put (Higher Strike K2)",
         "Sell 1 Put (Lower Strike K1)"
       ],
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Negative. Starts negative and becomes less negative as the price falls past the sold strike (K1), reflecting the capped profit.",
         "gamma": "Generally positive above the midpoint of the strikes, becomes negative as price moves below the midpoint and towards the short put (K1).",
         "theta": "Generally negative (loses value with time), especially if the spread is centered ATM. Time decay is a cost.",
@@ -206,7 +246,14 @@
       "example": "Buy 1 MES JUN13 5970 Put for 109.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid). Net Debit: 109.50 - 100.00 = 9.50. Max Profit: (5970 - 5960) - 9.50 = 10 - 9.50 = 0.50. Max Loss: 9.50. Break-even: 5970 - 9.50 = 5960.50.",
       "plotFunction": "plotVerticalSpread",
       "plotlyDivId": "plotly-bear-put-spread",
-      "parameters": { "type": "put", "position": "debit", "strike1": 5960, "strike2": 5970, "premium1": 100.00, "premium2": 109.50 }
+      "parameters": {
+        "type": "put",
+        "position": "debit",
+        "strike1": 5960,
+        "strike2": 5970,
+        "premium1": 100.0,
+        "premium2": 109.5
+      }
     },
     {
       "id": "bear-call-spread",
@@ -217,7 +264,7 @@
         "Sell 1 Call (Lower Strike K1)",
         "Buy 1 Call (Higher Strike K2)"
       ],
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Negative. Starts negative and approaches zero as price falls away from the strikes. Becomes less negative as price approaches the short strike (K1).",
         "gamma": "Generally negative below the midpoint of the strikes, becomes positive as price moves above the midpoint and towards the long call (K2).",
         "theta": "Positive. Benefits from time decay, especially as expiration nears and price is below the short strike (K1).",
@@ -229,7 +276,14 @@
       "example": "Sell 1 MES JUN13 5990 Call for 73.00 (Bid), Buy 1 MES JUN13 6010 Call for 68.50 (Ask). Net Credit: 73.00 - 68.50 = 4.50. Max Profit: 4.50. Max Loss: (6010 - 5990) - 4.50 = 20 - 4.50 = 15.50. Break-even: 5990 + 4.50 = 5994.50.",
       "plotFunction": "plotVerticalSpread",
       "plotlyDivId": "plotly-bear-call-spread",
-      "parameters": { "type": "call", "position": "credit", "strike1": 5990, "strike2": 6010, "premium1": 73.00, "premium2": 68.50 }
+      "parameters": {
+        "type": "call",
+        "position": "credit",
+        "strike1": 5990,
+        "strike2": 6010,
+        "premium1": 73.0,
+        "premium2": 68.5
+      }
     },
     {
       "id": "bull-put-spread",
@@ -240,7 +294,7 @@
         "Sell 1 Put (Higher Strike K2)",
         "Buy 1 Put (Lower Strike K1)"
       ],
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Positive. Starts positive and approaches zero as price rises away from the strikes. Becomes less positive as price approaches the short strike (K2).",
         "gamma": "Generally negative below the midpoint of the strikes, becomes positive as price moves above the midpoint and towards the long put (K1).",
         "theta": "Positive. Benefits from time decay, especially as expiration nears and price is above the short strike (K2).",
@@ -252,7 +306,14 @@
       "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 1 MES JUN13 5950 Put for 100.75 (Ask). Net Credit: 104.50 - 100.75 = 3.75. Max Profit: 3.75. Max Loss: (5970 - 5950) - 3.75 = 20 - 3.75 = 16.25. Break-even: 5970 - 3.75 = 5966.25.",
       "plotFunction": "plotVerticalSpread",
       "plotlyDivId": "plotly-bull-put-spread",
-      "parameters": { "type": "put", "position": "credit", "strike1": 5950, "strike2": 5970, "premium1": 100.75, "premium2": 104.50 }
+      "parameters": {
+        "type": "put",
+        "position": "credit",
+        "strike1": 5950,
+        "strike2": 5970,
+        "premium1": 100.75,
+        "premium2": 104.5
+      }
     },
     {
       "id": "long-straddle",
@@ -263,7 +324,7 @@
         "Buy 1 Call (Same Strike K)",
         "Buy 1 Put (Same Strike K)"
       ],
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (neutral). As the underlying price moves, delta will move towards +1 (if rising) or -1 (if falling), reflecting the increasing directional exposure.",
         "gamma": "Strongly positive. Gamma is highest at the strike and decreases as price moves away. This causes the position's delta to increase rapidly as the underlying moves, making the position's profit potential accelerate.",
         "theta": "Strongly negative. This strategy loses value rapidly due to time decay, especially as expiration approaches, if the price does not move significantly.",
@@ -275,7 +336,13 @@
       "example": "Buy 1 MES JUN13 5970 Call for 88.25 (Ask), Buy 1 MES JUN13 5970 Put for 109.50 (Ask). Net Debit: 88.25 + 109.50 = 197.75. Lower Break-even: 5970 - 197.75 = 5772.25. Upper Break-even: 5970 + 197.75 = 6167.75.",
       "plotFunction": "plotStraddleStrangle",
       "plotlyDivId": "plotly-long-straddle",
-      "parameters": { "type": "straddle", "position": "long", "strike": 5970, "callPremium": 88.25, "putPremium": 109.50 }
+      "parameters": {
+        "type": "straddle",
+        "position": "long",
+        "strike": 5970,
+        "callPremium": 88.25,
+        "putPremium": 109.5
+      }
     },
     {
       "id": "short-straddle",
@@ -286,7 +353,7 @@
         "Sell 1 Call (Same Strike K)",
         "Sell 1 Put (Same Strike K)"
       ],
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (neutral). As the underlying price moves away from the strike, delta will move towards -1 (if rising) or +1 (if falling), reflecting the rapidly increasing directional exposure AGAINST the position.",
         "gamma": "Strongly negative. Gamma is most negative at the strike and becomes less negative as price moves away. This causes the position's delta to move rapidly against the position as the underlying moves, leading to accelerating losses.",
         "theta": "Strongly positive. This strategy benefits significantly from time decay, especially as expiration approaches, if the price stays near the strike.",
@@ -298,7 +365,13 @@
       "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Sell 1 MES JUN13 5970 Put for 104.50 (Bid). Net Credit: 83.25 + 104.50 = 187.75. Lower Break-even: 5970 - 187.75 = 5782.25. Upper Break-even: 5970 + 187.75 = 6157.75.",
       "plotFunction": "plotStraddleStrangle",
       "plotlyDivId": "plotly-short-straddle",
-      "parameters": { "type": "straddle", "position": "short", "strike": 5970, "callPremium": 83.25, "putPremium": 104.50 }
+      "parameters": {
+        "type": "straddle",
+        "position": "short",
+        "strike": 5970,
+        "callPremium": 83.25,
+        "putPremium": 104.5
+      }
     },
     {
       "id": "long-strangle",
@@ -310,7 +383,7 @@
         "Buy 1 OTM Call (Higher Strike K2)"
       ],
       "notes": "K1 < K2. Both strikes are typically OTM relative to the current price.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (slightly positive if the call is closer/less OTM, slightly negative if the put is closer/less OTM). Delta becomes increasingly directional as price moves away from the center.",
         "gamma": "Positive. Highest between the two strikes and decreases as price moves away. Causes the position's delta to increase rapidly as the underlying moves away from the center range.",
         "theta": "Negative. Loses value due to time decay, though often at a slower rate than a comparable straddle because the options are OTM.",
@@ -322,7 +395,14 @@
       "example": "Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5990 Call for 78.00 (Ask). Net Debit: 105.00 + 78.00 = 183.00. Put Strike K1=5960. Call Strike K2=5990. Lower Break-even: 5960 - 183.00 = 5777.00. Upper Break-even: 5990 + 183.00 = 6173.00.",
       "plotFunction": "plotStraddleStrangle",
       "plotlyDivId": "plotly-long-strangle",
-      "parameters": { "type": "strangle", "position": "long", "putStrike": 5960, "callStrike": 5990, "putPremium": 105.00, "callPremium": 78.00 }
+      "parameters": {
+        "type": "strangle",
+        "position": "long",
+        "putStrike": 5960,
+        "callStrike": 5990,
+        "putPremium": 105.0,
+        "callPremium": 78.0
+      }
     },
     {
       "id": "short-strangle",
@@ -334,7 +414,7 @@
         "Sell 1 OTM Call (Higher Strike K2)"
       ],
       "notes": "K1 < K2. Both strikes are typically OTM relative to the current price.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (slightly negative if the put is closer/less OTM, slightly positive if the call is closer/less OTM). Delta becomes increasingly directional against the position as price moves away from the center.",
         "gamma": "Negative. Most negative between the two strikes. Causes the position's delta to move rapidly against the position as the underlying moves, leading to accelerating losses.",
         "theta": "Positive. Benefits significantly from time decay, especially as expiration approaches, if the price stays between the strikes.",
@@ -346,9 +426,16 @@
       "example": "Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Sell 1 MES JUN13 5990 Call for 73.00 (Bid). Net Credit: 100.00 + 73.00 = 173.00. Put Strike K1=5960. Call Strike K2=5990. Lower Break-even: 5960 - 173.00 = 5787.00. Upper Break-even: 5990 + 173.00 = 6163.00.",
       "plotFunction": "plotStraddleStrangle",
       "plotlyDivId": "plotly-short-strangle",
-      "parameters": { "type": "strangle", "position": "short", "putStrike": 5960, "callStrike": 5990, "putPremium": 100.00, "callPremium": 73.00 }
+      "parameters": {
+        "type": "strangle",
+        "position": "short",
+        "putStrike": 5960,
+        "callStrike": 5990,
+        "putPremium": 100.0,
+        "callPremium": 73.0
+      }
     },
-     {
+    {
       "id": "call-calendar-spread",
       "name": "Long Call Calendar Spread",
       "outlook": "Neutral to Moderately Bullish (Time Decay & Volatility)",
@@ -358,7 +445,7 @@
         "Buy 1 Call (Further Expiry, Strike K)"
       ],
       "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option. Example uses hypothetical price for further expiry as only one expiry shown in image.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero (neutral) if the strike (K) is ATM relative to the *current* price. If K is OTM bullish, delta is slightly positive. If K is OTM bearish, delta is slightly negative.",
         "gamma": "Typically negative for the spread as a whole until very close to the front month expiry, where the short call's gamma becomes significantly positive. This can cause large delta shifts as expiration nears. The long call's gamma is lower due to its longer term.",
         "theta": "Positive. This is the core profit engine if the price stays near the strike. The near-term option loses value faster than the longer-term one.",
@@ -370,9 +457,14 @@
       "example": "Hypothetical (Requires different expiries): Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 1 MES JUL18 5970 Call for ~150.00 (Hypothetical Ask). Net Debit: 150.00 - 83.25 = 66.75. Max Loss: 66.75. Break-evens depend on JUL18 5970 call value at JUN13 expiry.",
       "plotFunction": "plotCalendarSpread",
       "plotlyDivId": "plotly-call-calendar-spread",
-      "parameters": { "type": "call", "strike": 5970, "nearPremium": 83.25, "furtherPremium": 150.00 }
+      "parameters": {
+        "type": "call",
+        "strike": 5970,
+        "nearPremium": 83.25,
+        "furtherPremium": 150.0
+      }
     },
-     {
+    {
       "id": "put-calendar-spread",
       "name": "Long Put Calendar Spread",
       "outlook": "Neutral to Moderately Bearish (Time Decay & Volatility)",
@@ -382,7 +474,7 @@
         "Buy 1 Put (Further Expiry, Strike K)"
       ],
       "notes": "Requires options in the same underlying with different expiration dates but the same strike price. Max profit occurs if the underlying price is exactly at the strike (K) on the expiration date of the *near-term* option. Example uses hypothetical price for further expiry as only one expiry shown in image.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero (neutral) if the strike (K) is ATM relative to the *current* price. If K is OTM bullish, delta is slightly positive. If K is OTM bearish, delta is slightly negative.",
         "gamma": "Typically negative for the spread as a whole until very close to the front month expiry, where the short put's gamma becomes significantly positive. This can cause large delta shifts as expiration nears. The long put's gamma is lower due to its longer term.",
         "theta": "Positive. This is the core profit engine if the price stays near the strike. The near-term option loses value faster than the longer-term one.",
@@ -394,11 +486,161 @@
       "example": "Hypothetical (Requires different expiries): Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 1 MES JUL18 5970 Put for ~160.00 (Hypothetical Ask). Net Debit: 160.00 - 104.50 = 55.50. Max Loss: 55.50. Break-evens depend on JUL18 5970 put value at JUN13 expiry.",
       "plotFunction": "plotCalendarSpread",
       "plotlyDivId": "plotly-put-calendar-spread",
-      "parameters": { "type": "put", "strike": 5970, "nearPremium": 104.50, "furtherPremium": 160.00 }
+      "parameters": {
+        "type": "put",
+        "strike": 5970,
+        "nearPremium": 104.5,
+        "furtherPremium": 160.0
+      }
+    },
+    {
+      "id": "risk-reversal",
+      "name": "Risk Reversal (Bullish)",
+      "outlook": "Bullish (Directional, Low Cost)",
+      "description": "A bullish synthetic position constructed by selling an OTM put and simultaneously buying an OTM call at the same expiration. The premium received from the short put offsets (partially or fully) the cost of the long call. Profits from a strong upward move in the underlying, with risk if the underlying drops below the short put strike. Net cost (debit) or credit depends on the relative premiums. Common in futures markets as it mimics a long futures position for less capital.",
+      "construction": [
+        "Sell 1 OTM Put (Lower Strike K1)",
+        "Buy 1 OTM Call (Higher Strike K2)"
+      ],
+      "notes": "Often structured for a net credit or near-zero cost. The short put creates obligation to buy at K1 if assigned. The call provides unlimited upside above K2. Risk is defined on the downside only if structured with a net credit.",
+      "greeksImpact": {
+        "delta": "Positive. The long call contributes positive delta; the short put also contributes positive delta (short put = positive delta). Combined delta is significantly positive, mimicking a long position.",
+        "gamma": "Positive from the long call, partially negative from the short put. Net gamma is typically positive, meaning delta increases favorably as price rises.",
+        "theta": "Mixed. The short put generates positive theta (receives premium decay); the long call has negative theta (pays time decay). Net theta depends on relative strikes and time to expiry.",
+        "vega": "Mixed. The long call has positive vega; the short put has negative vega. Net vega can be near zero if the strikes are equidistant from ATM, but typically slightly positive for OTM options."
+      },
+      "maxProfit": "Unlimited (from long call above K2)",
+      "maxLoss": "K1 - Net Premium Received (substantial if underlying drops to zero, partially offset by net credit if applicable)",
+      "breakeven": "If Net Credit: Call Strike (K2) - Net Credit (upside); Put Strike (K1) - Net Credit (downside). If Net Debit: K2 + Net Debit (upside); K1 - Net Debit (downside).",
+      "example": "Sell 1 MES APR18 5940 Put for 100.00 (Bid), Buy 1 MES APR18 6000 Call for 62.25 (Ask). Net Credit: 100.00 - 62.25 = 37.75. K1=5940 (short put), K2=6000 (long call). Max Profit: Unlimited above 6000. Max Loss: 5940 - 37.75 = 5902.25 (if MES drops to 0, loss = 5902.25). Lower Break-even: 5940 - 37.75 = 5902.25. Upper Break-even: 6000 - 37.75 = 5962.25.",
+      "plotFunction": "plotRiskReversal",
+      "plotlyDivId": "plotly-risk-reversal",
+      "parameters": {
+        "strikeP": 5940,
+        "strikeC": 6000,
+        "premiumP": 100.0,
+        "premiumC": 62.25
+      }
+    },
+    {
+      "id": "synthetic-long",
+      "name": "Synthetic Long Stock (Futures)",
+      "outlook": "Strongly Bullish (Synthetic Position)",
+      "description": "Replicates the payoff of owning the underlying (long futures) by buying an ATM (or same-strike) call and simultaneously selling an ATM put at the same strike and expiration. The synthetic position behaves nearly identically to holding the underlying: unlimited profit potential to the upside and unlimited loss potential to the downside. The net debit or credit paid/received at initiation shifts the effective cost basis compared to simply buying the futures.",
+      "construction": [
+        "Buy 1 ATM Call (Strike K)",
+        "Sell 1 ATM Put (Strike K)"
+      ],
+      "notes": "Same strike and expiration date for both legs (put-call parity). The position profits and loses in near-perfect lockstep with the underlying asset. A net debit means a slightly higher effective cost basis than buying the underlying outright.",
+      "greeksImpact": {
+        "delta": "Approximately +1.0 overall (long call ~+0.5 delta + short put ~+0.5 delta = ~+1.0). Behaves like long the underlying.",
+        "gamma": "Near zero overall for ATM strikes (long call gamma + short put gamma ~ cancel out for deep ITM/OTM scenarios). Remains near zero as the position mimics a linear payoff like the underlying.",
+        "theta": "Near zero overall. The positive theta from the short put is offset by the negative theta of the long call, especially for ATM options. Time decay is minimal in aggregate.",
+        "vega": "Near zero overall. The positive vega of the long call is offset by the negative vega of the short put at the same strike and expiration. Volatility changes have minimal net impact."
+      },
+      "maxProfit": "Unlimited (as underlying rises above K + Net Debit)",
+      "maxLoss": "Unlimited (as underlying falls below K - Net Debit)",
+      "breakeven": "Strike Price (K) + Net Debit Paid (or minus Net Credit Received)",
+      "example": "Buy 1 MES APR18 5975 Call for 75.50 (Ask), Sell 1 MES APR18 5975 Put for 49.00 (Bid). Net Debit: 75.50 - 49.00 = 26.50. Effective Breakeven: 5975 + 26.50 = 6001.50. Profits point-for-point with MES above 6001.50; loses point-for-point below 6001.50.",
+      "plotFunction": "plotSyntheticLong",
+      "plotlyDivId": "plotly-synthetic-long",
+      "parameters": {
+        "strike": 5975,
+        "callPremium": 75.5,
+        "putPremium": 49.0
+      }
+    },
+    {
+      "id": "synthetic-short",
+      "name": "Synthetic Short Stock (Futures)",
+      "outlook": "Strongly Bearish (Synthetic Position)",
+      "description": "Replicates the payoff of a short position in the underlying (short futures) by selling an ATM call and simultaneously buying an ATM put at the same strike and expiration. The position profits from a decrease in the underlying's value and loses from an increase. The net credit or debit at initiation adjusts the effective entry price of the synthetic short.",
+      "construction": [
+        "Sell 1 ATM Call (Strike K)",
+        "Buy 1 ATM Put (Strike K)"
+      ],
+      "notes": "Same strike and expiration. Mirrors short futures payoff. A net credit received shifts the effective short entry price higher, providing a slight buffer. Requires margin for the short call.",
+      "greeksImpact": {
+        "delta": "Approximately -1.0 overall (short call ~-0.5 delta + long put ~-0.5 delta = ~-1.0). Behaves like short the underlying.",
+        "gamma": "Near zero overall (mimics linear short payoff). Gamma effects are largely offset between the two legs at the same strike.",
+        "theta": "Near zero overall. Short call has positive theta; long put has negative theta. These approximately cancel at the same ATM strike.",
+        "vega": "Near zero overall. Short call has negative vega; long put has positive vega. These approximately cancel at the same ATM strike and expiration."
+      },
+      "maxProfit": "Unlimited downside (as underlying falls below K - Net Credit)",
+      "maxLoss": "Unlimited (as underlying rises above K + Net Credit)",
+      "breakeven": "Strike Price (K) - Net Credit Received (or plus Net Debit Paid)",
+      "example": "Sell 1 MES APR18 5975 Call for 75.25 (Bid), Buy 1 MES APR18 5975 Put for 49.25 (Ask). Net Credit: 75.25 - 49.25 = 26.00. Effective Breakeven: 5975 - 26.00 = 5949.00. Profits point-for-point below 5949.00; loses point-for-point above 5949.00.",
+      "plotFunction": "plotSyntheticShort",
+      "plotlyDivId": "plotly-synthetic-short",
+      "parameters": {
+        "strike": 5975,
+        "callPremium": 75.25,
+        "putPremium": 49.25
+      }
+    },
+    {
+      "id": "long-call-diagonal-spread",
+      "name": "Long Call Diagonal Spread",
+      "outlook": "Moderately Bullish (Time Decay & Directional)",
+      "description": "Combines different strikes AND different expiration dates: buys a longer-term, lower-strike call (often near-the-money or slightly ITM) and sells a shorter-term, higher-strike call (often OTM). This hybrid between a vertical spread and a calendar spread benefits from the faster time decay of the shorter-term short call, while the long call retains its value longer. The ideal scenario is for the underlying to rise moderately toward or near the short call's strike by its expiration, then potentially roll the short call.",
+      "construction": [
+        "Buy 1 Call (Lower Strike K1, Further Expiry)",
+        "Sell 1 Call (Higher Strike K2, Near Expiry)"
+      ],
+      "notes": "K1 < K2. Further expiry option has more time value. Strategy can be rolled by selling new near-term calls as the short leg expires. A common income-generation strategy when bullish on the underlying.",
+      "greeksImpact": {
+        "delta": "Positive. The long further-dated call has positive delta at K1; the short near-dated call has negative delta at K2. Net delta is positive when K1 is closer to ATM.",
+        "gamma": "Generally low to slightly positive. The near-term short call has higher gamma that partially offsets the long call's lower gamma.",
+        "theta": "Positive. The near-term short call decays faster than the further-term long call, generating net positive theta. This is the key income-generating Greek for this strategy.",
+        "vega": "Positive. The longer-dated long call has significantly more vega than the shorter-dated short call. An increase in implied volatility generally benefits the position."
+      },
+      "maxProfit": "Limited at near-term expiry: K2 - K1 - Net Debit (if underlying is at or above K2 at near expiry). Potential for more profit if rolled.",
+      "maxLoss": "Net Debit Paid (if both options expire worthless, which occurs if underlying falls far below K1 by the near expiry date)",
+      "breakeven": "Approximately K1 + Net Debit (at near expiry), but depends on the remaining value of the long call",
+      "example": "Buy 1 MES JUN20 5960 Call for ~120.00 (Hypothetical Ask, further expiry), Sell 1 MES APR18 6010 Call for ~45.00 (Hypothetical Bid, near expiry). Net Debit: 120.00 - 45.00 = 75.00. K1=5960 (long, JUN), K2=6010 (short, APR). At APR expiry with MES=6010: Short call expires worthless (short 6010 call pays off at 0), Long call now worth roughly (6010-5960) + remaining time value = ~50+TV. Break-even depends on long call value at near expiry.",
+      "plotFunction": "plotDiagonalSpread",
+      "plotlyDivId": "plotly-long-call-diagonal",
+      "parameters": {
+        "type": "call",
+        "strike1": 5960,
+        "strike2": 6010,
+        "premium1": 120.0,
+        "premium2": 45.0
+      }
+    },
+    {
+      "id": "long-put-diagonal-spread",
+      "name": "Long Put Diagonal Spread",
+      "outlook": "Moderately Bearish (Time Decay & Directional)",
+      "description": "Combines different strikes AND different expiration dates: buys a longer-term, higher-strike put (often near-the-money or slightly ITM) and sells a shorter-term, lower-strike put (often OTM). Benefits from faster time decay of the near-term short put while maintaining bearish directional exposure via the longer-dated long put. The ideal scenario is for the underlying to drop moderately toward or near the short put's strike by its expiration.",
+      "construction": [
+        "Buy 1 Put (Higher Strike K2, Further Expiry)",
+        "Sell 1 Put (Lower Strike K1, Near Expiry)"
+      ],
+      "notes": "K1 < K2. The long further-dated put retains more time value. Strategy can be rolled by selling new near-term puts as the short leg expires. A common income-generating strategy when moderately bearish.",
+      "greeksImpact": {
+        "delta": "Negative. The long further-dated put has negative delta at K2; the short near-dated put has positive delta at K1. Net delta is negative, providing bearish exposure.",
+        "gamma": "Generally low to slightly positive near the short strike. The near-term short put's higher gamma partially offsets the long put's lower gamma.",
+        "theta": "Positive. The near-term short put decays faster, generating net positive theta income for the position.",
+        "vega": "Positive. The longer-dated long put has more vega than the shorter-dated short put, benefiting from increases in implied volatility."
+      },
+      "maxProfit": "Limited at near-term expiry: K2 - K1 - Net Debit (if underlying is at or below K1 at near expiry). More potential if rolled.",
+      "maxLoss": "Net Debit Paid (if both options expire worthless, occurring if underlying rises far above K2)",
+      "breakeven": "Approximately K2 - Net Debit (at near expiry), but depends on remaining long put value",
+      "example": "Buy 1 MES JUN20 6000 Put for ~115.00 (Hypothetical Ask, further expiry), Sell 1 MES APR18 5940 Put for ~40.00 (Hypothetical Bid, near expiry). Net Debit: 115.00 - 40.00 = 75.00. K2=6000 (long put, JUN), K1=5940 (short put, APR). At APR expiry with MES=5940: Short put expires worthless, Long JUN 6000 put worth roughly (6000-5940) + remaining TV = ~60+TV. Break-even depends on long put value at near expiry.",
+      "plotFunction": "plotDiagonalSpread",
+      "plotlyDivId": "plotly-long-put-diagonal",
+      "parameters": {
+        "type": "put",
+        "strike1": 5940,
+        "strike2": 6000,
+        "premium1": 40.0,
+        "premium2": 115.0
+      }
     }
   ],
   "threeLeg": [
-     {
+    {
       "id": "long-call-butterfly",
       "name": "Long Call Butterfly",
       "outlook": "Neutral (Low Volatility)",
@@ -409,7 +651,7 @@
         "Buy 1 Call (Higher Strike K3)"
       ],
       "notes": "Strikes K1, K2, K3 are typically equidistant. The spread is often centered near the current underlying price.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (neutral). Moves towards +1 below K1, -1 between K1 and K3, and back to zero above K3.",
         "gamma": "Initially negative, becomes strongly positive as price approaches K2, then strongly negative above K2. High positive gamma at K2 leads to rapid delta changes if the price is near the peak profit zone.",
         "theta": "Positive (benefits from time decay) when the underlying price is near the middle strike (K2). Becomes negative when the price is outside the profitable range, especially towards the outer strikes.",
@@ -421,32 +663,48 @@
       "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 2 MES JUN13 5980 Calls for 78.00 (Bid) each, Buy 1 MES JUN13 6000 Call for 73.25 (Ask). Net Debit: (93.75 + 73.25) - (2 * 78.00) = 167.00 - 156.00 = 11.00. K1=5960, K2=5980, K3=6000. Max Profit: (5980 - 5960) - 11.00 = 20 - 11.00 = 9.00. Max Loss: 11.00. Break-even: 5960 + 11.00 = 5971.00, 6000 - 11.00 = 5989.00.",
       "plotFunction": "plotButterfly",
       "plotlyDivId": "plotly-call-butterfly",
-      "parameters": { "type": "call", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 93.75, "premium2": 78.00, "premium3": 73.25 }
+      "parameters": {
+        "type": "call",
+        "strike1": 5960,
+        "strike2": 5980,
+        "strike3": 6000,
+        "premium1": 93.75,
+        "premium2": 78.0,
+        "premium3": 73.25
+      }
     },
     {
-        "id": "put-butterfly",
-        "name": "Long Put Butterfly",
-        "outlook": "Neutral (Low Volatility)",
-        "description": "Similar to the Call Butterfly but constructed with puts (K1 < K2 < K3) where K2 is typically equidistant from K1 and K3. Expects the price to pin the middle strike (K2) at expiration. Defined risk, typically entered for a net debit. Profits from low volatility within a specific range around K2. Maximum profit is achieved if the underlying expires exactly at the middle strike (K2).",
-        "construction": [
-          "Buy 1 Put (Lower Strike K1)",
-          "Sell 2 Puts (Middle Strike K2)",
-          "Buy 1 Put (Higher Strike K3)"
-        ],
-        "notes": "Strikes K1, K2, K3 are typically equidistant. The spread is often centered near the current underlying price.",
-         "greeksImpact": {
-          "delta": "Near zero at initiation (neutral). Moves towards +1 above K3, -1 between K1 and K3, and back to zero below K1. (Opposite of Long Butterfly Delta)",
-          "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive below K2. High positive gamma at K2 means rapid delta changes if the price is near the peak profit zone.",
-          "theta": "Positive (benefits from time decay) when the underlying price is near the middle strike (K2). Becomes negative when the price is outside the profitable range, especially towards the outer strikes.",
-          "vega": "Positive. Benefits from increased implied volatility. This strategy is best suited for environments where volatility is expected to increase."
-        },
-        "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Debit Paid",
-        "maxLoss": "Net Debit Paid",
-        "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
-        "example": "Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Sell 2 MES JUN13 5980 Puts for 114.25 (Bid) each, Buy 1 MES JUN13 6000 Put for 129.75 (Ask). Net Debit: (105.00 + 129.75) - (2 * 114.25) = 234.75 - 228.50 = 6.25. K1=5960, K2=5980, K3=6000. Max Profit: (5980 - 5960) - 6.25 = 20 - 6.25 = 13.75. Max Loss: 6.25. Break-even: 5960 + 6.25 = 5966.25, 6000 - 6.25 = 5993.75.",
-        "plotFunction": "plotButterfly",
-        "plotlyDivId": "plotly-put-butterfly",
-        "parameters": { "type": "put", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 105.00, "premium2": 114.25, "premium3": 129.75 }
+      "id": "put-butterfly",
+      "name": "Long Put Butterfly",
+      "outlook": "Neutral (Low Volatility)",
+      "description": "Similar to the Call Butterfly but constructed with puts (K1 < K2 < K3) where K2 is typically equidistant from K1 and K3. Expects the price to pin the middle strike (K2) at expiration. Defined risk, typically entered for a net debit. Profits from low volatility within a specific range around K2. Maximum profit is achieved if the underlying expires exactly at the middle strike (K2).",
+      "construction": [
+        "Buy 1 Put (Lower Strike K1)",
+        "Sell 2 Puts (Middle Strike K2)",
+        "Buy 1 Put (Higher Strike K3)"
+      ],
+      "notes": "Strikes K1, K2, K3 are typically equidistant. The spread is often centered near the current underlying price.",
+      "greeksImpact": {
+        "delta": "Near zero at initiation (neutral). Moves towards +1 above K3, -1 between K1 and K3, and back to zero below K1. (Opposite of Long Butterfly Delta)",
+        "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive below K2. High positive gamma at K2 means rapid delta changes if the price is near the peak profit zone.",
+        "theta": "Positive (benefits from time decay) when the underlying price is near the middle strike (K2). Becomes negative when the price is outside the profitable range, especially towards the outer strikes.",
+        "vega": "Positive. Benefits from increased implied volatility. This strategy is best suited for environments where volatility is expected to increase."
+      },
+      "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Debit Paid",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: K1 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+      "example": "Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Sell 2 MES JUN13 5980 Puts for 114.25 (Bid) each, Buy 1 MES JUN13 6000 Put for 129.75 (Ask). Net Debit: (105.00 + 129.75) - (2 * 114.25) = 234.75 - 228.50 = 6.25. K1=5960, K2=5980, K3=6000. Max Profit: (5980 - 5960) - 6.25 = 20 - 6.25 = 13.75. Max Loss: 6.25. Break-even: 5960 + 6.25 = 5966.25, 6000 - 6.25 = 5993.75.",
+      "plotFunction": "plotButterfly",
+      "plotlyDivId": "plotly-put-butterfly",
+      "parameters": {
+        "type": "put",
+        "strike1": 5960,
+        "strike2": 5980,
+        "strike3": 6000,
+        "premium1": 105.0,
+        "premium2": 114.25,
+        "premium3": 129.75
+      }
     },
     {
       "id": "short-call-butterfly",
@@ -459,7 +717,7 @@
         "Sell 1 Call (Higher Strike K3)"
       ],
       "notes": "Strikes K1, K2, K3 are typically equidistant. This position has limited risk and limited profit.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero at initiation (neutral). Moves towards -1 below K1, +1 between K1 and K3, and back to zero above K3. (Opposite of Long Butterfly Delta)",
         "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive above K2. High negative gamma at K2 means rapid delta changes AGAINST the position if price is near K2.",
         "theta": "Negative (loses value with time decay) when the underlying price is near the middle strike (K2). Becomes positive when the price is outside the profitable range.",
@@ -471,32 +729,48 @@
       "example": "Sell 1 MES JUN13 5960 Call for 88.75 (Bid), Buy 2 MES JUN13 5980 Calls for 83.00 (Ask) each, Sell 1 MES JUN13 6000 Call for 68.50 (Bid). Net Debit: (2 * 83.00) - (88.75 + 68.50) = 166.00 - 157.25 = 8.75. K1=5960, K2=5980, K3=6000. Max Loss: (5980 - 5960) - (-8.75) = 20 + 8.75 = 28.75 (occurs at K2=5980). Max Profit: 8.75 (occurs outside K1 and K3). Lower Break-even: 5960 + 28.75 = 5988.75. Upper Break-even: 6000 - 28.75 = 5971.25 (Note: Break-evens are between the strikes when it's a debit).",
       "plotFunction": "plotButterfly",
       "plotlyDivId": "plotly-short-call-butterfly",
-      "parameters": { "type": "call", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 88.75, "premium2": 83.00, "premium3": 68.50 }
+      "parameters": {
+        "type": "call",
+        "strike1": 5960,
+        "strike2": 5980,
+        "strike3": 6000,
+        "premium1": 88.75,
+        "premium2": 83.0,
+        "premium3": 68.5
+      }
     },
     {
-        "id": "short-put-butterfly",
-        "name": "Short Put Butterfly (Credit)",
-        "outlook": "Volatile",
-        "description": "The inverse of a long put butterfly. Sells a put at a lower strike (K1), buys two puts at a middle strike (K2), and sells a put at a higher strike (K3) with the same expiration (K1 < K2 < K3). Profits if the underlying price moves significantly away from the middle strike (K2) in either direction. Suffers a loss if the price pins the middle strike at expiration. Typically entered for a net credit.",
-        "construction": [
-          "Sell 1 Put (Lower Strike K1)",
-          "Buy 2 Puts (Middle Strike K2)",
-          "Sell 1 Put (Higher Strike K3)"
-        ],
-        "notes": "Strikes K1, K2, K3 are typically equidistant. This position has limited risk and limited profit.",
-         "greeksImpact": {
-          "delta": "Near zero at initiation (neutral). Moves towards +1 above K3, -1 between K1 and K3, and back to zero below K1. (Opposite of Long Butterfly Delta)",
-          "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive below K2. High negative gamma at K2 means rapid delta changes AGAINST the position if price is near K2.",
-          "theta": "Negative (loses value with time decay) when the underlying price is near the middle strike (K2). Becomes positive when the price is outside the profitable range.",
-          "vega": "Positive. Benefits from increased implied volatility. This strategy is best suited for environments where volatility is expected to increase."
-        },
-        "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Credit Paid (If credit) OR (K2 - K1) + Net Debit (If debit) - Max Profit is achieved if price is outside K1 or K3.",
-        "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received (if credit) OR Net Debit Paid (if debit). Max Loss occurs if price is exactly at K2.",
-        "breakeven": "Lower: K1 + Max Loss; Upper: K3 - Max Loss (Where Max Loss is calculated as (K2-K1) - Net Credit)",
-        "example": "Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Buy 2 MES JUN13 5980 Puts for 114.25 (Ask) each, Sell 1 MES JUN13 6000 Put for 119.50 (Bid). Net Debit: (2 * 114.25) - (100.00 + 119.50) = 228.50 - 219.50 = 9.00. K1=5960, K2=5980, K3=6000. Max Loss: (5980 - 5960) - (-9.00) = 20 + 9.00 = 29.00 (occurs at K2=5980). Max Profit: 9.00 (occurs outside K1 and K3). Lower Break-even: 5960 + 29.00 = 5989.00. Upper Break-even: 6000 - 29.00 = 5971.00. (Note: Break-evens are between the strikes when it's a debit).",
-        "plotFunction": "plotButterfly",
-        "plotlyDivId": "plotly-short-put-butterfly",
-        "parameters": { "type": "put", "strike1": 5960, "strike2": 5980, "strike3": 6000, "premium1": 100.00, "premium2": 114.25, "premium3": 119.50 }
+      "id": "short-put-butterfly",
+      "name": "Short Put Butterfly (Credit)",
+      "outlook": "Volatile",
+      "description": "The inverse of a long put butterfly. Sells a put at a lower strike (K1), buys two puts at a middle strike (K2), and sells a put at a higher strike (K3) with the same expiration (K1 < K2 < K3). Profits if the underlying price moves significantly away from the middle strike (K2) in either direction. Suffers a loss if the price pins the middle strike at expiration. Typically entered for a net credit.",
+      "construction": [
+        "Sell 1 Put (Lower Strike K1)",
+        "Buy 2 Puts (Middle Strike K2)",
+        "Sell 1 Put (Higher Strike K3)"
+      ],
+      "notes": "Strikes K1, K2, K3 are typically equidistant. This position has limited risk and limited profit.",
+      "greeksImpact": {
+        "delta": "Near zero at initiation (neutral). Moves towards +1 above K3, -1 between K1 and K3, and back to zero below K1. (Opposite of Long Butterfly Delta)",
+        "gamma": "Initially positive, becomes strongly negative as price approaches K2, then strongly positive below K2. High negative gamma at K2 means rapid delta changes AGAINST the position if price is near K2.",
+        "theta": "Negative (loses value with time decay) when the underlying price is near the middle strike (K2). Becomes positive when the price is outside the profitable range.",
+        "vega": "Positive. Benefits from increased implied volatility. This strategy is best suited for environments where volatility is expected to increase."
+      },
+      "maxProfit": "Middle Strike (K2) - Lower Strike (K1) - Net Credit Paid (If credit) OR (K2 - K1) + Net Debit (If debit) - Max Profit is achieved if price is outside K1 or K3.",
+      "maxLoss": "Difference between strikes (K2 - K1) - Net Credit Received (if credit) OR Net Debit Paid (if debit). Max Loss occurs if price is exactly at K2.",
+      "breakeven": "Lower: K1 + Max Loss; Upper: K3 - Max Loss (Where Max Loss is calculated as (K2-K1) - Net Credit)",
+      "example": "Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Buy 2 MES JUN13 5980 Puts for 114.25 (Ask) each, Sell 1 MES JUN13 6000 Put for 119.50 (Bid). Net Debit: (2 * 114.25) - (100.00 + 119.50) = 228.50 - 219.50 = 9.00. K1=5960, K2=5980, K3=6000. Max Loss: (5980 - 5960) - (-9.00) = 20 + 9.00 = 29.00 (occurs at K2=5980). Max Profit: 9.00 (occurs outside K1 and K3). Lower Break-even: 5960 + 29.00 = 5989.00. Upper Break-even: 6000 - 29.00 = 5971.00. (Note: Break-evens are between the strikes when it's a debit).",
+      "plotFunction": "plotButterfly",
+      "plotlyDivId": "plotly-short-put-butterfly",
+      "parameters": {
+        "type": "put",
+        "strike1": 5960,
+        "strike2": 5980,
+        "strike3": 6000,
+        "premium1": 100.0,
+        "premium2": 114.25,
+        "premium3": 119.5
+      }
     },
     {
       "id": "call-ratio-spread",
@@ -508,7 +782,7 @@
         "Sell 2 Calls (Higher Strike K2)"
       ],
       "notes": "K1 < K2. Common ratio is 1:2, but can vary. Risk is heavily skewed to the upside.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Positive below K2, turns negative above K2 as the two short calls overwhelm the one long call.",
         "gamma": "Initially positive, turns strongly negative above K2. High negative gamma above K2 leads to accelerating losses.",
         "theta": "Positive (benefits from time decay) when price is below K2, especially if established for a credit. Can become negative if price moves far above K2.",
@@ -520,7 +794,16 @@
       "example": "Buy 1 MES JUN13 5970 Call for 88.25 (Ask), Sell 2 MES JUN13 5990 Calls for 73.00 (Bid) each. Net Credit: (2 * 73.00) - 88.25 = 146.00 - 88.25 = 57.75. K1=5970, K2=5990. Max Profit (at 5990): (5990 - 5970) + 57.75 = 20 + 57.75 = 77.75. Max Loss: Unlimited above 6067.75. Lower Break-even: 5970 - 57.75 = 5912.25. Upper Break-even: (2 * 5990 - 5970) + 57.75 = (11980 - 5970) + 57.75 = 6010 + 57.75 = 6067.75.",
       "plotFunction": "plotRatioSpread",
       "plotlyDivId": "plotly-call-ratio-spread",
-      "parameters": { "type": "call", "position": "ratio", "ratio1": 1, "ratio2": -2, "strike1": 5970, "strike2": 5990, "premium1": 88.25, "premium2": 73.00 }
+      "parameters": {
+        "type": "call",
+        "position": "ratio",
+        "ratio1": 1,
+        "ratio2": -2,
+        "strike1": 5970,
+        "strike2": 5990,
+        "premium1": 88.25,
+        "premium2": 73.0
+      }
     },
     {
       "id": "put-ratio-spread",
@@ -544,56 +827,83 @@
       "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Profit (at 5950): (5970 - 5950) - 105.50 = 20 - 105.50 = -85.50 (This example results in a max loss at the peak profit point due to the debit paid - highlights the impact of bid/ask). Max Loss: Unlimited below 5824.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = (11900 - 5970) - 105.50 = 5930 - 105.50 = 5824.50.",
       "plotFunction": "plotRatioSpread",
       "plotlyDivId": "plotly-put-ratio-spread",
-      "parameters": { "type": "put", "position": "ratio", "ratio1": -1, "ratio2": 2, "strike1": 5950, "strike2": 5970, "premium1": 104.50, "premium2": 105.00 }
+      "parameters": {
+        "type": "put",
+        "position": "ratio",
+        "ratio1": -1,
+        "ratio2": 2,
+        "strike1": 5950,
+        "strike2": 5970,
+        "premium1": 104.5,
+        "premium2": 105.0
+      }
     },
     {
-        "id": "call-backspread",
-        "name": "Call Backspread (Ratio)",
-        "outlook": "Bullish / Volatile",
-        "description": "Selling a smaller number of calls at a lower strike (K1) and buying a larger number of calls at a higher strike (K2) with the same expiration (K1 < K2). Profits from a strong move to the upside beyond K2. Offers potentially unlimited profit if the price moves sharply higher. Has limited downside risk. Can be entered for a net debit or credit.",
-        "construction": [
-          "Sell 1 Call (Lower Strike K1)",
-          "Buy 2 Calls (Higher Strike K2)"
-        ],
-        "notes": "K1 < K2. Common ratio is 1:2, but can vary. This is the inverse of a Call Ratio Spread.",
-         "greeksImpact": {
-          "delta": "Positive. Becomes more positive as price moves up, especially above K2.",
-          "gamma": "Positive, especially above K2. Accelerates delta as price moves up.",
-          "theta": "Negative (cost of holding the long options).",
-          "vega": "Positive (benefits from increased volatility). The two long calls' positive vega often outweighs the one short call's negative vega."
-        },
-        "maxProfit": "Unlimited above Upper Break-even",
-        "maxLoss": "Limited (Occurs between K1 and K2, specifically at the Upper Break-even point). Calculated as (K2 - K1) - Net Credit Received (if credit) or Net Debit Paid (if debit).",
-        "breakeven": "Lower: K1 + Net Debit (if debit) or K1 - Net Credit (if credit). Upper: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K2 - K1) + Net Credit (or - Net Debit).",
-        "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 2 MES JUN13 5990 Calls for 78.00 (Ask) each. Net Debit: (2 * 78.00) - 83.25 = 156.00 - 83.25 = 72.75. K1=5970, K2=5990. Max Loss (at Upper Break-even): 72.75. Lower Break-even: 5970 + 72.75 = 6042.75. Upper Break-even: (2 * 5990 - 5970) - 72.75 = 6010 - 72.75 = 5937.25. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
-        "plotFunction": "plotRatioSpread",
-        "plotlyDivId": "plotly-call-backspread",
-        "parameters": { "type": "call", "position": "ratio", "ratio1": -1, "ratio2": 2, "strike1": 5970, "strike2": 5990, "premium1": 83.25, "premium2": 78.00 }
+      "id": "call-backspread",
+      "name": "Call Backspread (Ratio)",
+      "outlook": "Bullish / Volatile",
+      "description": "Selling a smaller number of calls at a lower strike (K1) and buying a larger number of calls at a higher strike (K2) with the same expiration (K1 < K2). Profits from a strong move to the upside beyond K2. Offers potentially unlimited profit if the price moves sharply higher. Has limited downside risk. Can be entered for a net debit or credit.",
+      "construction": [
+        "Sell 1 Call (Lower Strike K1)",
+        "Buy 2 Calls (Higher Strike K2)"
+      ],
+      "notes": "K1 < K2. Common ratio is 1:2, but can vary. This is the inverse of a Call Ratio Spread.",
+      "greeksImpact": {
+        "delta": "Positive. Becomes more positive as price moves up, especially above K2.",
+        "gamma": "Positive, especially above K2. Accelerates delta as price moves up.",
+        "theta": "Negative (cost of holding the long options).",
+        "vega": "Positive (benefits from increased volatility). The two long calls' positive vega often outweighs the one short call's negative vega."
       },
-       {
-        "id": "put-backspread",
-        "name": "Put Backspread (Ratio)",
-        "outlook": "Bearish / Volatile",
-        "description": "Selling a smaller number of puts at a higher strike (K2) and buying a larger number of puts at a lower strike (K1) with the same expiration (K1 < K2). Profits from a strong move to the downside below K1. Offers potentially unlimited profit if the price moves sharply lower. Has limited upside risk. Can be entered for a net debit or credit.",
-        "construction": [
-          "Sell 1 Put (Higher Strike K2)",
-          "Buy 2 Puts (Lower Strike K1)"
-        ],
-        "notes": "K1 < K2. Common ratio is 1:2, but can vary. This is the inverse of a Put Ratio Spread.",
-         "greeksImpact": {
-          "delta": "Negative. Becomes more negative as price moves down, especially below K1.",
-          "gamma": "Positive, especially below K1. Accelerates delta as price moves down.",
-          "theta": "Negative (cost of holding the long options).",
-          "vega": "Positive (benefits from increased volatility). The two long puts' positive vega often outweighs the one short put's negative vega."
-        },
-        "maxProfit": "Unlimited below Lower Break-even",
-        "maxLoss": "Limited (Occurs between K1 and K2, specifically at the Lower Break-even point). Calculated as (K2 - K1) - Net Credit Received (if credit) or Net Debit Paid (if debit).",
-        "breakeven": "Lower: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K1 - K2) + Net Credit (or - Net Debit). Upper: K2 - Net Debit (if debit) or K2 + Net Credit (if credit).",
-        "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Loss (at Lower Break-even): 105.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = 5930 - 105.50 = 5824.50. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
-        "plotFunction": "plotRatioSpread",
-        "plotlyDivId": "plotly-put-backspread",
-        "parameters": { "type": "put", "position": "ratio", "ratio1": -1, "ratio2": 2, "strike1": 5950, "strike2": 5970, "premium1": 104.50, "premium2": 105.00 }
+      "maxProfit": "Unlimited above Upper Break-even",
+      "maxLoss": "Limited (Occurs between K1 and K2, specifically at the Upper Break-even point). Calculated as (K2 - K1) - Net Credit Received (if credit) or Net Debit Paid (if debit).",
+      "breakeven": "Lower: K1 + Net Debit (if debit) or K1 - Net Credit (if credit). Upper: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K2 - K1) + Net Credit (or - Net Debit).",
+      "example": "Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 2 MES JUN13 5990 Calls for 78.00 (Ask) each. Net Debit: (2 * 78.00) - 83.25 = 156.00 - 83.25 = 72.75. K1=5970, K2=5990. Max Loss (at Upper Break-even): 72.75. Lower Break-even: 5970 + 72.75 = 6042.75. Upper Break-even: (2 * 5990 - 5970) - 72.75 = 6010 - 72.75 = 5937.25. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
+      "plotFunction": "plotRatioSpread",
+      "plotlyDivId": "plotly-call-backspread",
+      "parameters": {
+        "type": "call",
+        "position": "ratio",
+        "ratio1": -1,
+        "ratio2": 2,
+        "strike1": 5970,
+        "strike2": 5990,
+        "premium1": 83.25,
+        "premium2": 78.0
       }
+    },
+    {
+      "id": "put-backspread",
+      "name": "Put Backspread (Ratio)",
+      "outlook": "Bearish / Volatile",
+      "description": "Selling a smaller number of puts at a higher strike (K2) and buying a larger number of puts at a lower strike (K1) with the same expiration (K1 < K2). Profits from a strong move to the downside below K1. Offers potentially unlimited profit if the price moves sharply lower. Has limited upside risk. Can be entered for a net debit or credit.",
+      "construction": [
+        "Sell 1 Put (Higher Strike K2)",
+        "Buy 2 Puts (Lower Strike K1)"
+      ],
+      "notes": "K1 < K2. Common ratio is 1:2, but can vary. This is the inverse of a Put Ratio Spread.",
+      "greeksImpact": {
+        "delta": "Negative. Becomes more negative as price moves down, especially below K1.",
+        "gamma": "Positive, especially below K1. Accelerates delta as price moves down.",
+        "theta": "Negative (cost of holding the long options).",
+        "vega": "Positive (benefits from increased volatility). The two long puts' positive vega often outweighs the one short put's negative vega."
+      },
+      "maxProfit": "Unlimited below Lower Break-even",
+      "maxLoss": "Limited (Occurs between K1 and K2, specifically at the Lower Break-even point). Calculated as (K2 - K1) - Net Credit Received (if credit) or Net Debit Paid (if debit).",
+      "breakeven": "Lower: Calculated based on strikes, ratio, and net cost. Formula for 1:2 ratio: (2*K1 - K2) + Net Credit (or - Net Debit). Upper: K2 - Net Debit (if debit) or K2 + Net Credit (if credit).",
+      "example": "Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 2 MES JUN13 5950 Puts for 105.00 (Ask) each. Net Debit: (2 * 105.00) - 104.50 = 210.00 - 104.50 = 105.50. K1=5950, K2=5970. Max Loss (at Lower Break-even): 105.50. Upper Break-even: 5970 - 105.50 = 5864.50. Lower Break-even: (2 * 5950 - 5970) - 105.50 = 5930 - 105.50 = 5824.50. (Break-evens can sometimes be counter-intuitive with debit backspreads - the break-even points define the boundaries of the max loss zone, not necessarily the profit zone).",
+      "plotFunction": "plotRatioSpread",
+      "plotlyDivId": "plotly-put-backspread",
+      "parameters": {
+        "type": "put",
+        "position": "ratio",
+        "ratio1": -1,
+        "ratio2": 2,
+        "strike1": 5950,
+        "strike2": 5970,
+        "premium1": 104.5,
+        "premium2": 105.0
+      }
+    }
   ],
   "fourLeg": [
     {
@@ -608,7 +918,7 @@
         "Buy 1 OTM Call (Upper Wing - K4)"
       ],
       "notes": "K1 < K2 < Current Price < K3 < K4. Wings (K2-K1 and K4-K3) are often equal width for symmetry. Defined risk and profit.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero (neutral). Remains relatively flat within the profitable range.",
         "gamma": "Negative (most negative near the short strikes K2 and K3). Causes accelerated losses if the price moves outside the profitable range.",
         "theta": "Positive (benefits significantly from time decay). Decay is fastest when the price is between the short strikes.",
@@ -620,9 +930,18 @@
       "example": "Buy 1 MES JUN13 5940 Put for 96.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Sell 1 MES JUN13 5990 Call for 73.00 (Bid), Buy 1 MES JUN13 6010 Call for 68.50 (Ask). Net Credit: (100.00 + 73.00) - (96.50 + 68.50) = 173.00 - 165.00 = 8.00. K1=5940, K2=5960, K3=5990, K4=6010. Wing Width = 5960-5940 = 20, 6010-5990 = 20. Max Profit: 8.00. Max Loss: 20 - 8.00 = 12.00. Lower Break-even: 5960 - 8.00 = 5952.00. Upper Break-even: 5990 + 8.00 = 5998.00.",
       "plotFunction": "plotIronCondor",
       "plotlyDivId": "plotly-iron-condor",
-      "parameters": { "strikeP1": 5940, "strikeP2": 5960, "strikeC3": 5990, "strikeC4": 6010, "premiumP1": 96.50, "premiumP2": 100.00, "premiumC3": 73.00, "premiumC4": 68.50 }
+      "parameters": {
+        "strikeP1": 5940,
+        "strikeP2": 5960,
+        "strikeC3": 5990,
+        "strikeC4": 6010,
+        "premiumP1": 96.5,
+        "premiumP2": 100.0,
+        "premiumC3": 73.0,
+        "premiumC4": 68.5
+      }
     },
-     {
+    {
       "id": "iron-butterfly",
       "name": "Iron Butterfly (Credit)",
       "outlook": "Neutral (Very Low Volatility, Price Pinning)",
@@ -633,8 +952,8 @@
         "Sell 1 ATM Call (Middle Strike - K2)",
         "Buy 1 OTM Call (Upper Wing - K3)"
       ],
-       "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant. K2 is typically ATM or very near. Defined risk and profit.",
-        "greeksImpact": {
+      "notes": "K1 < K2 < K3. Wings (K2-K1 and K3-K2) are often equidistant. K2 is typically ATM or very near. Defined risk and profit.",
+      "greeksImpact": {
         "delta": "Near zero (neutral). Remains relatively flat near K2, but changes rapidly as price moves towards K1 or K3.",
         "gamma": "Strongly negative (most negative at K2). Gamma becomes less negative as price moves towards K wings (K1, K3). High negative gamma at K2 leads to rapid delta changes AGAINST the position if price is near the peak profit zone.",
         "theta": "Strongly positive (benefits significantly from time decay). Decay is fastest when the price is exactly at the middle strike (K2).",
@@ -646,35 +965,52 @@
       "example": "Buy 1 MES JUN13 5950 Put for 100.75 (Ask), Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 1 MES JUN13 5990 Call for 78.00 (Ask). Net Credit: (104.50 + 83.25) - (100.75 + 78.00) = 187.75 - 178.75 = 9.00. K1=5950, K2=5970, K3=5990. Wing Width = 5970-5950 = 20, 5990-5970 = 20. Max Profit: 9.00. Max Loss: 20 - 9.00 = 11.00. Lower Break-even: 5970 - 9.00 = 5961.00. Upper Break-even: 5970 + 9.00 = 5979.00.",
       "plotFunction": "plotIronButterfly",
       "plotlyDivId": "plotly-iron-butterfly",
-      "parameters": { "strikeP1": 5950, "strikePC2": 5970, "strikeC3": 5990, "premiumP1": 100.75, "premiumP2": 104.50, "premiumC2": 83.25, "premiumC3": 78.00 }
+      "parameters": {
+        "strikeP1": 5950,
+        "strikePC2": 5970,
+        "strikeC3": 5990,
+        "premiumP1": 100.75,
+        "premiumP2": 104.5,
+        "premiumC2": 83.25,
+        "premiumC3": 78.0
+      }
     },
     {
-        "id": "reverse-iron-condor",
-        "name": "Reverse Iron Condor (Long Iron Condor)",
-        "outlook": "Volatile (Expecting Price Breakout)",
-        "description": "A defined-risk strategy that profits from a significant price move in either direction (increased volatility). It's the opposite of a standard Iron Condor, constructed by buying the OTM Put Spread (Buy K2, Sell K1) and buying the OTM Call Spread (Buy K3, Sell K4) with the same expiration (K1 < K2 < Current Price < K3 < K4). This results in a net debit. Profits occur when the price moves significantly outside the range of the short strikes (K2 & K3).",
-        "construction": [
-          "Sell 1 OTM Put (Lower Wing - K1)",
-          "Buy 1 OTM Put (Lower Short Strike - K2)",
-          "Buy 1 OTM Call (Upper Short Strike - K3)",
-          "Sell 1 OTM Call (Upper Wing - K4)"
-        ],
-        "notes": "K1 < K2 < Current Price < K3 < K4. Opposite legs compared to standard Iron Condor. Defined risk and profit.",
-         "greeksImpact": {
-          "delta": "Near zero (neutral). Remains relatively flat within the losing range.",
-          "gamma": "Positive (most positive near the short strikes K2 and K3). Causes accelerated profits if the price moves outside the unprofitable range.",
-          "theta": "Negative (loses value with time decay). Decay is fastest when the price is between the short strikes.",
-          "vega": "Positive (benefits significantly from increased volatility). This strategy is best suited for periods of expected high or increasing volatility."
-        },
-        "maxProfit": "Width of Widest Spread - Net Debit Paid (This is the theoretical maximum payoff at the wings, not necessarily the absolute max profit which is unlimited or substantial outside the wings).",
-        "maxLoss": "Net Debit Paid",
-        "breakeven": "Lower: K2 + Net Debit Paid; Upper: K3 - Net Debit Paid",
-        "example": "Sell 1 MES JUN13 5940 Put for 91.50 (Bid), Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5990 Call for 78.00 (Ask), Sell 1 MES JUN13 6010 Call for 63.75 (Bid). Net Debit: (105.00 + 78.00) - (91.50 + 63.75) = 183.00 - 155.25 = 27.75. K1=5940, K2=5960, K3=5990, K4=6010. Wing Width = 20. Max Loss: 27.75. Max Profit: 20 - 27.75 = -7.75 (at wings). Break-even: Lower: 5960 + 27.75 = 5987.75. Upper: 5990 - 27.75 = 5962.25. (Note break-evens are between the short strikes, profit is outside).",
-        "plotFunction": "plotReverseIronCondor",
-        "plotlyDivId": "plotly-reverse-iron-condor",
-        "parameters": { "strikeP1": 5940, "strikeP2": 5960, "strikeC3": 5990, "strikeC4": 6010, "premiumP1": 91.50, "premiumP2": 105.00, "premiumC3": 78.00, "premiumC4": 63.75 }
+      "id": "reverse-iron-condor",
+      "name": "Reverse Iron Condor (Long Iron Condor)",
+      "outlook": "Volatile (Expecting Price Breakout)",
+      "description": "A defined-risk strategy that profits from a significant price move in either direction (increased volatility). It's the opposite of a standard Iron Condor, constructed by buying the OTM Put Spread (Buy K2, Sell K1) and buying the OTM Call Spread (Buy K3, Sell K4) with the same expiration (K1 < K2 < Current Price < K3 < K4). This results in a net debit. Profits occur when the price moves significantly outside the range of the short strikes (K2 & K3).",
+      "construction": [
+        "Sell 1 OTM Put (Lower Wing - K1)",
+        "Buy 1 OTM Put (Lower Short Strike - K2)",
+        "Buy 1 OTM Call (Upper Short Strike - K3)",
+        "Sell 1 OTM Call (Upper Wing - K4)"
+      ],
+      "notes": "K1 < K2 < Current Price < K3 < K4. Opposite legs compared to standard Iron Condor. Defined risk and profit.",
+      "greeksImpact": {
+        "delta": "Near zero (neutral). Remains relatively flat within the losing range.",
+        "gamma": "Positive (most positive near the short strikes K2 and K3). Causes accelerated profits if the price moves outside the unprofitable range.",
+        "theta": "Negative (loses value with time decay). Decay is fastest when the price is between the short strikes.",
+        "vega": "Positive (benefits significantly from increased volatility). This strategy is best suited for periods of expected high or increasing volatility."
       },
-     {
+      "maxProfit": "Width of Widest Spread - Net Debit Paid (This is the theoretical maximum payoff at the wings, not necessarily the absolute max profit which is unlimited or substantial outside the wings).",
+      "maxLoss": "Net Debit Paid",
+      "breakeven": "Lower: K2 + Net Debit Paid; Upper: K3 - Net Debit Paid",
+      "example": "Sell 1 MES JUN13 5940 Put for 91.50 (Bid), Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5990 Call for 78.00 (Ask), Sell 1 MES JUN13 6010 Call for 63.75 (Bid). Net Debit: (105.00 + 78.00) - (91.50 + 63.75) = 183.00 - 155.25 = 27.75. K1=5940, K2=5960, K3=5990, K4=6010. Wing Width = 20. Max Loss: 27.75. Max Profit: 20 - 27.75 = -7.75 (at wings). Break-even: Lower: 5960 + 27.75 = 5987.75. Upper: 5990 - 27.75 = 5962.25. (Note break-evens are between the short strikes, profit is outside).",
+      "plotFunction": "plotReverseIronCondor",
+      "plotlyDivId": "plotly-reverse-iron-condor",
+      "parameters": {
+        "strikeP1": 5940,
+        "strikeP2": 5960,
+        "strikeC3": 5990,
+        "strikeC4": 6010,
+        "premiumP1": 91.5,
+        "premiumP2": 105.0,
+        "premiumC3": 78.0,
+        "premiumC4": 63.75
+      }
+    },
+    {
       "id": "box-spread",
       "name": "Box Spread (Long)",
       "outlook": "Arbitrage / Synthetic Loan",
@@ -685,8 +1021,8 @@
         "Buy 1 Put (Higher Strike K2)",
         "Sell 1 Put (Lower Strike K1)"
       ],
-       "notes": "All options must have the same expiration. Payoff at expiration is fixed at K2 - K1.",
-        "greeksImpact": {
+      "notes": "All options must have the same expiration. Payoff at expiration is fixed at K2 - K1.",
+      "greeksImpact": {
         "delta": "Zero (neutral). The opposing delta of the long call/short call spread cancels the opposing delta of the long put/short put spread.",
         "gamma": "Zero.",
         "theta": "Zero.",
@@ -698,7 +1034,14 @@
       "example": "Buy 1 MES JUN13 5960 Call for 93.75 (Ask), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Buy 1 MES JUN13 5970 Put for 109.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid). Net Debit: (93.75 + 109.50) - (83.25 + 100.00) = 203.25 - 183.25 = 20.00. K1=5960, K2=5970. Value at Expiration = 5970 - 5960 = 10. Profit = 10 - 20.00 = -10.00. (This example shows a loss due to the impact of bid-ask spread making the net debit higher than the intrinsic value difference).",
       "plotFunction": "plotBoxSpread",
       "plotlyDivId": "plotly-box-spread",
-      "parameters": { "strike1": 5960, "strike2": 5970, "premC1": 93.75, "premC2": 83.25, "premP1": 100.00, "premP2": 109.50 }
+      "parameters": {
+        "strike1": 5960,
+        "strike2": 5970,
+        "premC1": 93.75,
+        "premC2": 83.25,
+        "premP1": 100.0,
+        "premP2": 109.5
+      }
     },
     {
       "id": "short-call-condor",
@@ -712,7 +1055,7 @@
         "Buy 1 Call (Highest Strike K4)"
       ],
       "notes": "K1 < K2 < K3 < K4, often equidistant strikes. K2 and K3 are typically near current price or OTM. Defined risk and profit.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero (neutral). Remains relatively flat within the profitable range.",
         "gamma": "Negative (most negative between K2 and K3). Causes accelerated losses if the price moves outside the profitable range (beyond K2 or K3).",
         "theta": "Positive (benefits significantly from time decay). Decay is fastest when the price is between the short strikes (K2 and K3).",
@@ -724,7 +1067,18 @@
       "example": "Buy 1 MES JUN13 5950 Call for 99.25 (Ask), Sell 1 MES JUN13 5970 Call for 83.25 (Bid), Sell 1 MES JUN13 5980 Call for 78.00 (Bid), Buy 1 MES JUN13 6000 Call for 73.25 (Ask). Net Debit: (99.25 + 73.25) - (83.25 + 78.00) = 172.50 - 161.25 = 11.25. K1=5950, K2=5970, K3=5980, K4=6000. Wing Width = 5970-5950=20, 6000-5980=20. Max Profit: 11.25 (This example resulted in a Debit, so max profit is the negative debit -11.25, achieved outside the wings). Max Loss (occurs between K2 and K3): Width - Net Credit = 20 - (-11.25) = 31.25. Lower Break-even: 5970 - (-11.25) = 5981.25. Upper Break-even: 5980 + (-11.25) = 5968.75. (Note break-evens are outside K2 & K3 when it's a debit condor, and max loss is within).",
       "plotFunction": "plotCondor",
       "plotlyDivId": "plotly-short-call-condor",
-      "parameters": { "type": "call", "position": "short", "strike1": 5950, "strike2": 5970, "strike3": 5980, "strike4": 6000, "premium1": 99.25, "premium2": 83.25, "premium3": 78.00, "premium4": 73.25 }
+      "parameters": {
+        "type": "call",
+        "position": "short",
+        "strike1": 5950,
+        "strike2": 5970,
+        "strike3": 5980,
+        "strike4": 6000,
+        "premium1": 99.25,
+        "premium2": 83.25,
+        "premium3": 78.0,
+        "premium4": 73.25
+      }
     },
     {
       "id": "long-call-condor",
@@ -738,7 +1092,7 @@
         "Sell 1 Call (Highest Strike K4)"
       ],
       "notes": "K1 < K2 < K3 < K4, often equidistant strikes. K2 and K3 are typically near current price or OTM. Risk is limited to the debit paid.",
-       "greeksImpact": {
+      "greeksImpact": {
         "delta": "Near zero (neutral). Remains relatively flat within the losing range.",
         "gamma": "Positive (most positive between K2 and K3). Causes accelerated profits if the price moves outside the unprofitable range.",
         "theta": "Negative (loses value with time decay). Decay is fastest when the price is between the inner strikes (K2 and K3).",
@@ -750,7 +1104,18 @@
       "example": "Sell 1 MES JUN13 5950 Call for 95.75 (Bid), Buy 1 MES JUN13 5970 Call for 88.25 (Ask), Buy 1 MES JUN13 5980 Call for 83.00 (Ask), Sell 1 MES JUN13 6000 Call for 73.25 (Bid). Net Debit: (88.25 + 83.00) - (95.75 + 73.25) = 171.25 - 169.00 = 2.25. K1=5950, K2=5970, K3=5980, K4=6000. Max Loss: 2.25. Max Profit (at wings): 20 - 2.25 = 17.75. Break-even: 5950 + 2.25 = 5952.25, 6000 - 2.25 = 5997.75.",
       "plotFunction": "plotCondor",
       "plotlyDivId": "plotly-long-call-condor",
-      "parameters": { "type": "call", "position": "long", "strike1": 5950, "strike2": 5970, "strike3": 5980, "strike4": 6000, "premium1": 95.75, "premium2": 88.25, "premium3": 83.00, "premium4": 73.25 }
+      "parameters": {
+        "type": "call",
+        "position": "long",
+        "strike1": 5950,
+        "strike2": 5970,
+        "strike3": 5980,
+        "strike4": 6000,
+        "premium1": 95.75,
+        "premium2": 88.25,
+        "premium3": 83.0,
+        "premium4": 73.25
+      }
     },
     {
       "id": "short-put-condor",
@@ -776,9 +1141,20 @@
       "example": "Buy 1 MES JUN13 5940 Put for 96.50 (Ask), Sell 1 MES JUN13 5960 Put for 100.00 (Bid), Sell 1 MES JUN13 5970 Put for 104.50 (Bid), Buy 1 MES JUN13 5990 Put for 119.25 (Ask). Net Debit: (96.50 + 119.25) - (100.00 + 104.50) = 215.75 - 204.50 = 11.25. K1=5940, K2=5960, K3=5970, K4=5990. Wing Width = 5960-5940=20, 5990-5970=20. Max Profit: 11.25 (This example resulted in a Debit, so max profit is the negative debit -11.25, achieved outside the wings). Max Loss (occurs between K2 and K3): Width - Net Credit = 20 - (-11.25) = 31.25. Lower Break-even: 5960 - (-11.25) = 5971.25. Upper Break-even: 5970 + (-11.25) = 5958.75. (Note break-evens are outside K2 & K3 when it's a debit condor, and max loss is within).",
       "plotFunction": "plotCondor",
       "plotlyDivId": "plotly-short-put-condor",
-      "parameters": { "type": "put", "position": "short", "strike1": 5940, "strike2": 5960, "strike3": 5970, "strike4": 5990, "premium1": 96.50, "premium2": 100.00, "premium3": 104.50, "premium4": 119.25 }
+      "parameters": {
+        "type": "put",
+        "position": "short",
+        "strike1": 5940,
+        "strike2": 5960,
+        "strike3": 5970,
+        "strike4": 5990,
+        "premium1": 96.5,
+        "premium2": 100.0,
+        "premium3": 104.5,
+        "premium4": 119.25
+      }
     },
-     {
+    {
       "id": "long-put-condor",
       "name": "Long Put Condor (Debit)",
       "outlook": "Volatile (Expecting Price Breakout)",
@@ -802,7 +1178,18 @@
       "example": "Sell 1 MES JUN13 5940 Put for 91.50 (Bid), Buy 1 MES JUN13 5960 Put for 105.00 (Ask), Buy 1 MES JUN13 5970 Put for 109.50 (Ask), Sell 1 MES JUN13 5990 Put for 119.25 (Bid). Net Debit: (105.00 + 109.50) - (91.50 + 119.25) = 214.50 - 210.75 = 3.75. K1=5940, K2=5960, K3=5970, K4=5990. Max Loss: 3.75. Max Profit (at wings): 20 - 3.75 = 16.25. Break-even: 5940 + 3.75 = 5943.75, 5990 - 3.75 = 5986.25.",
       "plotFunction": "plotCondor",
       "plotlyDivId": "plotly-long-put-condor",
-      "parameters": { "type": "put", "position": "long", "strike1": 5940, "strike2": 5960, "strike3": 5970, "strike4": 5990, "premium1": 91.50, "premium2": 105.00, "premium3": 109.50, "premium4": 119.25 }
+      "parameters": {
+        "type": "put",
+        "position": "long",
+        "strike1": 5940,
+        "strike2": 5960,
+        "strike3": 5970,
+        "strike4": 5990,
+        "premium1": 91.5,
+        "premium2": 105.0,
+        "premium3": 109.5,
+        "premium4": 119.25
+      }
     }
   ],
   "multiLeg": [
@@ -833,15 +1220,40 @@
       "plotlyDivId": "plotly-5-leg-call-alternate-spread",
       "parameters": {
         "legs": [
-          { "type": "call", "position": "long", "strike": 5950, "premium": 99.25 },
-          { "type": "call", "position": "short", "strike": 5960, "premium": 88.75 },
-          { "type": "call", "position": "long", "strike": 5970, "premium": 88.25 },
-          { "type": "call", "position": "short", "strike": 5980, "premium": 78.00 },
-          { "type": "call", "position": "long", "strike": 5990, "premium": 78.00 }
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5950,
+            "premium": 99.25
+          },
+          {
+            "type": "call",
+            "position": "short",
+            "strike": 5960,
+            "premium": 88.75
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5970,
+            "premium": 88.25
+          },
+          {
+            "type": "call",
+            "position": "short",
+            "strike": 5980,
+            "premium": 78.0
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5990,
+            "premium": 78.0
+          }
         ]
       }
     },
-     {
+    {
       "id": "long-put-alternate-spread-5leg",
       "name": "Long Put Alternate Spread (5-Leg)",
       "outlook": "Volatile (Downward Bias)",
@@ -868,11 +1280,36 @@
       "plotlyDivId": "plotly-5-leg-put-alternate-spread",
       "parameters": {
         "legs": [
-          { "type": "put", "position": "long", "strike": 5950, "premium": 100.75 },
-          { "type": "put", "position": "short", "strike": 5960, "premium": 100.00 },
-          { "type": "put", "position": "long", "strike": 5970, "premium": 109.50 },
-          { "type": "put", "position": "short", "strike": 5980, "premium": 109.25 },
-          { "type": "put", "position": "long", "strike": 5990, "premium": 119.25 }
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5950,
+            "premium": 100.75
+          },
+          {
+            "type": "put",
+            "position": "short",
+            "strike": 5960,
+            "premium": 100.0
+          },
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5970,
+            "premium": 109.5
+          },
+          {
+            "type": "put",
+            "position": "short",
+            "strike": 5980,
+            "premium": 109.25
+          },
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5990,
+            "premium": 119.25
+          }
         ]
       }
     },
@@ -904,16 +1341,46 @@
       "plotlyDivId": "plotly-6-leg-iron-albatross",
       "parameters": {
         "legs": [
-          { "type": "put", "position": "long", "strike": 5940, "premium": 96.50 },
-          { "type": "put", "position": "short", "strike": 5950, "premium": 100.00 },
-          { "type": "put", "position": "short", "strike": 5960, "premium": 104.50 },
-          { "type": "call", "position": "short", "strike": 5970, "premium": 83.25 },
-          { "type": "call", "position": "long", "strike": 5980, "premium": 83.00 },
-          { "type": "call", "position": "long", "strike": 5990, "premium": 78.00 }
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5940,
+            "premium": 96.5
+          },
+          {
+            "type": "put",
+            "position": "short",
+            "strike": 5950,
+            "premium": 100.0
+          },
+          {
+            "type": "put",
+            "position": "short",
+            "strike": 5960,
+            "premium": 104.5
+          },
+          {
+            "type": "call",
+            "position": "short",
+            "strike": 5970,
+            "premium": 83.25
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5980,
+            "premium": 83.0
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5990,
+            "premium": 78.0
+          }
         ]
       }
     },
-     {
+    {
       "id": "long-condor-plus-6leg",
       "name": "Long Condor Plus (6-Leg)",
       "outlook": "Volatile (Wide Range Breakout)",
@@ -941,37 +1408,67 @@
       "plotlyDivId": "plotly-6-leg-long-condor-plus",
       "parameters": {
         "legs": [
-          { "type": "put", "position": "long", "strike": 5940, "premium": 96.50 },
-          { "type": "put", "position": "long", "strike": 5950, "premium": 100.75 },
-          { "type": "put", "position": "short", "strike": 5960, "premium": 100.00 },
-          { "type": "call", "position": "short", "strike": 5970, "premium": 83.25 },
-          { "type": "call", "position": "long", "strike": 5980, "premium": 83.00 },
-          { "type": "call", "position": "long", "strike": 5990, "premium": 78.00 }
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5940,
+            "premium": 96.5
+          },
+          {
+            "type": "put",
+            "position": "long",
+            "strike": 5950,
+            "premium": 100.75
+          },
+          {
+            "type": "put",
+            "position": "short",
+            "strike": 5960,
+            "premium": 100.0
+          },
+          {
+            "type": "call",
+            "position": "short",
+            "strike": 5970,
+            "premium": 83.25
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5980,
+            "premium": 83.0
+          },
+          {
+            "type": "call",
+            "position": "long",
+            "strike": 5990,
+            "premium": 78.0
+          }
         ]
       }
     }
   ],
-   "about": {
-       "title": "About This Tool",
-       "dataDate": "June 13, 2025 (from screenshot)",
-       "content": [
-           "This page provides information and payoff diagrams for various option strategies, categorized by the number of 'legs' (individual option contracts) involved.",
-           "The examples use MES (Micro E-mini S&P 500) option prices from the provided screenshot (June 13, 2025 expiration data) for illustration where possible.",
-           "Prices used for examples are based on the Bid (for sells) and Ask (for buys) from the provided image table. Actual execution prices may vary, and using mid-prices might offer a theoretical view closer to the truth but wouldn't reflect transaction costs. Bid/Ask are used here to demonstrate real-world execution possibilities and their impact on profitability.",
-           "Examples for strategies involving multiple expiration dates (Calendar and Diagonal spreads) use hypothetical prices for the longer-dated options, as only June 13th expiry data was available in the screenshot.",
-           "The payoff diagrams illustrate the theoretical profit or loss of each strategy *at expiration* based on the price of the underlying asset. They are generated using Plotly.js and represent a simplified view, not accounting for intra-day price fluctuations or early assignment.",
-           "Greeks (Delta, Gamma, Theta, Vega) describe how an option's price changes in response to changes in the underlying price, volatility, time, and interest rates. Understanding Greeks helps manage the risk of a strategy over its life, not just at expiration.",
-           "Each strategy description includes its typical outlook, construction, maximum profit, maximum loss, break-even points, and the general impact on key Greeks.",
-           "Please note that the calculations for break-even points, especially for multi-leg and multi-expiry strategies, can be complex and may require specialized software or pricing models for precise real-time values. The formulas provided are for expiration calculation.",
-           "Trading options involves understanding complex concepts, risks, and potential outcomes. It is crucial to fully understand any strategy before implementation.",
-           "<h2>⚠️ Limitations and Future Work</h2>",
-           "<ul><li><b>Theoretical Model:</b> Uses simplified pricing models (like Black-Scholes for theoretical payoff at expiry), which assume constant volatility/rates, no transaction costs, European exercise (though often applied to American-style /ES options as an approximation), etc. Real-world pricing and intra-day values differ significantly.</li><li><b>Data Source:</b> Relies on a static <code>strategies.json</code> for definitions and initial parameter values. There is no real-time market data feed or live options chain integration.</li><li><b>Premium Calculation:</b> Premiums displayed are static from the source data. Theoretical premiums for user-input parameters are not calculated; only the payoff profile is shown based on the input strike/premium values.</li><li><b>Breakevens:</b> Calculated breakevens are theoretical based on the initial parameters and a simplified payoff-at-expiry model.</li><li><b>Greeks Display:</b> Greek impacts described are general directional tendencies. Net Greeks for multi-leg strategies are not explicitly calculated/displayed in real-time based on parameters.</li><li><b>Dividends & Carry:</b> Assumes zero dividends (<code>q=0</code>) and simple cost-of-carry, which is generally appropriate when using the futures price (/ES) as the underlying input (S), but not a full bond-price model.</li><li><b>Performance:</b> Extensive DOM manipulation in Vanilla JS might become less performant than optimized framework approaches if the number of strategies displayed simultaneously becomes extremely large or on very old devices.</li><li><b>Placeholders:</b> Google Calendar integration and full Google Analytics functionality require further implementation (OAuth, more detailed event tracking).</li><li><b>No Saved State:</b> User modifications to strategy parameters (strikes, premiums) are lost on page reload unless manually saved/persisted (potential future feature using <code>localStorage</code> or extending IndexedDB).</li><li><b>Error Handling:</b> While basic error handling is included for data loading, it could be made more robust for edge cases in calculations or storage operations (e.g., malformed input values).</li></ul>",
-           "<h3>Potential Future Enhancements</h3>",
-           "<ul><li>Implement calculation and display of Net Greeks for multi-leg strategies based on current inputs.</li><li>Add volatility skew/smile modeling for more realistic pricing and Greek behavior.</li><li>Integrate a simple way to save/load user-modified strategy configurations using local storage.</li><li>Allow comparison of multiple strategy payoffs on a single chart.</li><li>Add options pricing models beyond Black-Scholes (e.g., Binomial) for different exercise styles or features.</li><li>Improve UI/UX for parameter input and display, including validation.</li><li>Integrate with a real-time or historical data feed API (requires a data provider).</li></ul>",
-           "<h2>📜 Disclaimer</h2>",
-           "<p>This application is intended for <strong>educational and illustrative purposes only</strong>. It does <strong>not</strong> constitute financial advice.</p>",
-           "<p>Option trading involves substantial risk of loss and is not suitable for all investors. The theoretical calculations and diagrams provided here are simplifications and may differ significantly from actual market prices and outcomes due to factors like implied volatility changes, interest rates, time decay acceleration, liquidity, commissions, and slippage.</p>",
-           "<p>Always conduct your own thorough research and analysis, and consult with a qualified financial professional before making any trading decisions. Do not trade with money you cannot afford to lose.</p>"
-       ]
-   }
+  "about": {
+    "title": "About This Tool",
+    "dataDate": "April 3, 2026 (MES near 5975; diagonal/synthetic examples are hypothetical)",
+    "content": [
+      "This page provides information and payoff diagrams for various option strategies, categorized by the number of 'legs' (individual option contracts) involved.",
+      "The examples use MES (Micro E-mini S&P 500) option prices near April 2026 market levels for illustration where possible. Diagonal spread and synthetic strategy examples use hypothetical prices to demonstrate the mechanics.",
+      "Prices used for examples are based on the Bid (for sells) and Ask (for buys) from reference option chain data. Actual execution prices may vary. Bid/Ask are used here to demonstrate real-world execution possibilities and their impact on profitability.",
+      "Examples for strategies involving multiple expiration dates (Calendar and Diagonal spreads) use hypothetical prices for the longer-dated options, as only June 13th expiry data was available in the screenshot.",
+      "The payoff diagrams illustrate the theoretical profit or loss of each strategy *at expiration* based on the price of the underlying asset. They are generated using Plotly.js and represent a simplified view, not accounting for intra-day price fluctuations or early assignment.",
+      "Greeks (Delta, Gamma, Theta, Vega) describe how an option's price changes in response to changes in the underlying price, volatility, time, and interest rates. Understanding Greeks helps manage the risk of a strategy over its life, not just at expiration.",
+      "Each strategy description includes its typical outlook, construction, maximum profit, maximum loss, break-even points, and the general impact on key Greeks.",
+      "Please note that the calculations for break-even points, especially for multi-leg and multi-expiry strategies, can be complex and may require specialized software or pricing models for precise real-time values. The formulas provided are for expiration calculation.",
+      "Trading options involves understanding complex concepts, risks, and potential outcomes. It is crucial to fully understand any strategy before implementation.",
+      "<h2>\u26a0\ufe0f Limitations and Future Work</h2>",
+      "<ul><li><b>Theoretical Model:</b> Uses simplified pricing models (like Black-Scholes for theoretical payoff at expiry), which assume constant volatility/rates, no transaction costs, European exercise (though often applied to American-style /ES options as an approximation), etc. Real-world pricing and intra-day values differ significantly.</li><li><b>Data Source:</b> Relies on a static <code>strategies.json</code> for definitions and initial parameter values. There is no real-time market data feed or live options chain integration.</li><li><b>Premium Calculation:</b> Premiums displayed are static from the source data. Theoretical premiums for user-input parameters are not calculated; only the payoff profile is shown based on the input strike/premium values.</li><li><b>Breakevens:</b> Calculated breakevens are theoretical based on the initial parameters and a simplified payoff-at-expiry model.</li><li><b>Greeks Display:</b> Greek impacts described are general directional tendencies. Net Greeks for multi-leg strategies are not explicitly calculated/displayed in real-time based on parameters.</li><li><b>Dividends & Carry:</b> Assumes zero dividends (<code>q=0</code>) and simple cost-of-carry, which is generally appropriate when using the futures price (/ES) as the underlying input (S), but not a full bond-price model.</li><li><b>Performance:</b> Extensive DOM manipulation in Vanilla JS might become less performant than optimized framework approaches if the number of strategies displayed simultaneously becomes extremely large or on very old devices.</li><li><b>Placeholders:</b> Google Calendar integration and full Google Analytics functionality require further implementation (OAuth, more detailed event tracking).</li><li><b>No Saved State:</b> User modifications to strategy parameters (strikes, premiums) are lost on page reload unless manually saved/persisted (potential future feature using <code>localStorage</code> or extending IndexedDB).</li><li><b>Error Handling:</b> While basic error handling is included for data loading, it could be made more robust for edge cases in calculations or storage operations (e.g., malformed input values).</li></ul>",
+      "<h3>Potential Future Enhancements</h3>",
+      "<ul><li>Implement calculation and display of Net Greeks for multi-leg strategies based on current inputs.</li><li>Add volatility skew/smile modeling for more realistic pricing and Greek behavior.</li><li>Integrate a simple way to save/load user-modified strategy configurations using local storage.</li><li>Allow comparison of multiple strategy payoffs on a single chart.</li><li>Add options pricing models beyond Black-Scholes (e.g., Binomial) for different exercise styles or features.</li><li>Improve UI/UX for parameter input and display, including validation.</li><li>Integrate with a real-time or historical data feed API (requires a data provider).</li></ul>",
+      "<h2>\ud83d\udcdc Disclaimer</h2>",
+      "<p>This application is intended for <strong>educational and illustrative purposes only</strong>. It does <strong>not</strong> constitute financial advice.</p>",
+      "<p>Option trading involves substantial risk of loss and is not suitable for all investors. The theoretical calculations and diagrams provided here are simplifications and may differ significantly from actual market prices and outcomes due to factors like implied volatility changes, interest rates, time decay acceleration, liquidity, commissions, and slippage.</p>",
+      "<p>Always conduct your own thorough research and analysis, and consult with a qualified financial professional before making any trading decisions. Do not trade with money you cannot afford to lose.</p>"
+    ]
+  }
 }

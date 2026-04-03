@@ -1,6 +1,57 @@
-# Existing workflow content...
+name: S&P 500 Pre-Market Projection
 
-# Scheduled trigger to run the S&P 500 1 PM projection job
 on:
   schedule:
     - cron: '59 15 * * 1-5'  # Every weekday at 8:59 AM PST
+  workflow_dispatch:
+    inputs:
+      simulations:
+        description: 'Number of Monte Carlo simulations'
+        required: false
+        default: '5000'
+
+permissions:
+  contents: write
+
+jobs:
+  run_sp_premarket_projection:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: 'sp_closing_projection/requirements.txt'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r sp_closing_projection/requirements.txt
+
+      - name: Run S&P 500 Closing Projection
+        env:
+          SIMULATIONS: ${{ github.event.inputs.simulations || '5000' }}
+          WEBHOOK_URL: ${{ secrets.SP_CLOSING_PROJECTION_WEBHOOK_URL }}
+          DATA_DIR: ${{ github.workspace }}
+        run: |
+          cd sp_closing_projection
+          python sp_closing_projection.py
+
+      - name: Commit and push results
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add sp_closing_projection/sp_closing_projection_output.png
+          git add sp_closing_projection/latest_projection.json
+          if ! git diff --staged --quiet; then
+            git commit -m "projection: S&P 500 pre-market projection - $(date +'%Y-%m-%d %H:%M:%S UTC')"
+            git push
+          else
+            echo "No changes to commit."
+          fi
