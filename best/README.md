@@ -2,6 +2,22 @@
 
 This is a web application designed to fetch, display, and manage online rooms from the Chaturbate public API. It provides filtering capabilities, viewing history, message storage, dynamic viewer layouts, and basic client-side image recognition.
 
+## Editions
+
+| Edition | Path | Description |
+|---|---|---|
+| **Classic** | `best/index.html` | Original monolithic viewer with compressed image DB pipeline |
+| **Beta** | `best/beta/` | Modular architecture — separate modules for API, UI, storage, autoscroll, decorators |
+| **Gamma** | `best/gamma/` | Full-featured edition — adds EventBus, structured logging, retry logic, advanced filters, relevance scoring, and SlideshowManager |
+
+See [`best/beta/README.md`](beta/README.md) and [`best/gamma/README.md`](gamma/README.md) for per-edition details.
+
+### Recent Changes (2026-04-03)
+
+- **Slideshow fixes (Beta & Gamma):** `SlideshowManager` now correctly updates the DOM `<img>` element on each slide transition. Previously the slideshow logic ran without updating the visible image.
+- **Gamma `index.html`:** Slideshow integration wired to the new `SlideshowManager` class.
+- **Beta `ui.js`:** Slideshow lifecycle methods called consistently on card create/destroy.
+
 **NOTE:** This application is a client-side implementation. Features like report sending are handled directly from the browser, which is **not secure** for sensitive data or in production environments. A robust backend is highly recommended for such features.
 
 ## Features
