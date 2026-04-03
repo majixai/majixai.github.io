@@ -1,0 +1,202 @@
+/* =============================================================
+   Options Strategy Reference – Beta Viewer
+   Dark theme, Bootstrap 5 extension
+   ============================================================= */
+
+:root {
+    --bg-primary:   #0d1117;
+    --bg-secondary: #161b22;
+    --bg-card:      #1c2128;
+    --bg-input:     #21262d;
+    --bg-modal:     #161b22;
+    --bg-toolbar:   #13181f;
+    --border-color: #30363d;
+    --text-primary: #e6edf3;
+    --text-muted:   #8b949e;
+    --accent:       #58a6ff;
+    --accent-hover: #79b8ff;
+    --success:      #3fb950;
+    --danger:       #f85149;
+    --warning:      #d29922;
+    --badge-one:    #388bfd;
+    --badge-two:    #3fb950;
+    --badge-three:  #db6d28;
+    --badge-four:   #bc8cff;
+    --badge-multi:  #f0883e;
+}
+
+/* ---------- Base ------------------------------------------- */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+}
+
+/* ---------- Navbar ----------------------------------------- */
+.bg-dark-nav { background-color: var(--bg-secondary) !important; }
+
+/* ---------- Toolbar Strip ---------------------------------- */
+.toolbar-strip { background-color: var(--bg-toolbar); }
+
+/* ---------- Input overrides -------------------------------- */
+.bg-input { background-color: var(--bg-input) !important; }
+.border-input { border-color: var(--border-color) !important; }
+.bg-input:focus {
+    background-color: var(--bg-input) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+    color: var(--text-primary) !important;
+}
+.form-control::placeholder { color: var(--text-muted); }
+.form-select option { background-color: var(--bg-input); }
+
+/* ---------- Accent colour utilities ----------------------- */
+.text-accent  { color: var(--accent) !important; }
+.bg-accent    { background-color: var(--accent) !important; }
+.btn-accent {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #0d1117;
+    font-weight: 600;
+}
+.btn-accent:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #0d1117;
+}
+.btn-outline-accent {
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+.btn-outline-accent.active,
+.btn-outline-accent:hover {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #0d1117;
+}
+
+/* ---------- Category header -------------------------------- */
+.category-header {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.75rem;
+    margin-bottom: 1rem;
+}
+.category-header h5 { color: var(--text-primary); margin: 0; }
+.category-header small { color: var(--text-muted); }
+
+/* ---------- Strategy cards --------------------------------- */
+.strategy-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.strategy-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+    transform: translateY(-2px);
+}
+.strategy-card .card-header {
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.strategy-card .card-body { padding: 0.75rem; flex: 1; }
+
+/* ---------- Outlook badges --------------------------------- */
+.badge-outlook {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.outlook-bullish  { background-color: rgba(63, 185, 80, 0.15);  color: var(--success); }
+.outlook-bearish  { background-color: rgba(248, 81, 73, 0.15);  color: var(--danger);  }
+.outlook-neutral  { background-color: rgba(88, 166, 255, 0.15); color: var(--accent);  }
+.outlook-volatile { background-color: rgba(210, 153, 34, 0.15); color: var(--warning); }
+.outlook-synthetic{ background-color: rgba(188, 140, 255, 0.15);color: #bc8cff;        }
+
+/* ---------- Leg badges ------------------------------------- */
+.badge-leg {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 4px;
+}
+.leg-one   { background-color: var(--badge-one);   color: #fff; }
+.leg-two   { background-color: var(--badge-two);   color: #fff; }
+.leg-three { background-color: var(--badge-three); color: #fff; }
+.leg-four  { background-color: var(--badge-four);  color: #fff; }
+.leg-multi { background-color: var(--badge-multi); color: #fff; }
+
+/* ---------- Stat pills ------------------------------------- */
+.stat-pill {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+.stat-profit { background-color: rgba(63,185,80,.12); color: var(--success); }
+.stat-loss   { background-color: rgba(248,81,73,.12); color: var(--danger);  }
+
+/* ---------- List view ------------------------------------- */
+.list-view-row {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 4px;
+}
+.list-view-row:hover {
+    border-color: var(--accent);
+    background-color: rgba(88, 166, 255, 0.05);
+}
+.list-view-row .strategy-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1 1 auto;
+}
+
+/* ---------- Modal styling --------------------------------- */
+.bg-modal   { background-color: var(--bg-modal); color: var(--text-primary); }
+.bg-card    { background-color: var(--bg-card) !important; }
+.modal-header, .card-header { color: var(--text-primary); }
+
+/* ---------- Metric blocks --------------------------------- */
+.metric-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.metric-value { font-size: 13px; font-weight: 600; }
+
+/* ---------- Greeks display -------------------------------- */
+.greek-row { margin-bottom: 0.4rem; }
+.greek-sym { display: inline-block; width: 20px; font-weight: 700; color: var(--accent); }
+
+/* ---------- Parameter inputs ------------------------------ */
+.param-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+
+/* ---------- Section divider -------------------------------- */
+.section-separator { border-top: 1px solid var(--border-color); margin: 1.5rem 0; }
+
+/* ---------- Spinner / empty state ------------------------- */
+#loading-state { color: var(--text-muted); }
+.empty-state { padding: 3rem; text-align: center; color: var(--text-muted); }
+
+/* ---------- Scrollbar ------------------------------------- */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
