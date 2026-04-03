@@ -313,17 +313,29 @@ jobs:
         run: |
           echo "Analyzing working tree modifications..."
           git status
-          
-          # Stage the specific required files
-          git add $DB_FILE $MANIFEST_FILE $GPU_MANIFEST_FILE || true
-          
+
+          # Stage ALL changed files under best/ — this includes:
+          #   best/dbs/performer_images.db.gz        (compressed image DB)
+          #   best/dbs/performer_images_manifest.dat (viewer manifest)
+          #   best/dbs/gpu_recognition_manifest.dat  (recognition manifest)
+          #   best/history/*.dat                     (per-performer image history)
+          #   best/*.dat                             (any other generated .dat files)
+          git add best/ || true
+
+          # Default to 0 so CHANGED_COUNT is always defined (used in the commit message step)
+          echo "CHANGED_COUNT=0" >> $GITHUB_ENV
+
           # Check if there's anything to commit
           if git diff --staged --quiet; then
             echo "HAS_CHANGES=false" >> $GITHUB_ENV
-            echo "No database changes detected in this cycle."
+            echo "No changes detected under best/ in this cycle."
           else
             echo "HAS_CHANGES=true" >> $GITHUB_ENV
-            echo "Modifications detected. Preparing for commit."
+            CHANGED_COUNT=$(git diff --staged --name-only | wc -l | tr -d ' ')
+            echo "CHANGED_COUNT=$CHANGED_COUNT" >> $GITHUB_ENV
+            echo "Modifications detected ($CHANGED_COUNT file(s)). Preparing for commit."
+            # Log up to 20 changed filenames for transparency in the run log
+            git diff --staged --name-only | head -20
           fi
 
       - name: Generate Dynamic Commit Message
@@ -331,8 +343,8 @@ jobs:
         id: commit_msg
         run: |
           TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
-          DB_SIZE=$(du -h $DB_FILE | awk '{print $1}') || DB_SIZE="Unknown"
-          MSG="best: refresh compressed performer image DB + GPU recognition - ${TS} [Size: ${DB_SIZE}]"
+          DB_SIZE=$(du -h $DB_FILE 2>/dev/null | awk '{print $1}') || DB_SIZE="Unknown"
+          MSG="best: update images & manifests (${CHANGED_COUNT} file(s)) - ${TS} [DB: ${DB_SIZE}]"
           echo "COMMIT_MESSAGE=$MSG" >> $GITHUB_ENV
 
       - name: Commit Database Changes
