@@ -1,0 +1,910 @@
+//@version=5
+// @description  Scalp POI strategy: local-maxima/minima POIs, H&S / iH&S /
+//               Double Top / Double Bottom patterns, Linear OLS Regression
+//               channel with R², polynomial curvature, RSI divergence, CMF,
+//               OBV, VWAP deviation, Dirac-delta proximity, custom cosh
+//               momentum, skew-disjointed Z-score and ADX/MTF regime filter.
+//               All engines feed a composite bull/bear score.  Full backtest
+//               with manual trailing stop, bar cooldown and alert conditions.
+// =============================================================================
+// Scalp POI | H&S · DT/DB · Regression · Dirac / Cosh / Skew  (v2.0)
+// =============================================================================
+//
+// ENGINE OVERVIEW
+// ──────────────
+//  ① Pivot / POI          – local pivot H/L → resistance/support zones (2 levels each)
+//  ② Head & Shoulders     – H&S + inverse H&S neckline break
+//  ③ Double Top / Bottom  – two-equal-peak/trough pattern + valley confirmation
+//  ④ Linear Regression    – OLS slope, intercept, R², std-error channel
+//  ⑤ Polynomial Curvature – 2nd & 3rd-order linreg differences (accel + jerk)
+//  ⑥ Dirac Proximity      – Lorentzian weight peaking at nearest POI
+//  ⑦ Cosh Momentum        – cosh(barRet) magnitude gate
+//  ⑧ Skew Z-Score         – asymmetric bull/bear Z-score scaling
+//  ⑨ RSI Divergence       – bull/bear divergence across pivot history
+//  ⑩ CMF                  – Chaikin Money Flow directional volume
+//  ⑪ OBV Trend            – On Balance Volume slope
+//  ⑫ VWAP Deviation       – intraday VWAP Z-score
+//  ⑬ Regime               – ADX trending/ranging + MTF EMA bias
+//  ⑭ Neckline Retest      – re-entry on neckline pullback after confirmed break
+//  ⑮ Confluence Counter   – count of agreeing engines for adaptive threshold
+// =============================================================================
+
+strategy(
+     title                   = "Scalp POI | Regression + H&S + Dirac/Cosh/Skew v2",
+     shorttitle               = "POI-Scalp-v2",
+     overlay                  = true,
+     default_qty_type         = strategy.percent_of_equity,
+     default_qty_value        = 10,
+     commission_type          = strategy.commission.percent,
+     commission_value         = 0.05,
+     slippage                 = 1,
+     pyramiding               = 0,
+     calc_on_order_fills      = false,
+     process_orders_on_close  = false,
+     initial_capital          = 10000,
+     currency                 = currency.USD)
+
+// ─── SECTION 1 · INPUTS ──────────────────────────────────────────────────────
+
+// ── ① Pivot Detection ────────────────────────────────────────────────────────
+i_leftBars    = input.int  (5,    "Pivot Left Bars",         minval=1,          group="① Pivot Detection")
+i_rightBars   = input.int  (5,    "Pivot Right Bars",        minval=1,          group="① Pivot Detection")
+i_maxPivots   = input.int  (12,   "Max Stored Pivots",       minval=4, maxval=25, group="① Pivot Detection")
+
+// ── ② Pattern · Head & Shoulders ─────────────────────────────────────────────
+i_neckTol     = input.float(0.006,"Neckline Tolerance %",    minval=0.001, step=0.001, group="② Pattern (H&S)")
+i_shoulderSym = input.float(0.10, "Shoulder Symmetry %",     minval=0.01,  step=0.01,  group="② Pattern (H&S)")
+i_hsWeight    = input.float(2.0,  "H&S Score Weight",        minval=0.1,   step=0.1,   group="② Pattern (H&S)")
+i_retestBars  = input.int  (10,   "Neckline Retest Window",  minval=1,     maxval=50,  group="② Pattern (H&S)",
+                 tooltip="Maximum bars after a neckline break to look for a retest short/long re-entry.")
+
+// ── ③ Pattern · Double Top / Bottom ─────────────────────────────────────────
+i_dtTol       = input.float(0.008,"Double Top/Bot Tolerance %", minval=0.001, step=0.001, group="③ Pattern (DT/DB)")
+i_dtMinDepth  = input.float(0.015,"Min Valley/Peak Depth %",    minval=0.005, step=0.001, group="③ Pattern (DT/DB)")
+i_dtLookback  = input.int  (50,   "DT/DB Valley Lookback",      minval=10, maxval=200,    group="③ Pattern (DT/DB)")
+i_dtWeight    = input.float(1.5,  "DT/DB Score Weight",         minval=0.1, step=0.1,     group="③ Pattern (DT/DB)")
+
+// ── ④ Statistics ─────────────────────────────────────────────────────────────
+i_stdLen      = input.int  (20,   "Std Dev Length",            minval=5,  group="④ Statistics")
+i_atrLen      = input.int  (14,   "ATR Length",                minval=1,  group="④ Statistics")
+i_rsiLen      = input.int  (14,   "RSI Length",                minval=2,  group="④ Statistics")
+i_cmfLen      = input.int  (20,   "CMF Length",                minval=5,  group="④ Statistics")
+
+// ── ⑤ Linear Regression ──────────────────────────────────────────────────────
+i_regLen      = input.int  (50,   "Regression Length",         minval=10, maxval=200, group="⑤ Linear Regression")
+i_regBandMult = input.float(2.0,  "Regression Band Std Mult",  minval=0.5, step=0.1,  group="⑤ Linear Regression")
+i_r2Thresh    = input.float(0.55, "Min R² for Trend Entry",    minval=0.1, step=0.05, group="⑤ Linear Regression",
+                 tooltip="R² below this value means low trend quality; regression engine contributes zero score.")
+i_regWeight   = input.float(1.5,  "Regression Score Weight",   minval=0.1, step=0.1,  group="⑤ Linear Regression")
+i_slopeFilt   = input.bool (true, "Use Slope Direction Filter",               group="⑤ Linear Regression")
+
+// ── ⑥ Polynomial Curvature ───────────────────────────────────────────────────
+i_polyLen     = input.int  (20,   "Curvature Lookback",        minval=5,  group="⑥ Polynomial Curvature")
+i_polyWeight  = input.float(0.8,  "Curvature Score Weight",    minval=0.1, step=0.1, group="⑥ Polynomial Curvature")
+i_jerkWeight  = input.float(0.4,  "Jerk (3rd-order) Weight",   minval=0.1, step=0.1, group="⑥ Polynomial Curvature",
+                 tooltip="3rd-order linreg difference (rate of change of acceleration). Low weight by default.")
+
+// ── ⑦ Dirac Delta ────────────────────────────────────────────────────────────
+i_diracWidth  = input.float(1.0,  "Dirac Width (ATR mult)",    minval=0.1, step=0.1, group="⑦ Dirac Delta",
+                 tooltip="Lorentzian half-width in ATR units. Narrower → higher score only very close to POI.")
+i_diracWeight = input.float(0.8,  "Dirac Score Weight",        minval=0.1, step=0.1, group="⑦ Dirac Delta")
+
+// ── ⑧ Cosh Momentum ──────────────────────────────────────────────────────────
+i_coshScale   = input.float(2.0,  "Cosh Scale (ret×100)",      minval=0.1, step=0.1, group="⑧ Cosh Momentum",
+                 tooltip="Scales bar return before cosh. Larger → sharper amplification of strong bars.")
+i_coshThresh  = input.float(1.05, "Cosh Threshold",            minval=1.0, step=0.01, group="⑧ Cosh Momentum")
+i_coshWeight  = input.float(0.5,  "Cosh Score Weight",         minval=0.1, step=0.1,  group="⑧ Cosh Momentum")
+
+// ── ⑨ Skew Disjointing ───────────────────────────────────────────────────────
+i_bullSkew    = input.float(1.3,  "Bull Skew Multiplier",      minval=0.1, step=0.1, group="⑨ Skew Disjointing",
+                 tooltip="Scales positive Z-score component upward, amplifying bull-side signals.")
+i_bearSkew    = input.float(0.7,  "Bear Skew Multiplier",      minval=0.1, step=0.1, group="⑨ Skew Disjointing",
+                 tooltip="Scales negative Z-score component, dampening bear-side signals by default.")
+i_skewLen     = input.int  (14,   "Skew Lookback",             minval=5,   group="⑨ Skew Disjointing")
+i_skewWeight  = input.float(1.0,  "Skew Score Weight",         minval=0.1, step=0.1, group="⑨ Skew Disjointing")
+
+// ── ⑩ RSI Divergence ─────────────────────────────────────────────────────────
+i_divLookback = input.int  (5,    "Divergence Lookback (pivots)", minval=2, maxval=8, group="⑩ Divergence")
+i_divWeight   = input.float(1.2,  "Divergence Score Weight",      minval=0.1, step=0.1, group="⑩ Divergence")
+
+// ── ⑪ CMF / Volume ───────────────────────────────────────────────────────────
+i_cmfWeight   = input.float(0.6,  "CMF Score Weight",          minval=0.1, step=0.1, group="⑪ CMF / Volume")
+i_obvLen      = input.int  (10,   "OBV Slope Lookback",        minval=3,             group="⑪ CMF / Volume")
+i_obvWeight   = input.float(0.4,  "OBV Score Weight",          minval=0.1, step=0.1, group="⑪ CMF / Volume")
+
+// ── ⑫ VWAP ───────────────────────────────────────────────────────────────────
+i_useVwap     = input.bool (true, "Use VWAP Deviation",        group="⑫ VWAP")
+i_vwapLen     = input.int  (20,   "VWAP Dev Z Lookback",       minval=5,   group="⑫ VWAP")
+i_vwapWeight  = input.float(0.6,  "VWAP Score Weight",         minval=0.1, step=0.1, group="⑫ VWAP")
+
+// ── ⑬ Regime ─────────────────────────────────────────────────────────────────
+i_adxLen      = input.int  (14,   "ADX Length",                minval=2,   group="⑬ Regime")
+i_adxThresh   = input.float(20.0, "ADX Trend Threshold",       minval=5.0, step=1.0, group="⑬ Regime",
+                 tooltip="ADX above this → trending regime; regression and curvature signals receive full weight.")
+i_mtfTf       = input.timeframe("60","MTF Timeframe",          group="⑬ Regime")
+i_mtfEmaLen   = input.int  (21,   "MTF EMA Length",            minval=2,   group="⑬ Regime")
+i_useRegime   = input.bool (true, "Require Trending Regime",   group="⑬ Regime",
+                 tooltip="When enabled, entries only fire when ADX indicates a trending market.")
+
+// ── ⑭ Entry / Exit ───────────────────────────────────────────────────────────
+i_entryThresh = input.float(3.0,  "Base Entry Score Threshold",  minval=0.5, step=0.1, group="⑭ Entry")
+i_edgeDelta   = input.float(1.0,  "Min Score Edge (bull−bear)",  minval=0.1, step=0.1, group="⑭ Entry")
+i_useConf     = input.bool (true, "Adaptive Threshold (confluence)", group="⑭ Entry",
+                 tooltip="When at least 5 engines agree, entry threshold is lowered by 0.5.")
+i_cooldown    = input.int  (3,    "Bar Cooldown After Exit",   minval=0, group="⑭ Entry")
+
+// ── ⑮ Risk Management ────────────────────────────────────────────────────────
+i_stopPct     = input.float(0.8,  "Stop Loss %",               minval=0.1, step=0.1, group="⑮ Risk")
+i_tpPct       = input.float(1.6,  "Take Profit %",             minval=0.1, step=0.1, group="⑮ Risk")
+i_useTrail    = input.bool (true, "Trailing Stop",             group="⑮ Risk")
+i_trailPct    = input.float(0.5,  "Trailing Stop %",           minval=0.1, step=0.1, group="⑮ Risk")
+
+// ── ⑯ Filters ────────────────────────────────────────────────────────────────
+i_useVol      = input.bool (true, "Volume Filter",             group="⑯ Filters")
+i_volMult     = input.float(1.5,  "Volume Multiplier",         minval=1.0, step=0.1, group="⑯ Filters")
+i_useAtr      = input.bool (true, "ATR Volatility Filter",     group="⑯ Filters")
+i_minAtrPct   = input.float(0.25, "Min ATR %",                 minval=0.01, step=0.05, group="⑯ Filters")
+
+// ── ⑰ Display ─────────────────────────────────────────────────────────────────
+i_showPivots  = input.bool(true,  "Show Pivots",               group="⑰ Display")
+i_showPOI     = input.bool(true,  "Show POI Levels",           group="⑰ Display")
+i_showBands   = input.bool(true,  "Show Std-Dev Bands",        group="⑰ Display")
+i_showRegCh   = input.bool(true,  "Show Regression Channel",   group="⑰ Display")
+i_showVwap    = input.bool(true,  "Show VWAP",                 group="⑰ Display")
+i_showLabel   = input.bool(true,  "Show Score Label",          group="⑰ Display")
+i_showTable   = input.bool(true,  "Show Engine Table",         group="⑰ Display")
+
+// ─── SECTION 2 · CONSTANTS ────────────────────────────────────────────────────
+
+// Guard against near-zero denominators throughout all statistical functions.
+float MIN_SD = 1e-10
+
+// ─── SECTION 3 · CUSTOM FUNCTIONS ────────────────────────────────────────────
+
+// ── Hyperbolic cosine, exponent clamped to ±20 to prevent overflow ────────────
+customCosh(x, scale) =>
+    exp_arg = math.max(-20.0, math.min(20.0, scale * x))
+    e = math.exp(exp_arg)
+    (e + 1.0 / e) * 0.5
+
+// ── Lorentzian approximation of the Dirac delta ───────────────────────────────
+// Peak = 1/(π·w) at x = 0.  Half-width = w.  Normalised caller-side to 0..1.
+diracLor(x, w) =>
+    w > 0.0 ? 1.0 / (math.pi * w * (1.0 + (x / w) * (x / w))) : 0.0
+
+// ── Skew-disjointed Z-score ───────────────────────────────────────────────────
+// Positive and negative halves are scaled by independent multipliers,
+// introducing an asymmetric sensitivity between bullish and bearish momentum.
+skewZ(ret, bullMult, bearMult, len) =>
+    avg = ta.sma(ret, len)
+    sd  = ta.stdev(ret, len)
+    z   = sd > MIN_SD ? (ret - avg) / sd : 0.0
+    z >= 0.0 ? z * bullMult : z * bearMult
+
+// ── Linear OLS Regression: slope, intercept, R², residual std error ──────────
+// All four statistics computed in two passes over the last `len` bars.
+// x-axis: 0 (oldest bar in window) … len-1 (current bar).
+linRegStats(src, len) =>
+    float sumX  = 0.0
+    float sumY  = 0.0
+    float sumXY = 0.0
+    float sumX2 = 0.0
+    for i = 0 to len - 1
+        xi    = float(len - 1 - i)
+        yi    = nz(src[i])
+        sumX  += xi
+        sumY  += yi
+        sumXY += xi * yi
+        sumX2 += xi * xi
+    n         = float(len)
+    denom     = n * sumX2 - sumX * sumX
+    slope     = denom != 0.0 ? (n * sumXY - sumX * sumY) / denom : 0.0
+    intercept = (sumY - slope * sumX) / n
+    yMean     = sumY / n
+    float ssTot = 0.0
+    float ssRes = 0.0
+    for i = 0 to len - 1
+        xi      = float(len - 1 - i)
+        yi      = nz(src[i])
+        yHat    = slope * xi + intercept
+        ssTot  += (yi - yMean) * (yi - yMean)
+        ssRes  += (yi - yHat)  * (yi - yHat)
+    r2     = ssTot > MIN_SD ? math.max(0.0, 1.0 - ssRes / ssTot) : 0.0
+    stdErr = len > 2 ? math.sqrt(ssRes / (n - 2.0)) : 0.0
+    [slope, intercept, r2, stdErr]
+
+// ── Polynomial curvature: 2nd-order (acceleration) linreg difference ─────────
+// Approximates d²y/dx² ≈ Δ²(linreg).  Sign: + concave up, – concave down.
+polyCurv2(src, len) =>
+    lr0 = ta.linreg(src, len, 0)
+    lr1 = ta.linreg(src, len, 1)
+    lr2 = ta.linreg(src, len, 2)
+    (lr0 - lr1) - (lr1 - lr2)
+
+// ── Polynomial jerk: 3rd-order (rate of acceleration change) ─────────────────
+polyCurv3(src, len) =>
+    lr0 = ta.linreg(src, len, 0)
+    lr1 = ta.linreg(src, len, 1)
+    lr2 = ta.linreg(src, len, 2)
+    lr3 = ta.linreg(src, len, 3)
+    accel0 = (lr0 - lr1) - (lr1 - lr2)
+    accel1 = (lr1 - lr2) - (lr2 - lr3)
+    accel0 - accel1
+
+// ── VWAP deviation Z-score ────────────────────────────────────────────────────
+vwapDevZ(vwapVal, src, len) =>
+    dev = src - vwapVal
+    avg = ta.sma(dev, len)
+    sd  = ta.stdev(dev, len)
+    sd > MIN_SD ? (dev - avg) / sd : 0.0
+
+// ─── SECTION 4 · BASE INDICATORS ─────────────────────────────────────────────
+
+atr     = ta.atr(i_atrLen)
+atrPct  = close > 0.0 ? atr / close * 100.0 : 0.0
+volSma  = ta.sma(volume, 20)
+mean    = ta.sma(close, i_stdLen)
+sd1     = ta.stdev(close, i_stdLen)
+upper1  = mean + sd1
+lower1  = mean - sd1
+upper2  = mean + 2.0 * sd1
+lower2  = mean - 2.0 * sd1
+upper3  = mean + 3.0 * sd1
+lower3  = mean - 3.0 * sd1
+
+rsiVal  = ta.rsi(close, i_rsiLen)
+barRet  = close > 0.0 ? (close - close[1]) / close[1] * 100.0 : 0.0
+
+// ADX / directional index
+[diPlus, diMinus, adxVal] = ta.dmi(i_adxLen, i_adxLen)
+isTrending = adxVal >= i_adxThresh
+
+// VWAP (session-anchored)
+vwapVal = ta.vwap(hlc3)
+vwapZ   = vwapDevZ(vwapVal, close, i_vwapLen)
+
+// MTF EMA for higher-timeframe bias
+mtfEma  = request.security(syminfo.tickerid, i_mtfTf,
+           ta.ema(close, i_mtfEmaLen), lookahead=barmerge.lookahead_off)
+mtfBull = close > mtfEma
+mtfBear = close < mtfEma
+
+// CMF (Chaikin Money Flow)
+mfvRaw = (high - low) > 0.0 ? (close - low - (high - close)) / (high - low) * volume : 0.0
+cmfVal = ta.sma(mfvRaw, i_cmfLen) / math.max(ta.sma(volume, i_cmfLen), 1.0)
+
+// OBV slope
+obvVal  = ta.obv
+obvSlope = (obvVal - obvVal[i_obvLen]) / math.max(math.abs(obvVal[i_obvLen]), 1.0)
+
+// Session open as an additional POI anchor
+var float sessionOpenPrice = na
+if session.isfirstbar
+    sessionOpenPrice := open
+
+// ─── SECTION 5 · LINEAR REGRESSION ENGINE ────────────────────────────────────
+
+[regSlope, regIntercept, regR2, regSE] = linRegStats(close, i_regLen)
+
+// Regression line value at current bar (x = len−1 is the most-recent point)
+lrLine  = ta.linreg(close, i_regLen, 0)
+lrUpper = lrLine + i_regBandMult * regSE
+lrLower = lrLine - i_regBandMult * regSE
+
+// Slope normalised to price (% per bar) so comparison is instrument-agnostic
+regSlopeNorm = mean > 0.0 ? regSlope / mean * 100.0 : 0.0
+slopeUp      = regSlopeNorm > 0.0
+slopeDown    = regSlopeNorm < 0.0
+trendQuality = regR2 >= i_r2Thresh
+
+// Regression engine score: R² × weight when slope direction matches intent
+regBullRaw = trendQuality and slopeUp   ? regR2 * i_regWeight : 0.0
+regBearRaw = trendQuality and slopeDown ? regR2 * i_regWeight : 0.0
+
+// ─── SECTION 6 · POLYNOMIAL CURVATURE ENGINE ─────────────────────────────────
+
+// Second-order curvature (bowl vs arch)
+curv2     = polyCurv2(close, i_polyLen)
+curv2Norm = atr > 0.0 ? curv2 / atr : 0.0
+curv2Bull = curv2Norm > 0.0 ? math.min( curv2Norm, 1.0) * i_polyWeight : 0.0
+curv2Bear = curv2Norm < 0.0 ? math.min(-curv2Norm, 1.0) * i_polyWeight : 0.0
+
+// Third-order jerk (increasing vs decelerating curvature)
+curv3     = polyCurv3(close, i_polyLen)
+curv3Norm = atr > 0.0 ? curv3 / atr : 0.0
+curv3Bull = curv3Norm > 0.0 ? math.min( curv3Norm, 1.0) * i_jerkWeight : 0.0
+curv3Bear = curv3Norm < 0.0 ? math.min(-curv3Norm, 1.0) * i_jerkWeight : 0.0
+
+curvBullRaw = curv2Bull + curv3Bull
+curvBearRaw = curv2Bear + curv3Bear
+
+// ─── SECTION 7 · PIVOT DETECTION ─────────────────────────────────────────────
+
+rawPH = ta.pivothigh(high, i_leftBars, i_rightBars)
+rawPL = ta.pivotlow (low,  i_leftBars, i_rightBars)
+
+// Rolling arrays: price, RSI at pivot, bar_index at pivot (for pattern timing)
+var float[] phArr    = array.new_float(0)
+var float[] plArr    = array.new_float(0)
+var float[] phRsiArr = array.new_float(0)
+var float[] plRsiArr = array.new_float(0)
+var int[]   phBarArr = array.new_int  (0)
+var int[]   plBarArr = array.new_int  (0)
+
+if not na(rawPH)
+    array.insert(phArr,    0, rawPH)
+    array.insert(phRsiArr, 0, rsiVal)
+    array.insert(phBarArr, 0, bar_index)
+    if array.size(phArr) > i_maxPivots
+        array.pop(phArr)
+        array.pop(phRsiArr)
+        array.pop(phBarArr)
+
+if not na(rawPL)
+    array.insert(plArr,    0, rawPL)
+    array.insert(plRsiArr, 0, rsiVal)
+    array.insert(plBarArr, 0, bar_index)
+    if array.size(plArr) > i_maxPivots
+        array.pop(plArr)
+        array.pop(plRsiArr)
+        array.pop(plBarArr)
+
+// ─── SECTION 8 · POINTS OF INTEREST ─────────────────────────────────────────
+// Track the two nearest resistance and two nearest support levels so that
+// a secondary POI zone is also visible (less critical but present).
+
+nearResist  = float(na)
+nearResist2 = float(na)
+nearSupport  = float(na)
+nearSupport2 = float(na)
+
+if array.size(phArr) > 0
+    for i = 0 to array.size(phArr) - 1
+        p = array.get(phArr, i)
+        if p > close
+            if na(nearResist) or p < nearResist
+                nearResist2 := nearResist
+                nearResist  := p
+            else if na(nearResist2) or p < nearResist2
+                nearResist2 := p
+
+if array.size(plArr) > 0
+    for i = 0 to array.size(plArr) - 1
+        p = array.get(plArr, i)
+        if p < close
+            if na(nearSupport) or p > nearSupport
+                nearSupport2 := nearSupport
+                nearSupport  := p
+            else if na(nearSupport2) or p > nearSupport2
+                nearSupport2 := p
+
+// POI level crossovers (trigger score contribution on the following bar)
+poiBreakUp   = not na(nearResist)  and ta.crossover (close, nearResist)
+poiBreakDown = not na(nearSupport) and ta.crossunder(close, nearSupport)
+
+// ─── SECTION 9 · HEAD & SHOULDERS ────────────────────────────────────────────
+// H&S (bearish): pivot highs[2]=left shoulder, [1]=head, [0]=right shoulder.
+//   Head must clear neckline by neckTol; shoulders within symmetry %.
+//   Confirmation: close breaks below neckline by neckTol.
+//
+// Inverse H&S (bullish): mirror logic on pivot lows.
+//   Confirmation: close breaks above neckline.
+
+var bool  hsSignal    = false
+var bool  invHsSignal = false
+var float hsNeck      = na
+var float invHsNeck   = na
+var int   hsBrokenBar = na   // bar_index when H&S neckline was broken
+var int   invBrokenBar= na
+
+hsSignal    := false
+invHsSignal := false
+
+if array.size(phArr) >= 3
+    rs       = array.get(phArr, 0)
+    head     = array.get(phArr, 1)
+    ls       = array.get(phArr, 2)
+    neck     = (ls + rs) * 0.5
+    clr      = head > neck * (1.0 + i_neckTol)
+    symD     = math.max(ls, rs)
+    symOk    = symD > 0.0 and math.abs(ls - rs) / symD < i_shoulderSym
+    if clr and symOk and close < neck * (1.0 - i_neckTol)
+        hsSignal    := true
+        hsNeck      := neck
+        hsBrokenBar := bar_index
+
+if array.size(plArr) >= 3
+    rs       = array.get(plArr, 0)
+    head     = array.get(plArr, 1)
+    ls       = array.get(plArr, 2)
+    neck     = (ls + rs) * 0.5
+    clr      = head < neck * (1.0 - i_neckTol)
+    symD     = math.min(ls, rs)
+    symOk    = symD > 0.0 and math.abs(ls - rs) / symD < i_shoulderSym
+    if clr and symOk and close > neck * (1.0 + i_neckTol)
+        invHsSignal := true
+        invHsNeck   := neck
+        invBrokenBar:= bar_index
+
+// ─── SECTION 10 · DOUBLE TOP / DOUBLE BOTTOM ─────────────────────────────────
+// Double Top (bearish):
+//   Two most-recent pivot highs within dtTol % of each other.
+//   Valley between them (ta.lowest over dtLookback) is ≥ dtMinDepth % below.
+//   Confirmation: close breaks below the valley.
+//
+// Double Bottom (bullish): mirror on pivot lows.
+
+var bool  dtSignal = false
+var bool  dbSignal = false
+var float dtNeck   = na
+var float dbNeck   = na
+
+dtSignal := false
+dbSignal := false
+
+if array.size(phArr) >= 2
+    top1   = array.get(phArr, 0)
+    top2   = array.get(phArr, 1)
+    topAvg = (top1 + top2) * 0.5
+    if topAvg > 0.0 and math.abs(top1 - top2) / topAvg < i_dtTol
+        valleyLow   = ta.lowest(low, i_dtLookback)
+        valleyDepth = topAvg > 0.0 ? (topAvg - valleyLow) / topAvg : 0.0
+        if valleyDepth >= i_dtMinDepth and close < valleyLow * (1.0 - i_neckTol)
+            dtSignal := true
+            dtNeck   := valleyLow
+
+if array.size(plArr) >= 2
+    bot1   = array.get(plArr, 0)
+    bot2   = array.get(plArr, 1)
+    botAvg = (bot1 + bot2) * 0.5
+    if botAvg > 0.0 and math.abs(bot1 - bot2) / botAvg < i_dtTol
+        peakHigh  = ta.highest(high, i_dtLookback)
+        peakDepth = botAvg > 0.0 ? (peakHigh - botAvg) / botAvg : 0.0
+        if peakDepth >= i_dtMinDepth and close > peakHigh * (1.0 + i_neckTol)
+            dbSignal := true
+            dbNeck   := peakHigh
+
+// ─── SECTION 11 · NECKLINE RETEST ENGINE ─────────────────────────────────────
+// After an H&S neckline break, price often retests the neckline from below
+// before continuing down.  Detect this retest as an additional short trigger.
+// Mirror: after inv-H&S break, price retests from above → additional long.
+
+retestShort = not na(hsBrokenBar)
+           and (bar_index - hsBrokenBar) <= i_retestBars
+           and not na(hsNeck)
+           and close >= hsNeck * (1.0 - i_neckTol * 2.0)
+           and close <= hsNeck * (1.0 + i_neckTol * 2.0)
+
+retestLong  = not na(invBrokenBar)
+           and (bar_index - invBrokenBar) <= i_retestBars
+           and not na(invHsNeck)
+           and close >= invHsNeck * (1.0 - i_neckTol * 2.0)
+           and close <= invHsNeck * (1.0 + i_neckTol * 2.0)
+
+// ─── SECTION 12 · DIRAC PROXIMITY ENGINE ─────────────────────────────────────
+
+diracW   = i_diracWidth * atr
+dResist  = not na(nearResist)  ? diracLor(close - nearResist,  diracW) : 0.0
+dSupport = not na(nearSupport) ? diracLor(close - nearSupport, diracW) : 0.0
+
+// Normalise to 0..1 range.  When diracW ≤ 0 fall back to 1.0 (neutral).
+diracNorm = diracW > 0.0 ? math.pi * diracW : 1.0
+dResistN  = dResist  * diracNorm
+dSupportN = dSupport * diracNorm
+
+// ─── SECTION 13 · COSH MOMENTUM ENGINE ───────────────────────────────────────
+// cosh(0) = 1.0; grows symmetrically for any non-zero input.
+// Values significantly above 1 indicate a decisive directional bar.
+
+coshMom  = customCosh(barRet, i_coshScale)
+coshFire = coshMom > i_coshThresh
+
+// ─── SECTION 14 · SKEW-DISJOINTED Z-SCORE ENGINE ─────────────────────────────
+
+sz = skewZ(barRet, i_bullSkew, i_bearSkew, i_skewLen)
+
+// ─── SECTION 15 · RSI DIVERGENCE ENGINE ──────────────────────────────────────
+// Bullish: newer pivot LOW has lower price AND higher RSI (hidden strength).
+// Bearish: newer pivot HIGH has higher price AND lower RSI (hidden weakness).
+
+var bool rsiBullDiv = false
+var bool rsiBearDiv = false
+
+rsiBullDiv := false
+rsiBearDiv := false
+
+if array.size(plArr) >= 2
+    maxI = math.min(i_divLookback, array.size(plArr) - 1)
+    for i = 1 to maxI
+        p0 = array.get(plArr,    0)
+        pi = array.get(plArr,    i)
+        r0 = array.get(plRsiArr, 0)
+        ri = array.get(plRsiArr, i)
+        if p0 < pi and r0 > ri
+            rsiBullDiv := true
+
+if array.size(phArr) >= 2
+    maxI = math.min(i_divLookback, array.size(phArr) - 1)
+    for i = 1 to maxI
+        p0 = array.get(phArr,    0)
+        pi = array.get(phArr,    i)
+        r0 = array.get(phRsiArr, 0)
+        ri = array.get(phRsiArr, i)
+        if p0 > pi and r0 < ri
+            rsiBearDiv := true
+
+// ─── SECTION 16 · CMF + OBV ENGINE ───────────────────────────────────────────
+
+// CMF: > 0.1 = accumulation, < -0.1 = distribution
+cmfBullScore = cmfVal >  0.1 ? math.min( cmfVal, 1.0) * i_cmfWeight : 0.0
+cmfBearScore = cmfVal < -0.1 ? math.min(-cmfVal, 1.0) * i_cmfWeight : 0.0
+
+// OBV slope: normalised fraction of OBV that has moved over the lookback
+obvBullScore = obvSlope > 0.0 ? math.min( obvSlope * 10.0, 1.0) * i_obvWeight : 0.0
+obvBearScore = obvSlope < 0.0 ? math.min(-obvSlope * 10.0, 1.0) * i_obvWeight : 0.0
+
+// ─── SECTION 17 · VWAP ENGINE ────────────────────────────────────────────────
+
+vwapBullScore = i_useVwap and vwapZ > 0.0 ? math.min( vwapZ, 2.0) * i_vwapWeight : 0.0
+vwapBearScore = i_useVwap and vwapZ < 0.0 ? math.min(-vwapZ, 2.0) * i_vwapWeight : 0.0
+
+// ─── SECTION 18 · REGIME ENGINE ──────────────────────────────────────────────
+// In a ranging regime the regression and curvature signals are dampened to 50%
+// to avoid false entries on mean-reverting price action.
+
+regimeMult    = isTrending ? 1.0 : 0.5
+mtfBullBonus  = mtfBull ? 0.3 : 0.0
+mtfBearBonus  = mtfBear ? 0.3 : 0.0
+
+// ─── SECTION 19 · COMPOSITE BULL / BEAR SCORES ───────────────────────────────
+//
+//  Engine              Bull Component              Bear Component
+//  ─────────────────── ─────────────────────────── ───────────────────────────
+//  H&S                 invHsSignal × hsWeight       hsSignal × hsWeight
+//  Neckline Retest     retestLong × hsWeight×0.6    retestShort × hsWeight×0.6
+//  Double Bot/Top      dbSignal × dtWeight          dtSignal × dtWeight
+//  Regression          regBullRaw                   regBearRaw
+//  Curvature (2+3)     curvBullRaw                  curvBearRaw
+//  POI crossover       poiBreakUp[1] × 1.5          poiBreakDown[1] × 1.5
+//  Dirac proximity     dSupportN × diracWeight      dResistN × diracWeight
+//  Cosh momentum       coshFire&ret>0 × coshWeight  coshFire&ret<0 × coshWeight
+//  Skew Z-score        sz>0 × sz × skewWeight       |sz|>0 × |sz| × skewWeight
+//  RSI Divergence      rsiBullDiv × divWeight        rsiBearDiv × divWeight
+//  CMF                 cmfBullScore                 cmfBearScore
+//  OBV                 obvBullScore                 obvBearScore
+//  VWAP                vwapBullScore                vwapBearScore
+//  MTF bias            mtfBullBonus                 mtfBearBonus
+//
+//  Final score = rawScore × regimeMult  (halved in ranging markets)
+
+rawBull = (invHsSignal              ? i_hsWeight         : 0.0)
+        + (retestLong               ? i_hsWeight * 0.6   : 0.0)
+        + (dbSignal                 ? i_dtWeight         : 0.0)
+        + regBullRaw
+        + curvBullRaw
+        + (poiBreakUp[1]            ? 1.5                : 0.0)
+        + dSupportN * i_diracWeight
+        + (coshFire and barRet > 0  ? i_coshWeight       : 0.0)
+        + (sz > 0.0                 ? sz * i_skewWeight  : 0.0)
+        + (rsiBullDiv               ? i_divWeight        : 0.0)
+        + cmfBullScore
+        + obvBullScore
+        + vwapBullScore
+        + mtfBullBonus
+
+rawBear = (hsSignal                 ? i_hsWeight         : 0.0)
+        + (retestShort              ? i_hsWeight * 0.6   : 0.0)
+        + (dtSignal                 ? i_dtWeight         : 0.0)
+        + regBearRaw
+        + curvBearRaw
+        + (poiBreakDown[1]          ? 1.5                : 0.0)
+        + dResistN * i_diracWeight
+        + (coshFire and barRet < 0  ? i_coshWeight       : 0.0)
+        + (sz < 0.0                 ? math.abs(sz) * i_skewWeight : 0.0)
+        + (rsiBearDiv               ? i_divWeight        : 0.0)
+        + cmfBearScore
+        + obvBearScore
+        + vwapBearScore
+        + mtfBearBonus
+
+bullScore = rawBull * regimeMult
+bearScore = rawBear * regimeMult
+
+// ─── SECTION 20 · CONFLUENCE COUNTER + ADAPTIVE THRESHOLD ────────────────────
+// Count distinct engines that agree with the bull / bear direction.
+// If ≥ 5 engines agree, threshold is relaxed by 0.5 (more aggressive entry).
+
+confBull = (invHsSignal  ? 1 : 0)
+         + (dbSignal     ? 1 : 0)
+         + (slopeUp      ? 1 : 0)
+         + (curvBullRaw > 0.0 ? 1 : 0)
+         + (rsiBullDiv   ? 1 : 0)
+         + (cmfVal > 0.1 ? 1 : 0)
+         + (obvSlope > 0 ? 1 : 0)
+         + (vwapZ > 0.0  ? 1 : 0)
+         + (mtfBull      ? 1 : 0)
+
+confBear = (hsSignal     ? 1 : 0)
+         + (dtSignal     ? 1 : 0)
+         + (slopeDown    ? 1 : 0)
+         + (curvBearRaw > 0.0 ? 1 : 0)
+         + (rsiBearDiv   ? 1 : 0)
+         + (cmfVal < -0.1 ? 1 : 0)
+         + (obvSlope < 0  ? 1 : 0)
+         + (vwapZ < 0.0   ? 1 : 0)
+         + (mtfBear       ? 1 : 0)
+
+confAdj  = i_useConf ? 0.5 : 0.0
+dynThreshBull = i_entryThresh - (confBull >= 5 ? confAdj : 0.0)
+dynThreshBear = i_entryThresh - (confBear >= 5 ? confAdj : 0.0)
+
+// ─── SECTION 21 · FILTERS ────────────────────────────────────────────────────
+
+volOk    = not i_useVol    or volume > volSma * i_volMult
+atrOk    = not i_useAtr    or atrPct >= i_minAtrPct
+regimeOk = not i_useRegime or isTrending
+slopeOk  = not i_slopeFilt
+        or (bullScore > bearScore ? slopeUp   : true)
+        or (bearScore > bullScore ? slopeDown  : true)
+
+// ─── SECTION 22 · ENTRY SIGNALS + COOLDOWN ───────────────────────────────────
+
+var int barsAfterExit = 999
+if strategy.position_size == 0 and strategy.position_size[1] != 0
+    barsAfterExit := 0
+else
+    barsAfterExit += 1
+
+cooldownOk = barsAfterExit >= i_cooldown
+
+longEntry  = bullScore >= dynThreshBull
+           and bullScore - bearScore >= i_edgeDelta
+           and volOk and atrOk and regimeOk and slopeOk and cooldownOk
+
+shortEntry = bearScore >= dynThreshBear
+           and bearScore - bullScore >= i_edgeDelta
+           and volOk and atrOk and regimeOk and slopeOk and cooldownOk
+
+// ─── SECTION 23 · MANUAL TRAILING STOP ───────────────────────────────────────
+// Updated every bar while in a position; ratchets in favour of the trade.
+
+var float trailLong  = na
+var float trailShort = na
+
+if strategy.position_size > 0
+    newTrailL = close * (1.0 - i_trailPct / 100.0)
+    trailLong := na(trailLong) ? newTrailL : math.max(trailLong, newTrailL)
+else
+    trailLong := na
+
+if strategy.position_size < 0
+    newTrailS = close * (1.0 + i_trailPct / 100.0)
+    trailShort := na(trailShort) ? newTrailS : math.min(trailShort, newTrailS)
+else
+    trailShort := na
+
+// Trigger trail-stop exits
+if i_useTrail and strategy.position_size > 0 and not na(trailLong) and close <= trailLong
+    strategy.close("Long", comment="Trail")
+if i_useTrail and strategy.position_size < 0 and not na(trailShort) and close >= trailShort
+    strategy.close("Short", comment="Trail")
+
+// ─── SECTION 24 · STRATEGY EXECUTION ─────────────────────────────────────────
+
+longStop  = close * (1.0 - i_stopPct / 100.0)
+longTp    = close * (1.0 + i_tpPct   / 100.0)
+shortStop = close * (1.0 + i_stopPct / 100.0)
+shortTp   = close * (1.0 - i_tpPct   / 100.0)
+
+if longEntry and strategy.position_size == 0
+    strategy.entry("Long",  strategy.long)
+    strategy.exit ("LX",    "Long",  stop=longStop,  limit=longTp)
+
+if shortEntry and strategy.position_size == 0
+    strategy.entry("Short", strategy.short)
+    strategy.exit ("SX",    "Short", stop=shortStop, limit=shortTp)
+
+// ─── SECTION 25 · ALERT CONDITIONS ───────────────────────────────────────────
+
+alertcondition(longEntry,  title="Long Entry",
+     message="POI-Scalp: LONG signal fired on {{ticker}} @ {{close}}")
+alertcondition(shortEntry, title="Short Entry",
+     message="POI-Scalp: SHORT signal fired on {{ticker}} @ {{close}}")
+alertcondition(hsSignal,   title="H&S Confirmed",
+     message="POI-Scalp: H&S pattern confirmed on {{ticker}} @ {{close}}")
+alertcondition(invHsSignal,title="Inv H&S Confirmed",
+     message="POI-Scalp: Inverse H&S pattern confirmed on {{ticker}} @ {{close}}")
+alertcondition(dtSignal,   title="Double Top Confirmed",
+     message="POI-Scalp: Double Top pattern confirmed on {{ticker}} @ {{close}}")
+alertcondition(dbSignal,   title="Double Bottom Confirmed",
+     message="POI-Scalp: Double Bottom pattern confirmed on {{ticker}} @ {{close}}")
+
+// ─── SECTION 26 · VISUALS ─────────────────────────────────────────────────────
+
+// ── Std-Dev Bands (1σ / 2σ / 3σ) ─────────────────────────────────────────────
+p1u = plot(i_showBands ? upper1 : na, "1σ Upper", color=color.new(color.teal,   70), linewidth=1)
+p1l = plot(i_showBands ? lower1 : na, "1σ Lower", color=color.new(color.teal,   70), linewidth=1)
+p2u = plot(i_showBands ? upper2 : na, "2σ Upper", color=color.new(color.orange, 70), linewidth=1)
+p2l = plot(i_showBands ? lower2 : na, "2σ Lower", color=color.new(color.orange, 70), linewidth=1)
+p3u = plot(i_showBands ? upper3 : na, "3σ Upper", color=color.new(color.red,    75), linewidth=1)
+p3l = plot(i_showBands ? lower3 : na, "3σ Lower", color=color.new(color.red,    75), linewidth=1)
+fill(p1u, p1l, color=color.new(color.teal,   92))
+fill(p2u, p2l, color=color.new(color.orange, 95))
+fill(p3u, p3l, color=color.new(color.red,    97))
+
+// ── Regression Channel ────────────────────────────────────────────────────────
+pRC  = plot(i_showRegCh ? lrLine  : na, "Regression Line",  color=color.new(color.blue,   20), linewidth=2)
+pRCU = plot(i_showRegCh ? lrUpper : na, "Reg Upper Band",   color=color.new(color.blue,   55), linewidth=1)
+pRCL = plot(i_showRegCh ? lrLower : na, "Reg Lower Band",   color=color.new(color.blue,   55), linewidth=1)
+fill(pRCU, pRCL, color=color.new(color.blue, 90))
+
+// ── VWAP ──────────────────────────────────────────────────────────────────────
+plot(i_showVwap ? vwapVal : na, "VWAP",
+     color=color.new(color.purple, 20), linewidth=1, style=plot.style_stepline)
+
+// ── Session Open POI ──────────────────────────────────────────────────────────
+plot(i_showPOI and not na(sessionOpenPrice) ? sessionOpenPrice : na, "Session Open",
+     color=color.new(color.yellow, 40), linewidth=1, style=plot.style_stepline)
+
+// ── POI Levels (nearest + second-nearest for each side) ───────────────────────
+plot(i_showPOI and not na(nearResist)   ? nearResist   : na, "Resist POI 1",
+     color=color.new(color.red,   30), style=plot.style_stepline, linewidth=1)
+plot(i_showPOI and not na(nearResist2)  ? nearResist2  : na, "Resist POI 2",
+     color=color.new(color.red,   65), style=plot.style_stepline, linewidth=1)
+plot(i_showPOI and not na(nearSupport)  ? nearSupport  : na, "Support POI 1",
+     color=color.new(color.green, 30), style=plot.style_stepline, linewidth=1)
+plot(i_showPOI and not na(nearSupport2) ? nearSupport2 : na, "Support POI 2",
+     color=color.new(color.green, 65), style=plot.style_stepline, linewidth=1)
+
+// ── Neckline levels (H&S and DT/DB) ──────────────────────────────────────────
+plot(not na(hsNeck)    ? hsNeck    : na, "H&S Neckline",
+     color=color.new(color.fuchsia, 40), linewidth=1, style=plot.style_dashed)
+plot(not na(invHsNeck) ? invHsNeck : na, "iH&S Neckline",
+     color=color.new(color.lime,    40), linewidth=1, style=plot.style_dashed)
+plot(not na(dtNeck)    ? dtNeck    : na, "DT Neckline",
+     color=color.new(color.maroon,  50), linewidth=1, style=plot.style_dashed)
+plot(not na(dbNeck)    ? dbNeck    : na, "DB Neckline",
+     color=color.new(color.navy,    50), linewidth=1, style=plot.style_dashed)
+
+// ── Trailing Stop Lines ───────────────────────────────────────────────────────
+plot(i_useTrail and not na(trailLong)  ? trailLong  : na, "Trail Long Stop",
+     color=color.new(color.green, 30), linewidth=1, style=plot.style_circles)
+plot(i_useTrail and not na(trailShort) ? trailShort : na, "Trail Short Stop",
+     color=color.new(color.red,   30), linewidth=1, style=plot.style_circles)
+
+// ── Pivot Markers ─────────────────────────────────────────────────────────────
+plotshape(i_showPivots and not na(rawPH), "Pivot High",
+     style=shape.triangledown, location=location.abovebar,
+     color=color.new(color.red,   10), size=size.tiny)
+plotshape(i_showPivots and not na(rawPL), "Pivot Low",
+     style=shape.triangleup,   location=location.belowbar,
+     color=color.new(color.green,10), size=size.tiny)
+
+// ── Pattern Labels ────────────────────────────────────────────────────────────
+plotshape(hsSignal,    "H&S (Bear)",
+     style=shape.labeldown, location=location.abovebar,
+     color=color.fuchsia, textcolor=color.white, text="H&S", size=size.small)
+plotshape(invHsSignal, "Inv H&S (Bull)",
+     style=shape.labelup, location=location.belowbar,
+     color=color.lime, textcolor=color.black, text="iH&S", size=size.small)
+plotshape(dtSignal,    "Dbl Top (Bear)",
+     style=shape.labeldown, location=location.abovebar,
+     color=color.new(color.maroon, 0), textcolor=color.white, text="DT", size=size.small)
+plotshape(dbSignal,    "Dbl Bot (Bull)",
+     style=shape.labelup, location=location.belowbar,
+     color=color.new(color.navy, 0), textcolor=color.white, text="DB", size=size.small)
+plotshape(retestShort, "Retest Short",
+     style=shape.diamond, location=location.abovebar,
+     color=color.new(color.red,  20), size=size.tiny)
+plotshape(retestLong,  "Retest Long",
+     style=shape.diamond, location=location.belowbar,
+     color=color.new(color.green,20), size=size.tiny)
+
+// ── RSI Divergence Markers ────────────────────────────────────────────────────
+plotshape(rsiBullDiv, "Bull RSI Div",
+     style=shape.circle, location=location.belowbar,
+     color=color.new(color.aqua,  20), size=size.tiny)
+plotshape(rsiBearDiv, "Bear RSI Div",
+     style=shape.circle, location=location.abovebar,
+     color=color.new(color.orange,20), size=size.tiny)
+
+// ── Entry Arrows ──────────────────────────────────────────────────────────────
+plotshape(longEntry,  "Long",
+     style=shape.arrowup,   location=location.belowbar,
+     color=color.new(color.green, 0), size=size.normal)
+plotshape(shortEntry, "Short",
+     style=shape.arrowdown, location=location.abovebar,
+     color=color.new(color.red,   0), size=size.normal)
+
+// ── Background Tints ──────────────────────────────────────────────────────────
+bgcolor(longEntry        ? color.new(color.green, 90) : na, title="Long BG")
+bgcolor(shortEntry       ? color.new(color.red,   90) : na, title="Short BG")
+bgcolor(not isTrending   ? color.new(color.gray,  96) : na, title="Range Regime BG")
+
+// ── Composite-Score Label ─────────────────────────────────────────────────────
+var label scoreLbl = na
+if i_showLabel and barstate.islast
+    label.delete(scoreLbl)
+    txt = "── SCORES ──────────"
+        + "\nBull    : " + str.tostring(math.round(bullScore,    2))
+        + "\nBear    : " + str.tostring(math.round(bearScore,    2))
+        + "\nConf ↑  : " + str.tostring(confBull) + "/9"
+        + "\nConf ↓  : " + str.tostring(confBear) + "/9"
+        + "\n── ENGINES ─────────"
+        + "\nSkew Z  : " + str.tostring(math.round(sz,           2))
+        + "\nCosh    : " + str.tostring(math.round(coshMom,      3))
+        + "\n── REGRESSION ──────"
+        + "\nR²      : " + str.tostring(math.round(regR2,        3))
+        + "\nSlope%  : " + str.tostring(math.round(regSlopeNorm, 4))
+        + "\nCurv2   : " + str.tostring(math.round(curv2Norm,    4))
+        + "\nCurv3   : " + str.tostring(math.round(curv3Norm,    4))
+        + "\n── MARKET ──────────"
+        + "\nATR%    : " + str.tostring(math.round(atrPct,       2))
+        + "\nADX     : " + str.tostring(math.round(adxVal,       1))
+        + "\nVWAP Z  : " + str.tostring(math.round(vwapZ,        2))
+        + "\nCMF     : " + str.tostring(math.round(cmfVal,       3))
+    scoreLbl := label.new(bar_index, high * 1.002, txt,
+         style     = label.style_label_left,
+         color     = color.new(color.gray, 45),
+         textcolor = color.white,
+         size      = size.small)
+
+// ── Engine Status Table ───────────────────────────────────────────────────────
+var table tbl = na
+if i_showTable and barstate.islast
+    table.delete(tbl)
+    tbl := table.new(position.top_right, 3, 17,
+         bgcolor      = color.new(color.black, 60),
+         border_color = color.new(color.gray,  50),
+         border_width = 1,
+         frame_color  = color.new(color.silver, 30),
+         frame_width  = 1)
+
+    // Header row
+    table.cell(tbl, 0,  0, "Engine",   text_color=color.silver, text_size=size.small, bgcolor=color.new(color.navy,50))
+    table.cell(tbl, 1,  0, "▲ Bull",   text_color=color.lime,   text_size=size.small, bgcolor=color.new(color.navy,50))
+    table.cell(tbl, 2,  0, "▼ Bear",   text_color=color.red,    text_size=size.small, bgcolor=color.new(color.navy,50))
+
+    // Row helper (inline row data)
+    _bv(v) => str.tostring(math.round(v, 2))
+    _bc(v) => v > 0.0 ? color.new(color.lime, 20) : color.gray
+    _rn(r, lbl, bv, bev) =>
+        table.cell(tbl, 0, r, lbl,     text_color=color.silver, text_size=size.tiny)
+        table.cell(tbl, 1, r, _bv(bv), text_color=_bc(bv),      text_size=size.tiny)
+        table.cell(tbl, 2, r, _bv(bev),text_color=_bc(bev),     text_size=size.tiny)
+
+    _rn( 1, "H&S / iH&S",
+         invHsSignal ? i_hsWeight : 0.0,
+         hsSignal    ? i_hsWeight : 0.0)
+    _rn( 2, "Nk Retest",
+         retestLong  ? i_hsWeight * 0.6 : 0.0,
+         retestShort ? i_hsWeight * 0.6 : 0.0)
+    _rn( 3, "Dbl Top/Bot",
+         dbSignal ? i_dtWeight : 0.0,
+         dtSignal ? i_dtWeight : 0.0)
+    _rn( 4, "Regression",      regBullRaw,  regBearRaw)
+    _rn( 5, "Curvature",       curvBullRaw, curvBearRaw)
+    _rn( 6, "POI Break",
+         poiBreakUp[1]   ? 1.5 : 0.0,
+         poiBreakDown[1] ? 1.5 : 0.0)
+    _rn( 7, "Dirac",           dSupportN * i_diracWeight, dResistN * i_diracWeight)
+    _rn( 8, "Cosh",
+         (coshFire and barRet > 0) ? i_coshWeight : 0.0,
+         (coshFire and barRet < 0) ? i_coshWeight : 0.0)
+    _rn( 9, "Skew Z",
+         sz > 0.0 ? sz * i_skewWeight : 0.0,
+         sz < 0.0 ? math.abs(sz) * i_skewWeight : 0.0)
+    _rn(10, "RSI Div",
+         rsiBullDiv ? i_divWeight : 0.0,
+         rsiBearDiv ? i_divWeight : 0.0)
+    _rn(11, "CMF",             cmfBullScore,  cmfBearScore)
+    _rn(12, "OBV",             obvBullScore,  obvBearScore)
+    _rn(13, "VWAP",            vwapBullScore, vwapBearScore)
+    _rn(14, "MTF Bias",        mtfBullBonus,  mtfBearBonus)
+    _rn(15, "─ TOTAL ─",       bullScore,     bearScore)
+    // Confluence count
+    table.cell(tbl, 0, 16, "Confluence",text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 16, str.tostring(confBull) + "/9",
+         text_color=confBull >= 5 ? color.lime : color.gray, text_size=size.tiny)
+    table.cell(tbl, 2, 16, str.tostring(confBear) + "/9",
+         text_color=confBear >= 5 ? color.red  : color.gray, text_size=size.tiny)

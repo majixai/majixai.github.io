@@ -1,0 +1,85 @@
+name: Pine POI — Fetch Google Finance & Update README
+
+on:
+  # Run every 30 minutes during US market hours (Mon–Fri 13:30–21:00 UTC).
+  # '30 13-20' fires at :30 of each hour 13–20; the separate cron below
+  # covers the top-of-hour runs for hours 14–20 and the 21:00 snapshot.
+  schedule:
+    - cron: '30 13-20 * * 1-5'   # :30 of each hour 13:30–20:30
+    - cron: '0 14-21 * * 1-5'    # :00 of each hour 14:00–21:00 (end-of-day)
+  # Also run on any push that touches the Pine Script or the updater
+  push:
+    branches:
+      - main
+    paths:
+      - 'tradingview_integration/pine_script/**'
+      - 'tradingview_integration/pine_poi_updater.py'
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      tickers_override:
+        description: >
+          Comma-separated list of TICKER:EXCHANGE pairs to fetch
+          (e.g. "SPY:NYSEARCA,AAPL:NASDAQ").  Leave blank to use defaults.
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-update:
+    name: Fetch Google Finance quotes & update README
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Python setup ────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 3. Install dependencies ────────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          pip install --quiet --upgrade pip
+          # requests is optional but preferred; the script falls back to urllib
+          pip install --quiet requests
+
+      # ── 4. Fetch Google Finance quotes ─────────────────────────────────────
+      - name: Fetch quotes from google.com/finance/quote/
+        env:
+          # Forward any manual tickers_override so the script can read it
+          TICKERS_OVERRIDE: ${{ github.event.inputs.tickers_override }}
+        run: |
+          python tradingview_integration/pine_poi_updater.py
+
+      # ── 5. Count lines in the Pine Script for the commit message ───────────
+      - name: Measure Pine Script stats
+        id: pine_stats
+        run: |
+          LINES=$(wc -l < tradingview_integration/pine_script/scalp_poi_hs_dirac.pine)
+          echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+
+      # ── 6. Commit & push changes if anything changed ───────────────────────
+      - name: Commit and push if README or JSON changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: >
+            docs: auto-update Pine POI README quotes [skip ci]
+            (${{ steps.pine_stats.outputs.lines }} lines in strategy)
+          file_pattern: |
+            tradingview_integration/pine_script/README.md
+            tradingview_integration/data/google_finance_quotes.json
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+          commit_author: >
+            github-actions[bot]
+            <github-actions[bot]@users.noreply.github.com>
