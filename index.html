@@ -572,6 +572,35 @@
     .animations-paused * {
       animation-play-state: paused !important;
     }
+    /* Toast Notification */
+    .toast-notification {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      min-width: 260px;
+      max-width: 360px;
+      padding: 0.85rem 1.2rem;
+      border-radius: 0.6rem;
+      color: #fff;
+      font-size: 0.9rem;
+      z-index: 99999;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.22);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+    .toast-notification.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .toast-notification.toast-success { background: #27ae60; }
+    .toast-notification.toast-error   { background: #c0392b; }
+    .toast-notification.toast-info    { background: #2980b9; }
     /* Loading Spinner */
     .loading-overlay {
       position: fixed;
@@ -658,7 +687,13 @@
     <button id="refreshData" class="btn btn-outline-success">
       <i class="fas fa-sync-alt me-1"></i> Refresh
     </button>
+    <button id="updateReadmeBtn" class="btn btn-outline-warning" title="Trigger the Update README GitHub Actions workflow">
+      <i class="fas fa-file-alt me-1"></i> Update README
+    </button>
   </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="toast-notification" role="alert" aria-live="assertive"></div>
 
   <!-- Stats Dashboard -->
   <div class="stats-dashboard">
@@ -1910,6 +1945,81 @@
     getEventBus: () => EventBus.getInstance(),
     getStorage: () => IndexedDBStorage.getInstance()
   });
+
+  // ============================================================================
+  // Update README: GitHub Actions workflow_dispatch trigger
+  // ============================================================================
+  (function() {
+    const OWNER          = 'majixai';
+    const REPO           = 'majixai.github.io';
+    const WORKFLOW       = 'update-readme.yml';
+    const PAT_KEY        = 'majixai.gh.pat';
+    const TOAST_DURATION = 4000;
+
+    function showToast(message, type) {
+      const el = document.getElementById('toastNotification');
+      if (!el) return;
+      el.textContent = '';
+      const icon = document.createElement('i');
+      const iconClass = type === 'success' ? 'fa-check-circle'
+                      : type === 'error'   ? 'fa-exclamation-circle'
+                      :                      'fa-info-circle';
+      icon.className = `fas ${iconClass}`;
+      el.appendChild(icon);
+      el.appendChild(document.createTextNode(' ' + message));
+      el.className = `toast-notification toast-${type} show`;
+      clearTimeout(el._hideTimer);
+      el._hideTimer = setTimeout(() => { el.classList.remove('show'); }, TOAST_DURATION);
+    }
+
+    async function triggerUpdateReadme() {
+      let pat = sessionStorage.getItem(PAT_KEY) || '';
+      pat = (window.prompt(
+        'Enter a GitHub Personal Access Token with "workflow" scope to trigger the Update README action.\n\nNote: the token is stored in sessionStorage (cleared when the tab closes) and is visible in browser developer tools.\n\nToken:',
+        pat
+      ) || '').trim();
+      if (!pat) return;
+      sessionStorage.setItem(PAT_KEY, pat);
+
+      const btn = document.getElementById('updateReadmeBtn');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Triggering…'; }
+
+      try {
+        const res = await fetch(
+          `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}/dispatches`,
+          {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'Authorization': `Bearer ${pat}`,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ref: 'main' })
+          }
+        );
+        if (res.status === 204) {
+          showToast('Update README workflow triggered successfully!', 'success');
+        } else {
+          const body = await res.json().catch(() => ({}));
+          const msg = (body && body.message) ? body.message : `HTTP ${res.status}`;
+          showToast(`Failed to trigger workflow: ${msg}`, 'error');
+          if (res.status === 401 || res.status === 403) {
+            sessionStorage.removeItem(PAT_KEY);
+          }
+        }
+      } catch (err) {
+        showToast(`Error: ${err.message}`, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-alt me-1"></i> Update README'; }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const btn = document.getElementById('updateReadmeBtn');
+      if (btn) btn.addEventListener('click', triggerUpdateReadme);
+    });
+  })();
 
   // ============================================================================
   // Application Bootstrap
