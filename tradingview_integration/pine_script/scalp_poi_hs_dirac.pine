@@ -154,6 +154,24 @@ i_showVwap    = input.bool(true,  "Show VWAP",                 group="⑰ Displa
 i_showLabel   = input.bool(true,  "Show Score Label",          group="⑰ Display")
 i_showTable   = input.bool(true,  "Show Engine Table",         group="⑰ Display")
 
+// ── ⑱ Daily Forecast ─────────────────────────────────────────────────────────
+i_showDailyPOI = input.bool (true,  "Show Daily OHLC Levels",          group="⑱ Daily Forecast",
+                  tooltip="Plot today's open/high/low and the previous day's high/low/close as sticky POI lines.")
+i_show24hPOI   = input.bool (true,  "Show 24h Rolling High / Low",      group="⑱ Daily Forecast",
+                  tooltip="Plot the rolling high and low over the user-defined lookback window.")
+i_showForecast = input.bool (true,  "Show Forecast Lines",              group="⑱ Daily Forecast",
+                  tooltip="Plot the Max Projected Bull Target and Most Probable Price lines.")
+i_bullMoveMult = input.float(1.0,   "Max Bull Move (avg-range mult)",   minval=0.1, step=0.1, group="⑱ Daily Forecast",
+                  tooltip="Max projected bull target = daily open + average-daily-range × this multiplier.")
+i_lookback24h  = input.int  (24,    "24h Lookback (bars)",              minval=1, maxval=1000, group="⑱ Daily Forecast",
+                  tooltip="Bars representing ~24 hours on your chart timeframe. Examples: 24 for 1h · 96 for 15m · 78 for 5m (equities) · 1440 for 1m (crypto).")
+i_probWt       = input.float(0.6,   "Most-Probable-Price VWAP Weight",  minval=0.1, maxval=0.9, step=0.1, group="⑱ Daily Forecast",
+                  tooltip="How much weight the 24h VWAP receives vs the 24h high/low midpoint when computing the most probable price. Remainder goes to the midpoint.")
+i_dailyWt      = input.float(0.8,   "Daily POI Score Weight",           minval=0.1, step=0.1, group="⑱ Daily Forecast",
+                  tooltip="Composite weight applied to the daily-POI (open/high/low/prev-day) Dirac proximity scores.")
+i_forecastWt   = input.float(1.2,   "Forecast POI Score Weight",        minval=0.1, step=0.1, group="⑱ Daily Forecast",
+                  tooltip="Weight applied to the Max Bull Target and Most Probable Price forecast scores.")
+
 // ─── SECTION 2 · CONSTANTS ────────────────────────────────────────────────────
 
 // Guard against near-zero denominators throughout all statistical functions.
@@ -281,6 +299,41 @@ obvSlope = (obvVal - obvVal[i_obvLen]) / math.max(math.abs(obvVal[i_obvLen]), 1.
 var float sessionOpenPrice = na
 if session.isfirstbar
     sessionOpenPrice := open
+
+// ─── SECTION 4b · DAILY / 24-HOUR FORECAST ENGINE ────────────────────────────
+// Daily OHLC for the current day (no lookahead to prevent future-bar peeking).
+dailyOpen    = request.security(syminfo.tickerid, "D", open,     lookahead=barmerge.lookahead_off)
+dailyHigh    = request.security(syminfo.tickerid, "D", high,     lookahead=barmerge.lookahead_off)
+dailyLow     = request.security(syminfo.tickerid, "D", low,      lookahead=barmerge.lookahead_off)
+
+// Previous completed day's high, low and close.
+prevDayHigh  = request.security(syminfo.tickerid, "D", high[1],  lookahead=barmerge.lookahead_off)
+prevDayLow   = request.security(syminfo.tickerid, "D", low[1],   lookahead=barmerge.lookahead_off)
+prevDayClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_off)
+
+// 20-day simple average of the daily range (high − low).
+avgDailyRng  = request.security(syminfo.tickerid, "D",
+               ta.sma(high - low, 20), lookahead=barmerge.lookahead_off)
+
+// Max projected bull move of the day: daily open + avg daily range × multiplier.
+// This is the largest expected intraday upside target anchored to the session open.
+maxBullTarget = not na(dailyOpen) and not na(avgDailyRng) and avgDailyRng > 0.0
+              ? dailyOpen + avgDailyRng * i_bullMoveMult
+              : float(na)
+
+// Rolling 24h high / low over the user-configured lookback window.
+h24 = ta.highest(high, i_lookback24h)
+l24 = ta.lowest (low,  i_lookback24h)
+
+// 24-hour VWAP: volume-weighted average of hlc3 over the rolling window.
+float _vwapNum24 = ta.sma(hlc3 * volume, i_lookback24h)
+float _vwapDen24 = ta.sma(volume, i_lookback24h)
+vwap24h          = _vwapDen24 > 0.0 ? _vwapNum24 / _vwapDen24 : hlc3
+
+// Most probable price of the day: blends 24h VWAP (fair-value anchor) with the
+// midpoint of the 24h range (geometric centre).  Price gravitates to this level.
+midPt24h          = (h24 + l24) * 0.5
+mostProbablePrice = vwap24h * i_probWt + midPt24h * (1.0 - i_probWt)
 
 // ─── SECTION 5 · LINEAR REGRESSION ENGINE ────────────────────────────────────
 
