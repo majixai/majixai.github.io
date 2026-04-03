@@ -106,10 +106,9 @@ class SlideshowManager {
         try {
             const response = await fetch(datUrl);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const text = await response.text();
-            const urls = [...new Set(
-                text.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'))
-            )];
+            const buffer = await response.arrayBuffer();
+            const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+            const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
             return new SlideshowManager(imgElement, urls, options);
         } catch (e) {
             console.warn(`SlideshowManager: Could not load ${datUrl}:`, e.message);

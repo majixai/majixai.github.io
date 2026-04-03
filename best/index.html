@@ -1306,7 +1306,43 @@ function setupIntersectionObservers() {
 function initSlideshowRuntime(card) {
   if (card.dataset.intervalId) return; 
   const images = card._imgArray;
-  if (!images || images.length <= 1) return; 
+  if (!images) return;
+
+  if (images.length <= 1 && !card.dataset.historyFetched) {
+    const username = card.dataset.user;
+    if (username) {
+      const safeUsername = encodeURIComponent(username);
+      card.dataset.historyFetched = 'true';
+      fetch(`history/${safeUsername}.dat`)
+        .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .then(buffer => {
+          const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+          const fetched = [...new Set(JSON.parse(decompressed).filter(Boolean))];
+          if (fetched.length > 1) {
+            card._imgArray = fetched;
+            const badge = card.querySelector('.img-count-badge');
+            if (badge) badge.textContent = `🖼 ${fetched.length}`;
+            else {
+              const b = document.createElement('span');
+              b.className = 'img-count-badge';
+              b.textContent = `🖼 ${fetched.length}`;
+              card.appendChild(b);
+            }
+            if (!card.querySelector('.progress-bar-custom')) {
+              const pb = document.createElement('div');
+              pb.className = 'progress-bar-custom';
+              pb.innerHTML = '<div class="progress-fill"></div>';
+              card.insertBefore(pb, card.firstChild);
+            }
+            initSlideshowRuntime(card);
+          }
+        })
+        .catch(e => { console.warn(`[slideshow] Could not load history for ${username}:`, e.message); });
+    }
+    return;
+  }
+
+  if (images.length <= 1) return;
 
   const imgEl = card.querySelector('.slide-img');
   const progBar = card.querySelector('.progress-fill');

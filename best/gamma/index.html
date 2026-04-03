@@ -9,6 +9,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" integrity="sha512-g2TeAWw5GPnX7z0Kn8nFbYfeHcvAu/tx6d6mrLe/90mkCxO+RcptyYpksUz35EO337F83bZwcmUyHiHamspkfg==" crossorigin="anonymous"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-08HVWP558L"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -313,7 +314,7 @@
 
         const manager = await SlideshowManager.fromDatFile(
             imgElement,
-            `../../${username}_image_history.dat`,
+            `../history/${encodeURIComponent(username)}.dat`,
             { progressBar, counter }
         );
         if (manager.images.length > 1) {
