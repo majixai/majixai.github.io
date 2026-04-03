@@ -158,15 +158,116 @@
     from { transform: scale(1);    transform-origin: center center; }
     to   { transform: scale(1.08); transform-origin: 60% 40%; }
   }
+
+  /* Card height CSS variable */
+  :root { --card-height: 260px; }
+  .slide-container { height: var(--card-height) !important; }
+
+  /* Image count badge on card */
+  .img-count-badge {
+    position: absolute; bottom: 10px; right: 10px; z-index: 15;
+    background: rgba(0,0,0,0.65); color: #a8afbb; font-size: 0.65rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 8px; backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.1); pointer-events: none;
+  }
+
+  /* Note indicator on card */
+  .note-dot {
+    position: absolute; top: 10px; left: 46px; z-index: 15;
+    background: #f59e0b; border-radius: 50%; width: 10px; height: 10px;
+    box-shadow: 0 0 6px rgba(245,158,11,0.7); pointer-events: none;
+  }
+
+  /* Hidden performer */
+  .user-card.hidden-card { display: none; }
+
+  /* Mobile sidebar overlay */
+  #sidebarOverlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    z-index: 1040; backdrop-filter: blur(2px);
+  }
+  #sidebarOverlay.active { display: block; }
+  .sidebar.mobile-open { display: block !important; position: fixed; top: 56px; left: 0; bottom: 0; z-index: 1045; width: 280px; overflow-y: auto; }
+
+  /* Toast container */
+  #toastContainer {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 2000; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    pointer-events: none;
+  }
+  .jinx-toast {
+    background: #1f232b; color: #e2e8f0; border: 1px solid #2a2f39;
+    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem; font-weight: 600;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.5); opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none; max-width: 340px; text-align: center;
+  }
+  .jinx-toast.show { opacity: 1; transform: translateY(0); }
+  .jinx-toast.success { border-color: #10b981; color: #6ee7b7; }
+  .jinx-toast.info    { border-color: #3b82f6; color: #93c5fd; }
+  .jinx-toast.warning { border-color: #f59e0b; color: #fcd34d; }
+
+  /* Context menu */
+  #cardContextMenu {
+    position: fixed; z-index: 3000;
+    background: #1f232b; border: 1px solid #2a2f39; border-radius: 10px;
+    padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    min-width: 170px; display: none;
+  }
+  #cardContextMenu.visible { display: block; }
+  .ctx-item {
+    padding: 7px 16px; font-size: 0.82rem; color: #e2e8f0; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: background 0.15s;
+  }
+  .ctx-item:hover { background: rgba(244,114,182,0.12); color: #f472b6; }
+  .ctx-item.danger:hover { background: rgba(239,68,68,0.12); color: #f87171; }
+  .ctx-sep { height: 1px; background: #2a2f39; margin: 4px 0; }
+
+  /* Tag cloud */
+  .tag-cloud-item {
+    display: inline-block; cursor: pointer; border-radius: 14px;
+    padding: 4px 12px; font-weight: 700; transition: all 0.18s;
+    border: 1px solid transparent;
+  }
+  .tag-cloud-item:hover { opacity: 0.8; transform: scale(1.08); }
+
+  /* Recently viewed list */
+  .rv-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    border-radius: 8px; cursor: pointer; transition: background 0.15s;
+    border-bottom: 1px solid #2a2f39;
+  }
+  .rv-item:hover { background: rgba(244,114,182,0.08); }
+  .rv-item img { width: 42px; height: 42px; border-radius: 6px; object-fit: cover; }
+  .rv-item-username { font-weight: 700; color: #f472b6; font-size: 0.85rem; }
+  .rv-item-meta { font-size: 0.7rem; color: #a8afbb; }
+
+  /* Notes modal textarea */
+  #noteTextarea { background: #191c22; border-color: #2a2f39; color: #e2e8f0; resize: vertical; min-height: 90px; }
+  #noteTextarea:focus { border-color: #f472b6; box-shadow: 0 0 0 0.15rem rgba(244,114,182,0.2); }
+
+  /* Hotkeys table */
+  .hotkey-table td { padding: 4px 10px; font-size: 0.82rem; }
+  .hotkey-table td:first-child { font-family: monospace; color: #f472b6; font-weight: 700; }
+
+  /* Toolbar button group */
+  .toolbar-btn {
+    border: 1px solid #2a2f39; background: #191c22; color: #a8afbb;
+    border-radius: 8px; padding: 4px 12px; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; transition: all 0.18s; white-space: nowrap;
+  }
+  .toolbar-btn:hover { border-color: #f472b6; color: #f472b6; background: rgba(244,114,182,0.08); }
   </style>
 </head>
 <body>
 
 <nav class="navbar navbar-dark sticky-top">
   <div class="container-fluid">
+    <button class="btn btn-sm d-md-none me-2" id="sidebarToggleBtn" style="background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.3);color:#f472b6;" title="Filters">☰</button>
     <span class="navbar-brand mb-0 h1 d-flex align-items-center">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-      JINX <span class="ms-2 fs-6 text-muted">v5.0 Deep Learning Matrix</span>
+      JINX <span class="ms-2 fs-6 text-muted">v6.0 Deep Learning Matrix</span>
     </span>
     <div class="d-flex text-white-50 align-items-center fs-6" id="globalStatus">
       Initializing parallel core...
@@ -174,9 +275,10 @@
   </div>
 </nav>
 
+<div id="sidebarOverlay"></div>
 <div class="container-fluid">
   <div class="row">
-    <div class="col-md-3 col-lg-2 sidebar p-3 d-none d-md-block">
+    <div class="col-md-3 col-lg-2 sidebar p-3 d-none d-md-block" id="mainSidebar">
       
       <!-- Selection Mode Toggle -->
       <div class="p-2 mb-3 rounded" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);">
@@ -200,8 +302,12 @@
           <option value="bayesian">Bayesian Average (Quant)</option>
           <option value="rawScore">Raw Score (Linear)</option>
           <option value="engagement">Engagement Velocity</option>
+          <option value="trendingScore">Trending Score</option>
+          <option value="diversityScore">Diversity Score</option>
           <option value="viewers">Max Viewers</option>
           <option value="imageCount">Most Images</option>
+          <option value="nameAZ">Name A → Z</option>
+          <option value="nameZA">Name Z → A</option>
           <option value="ageAsc">Age: Youngest First</option>
           <option value="ageDesc">Age: Oldest First</option>
           <option value="birthday">Upcoming Birthdays</option>
@@ -272,6 +378,29 @@
         <input type="range" class="form-range" id="slideshowSpeed" min="1500" max="8000" step="500" value="3500">
       </div>
 
+      <div class="mb-3">
+        <label class="form-label">Card Height: <span id="heightVal" class="text-white">260px</span></label>
+        <input type="range" class="form-range" id="cardHeightSlider" min="140" max="480" step="20" value="260">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Min Images: <span id="minImgVal" class="text-white">0</span></label>
+        <input type="range" class="form-range" id="minImages" min="0" max="30" step="1" value="0">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Exclude Tags</label>
+        <input type="text" id="excludeTagFilter" class="form-control form-control-sm" placeholder="e.g. hairy, smoking" />
+      </div>
+
+      <h6 class="text-uppercase text-muted mt-3 mb-2 fw-bold border-bottom border-secondary pb-1">Session Stats</h6>
+      <div class="d-flex flex-column gap-1 mb-3" style="font-size:0.75rem; color:#a8afbb;">
+        <div>❤ Favorites: <span id="statFavCount" class="text-white fw-bold">0</span></div>
+        <div>🚫 Hidden: <span id="statHiddenCount" class="text-white fw-bold">0</span></div>
+        <div>📝 Notes: <span id="statNoteCount" class="text-white fw-bold">0</span></div>
+        <div>🕐 Viewed: <span id="statViewedCount" class="text-white fw-bold">0</span></div>
+      </div>
+
       <button id="applyFiltersBtn" class="btn btn-primary w-100 fw-bold btn-sm mb-2" style="background-color: #f472b6; border: none; color: black;">Execute Query</button>
       <button id="resetFiltersBtn" class="btn btn-outline-secondary w-100 btn-sm">Reset Matrix</button>
     </div>
@@ -279,27 +408,38 @@
     <div class="col-md-9 col-lg-10 main-content p-4">
       
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
           <button id="presentModeBtn" class="btn btn-sm fw-bold" style="background: linear-gradient(135deg,#f472b6,#8b5cf6); color:#fff; border:none; border-radius:20px; padding: 6px 18px;">
             ▶ Present Mode
           </button>
           <button id="clearFavsBtn" class="btn btn-sm btn-outline-secondary" title="Clear all favorites">🗑 Favs</button>
+          <button id="tagCloudBtn" class="toolbar-btn" title="Tag frequency cloud">📊 Tags</button>
+          <button id="recentViewedBtn" class="toolbar-btn" title="Recently viewed">🕐 Recent</button>
+          <button id="exportCsvBtn" class="toolbar-btn" title="Export filtered list as CSV">📋 Export</button>
+          <button id="showHiddenBtn" class="toolbar-btn" title="Manage hidden performers">🚫 Hidden</button>
+          <button id="hotkeysBtn" class="toolbar-btn" title="Keyboard shortcuts">⌨ Keys</button>
         </div>
         <span id="activeFilterBadge" class="text-muted small"></span>
       </div>
 
       <div class="row g-2 mb-3">
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <div class="dash-stat-box"><div class="dash-stat-value" id="statTotal">0</div><div class="dash-stat-label">Performers Parsed</div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <div class="dash-stat-box"><div class="dash-stat-value" id="statActive">0</div><div class="dash-stat-label">Meeting Criteria</div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <div class="dash-stat-box"><div class="dash-stat-value" id="statMean">0.0</div><div class="dash-stat-label">Global Mean Score</div></div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <div class="dash-stat-box"><div class="dash-stat-value" id="statDev">0.0</div><div class="dash-stat-label">Standard Deviation</div></div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statFavCountMain">0</div><div class="dash-stat-label">Favorites</div></div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="dash-stat-box"><div class="dash-stat-value" id="statAvgImages">0.0</div><div class="dash-stat-label">Avg Images</div></div>
         </div>
       </div>
 
@@ -366,6 +506,115 @@
   </div>
 </div>
 
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<!-- Card right-click context menu -->
+<div id="cardContextMenu">
+  <div class="ctx-item" id="ctxFav">♥ &nbsp;Toggle Favorite</div>
+  <div class="ctx-item" id="ctxNote">📝 &nbsp;Add / Edit Note</div>
+  <div class="ctx-item" id="ctxCopyUser">📋 &nbsp;Copy Username</div>
+  <div class="ctx-item" id="ctxCopyLive">🔗 &nbsp;Copy Live URL</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctxHide">🚫 &nbsp;Hide Performer</div>
+</div>
+
+<!-- Hotkeys Modal -->
+<div class="modal fade" id="hotkeysModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary" style="background:#11141a;">
+        <h5 class="modal-title fw-bold">⌨ Keyboard Shortcuts</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="hotkey-table w-100">
+          <tbody>
+            <tr><td>→ / ←</td><td>Next / Prev image in modal</td></tr>
+            <tr><td>Escape</td><td>Close any open modal</td></tr>
+            <tr><td>F</td><td>Toggle favorite (when modal open)</td></tr>
+            <tr><td>L</td><td>Toggle Watch Live (when modal open)</td></tr>
+            <tr><td>N</td><td>Add / edit note (when modal open)</td></tr>
+            <tr><td>H</td><td>Hide performer (when modal open)</td></tr>
+            <tr><td>P</td><td>Open Presenter Mode</td></tr>
+            <tr><td>R</td><td>Reset all filters</td></tr>
+            <tr><td>/ or S</td><td>Focus search input</td></tr>
+            <tr><td>T</td><td>Open Tag Cloud</td></tr>
+            <tr><td>E</td><td>Export CSV</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Notes Modal -->
+<div class="modal fade" id="notesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary" style="background:#11141a;">
+        <h5 class="modal-title fw-bold">📝 Note for <span id="noteUsername" class="text-pink">@—</span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="noteTextarea" class="form-control" placeholder="Enter your note…"></textarea>
+      </div>
+      <div class="modal-footer border-secondary" style="background:#11141a;">
+        <button id="clearNoteBtn" class="btn btn-sm btn-outline-danger">Clear</button>
+        <button id="saveNoteBtn" class="btn btn-sm btn-primary" style="background:#f472b6;border:none;color:#000;">Save Note</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tag Cloud Modal -->
+<div class="modal fade" id="tagCloudModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary" style="background:#11141a;">
+        <h5 class="modal-title fw-bold">📊 Tag Frequency Cloud</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="tagCloudBody" style="min-height:160px; display:flex; flex-wrap:wrap; gap:8px; align-content:flex-start;"></div>
+      <div class="modal-footer border-secondary" style="background:#11141a;">
+        <span class="text-muted small">Click a tag to apply it as a filter.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recently Viewed Modal -->
+<div class="modal fade" id="recentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary" style="background:#11141a;">
+        <h5 class="modal-title fw-bold">🕐 Recently Viewed</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2" id="recentListBody" style="max-height:70vh;overflow-y:auto;"></div>
+      <div class="modal-footer border-secondary" style="background:#11141a;">
+        <button id="clearRecentBtn" class="btn btn-sm btn-outline-secondary">Clear History</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden Performers Modal -->
+<div class="modal fade" id="hiddenModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-dark text-light border-secondary">
+      <div class="modal-header border-secondary" style="background:#11141a;">
+        <h5 class="modal-title fw-bold">🚫 Hidden Performers (<span id="hiddenCountSpan">0</span>)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2" id="hiddenListBody" style="max-height:65vh;overflow-y:auto;font-size:0.85rem;"></div>
+      <div class="modal-footer border-secondary" style="background:#11141a;">
+        <button id="clearHiddenBtn" class="btn btn-sm btn-outline-warning">Unhide All</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Reveal.js Fullscreen Presenter Modal -->
 <div class="modal fade" id="revealModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog" style="max-width:100vw;width:100vw;margin:0;height:100vh;">
@@ -418,24 +667,38 @@ const state = {
   clickCounts: JSON.parse(localStorage.getItem('jinx_clicks') || '{}'),
   userInterests: JSON.parse(localStorage.getItem('jinx_interests') || '{}'),
   favorites: new Set(JSON.parse(localStorage.getItem('jinx_favs') || '[]')),
+  hiddenPerformers: new Set(JSON.parse(localStorage.getItem('jinx_hidden') || '[]')),
+  notes: new Map(Object.entries(JSON.parse(localStorage.getItem('jinx_notes') || '{}'))),
+  recentlyViewed: JSON.parse(localStorage.getItem('jinx_recent') || '[]'), // [{ username, image_url, ts }]
   slideshowSpeed: 3500,
+  cardHeight: 260,
 
   globalMean: 0,
   globalVariance: 0,
 
   // Multi-select State
   isMultiMode: false,
-  selectedItems: new Set(), // Store username strings
+  selectedItems: new Set(),
+
+  // Context-menu target
+  _ctxTarget: null,
+  _ctxItem: null,
 
   // Modals
   singleModalObj: null,
   singleModalInterval: null,
   singleModalImages: [],
   singleModalIdx: 0,
+  singleModalItem: null,
   multiModalObj: null,
   multiModalMasterInterval: null,
   revealModalObj: null,
-  revealInstance: null
+  revealInstance: null,
+  hotkeysModalObj: null,
+  notesModalObj: null,
+  tagCloudModalObj: null,
+  recentModalObj: null,
+  hiddenModalObj: null
 };
 
 // ==========================================
@@ -475,6 +738,19 @@ const QuantEngine = {
     }
     score += Math.min(item.num_viewers || 0, 1000) * 0.01;
     return score;
+  },
+  // Trending = viewers weighted by recency (exponential decay, half-life ~7 days)
+  getTrendingScore(item) {
+    const ageMs = Date.now() - (item.lastOnline || 0);
+    const ageDays = ageMs / (1000 * 3600 * 24);
+    const decayFactor = Math.exp(-0.1 * ageDays); // half-life ~7 days
+    return (item.num_viewers || 0) * decayFactor;
+  },
+  // Diversity = unique tag count, rewards variety
+  getDiversityScore(item) {
+    const tagCount = (item.tags || []).length;
+    const imageBonus = Math.min(item._imageCount || 0, 20) * 0.5;
+    return tagCount * 3 + imageBonus;
   },
   async calculateGlobalMetrics(dataset) {
     if (!dataset.length) return;
@@ -572,9 +848,11 @@ async function executePipeline() {
     minScore: parseInt(document.getElementById('minScore').value, 10) || 0,
     minAge: parseInt(document.getElementById('minAge').value, 10),
     maxAge: parseInt(document.getElementById('maxAge').value, 10),
+    minImages: parseInt(document.getElementById('minImages').value, 10) || 0,
     requireHistory: document.getElementById('requireHistory').checked,
     favoritesOnly: document.getElementById('favoritesOnly').checked,
-    tags: document.getElementById('tagFilter').value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
+    tags: document.getElementById('tagFilter').value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0),
+    excludeTags: document.getElementById('excludeTagFilter').value.split(',').map(t => t.trim().toLowerCase()).filter(t => t.length > 0)
   };
 
   const sortAlgo = document.getElementById('sortAlgorithm').value;
@@ -590,9 +868,15 @@ async function executePipeline() {
       if (item.age < filters.minAge || item.age > filters.maxAge) return false;
       if (filters.requireHistory && (item.image_history ||[]).length === 0) return false;
       if (filters.favoritesOnly && !state.favorites.has((item.username || '').toLowerCase())) return false;
+      if (state.hiddenPerformers.has((item.username || '').toLowerCase())) return false;
+      if (filters.minImages > 0 && (item._imageCount || 0) < filters.minImages) return false;
       if (filters.tags.length > 0) {
         const itemTags = (item.tags ||[]).map(t => t.toLowerCase());
         if (!filters.tags.every(targetTag => itemTags.includes(targetTag))) return false;
+      }
+      if (filters.excludeTags.length > 0) {
+        const itemTags = (item.tags ||[]).map(t => t.toLowerCase());
+        if (filters.excludeTags.some(exTag => itemTags.includes(exTag))) return false;
       }
       return true;
     }));
@@ -611,8 +895,12 @@ async function executePipeline() {
     switch (sortAlgo) {
       case 'bayesian': return QuantEngine.getBayesianScore(b) - QuantEngine.getBayesianScore(a);
       case 'engagement': return (state.clickCounts[b.username?.toLowerCase()] || 0) - (state.clickCounts[a.username?.toLowerCase()] || 0);
+      case 'trendingScore': return QuantEngine.getTrendingScore(b) - QuantEngine.getTrendingScore(a);
+      case 'diversityScore': return QuantEngine.getDiversityScore(b) - QuantEngine.getDiversityScore(a);
       case 'viewers': return (b.num_viewers || 0) - (a.num_viewers || 0);
       case 'imageCount': return (b._imageCount || 0) - (a._imageCount || 0);
+      case 'nameAZ': return (a.username || '').localeCompare(b.username || '');
+      case 'nameZA': return (b.username || '').localeCompare(a.username || '');
       case 'ageAsc': return a.age - b.age;
       case 'ageDesc': return b.age - a.age;
       case 'birthday': return calculateDaysUntilBirthday(a.birthday) - calculateDaysUntilBirthday(b.birthday);
@@ -635,9 +923,18 @@ async function executePipeline() {
   if (filters.query) activeParts.push(`"${filters.query}"`);
   if (filters.minViewers > 0) activeParts.push(`≥${filters.minViewers} viewers`);
   if (filters.minScore > 0) activeParts.push(`score≥${filters.minScore}`);
+  if (filters.minImages > 0) activeParts.push(`≥${filters.minImages} imgs`);
   if (filters.favoritesOnly) activeParts.push('❤ favs');
   if (filters.tags.length) activeParts.push(filters.tags.map(t=>`#${t}`).join(' '));
+  if (filters.excludeTags.length) activeParts.push(filters.excludeTags.map(t=>`−#${t}`).join(' '));
   document.getElementById('activeFilterBadge').innerText = activeParts.length ? `Active: ${activeParts.join(' · ')}` : '';
+
+  // Update extra stats
+  const favInFiltered = processed.filter(i => state.favorites.has((i.username||'').toLowerCase())).length;
+  const avgImages = processed.length ? (processed.reduce((s,i) => s + (i._imageCount||0), 0) / processed.length).toFixed(1) : '0.0';
+  document.getElementById('statFavCountMain').innerText = favInFiltered.toLocaleString();
+  document.getElementById('statAvgImages').innerText = avgImages;
+  refreshSessionStats();
   
   document.querySelectorAll('.user-card').forEach(card => haltSlideshowRuntime(card));
   document.getElementById('slideshowGrid').innerHTML = '';
@@ -686,11 +983,15 @@ async function renderNextPage() {
     card.dataset.idx = 0;
 
     const isFav = state.favorites.has(user.toLowerCase());
+    const hasNote = state.notes.has(user.toLowerCase());
     const progressHtml = images.length > 1 ? `<div class="progress-bar-custom"><div class="progress-fill"></div></div>` : '';
+    const imgCountBadge = images.length > 1 ? `<span class="img-count-badge">🖼 ${images.length}</span>` : '';
 
     card.innerHTML = `
       ${progressHtml}
       <button class="fav-btn${isFav ? ' active' : ''}" data-fav="${user}" title="Favorite">♥</button>
+      ${hasNote ? `<span class="note-dot" title="Has note"></span>` : ''}
+      ${imgCountBadge}
       <div class="slide-container">
         <img src="${images[0]}" class="slide-img" loading="lazy">
         <div class="card-overlay">
@@ -719,6 +1020,10 @@ async function renderNextPage() {
       }
       handleCardClick(card, user, item, images);
     });
+    card.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(e, user, item);
+    });
     card._imgArray = images;
     fragment.appendChild(card);
   }
@@ -735,6 +1040,10 @@ function sortAlgoValue(item) {
   const algo = document.getElementById('sortAlgorithm').value;
   if(algo === 'bayesian') return QuantEngine.getBayesianScore(item);
   if(algo === 'engagement') return state.clickCounts[item.username?.toLowerCase()] || 0;
+  if(algo === 'trendingScore') return QuantEngine.getTrendingScore(item);
+  if(algo === 'diversityScore') return QuantEngine.getDiversityScore(item);
+  if(algo === 'viewers') return item.num_viewers || 0;
+  if(algo === 'imageCount') return item._imageCount || 0;
   return item._rawScore || 0;
 }
 
@@ -873,12 +1182,16 @@ function openMultiModal() {
 // ==========================================
 function openSingleModal(item, images) {
   const user = item.username || 'unknown';
+  state.singleModalItem = item;
   document.getElementById('modalUsername').innerText = `@${user}`;
   document.getElementById('modalBadge').innerText = `★ ${sortAlgoValue(item).toFixed(1)}`;
   document.getElementById('modalImageCounter').innerText = `Image 1 of ${images.length}`;
   document.getElementById('modalImg').src = images[0];
   document.getElementById('modalMlStatus').innerText = "Neural Engine: Awaiting Input";
   document.getElementById('modalMlStatus').className = "text-muted small";
+
+  // Track recently viewed
+  trackRecentlyViewed(item, images[0]);
 
   const tagsHtml = (item.tags ||[]).map(t => `<button class="btn btn-sm ml-tag-btn fw-bold rounded-pill px-3 shadow-sm" data-tag="${t}">#${t}</button>`).join('');
   document.getElementById('modalTags').innerHTML = tagsHtml || `<span class="text-muted small">No extractable features found.</span>`;
@@ -1036,6 +1349,8 @@ document.getElementById('resetFiltersBtn').addEventListener('click', () => {
   document.getElementById('minViewers').value = 0; document.getElementById('viewerVal').innerText = '0';
   document.getElementById('minScore').value = 0; document.getElementById('scoreVal').innerText = '0';
   document.getElementById('minAge').value = 18; document.getElementById('maxAge').value = 99;
+  document.getElementById('minImages').value = 0; document.getElementById('minImgVal').innerText = '0';
+  document.getElementById('excludeTagFilter').value = '';
   document.getElementById('gridColumns').value = 0; document.getElementById('colCountVal').innerText = 'Responsive Auto';
   document.getElementById('slideshowGrid').style.gridTemplateColumns = 'repeat(auto-fill, minmax(260px, 1fr))';
   document.getElementById('tagFilter').value = '';
@@ -1062,6 +1377,7 @@ function updateStatus(msg, isLoading) {
 
 // Boot Sequence
 fetchAndDecompress();
+refreshSessionStats();
 
 // Watch Live toggle in single modal
 let _modalLiveMode = false;
@@ -1296,6 +1612,388 @@ function openRevealPresenter() {
 document.getElementById('revealThemeSelect').addEventListener('change', (e) => {
     document.getElementById('revealTheme').href =
         `https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/${e.target.value}.css`;
+});
+
+// ==========================================
+// NEW RANGE SLIDER HANDLERS
+// ==========================================
+document.getElementById('minImages').addEventListener('input', (e) => {
+    document.getElementById('minImgVal').innerText = e.target.value;
+    executePipeline();
+});
+document.getElementById('cardHeightSlider').addEventListener('input', (e) => {
+    const h = parseInt(e.target.value);
+    state.cardHeight = h;
+    document.getElementById('heightVal').innerText = h + 'px';
+    document.documentElement.style.setProperty('--card-height', h + 'px');
+});
+document.getElementById('excludeTagFilter').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(executePipeline, 400);
+});
+
+// ==========================================
+// MOBILE SIDEBAR TOGGLE
+// ==========================================
+document.getElementById('sidebarToggleBtn').addEventListener('click', () => {
+    const sb = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('mobile-open');
+    overlay.classList.toggle('active');
+});
+document.getElementById('sidebarOverlay').addEventListener('click', () => {
+    document.getElementById('mainSidebar').classList.remove('mobile-open');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+});
+
+// ==========================================
+// TOAST NOTIFICATIONS
+// ==========================================
+function showToast(msg, type = 'info', durationMs = 2200) {
+    const container = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `jinx-toast ${type}`;
+    t.innerText = msg;
+    container.appendChild(t);
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => { t.classList.add('show'); });
+    });
+    setTimeout(() => {
+        t.classList.remove('show');
+        setTimeout(() => t.remove(), 300);
+    }, durationMs);
+}
+
+// ==========================================
+// CONTEXT MENU
+// ==========================================
+const ctxMenu = document.getElementById('cardContextMenu');
+
+function showContextMenu(e, username, item) {
+    state._ctxTarget = username;
+    state._ctxItem = item;
+    ctxMenu.style.top = `${Math.min(e.clientY, window.innerHeight - 220)}px`;
+    ctxMenu.style.left = `${Math.min(e.clientX, window.innerWidth - 190)}px`;
+    ctxMenu.classList.add('visible');
+}
+
+document.addEventListener('click', () => ctxMenu.classList.remove('visible'));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ctxMenu.classList.remove('visible'); });
+
+document.getElementById('ctxFav').addEventListener('click', () => {
+    if (!state._ctxTarget) return;
+    const card = document.querySelector(`.user-card[data-user="${state._ctxTarget}"]`);
+    const btn = card?.querySelector('.fav-btn');
+    toggleFavorite(state._ctxTarget, btn || { classList: { toggle(){}, add(){}, remove(){} } });
+    showToast(`${state.favorites.has(state._ctxTarget.toLowerCase()) ? '❤ Added to' : '💔 Removed from'} favorites`, 'success');
+});
+
+document.getElementById('ctxNote').addEventListener('click', () => {
+    if (!state._ctxItem) return;
+    openNotesModal(state._ctxItem.username || '');
+});
+
+document.getElementById('ctxCopyUser').addEventListener('click', () => {
+    if (!state._ctxTarget) return;
+    navigator.clipboard.writeText(state._ctxTarget).then(() => showToast(`📋 Copied @${state._ctxTarget}`, 'info'));
+});
+
+document.getElementById('ctxCopyLive').addEventListener('click', () => {
+    if (!state._ctxTarget) return;
+    const url = `https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&room=${encodeURIComponent(state._ctxTarget)}`;
+    navigator.clipboard.writeText(url).then(() => showToast('🔗 Copied live URL', 'info'));
+});
+
+document.getElementById('ctxHide').addEventListener('click', () => {
+    if (!state._ctxTarget) return;
+    hidePerformer(state._ctxTarget);
+});
+
+// ==========================================
+// HIDE / BLOCK PERFORMERS
+// ==========================================
+function hidePerformer(username) {
+    const key = (username || '').toLowerCase();
+    state.hiddenPerformers.add(key);
+    persistHidden();
+    // Remove card from DOM immediately
+    const card = document.querySelector(`.user-card[data-user="${username}"]`);
+    if (card) { card.style.transition = 'opacity 0.3s'; card.style.opacity = '0'; setTimeout(() => card.remove(), 300); }
+    showToast(`🚫 Hidden @${username}`, 'warning');
+    refreshSessionStats();
+}
+
+function persistHidden() {
+    localStorage.setItem('jinx_hidden', JSON.stringify([...state.hiddenPerformers]));
+}
+
+document.getElementById('showHiddenBtn').addEventListener('click', openHiddenModal);
+
+function openHiddenModal() {
+    if (!state.hiddenModalObj) state.hiddenModalObj = new bootstrap.Modal(document.getElementById('hiddenModal'));
+    const count = state.hiddenPerformers.size;
+    document.getElementById('hiddenCountSpan').innerText = count;
+    const body = document.getElementById('hiddenListBody');
+    body.innerHTML = '';
+    if (count === 0) {
+        body.innerHTML = `<p class="text-muted p-3">No hidden performers.</p>`;
+    } else {
+        [...state.hiddenPerformers].sort().forEach(u => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid #2a2f39;';
+            row.innerHTML = `<span class="text-white">@${u}</span><button class="btn btn-xs btn-outline-success" style="font-size:0.72rem;padding:2px 8px;" data-unhide="${u}">Unhide</button>`;
+            body.appendChild(row);
+        });
+        body.querySelectorAll('[data-unhide]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.unhide;
+                state.hiddenPerformers.delete(key);
+                persistHidden();
+                btn.closest('div').remove();
+                document.getElementById('hiddenCountSpan').innerText = state.hiddenPerformers.size;
+                refreshSessionStats();
+                executePipeline();
+                showToast(`✅ Unhidden @${key}`, 'success');
+            });
+        });
+    }
+    state.hiddenModalObj.show();
+}
+
+document.getElementById('clearHiddenBtn').addEventListener('click', () => {
+    state.hiddenPerformers.clear();
+    persistHidden();
+    document.getElementById('hiddenCountSpan').innerText = 0;
+    document.getElementById('hiddenListBody').innerHTML = `<p class="text-muted p-3">No hidden performers.</p>`;
+    refreshSessionStats();
+    executePipeline();
+    showToast('✅ All performers unhidden', 'success');
+});
+
+// ==========================================
+// PER-PERFORMER NOTES
+// ==========================================
+function openNotesModal(username) {
+    if (!state.notesModalObj) state.notesModalObj = new bootstrap.Modal(document.getElementById('notesModal'));
+    const key = (username || '').toLowerCase();
+    document.getElementById('noteUsername').innerText = `@${username}`;
+    document.getElementById('notesModal').dataset.noteUser = key;
+    document.getElementById('noteTextarea').value = state.notes.get(key) || '';
+    state.notesModalObj.show();
+}
+
+document.getElementById('saveNoteBtn').addEventListener('click', () => {
+    const key = document.getElementById('notesModal').dataset.noteUser;
+    const txt = document.getElementById('noteTextarea').value.trim();
+    if (txt) {
+        state.notes.set(key, txt);
+    } else {
+        state.notes.delete(key);
+    }
+    persistNotes();
+    state.notesModalObj.hide();
+    refreshSessionStats();
+    // Update note dot on card
+    const card = document.querySelector(`.user-card[data-user="${key}"]`);
+    if (card) {
+        const existing = card.querySelector('.note-dot');
+        if (txt && !existing) {
+            const dot = document.createElement('span');
+            dot.className = 'note-dot';
+            dot.title = 'Has note';
+            card.appendChild(dot);
+        } else if (!txt && existing) {
+            existing.remove();
+        }
+    }
+    showToast(txt ? '📝 Note saved' : '🗑 Note cleared', 'info');
+});
+
+document.getElementById('clearNoteBtn').addEventListener('click', () => {
+    document.getElementById('noteTextarea').value = '';
+});
+
+function persistNotes() {
+    localStorage.setItem('jinx_notes', JSON.stringify(Object.fromEntries(state.notes)));
+}
+
+// ==========================================
+// RECENTLY VIEWED TRACKING
+// ==========================================
+function trackRecentlyViewed(item, imageUrl) {
+    const user = (item.username || '').toLowerCase();
+    // Remove existing entry if present, then prepend
+    state.recentlyViewed = state.recentlyViewed.filter(r => r.username !== user);
+    state.recentlyViewed.unshift({ username: user, image_url: imageUrl, ts: Date.now(), score: (item._rawScore || 0).toFixed(1) });
+    if (state.recentlyViewed.length > 50) state.recentlyViewed.pop();
+    localStorage.setItem('jinx_recent', JSON.stringify(state.recentlyViewed));
+    refreshSessionStats();
+}
+
+document.getElementById('recentViewedBtn').addEventListener('click', openRecentModal);
+
+function openRecentModal() {
+    if (!state.recentModalObj) state.recentModalObj = new bootstrap.Modal(document.getElementById('recentModal'));
+    const body = document.getElementById('recentListBody');
+    body.innerHTML = '';
+    if (!state.recentlyViewed.length) {
+        body.innerHTML = `<p class="text-muted p-3">Nothing viewed yet.</p>`;
+    } else {
+        state.recentlyViewed.forEach(r => {
+            const el = document.createElement('div');
+            el.className = 'rv-item';
+            el.innerHTML = `
+                <img src="${r.image_url || ''}" alt="" onerror="this.style.display='none'">
+                <div>
+                  <div class="rv-item-username">@${r.username}</div>
+                  <div class="rv-item-meta">★ ${r.score} · ${formatDaysAgo(r.ts)}</div>
+                </div>`;
+            el.addEventListener('click', () => {
+                // Find item in dataset and reopen modal
+                const found = state.rawDataset.find(i => (i.username||'').toLowerCase() === r.username);
+                if (found) {
+                    const imgs = [...new Set([found.image_url, ...(found.image_history||[])])].filter(Boolean);
+                    state.recentModalObj.hide();
+                    setTimeout(() => openSingleModal(found, imgs), 350);
+                }
+            });
+            body.appendChild(el);
+        });
+    }
+    state.recentModalObj.show();
+}
+
+document.getElementById('clearRecentBtn').addEventListener('click', () => {
+    state.recentlyViewed = [];
+    localStorage.removeItem('jinx_recent');
+    document.getElementById('recentListBody').innerHTML = `<p class="text-muted p-3">Nothing viewed yet.</p>`;
+    refreshSessionStats();
+    showToast('🗑 History cleared', 'warning');
+});
+
+// ==========================================
+// TAG CLOUD
+// ==========================================
+document.getElementById('tagCloudBtn').addEventListener('click', openTagCloud);
+
+function openTagCloud() {
+    if (!state.tagCloudModalObj) state.tagCloudModalObj = new bootstrap.Modal(document.getElementById('tagCloudModal'));
+    const freq = {};
+    state.filteredDataset.forEach(item => {
+        (item.tags || []).forEach(t => { const k = t.toLowerCase(); freq[k] = (freq[k] || 0) + 1; });
+    });
+    const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 60);
+    const maxCount = sorted[0]?.[1] || 1;
+    const colors = ['#f472b6','#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#84cc16'];
+    const body = document.getElementById('tagCloudBody');
+    body.innerHTML = '';
+    sorted.forEach(([tag, count], i) => {
+        const ratio = count / maxCount;
+        const fontSize = (0.7 + ratio * 1.4).toFixed(2);
+        const color = colors[i % colors.length];
+        const span = document.createElement('span');
+        span.className = 'tag-cloud-item';
+        span.style.cssText = `font-size:${fontSize}rem;color:${color};border-color:${color}26;background:${color}14;`;
+        span.textContent = `#${tag} (${count})`;
+        span.title = `${count} performers`;
+        span.addEventListener('click', () => {
+            document.getElementById('tagFilter').value = tag;
+            document.querySelectorAll('.quick-tag').forEach(c => { c.classList.toggle('active', c.dataset.tag === tag); });
+            state.tagCloudModalObj.hide();
+            executePipeline();
+            showToast(`🏷 Filtered by #${tag}`, 'info');
+        });
+        body.appendChild(span);
+    });
+    if (!sorted.length) body.innerHTML = `<p class="text-muted p-3">No tags in current results.</p>`;
+    state.tagCloudModalObj.show();
+}
+
+// ==========================================
+// CSV EXPORT
+// ==========================================
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+
+function exportCSV() {
+    if (!state.filteredDataset.length) { showToast('No data to export', 'warning'); return; }
+    const headers = ['username','age','birthday','num_viewers','score','imageCount','tags','lastOnline'];
+    const rows = state.filteredDataset.map(item => [
+        item.username || '',
+        item.age || '',
+        item.birthday || '',
+        item.num_viewers || 0,
+        (item._rawScore || 0).toFixed(2),
+        item._imageCount || 0,
+        (item.tags || []).join('|'),
+        item.lastOnline ? new Date(item.lastOnline).toISOString() : ''
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `jinx_export_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`📋 Exported ${state.filteredDataset.length} rows`, 'success');
+}
+
+// ==========================================
+// SESSION STATS REFRESH
+// ==========================================
+function refreshSessionStats() {
+    document.getElementById('statFavCount').innerText = state.favorites.size;
+    document.getElementById('statHiddenCount').innerText = state.hiddenPerformers.size;
+    document.getElementById('statNoteCount').innerText = state.notes.size;
+    document.getElementById('statViewedCount').innerText = state.recentlyViewed.length;
+}
+
+// ==========================================
+// HOTKEYS MODAL
+// ==========================================
+document.getElementById('hotkeysBtn').addEventListener('click', () => {
+    if (!state.hotkeysModalObj) state.hotkeysModalObj = new bootstrap.Modal(document.getElementById('hotkeysModal'));
+    state.hotkeysModalObj.show();
+});
+
+// ==========================================
+// EXTENDED KEYBOARD SHORTCUTS
+// ==========================================
+document.addEventListener('keydown', (e) => {
+    // Don't fire shortcuts when typing in inputs
+    if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+    const modalOpen = document.getElementById('performerModal').classList.contains('show');
+    switch (e.key) {
+        case 'P': case 'p': if (!modalOpen) openRevealPresenter(); break;
+        case 'R': case 'r': if (!modalOpen) document.getElementById('resetFiltersBtn').click(); break;
+        case 'T': case 't': if (!modalOpen) openTagCloud(); break;
+        case 'E': case 'e': if (!modalOpen) exportCSV(); break;
+        case '/': case 's': case 'S':
+            if (!modalOpen) { e.preventDefault(); document.getElementById('searchInput').focus(); }
+            break;
+        case 'F': case 'f':
+            if (modalOpen && state.singleModalItem) {
+                const u = state.singleModalItem.username || '';
+                const card = document.querySelector(`.user-card[data-user="${u}"]`);
+                const btn = card?.querySelector('.fav-btn');
+                toggleFavorite(u, btn || { classList:{ toggle(){},add(){},remove(){} } });
+                showToast(state.favorites.has(u.toLowerCase()) ? '❤ Favorited' : '💔 Unfavorited', 'success');
+            }
+            break;
+        case 'L': case 'l':
+            if (modalOpen) document.getElementById('modalWatchLiveBtn')?.click();
+            break;
+        case 'N': case 'n':
+            if (modalOpen && state.singleModalItem) openNotesModal(state.singleModalItem.username || '');
+            break;
+        case 'H': case 'h':
+            if (modalOpen && state.singleModalItem) {
+                const u = state.singleModalItem.username || '';
+                hidePerformer(u);
+                bootstrap.Modal.getInstance(document.getElementById('performerModal'))?.hide();
+            }
+            break;
+    }
 });</script>
 </body>
 </html>
