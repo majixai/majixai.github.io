@@ -257,11 +257,10 @@ class UIManager {
         const imgEl = carousel?.querySelector('.slide-img');
         if (!carousel || !imgEl) return;
 
-        const datPath = `../${user.username}_image_history.dat`;
-        fetch(datPath).then(r => r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status} for ${datPath}`))).then(text => {
-            const urls = [...new Set(
-                text.split('\n').map(l => l.trim()).filter(l => l.startsWith('http'))
-            )];
+        const datPath = `../history/${encodeURIComponent(user.username)}.dat`;
+        fetch(datPath).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status} for ${datPath}`))).then(buffer => {
+            const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+            const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
             if (urls.length < 2) return;
             carousel.dataset.images = JSON.stringify(urls);
             const counter = carousel.querySelector('.slide-counter');
