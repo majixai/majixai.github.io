@@ -10,23 +10,39 @@
 const Email_Broadcast = {
 
   /**
-   * Main broadcast function. Fetches unprocessed snapshots, compresses, shards,
-   * sends via email, and then archives the source files.
+   * Main broadcast function.
+   *
+   * When called from the heartbeat, `liveData` contains only the top-bull stock
+   * so the email is sent exclusively for the largest bullish projection.
+   * When called manually (no argument), it falls back to reading all unprocessed
+   * Drive snapshots and archiving them as before.
+   *
+   * @param {Array<Object>|undefined} liveData Optional pre-filtered data to broadcast.
    */
-  broadcastMarketSnapshot: function() {
-    System_Logger.log("EmailBroadcast", "Starting massive data broadcast...");
+  broadcastMarketSnapshot: function(liveData) {
+    System_Logger.log("EmailBroadcast", "Starting data broadcast...");
 
-    const unprocessedFiles = this.getUnprocessedFiles();
-    if (unprocessedFiles.length === 0) {
-      System_Logger.log("EmailBroadcast", "Broadcast cancelled: No new data snapshots found.");
-      return;
-    }
-    System_Logger.log("EmailBroadcast", `Found ${unprocessedFiles.length} new snapshot files to process.`);
+    let aggregatedData;
+    let unprocessedFiles = [];
 
-    const aggregatedData = this.extractDataFromFiles(unprocessedFiles);
-    if (aggregatedData.length === 0) {
-      System_Logger.log("EmailBroadcast", "Broadcast cancelled: Failed to extract data from snapshots.", true);
-      return;
+    if (liveData && liveData.length > 0) {
+      // Fast path: caller already identified the top-bull stock(s).
+      aggregatedData = liveData;
+      System_Logger.log("EmailBroadcast", `Broadcasting ${aggregatedData.length} top-bull record(s) from live data.`);
+    } else {
+      // Manual / scheduled path: read all unprocessed Drive snapshots.
+      unprocessedFiles = this.getUnprocessedFiles();
+      if (unprocessedFiles.length === 0) {
+        System_Logger.log("EmailBroadcast", "Broadcast cancelled: No new data snapshots found.");
+        return;
+      }
+      System_Logger.log("EmailBroadcast", `Found ${unprocessedFiles.length} new snapshot files to process.`);
+
+      aggregatedData = this.extractDataFromFiles(unprocessedFiles);
+      if (aggregatedData.length === 0) {
+        System_Logger.log("EmailBroadcast", "Broadcast cancelled: Failed to extract data from snapshots.", true);
+        return;
+      }
     }
 
     const compressedBlob = this.compressData(aggregatedData);
@@ -36,8 +52,12 @@ const Email_Broadcast = {
     const dataShards = this.createDataShards(compressedBlob);
     this.sendShardedEmails(hashId, dataShards);
 
-    this.archiveProcessedFiles(unprocessedFiles);
-    System_Logger.log("EmailBroadcast", "Broadcast complete. Archived processed files.");
+    if (unprocessedFiles.length > 0) {
+      this.archiveProcessedFiles(unprocessedFiles);
+      System_Logger.log("EmailBroadcast", "Broadcast complete. Archived processed files.");
+    } else {
+      System_Logger.log("EmailBroadcast", "Broadcast complete.");
+    }
   },
 
   /**
