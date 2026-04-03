@@ -174,7 +174,7 @@ float vd24=ta.sma(volume,iL24)
 v24=vd24>0.0?vn24/vd24:hlc3
 mp24=(h24+l24)*0.5
 mpp=v24*iPWT+mp24*(1.0-iPWT)
-mlSym="unified_"+str.lower(syminfo.ticker)
+mlSym="unified_"+str.replace(str.lower(syminfo.ticker),"-","")
 mlH=iUML?request.seed(iMLSrc,str.upper(mlSym),high,ignore_invalid_symbol=true):float(na)
 mlL=iUML?request.seed(iMLSrc,str.upper(mlSym),low,ignore_invalid_symbol=true):float(na)
 mlC=iUML?request.seed(iMLSrc,str.upper(mlSym),close,ignore_invalid_symbol=true):float(na)

@@ -65,7 +65,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        group: ["spy,qqq,dia,iwm", "aapl,msft,nvda,tsla"]
+        include:
+          - group: "spy,qqq,dia,iwm"
+            artifact: "yfinance-core"
+          - group: "aapl,msft,nvda,tsla"
+            artifact: "yfinance-tech"
       fail-fast: false
     outputs:
       status: ${{ steps.run.outputs.status }}
@@ -84,7 +88,7 @@ jobs:
           echo "status=ok" >> $GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with:
-          name: yfinance-${{ strategy.job-index }}
+          name: ${{ matrix.artifact }}
           path: yfinance_data/yfinance.dat
           retention-days: 1
 
@@ -134,7 +138,13 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: yfinance-0
+          name: yfinance-core
+          path: yfinance_data/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: yfinance-tech
           path: yfinance_data/
         continue-on-error: true
 

@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sqlite3
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,7 +27,6 @@ DIRS = {
     "gf": ROOT / "tradingview_integration" / "data" / "google_finance_quotes.json",
     "gh": ROOT / "github_data" / "level1_csv",
     "idx": ROOT / "index" / "csv",
-    "jac": ROOT / "jacmy",
 }
 
 TICKERS = ["spy", "qqq", "dia", "iwm", "aapl", "msft", "nvda", "tsla", "btc-usd"]
@@ -57,16 +57,19 @@ def _load_yfinance_dat(path, ticker):
     try:
         with gzip.open(path, "rb") as gz:
             raw = gz.read()
-        tmp = "/tmp/_uf_yf.db"
-        with open(tmp, "wb") as f:
-            f.write(raw)
-        con = sqlite3.connect(tmp)
-        df = pd.read_sql_query(
-            "select date,open,high,low,close,volume from prices where lower(ticker)=? order by date desc limit 60",
-            con,
-            params=(ticker.lower(),),
-        )
-        con.close()
+        fd, tmp = tempfile.mkstemp(suffix=".db", prefix="uf_yf_")
+        try:
+            os.write(fd, raw)
+            os.close(fd)
+            con = sqlite3.connect(tmp)
+            df = pd.read_sql_query(
+                "select date,open,high,low,close,volume from prices where lower(ticker)=? order by date desc limit 60",
+                con,
+                params=(ticker.lower(),),
+            )
+            con.close()
+        finally:
+            os.unlink(tmp)
         return df
     except Exception as e:
         log.warning("yfinance dat load failed for %s: %s", ticker, e)
