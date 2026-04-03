@@ -1,0 +1,629 @@
+//@version=5
+
+strategy('JinxAlphaTrend + MACD/BSM ULTIMATE v13', shorttitle='JAT+BSM Pro v13', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false)
+// indicator('JinxAlphaTrend + Projections ULTIMATE v11.1', shorttitle='JAT ULT v11.1', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, format=format.price, precision=2)
+
+// ============================================================================
+// 1. ADVANCED TYPE TAXONOMY (OOP ARCHITECTURE)
+// ============================================================================
+
+type HTFBar
+    float o = open
+    float h = high
+    float l = low
+    float c = close
+    int   t = time
+
+var HTFBar lastKnownHTF = na
+
+type KinematicModel
+    float velocity        
+    float acceleration    
+    float intercept       
+    float errorTerm       
+    int length            
+
+type UncertaintyZone
+    float upperBound
+    float lowerBound
+    float standardError
+    float adaptiveCoeff   
+
+type BayesianInference
+    float probBull
+    float probBear
+    float expectedHigh
+    float expectedLow
+    float expectedClose
+
+type PinnedForecast
+    int anchorBar
+    int anchorTime           // <-- ADDED to solve time[] historical buffer crash
+    float anchorPrice
+    float[] targetPoints
+    float[] confidenceUpper
+    float[] confidenceLower
+    bool isActive
+    string triggerSource 
+
+type AccuracyEngine
+    int hitCount
+    int missCount
+    float probabilityBull
+    float probabilityBear
+    float hitRate
+
+type ProjectionMetrics
+    int totalProjections
+    int hits
+    int misses
+    float lastTarget
+    int targetBar
+    float accuracy
+
+type ConsolidationZone
+    int id                 
+    bool isActive
+    int startBar
+    int duration
+    float upperBoundary
+    float lowerBoundary
+    float pointOfControl   
+    float totalVolume
+    box boxId
+    line pocLineId
+    label tooltipLabel
+    map<string, float> volMap
+
+type HTFContext
+    string tf
+    box displayBox
+
+type BreakoutState
+    bool isValidBreakout
+    string direction
+    float expansionTarget
+    float velocityMultiplier
+    float anchorPOC
+
+// ============================================================================
+// 2. BOX FUNCTIONS
+// ============================================================================
+
+drawHTFBox(HTFBar b, int right_time) =>
+    color boxColor = b.c >= b.o ? color.new(color.teal, 90) : color.new(color.maroon, 90)
+    box.new(b.t, b.h, right_time, b.l, 
+         border_color = boxColor, 
+         xloc = xloc.bar_time, 
+         bgcolor = boxColor, 
+         border_style = line.style_dotted)
+
+updateHTFBox(box boxId, HTFBar b) =>
+    color boxColor = b.c >= b.o ? color.new(color.teal, 90) : color.new(color.maroon, 90)
+    box.set_border_color(boxId, boxColor)
+    box.set_bgcolor(boxId, boxColor)
+    box.set_top(boxId, b.h)
+    box.set_bottom(boxId, b.l)
+    box.set_right(boxId, time)
+
+// ============================================================================
+// 3. CONFIGURATION & INITIALIZATION
+// ============================================================================
+
+var string[] tf_configs = array.from("60", "240", "D", "W", "M", "12M")
+var HTFContext[] htf_layers = array.new<HTFContext>(0)
+
+if barstate.isfirst
+    for i = 0 to array.size(tf_configs) - 1
+        htf_layers.push(HTFContext.new(array.get(tf_configs, i), na))
+
+// ============================================================================
+// 4. PROCESSING LOOP
+// ============================================================================
+
+for i = 0 to array.size(htf_layers) - 1
+    HTFContext ctx = htf_layers.get(i)
+    
+    // Assign the pre-fetched global data to the loop logic
+    HTFBar currentData = switch i
+        0 => data1
+        1 => data2
+        2 => data3
+        3 => data4
+        4 => data5
+        5 => data6
+        => na
+
+    if not na(currentData)
+        // Check for TF change using the string from our type
+        bool isNewCandle = timeframe.change(ctx.tf)
+        
+        // Logic for Historical (Closed) Boxes
+        if isNewCandle and not barstate.islast
+            drawHTFBox(currentData, time)
+
+        // Logic for the Active ("Live") Box
+        if isNewCandle or na(ctx.displayBox)
+            ctx.displayBox := drawHTFBox(currentData, time)
+        else
+            updateHTFBox(ctx.displayBox, currentData)
+
+// ============================================================================
+// 5. ENSEMBLE WEIGHT MATRIX ENGINE
+// ============================================================================
+
+matrixFromInputArea(string stringOfValues) =>
+    var rowsArray = str.split(stringOfValues, "\n")
+    var rows = array.size(rowsArray)
+    var cols = array.size(str.split(array.get(rowsArray, 0), " "))
+    var mat = matrix.new<float>(rows, cols, na) 
+    int row = 0
+    for rowString in rowsArray
+        int col = 0
+        values = str.split(rowString, " ")
+        for val in values
+            matrix.set(mat, row, col, str.tonumber(val))
+            col += 1
+        row += 1
+    mat
+
+matrixRandom(int rows, int columns) =>
+    result = matrix.new<float>(rows, columns)
+    for i = 0 to rows - 1
+        for j = 0 to columns - 1
+            matrix.set(result, i, j, (math.random() * 2) - 1.0)
+    result
+
+var matrix<float> ensembleWeights = matrixFromInputArea(wt_in)
+float kinWeight = matrix.get(ensembleWeights, 0, 0)
+float bayesWeight = matrix.get(ensembleWeights, 0, 1)
+float mrWeight = matrix.get(ensembleWeights, 0, 2)
+
+
+// ============================================================================
+// 6. LAYERED CONSOLIDATION WITH HOVER TOOLTIPS
+// ============================================================================
+
+// --- Helper for Squeeze Detection ---
+getSqueezeMetrics(simple int len) =>
+    float bb_basis = ta.sma(close, len)
+    float bb_dev   = ta.stdev(close, len) * 2.0
+    float kc_dev   = ta.sma(ta.tr, len) * 1.5
+    // Returns: IsSqueezing, Highest, Lowest, AvgVol
+    [bb_dev < kc_dev, ta.highest(high, len), ta.lowest(low, len), ta.sma(volume, len)]
+
+// --- Consolidation Zone Processing Method ---
+method process(ConsolidationZone z, bool isSqueezing, float highest, float lowest, float avgVol, bool show, int vpB, float bMult) =>
+    bool bBull = false
+    bool bBear = false
+    float expTarg = 0.0
+    float bPOC = 0.0
+    float vMult = 1.0
+
+    if isSqueezing
+        if not z.isActive
+            z.isActive := true
+            z.startBar := bar_index
+            z.duration := 1
+            z.upperBoundary := highest
+            z.lowerBoundary := lowest
+            z.totalVolume := volume
+            map.clear(z.volMap)
+            
+            if show
+                color boxCol = color.new(color.yellow, 90)
+                z.boxId := box.new(z.startBar, z.upperBoundary, bar_index, z.lowerBoundary, border_color=color.new(color.yellow, 50), bgcolor=boxCol)
+                z.pocLineId := line.new(z.startBar, close, bar_index, close, color=color.new(color.orange, 50), width=1)
+                z.tooltipLabel := label.new(bar_index, close, text="ⓘ", color=color.new(color.black, 100), style=label.style_none, textcolor=color.orange, size=size.tiny)
+        else
+            z.duration += 1
+            z.upperBoundary := math.max(z.upperBoundary, high)
+            z.lowerBoundary := math.min(z.lowerBoundary, low)
+            z.totalVolume += volume
+            
+            // --- Volume Profile Bucket Logic ---
+            float bucketSize = (z.upperBoundary - z.lowerBoundary) / math.max(1, vpB)
+            if bucketSize > 0
+                float bucketPrice = math.round(hlc3 / bucketSize) * bucketSize
+                string bucketKey = str.tostring(bucketPrice)
+                float existingVol = map.contains(z.volMap, bucketKey) ? map.get(z.volMap, bucketKey) : 0.0
+                map.put(z.volMap, bucketKey, existingVol + volume)
+                
+                // Find POC (Point of Control)
+                float maxVol = 0.0
+                string[] keys = map.keys(z.volMap)
+                for key in keys
+                    float v = map.get(z.volMap, key)
+                    if v > maxVol
+                        maxVol := v
+                        z.pointOfControl := str.tonumber(key)
+
+            if show
+                box.set_top(z.boxId, z.upperBoundary)
+                box.set_bottom(z.boxId, z.lowerBoundary)
+                box.set_right(z.boxId, bar_index)
+                
+                line.set_xy1(z.pocLineId, z.startBar, z.pointOfControl)
+                line.set_xy2(z.pocLineId, bar_index, z.pointOfControl)
+                
+                label.set_xy(z.tooltipLabel, bar_index, z.pointOfControl)
+                string tipText = "Layer " + str.tostring(z.id) + " Squeeze\nDuration: " + str.tostring(z.duration) + " Bars\nTotal Vol: " + str.tostring(z.totalVolume, format.volume)
+                label.set_tooltip(z.tooltipLabel, tipText)
+    else
+        // Check for Breakout
+        if z.isActive
+            bBull := close > z.upperBoundary and volume > avgVol * 1.5
+            bBear := close < z.lowerBoundary and volume > avgVol * 1.5
+            
+            if bBull or bBear
+                float boxHeight = z.upperBoundary - z.lowerBoundary
+                expTarg := bBull ? (z.upperBoundary + (boxHeight * bMult)) : (z.lowerBoundary - (boxHeight * bMult))
+                vMult := 1.0 + (z.duration / 50.0)
+                bPOC := z.pointOfControl
+                z.isActive := false
+                if not na(z.tooltipLabel)
+                    label.delete(z.tooltipLabel)
+    
+    // RETURN TUPLE
+    [bBull, bBear, expTarg, vMult, bPOC]
+
+// ============================================================================
+// EXECUTION LAYERS
+// ============================================================================
+
+// Layer 1
+[sq1, h1, l1, v1] = getSqueezeMetrics(20)
+[bBull1, bBear1, targ1, vm1, poc1] = zone1.process(sq1, h1, l1, v1, true, 20, 1.5)
+
+// Layer 2
+[sq2, h2, l2, v2] = getSqueezeMetrics(50)
+[bBull2, bBear2, targ2, vm2, poc2] = zone2.process(sq2, h2, l2, v2, true, 20, 1.5)
+
+// Layer 3
+[sq3, h3, l3, v3] = getSqueezeMetrics(100)
+[bBull3, bBear3, targ3, vm3, poc3] = zone3.process(sq3, h3, l3, v3, true, 20, 1.5)
+
+bool anyBreakoutBull = bBull1 or bBull2 or bBull3
+bool anyBreakoutBear = bBear1 or bBear2 or bBear3
+
+brk.isValidBreakout := false
+if anyBreakoutBull or anyBreakoutBear
+    brk.isValidBreakout := true
+    brk.direction := anyBreakoutBull ? "BULL" : "BEAR"
+    
+    if anyBreakoutBull
+        brk.expansionTarget := math.max(targ1, math.max(targ2, targ3))
+    else
+        float t1 = targ1 == 0 ? 999999 : targ1
+        float t2 = targ2 == 0 ? 999999 : targ2
+        float t3 = targ3 == 0 ? 999999 : targ3
+        brk.expansionTarget := math.min(t1, math.min(t2, t3))
+        if brk.expansionTarget == 999999
+            brk.expansionTarget := close
+            
+    brk.velocityMultiplier := math.max(vm1, math.max(vm2, vm3))
+    brk.anchorPOC := poc3 != 0 ? poc3 : (poc2 != 0 ? poc2 : (poc1 != 0 ? poc1 : close))
+
+// ============================================================================
+// 7. DEEP CANDLESTICK LEXICON & MORPHOLOGY (80+ PATTERNS)
+// ============================================================================
+// This module represents a definitive structural analysis of price action.
+// By expanding the lexicon to over 80 discrete candlestick formations, it can
+// detect minute shifts in market psychology. Formations are categorized by 
+// length (1 to 5 bars) and evaluated in a rigid Top-Down Hierarchical Cascade.
+// This prevents simple 1-bar patterns (like a Doji) from accidentally overwriting 
+// complex multi-bar continuation or reversal structures (like a Mat Hold or 
+// Breakaway) occurring on the same bar.
+// ============================================================================
+
+float bodySize  = math.abs(close - open)
+float upperWick = high - math.max(open, close)
+float lowerWick = math.min(open, close) - low
+float totalSize = high - low
+
+// Baseline averages for relative morphology comparisons
+float avgSize = ta.sma(totalSize, 10)
+float avgBody = ta.sma(bodySize, 10)
+
+bool isBull = close > open
+bool isBear = close < open
+
+// ----------------------------------------------------------------------------
+// 1-BAR MORPHOLOGY (Single Candle Primitives)
+// ----------------------------------------------------------------------------
+bool isDoji           = bodySize <= (totalSize * 0.1) and totalSize > avgSize * 0.5
+bool isDragonflyDoji  = isDoji and lowerWick > totalSize * 0.7 and upperWick < totalSize * 0.1
+bool isGravestoneDoji = isDoji and upperWick > totalSize * 0.7 and lowerWick < totalSize * 0.1
+bool isRickshawMan    = isDoji and upperWick > totalSize * 0.4 and lowerWick > totalSize * 0.4
+
+bool isMarubozuBull   = isBull and upperWick < (totalSize * 0.05) and lowerWick < (totalSize * 0.05) and bodySize > avgBody
+bool isMarubozuBear   = isBear and upperWick < (totalSize * 0.05) and lowerWick < (totalSize * 0.05) and bodySize > avgBody
+
+bool isHammer         = isBear[1] and lowerWick > bodySize * 2 and upperWick < bodySize * 0.5 and (totalSize > avgSize * 0.8)
+bool isHangingMan     = isBull[1] and lowerWick > bodySize * 2 and upperWick < bodySize * 0.5 and (totalSize > avgSize * 0.8)
+bool isShootingStar   = isBull[1] and upperWick > bodySize * 2 and lowerWick < bodySize * 0.5 and (totalSize > avgSize * 0.8)
+bool isInvertedHammer = isBear[1] and upperWick > bodySize * 2 and lowerWick < bodySize * 0.5 and (totalSize > avgSize * 0.8)
+
+bool isTakuriLine     = lowerWick > bodySize * 3 and upperWick < bodySize * 0.1
+bool isBullBeltHold   = isBull and lowerWick < totalSize * 0.05 and bodySize > avgBody and upperWick > 0
+bool isBearBeltHold   = isBear and upperWick < totalSize * 0.05 and bodySize > avgBody and lowerWick > 0
+
+bool isShavenHead     = isBull and upperWick == 0 and bodySize > avgBody
+bool isShavenBottom   = isBear and lowerWick == 0 and bodySize > avgBody
+bool isHighWave       = upperWick > avgBody and lowerWick > avgBody and bodySize < avgBody * 0.5
+bool isSpinningTop    = upperWick > bodySize and lowerWick > bodySize and not isDoji and bodySize > totalSize * 0.1
+
+// ----------------------------------------------------------------------------
+// 2-BAR PATTERNS
+// ----------------------------------------------------------------------------
+bool bullEng          = isBull and isBear[1] and close >= open[1] and open <= close[1] and bodySize > bodySize[1]
+bool bearEng          = isBear and isBull[1] and close <= open[1] and open >= close[1] and bodySize > bodySize[1]
+
+bool bullHarami       = isBull and isBear[1] and close < open[1] and open > close[1]
+bool bearHarami       = isBear and isBull[1] and close > open[1] and open < close[1]
+bool bullHaramiCross  = isBear[1] and isDoji and high < open[1] and low > close[1]
+bool bearHaramiCross  = isBull[1] and isDoji and high < close[1] and low > open[1]
+
+bool isPiercing       = isBear[1] and isBull and open < low[1] and close > (open[1] + close[1]) / 2 and close < open[1]
+bool isDarkCloud      = isBull[1] and isBear and open > high[1] and close < (open[1] + close[1]) / 2 and close > open[1]
+
+bool isThrusting      = isBear[1] and isBull and open < low[1] and close < (open[1] + close[1]) / 2 and close > close[1]
+bool isInNeck         = isBear[1] and isBull and open < low[1] and close >= close[1] and close <= close[1] + (avgSize * 0.05)
+bool isOnNeck         = isBear[1] and isBull and open < low[1] and close <= low[1] and close >= low[1] - (avgSize * 0.05)
+
+bool isBullMeeting    = isBear[1] and isBull and math.abs(close - close[1]) < (avgSize * 0.05) and open < close[1]
+bool isBearMeeting    = isBull[1] and isBear and math.abs(close - close[1]) < (avgSize * 0.05) and open > close[1]
+
+bool isBullSeparating = isBear[1] and isBull and math.abs(open - open[1]) < (avgSize * 0.05)
+bool isBearSeparating = isBull[1] and isBear and math.abs(open - open[1]) < (avgSize * 0.05)
+
+bool isTweezerBottom  = math.abs(low - low[1]) < avgSize * 0.05 and isBear[1] and isBull
+bool isTweezerTop     = math.abs(high - high[1]) < avgSize * 0.05 and isBull[1] and isBear
+
+bool isBullKicker     = isBear[1] and isBull and open >= high[1] and close > open
+bool isBearKicker     = isBull[1] and isBear and open <= low[1] and close < open
+
+bool isHomingPigeon   = isBear[1] and isBear and open < open[1] and close > close[1]
+bool isDescendingHawk = isBull[1] and isBull and open > open[1] and close < close[1]
+bool isMatchingLow    = isBear[1] and isBear and math.abs(close - close[1]) < avgSize * 0.05
+
+bool isAboveStomach   = isBear[1] and isBull and open >= (open[1]+close[1])/2 and close > open[1]
+bool isBelowStomach   = isBull[1] and isBear and open <= (open[1]+close[1])/2 and close < open[1]
+
+// ----------------------------------------------------------------------------
+// 3-BAR PATTERNS
+// ----------------------------------------------------------------------------
+bool morningStar         = isBear[2] and isBull and bodySize[1] < totalSize[1] * 0.3 and close > close[2] + (open[2]-close[2])/2
+bool eveningStar         = isBull[2] and isBear and bodySize[1] < totalSize[1] * 0.3 and close < close[2] - (close[2]-open[2])/2
+
+bool morningDojiStar     = isBear[2] and isDoji[1] and isBull and close > close[2] + (open[2]-close[2])/2
+bool eveningDojiStar     = isBull[2] and isDoji[1] and isBear and close < close[2] - (close[2]-open[2])/2
+
+bool abandonedBabyBull   = isBear[2] and isDoji[1] and isBull and high[1] < low[2] and low > high[1]
+bool abandonedBabyBear   = isBull[2] and isDoji[1] and isBear and low[1] > high[2] and high < low[1]
+
+bool threeWhiteSoldiers  = isBull and isBull[1] and isBull[2] and close > close[1] and close[1] > close[2] and open > open[1] and open[1] > open[2]
+bool threeBlackCrows     = isBear and isBear[1] and isBear[2] and close < close[1] and close[1] < close[2] and open < open[1] and open[1] < open[2]
+bool identicalThreeCrows = isBear[2] and isBear[1] and isBear and math.abs(open[1] - close[2]) < (avgSize*0.05) and math.abs(open - close[1]) < (avgSize*0.05)
+
+bool threeInsideUp       = bullHarami[1] and isBull and close > close[1]
+bool threeInsideDown     = bearHarami[1] and isBear and close < close[1]
+
+bool threeOutsideUp      = bullEng[1] and isBull and close > close[1]
+bool threeOutsideDown    = bearEng[1] and isBear and close < close[1]
+
+bool upsideTasukiGap     = isBull[2] and isBull[1] and isBear and low[1] > high[2] and open < close[1] and close < open[1] and close > high[2]
+bool downsideTasukiGap   = isBear[2] and isBear[1] and isBull and high[1] < low[2] and open > close[1] and close > open[1] and close < low[2]
+
+bool stickSandwich       = isBear[2] and isBull[1] and isBear and math.abs(close - close[2]) < avgSize * 0.05 and close < open
+
+bool isAdvanceBlock      = isBull[2] and isBull[1] and isBull and close > close[1] and close[1] > close[2] and upperWick > bodySize and upperWick[1] > bodySize[1]
+bool isDeliberation      = isBull[2] and isBull[1] and isBull and close > close[1] and close[1] > close[2] and bodySize < avgBody * 0.5
+bool isDescentBlock      = isBear[2] and isBear[1] and isBear and close[2] > close[1] and close[1] > close and lowerWick > bodySize and lowerWick[1] > bodySize[1]
+
+bool isUniqueThreeRiver  = isBear[2] and isBear[1] and isBull and lowerWick[1] > bodySize[1]*2 and low > low[1] and close < close[1]
+
+bool twoCrows            = isBull[2] and isBear[1] and isBear and open < open[1] and close < close[1] and close > close[2]
+bool upsideGapTwoCrows   = isBull[2] and isBear[1] and isBear and open[1] > close[2] and open > open[1] and close < close[1] and close > close[2]
+
+bool downGapThreeMethods = isBear[2] and isBear[1] and isBull and high[1] < low[2] and open < close[1] and close > close[2]
+bool upGapThreeMethods   = isBull[2] and isBull[1] and isBear and low[1] > high[2] and open > close[1] and close < close[2]
+
+bool threeStarsInSouth   = isBear[2] and isBear[1] and isBear and low[2] < low[1] and low[1] < low and high[2] > high[1] and high[1] > high
+
+bool triStarBull         = isDoji[2] and isDoji[1] and isDoji and low[1] < low[2] and low[1] < low
+bool triStarBear         = isDoji[2] and isDoji[1] and isDoji and high[1] > high[2] and high[1] > high
+
+bool bullDojiStar        = isBear[1] and isDoji and open < close[1]
+bool bearDojiStar        = isBull[1] and isDoji and open > close[1]
+bool collapsingDojiStar  = isBear[2] and isBear[1] and isDoji and open < low[1]
+
+// ----------------------------------------------------------------------------
+// 4-BAR & 5-BAR PATTERNS
+// ----------------------------------------------------------------------------
+bool threeLineStrikeBull = isBull[3] and isBull[2] and isBull[1] and isBear and open > close[1] and close < open[3]
+bool threeLineStrikeBear = isBear[3] and isBear[2] and isBear[1] and isBull and open < close[1] and close > open[3]
+
+bool concealingBabySwal  = isMarubozuBear[3] and isMarubozuBear[2] and isBear[1] and isBear and open[1] < close[2] and high[1] > close[2] and open > high[1] and close < low[1]
+
+bool risingThree         = isBull[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4] and high[3] < high[4]
+bool fallingThree        = isBear[4] and isBull[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4] and low[3] > low[4]
+
+bool breakawayBull       = isBear[4] and isBear[3] and isBear[2] and isBear[1] and isBull and open[3] < low[4] and close > open[3] and close < close[4]
+bool breakawayBear       = isBull[4] and isBull[3] and isBull[2] and isBull[1] and isBear and open[3] > high[4] and close < open[3] and close > close[4]
+
+bool matHoldBull         = isBull[4] and isBull[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4]
+bool matHoldBear         = isBear[4] and isBear[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4]
+
+bool ladderBottom        = isBear[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close[4] > close[3] and close[3] > close[2] and open[1] > close[2] and close > high[1]
+
+
+// ----------------------------------------------------------------------------
+// HIERARCHICAL EVALUATION CASCADE
+// ----------------------------------------------------------------------------
+// Starts at 5 bars deep and evaluates downward to 1 bar. Long patterns win over short.
+int cScore = 0
+string cName = "NONE"
+
+if risingThree
+    cScore := 10, cName := "Rising 3 Methods"
+else if fallingThree
+    cScore := -10, cName := "Falling 3 Methods"
+else if breakawayBull
+    cScore := 9, cName := "Breakaway Bull"
+else if breakawayBear
+    cScore := -9, cName := "Breakaway Bear"
+else if matHoldBull
+    cScore := 9, cName := "Mat Hold Bull"
+else if matHoldBear
+    cScore := -9, cName := "Mat Hold Bear"
+else if ladderBottom
+    cScore := 9, cName := "Ladder Bottom"
+else if threeLineStrikeBull
+    cScore := 8, cName := "3 Line Strike Bull"
+else if threeLineStrikeBear
+    cScore := -8, cName := "3 Line Strike Bear"
+else if concealingBabySwal
+    cScore := -8, cName := "Concealing Swallow"
+else if abandonedBabyBull
+    cScore := 7, cName := "Aband Baby Bull"
+else if abandonedBabyBear
+    cScore := -7, cName := "Aband Baby Bear"
+else if morningDojiStar
+    cScore := 7, cName := "Morning Doji Star"
+else if eveningDojiStar
+    cScore := -7, cName := "Evening Doji Star"
+else if threeWhiteSoldiers
+    cScore := 7, cName := "3 White Soldiers"
+else if threeBlackCrows
+    cScore := -7, cName := "3 Black Crows"
+else if identicalThreeCrows
+    cScore := -7, cName := "Identical 3 Crows"
+else if morningStar
+    cScore := 6, cName := "Morning Star"
+else if eveningStar
+    cScore := -6, cName := "Evening Star"
+else if threeInsideUp
+    cScore := 6, cName := "3 Inside Up"
+else if threeInsideDown
+    cScore := -6, cName := "3 Inside Down"
+else if threeOutsideUp
+    cScore := 6, cName := "3 Outside Up"
+else if threeOutsideDown
+    cScore := -6, cName := "3 Outside Down"
+else if upsideTasukiGap
+    cScore := 5, cName := "Upside Tasuki Gap"
+else if downsideTasukiGap
+    cScore := -5, cName := "Downside Tasuki Gap"
+else if triStarBull
+    cScore := 6, cName := "Tri-Star Bull"
+else if triStarBear
+    cScore := -6, cName := "Tri-Star Bear"
+else if threeStarsInSouth
+    cScore := 5, cName := "3 Stars in South"
+else if isAdvanceBlock
+    cScore := -4, cName := "Advance Block"
+else if isDeliberation
+    cScore := -3, cName := "Deliberation"
+else if isDescentBlock
+    cScore := 4, cName := "Descent Block"
+else if isUniqueThreeRiver
+    cScore := 4, cName := "Unique 3 River"
+else if twoCrows
+    cScore := -4, cName := "Two Crows"
+else if upsideGapTwoCrows
+    cScore := -5, cName := "Upside Gap 2 Crows"
+else if stickSandwich
+    cScore := 4, cName := "Stick Sandwich"
+else if downGapThreeMethods
+    cScore := -4, cName := "Down Gap 3 Methods"
+else if upGapThreeMethods
+    cScore := 4, cName := "Up Gap 3 Methods"
+else if bullEng
+    cScore := 5, cName := "Bull Engulfing"
+else if bearEng
+    cScore := -5, cName := "Bear Engulfing"
+else if isPiercing
+    cScore := 4, cName := "Piercing Line"
+else if isDarkCloud
+    cScore := -4, cName := "Dark Cloud Cover"
+else if isBullKicker
+    cScore := 6, cName := "Bull Kicker"
+else if isBearKicker
+    cScore := -6, cName := "Bear Kicker"
+else if isTweezerBottom
+    cScore := 3, cName := "Tweezer Bottom"
+else if isTweezerTop
+    cScore := -3, cName := "Tweezer Top"
+else if bullHarami
+    cScore := 3, cName := "Bull Harami"
+else if bearHarami
+    cScore := -3, cName := "Bear Harami"
+else if bullHaramiCross
+    cScore := 4, cName := "Bull Harami Cross"
+else if bearHaramiCross
+    cScore := -4, cName := "Bear Harami Cross"
+else if isThrusting
+    cScore := -2, cName := "Thrusting"
+else if isInNeck
+    cScore := -2, cName := "In Neck"
+else if isOnNeck
+    cScore := -2, cName := "On Neck"
+else if isBullMeeting
+    cScore := 2, cName := "Bull Meeting Lines"
+else if isBearMeeting
+    cScore := -2, cName := "Bear Meeting Lines"
+else if isBullSeparating
+    cScore := 3, cName := "Bull Separating"
+else if isBearSeparating
+    cScore := -3, cName := "Bear Separating"
+else if isAboveStomach
+    cScore := 3, cName := "Above Stomach"
+else if isBelowStomach
+    cScore := -3, cName := "Below Stomach"
+else if isHomingPigeon
+    cScore := 3, cName := "Homing Pigeon"
+else if isDescendingHawk
+    cScore := -3, cName := "Descending Hawk"
+else if isMatchingLow
+    cScore := 2, cName := "Matching Low"
+else if collapsingDojiStar
+    cScore := -4, cName := "Collapsing Doji Star"
+else if bullDojiStar
+    cScore := 3, cName := "Bull Doji Star"
+else if bearDojiStar
+    cScore := -3, cName := "Bear Doji Star"
+else if isHammer
+    cScore := 3, cName := "Hammer"
+else if isHangingMan
+    cScore := -3, cName := "Hanging Man"
+else if isShootingStar
+    cScore := -4, cName := "Shooting Star"
+else if isInvertedHammer
+    cScore := 3, cName := "Inverted Hammer"
+else if isTakuriLine
+    cScore := 3, cName := "Takuri Line"
+else if isBullBeltHold
+    cScore := 3, cName := "Bull Belt Hold"
+else if isBearBeltHold
+    cScore := -3, cName := "Bear Belt Hold"
+else if isMarubozuBull
+    cScore := 4, cName := "Marubozu Bull"
+else if isMarubozuBear
+    cScore := -4, cName := "Marubozu Bear"
+else if isShavenHead
+    cScore := 2, cName := "Shaven Head"
+else if isShavenBottom
+    cScore := -2, cName := "Shaven Bottom"
+else if isDragonflyDoji
+    cScore := 2, cName := "Dragonfly Doji"
+else if isGravestoneDoji
+    cScore := -2, cName := "Gravestone Doji"
+else if isRickshawMan
+    cScore := 0, cName := "Rickshaw Man"
+else if isHighWave
+    cScore := 0, cName := "High Wave"
+else if isSpinningTop
+    cScore := 0, cName := "Spinning Top"
+else if isDoji
+    cScore := 0, cName := "Doji"
