@@ -61,6 +61,13 @@ function minutelyHeartbeat() {
     Service_Data.updateSheet(correctedData);
     System_Alerts.checkBullishAlerts(correctedData);
 
+    // 5. Broadcast only when the largest bull projection is positive.
+    const topBull = correctedData.reduce((best, s) =>
+      (s.projectedReturn > (best ? best.projectedReturn : 0)) ? s : best, null);
+    if (topBull && topBull.projectedReturn > 0) {
+      Email_Broadcast.broadcastMarketSnapshot([topBull]);
+    }
+
   } catch (e) {
     System_Logger.log("minutelyHeartbeat", e.stack || e.toString(), true);
   } finally {
