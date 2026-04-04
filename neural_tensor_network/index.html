@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Neural Tensor Adam Network — multi-client ML agents analyzing bull stocks and crypto in real time">
+  <title>Neural Tensor Adam Network · MajixAI</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+
+  <!-- ES Module import map: resolve bare specifiers to CDN -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@^0.21.0"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header class="header">
+  <div id="pulse-dot" class="pulse-dot" style="display:none"></div>
+  <div>
+    <h1>⚡ Neural Tensor Adam Network</h1>
+    <div class="subtitle">Multi-client ML agents · Bull stocks &amp; crypto · Live tensor signals</div>
+  </div>
+  <span id="status-badge" class="status-badge stopped">Stopped</span>
+</header>
+
+<!-- ── Main Layout ────────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Ticker Bar (full width) -->
+  <div id="ticker-bar" class="ticker-bar">
+    <div class="sys-msg" style="align-self:center;margin:auto;font-size:.75rem;color:#94a3b8">
+      Start the network to stream market data…
+    </div>
+  </div>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Network Monitor -->
+    <div class="panel">
+      <div class="panel-title">Neural Network State</div>
+      <div class="net-row"><span class="net-label">Training Steps</span><span class="net-val" id="net-steps">0</span></div>
+      <div class="net-row"><span class="net-label">Avg Loss</span><span class="net-val" id="net-loss">—</span></div>
+      <div class="net-row"><span class="net-label">Adam Step</span><span class="net-val" id="net-adam-step">0</span></div>
+      <div class="net-row"><span class="net-label">Learning Rate</span><span class="net-val" id="net-lr">0.003</span></div>
+    </div>
+
+    <!-- Loss Chart -->
+    <div class="panel">
+      <div class="panel-title">Loss History</div>
+      <canvas id="loss-canvas"></canvas>
+    </div>
+
+    <!-- Layer Architecture -->
+    <div class="panel">
+      <div class="panel-title">Architecture</div>
+      <div class="layer-viz" id="layer-viz">
+        <span class="layer-node">12→32[relu]</span>
+        <span class="layer-arrow">→</span>
+        <span class="layer-node">32→32[tanh]</span>
+        <span class="layer-arrow">→</span>
+        <span class="layer-node">32→6[sigmoid]</span>
+      </div>
+      <div style="font-size:.65rem;color:#94a3b8;margin-top:8px">
+        Adam · β₁=0.9 · β₂=0.999 · ε=1e-8
+      </div>
+    </div>
+
+    <!-- Agent Status Cards -->
+    <div class="panel">
+      <div class="panel-title">ML Clients</div>
+      <div id="agent-cards" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Asset Legend -->
+    <div class="panel">
+      <div class="panel-title">Tracked Assets</div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:.72rem;">
+        <div style="color:#22c55e;font-weight:700">📈 Bull Stocks</div>
+        <div style="color:#94a3b8">NVDA · TSLA · META</div>
+        <div style="color:#f59e0b;font-weight:700;margin-top:6px">₿ Crypto</div>
+        <div style="color:#94a3b8">BTC · ETH · SOL</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Main Chat Panel ─────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- API Key + Controls -->
+    <div class="api-bar">
+      <label for="api-key-input">Gemini API Key</label>
+      <input type="password" id="api-key-input" placeholder="AIza…" autocomplete="off" spellcheck="false">
+      <button id="btn-start" class="btn btn-start">▶ Start</button>
+      <button id="btn-stop"  class="btn btn-stop"  disabled>■ Stop</button>
+      <button id="btn-clear" class="btn btn-clear">🗑 Clear</button>
+    </div>
+
+    <!-- Chat Feed -->
+    <div id="chat-feed" class="chat-feed"></div>
+
+    <!-- User Input -->
+    <div class="input-bar">
+      <select id="target-select" class="broadcast-select" title="Send to agent">
+        <option value="broadcast">📢 Broadcast</option>
+        <option value="bull_analyst">🐂 BullAnalyst</option>
+        <option value="crypto_oracle">🔮 CryptoOracle</option>
+        <option value="risk_quant">📐 RiskQuant</option>
+        <option value="trend_synth">🌊 TrendSynth</option>
+      </select>
+      <input type="text" id="user-input" placeholder="Ask a question or inject market context…" disabled>
+      <button id="btn-send" class="btn btn-send" disabled>Send</button>
+    </div>
+  </main>
+
+</div>
+
+<!-- Main app module -->
+<script type="module" src="app.js"></script>
+</body>
+</html>
