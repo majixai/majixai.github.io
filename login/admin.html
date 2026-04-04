@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixAI Admin</title>
+  <link rel="stylesheet" href="login.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+
+  <!-- Auth gate — shown when not logged in / not admin role -->
+  <div id="auth-gate" class="auth-gate hidden">
+    <div class="gate-card">
+      <div class="gate-icon">🔒</div>
+      <h2>Admin Access Required</h2>
+      <p>You must sign in with an <strong>administrator</strong> account to access this panel.</p>
+      <a href="login.html" class="btn-go">Go to Login →</a>
+    </div>
+  </div>
+
+  <!-- Main admin UI — hidden until auth confirmed -->
+  <div id="admin-app" class="hidden">
+
+    <header class="admin-topbar">
+      <div class="topbar-brand">
+        <span class="topbar-brand-icon">🔐</span>
+        <span>MajixAI <strong>Admin</strong></span>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-user" id="topbar-user-label"></span>
+        <button class="topbar-btn" id="btn-hash-tool" title="Open password hash generator">🔑 Hash Generator</button>
+        <button class="topbar-btn topbar-btn-danger" id="btn-signout">Sign Out</button>
+      </div>
+    </header>
+
+    <div class="admin-layout">
+
+      <!-- Sidebar -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Managed Sites</span>
+          <button class="btn-add-site" id="btn-add-site" title="Add new site">＋</button>
+        </div>
+        <nav id="site-nav" class="site-nav" aria-label="Managed sites"></nav>
+        <div id="sidebar-empty" class="sidebar-empty hidden">
+          <p>No sites configured yet.</p>
+          <button class="btn-sm btn-primary" id="btn-first-site">＋ Add Site</button>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="admin-main" id="admin-main" aria-live="polite">
+        <!-- Dynamically filled by admin.js -->
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box" id="modal-box"></div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

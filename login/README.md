@@ -25,8 +25,54 @@ The login page (`login.html`) is intentionally self-contained and enriched:
 | **Show / hide password** | Eye-icon toggle inside the password field |
 | **Remember Me** | Checkbox extends the session to 30 days instead of the default 24 hours |
 | **Explicit navigation** | After a successful login a **"Go to App →"** button is shown — the user navigates only when they click it. There is no automatic redirect. |
-| **Session info** | When already logged in the card shows the session expiry countdown, signed-in username, and app name before the "Go to App" button |
+| **Admin Panel button** | Admin-role users also see an orange **"⚙ Admin Panel →"** button after login |
+| **Session info** | When already logged in the card shows the session expiry countdown, signed-in username, and app name before the navigation buttons |
 | **Privacy strip** | A small notice below the form explains that passwords are SHA-256 hashed and no data is sent to a server |
+
+---
+
+## Admin Panel (`admin.html`)
+
+A full-featured management dashboard accessible only to users whose session has `role === "admin"`.
+
+### Accessing the admin panel
+
+1. Log in with an admin-role account — an orange **"⚙ Admin Panel →"** button appears after login.
+2. Or navigate directly to `login/admin.html` (you will be redirected to `login.html` if not authenticated as admin).
+
+### Features
+
+| Section | What you can do |
+|---------|-----------------|
+| **Managed Sites sidebar** | See all configured sites at a glance with ON/OFF status badges; click any site to open its full management panel |
+| **＋ Add Site** | Wizard to register a new site: name, icon, description, directory path, redirect URL |
+| **Overview tab** | Edit app name, icon, description, directory reference, redirect URL; toggle login on/off |
+| **Users tab** | Full CRUD for user accounts (username, display name, role, password); inline SHA-256 hash generator that updates in real time |
+| **Theme tab** | Color pickers for primary, accent, and background colors with a live miniature login-card preview |
+| **Settings tab** | Session storage key, session duration (log-scale slider from 15 min → 30 days), admin page URL, Remember-Me default |
+| **Export tab** | View the generated `login-config.json` with syntax highlighting; one-click download or copy-to-clipboard; step-by-step deployment instructions |
+| **🔑 Hash Generator** | Global tool (top bar button) for generating SHA-256 hashes independently of any site |
+| **Delete Site** | Remove a site from the registry (files on disk are not touched) |
+
+### How site data is stored
+
+All site configurations are stored in `localStorage['majixai_admin_registry']` as a JSON array.
+No server is needed — the admin panel is fully client-side.
+
+### Giving a user admin access
+
+In any `login-config.json`, add `"role": "admin"` to the user object:
+
+```json
+{
+  "username": "admin",
+  "passwordHash": "<SHA-256 hash>",
+  "role": "admin",
+  "displayName": "Administrator"
+}
+```
+
+Also set `"adminPage": "admin.html"` at the top level so the Admin Panel button appears after login.
 
 
 ### Automatic (via GitHub Actions)
@@ -57,15 +103,18 @@ python3 login/extend.py my_new_app --force   # overwrite existing files
 
 ```jsonc
 {
-  "appName":          "My App",          // shown in the login card header
-  "appIcon":          "🔐",             // emoji shown above the app name
-  "redirectOnSuccess": "index.html",     // page to redirect to after login
-  "sessionKey":       "majixai_session_my_app",  // localStorage key
-  "sessionDuration":  86400000,          // session TTL in ms (default: 24 h)
+  "appName":          "My App",                       // shown in the login card header
+  "appIcon":          "🔐",                           // emoji shown above the app name
+  "redirectOnSuccess": "index.html",                  // page to navigate to after login
+  "adminPage":        "admin.html",                   // (optional) shown to admin-role users
+  "sessionKey":       "majixai_session_my_app",       // localStorage key
+  "sessionDuration":  86400000,                       // session TTL in ms (default: 24 h)
   "users": [
     {
       "username":     "admin",
-      "passwordHash": "<SHA-256 of password>"
+      "passwordHash": "<SHA-256 of password>",
+      "role":         "admin",                        // "admin" | "user" (default: "user")
+      "displayName":  "Administrator"                 // optional friendly name
     }
   ],
   "theme": {

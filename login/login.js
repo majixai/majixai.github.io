@@ -75,13 +75,15 @@
     }
   }
 
-  function createSession(config, username, rememberMe) {
+  function createSession(config, user, rememberMe) {
     const duration = rememberMe ? 30 * 24 * 60 * 60 * 1000 : config.sessionDuration;
     localStorage.setItem(config.sessionKey, JSON.stringify({
-      username,
-      createdAt: Date.now(),
+      username:        user.username,
+      role:            user.role || 'user',
+      displayName:     user.displayName || user.username,
+      createdAt:       Date.now(),
       sessionDuration: duration,
-      appName: config.appName
+      appName:         config.appName
     }));
   }
 
@@ -127,6 +129,11 @@
     const session = getSession(config);
     const expiry  = formatExpiry(session);
 
+    const adminBtn = (session.role === 'admin' && config.adminPage)
+      ? `<a class="btn-go" href="${config.adminPage}"
+            style="background:#e67e22;margin-top:10px">⚙ Admin Panel →</a>`
+      : '';
+
     document.querySelector('.login-card').innerHTML = `
       <div class="login-header">
         <span class="icon">${config.appIcon || '🔐'}</span>
@@ -141,6 +148,7 @@
           <strong>App:</strong> ${session.appName || config.appName}
         </div>
         <a class="btn-go" href="${config.redirectOnSuccess}">Go to App →</a>
+        ${adminBtn}
       </div>
       <div class="login-divider"></div>
       <div class="login-footer">
@@ -233,7 +241,7 @@
         return;
       }
 
-      createSession(config, username, rememberMe);
+      createSession(config, user, rememberMe);
 
       /* Hide the form and show an explicit "Go to App" button — no auto-redirect */
       const form = document.getElementById('login-form');
@@ -249,6 +257,16 @@
       goBtn.className = 'btn-go';
       goBtn.textContent = 'Go to App →';
       alert.insertAdjacentElement('afterend', goBtn);
+
+      if (user.role === 'admin' && config.adminPage) {
+        const adminBtn = document.createElement('a');
+        adminBtn.href      = config.adminPage;
+        adminBtn.className = 'btn-go';
+        adminBtn.style.background = '#e67e22';
+        adminBtn.style.marginTop  = '10px';
+        adminBtn.textContent = '⚙ Admin Panel →';
+        goBtn.insertAdjacentElement('afterend', adminBtn);
+      }
     });
   }
 
