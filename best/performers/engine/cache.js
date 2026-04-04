@@ -537,6 +537,7 @@ const CacheManager = (() => {
             };
 
             let ratingSum = 0;
+            let similarityScore = 0;
             for (const event of events) {
                 if (event.eventType === 'click') stats.totalClicks++;
                 if (event.eventType === 'view' || event.eventType === 'iframe_open') stats.totalViews++;
@@ -544,14 +545,18 @@ const CacheManager = (() => {
                     stats.totalRatings++;
                     ratingSum += event.rating;
                 }
+                if (event.eventType === 'similarity_award' && event.metadata?.weight) {
+                    similarityScore += event.metadata.weight;
+                }
                 if (!stats.lastInteraction || event.timestamp > stats.lastInteraction) {
                     stats.lastInteraction = event.timestamp;
                 }
             }
 
             stats.averageRating = stats.totalRatings > 0 ? ratingSum / stats.totalRatings : 0;
-            // Calculate click score (higher = more interactions)
-            stats.clickScore = (stats.totalClicks * 3) + (stats.totalViews * 2) + (stats.totalRatings * stats.averageRating * 5);
+            // Calculate click score (higher = more interactions).
+            // similarity_award events contribute proportionally to their weight (capped per cycle).
+            stats.clickScore = (stats.totalClicks * 3) + (stats.totalViews * 2) + (stats.totalRatings * stats.averageRating * 5) + similarityScore;
 
             return stats;
         },

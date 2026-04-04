@@ -1391,26 +1391,28 @@ class UIManager {
 
     /**
      * GPU-accelerated image similarity using TensorFlow.js
-     * Moves similar images of clicked performers toward the top
+     * Moves similar images of clicked performers toward the top and returns
+     * the list of similar performers so callers can award them bonus points.
      * @param {string} clickedUsername - Username of the clicked performer
+     * @returns {Promise<Array<{username: string, similarity: number}>>} Similar performers above threshold
      */
     async moveSimilarImagesToTop(clickedUsername) {
         if (!this.#_mlModel) {
             console.warn('ML model not loaded, cannot perform image similarity');
-            return;
+            return [];
         }
 
         try {
             // Get the clicked performer's image
             const clickedCard = this.#_gridContainer?.querySelector(`[data-performer*='"username":"${clickedUsername}"']`);
-            if (!clickedCard) return;
+            if (!clickedCard) return [];
 
             const clickedImage = clickedCard.querySelector('img[data-role="performer-image"]');
-            if (!clickedImage) return;
+            if (!clickedImage) return [];
 
             // Get features for clicked image
             const clickedFeatures = await this.#_getImageFeatures(clickedImage.src);
-            if (!clickedFeatures) return;
+            if (!clickedFeatures) return [];
 
             // Calculate similarity for all visible performers
             const allCards = Array.from(this.#_gridContainer?.querySelectorAll('.performer-card') || []);
@@ -1418,17 +1420,24 @@ class UIManager {
                 allCards.map(async (card) => {
                     const img = card.querySelector('img[data-role="performer-image"]');
                     if (!img || img.src === clickedImage.src) {
-                        return { card, similarity: 0 };
+                        return { card, username: null, similarity: 0 };
                     }
 
                     const features = await this.#_getImageFeatures(img.src);
                     if (!features) {
-                        return { card, similarity: 0 };
+                        return { card, username: null, similarity: 0 };
                     }
+
+                    // Extract username from data-performer attribute
+                    let username = null;
+                    try {
+                        const performerData = JSON.parse(card.dataset.performer || '{}');
+                        username = performerData.username || null;
+                    } catch (_) { /* ignore parse errors */ }
 
                     // Calculate cosine similarity
                     const similarity = this.#_cosineSimilarity(clickedFeatures, features);
-                    return { card, similarity };
+                    return { card, username, similarity };
                 })
             );
 
@@ -1436,14 +1445,20 @@ class UIManager {
             similarities.sort((a, b) => b.similarity - a.similarity);
             
             // Move top similar cards to the front
-            const topSimilar = similarities.slice(0, 10).filter(s => s.similarity > 0.5);
+            const topSimilar = similarities.slice(0, 10).filter(s => s.similarity > AppConfig.ML_CONFIG.similarityThreshold);
             topSimilar.forEach(({ card }) => {
                 this.#_gridContainer?.insertBefore(card, this.#_gridContainer.firstChild);
             });
 
             console.log(`Moved ${topSimilar.length} similar images to top for ${clickedUsername}`);
+
+            // Return username + similarity pairs so the engine can award bonus points
+            return topSimilar
+                .filter(s => s.username && s.username !== clickedUsername)
+                .map(({ username, similarity }) => ({ username, similarity }));
         } catch (error) {
             console.error('Error in image similarity:', error);
+            return [];
         }
     }
 
