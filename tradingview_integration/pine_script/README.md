@@ -148,6 +148,81 @@ The following enhancements are planned for subsequent versions:
 
 ---
 
+# Recursive Nested Matrix Engine — Pine Script v6
+
+**File:** `recursive_nested_matrix_engine.pine`  
+**Language:** Pine Script v5  
+**Type:** Indicator (overlay)
+
+---
+
+## Overview
+
+A multi-pattern detection engine built on a 5-level **Recursive Nested Type** (UDT) hierarchy.  Atomic price/volume coordinates are nested into geometric segments, which are assembled into swing paths, which compose pattern manifests, all owned by a single `GlobalMatrix` engine object.  Four chart-pattern detectors fire simultaneously each bar and the highest-confidence detection is rendered.
+
+---
+
+## UDT Hierarchy
+
+| Level | Type | Contains |
+|-------|------|---------|
+| 1 | `MatrixPoint` | `bar_index`, price, raw volume, volume z-score, ATR snapshot |
+| 2 | `VectorSegment` | Two `MatrixPoint`s + slope, ATR-normalised slope, vol-delta, expansion flag |
+| 3 | `SwingPath` | `VectorSegment[]` + total length, avg slope, impulsive flag |
+| 4 | `PatternManifest` | Two `SwingPath`s + target, stop, R/R, confidence score, vol weight, directional bias |
+| 5 | `GlobalMatrix` | `PatternManifest[]` registry + 4×2 correlation matrix + 20-bucket volume-profile matrix + HTF/LTF state |
+
+---
+
+## Pattern Detectors
+
+| Signature | Geometry | Default Bias |
+|-----------|----------|-------------|
+| `MEGA-EXPANSION` | Three consecutive HH + two LL (diverging structure) | Volume-weighted |
+| `COMPRESSION` | LH + HL convergence (pennant / wedge) | Vol-delta direction |
+| `HEAD-AND-SHOULDERS` | 3 highs; head tallest; ATR-adaptive shoulder symmetry | Bearish |
+| `DOUBLE-TOP` / `DOUBLE-BOTTOM` | Twin pivots within 0.5%; neckline measured move | Directional |
+
+---
+
+## Confidence Scoring
+
+```
+confidence = mean_abs_corr × 50  +  directional_alignment × 30  +  vol_quality × 20
+```
+
+- **`mean_abs_corr`** — average |correlation| across all 4 reference tickers (SPY, QQQ, IWM, DIA)
+- **`directional_alignment`** — how much each ticker's correlation sign agrees with the pattern direction
+- **`vol_quality`** — volume z-score modifier; high-volume signals score higher
+
+Patterns below the configurable **Min Confidence Filter** (default 25 %) are suppressed.
+
+---
+
+## Inputs
+
+| Group | Key Inputs |
+|-------|-----------|
+| Matrix System | Pivot lookback, registry depth, ATR length, volume z-score length, correlation length, min confidence filter |
+| Multi-Timeframe | HTF reference TF, LTF delta-precision TF, 4 correlation tickers |
+| Visualisation | S/R boxes, pattern labels, dashboard table, polylines toggles |
+
+---
+
+## Rendering
+
+| Element | Description |
+|---------|-------------|
+| Primary polyline | Curved line through the primary swing path segments |
+| Secondary polyline | Opacity-dimmed straight line for the secondary path |
+| Target box | Colour-coded ±¼ ATR band at the projected target price |
+| Stop box | Gray ±¼ ATR band at the stop level |
+| POC box | Blue band at the volume-profile point-of-control |
+| HUD label | Signature, confidence %, R/R, vol-weight, composite bias |
+| Dashboard table | 3 × 8 table: all 4 correlations + closes, active node count, HTF vol-index, LTF precision factor, composite bias |
+
+---
+
 <!-- AUTO-UPDATE-START -->
 _Last updated: 2026-04-03 21:46 UTC_
 
