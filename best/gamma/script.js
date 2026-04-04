@@ -53,6 +53,7 @@
         #lastFilteredUsers = [];
         #fetchInterval = null;
         #initialIframesSet = false;
+        #tensorEngine = new TensorSimilarityEngine();
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -768,6 +769,14 @@
             selectedIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
             this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
             this.#addToPreviousUsers(user).catch(console.error);
+
+            // Background tensor similarity: award one bonus click to visually similar performers
+            const allUsers = this.#allOnlineUsersData.length > 0 ? this.#allOnlineUsersData : this.#previousUsers;
+            this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername) => {
+                if (allUsers.some(u => u.username === similarUsername)) {
+                    this.storageManager.incrementUserClickCount(similarUsername, this.#previousUsers);
+                }
+            }).catch(console.error);
         }
 
         async #addToPreviousUsers(user) {

@@ -107,11 +107,18 @@ class BestPerformersEngine {
             // Update performer score based on click
             await this.#_updatePerformerScore(performer.username);
             
-            // GPU image processing: move similar images to top
-            await this.#_uiManager.moveSimilarImagesToTop(performer.username);
+            // GPU image processing: move similar images to top and get similar performers
+            const similarPerformers = await this.#_uiManager.moveSimilarImagesToTop(performer.username);
 
             // Feedback loop: signal the background analyzer that user interacted with this performer
             await this.#_backgroundAnalyzer.recordFeedback(performer.username, 3);
+
+            // Award background tensor similarity points to visually similar performers
+            if (similarPerformers && similarPerformers.length > 0) {
+                this.#_awardPointsToSimilarPerformers(similarPerformers).catch(error => {
+                    console.error('Error awarding similarity points:', error);
+                });
+            }
         } catch (error) {
             console.error("Error tracking click:", error);
         }
@@ -258,6 +265,52 @@ class BestPerformersEngine {
             }
         } catch (error) {
             console.error("Error updating performer score:", error);
+        }
+    }
+
+    /**
+     * Award background tensor similarity points to performers that look visually similar
+     * to one that was explicitly clicked. Each performer receives a fractional award
+     * scaled by its cosine similarity score and a feedback signal to the background
+     * analyzer so that the ML loop reinforces their relevance.
+     * @private
+     * @param {Array<{username: string, similarity: number}>} similarPerformers
+     */
+    async #_awardPointsToSimilarPerformers(similarPerformers) {
+        const mlConfig = AppConfig.ML_CONFIG;
+
+        for (const { username, similarity } of similarPerformers) {
+            // Scale the raw cosine similarity by feedbackDecayFactor to keep the award
+            // slightly below the full similarity value, preventing runaway score inflation
+            // from accumulated indirect awards (raw similarity arrives undecayed from ui.js).
+            const weight = parseFloat((similarity * mlConfig.feedbackDecayFactor).toFixed(mlConfig.weightPrecision));
+            if (weight <= 0) continue;
+
+            try {
+                // Persist a similarity_award event so it feeds into the clickScore formula
+                await CacheManager.trackEvent({
+                    username,
+                    eventType: 'similarity_award',
+                    metadata: { weight, source: 'tensor_similarity' }
+                });
+
+                // Update in-memory rankScore for immediate effect
+                const performer = this.#_performers.find(p => p.username === username);
+                if (performer) {
+                    performer.rankScore = (performer.rankScore || 0) + weight;
+                }
+
+                // Reinforce the background analyzer feedback loop with a scaled signal
+                await this.#_backgroundAnalyzer.recordFeedback(username, weight);
+            } catch (error) {
+                console.warn(`Could not award similarity points to ${username}:`, error);
+            }
+        }
+
+        // Re-sort once after all awards are applied
+        if (similarPerformers.length > 0) {
+            this.#_uiManager.reorderPerformersByScore(this.#_performers);
+            console.log(`Tensor similarity: awarded background points to ${similarPerformers.length} similar performer(s)`);
         }
     }
 
