@@ -364,6 +364,8 @@
     });
   });
 
+  const AUTO_REDIRECT_DELAY_MS = 1500;
+
   // ── Jump bar (handle ?go=<name> or ?go=<path> query param) ─────────────────
   function handleJump() {
     const params  = new URLSearchParams(location.search);
@@ -376,8 +378,8 @@
       jumpMsg.textContent = `Routing to: ${route.name} (${route.path})`;
       jumpLink.href = href;
       jumpBar.style.display = 'flex';
-      // Auto-redirect after 1.5 s unless user dismisses
-      setTimeout(() => { if (jumpBar.style.display !== 'none') location.href = href; }, 1500);
+      // Auto-redirect after delay unless user dismisses
+      setTimeout(() => { if (jumpBar.style.display !== 'none') location.href = href; }, AUTO_REDIRECT_DELAY_MS);
     }
   }
 

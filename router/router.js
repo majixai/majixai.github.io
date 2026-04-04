@@ -18,7 +18,7 @@
 const ROUTES_URL = new URL('./routes.json', import.meta.url).href;
 
 class Router extends EventTarget {
-  /** @type {import('./routes.json').routes} */
+  /** @type {Array<object>} */
   #routes = [];
   /** @type {Map<string, object>} path → route object */
   #index = new Map();
@@ -197,15 +197,13 @@ class Router extends EventTarget {
   }
 
   #dispatchChange(route, url) {
+    const detail = { route, url };
     /** @type {CustomEvent} */
-    const event = new CustomEvent('route:change', {
-      bubbles: true,
-      detail: { route, url },
-    });
+    const event = new CustomEvent('route:change', { bubbles: true, detail });
     this.dispatchEvent(event);
     // Also fire on window so non-module scripts can listen
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('route:change', { detail: { route, url } }));
+      window.dispatchEvent(new CustomEvent('route:change', { detail }));
     }
   }
 }
