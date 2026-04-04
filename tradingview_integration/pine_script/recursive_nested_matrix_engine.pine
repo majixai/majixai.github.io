@@ -158,7 +158,8 @@ if barstate.islast
 // 6. ROLLING VOLUME-PROFILE MATRIX  (price-bucket → cumulative volume)
 //    Updated every bar for an intrabar mini volume-profile
 // ============================================================================
-if array.size(GM.registry) < depth  // only build profile while registry has room
+// Volume profile updates every bar regardless of registry state
+if atr_val > 0
     int   bucket    = int(close / atr_val) % 20  // which of 20 ATR-sized buckets
     float cum_vol   = matrix.get(GM.vol_profile_matrix, bucket, 1) + volume
     matrix.set(GM.vol_profile_matrix, bucket, 0, close)
@@ -268,7 +269,7 @@ f_detect_expansion(MatrixPoint[] phs, MatrixPoint[] pls) =>
             float tgt           = p0.y + (p0.y - l0.y) * 1.618
             float stp           = l0.y - atr_val
             float inv           = l1.y - atr_val * 2.0
-            float rr            = stp != p0.y ? math.abs(tgt - p0.y) / math.abs(p0.y - stp) : 0.0
+            float rr            = math.abs(close - stp) != 0 ? math.abs(tgt - close) / math.abs(close - stp) : 0.0
             float vw            = math.max(0.0, math.min(1.0, (p0.norm_vol + l0.norm_vol) / 4.0 + 0.5))
             float conf          = f_confidence(matrix.get(GM.corr_matrix, 0, 1), vw, bullish)
             result := PatternManifest.new("MEGA-EXPANSION", up_path, down_path,
@@ -314,9 +315,10 @@ f_detect_hs(MatrixPoint[] phs, MatrixPoint[] pls) =>
         MatrixPoint hd  = array.get(phs, 1)  // head
         MatrixPoint rs  = array.get(phs, 0)  // right shoulder
         MatrixPoint nl  = array.get(pls, 0)  // neckline anchor
-        // Classic H&S: head taller than both shoulders (within 5% tolerance)
+        // Classic H&S: head taller than both shoulders; shoulder symmetry within 1 ATR
+        float shoulder_tol = hd.y != 0 ? atr_val / hd.y : 0.05
         bool hs_shape = hd.y > ls.y * 1.005 and hd.y > rs.y * 1.005 and
-                        math.abs(ls.y - rs.y) / hd.y < 0.05
+                        math.abs(ls.y - rs.y) / hd.y < shoulder_tol
         if hs_shape
             VectorSegment[] segs_top = array.new<VectorSegment>()
             VectorSegment[] segs_neck = array.new<VectorSegment>()
@@ -345,7 +347,7 @@ f_detect_double(MatrixPoint[] phs, MatrixPoint[] pls) =>
         MatrixPoint t1 = array.get(phs, 1)
         MatrixPoint t2 = array.get(phs, 0)
         MatrixPoint vl = array.get(pls, 0)
-        bool dbl_top = math.abs(t1.y - t2.y) / t1.y < 0.005 and t2.x > t1.x
+        bool dbl_top = t1.y != 0 and math.abs(t1.y - t2.y) / t1.y < 0.005 and t2.x > t1.x
         if dbl_top
             VectorSegment[] segs_t = array.new<VectorSegment>()
             VectorSegment[] segs_v = array.new<VectorSegment>()
@@ -369,7 +371,7 @@ f_detect_double(MatrixPoint[] phs, MatrixPoint[] pls) =>
         MatrixPoint b1 = array.get(pls, 1)
         MatrixPoint b2 = array.get(pls, 0)
         MatrixPoint pk = array.get(phs, 0)
-        bool dbl_bot = math.abs(b1.y - b2.y) / b1.y < 0.005 and b2.x > b1.x
+        bool dbl_bot = b1.y != 0 and math.abs(b1.y - b2.y) / b1.y < 0.005 and b2.x > b1.x
         if dbl_bot
             VectorSegment[] segs_b = array.new<VectorSegment>()
             VectorSegment[] segs_p = array.new<VectorSegment>()
@@ -416,10 +418,12 @@ for pm in bar_detections
     if array.size(GM.registry) > depth
         array.pop(GM.registry)
 
-// Keep active pattern count current
+// Keep active pattern count current (directional stop check per pattern)
 int active_cnt = 0
 for pm in GM.registry
-    if pm.is_active and close > pm.stop_price
+    bool still_active = pm.is_active and
+                        (pm.is_bullish ? close > pm.stop_price : close < pm.stop_price)
+    if still_active
         active_cnt += 1
     else
         pm.is_active := false
@@ -439,20 +443,24 @@ if array.size(bar_detections) > 0
 
     PatternManifest pm = array.get(bar_detections, best_idx)
 
-    // --- Polyline through all segment endpoints ---
+    // --- Polyline through all segment endpoints (no duplicates at junctions) ---
     if show_poly
         chart.point[] draw_pts = array.new<chart.point>()
-        for seg in pm.primary_path.segs
-            draw_pts.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
-            draw_pts.push(chart.point.from_index(seg.end_pt.x,   seg.end_pt.y))
+        for i = 0 to array.size(pm.primary_path.segs) - 1
+            VectorSegment seg = array.get(pm.primary_path.segs, i)
+            if i == 0
+                draw_pts.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
+            draw_pts.push(chart.point.from_index(seg.end_pt.x, seg.end_pt.y))
         if array.size(draw_pts) >= 2
             polyline.new(draw_pts, curved=true, line_color=pm.theme_color, line_width=2)
 
         // Secondary path polyline (dashed via colour opacity)
         chart.point[] draw_pts2 = array.new<chart.point>()
-        for seg in pm.secondary_path.segs
-            draw_pts2.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
-            draw_pts2.push(chart.point.from_index(seg.end_pt.x,   seg.end_pt.y))
+        for i = 0 to array.size(pm.secondary_path.segs) - 1
+            VectorSegment seg = array.get(pm.secondary_path.segs, i)
+            if i == 0
+                draw_pts2.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
+            draw_pts2.push(chart.point.from_index(seg.end_pt.x, seg.end_pt.y))
         if array.size(draw_pts2) >= 2
             polyline.new(draw_pts2, curved=false,
                          line_color=color.new(pm.theme_color, 60), line_width=1)
