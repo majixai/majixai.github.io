@@ -48,6 +48,11 @@ class GitDatabaseEngine:
     """
     def __init__(self, repo="majixai/majixai.github.io"):
         self.token = os.environ.get("GITHUB_TOKEN", "")
+        if not self.token:
+            log.warning(
+                "GITHUB_TOKEN is not set — GitDatabaseEngine requests will be unauthenticated "
+                "and subject to stricter rate limits."
+            )
         self.repo = repo
         self.base_url = f"https://api.github.com/repos/{self.repo}/contents"
         self.headers = {

@@ -52,7 +52,7 @@ const (
 // Yahoo Finance v8 chart API endpoint
 const yfChartURL = "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=%s&range=%s&includePrePost=false"
 
-var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+var userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115 Safari/537.36"
 
 // ---------------------------------------------------------------------------
 // JSON response types
