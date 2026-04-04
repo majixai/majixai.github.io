@@ -627,3 +627,937 @@ else if isSpinningTop
     cScore := 0, cName := "Spinning Top"
 else if isDoji
     cScore := 0, cName := "Doji"
+
+// ============================================================================
+// PIVOT NODE & PATTERN ENGINE TYPE DECLARATIONS
+// ============================================================================
+
+type PivotNode
+    int   barIndex
+    float price
+    bool  isHigh
+
+type PatternEngine
+    string activeMacroPattern
+    int    patternScore
+    float  structureTarget
+    bool   isReversal
+
+var PivotNode[]  pivotsHigh = array.new<PivotNode>(0)
+var PivotNode[]  pivotsLow  = array.new<PivotNode>(0)
+var PatternEngine pe  = PatternEngine.new("NONE", 0, na, false)
+var UncertaintyZone uz = UncertaintyZone.new(na, na, 0.0, 1.5)
+var AccuracyEngine acc = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
+var KinematicModel kin = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var BreakoutState brk  = BreakoutState.new(false, "NONE", na, 1.0, na)
+
+pv_lb = input.int   (5,    "Pivot Lookback",      minval=2,   maxval=25,  group="Chart Patterns")
+st_tl = input.float (0.05, "Structure Tolerance", step=0.005, minval=0.01,group="Chart Patterns")
+sh_cp = input.bool  (true, "Show Pattern Lines",                           group="Chart Patterns")
+p_clB = input.color (color.new(color.blue, 0), "Bull Color",              group="Chart Patterns")
+p_clR = input.color (color.new(color.red,  0), "Bear Color",              group="Chart Patterns")
+al_pr = input.int   (14,   "ATR/Momentum Period", minval=5,   maxval=50,  group="Kinematics")
+b_cf  = input.float (1.0,  "Base Adaptive Coeff", step=0.1,   minval=0.5, group="Kinematics")
+wt_in = input.string("0.4 0.3 0.3", "Ensemble Weights (space-sep)",        group="Ensemble")
+src   = input.source(close, "Source",                                      group="Kinematics")
+
+// ============================================================================
+// 8. ADVANCED GEOMETRIC, HARMONIC & MACRO CHART PATTERNS (160 PATTERNS)
+//    Doubled from 80 with Skew-StdDev Adaptive Score Biasing
+// ============================================================================
+
+float pHigh = ta.pivothigh(high, pv_lb, 2)
+float pLow  = ta.pivotlow (low,  pv_lb, 2)
+
+// Expand sliding arrays to 25 to capture extreme macro-formations
+if not na(pHigh)
+    array.unshift(pivotsHigh, PivotNode.new(bar_index - 2, pHigh, true))
+    if array.size(pivotsHigh) > 25
+        array.pop(pivotsHigh)
+
+if not na(pLow)
+    array.unshift(pivotsLow, PivotNode.new(bar_index - 2, pLow, false))
+    if array.size(pivotsLow) > 25
+        array.pop(pivotsLow)
+
+// ---- Skew-StdDev Bias Engine -----------------------------------------------
+// Rolling return statistics used to adaptively bias all pattern scores.
+// Positive skewness → price has fat right tail → favour bullish continuations.
+// Negative skewness → fat left tail            → favour bearish reversals.
+// High short-term vol vs long-term vol         → amplify reversal scores.
+// Low  short-term vol vs long-term vol         → amplify continuation scores.
+int   _skewLen    = 20
+float _ret        = close / nz(close[1], close) - 1.0
+float _retMean    = ta.sma(_ret, _skewLen)
+float _retStd     = ta.stdev(_ret, _skewLen)
+float _retVar     = _retStd * _retStd
+float _cubedDev   = ta.sma(math.pow(_ret - _retMean, 3), _skewLen)
+float skewness    = _retStd > 1e-10 ? _cubedDev / math.pow(_retStd, 3) : 0.0
+float _volShort   = ta.stdev(_ret, _skewLen)
+float _volLong    = ta.stdev(_ret, _skewLen * 3)
+float stdevMult   = math.max(0.7, math.min(1.5, _volLong > 1e-10 ? 1.0 + (1.0 - _volShort / _volLong) * 0.5 : 1.0))
+int   skewBias    = int(math.round(math.max(-3.0, math.min(3.0, skewness * 2.0))))
+
+// Kurtosis (excess) for fat-tail regime detection
+float _kurtRaw    = ta.sma(math.pow(_ret - _retMean, 4), _skewLen)
+float kurtosis    = _retVar > 1e-10 ? _kurtRaw / (_retVar * _retVar) - 3.0 : 0.0
+
+string mName   = "NONE"
+int    mScore  = 0
+float  mTarget = na
+
+// ---- Pivot accessor helpers -------------------------------------------------
+ph (int idx) => array.size(pivotsHigh) > idx ? array.get(pivotsHigh, idx).price    : na
+phb(int idx) => array.size(pivotsHigh) > idx ? array.get(pivotsHigh, idx).barIndex : na
+pl (int idx) => array.size(pivotsLow)  > idx ? array.get(pivotsLow,  idx).price    : na
+plb(int idx) => array.size(pivotsLow)  > idx ? array.get(pivotsLow,  idx).barIndex : na
+
+dist(float a, float b) =>
+    absMagnitude = math.max(math.abs(a), 1e-10)
+    math.abs(a - b) / absMagnitude
+
+fibRatio(float move1, float move2) =>
+    move1 == 0 ? 0.0 : math.abs(move2 / move1)
+
+drawGeometricLines(int x1, float y1, int x2, float y2, int x3, float y3, color c) =>
+    if sh_cp
+        line.new(x1, y1, x2, y2, color=c, width=2)
+        line.new(x2, y2, x3, y3, color=c, width=2)
+
+drawMacroLine(int x1, float y1, int x2, float y2, color c, int w=2, string s=line.style_solid) =>
+    if sh_cp
+        line.new(x1, y1, x2, y2, color=c, width=w, style=s)
+
+// ============================================================================
+// LEVEL 0: 6-PIVOT MEGA-STRUCTURES — Patterns 1-6
+//          Elliott Waves, Expanding Megaphones, Bump-and-Run
+// ============================================================================
+
+if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
+
+    // 1 & 2. Elliott 5-Wave Motive Impulse
+    bool isBullElliott = ph(2) < ph(1) and ph(1) < ph(0) and pl(1) < pl(0) and pl(0) > ph(2)
+    bool isBearElliott = pl(2) > pl(1) and pl(1) > pl(0) and ph(1) > ph(0) and ph(0) < pl(2)
+
+    if isBullElliott and (ph(1) - pl(1)) > (ph(2) - pl(2))
+        mScore := 25, mName := "Elliott Wave Impulse (Bull)", mTarget := ph(0) + (ph(0) - pl(0))
+        drawMacroLine(plb(2), pl(2), phb(0), ph(0), p_clB, 2, line.style_dotted)
+    else if isBearElliott and (pl(2) - ph(2)) > (pl(1) - ph(1))
+        mScore := -25, mName := "Elliott Wave Impulse (Bear)", mTarget := pl(0) - (ph(0) - pl(0))
+        drawMacroLine(phb(2), ph(2), plb(0), pl(0), p_clR, 2, line.style_dotted)
+
+    // 3 & 4. 6-Point Expanding Megaphone (Broadening Tops/Bottoms)
+    if mScore == 0
+        if ph(3) < ph(2) and ph(2) < ph(1) and ph(1) < ph(0) and pl(2) > pl(1) and pl(1) > pl(0)
+            mScore := -22, mName := "6-Pt Broadening Top", mTarget := pl(0) - (ph(0) - pl(0))
+        else if pl(3) > pl(2) and pl(2) > pl(1) and pl(1) > pl(0) and ph(2) < ph(1) and ph(1) < ph(0)
+            mScore := 22, mName := "6-Pt Broadening Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 5 & 6. Bump and Run Reversal
+    if mScore == 0
+        if pl(3) < pl(2) and pl(2) < pl(1) and (pl(1) - pl(2)) > (pl(2) - pl(3)) * 2 and ph(0) < ph(1)
+            mScore := -20, mName := "Bump & Run Top (Bearish)", mTarget := pl(3)
+        else if ph(3) > ph(2) and ph(2) > ph(1) and (ph(2) - ph(1)) > (ph(3) - ph(2)) * 2 and pl(0) > pl(1)
+            mScore := 20, mName := "Bump & Run Bottom (Bullish)", mTarget := ph(3)
+
+// ============================================================================
+// LEVEL 1: 5-PIVOT XABCD HARMONICS & COMPLEX SAUCERS — Patterns 7-18
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+
+    // 7 & 8. Rounding Bottom & Rounding Top (Saucers)
+    bool isBowl = pl(2) > pl(1) and pl(1) < pl(0) and ph(2) > ph(1) and ph(0) > ph(1)
+    bool isDome = ph(2) < ph(1) and ph(1) > ph(0) and pl(2) < pl(1) and pl(0) < pl(1)
+    if isBowl and dist(pl(2), pl(0)) < 0.2
+        mScore := 24, mName := "Rounding Bottom / Saucer", mTarget := ph(0) + (ph(0) - pl(1))
+    else if isDome and dist(ph(2), ph(0)) < 0.2
+        mScore := -24, mName := "Rounding Top / Dome", mTarget := pl(0) - (ph(1) - pl(0))
+
+    // 9 & 10. Complex H&S / Inverse
+    if mScore == 0
+        if ph(2) > ph(3) and ph(2) > ph(1) and dist(ph(3), ph(1)) < st_tl
+            mScore := -21, mName := "Complex Head & Shoulders", mTarget := pl(0) - (ph(2) - pl(0))
+        else if pl(2) < pl(3) and pl(2) < pl(1) and dist(pl(3), pl(1)) < st_tl
+            mScore := 21, mName := "Complex Inv H&S", mTarget := ph(0) + (ph(0) - pl(2))
+
+    // 11-18. XABCD Harmonics (Gartley, Bat, Butterfly, Crab)
+    if mScore == 0
+        float XA_bull = ph(1) - pl(2), float AD_bull = ph(1) - pl(0)
+        float ret_bull = fibRatio(XA_bull, AD_bull)
+        if ph(1) > ph(0) and pl(1) > pl(2) and pl(0) < pl(1)
+            if ret_bull >= 0.618 and ret_bull <= 0.886
+                mScore := 19, mName := "Bullish Gartley/Bat", mTarget := ph(0)
+            else if ret_bull > 1.0 and ret_bull <= 1.382
+                mScore := 20, mName := "Bullish Butterfly", mTarget := ph(1)
+            else if ret_bull > 1.382 and ret_bull <= 1.618
+                mScore := 21, mName := "Bullish Crab", mTarget := ph(1)
+
+        float XA_bear = ph(2) - pl(1), float AD_bear = ph(0) - pl(1)
+        float ret_bear = fibRatio(XA_bear, AD_bear)
+        if pl(1) < pl(0) and ph(1) < ph(2) and ph(0) > ph(1)
+            if ret_bear >= 0.618 and ret_bear <= 0.886
+                mScore := -19, mName := "Bearish Gartley/Bat", mTarget := pl(0)
+            else if ret_bear > 1.0 and ret_bear <= 1.382
+                mScore := -20, mName := "Bearish Butterfly", mTarget := pl(1)
+            else if ret_bear > 1.382 and ret_bear <= 1.618
+                mScore := -21, mName := "Bearish Crab", mTarget := pl(1)
+
+// ============================================================================
+// LEVEL 2: 4-PIVOT CONTINUATION & REVERSAL — Patterns 19-30
+//          Diamonds, Drives, Dragons, Wolfe
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+
+    // 19 & 20. Diamond Top & Bottom
+    if ph(1) < ph(0) and pl(1) > pl(0) and array.size(pivotsHigh) >= 3 and ph(2) < ph(1)
+        mScore := -18, mName := "Diamond Top", mTarget := pl(0) - (ph(0) - pl(0))
+    else if ph(1) > ph(0) and pl(1) < pl(0) and array.size(pivotsLow) >= 3 and pl(2) > pl(1)
+        mScore := 18, mName := "Diamond Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 21 & 22. Three Drives Harmonic
+    else if array.size(pivotsHigh) >= 3 and ph(2) < ph(1) and ph(1) < ph(0) and pl(2) < pl(1) and pl(1) < pl(0)
+        if dist(ph(1) - ph(2), ph(0) - ph(1)) < 0.3
+            mScore := -17, mName := "Three Drives (Bearish)", mTarget := pl(0)
+    else if array.size(pivotsLow) >= 3 and pl(2) > pl(1) and pl(1) > pl(0) and ph(2) > ph(1) and ph(1) > ph(0)
+        if dist(pl(2) - pl(1), pl(1) - pl(0)) < 0.3
+            mScore := 17, mName := "Three Drives (Bullish)", mTarget := ph(0)
+
+    // 23 & 24. Wolfe Waves
+    else if array.size(pivotsHigh) >= 3 and ph(2) < ph(1) and ph(1) < ph(0) and pl(1) < pl(0) and pl(0) > ph(2)
+        mScore := -16, mName := "Wolfe Wave (Bearish)", mTarget := pl(0) - (ph(0) - pl(0))
+    else if array.size(pivotsLow) >= 3 and pl(2) > pl(1) and pl(1) > pl(0) and ph(1) > ph(0) and ph(0) < pl(2)
+        mScore := 16, mName := "Wolfe Wave (Bullish)", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 25 & 26. Dragon Pattern
+    else if array.size(pivotsHigh) >= 3 and pl(1) < ph(2) and pl(0) < ph(2) and dist(pl(1), pl(0)) < st_tl and ph(0) > ph(1)
+        mScore := 16, mName := "Bullish Dragon", mTarget := ph(2)
+    else if array.size(pivotsLow) >= 3 and ph(1) > pl(2) and ph(0) > pl(2) and dist(ph(1), ph(0)) < st_tl and pl(0) < pl(1)
+        mScore := -16, mName := "Bearish Dragon", mTarget := pl(2)
+
+    // 27 & 28. 1234 Continuation
+    else if ph(1) > ph(0) and pl(1) < pl(0) and pl(0) > pl(1) + ((ph(1) - pl(1)) * 0.3)
+        mScore := 15, mName := "1234 Continuation (Bull)", mTarget := ph(1) + (ph(1) - pl(0))
+    else if pl(1) < pl(0) and ph(1) > ph(0) and ph(0) < ph(1) - ((ph(1) - pl(1)) * 0.3)
+        mScore := -15, mName := "1234 Continuation (Bear)", mTarget := pl(1) - (ph(0) - pl(1))
+
+    // 29 & 30. Sea Horse / Deep Pullback
+    else if pl(1) < ph(1) and pl(0) > pl(1) and pl(0) < ph(1) and ph(0) > ph(1)
+        mScore := 14, mName := "Sea Horse (Bullish)", mTarget := ph(0) + (ph(0) - pl(0))
+
+// ============================================================================
+// LEVEL 3: 3-PIVOT CLASSICS — Patterns 31-50
+//          Triple Tops, H&S, Crowns, M/W, V-Shapes, Scallops
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 2
+
+    // 31 & 32. Triple Top & Bottom
+    if dist(ph(0), ph(1)) < st_tl and dist(ph(1), ph(2)) < st_tl
+        mScore := -14, mName := "Triple Top", mTarget := pl(0) - (ph(0) - pl(0))
+    else if dist(pl(0), pl(1)) < st_tl and dist(pl(1), pl(2)) < st_tl
+        mScore := 14, mName := "Triple Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 33 & 34. Standard Head & Shoulders
+    else if ph(1) > ph(2) and ph(1) > ph(0) and dist(ph(2), ph(0)) < st_tl * 1.5
+        mScore := -13, mName := "Head & Shoulders", mTarget := pl(0) - (ph(1) - pl(0))
+    else if pl(1) < pl(2) and pl(1) < pl(0) and dist(pl(2), pl(0)) < st_tl * 1.5
+        mScore := 13, mName := "Inverse H&S", mTarget := ph(0) + (ph(0) - pl(1))
+
+    // 35 & 36. Quasimodo (Over & Under)
+    else if ph(2) < ph(1) and pl(1) < pl(2) and dist(ph(2), ph(0)) < st_tl
+        mScore := -12, mName := "Quasimodo (Bearish)", mTarget := pl(1)
+    else if pl(2) > pl(1) and ph(1) > ph(2) and dist(pl(2), pl(0)) < st_tl
+        mScore := 12, mName := "Quasimodo (Bullish)", mTarget := ph(1)
+
+    // 37 & 38. Crown Pattern
+    else if ph(1) > ph(2) and ph(1) > ph(0) and ph(0) < ph(2) * 0.98
+        mScore := -11, mName := "Crown Pattern (Bear)", mTarget := pl(0)
+    else if pl(1) < pl(2) and pl(1) < pl(0) and pl(0) > pl(2) * 1.02
+        mScore := 11, mName := "Crown Pattern (Bull)", mTarget := ph(0)
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+
+    // 39 & 40. Cup & Handle
+    if dist(ph(1), ph(0)) < st_tl * 1.5 and pl(0) > pl(1) and pl(0) < ph(0)
+        mScore := 12, mName := "Cup & Handle", mTarget := ph(0) + (ph(0) - pl(1))
+    else if dist(pl(1), pl(0)) < st_tl * 1.5 and ph(0) < ph(1) and ph(0) > pl(0)
+        mScore := -12, mName := "Inv Cup & Handle", mTarget := pl(0) - (ph(1) - pl(0))
+
+    // 41 & 42. W-Bottom & M-Top (Deep double top/bottom variants)
+    else if dist(pl(1), pl(0)) < st_tl and ph(0) > pl(0) + ((ph(1) - pl(1)) * 0.6)
+        mScore := 11, mName := "W-Bottom (Deep Retrace)", mTarget := ph(0) + (ph(0) - pl(0))
+    else if dist(ph(1), ph(0)) < st_tl and pl(0) < ph(0) - ((ph(1) - pl(1)) * 0.6)
+        mScore := -11, mName := "M-Top (Deep Retrace)", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 43-46. Adam & Eve Variations
+    float w1 = math.abs(phb(1) - plb(1)), float w2 = math.abs(phb(0) - plb(0))
+    if mScore == 0 and dist(ph(0), ph(1)) < st_tl
+        if w1 < w2 * 0.4
+            mScore := -10, mName := "Adam & Eve Top", mTarget := pl(0) - (ph(0) - pl(0))
+        else if w1 > w2 * 2.5
+            mScore := -10, mName := "Eve & Adam Top", mTarget := pl(0) - (ph(0) - pl(0))
+
+    float w3 = math.abs(plb(1) - phb(1)), float w4 = math.abs(plb(0) - phb(0))
+    if mScore == 0 and dist(pl(0), pl(1)) < st_tl
+        if w3 < w4 * 0.4
+            mScore := 10, mName := "Adam & Eve Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+        else if w3 > w4 * 2.5
+            mScore := 10, mName := "Eve & Adam Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 47 & 48. Scallops (Ascending / Descending)
+    if mScore == 0
+        if pl(1) < pl(0) and ph(1) < ph(0) and dist(phb(1), plb(0)) > 8
+            mScore := 9, mName := "Ascending Scallop", mTarget := ph(0) + (ph(0) - pl(0))
+        else if pl(1) > pl(0) and ph(1) > ph(0) and dist(plb(1), phb(0)) > 8
+            mScore := -9, mName := "Descending Scallop", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 49 & 50. Spike & Ledge (V-Shape + mini consolidation)
+    if mScore == 0
+        if (ph(1) - pl(1)) / math.max(pl(1), 1e-10) > 0.04 and dist(ph(1), ph(0)) < st_tl and math.abs(phb(1) - phb(0)) <= 5
+            mScore := -12, mName := "Spike & Ledge (Top)", mTarget := pl(0)
+        else if (ph(1) - pl(1)) / math.max(pl(1), 1e-10) > 0.04 and dist(pl(1), pl(0)) < st_tl and math.abs(plb(1) - plb(0)) <= 5
+            mScore := 12, mName := "Spike & Ledge (Bot)", mTarget := ph(0)
+
+// ============================================================================
+// LEVEL 4: 2-PIVOT CORE & MICRO GEOMETRY — Patterns 51-80
+//          Triangles, Wedges, Channels, Flags, Pipes
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+    bool flatTops       = dist(ph(0), ph(1)) < st_tl
+    bool flatBottoms    = dist(pl(0), pl(1)) < st_tl
+    bool risingTops     = ph(0) > ph(1) and not flatTops
+    bool fallingTops    = ph(0) < ph(1) and not flatTops
+    bool risingBottoms  = pl(0) > pl(1) and not flatBottoms
+    bool fallingBottoms = pl(0) < pl(1) and not flatBottoms
+
+    float topDiff   = math.abs(ph(0) - ph(1))
+    float botDiff   = math.abs(pl(0) - pl(1))
+    bool isParallel = math.abs(topDiff - botDiff) < (math.max(topDiff, botDiff) * 0.3)
+
+    // 51 & 52. Double Top / Bottom
+    if flatTops and not flatBottoms
+        mScore := -9, mName := "Double Top", mTarget := pl(0) - (ph(0) - pl(0))
+    else if flatBottoms and not flatTops
+        mScore := 9, mName := "Double Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 53 & 54. Rectangle / Box Play
+    else if flatTops and flatBottoms
+        mScore := 0, mName := "Rectangle / Ranging", mTarget := ph(0)
+
+    // 55 & 56. Ascending / Descending Triangle
+    else if flatTops and risingBottoms
+        mScore := 8, mName := "Ascending Triangle", mTarget := ph(0) + (ph(0) - pl(1))
+    else if flatBottoms and fallingTops
+        mScore := -8, mName := "Descending Triangle", mTarget := pl(0) - (ph(1) - pl(0))
+
+    // 57 & 58. Symmetrical Triangle
+    else if fallingTops and risingBottoms
+        mScore := (close > ta.ema(close, 50)) ? 5 : -5, mName := "Symmetrical Triangle", mTarget := ph(0)
+
+    // 59 & 60. Broadening Megaphone
+    else if risingTops and fallingBottoms
+        mScore := 0, mName := "Broadening Megaphone", mTarget := na
+
+    // 61 & 62. Right-Angled Broadening
+    else if flatBottoms and risingTops
+        mScore := 6, mName := "Rt-Angle Asc Broadening", mTarget := ph(0) + (ph(0) - pl(0))
+    else if flatTops and fallingBottoms
+        mScore := -6, mName := "Rt-Angle Desc Broadening", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 63 & 64. Wedges
+    else if risingTops and risingBottoms and topDiff < botDiff and not isParallel
+        mScore := -8, mName := "Rising Wedge", mTarget := pl(1)
+    else if fallingTops and fallingBottoms and topDiff > botDiff and not isParallel
+        mScore := 8, mName := "Falling Wedge", mTarget := ph(1)
+
+    // 65 & 66. Flags
+    else if fallingTops and fallingBottoms and isParallel and math.abs(phb(1) - plb(0)) < 15
+        mScore := 7, mName := "Bull Flag", mTarget := ph(1) + (ph(1) - pl(1))
+    else if risingTops and risingBottoms and isParallel and math.abs(plb(1) - phb(0)) < 15
+        mScore := -7, mName := "Bear Flag", mTarget := pl(1) - (ph(1) - pl(1))
+
+    // 67 & 68. Channels
+    else if fallingTops and fallingBottoms and isParallel
+        mScore := 6, mName := "Channel Down", mTarget := ph(1)
+    else if risingTops and risingBottoms and isParallel
+        mScore := -6, mName := "Channel Up", mTarget := pl(1)
+
+    // 69 & 70. AB=CD Harmonic
+    else if fallingTops and fallingBottoms and dist(topDiff, botDiff) < 0.15
+        mScore := 10, mName := "AB=CD (Bullish)", mTarget := ph(0)
+    else if risingTops and risingBottoms and dist(topDiff, botDiff) < 0.15
+        mScore := -10, mName := "AB=CD (Bearish)", mTarget := pl(0)
+
+    // 71 & 72. Pennants (Pole > 5%)
+    else if fallingTops and risingBottoms and (ph(1) - pl(1)) / math.max(pl(1), 1e-10) > 0.05
+        mScore := 10, mName := "Bullish Pennant", mTarget := ph(0) + (ph(1) - pl(1))
+    else if fallingTops and risingBottoms and array.size(pivotsHigh) >= 3 and (pl(1) - ph(2)) / math.max(ph(2), 1e-10) < -0.05
+        mScore := -10, mName := "Bearish Pennant", mTarget := pl(0) - (ph(2) - pl(1))
+
+    // 73 & 74. Horn Tops & Bottoms (Ultra-tight double pivots)
+    else if flatTops and math.abs(phb(1) - phb(0)) <= 3
+        mScore := -11, mName := "Horn Top", mTarget := pl(0)
+    else if flatBottoms and math.abs(plb(1) - plb(0)) <= 3
+        mScore := 11, mName := "Horn Bottom", mTarget := ph(0)
+
+    // 75 & 76. Pipe Tops & Bottoms (Extended sharp double pivots)
+    else if flatTops and math.abs(phb(1) - phb(0)) >= 4 and math.abs(phb(1) - phb(0)) <= 8 and (ph(0) - pl(0)) / math.max(pl(0), 1e-10) > 0.05
+        mScore := -12, mName := "Pipe Top", mTarget := pl(0) - (ph(0) - pl(0))
+    else if flatBottoms and math.abs(plb(1) - plb(0)) >= 4 and math.abs(plb(1) - plb(0)) <= 8 and (ph(1) - pl(1)) / math.max(pl(1), 1e-10) > 0.05
+        mScore := 12, mName := "Pipe Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 77 & 78. Darvas Box / Squeeze (very tight rectangle < 2% height)
+    else if flatTops and flatBottoms and (ph(0) - pl(0)) / math.max(pl(0), 1e-10) < 0.02
+        mScore := 5, mName := "Darvas Box / Squeeze", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 79 & 80. Hook Reversal
+    else if ph(0) < ph(1) and pl(0) > pl(1) and close < open and close[1] > open[1]
+        mScore := -8, mName := "Hook Reversal Top", mTarget := pl(1)
+    else if ph(0) < ph(1) and pl(0) > pl(1) and close > open and close[1] < open[1]
+        mScore := 8, mName := "Hook Reversal Bottom", mTarget := ph(1)
+
+// ============================================================================
+// LEVEL 5: ADVANCED HARMONICS — Patterns 81-100
+//          Shark, Cypher, 5-0, Alt-Bat, Ideal-Bat, Nenstar, BAMM, Leonardo
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+
+    // 81 & 82. Shark Harmonic (0-X-A-B-C structure; D at 0.886-1.13 of OX)
+    float _OX_s   = math.abs(ph(2) - pl(2))
+    float _XC_s_b = math.abs(pl(0) - ph(2))
+    float _XC_s_r = math.abs(ph(0) - pl(2))
+    float _shRet_b = fibRatio(_OX_s, _XC_s_b)
+    float _shRet_r = fibRatio(_OX_s, _XC_s_r)
+    if ph(2) > pl(2) and pl(1) < ph(2) and ph(1) > pl(1) and pl(0) < ph(1)
+        if _shRet_b >= 0.886 and _shRet_b <= 1.13
+            mScore := 22, mName := "Bullish Shark", mTarget := ph(1) * 1.13
+    if mScore == 0 and pl(2) < ph(2) and ph(1) > pl(2) and pl(1) < ph(1) and ph(0) > pl(1)
+        if _shRet_r >= 0.886 and _shRet_r <= 1.13
+            mScore := -22, mName := "Bearish Shark", mTarget := pl(1) * 0.886
+
+    // 83 & 84. Cypher Pattern (AB = 0.382-0.618 of XA; D = 0.786 retracement of XC)
+    if mScore == 0
+        float _XA_cy   = ph(1) - pl(2)
+        float _AB_cy   = math.abs(pl(1) - ph(1))
+        float _BC_cy   = ph(0) - pl(1)
+        float _abRet   = fibRatio(_XA_cy, _AB_cy)
+        float _bcExt   = fibRatio(_XA_cy, _BC_cy)
+        if _abRet >= 0.382 and _abRet <= 0.618 and _bcExt >= 1.272 and _bcExt <= 1.414
+            if pl(0) < pl(1)
+                mScore := 20, mName := "Bullish Cypher", mTarget := ph(0) * 1.786 - pl(0) * 0.786
+
+        float _XA_cy2  = pl(1) - ph(2)
+        float _AB_cy2  = math.abs(ph(1) - pl(1))
+        float _BC_cy2  = math.abs(pl(0) - ph(1))
+        float _abRet2  = fibRatio(math.abs(_XA_cy2), _AB_cy2)
+        float _bcExt2  = fibRatio(math.abs(_XA_cy2), _BC_cy2)
+        if mScore == 0 and _abRet2 >= 0.382 and _abRet2 <= 0.618 and _bcExt2 >= 1.272 and _bcExt2 <= 1.414
+            if ph(0) > ph(1)
+                mScore := -20, mName := "Bearish Cypher", mTarget := pl(0) * 0.786 + ph(0) * 0.214
+
+    // 85 & 86. 5-0 Pattern (CD retraces 50% of BC)
+    if mScore == 0
+        float _BC_50   = math.abs(pl(1) - ph(1))
+        float _CD_50   = ph(0) - pl(0)
+        float _fifty   = fibRatio(_BC_50, _CD_50)
+        if ph(1) > pl(2) and pl(1) < ph(1) and _fifty >= 0.4 and _fifty <= 0.6 and pl(0) < pl(1)
+            mScore := 18, mName := "Bullish 5-0 Pattern", mTarget := ph(0) + _BC_50 * 0.5
+
+        float _BC_50b  = math.abs(ph(1) - pl(1))
+        float _CD_50b  = math.abs(pl(0) - ph(0))
+        float _fifty_b = fibRatio(_BC_50b, _CD_50b)
+        if mScore == 0 and pl(1) < ph(2) and ph(1) > pl(1) and _fifty_b >= 0.4 and _fifty_b <= 0.6 and ph(0) > ph(1)
+            mScore := -18, mName := "Bearish 5-0 Pattern", mTarget := pl(0) - _BC_50b * 0.5
+
+    // 87 & 88. Alt Bat (B = 0.382 of XA; D = 1.13 extension of XA)
+    if mScore == 0
+        float _XA_ab   = ph(1) - pl(2)
+        float _AB_ab   = math.abs(pl(1) - ph(1))
+        float _CD_ab   = ph(0) - pl(0)
+        float _bRet    = fibRatio(_XA_ab, _AB_ab)
+        float _dExt    = fibRatio(_XA_ab, _CD_ab)
+        if _bRet >= 0.35 and _bRet <= 0.40 and _dExt >= 1.08 and _dExt <= 1.20 and pl(0) < pl(1)
+            mScore := 20, mName := "Bullish Alt Bat", mTarget := ph(0) + _XA_ab * 0.886
+
+        float _XA_ab2  = math.abs(pl(1) - ph(2))
+        float _AB_ab2  = math.abs(ph(1) - pl(1))
+        float _CD_ab2  = math.abs(pl(0) - ph(0))
+        float _bRet2   = fibRatio(_XA_ab2, _AB_ab2)
+        float _dExt2   = fibRatio(_XA_ab2, _CD_ab2)
+        if mScore == 0 and _bRet2 >= 0.35 and _bRet2 <= 0.40 and _dExt2 >= 1.08 and _dExt2 <= 1.20 and ph(0) > ph(1)
+            mScore := -20, mName := "Bearish Alt Bat", mTarget := pl(0) - _XA_ab2 * 0.886
+
+    // 89 & 90. Ideal Bat (D retraces exactly 0.886 of XA)
+    if mScore == 0
+        float _XA_ib   = ph(1) - pl(2)
+        float _AD_ib   = ph(1) - pl(0)
+        float _ibRet   = fibRatio(_XA_ib, _AD_ib)
+        if _ibRet >= 0.82 and _ibRet <= 0.91 and pl(0) < pl(1)
+            mScore := 21, mName := "Bullish Ideal Bat", mTarget := ph(1)
+
+        float _XA_ib2  = math.abs(pl(1) - ph(2))
+        float _AD_ib2  = ph(0) - pl(1)
+        float _ibRet2  = fibRatio(_XA_ib2, _AD_ib2)
+        if mScore == 0 and _ibRet2 >= 0.82 and _ibRet2 <= 0.91 and ph(0) > ph(1)
+            mScore := -21, mName := "Bearish Ideal Bat", mTarget := pl(1)
+
+    // 91 & 92. Nenstar / Deep Crab (D at 1.618-2.0 XA extension)
+    if mScore == 0
+        float _XA_nc   = ph(1) - pl(2)
+        float _CD_nc   = ph(0) - pl(0)
+        float _ncRet   = fibRatio(_XA_nc, _CD_nc)
+        if _ncRet >= 1.618 and _ncRet <= 2.0 and pl(0) < pl(1)
+            mScore := 21, mName := "Bullish Nenstar/Deep Crab", mTarget := ph(1)
+
+        float _XA_nc2  = math.abs(pl(1) - ph(2))
+        float _CD_nc2  = math.abs(pl(0) - ph(0))
+        float _ncRet2  = fibRatio(_XA_nc2, _CD_nc2)
+        if mScore == 0 and _ncRet2 >= 1.618 and _ncRet2 <= 2.0 and ph(0) > ph(1)
+            mScore := -21, mName := "Bearish Nenstar/Deep Crab", mTarget := pl(1)
+
+    // 93 & 94. Reciprocal AB=CD (CD leg is 1.272 or 1.618 of AB)
+    if mScore == 0
+        float _AB_rcd  = ph(1) - pl(1)
+        float _CD_rcd  = ph(0) - pl(0)
+        float _rcdRat  = fibRatio(_AB_rcd, _CD_rcd)
+        if ph(0) > ph(1) and pl(0) < pl(1)
+            if _rcdRat >= 1.20 and _rcdRat <= 1.35
+                mScore := -15, mName := "Recip AB=CD 1.272 Bear", mTarget := pl(0) - _CD_rcd
+            else if _rcdRat >= 1.55 and _rcdRat <= 1.68
+                mScore := -16, mName := "Recip AB=CD 1.618 Bear", mTarget := pl(0) - _CD_rcd
+        if mScore == 0 and ph(0) < ph(1) and pl(0) > pl(1)
+            if _rcdRat >= 1.20 and _rcdRat <= 1.35
+                mScore := 15, mName := "Recip AB=CD 1.272 Bull", mTarget := ph(0) + _CD_rcd
+            else if _rcdRat >= 1.55 and _rcdRat <= 1.68
+                mScore := 16, mName := "Recip AB=CD 1.618 Bull", mTarget := ph(0) + _CD_rcd
+
+    // 95 & 96. Three Drives Extension (equal AB and CD pivots)
+    if mScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
+        float _d1 = ph(2) - pl(2), float _d2 = ph(1) - pl(1), float _d3 = ph(0) - pl(0)
+        if dist(_d1, _d2) < 0.1 and dist(_d2, _d3) < 0.1 and ph(0) > ph(1) and ph(1) > ph(2)
+            mScore := -17, mName := "Three Drives Ext (Bear)", mTarget := pl(0) - _d3
+        else if dist(_d1, _d2) < 0.1 and dist(_d2, _d3) < 0.1 and ph(0) < ph(1) and ph(1) < ph(2)
+            mScore := 17, mName := "Three Drives Ext (Bull)", mTarget := ph(0) + _d3
+
+    // 97 & 98. BAMM Setup (BC extension beyond XA creating D)
+    if mScore == 0
+        float _XA_bm   = ph(1) - pl(2)
+        float _BC_bm   = ph(0) - pl(1)
+        float _bammRet = fibRatio(_XA_bm, _BC_bm)
+        if _bammRet >= 1.618 and ph(0) > ph(1) and pl(1) > pl(2)
+            mScore := 23, mName := "BAMM Setup (Bull)", mTarget := ph(1) + _XA_bm
+
+        float _XA_bm2  = math.abs(pl(1) - ph(2))
+        float _BC_bm2  = math.abs(pl(0) - ph(1))
+        float _bamm2   = fibRatio(_XA_bm2, _BC_bm2)
+        if mScore == 0 and _bamm2 >= 1.618 and pl(0) < pl(1) and ph(1) < ph(2)
+            mScore := -23, mName := "BAMM Setup (Bear)", mTarget := pl(1) - _XA_bm2
+
+    // 99 & 100. Leonardo Pattern (B retraces 0.786 of XA; D at 0.786)
+    if mScore == 0
+        float _XA_leo  = ph(1) - pl(2)
+        float _AB_leo  = math.abs(pl(1) - ph(1))
+        float _AD_leo  = ph(1) - pl(0)
+        float _bLeo    = fibRatio(_XA_leo, _AB_leo)
+        float _dLeo    = fibRatio(_XA_leo, _AD_leo)
+        if _bLeo >= 0.75 and _bLeo <= 0.82 and _dLeo >= 0.75 and _dLeo <= 0.82 and pl(0) < pl(1)
+            mScore := 19, mName := "Bullish Leonardo", mTarget := ph(1)
+
+        float _XA_leo2 = math.abs(pl(1) - ph(2))
+        float _AB_leo2 = math.abs(ph(1) - pl(1))
+        float _AD_leo2 = ph(0) - pl(1)
+        float _bLeo2   = fibRatio(_XA_leo2, _AB_leo2)
+        float _dLeo2   = fibRatio(_XA_leo2, _AD_leo2)
+        if mScore == 0 and _bLeo2 >= 0.75 and _bLeo2 <= 0.82 and _dLeo2 >= 0.75 and _dLeo2 <= 0.82 and ph(0) > ph(1)
+            mScore := -19, mName := "Bearish Leonardo", mTarget := pl(1)
+
+// ============================================================================
+// LEVEL 6: STATISTICAL & VOLATILITY PATTERNS — Patterns 101-120
+//          Skewness, Kurtosis, StdDev, Regression, Fractal, Gap
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+
+    float _priceMean  = ta.sma(close, 20)
+    float _priceStd   = ta.stdev(close, 20)
+    float _zH         = _priceStd > 1e-10 ? (ph(0) - _priceMean) / _priceStd : 0.0
+    float _zL         = _priceStd > 1e-10 ? (pl(0) - _priceMean) / _priceStd : 0.0
+    float _shortVol   = ta.stdev(close, 5)
+    float _longVol    = ta.stdev(close, 30)
+    bool  _volExpand  = _shortVol > _longVol * 1.5
+    bool  _volContract = _shortVol < _longVol * 0.5
+
+    // 101 & 102. Volatility Coil (contraction → directional spring)
+    if _volContract and ph(1) > ph(0) and pl(1) < pl(0)
+        int _coilDir = skewness > 0 ? 13 : -12
+        mScore := _coilDir, mName := "Volatility Coil " + (skewness > 0 ? "(Bull)" : "(Bear)")
+        mTarget := skewness > 0 ? ph(0) + (ph(0) - pl(0)) : pl(0) - (ph(0) - pl(0))
+
+    // 103 & 104. StdDev-Stretched Reversal (Z-score > ±2.5 at pivot)
+    if mScore == 0
+        if _zH > 2.5 and ph(1) > ph(0)
+            mScore := -12, mName := "StdDev-Stretched Top", mTarget := _priceMean
+        else if _zL < -2.5 and pl(1) < pl(0)
+            mScore := 12, mName := "StdDev-Stretched Bottom", mTarget := _priceMean
+
+    // 105 & 106. Positive / Negative Skew Breakout
+    if mScore == 0
+        if skewness > 1.0 and ph(0) > ph(1) and pl(0) > pl(1)
+            mScore := 14, mName := "Positive Skew Breakout", mTarget := ph(0) + (ph(0) - pl(0)) * 1.5
+        else if skewness < -1.0 and ph(0) < ph(1) and pl(0) < pl(1)
+            mScore := -14, mName := "Negative Skew Breakdown", mTarget := pl(0) - (ph(0) - pl(0)) * 1.5
+
+    // 107 & 108. Kurtosis Spike (fat-tail regime → mean reversion)
+    if mScore == 0
+        if kurtosis > 1.5 and ph(0) > ph(1)
+            mScore := -11, mName := "Kurtosis Spike Top", mTarget := _priceMean
+        else if kurtosis > 1.5 and pl(0) < pl(1)
+            mScore := 11, mName := "Kurtosis Spike Bottom", mTarget := _priceMean
+
+    // 109 & 110. Mean Reversion Band Touch (price well outside sma-band)
+    if mScore == 0
+        float _zHigh = ta.stdev(high, 20) > 1e-10 ? (high - ta.sma(high, 20)) / ta.stdev(high, 20) : 0.0
+        float _zLow  = ta.stdev(low,  20) > 1e-10 ? (low  - ta.sma(low,  20)) / ta.stdev(low,  20) : 0.0
+        if _zHigh > 2.5
+            mScore := -9, mName := "Mean Rev Band Top", mTarget := ta.sma(high, 20)
+        else if _zLow < -2.5
+            mScore := 9,  mName := "Mean Rev Band Bottom", mTarget := ta.sma(low, 20)
+
+    // 111 & 112. Vol Expansion Exhaustion (vol spike at pivot extreme)
+    if mScore == 0
+        if _volExpand and ph(0) > ph(1) and skewness < -0.5
+            mScore := -13, mName := "Vol Expansion Exhaustion Top", mTarget := pl(0)
+        else if _volExpand and pl(0) < pl(1) and skewness > 0.5
+            mScore := 13, mName := "Vol Expansion Exhaustion Bottom", mTarget := ph(0)
+
+    // 113 & 114. Adaptive Momentum Exhaustion (price extended > 3× avg move)
+    if mScore == 0
+        float _mom14  = close - nz(close[14], close)
+        float _avgMov = ta.sma(math.abs(close - nz(close[1], close)), 14)
+        if _mom14 > _avgMov * 3 and skewness < -0.5
+            mScore := -13, mName := "Momentum Exhaustion Top", mTarget := _priceMean
+        else if _mom14 < -(_avgMov * 3) and skewness > 0.5
+            mScore := 13, mName := "Momentum Exhaustion Bottom", mTarget := _priceMean
+
+    // 115 & 116. Skew-Confirmed Trend Continuation
+    if mScore == 0
+        if skewness > 0.8 and ph(0) > ph(1) and pl(0) > pl(1)
+            mScore := 10, mName := "Skew-Confirmed Bull Trend", mTarget := ph(0) + (ph(0) - pl(0))
+        else if skewness < -0.8 and ph(0) < ph(1) and pl(0) < pl(1)
+            mScore := -10, mName := "Skew-Confirmed Bear Trend", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 117 & 118. Bollinger Squeeze Breakout (BB width < 60% of 50-bar avg)
+    if mScore == 0
+        float _bbU  = _priceMean + _priceStd * 2
+        float _bbL  = _priceMean - _priceStd * 2
+        float _bbW  = _priceMean > 1e-10 ? (_bbU - _bbL) / _priceMean : 0.0
+        float _bbAW = ta.sma(_bbW, 50)
+        if _bbW < _bbAW * 0.6 and skewness > 0.5 and ph(0) > ph(1)
+            mScore := 10, mName := "BB Squeeze Bull Break", mTarget := _bbU + (_bbU - _bbL)
+        else if _bbW < _bbAW * 0.6 and skewness < -0.5 and pl(0) < pl(1)
+            mScore := -10, mName := "BB Squeeze Bear Break", mTarget := _bbL - (_bbU - _bbL)
+
+    // 119 & 120. Regression Channel Breakout (price > 2σ from linreg)
+    if mScore == 0
+        float _linReg  = ta.linreg(close, 20, 0)
+        float _linDev  = ta.stdev(close, 20)
+        if close > _linReg + _linDev * 2 and ph(0) > ph(1) and skewness > 0
+            mScore := 9, mName := "Reg Channel Break Up", mTarget := close + _linDev
+        else if close < _linReg - _linDev * 2 and pl(0) < pl(1) and skewness < 0
+            mScore := -9, mName := "Reg Channel Break Down", mTarget := close - _linDev
+
+// ============================================================================
+// LEVEL 7: MULTI-PIVOT CONTINUATIONS & MACRO REVERSALS — Patterns 121-140
+//          Measured Move, Gann Swing, Key Reversal, Island, Catapult
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+
+    // 121 & 122. Measured Move (equal legs: leg1 ≈ leg2)
+    float _leg1u = ph(2) - pl(2), float _leg2u = ph(0) - pl(0)
+    if dist(_leg1u, _leg2u) < 0.15 and pl(1) < ph(2) and pl(1) > pl(2) and ph(1) > ph(0)
+        mScore := 14, mName := "Measured Move Up", mTarget := ph(0) + _leg2u
+    if mScore == 0
+        float _leg1d = pl(2) - ph(2), float _leg2d = pl(0) - ph(0)
+        if dist(math.abs(_leg1d), math.abs(_leg2d)) < 0.15 and ph(1) > pl(2) and ph(1) < ph(2) and pl(1) < pl(0)
+            mScore := -14, mName := "Measured Move Down", mTarget := pl(0) - math.abs(_leg2d)
+
+    // 123 & 124. Gann Swing Confirmation (3 consecutive HH/LL)
+    if mScore == 0
+        if ph(0) > ph(1) and ph(1) > ph(2) and pl(0) > pl(1) and pl(1) > pl(2)
+            mScore := 12, mName := "Gann Swing Up", mTarget := ph(0) + (ph(0) - ph(1))
+        else if ph(0) < ph(1) and ph(1) < ph(2) and pl(0) < pl(1) and pl(1) < pl(2)
+            mScore := -12, mName := "Gann Swing Down", mTarget := pl(0) - (pl(1) - pl(0))
+
+    // 125 & 126. Orthodox Broadening (expanding swings with equal ranges)
+    if mScore == 0
+        if ph(0) > ph(1) and ph(1) > ph(2) and pl(0) < pl(1) and pl(1) < pl(2) and dist(ph(0) - pl(0), ph(1) - pl(1)) < 0.2
+            mScore := -12, mName := "Orthodox Broadening Top", mTarget := pl(0) - (ph(0) - pl(0))
+        else if ph(0) < ph(1) and ph(1) < ph(2) and pl(0) > pl(1) and pl(1) > pl(2) and dist(ph(0) - pl(0), ph(1) - pl(1)) < 0.2
+            mScore := 12, mName := "Orthodox Broadening Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+
+    // 127 & 128. Quadruple Top / Bottom (4 pivot matches)
+    if mScore == 0 and array.size(pivotsHigh) >= 4
+        if dist(ph(0), ph(1)) < st_tl and dist(ph(1), ph(2)) < st_tl and dist(ph(2), ph(3)) < st_tl
+            mScore := -15, mName := "Quadruple Top", mTarget := pl(0) - (ph(0) - pl(0))
+    if mScore == 0 and array.size(pivotsLow) >= 4
+        if dist(pl(0), pl(1)) < st_tl and dist(pl(1), pl(2)) < st_tl and dist(pl(2), pl(3)) < st_tl
+            mScore := 15, mName := "Quadruple Bottom", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 129 & 130. Key Reversal Day (outside-bar close reversal)
+    if mScore == 0
+        bool _kvT = high > high[1] and close < low[1] and close < open
+        bool _kvB = low < low[1] and close > high[1] and close > open
+        if _kvT
+            mScore := -11, mName := "Key Reversal Day Top", mTarget := pl(0) - (high - low)
+        else if _kvB
+            mScore := 11, mName := "Key Reversal Day Bottom", mTarget := ph(0) + (high - low)
+
+    // 131 & 132. Island Reversal (gap in, then gap back out)
+    if mScore == 0
+        bool _iT = low > high[1] and high[2] < low[1]
+        bool _iB = high < low[1] and low[2] > high[1]
+        if _iT
+            mScore := -12, mName := "Island Reversal Top", mTarget := low[1]
+        else if _iB
+            mScore := 12, mName := "Island Reversal Bottom", mTarget := high[1]
+
+    // 133 & 134. Half-Mast Continuation (50% pullback then continuation)
+    if mScore == 0
+        float _mastU = ph(1) - pl(2)
+        float _pbU   = ph(1) - pl(0)
+        if _mastU > 0 and dist(_pbU / _mastU, 0.5) < 0.15 and ph(1) > pl(2) and ph(1) > ph(2)
+            mScore := 10, mName := "Half-Mast Bull Flag", mTarget := ph(1) + _mastU
+        float _mastD = pl(1) - ph(2)
+        float _pbD   = pl(1) - ph(0)
+        if _mastD < 0 and dist(math.abs(_pbD / _mastD), 0.5) < 0.15 and pl(1) < ph(2) and pl(1) < pl(2)
+            mScore := -10, mName := "Half-Mast Bear Flag", mTarget := pl(1) + _mastD
+
+    // 135 & 136. Outside Reversal Bar (engulfs prior range; close confirms direction)
+    if mScore == 0
+        bool _outerB = high > high[1] and low < low[1] and close > (high + low) / 2
+        bool _outerR = high > high[1] and low < low[1] and close < (high + low) / 2
+        if _outerB
+            mScore := 11, mName := "Outside Rev Bar Bull", mTarget := ph(0) + (ph(0) - pl(0))
+        else if _outerR
+            mScore := -11, mName := "Outside Rev Bar Bear", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 137 & 138. Catapult (spring → thrust: 3-bar setup)
+    if mScore == 0
+        bool _catB = nz(low[2]) < nz(low[3]) and low[1] > low[2] and high > high[1] and close > high[1] and ph(0) > ph(1)
+        bool _catR = nz(high[2]) > nz(high[3]) and high[1] < high[2] and low < low[1] and close < low[1] and pl(0) < pl(1)
+        if _catB
+            mScore := 11, mName := "Catapult Bull Launch", mTarget := ph(0) + (ph(0) - pl(0))
+        else if _catR
+            mScore := -11, mName := "Catapult Bear Dive", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 139 & 140. Fractal Breakout (Williams-style 5-bar fractal)
+    if mScore == 0
+        bool _frUp   = nz(high[2]) < nz(high[1]) and high[1] > high and ph(0) > ph(1)
+        bool _frDown = nz(low[2])  > nz(low[1])  and low[1]  < low  and pl(0) < pl(1)
+        if _frUp
+            mScore := 7, mName := "Fractal Bull Break", mTarget := ph(0) + (ph(0) - pl(0))
+        else if _frDown
+            mScore := -7, mName := "Fractal Bear Break", mTarget := pl(0) - (ph(0) - pl(0))
+
+// ============================================================================
+// LEVEL 8: MICRO-GEOMETRY & PRICE-ACTION PATTERNS — Patterns 141-160
+//          Parabolic, Inside-Bar, Power Candle, Gaps, VWAP, Traps
+// ============================================================================
+
+if mScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+
+    // 141 & 142. Parabolic Spike (3-bar accelerating momentum → reversal)
+    float _r1 = nz(close[1]) > 1e-10 ? (close    - close[1]) / close[1] : 0.0
+    float _r2 = nz(close[2]) > 1e-10 ? (close[1] - close[2]) / close[2] : 0.0
+    float _r3 = nz(close[3]) > 1e-10 ? (close[2] - close[3]) / close[3] : 0.0
+    bool _parUp   = _r1 > _r2 and _r2 > _r3 and _r1 > _retStd * 2 and ph(0) > ph(1)
+    bool _parDown = _r1 < _r2 and _r2 < _r3 and math.abs(_r1) > _retStd * 2 and pl(0) < pl(1)
+    if _parUp and skewness < -0.3
+        mScore := -12, mName := "Parabolic Spike Top", mTarget := ta.sma(close, 20)
+    else if _parDown and skewness > 0.3
+        mScore := 12, mName := "Parabolic Flush Bottom", mTarget := ta.sma(close, 20)
+
+    // 143 & 144. Inside-Bar Compression Coil (NR4/NR7 proxy)
+    if mScore == 0
+        bool _ib4 = high < high[1] and low > low[1] and high[1] < high[2] and low[1] > low[2]
+        bool _ib7 = ta.highest(high, 4) < ta.highest(high, 7) and ta.lowest(low, 4) > ta.lowest(low, 7)
+        if (_ib4 or _ib7) and skewness > 0.5
+            mScore := 8, mName := "Inside Bar Bull Coil", mTarget := ph(0) + (ph(0) - pl(0))
+        else if (_ib4 or _ib7) and skewness < -0.5
+            mScore := -8, mName := "Inside Bar Bear Coil", mTarget := pl(0) - (ph(0) - pl(0))
+
+    // 145 & 146. Power Candle (≥ 4% body move)
+    if mScore == 0
+        bool _pwrB = isBull and open > 1e-10 and (close - open) / open > 0.04 and ph(0) > ph(1)
+        bool _pwrR = isBear and open > 1e-10 and (open - close) / open > 0.04 and pl(0) < pl(1)
+        if _pwrB
+            mScore := 9, mName := "Power Candle Bull", mTarget := close + (close - open) * 1.5
+        else if _pwrR
+            mScore := -9, mName := "Power Candle Bear", mTarget := close - (open - close) * 1.5
+
+    // 147 & 148. Gap & Go / Gap & Crap
+    if mScore == 0
+        bool _gapUp    = open > high[1] * 1.005
+        bool _gapDown  = open < low[1]  * 0.995
+        bool _gapGo    = _gapUp   and close > open and ph(0) > ph(1) and skewness > 0
+        bool _gapCrap  = _gapUp   and close < open * 0.995 and skewness < 0
+        bool _gapDownE = _gapDown and close < open and pl(0) < pl(1) and skewness < 0
+        bool _gapFill  = _gapDown and close > open * 1.005 and skewness > 0
+        if _gapGo
+            mScore := 8, mName := "Gap & Go (Bull)", mTarget := close + (high[1] - low[1])
+        else if _gapCrap
+            mScore := -8, mName := "Gap & Crap (Bear)", mTarget := close[1]
+        else if _gapDownE
+            mScore := -8, mName := "Gap & Go Down (Bear)", mTarget := close - (high[1] - low[1])
+        else if _gapFill
+            mScore := 8, mName := "Gap Fill Recover (Bull)", mTarget := close[1]
+
+    // 149 & 150. VWAP-Proxy Band Fade (2σ from hlc3 sma)
+    if mScore == 0
+        float _vProxy  = ta.sma(hlc3, 20)
+        float _vStd    = ta.stdev(hlc3, 20)
+        bool _vHiTouch = high > _vProxy + _vStd * 2 and ph(0) > ph(1) and skewness < -0.3
+        bool _vLoTouch = low  < _vProxy - _vStd * 2 and pl(0) < pl(1) and skewness > 0.3
+        if _vHiTouch
+            mScore := -9, mName := "VWAP Band Top Fade", mTarget := _vProxy
+        else if _vLoTouch
+            mScore := 9, mName := "VWAP Band Bottom Bounce", mTarget := _vProxy
+
+    // 151 & 152. Trap Pattern (false breakout confirmed by close reversal)
+    if mScore == 0
+        bool _bullTrap = ph(0) > ph(1) and close < ph(1) and close < open and skewness < -0.3
+        bool _bearTrap = pl(0) < pl(1) and close > pl(1) and close > open and skewness > 0.3
+        if _bullTrap
+            mScore := -10, mName := "Bull Trap (Bearish)", mTarget := pl(0) - (ph(0) - pl(0))
+        else if _bearTrap
+            mScore := 10, mName := "Bear Trap (Bullish)", mTarget := ph(0) + (ph(0) - pl(0))
+
+    // 153 & 154. Bat-Wing Exhaustion (symmetric swing → stall)
+    if mScore == 0
+        float _bwW1    = math.abs(ph(1) - pl(1))
+        float _bwW2    = math.abs(ph(0) - pl(0))
+        bool _bwTop    = dist(_bwW1, _bwW2) < 0.05 and ph(0) > ph(1) and pl(0) > pl(1) and skewness < -0.5
+        bool _bwBot    = dist(_bwW1, _bwW2) < 0.05 and ph(0) < ph(1) and pl(0) < pl(1) and skewness > 0.5
+        if _bwTop
+            mScore := -9, mName := "Bat-Wing Exhaustion Top", mTarget := pl(0)
+        else if _bwBot
+            mScore := 9, mName := "Bat-Wing Exhaustion Bottom", mTarget := ph(0)
+
+    // 155 & 156. Narrow/Wide Channel Regime Shift
+    if mScore == 0
+        float _chW     = ph(0) - pl(0)
+        float _avgCh   = ta.sma(high - low, 20)
+        bool _narrow   = _chW > 0 and pl(0) > 1e-10 and _chW / pl(0) < 0.01
+        bool _wide     = _chW > _avgCh * 3
+        if _narrow and skewness > 0.5
+            mScore := 7, mName := "Narrow Channel Bull Squeeze", mTarget := ph(0) + _chW * 2
+        else if _wide and ph(0) > ph(1) and skewness < -0.5
+            mScore := -8, mName := "Wide Channel Bear Exhaustion", mTarget := pl(0)
+
+    // 157 & 158. Regression Channel Mean Reversion Band
+    if mScore == 0
+        float _lr      = ta.linreg(close, 20, 0)
+        float _lrStd   = ta.stdev(close, 20)
+        bool _aboveLR  = close > _lr + _lrStd * 2 and ph(0) > ph(1) and skewness > 0
+        bool _belowLR  = close < _lr - _lrStd * 2 and pl(0) < pl(1) and skewness < 0
+        if _aboveLR
+            mScore := 9, mName := "Linreg Channel Break Up", mTarget := close + _lrStd
+        else if _belowLR
+            mScore := -9, mName := "Linreg Channel Break Down", mTarget := close - _lrStd
+
+    // 159 & 160. Vol Cluster Micro-Reversal (short vol spike at single pivot)
+    if mScore == 0
+        float _sv5     = ta.stdev(close, 5)
+        float _lv20    = ta.stdev(close, 20)
+        bool _cluster  = _sv5 > _lv20 * 2.0
+        if _cluster and ph(0) > ph(1) and skewness < 0
+            mScore := -11, mName := "Vol Cluster Top", mTarget := ta.sma(close, 20)
+        else if _cluster and pl(0) < pl(1) and skewness > 0
+            mScore := 11, mName := "Vol Cluster Bottom", mTarget := ta.sma(close, 20)
+
+// ============================================================================
+// SKEW-STDDEV ADAPTIVE BIASING — Applied after all 160 patterns are detected
+//
+// stdevMult (0.7 – 1.5): amplifies scores when short-vol < long-vol (low-vol
+//   regime favours continuations) and dampens them in high-vol regimes.
+// skewBias  (-3 – +3):   adds directional tilt in the direction of the fat tail
+//   (positive skewness → adds to bull scores; negative → adds to bear scores).
+// ============================================================================
+
+if mScore != 0
+    int _rawAbs      = math.abs(mScore)
+    int _biasedAbs   = int(math.round(float(_rawAbs) * stdevMult))
+    int _skewAdj     = mScore > 0 ? skewBias : -skewBias
+    mScore          := (mScore > 0 ? _biasedAbs : -_biasedAbs) + _skewAdj
+
+// ============================================================================
+// APPLY MACRO PATTERN TO EXECUTION ENGINE
+// ============================================================================
+
+pe.activeMacroPattern := mName
+pe.patternScore       := cScore + mScore
+pe.structureTarget    := mTarget
+pe.isReversal         := math.abs(pe.patternScore) >= 12
+
+// ============================================================================
+// 9. ADVANCED TRIGONOMETRY (ACOS PHASE SHIFT) & KINEMATICS
+// ============================================================================
+
+float ATR = ta.sma(ta.tr, al_pr)
+
+acc.hitRate := (acc.hitCount + acc.missCount) > 0 ? acc.hitCount / (acc.hitCount + acc.missCount) : 1.0
+if barstate.isconfirmed
+    if acc.hitRate < 0.65
+        uz.adaptiveCoeff := math.min(3.5, uz.adaptiveCoeff + 0.05)
+    else if acc.hitRate > 0.85
+        uz.adaptiveCoeff := math.max(b_cf, uz.adaptiveCoeff - 0.02)
+
+float mfi_val        = ta.mfi(hlc3, al_pr)
+float rsi_val        = ta.rsi(src, al_pr)
+bool  momentum_engine = (mfi_val + rsi_val) / 2 >= 50
+
+float norm_rsi   = math.max(-1.0, math.min(1.0, (rsi_val - 50) / 50.0))
+float phase_shift = math.acos(norm_rsi)
+float trigFactor  = math.cos(((bar_index % 360) * math.pi / 180) + phase_shift) * 0.1
+
+float dynamic_coeff = uz.adaptiveCoeff + trigFactor
+float upT   = low  - ATR * dynamic_coeff
+float downT = high + ATR * dynamic_coeff
+
+var float AlphaTrend = 0.0
+AlphaTrend := momentum_engine ? (upT < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : upT) : (downT > nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : downT)
+
+bool alphaFlip     = ta.change(AlphaTrend > AlphaTrend[2]) != 0
+bool signalTrigger = alphaFlip or brk.isValidBreakout or pe.isReversal
+
+// OLS regression over `length` bars of `source` to derive a KinematicModel.
+// Returns: velocity (slope), acceleration (slope change / 2), y-intercept,
+//          standard error of the regression, and the bar count used.
+calc_kinematics(float source, simple int length) =>
+    float sumX  = 0.0, float sumY  = 0.0
+    float sumXY = 0.0, float sumX2 = 0.0
+    for i = 0 to length - 1
+        float fi = float(i)
+        sumX  += fi
+        sumY  += source[i]
+        sumXY += fi * source[i]
+        sumX2 += fi * fi
+    float n         = float(length)
+    float denom     = n * sumX2 - sumX * sumX
+    float vel       = denom != 0 ? (n * sumXY - sumX * sumY) / denom : 0.0
+    float intercept = (sumY - vel * sumX) / n
+    float ssRes     = 0.0
+    for i = 0 to length - 1
+        ssRes += math.pow(source[i] - (intercept + vel * float(i)), 2)
+    float acc_k     = (vel - nz(vel[2], vel)) / 2.0
+    KinematicModel.new(vel, acc_k, intercept, math.sqrt(ssRes / n), length)
+
+kin              := calc_kinematics(close, 20)
+uz.standardError := kin.errorTerm
