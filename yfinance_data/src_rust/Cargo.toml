@@ -1,0 +1,20 @@
+[package]
+name        = "ekf-core-rust"
+version     = "0.1.0"
+edition     = "2021"
+description = "High-performance EKF and indicator core for the yfinance neural forecaster"
+license     = "MIT"
+
+[lib]
+name    = "ekf_core_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1
+panic         = "abort"
+strip         = true

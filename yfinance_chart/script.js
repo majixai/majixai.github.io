@@ -34,6 +34,86 @@ let feedbackEngineState = {
     aggregateFeedback: 0
 };
 
+// Neural signal cache: ticker → result from Web Worker
+const neuralSignalCache = {};
+
+// Web Worker for off-main-thread neural + EKF signal computation
+let signalWorker = null;
+const _workerCallbacks = {};   // requestId → { resolve, reject }
+let _workerReqId = 0;
+
+function initSignalWorker() {
+    if (typeof Worker === 'undefined') return;
+    try {
+        signalWorker = new Worker('worker.js');
+        signalWorker.onmessage = function (evt) {
+            const { type, ticker, result, message } = evt.data;
+            if (type === 'SIGNALS_READY') {
+                neuralSignalCache[ticker] = result;
+                _resolveWorkerRequest(ticker, result);
+            } else if (type === 'WORKER_ERROR') {
+                console.warn('SignalWorker error for', ticker, ':', message);
+                _resolveWorkerRequest(ticker, null);
+            }
+        };
+        signalWorker.onerror = function (err) {
+            console.warn('SignalWorker fatal error:', err.message);
+            signalWorker = null;
+        };
+        console.log('SignalWorker: Web Worker initialised for async neural computation');
+    } catch (e) {
+        console.warn('SignalWorker: failed to initialise Web Worker:', e.message);
+    }
+}
+
+function _resolveWorkerRequest(ticker, result) {
+    const cb = _workerCallbacks[ticker];
+    if (cb) {
+        delete _workerCallbacks[ticker];
+        cb(result);
+    }
+}
+
+/**
+ * Request neural + EKF signal computation for a ticker from the Web Worker.
+ * Returns a Promise that resolves with the signal result (or null on error/timeout).
+ */
+function requestNeuralSignal(ticker, data, forecast) {
+    // Return cached result immediately if available
+    if (neuralSignalCache[ticker]) {
+        return Promise.resolve(neuralSignalCache[ticker]);
+    }
+
+    if (!signalWorker) {
+        return Promise.resolve(null);
+    }
+
+    return new Promise(resolve => {
+        const timeoutMs = 8000;
+        _workerCallbacks[ticker] = resolve;
+        const timer = setTimeout(() => {
+            if (_workerCallbacks[ticker]) {
+                delete _workerCallbacks[ticker];
+                resolve(null);
+            }
+        }, timeoutMs);
+
+        signalWorker.postMessage({
+            type: 'COMPUTE_SIGNALS',
+            ticker,
+            data,
+            forecast,
+        });
+
+        // Wrap resolve to also clear the timeout
+        const origResolve = _workerCallbacks[ticker];
+        _workerCallbacks[ticker] = function (result) {
+            clearTimeout(timer);
+            origResolve(result);
+        };
+    });
+}
+
 // DOM Elements
 const elements = {
     tickerSearch: document.getElementById('ticker-search'),
@@ -379,7 +459,17 @@ function loadChart(ticker) {
     updateForecastPanel(forecast);
     updatePatternsPanel(patterns);
     updateStatsPanel(data);
-    updateFeedbackEngine(forecast, patterns, data);
+
+    // updateFeedbackEngine with synchronous signals first, then enhance with Web Worker result
+    updateFeedbackEngine(forecast, patterns, data, null);
+
+    // Dispatch heavy EKF + neural computation to Web Worker (non-blocking)
+    requestNeuralSignal(ticker, data, forecast).then(neuralResult => {
+        if (neuralResult && currentTicker === ticker) {
+            // Re-render feedback panel with the richer neural signal overlay
+            updateFeedbackEngine(forecast, patterns, data, neuralResult);
+        }
+    });
 }
 
 function renderMainChart(dates, open, high, low, close, data, patterns, forecast) {
@@ -793,10 +883,12 @@ function updateStatsPanel(data) {
     `;
 }
 
-function updateFeedbackEngine(forecast, patterns, data) {
+function updateFeedbackEngine(forecast, patterns, data, neuralResult) {
     /**
      * Feedback Loop Mechanism Engine
-     * Aggregates multiple feedback signals for trading decisions
+     * Aggregates multiple feedback signals for trading decisions.
+     * When neuralResult is provided (from Web Worker), it is displayed as a
+     * fifth loop alongside the four classic signals.
      */
     
     // Momentum feedback from RSI and price trend
@@ -826,6 +918,23 @@ function updateFeedbackEngine(forecast, patterns, data) {
     const signal = feedbackEngineState.aggregateFeedback > 0.2 ? 'BUY' :
                    feedbackEngineState.aggregateFeedback < -0.2 ? 'SELL' : 'HOLD';
     const signalClass = signal === 'BUY' ? 'bullish' : signal === 'SELL' ? 'bearish' : 'neutral';
+
+    // Neural signal row (populated when Web Worker result is ready)
+    const neuralRow = neuralResult ? `
+        <div class="feedback-item">
+            <span class="label">🧠 Neural (EKF+LSTM):</span>
+            <div class="feedback-bar">
+                <div class="feedback-fill ${neuralResult.buyProb > neuralResult.sellProb ? 'positive' : 'negative'}"
+                     style="width: ${Math.abs(neuralResult.buyProb - neuralResult.sellProb) * 100}%"></div>
+            </div>
+            <span class="value ${neuralResult.signal === 'BUY' ? 'bullish' : neuralResult.signal === 'SELL' ? 'bearish' : ''}">
+                ${neuralResult.signal} (${(neuralResult.confidence * 100).toFixed(0)}%)
+            </span>
+        </div>` : `
+        <div class="feedback-item" style="opacity:0.5">
+            <span class="label">🧠 Neural (EKF+LSTM):</span>
+            <span class="value">computing…</span>
+        </div>`;
     
     elements.feedbackContent.innerHTML = `
         <div class="feedback-item">
@@ -860,6 +969,7 @@ function updateFeedbackEngine(forecast, patterns, data) {
             </div>
             <span class="value">${(feedbackEngineState.patternFeedback * 100).toFixed(0)}%</span>
         </div>
+        ${neuralRow}
         <div class="feedback-item aggregate">
             <span class="label">🎯 Aggregate Signal:</span>
             <span class="signal ${signalClass}">${signal}</span>
@@ -921,6 +1031,9 @@ async function init() {
         elements.mainChart.innerHTML = '<div style="padding: 40px; text-align: center; color: #757575;"><h3>⚠️ Plotly.js not loaded</h3><p>Please ensure you have internet connectivity for CDN resources.</p></div>';
         // Still initialize other features
     }
+    
+    // Initialise Web Worker for async neural + EKF computation
+    initSignalWorker();
     
     setupAutocomplete();
     setupEventListeners();

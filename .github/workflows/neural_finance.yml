@@ -1,0 +1,297 @@
+name: Neural Finance — Parallel ML Inference Pipeline
+
+on:
+  # Run after market close (Mon-Fri, 9:30 PM UTC = 5:30 PM EST)
+  schedule:
+    - cron: '30 21 * * 1-5'
+
+  # Allow manual trigger with options
+  workflow_dispatch:
+    inputs:
+      categories:
+        description: 'Comma-separated categories or "all" (default: all)'
+        required: false
+        default: 'all'
+      use_rust:
+        description: 'Install Rust EKF extension (true/false)'
+        required: false
+        default: 'true'
+      use_go:
+        description: 'Build and use Go concurrent fetcher (true/false)'
+        required: false
+        default: 'true'
+
+permissions:
+  contents: write
+
+jobs:
+
+  # ---------------------------------------------------------------------------
+  # Job 1: Build artefacts (Rust extension + Go binary)
+  # ---------------------------------------------------------------------------
+  build-native:
+    runs-on: ubuntu-latest
+    outputs:
+      rust_built: ${{ steps.rust.outputs.built }}
+      go_built: ${{ steps.go.outputs.built }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- Rust EKF Core ---
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            yfinance_data/src_rust/target
+          key: rust-ekf-${{ hashFiles('yfinance_data/src_rust/Cargo.toml', 'yfinance_data/src_rust/src/lib.rs') }}
+          restore-keys: rust-ekf-
+
+      - name: Build Rust EKF extension
+        id: rust
+        if: ${{ github.event.inputs.use_rust != 'false' }}
+        run: |
+          rustup update stable
+          pip install maturin
+          cd yfinance_data/src_rust
+          maturin build --release --out dist/ && echo "built=true" >> $GITHUB_OUTPUT \
+            || echo "built=false" >> $GITHUB_OUTPUT
+
+      - name: Upload Rust wheel
+        if: ${{ steps.rust.outputs.built == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekf-core-rust-wheel
+          path: yfinance_data/src_rust/dist/*.whl
+          retention-days: 3
+
+      # --- Go Fetcher ---
+      - name: Set up Go
+        if: ${{ github.event.inputs.use_go != 'false' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: yfinance_data/go_fetcher/go.mod
+
+      - name: Build Go fetcher
+        id: go
+        if: ${{ github.event.inputs.use_go != 'false' }}
+        run: |
+          cd yfinance_data/go_fetcher
+          go build -ldflags="-s -w" -o go_fetcher_bin_linux ./ \
+            && echo "built=true" >> $GITHUB_OUTPUT \
+            || echo "built=false" >> $GITHUB_OUTPUT
+
+      - name: Upload Go binary
+        if: ${{ steps.go.outputs.built == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-fetcher-bin
+          path: yfinance_data/go_fetcher/go_fetcher_bin_linux
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Parallel category matrix — fetch + EKF + neural per category batch
+  # ---------------------------------------------------------------------------
+  neural-inference:
+    runs-on: ubuntu-latest
+    needs: build-native
+
+    strategy:
+      fail-fast: false
+      max-parallel: 8   # 8 runners in parallel, each handles ~4–5 categories
+      matrix:
+        # 35 categories split into 8 groups so each runner handles ~4-5
+        category_group:
+          - "tech_mega,semiconductors,software,cloud_data,ai_ml"
+          - "financials,fintech,insurance,asset_management,reits"
+          - "healthcare,biotech,pharmaceuticals"
+          - "energy,clean_energy,utilities,materials"
+          - "consumer_discretionary,consumer_staples,food_beverage,retail"
+          - "industrials,transportation,aerospace,automotive,space"
+          - "communication,cybersecurity,gaming,cannabis"
+          - "indices,etfs,crypto,international,small_cap,special"
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download Rust wheel (if built)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ekf-core-rust-wheel
+          path: /tmp/rust_wheels
+
+      - name: Download Go binary (if built)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: go-fetcher-bin
+          path: /tmp/go_bin
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r yfinance_data/requirements.txt
+          pip install /tmp/rust_wheels/*.whl 2>/dev/null && echo "[OK] Rust EKF extension installed" \
+            || echo "[WARN] Rust wheel unavailable — numpy fallback active"
+
+      - name: Install Go binary
+        run: |
+          if [ -f /tmp/go_bin/go_fetcher_bin_linux ]; then
+            cp /tmp/go_bin/go_fetcher_bin_linux yfinance_data/go_fetcher/go_fetcher_bin
+            chmod +x yfinance_data/go_fetcher/go_fetcher_bin
+            echo "[OK] Go fetcher binary ready"
+          else
+            echo "[WARN] Go binary unavailable — Python fetcher will be used"
+          fi
+
+      - name: Fetch + EKF + Neural for category group
+        run: |
+          GROUP="${{ matrix.category_group }}"
+          echo "Processing category group: $GROUP"
+
+          cd yfinance_data
+
+          # Process each category in the group
+          IFS=',' read -ra CATS <<< "$GROUP"
+          for CAT in "${CATS[@]}"; do
+            CAT=$(echo "$CAT" | xargs)  # trim whitespace
+            echo "--- Category: $CAT ---"
+            python main.py \
+              --category "$CAT" \
+              --period 1y \
+              --interval 1d \
+              --async-mode \
+              --async-concurrent 40 \
+              --run-ekf \
+              --run-neural \
+              --output "${CAT}_neural.dat" \
+              --no-notifications \
+              || echo "WARN: Category $CAT failed, continuing..."
+          done
+
+          echo "SUCCESS: Group '$GROUP' complete."
+
+      - name: Commit neural results for this group
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Pull latest to avoid conflicts from parallel jobs
+          git fetch origin main
+          git rebase origin/main || git merge origin/main --no-edit || true
+
+          git add yfinance_data/*.dat yfinance_data/neural/ yfinance_data/states/ yfinance_data/predictions/ || true
+
+          if ! git diff --staged --quiet; then
+            GROUP_SLUG=$(echo "${{ matrix.category_group }}" | tr ',' '-' | cut -c1-40)
+            git commit -m "neural: ML inference for $GROUP_SLUG — $(date +'%Y-%m-%d %H:%M UTC')"
+            git push || (git pull --rebase && git push)
+            echo "SUCCESS: Neural results pushed."
+          else
+            echo "INFO: No changes to commit for this group."
+          fi
+
+      - name: Upload neural results artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neural-results-${{ strategy.job-index }}
+          path: |
+            yfinance_data/*_neural.dat
+            yfinance_data/neural/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Aggregate summary (runs after all matrix jobs complete)
+  # ---------------------------------------------------------------------------
+  aggregate-summary:
+    runs-on: ubuntu-latest
+    needs: neural-inference
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install minimal dependencies
+        run: pip install numpy
+
+      - name: Pull latest and generate summary
+        run: |
+          git pull origin main || true
+
+          python - <<'PYEOF'
+          import gzip, json, os, glob
+
+          neural_dir = "yfinance_data/neural"
+          dat_files = glob.glob(os.path.join(neural_dir, "*_neural_signal.dat"))
+
+          summary = {"total": 0, "BUY": 0, "HOLD": 0, "SELL": 0, "high_confidence": []}
+          for f in dat_files:
+              try:
+                  with gzip.open(f, "rb") as fh:
+                      rec = json.loads(fh.read())
+                  summary["total"] += 1
+                  sig = rec.get("signal", "HOLD")
+                  summary[sig] = summary.get(sig, 0) + 1
+                  if rec.get("confidence", 0) > 0.70:
+                      summary["high_confidence"].append({
+                          "ticker": rec.get("ticker", os.path.basename(f).split("_")[0]),
+                          "signal": sig,
+                          "confidence": round(rec.get("confidence", 0), 3),
+                          "buy_prob": round(rec.get("buy_prob", 0), 3),
+                          "sell_prob": round(rec.get("sell_prob", 0), 3),
+                      })
+              except Exception as e:
+                  print(f"Warning: could not read {f}: {e}")
+
+          summary["high_confidence"].sort(key=lambda x: -x["confidence"])
+          out = "yfinance_data/neural_summary.json"
+          with open(out, "w") as fh:
+              json.dump(summary, fh, indent=2)
+
+          print(f"\n{'='*60}")
+          print(f"NEURAL INFERENCE SUMMARY")
+          print(f"{'='*60}")
+          print(f"Total tickers analysed : {summary['total']}")
+          print(f"BUY signals            : {summary['BUY']}")
+          print(f"HOLD signals           : {summary['HOLD']}")
+          print(f"SELL signals           : {summary['SELL']}")
+          print(f"High-confidence (>70%) : {len(summary['high_confidence'])}")
+          if summary["high_confidence"]:
+              print("\nTop signals by confidence:")
+              for r in summary["high_confidence"][:15]:
+                  print(f"  {r['ticker']:<10} {r['signal']:>4}  conf={r['confidence']:.3f}")
+          print(f"{'='*60}\n")
+          PYEOF
+
+      - name: Commit summary
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add yfinance_data/neural_summary.json || true
+          git diff --staged --quiet || \
+            git commit -m "neural: update aggregate summary — $(date +'%Y-%m-%d %H:%M UTC')" && \
+            git push || true

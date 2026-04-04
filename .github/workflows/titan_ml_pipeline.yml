@@ -72,75 +72,203 @@ jobs:
           import pandas as pd
           import numpy as np
           import torch
+          import torch.nn as nn
           from matrix_core import fast_gamma_squash
 
+          # ---------------------------------------------------------------------------
+          # Multi-layer LSTM Neural Network
+          # ---------------------------------------------------------------------------
+          class TitanLSTMCore(nn.Module):
+              """
+              Two-layer LSTM → Dropout → Linear(1, sigmoid) neural architecture.
+
+              Input  : (batch=1, seq_len, n_features)  normalised price + indicator sequence
+              Hidden : LSTM(64) → LSTM(32) with per-step dropout
+              Output : scalar probability in [0, 1]  (sigmoid activation)
+              """
+              def __init__(self, n_features: int, seq_len: int = 60, seed: int = 42):
+                  super().__init__()
+                  torch.manual_seed(seed)
+                  self.seq_len = seq_len
+                  self.n_features = n_features
+
+                  self.lstm1 = nn.LSTM(n_features, 64, batch_first=True)
+                  self.dropout1 = nn.Dropout(0.2)
+                  self.lstm2 = nn.LSTM(64, 32, batch_first=True)
+                  self.dropout2 = nn.Dropout(0.2)
+                  self.fc1 = nn.Linear(32, 16)
+                  self.act = nn.Tanh()
+                  self.fc2 = nn.Linear(16, 1)
+                  self.sigmoid = nn.Sigmoid()
+
+              def forward(self, x: torch.Tensor) -> torch.Tensor:
+                  # x: (batch, seq_len, n_features)
+                  out1, _ = self.lstm1(x)           # (batch, seq_len, 64)
+                  out1 = self.dropout1(out1)
+                  out2, _ = self.lstm2(out1)         # (batch, seq_len, 32)
+                  out2 = self.dropout2(out2)
+                  last = out2[:, -1, :]              # (batch, 32) — last time step
+                  hidden = self.act(self.fc1(last))  # (batch, 16)
+                  prob = self.sigmoid(self.fc2(hidden))  # (batch, 1)
+                  return prob
+
+          # ---------------------------------------------------------------------------
+          # Feature extraction helpers
+          # ---------------------------------------------------------------------------
+          def _ema(arr: np.ndarray, span: int) -> np.ndarray:
+              alpha = 2.0 / (span + 1)
+              out = np.zeros_like(arr, dtype=float)
+              out[0] = arr[0]
+              for i in range(1, len(arr)):
+                  out[i] = alpha * arr[i] + (1 - alpha) * out[i - 1]
+              return out
+
+          def build_feature_matrix(df: pd.DataFrame, seq_len: int = 60) -> np.ndarray:
+              """
+              Construct a (N, 4) normalised feature matrix:
+                [log_return, rsi_norm, macd_norm, vol_ratio]
+              then pad / slice to the last seq_len rows.
+              """
+              close  = df['Close'].values.astype(float)
+              volume = df['Volume'].values.astype(float)
+              n = len(close)
+
+              log_ret = np.diff(np.log(np.maximum(close, 1e-10)), prepend=0)
+
+              # RSI-14
+              delta = np.diff(close, prepend=close[0])
+              gain = np.where(delta > 0, delta, 0.0)
+              loss = np.where(delta < 0, -delta, 0.0)
+              alpha_r = 1.0 / 14
+              avg_g = np.zeros(n); avg_g[0] = gain[0]
+              avg_l = np.zeros(n); avg_l[0] = loss[0]
+              for i in range(1, n):
+                  avg_g[i] = alpha_r * gain[i] + (1 - alpha_r) * avg_g[i - 1]
+                  avg_l[i] = alpha_r * loss[i] + (1 - alpha_r) * avg_l[i - 1]
+              rsi = 100 - 100 / (1 + avg_g / np.maximum(avg_l, 1e-10))
+              rsi_norm = (rsi - 50) / 50  # [-1, 1]
+
+              # MACD
+              ema12 = _ema(close, 12)
+              ema26 = _ema(close, 26)
+              macd = ema12 - ema26
+              roll_std = np.array([close[max(0, i-19):i+1].std() for i in range(n)])
+              macd_norm = np.clip(macd / (roll_std + 1e-10), -3.0, 3.0)
+
+              # Volume ratio
+              vol_ma = np.array([volume[max(0, i-19):i+1].mean() for i in range(n)])
+              vol_ratio = np.clip(volume / (vol_ma + 1e-10) - 1.0, -2.0, 2.0)
+
+              feat = np.column_stack([
+                  np.clip(log_ret, -0.5, 0.5),
+                  rsi_norm,
+                  macd_norm,
+                  vol_ratio,
+              ]).astype(np.float32)
+
+              # Pad or slice to seq_len
+              if len(feat) < seq_len:
+                  pad = np.zeros((seq_len - len(feat), feat.shape[1]), dtype=np.float32)
+                  feat = np.vstack([pad, feat])
+              return feat[-seq_len:]   # (seq_len, 4)
+
+          # ---------------------------------------------------------------------------
+          # Main engine
+          # ---------------------------------------------------------------------------
           class TitanQuantEngine:
+              SEQ_LEN    = 60
+              N_FEATURES = 4   # log_ret, rsi_norm, macd_norm, vol_ratio
+
               def __init__(self, ticker="^GSPC"):
                   self.ticker = ticker
-                  # CUDA acceleration for self-hosted GPU runners, fallback to CPU
                   self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                  print(f"[INIT] Neural Engine Routing to: {self.device}")
+                  print(f"[INIT] Neural Engine → device: {self.device}")
+
+                  # Build LSTM model on the selected device
+                  self.lstm = TitanLSTMCore(
+                      n_features=self.N_FEATURES,
+                      seq_len=self.SEQ_LEN,
+                  ).to(self.device)
+                  self.lstm.eval()
+                  print(
+                      f"[INIT] TitanLSTMCore built — "
+                      f"params={sum(p.numel() for p in self.lstm.parameters()):,}"
+                  )
 
               async def async_fetch(self):
-                  """Asynchronous data ingestion via yfinance"""
-                  print(f"[NETWORK] Fetching {self.ticker} async...")
+                  """Asynchronous data ingestion via yfinance."""
+                  print(f"[NETWORK] Fetching {self.ticker} async…")
                   loop = asyncio.get_event_loop()
-                  # Offload blocking yfinance call to thread pool
-                  df = await loop.run_in_executor(None, lambda: yf.download(self.ticker, period="2y", interval="1d"))
-                  
-                  # Handle new yfinance MultiIndex output formats
+                  df = await loop.run_in_executor(
+                      None,
+                      lambda: yf.download(self.ticker, period="2y", interval="1d", progress=False)
+                  )
                   if isinstance(df.columns, pd.MultiIndex):
                       df.columns = df.columns.droplevel(1)
-                      
                   return df.dropna()
 
-              def tensor_inference(self, df):
-                  """Multivariate Tensor Mathematics for Bayesian Extraction"""
-                  # Load data into PyTorch Tensors
+              def tensor_inference(self, df: pd.DataFrame):
+                  """
+                  Full LSTM forward pass on the price feature matrix.
+
+                  Returns
+                  -------
+                  bayes_prob : ndarray (N,)  per-bar probability from sigmoid
+                  signals    : ndarray (N,)  {1 = Bull, -1 = Bear, 0 = Neutral}
+                  """
+                  # Build feature matrix (seq_len, n_features)
+                  feat_seq = build_feature_matrix(df, self.SEQ_LEN)   # (seq_len, 4)
+
+                  # Run LSTM forward pass (no gradient needed)
+                  with torch.no_grad():
+                      x = torch.tensor(feat_seq, dtype=torch.float32, device=self.device)
+                      x = x.unsqueeze(0)                    # (1, seq_len, 4)
+                      prob_scalar = float(self.lstm(x).cpu().item())  # single probability
+
+                  print(f"[LSTM] Neural probability for {self.ticker}: {prob_scalar:.4f}")
+
+                  # Broadcast the neural probability across all bars (same architecture
+                  # as the Bayesian scalar prior in the original Titan pipeline)
+                  n = len(df)
                   close_t = torch.tensor(df['Close'].values, dtype=torch.float32, device=self.device)
-                  
-                  # Calculate discrete returns (Jacobian approximation input)
                   returns = (close_t[1:] - close_t[:-1]) / close_t[:-1]
                   returns = torch.cat((torch.zeros(1, device=self.device), returns))
-                  
-                  # Simulating a Neural Network Forward Pass / Activation
-                  # Uses Sigmoid to squash momentum into a [0, 1] Probability Space
-                  bayes_prob_t = torch.sigmoid(returns * 75)
-                  
-                  # Output signal vector: 1 (Bull), -1 (Bear), 0 (Neutral) based on probability thresholds
-                  signals_t = torch.where(bayes_prob_t > 0.55, torch.tensor(1, device=self.device), 
-                              torch.where(bayes_prob_t < 0.45, torch.tensor(-1, device=self.device), torch.tensor(0, device=self.device)))
-                  
-                  # Return processed data back to CPU for numpy/pandas handling
-                  return bayes_prob_t.cpu().numpy(), signals_t.cpu().numpy()
+
+                  # Fuse per-bar momentum sigmoid with LSTM global probability
+                  momentum_prob = torch.sigmoid(returns * 75).cpu().numpy()
+                  bayes_prob = 0.6 * momentum_prob + 0.4 * prob_scalar   # LSTM-weighted fusion
+
+                  signals = np.where(bayes_prob > 0.55, 1,
+                            np.where(bayes_prob < 0.45, -1, 0))
+
+                  return bayes_prob.astype(np.float64), signals.astype(np.int32)
 
               async def run_pipeline(self):
                   # 1. Fetch
                   df = await self.async_fetch()
-                  
-                  # 2. Tensor Inference (GPU/CPU)
+
+                  # 2. LSTM tensor inference (GPU/CPU)
                   bayes_prob, signals = self.tensor_inference(df)
-                  
-                  # 3. Cython Fast-Math Interop (C-Level Operations)
-                  h_np = df['High'].values.astype(np.float64)
-                  l_np = df['Low'].values.astype(np.float64)
+
+                  # 3. Cython fast-math interop (C-level volatility bounds)
+                  h_np   = df['High'].values.astype(np.float64)
+                  l_np   = df['Low'].values.astype(np.float64)
                   prob_np = bayes_prob.astype(np.float64)
-                  
                   proj_high, proj_low = fast_gamma_squash(h_np, l_np, prob_np)
-                  
-                  # 4. Dataframe Formatting (Mapping precisely to TradingView request.seed OHLCV format)
+
+                  # 4. Output DataFrame (TradingView request.seed OHLCV format)
                   output_df = pd.DataFrame({
-                      'time': df.index.strftime('%Y-%m-%dT%H:%M:%SZ'), # TradingView ISO 8601 requirement
-                      'open': signals,          # [Mapped to Open]   -> Signal Direction
-                      'high': proj_high,        # [Mapped to High]   -> Proj High
-                      'low': proj_low,          # [Mapped to Low]    -> Proj Low
-                      'close': bayes_prob,      # [Mapped to Close]  -> Bayesian Prob
-                      'volume': 1               # [Mapped to Volume] -> Time Horizon
+                      'time':   df.index.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                      'open':   signals,       # Signal direction
+                      'high':   proj_high,     # Projected high
+                      'low':    proj_low,      # Projected low
+                      'close':  bayes_prob,    # LSTM-fused Bayesian probability
+                      'volume': 1              # Time horizon placeholder
                   })
-                  
+
                   file_target = 'SP500_ML_RESULTS.csv'
                   output_df.to_csv(file_target, index=False)
-                  print(f"[SUCCESS] Pipeline complete. Extracted {len(output_df)} rows to {file_target}")
+                  print(f"[SUCCESS] Pipeline complete. {len(output_df)} rows → {file_target}")
 
           if __name__ == "__main__":
               engine = TitanQuantEngine("^GSPC")

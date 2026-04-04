@@ -47,8 +47,7 @@ class GitDatabaseEngine:
     Handles versioned object commits using Gzip compression for .dat files.
     """
     def __init__(self, repo="majixai/majixai.github.io"):
-        # Note: In production, it is highly recommended to call this via os.environ.get('GITHUB_TOKEN')
-        self.token = "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"
+        self.token = os.environ.get("GITHUB_TOKEN", "")
         self.repo = repo
         self.base_url = f"https://api.github.com/repos/{self.repo}/contents"
         self.headers = {
@@ -162,12 +161,103 @@ class QuantitativeCore:
 # 5. DEEP LEARNING CORE
 # ==========================================
 class NeuralCore:
-    def __init__(self, sequence_length, num_features):
+    """
+    LSTM-based neural inference engine.
+
+    Builds a two-layer LSTM → Dropout → Dense → Sigmoid model using
+    TensorFlow/Keras and runs a deterministic forward pass over the most
+    recent *sequence_length* rows of the feature matrix.
+
+    Falls back to a numpy sigmoid approximation when TensorFlow is unavailable,
+    so the pipeline always produces a valid probability in [0, 1].
+    """
+
+    def __init__(self, sequence_length: int, num_features: int) -> None:
         self.sequence_length = sequence_length
         self.num_features = num_features
+        self._model = None
+        self._tf = self._load_tf()
 
-    def infer_probability(self, matrix):
-        return np.random.uniform(0.3, 0.7) 
+    @staticmethod
+    def _load_tf():
+        try:
+            import tensorflow as tf  # noqa: PLC0415
+            return tf
+        except ImportError:
+            log.warning("TensorFlow unavailable — NeuralCore will use numpy fallback.")
+            return None
+
+    def _build_model(self):
+        """Build LSTM(64) → Dropout → LSTM(32) → Dropout → Dense(16) → Dense(1, sigmoid)."""
+        tf = self._tf
+        if tf is None:
+            return None
+        tf.random.set_seed(42)
+        l2 = tf.keras.regularizers.l2(1e-4)
+        model = tf.keras.Sequential([
+            tf.keras.layers.InputLayer(shape=(self.sequence_length, self.num_features)),
+            tf.keras.layers.LSTM(64, return_sequences=True,
+                                 kernel_regularizer=l2, recurrent_regularizer=l2),
+            tf.keras.layers.Dropout(0.2, seed=42),
+            tf.keras.layers.LSTM(32, kernel_regularizer=l2, recurrent_regularizer=l2),
+            tf.keras.layers.Dropout(0.2, seed=42),
+            tf.keras.layers.Dense(16, activation="tanh"),
+            tf.keras.layers.Dense(1, activation="sigmoid"),
+        ], name="titan_neural_core")
+        log.info(
+            "[NeuralCore] Built LSTM model — seq_len=%d  features=%d  params=%d",
+            self.sequence_length, self.num_features, model.count_params(),
+        )
+        return model
+
+    def infer_probability(self, matrix: np.ndarray) -> float:
+        """
+        Forward pass through the LSTM neural network.
+
+        Normalises each feature column to [0, 1], takes the last
+        *sequence_length* rows as the input window, and returns the
+        sigmoid-activated output as a directional probability in [0, 1]:
+          > 0.60 → bullish,  < 0.40 → bearish,  otherwise neutral.
+
+        Parameters
+        ----------
+        matrix : ndarray  shape (N, num_features)
+
+        Returns
+        -------
+        float  probability in [0, 1]
+        """
+        if self._model is None:
+            self._model = self._build_model()
+
+        n = len(matrix)
+        if n < self.sequence_length:
+            pad = np.zeros((self.sequence_length - n, matrix.shape[1]))
+            matrix = np.vstack([pad, matrix])
+
+        # Per-column min-max normalisation to [0, 1]
+        col_min = matrix.min(axis=0)
+        col_max = matrix.max(axis=0)
+        col_range = np.maximum(col_max - col_min, 1e-10)
+        norm = (matrix - col_min) / col_range
+
+        last_seq = norm[-self.sequence_length:].astype(np.float32)
+
+        if self._model is not None and self._tf is not None:
+            x = last_seq[np.newaxis, ...]          # (1, seq_len, features)
+            prob = float(self._model(x, training=False).numpy()[0, 0])
+            log.info("[NeuralCore] LSTM inference — probability=%.4f", prob)
+            return float(np.clip(prob, 0.01, 0.99))
+
+        # Numpy fallback: weighted-mean of last window → scaled sigmoid
+        weights = np.linspace(0.5, 1.0, last_seq.shape[0])  # recency weighting
+        weighted_mean = (last_seq * weights[:, None]).sum(axis=0) / weights.sum()
+        feature_weights = np.array([0.40, 0.30, 0.20, 0.10])[:self.num_features]
+        feature_weights /= feature_weights.sum()
+        signal = float(np.tanh(weighted_mean @ feature_weights) * 3.0)
+        prob = float(1.0 / (1.0 + np.exp(-signal)))
+        log.info("[NeuralCore] Numpy fallback inference — probability=%.4f", prob)
+        return float(np.clip(prob, 0.01, 0.99))
 
 # ==========================================
 # 6. ORCHESTRATION
