@@ -76,7 +76,8 @@ const AppConfig = (() => {
         backgroundBatchSize: 10,  // Number of images to analyze per background cycle
         similarityThreshold: 0.5, // Minimum cosine similarity to consider relevant
         feedbackDecayFactor: 0.95, // Decay factor for feedback scores over time
-        maxCachedResults: 500     // Maximum cached recognition results
+        maxCachedResults: 500,    // Maximum cached recognition results
+        weightPrecision: 4        // Decimal places for similarity award weights
     };
 
     // IndexedDB store for GPU image recognition results

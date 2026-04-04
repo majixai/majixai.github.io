@@ -770,16 +770,11 @@
             this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
             this.#addToPreviousUsers(user).catch(console.error);
 
-            // Background tensor similarity: award bonus clickCount to visually similar performers
+            // Background tensor similarity: award one bonus click to visually similar performers
             const allUsers = this.#allOnlineUsersData.length > 0 ? this.#allOnlineUsersData : this.#previousUsers;
-            this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername, weight) => {
-                const similarUser = allUsers.find(u => u.username === similarUsername);
-                if (similarUser) {
-                    // Award fractional click points (rounded up to avoid losing sub-1 weights)
-                    const bonus = Math.max(1, Math.round(weight));
-                    for (let i = 0; i < bonus; i++) {
-                        this.storageManager.incrementUserClickCount(similarUsername, this.#previousUsers);
-                    }
+            this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername) => {
+                if (allUsers.some(u => u.username === similarUsername)) {
+                    this.storageManager.incrementUserClickCount(similarUsername, this.#previousUsers);
                 }
             }).catch(console.error);
         }

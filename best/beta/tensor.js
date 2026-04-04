@@ -20,6 +20,8 @@ class TensorSimilarityEngine {
     #_maxAwards = 10;
     /** Decay factor applied to similarity score before awarding points */
     #_decayFactor = 0.95;
+    /** Decimal precision for computed award weights */
+    #_weightPrecision = 4;
 
     /**
      * Initialise (or return cached) MobileNet v2 model.
@@ -87,7 +89,7 @@ class TensorSimilarityEngine {
             const topResults = results.slice(0, this.#_maxAwards);
 
             for (const { username, similarity } of topResults) {
-                const weight = parseFloat((similarity * this.#_decayFactor).toFixed(4));
+                const weight = parseFloat((similarity * this.#_decayFactor).toFixed(this.#_weightPrecision));
                 if (weight > 0) {
                     onSimilarFound(username, weight);
                 }

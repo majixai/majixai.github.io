@@ -555,7 +555,7 @@ const CacheManager = (() => {
 
             stats.averageRating = stats.totalRatings > 0 ? ratingSum / stats.totalRatings : 0;
             // Calculate click score (higher = more interactions).
-            // similarity_award events contribute proportionally to their weight (capped per cycle).
+            // similarity_award weights are summed as received (no per-cycle cap).
             stats.clickScore = (stats.totalClicks * 3) + (stats.totalViews * 2) + (stats.totalRatings * stats.averageRating * 5) + similarityScore;
 
             return stats;

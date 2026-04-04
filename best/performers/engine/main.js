@@ -280,8 +280,10 @@ class BestPerformersEngine {
         const mlConfig = AppConfig.ML_CONFIG;
 
         for (const { username, similarity } of similarPerformers) {
-            // Award weight proportional to similarity, decayed by the configured factor
-            const weight = parseFloat((similarity * mlConfig.feedbackDecayFactor).toFixed(4));
+            // Scale the raw cosine similarity by feedbackDecayFactor to keep the award
+            // slightly below the full similarity value, preventing runaway score inflation
+            // from accumulated indirect awards (raw similarity arrives undecayed from ui.js).
+            const weight = parseFloat((similarity * mlConfig.feedbackDecayFactor).toFixed(mlConfig.weightPrecision));
             if (weight <= 0) continue;
 
             try {
