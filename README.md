@@ -2,17 +2,17 @@
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- 7b05468af3 -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- d16abea6ff -- 2026-04-05 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-04-05 06:43:41 UTC
-- 21e3b22178 -- 2026-04-05 -- github-actions[bot] -- Update scraped financial data
-- fe480e33ae -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- f73b0b2e5e -- 2026-04-05 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-04-05 06:18:34 UTC
+- 1d6fbcde8e -- 2026-04-05 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-04-05 07:43:11 UTC
+- ef1a2b7bdc -- 2026-04-05 -- github-actions[bot] -- Update scraped financial data
+- 62e9018e2d -- 2026-04-05 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-04-05 07:35:09 UTC
+- 936bb5a990 -- 2026-04-05 -- github-actions[bot] -- docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy)
+- c53afd9da2 -- 2026-04-05 -- majixai -- Merge pull request #349 from majixai/copilot/implement-lightweight-charts
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `2cf9fbc` — 2026-04-04 — **majixai** — Merge pull request #348 from majixai/copilot/enhance-finance-dirs-again  
-  _3705 lines changed (3580+ / 125-)_
+- **Biggest update today:** `c53afd9` — 2026-04-05 — **majixai** — Merge pull request #349 from majixai/copilot/implement-lightweight-charts  
+  _12206 lines changed (12206+ / 0-)_
 - **Biggest update this week:** `ae87f8d` — 2026-04-02 — **github-actions[bot]** — data: Update index data - 2026-04-02 01:45:55 UTC  
   _351872 lines changed (350783+ / 1089-)_
 - **Biggest update this month:** `ae87f8d` — 2026-04-02 — **github-actions[bot]** — data: Update index data - 2026-04-02 01:45:55 UTC  
