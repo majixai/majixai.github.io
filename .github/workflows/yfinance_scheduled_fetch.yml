@@ -24,14 +24,98 @@ on:
         description: 'Ticker category (leave empty for all)'
         required: false
         default: ''
+      async_mode:
+        description: 'Use async aiohttp fetcher (true/false)'
+        required: false
+        default: 'false'
+      run_neural:
+        description: 'Run LSTM neural inference after fetch (true/false)'
+        required: false
+        default: 'true'
 
 # Sets permissions for the GITHUB_TOKEN
 permissions:
   contents: write
 
 jobs:
+
+  # -------------------------------------------------------------------------
+  # Job 1: Build the Rust EKF core extension (cached between runs)
+  # -------------------------------------------------------------------------
+  build-rust-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache Rust build artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            yfinance_data/src_rust/target
+          key: rust-ekf-${{ hashFiles('yfinance_data/src_rust/Cargo.toml', 'yfinance_data/src_rust/src/lib.rs') }}
+          restore-keys: rust-ekf-
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python 3.11 (for maturin)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install maturin and build Rust extension
+        run: |
+          pip install maturin
+          cd yfinance_data/src_rust
+          maturin build --release --out dist/
+          echo "Rust extension built:"
+          ls dist/
+
+      - name: Upload Rust wheel artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekf-core-rust-wheel
+          path: yfinance_data/src_rust/dist/*.whl
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # Job 2: Build the Go concurrent fetcher binary
+  # -------------------------------------------------------------------------
+  build-go-fetcher:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: yfinance_data/go_fetcher/go.mod
+
+      - name: Build Go fetcher binary
+        run: |
+          cd yfinance_data/go_fetcher
+          go build -ldflags="-s -w" -o go_fetcher_bin_linux ./
+          echo "Go fetcher binary built: $(du -sh go_fetcher_bin_linux)"
+
+      - name: Upload Go binary artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-fetcher-bin
+          path: yfinance_data/go_fetcher/go_fetcher_bin_linux
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
+  # Job 3: Fetch data, run EKF + neural inference
+  # -------------------------------------------------------------------------
   fetch-yfinance-data:
     runs-on: ubuntu-latest
+    needs: [build-rust-core, build-go-fetcher]
 
     steps:
       - name: Checkout repository
@@ -39,16 +123,36 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Download Rust EKF wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: ekf-core-rust-wheel
+          path: /tmp/rust_wheels
+
+      - name: Download Go fetcher binary
+        uses: actions/download-artifact@v4
+        with:
+          name: go-fetcher-bin
+          path: /tmp/go_bin
+
+      - name: Install Python dependencies (with Rust extension)
         run: |
-          echo "INFO: Installing Python dependencies..."
+          echo "INFO: Installing base dependencies..."
           pip install -r yfinance_data/requirements.txt
+          echo "INFO: Installing Rust EKF extension..."
+          pip install /tmp/rust_wheels/*.whl || echo "WARN: Rust wheel install failed — numpy fallback active"
           echo "SUCCESS: Dependencies installed."
+
+      - name: Install Go binary
+        run: |
+          cp /tmp/go_bin/go_fetcher_bin_linux yfinance_data/go_fetcher/go_fetcher_bin
+          chmod +x yfinance_data/go_fetcher/go_fetcher_bin
+          echo "INFO: Go fetcher binary ready."
 
       - name: Run tests
         run: |
@@ -66,18 +170,32 @@ jobs:
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
           WEBHOOK_URL: ${{ secrets.YFINANCE_WEBHOOK_URL }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "INFO: Starting YFinance data fetch..."
           echo "INFO: Current time (UTC): $(date)"
 
           cd yfinance_data
 
-          # Determine arguments based on workflow trigger
-          ARGS="--period ${{ github.event.inputs.period || '1y' }} --interval ${{ github.event.inputs.interval || '1d' }}"
+          PERIOD="${{ github.event.inputs.period || '1y' }}"
+          INTERVAL="${{ github.event.inputs.interval || '1d' }}"
+          ASYNC_MODE="${{ github.event.inputs.async_mode || 'false' }}"
+          RUN_NEURAL="${{ github.event.inputs.run_neural || 'true' }}"
 
-          # Add category if specified
+          ARGS="--period $PERIOD --interval $INTERVAL --run-ekf"
+
           if [ -n "${{ github.event.inputs.category }}" ]; then
             ARGS="$ARGS --category ${{ github.event.inputs.category }}"
+          fi
+
+          if [ "$ASYNC_MODE" = "true" ]; then
+            ARGS="$ARGS --async-mode --async-concurrent 50"
+            echo "INFO: Using async aiohttp fetcher"
+          fi
+
+          if [ "$RUN_NEURAL" = "true" ]; then
+            ARGS="$ARGS --run-neural"
+            echo "INFO: Neural LSTM inference enabled"
           fi
 
           echo "INFO: Running with arguments: $ARGS"
@@ -93,12 +211,13 @@ jobs:
 
           echo "INFO: Checking for changes..."
           git add yfinance_data/*.dat
+          git add yfinance_data/states/ yfinance_data/predictions/ yfinance_data/neural/ || true
 
           if git diff --staged --quiet; then
             echo "INFO: No new data files to commit."
           else
             TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
-            git commit -m "data: Update yfinance data - $TIMESTAMP"
+            git commit -m "data: Update yfinance + EKF + neural data — $TIMESTAMP"
             git push
             echo "SUCCESS: Changes committed and pushed."
           fi

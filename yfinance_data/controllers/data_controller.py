@@ -624,6 +624,165 @@ class DataController:
             logger.error("EKF analysis failed: %s", exc)
             return {"success": False, "error": str(exc)}
 
+    def run_neural_analysis(
+        self,
+        tickers: Optional[List[str]] = None,
+        dat_file: Optional[str] = None,
+        ekf_results: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Run LSTM neural signal inference on stored price data.
+
+        For each ticker, reads OHLCV records from the .dat database, constructs
+        the 7-feature sequence matrix, runs a forward pass through the
+        :class:`~models.neural_forecaster.NeuralForecaster` LSTM, and optionally
+        fuses the result with EKF posterior state when *ekf_results* is supplied.
+
+        Inference outputs are written to::
+
+            <data_dir>/neural/<TICKER>_neural_signal.dat
+
+        Parameters
+        ----------
+        tickers     : list of str, optional — subset to analyse (default: all)
+        dat_file    : str, optional — override path to price .dat database
+        ekf_results : dict, optional — output of :py:meth:`run_ekf_analysis`
+                      (the ``results`` sub-dict); enables EKF posterior fusion
+
+        Returns
+        -------
+        dict
+            ``{"success": bool, "tickers_analyzed": int, "results": {...}}``
+        """
+        from models.neural_forecaster import NeuralForecaster  # noqa: PLC0415
+
+        try:
+            available = self.model.get_available_tickers(dat_file)
+            targets = tickers if tickers else available
+
+            if not targets:
+                return {"success": False, "error": "No tickers available in database"}
+
+            logger.info("Running neural analysis for %d tickers…", len(targets))
+
+            neural_dir = os.path.join(self.data_dir, "neural")
+            os.makedirs(neural_dir, exist_ok=True)
+
+            forecaster = NeuralForecaster()
+            forecaster.build_model()
+
+            results: Dict[str, Any] = {}
+
+            for ticker in targets:
+                try:
+                    df = self.model.read_data(ticker=ticker, limit=500, dat_file=dat_file)
+                    if df.empty or len(df) < 10:
+                        continue
+
+                    close  = df["Close"].values.astype(float)
+                    volume = df["Volume"].values.astype(float) if "Volume" in df else np.ones_like(close)
+                    high   = df["High"].values.astype(float) if "High" in df else None
+                    low    = df["Low"].values.astype(float) if "Low" in df else None
+
+                    # Optionally supply EKF posterior state for probability adjustment
+                    ekf_state = None
+                    if ekf_results and ticker in ekf_results:
+                        er = ekf_results[ticker]
+                        ekf_state = {
+                            "log_price":      er.get("predicted_close", 0.0),
+                            "volatility":     er.get("filtered_volatility", 1e-4),
+                            "momentum_angle": er.get("filtered_momentum_angle", 0.0),
+                        }
+
+                    signal = forecaster.infer(close, volume, high=high, low=low, ekf_state=ekf_state)
+                    signal["ticker"] = ticker
+                    signal["analysed_at"] = datetime.now(timezone.utc).isoformat()
+                    results[ticker] = signal
+
+                    # Persist to neural/<TICKER>_neural_signal.dat
+                    import gzip, json  # noqa: PLC0415
+                    out_path = os.path.join(neural_dir, f"{ticker}_neural_signal.dat")
+                    with gzip.open(out_path, "wb") as fh:
+                        fh.write(json.dumps(signal).encode("utf-8"))
+
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Neural analysis failed for %s: %s", ticker, exc)
+
+            logger.info(
+                "Neural analysis complete: %d/%d tickers succeeded",
+                len(results), len(targets),
+            )
+            return {"success": True, "tickers_analyzed": len(results), "results": results}
+
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Neural analysis failed: %s", exc)
+            return {"success": False, "error": str(exc)}
+
+    def fetch_async(
+        self,
+        tickers: List[str],
+        period: str = "1y",
+        interval: str = "1d",
+        max_concurrent: int = 40,
+        output_filename: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Fetch ticker data using the asyncio + aiohttp concurrent fetcher.
+
+        This is a synchronous wrapper around :class:`~async_fetcher.AsyncTickerFetcher`
+        that can be called from existing synchronous code.  It spawns (or reuses)
+        an event loop, runs the async pipeline, saves a compressed .dat file, and
+        returns a results summary compatible with :py:meth:`fetch_and_store`.
+
+        Parameters
+        ----------
+        tickers        : list of ticker symbols
+        period         : data range (e.g. '1y')
+        interval       : bar size (e.g. '1d')
+        max_concurrent : semaphore limit for parallel HTTP requests
+        output_filename: override for the output .dat file path
+
+        Returns
+        -------
+        dict  compatible with fetch_and_store return value
+        """
+        import asyncio  # noqa: PLC0415
+        sys.path.insert(0, self.data_dir)
+        try:
+            from async_fetcher import AsyncTickerFetcher  # noqa: PLC0415
+        except ImportError as exc:
+            logger.error("async_fetcher not found: %s", exc)
+            return {"success": False, "error": str(exc)}
+
+        async def _run():
+            async with AsyncTickerFetcher(max_concurrent=max_concurrent) as fetcher:
+                return await fetcher.fetch_all(tickers, period=period, interval=interval)
+
+        try:
+            results = asyncio.run(_run())
+        except RuntimeError:
+            # Already inside a running event loop (e.g. Jupyter)
+            loop = asyncio.get_event_loop()
+            results = loop.run_until_complete(_run())
+
+        # Save to .dat
+        out_path = output_filename or os.path.join(
+            self.data_dir, f"async_{period}_{interval}.dat"
+        )
+        from async_fetcher import AsyncTickerFetcher as _AF  # noqa: PLC0415
+        _AF.save_dat(results, out_path)
+
+        n_ok = len([v for v in results.values() if v is not None])
+        logger.info("fetch_async: %d/%d tickers → %s", n_ok, len(tickers), out_path)
+        return {
+            "success": True,
+            "output_file": out_path,
+            "summary": {
+                "total_tickers": n_ok,
+                "total_records": sum(v.get("records", 0) for v in results.values() if v),
+            },
+        }
+
     def get_results(self) -> Dict[str, Any]:
         """Get the results of the last operation."""
         return self.results

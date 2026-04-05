@@ -159,6 +159,40 @@ def main():
         help="Show EKF next-close prediction for a specific ticker and exit.",
     )
     parser.add_argument(
+        "--run-neural",
+        action="store_true",
+        help=(
+            "After fetching (and optionally EKF), run LSTM neural signal inference "
+            "and store results under neural/<TICKER>_neural_signal.dat."
+        ),
+    )
+    parser.add_argument(
+        "--neural-only",
+        action="store_true",
+        help=(
+            "Skip data fetch; run neural inference on the existing .dat database only."
+        ),
+    )
+    parser.add_argument(
+        "--neural-tickers",
+        help="Comma-separated subset of tickers to run neural inference on (default: all).",
+    )
+    parser.add_argument(
+        "--async-mode",
+        action="store_true",
+        help=(
+            "Use the asyncio + aiohttp concurrent fetcher (AsyncTickerFetcher) "
+            "instead of the default yfinance ThreadPoolExecutor fetcher.  "
+            "Requires: pip install aiohttp"
+        ),
+    )
+    parser.add_argument(
+        "--async-concurrent",
+        type=int,
+        default=40,
+        help="Max concurrent HTTP requests in async mode (default: 40).",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=1000,
@@ -290,6 +324,25 @@ def main():
             logger.error("EKF analysis failed: %s", ekf_results.get("error"))
             return 1
 
+    # --neural-only: skip fetch, run neural inference on existing database
+    if args.neural_only:
+        controller = DataController(data_dir=script_dir)
+        neural_tickers = (
+            [t.strip() for t in args.neural_tickers.split(",")]
+            if args.neural_tickers
+            else None
+        )
+        neural_results = controller.run_neural_analysis(
+            tickers=neural_tickers,
+            dat_file=args.output,
+        )
+        if neural_results.get("success"):
+            _print_neural_summary(neural_results["results"])
+            return 0
+        else:
+            logger.error("Neural analysis failed: %s", neural_results.get("error"))
+            return 1
+
     # Determine which tickers to fetch
     if args.tickers:
         tickers_to_fetch = [t.strip() for t in args.tickers.split(",")]
@@ -326,14 +379,24 @@ def main():
         webhook_url=webhook_url,
     )
 
-    # Fetch and store data
-    results = controller.fetch_and_store(
-        tickers=tickers_to_fetch,
-        period=args.period,
-        interval=args.interval,
-        output_filename=args.output,
-        send_notifications=not args.no_notifications,
-    )
+    # Fetch and store data — async or synchronous path
+    if args.async_mode:
+        logger.info("Using AsyncTickerFetcher (asyncio + aiohttp)…")
+        results = controller.fetch_async(
+            tickers=tickers_to_fetch,
+            period=args.period,
+            interval=args.interval,
+            max_concurrent=args.async_concurrent,
+            output_filename=args.output,
+        )
+    else:
+        results = controller.fetch_and_store(
+            tickers=tickers_to_fetch,
+            period=args.period,
+            interval=args.interval,
+            output_filename=args.output,
+            send_notifications=not args.no_notifications,
+        )
 
     # Log results
     if results.get("success"):
@@ -344,6 +407,8 @@ def main():
     else:
         logger.error(f"Failed: {results.get('error', 'Unknown error')}")
         return 1
+
+    ekf_results: Optional[dict] = None
 
     # Optionally run EKF analysis after a successful fetch
     if args.run_ekf and results.get("success"):
@@ -362,6 +427,25 @@ def main():
             _print_ekf_summary(ekf_results["results"])
         else:
             logger.warning("EKF analysis failed: %s", ekf_results.get("error"))
+
+    # Optionally run neural LSTM inference after a successful fetch
+    if args.run_neural and results.get("success"):
+        neural_tickers = (
+            [t.strip() for t in args.neural_tickers.split(",")]
+            if args.neural_tickers
+            else None
+        )
+        logger.info("Running LSTM neural signal inference…")
+        ekf_state_map = ekf_results.get("results") if ekf_results else None
+        neural_results = controller.run_neural_analysis(
+            tickers=neural_tickers,
+            dat_file=results.get("output_file"),
+            ekf_results=ekf_state_map,
+        )
+        if neural_results.get("success"):
+            _print_neural_summary(neural_results["results"])
+        else:
+            logger.warning("Neural analysis failed: %s", neural_results.get("error"))
 
     return 0
 
@@ -391,6 +475,30 @@ def _print_ekf_summary(ekf_results: dict) -> None:
     print(f"States stored in:      <data_dir>/states/")
     print(f"Predictions stored in: <data_dir>/predictions/")
     print("Use --show-ekf TICKER to inspect any prediction.\n")
+
+
+def _print_neural_summary(neural_results: dict) -> None:
+    """Pretty-print a table of LSTM neural signal predictions."""
+    if not neural_results:
+        logger.info("No neural results to display.")
+        return
+    print("\n" + "=" * 80)
+    print("LSTM NEURAL SIGNAL INFERENCE — RESULTS")
+    print("=" * 80)
+    print(f"{'Ticker':<10} {'Signal':>6}  {'BUY':>7}  {'HOLD':>7}  {'SELL':>7}  {'Conf':>6}  {'Method'}")
+    print("-" * 80)
+    for ticker, res in sorted(neural_results.items()):
+        print(
+            f"{ticker:<10} "
+            f"{res.get('signal', '?'):>6}  "
+            f"{res.get('buy_prob', 0):>7.3f}  "
+            f"{res.get('hold_prob', 0):>7.3f}  "
+            f"{res.get('sell_prob', 0):>7.3f}  "
+            f"{res.get('confidence', 0):>6.3f}  "
+            f"{res.get('method', 'N/A')}"
+        )
+    print("=" * 80)
+    print("Neural signals stored in: <data_dir>/neural/\n")
 
 
 if __name__ == "__main__":
