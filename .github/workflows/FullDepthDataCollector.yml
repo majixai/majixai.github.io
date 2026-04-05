@@ -1,35 +1,37 @@
 name: Full Depth Data Collector
+
 on:
-schedule:
-- cron: '* * * * *' # Runs every minute
-workflow_dispatch:
+  schedule:
+    - cron: '* * * * *' # Runs every minute
+  workflow_dispatch:
+
 jobs:
-collect:
-runs-on: ubuntu-latest
-concurrency:
-group: data-collection
-cancel-in-progress: false
-steps:
-- name: Checkout code
-uses: actions/checkout@v4
-with:
-fetch-depth: 0
-- name: Set up Python
-uses: actions/setup-python@v5
-with:
-python-version: '3.10'
-- name: Install dependencies
-run: pip install aiohttp aiofiles
-- name: Run Collector
-run: python collector.py
-env:
-# Base API URL without the offset/limit parameters (added by script)
-BASE_API_URL: "https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A"
-- name: Commit and Push Database
-run: |
-git config --local user.email "action@github.com"
-git config --local user.name "GitHub Action"
-git pull origin main --rebase
-git add data_store.dat
-git commit -m "Full Sweep: $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
-git push
+  collect:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: data-collection
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install aiohttp aiofiles
+      - name: Run Collector
+        run: python collector.py
+        env:
+          # Base API URL without the offset/limit parameters (added by script)
+          BASE_API_URL: "https://chaturbate.com/api/public/affiliates/onlinerooms/?wm=9cg6A"
+      - name: Commit and Push Database
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull origin main --rebase
+          git add data_store.dat
+          git commit -m "Full Sweep: $(date +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git push

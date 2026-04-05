@@ -1,0 +1,560 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Gemini Matrix Engine v6.0 - Recursive Nested Architectures (Extended Edition)
+//@version=5
+indicator("ULTIMATE Nested Matrix & MTF Projection Engine v6", overlay=true,
+         max_boxes_count=500, max_lines_count=500, max_polylines_count=100, max_labels_count=500)
+
+// ============================================================================
+// 1. NESTED TYPE DEFINITIONS  (5-Level Data Tree)
+// ============================================================================
+
+// Level 1 – Atomic Data: a single price/volume coordinate
+type MatrixPoint
+    int   x          // bar_index
+    float y          // price
+    float vol        // raw volume at bar
+    float norm_vol   // volume z-score (rolling normalisation)
+    float atr_snap   // ATR snapshot at this bar
+
+// Level 2 – Geometric Segment: two nested Points + derived metrics
+type VectorSegment
+    MatrixPoint start_pt
+    MatrixPoint end_pt
+    float       slope           // price/bar rise-run ratio
+    float       atr_slope       // slope normalised by ATR
+    float       vol_delta       // end_vol - start_vol (momentum proxy)
+    bool        is_expansion    // end further from price centre than start
+    bool        is_valid        // segment passes sanity checks
+
+// Level 3 – Path Container: ordered array of Segments forming one swing leg
+type SwingPath
+    VectorSegment[] segs          // ordered sequence of segments
+    float           total_length  // cumulative price distance
+    float           avg_slope     // mean of segment slopes
+    bool            is_impulsive  // |avg_slope| > ATR threshold
+    int             bar_start
+    int             bar_end
+
+// Level 4 – Pattern Manifest: one detected chart-pattern (contains Paths)
+type PatternManifest
+    string          signature
+    SwingPath       primary_path
+    SwingPath       secondary_path
+    float           target_price
+    float           stop_price
+    float           invalidation_price
+    float           confidence_matrix_score  // 0–100
+    float           vol_weight               // volumetric quality modifier
+    float           rr_ratio                 // reward/risk ratio
+    bool            is_bullish
+    bool            is_active                // still valid (price not through stop)
+    color           theme_color
+
+// Level 5 – Global Engine: owns all patterns, all correlation matrices, HTF state
+type GlobalMatrix
+    PatternManifest[] registry               // capped pattern list
+    matrix<float>     corr_matrix            // [4 tickers × 2 values: close, corr]
+    matrix<float>     vol_profile_matrix     // [lookback × 2: price-bucket, cum-vol]
+    float             htf_volatility_index
+    float             ltf_precision_factor
+    float             composite_bias         // +1 bull / -1 bear / 0 neutral
+    int               total_patterns_seen
+    int               active_pattern_count
+
+// ============================================================================
+// 2. INPUTS & GROUPS
+// ============================================================================
+grp_sys   = "Matrix System Configuration"
+lookback  = input.int(10,  "Pivot Lookback",           minval=2,  group=grp_sys)
+depth     = input.int(8,   "Registry Depth",           minval=2,  group=grp_sys)
+atr_len   = input.int(14,  "ATR Length",               minval=2,  group=grp_sys)
+vol_len   = input.int(20,  "Volume Z-Score Length",    minval=5,  group=grp_sys)
+corr_len  = input.int(20,  "Correlation Length",       minval=5,  group=grp_sys)
+min_conf  = input.float(25.0, "Min Confidence Filter", minval=0.0, maxval=100.0, group=grp_sys)
+
+grp_mtf   = "Multi-Timeframe Logic"
+htf_tf    = input.timeframe("D",   "HTF Reference Timeframe",     group=grp_mtf)
+ltf_tf    = input.timeframe("5",   "LTF Delta-Precision TF",      group=grp_mtf)
+comp_1    = input.symbol("SPY",    "Correlation Ticker A",         group=grp_mtf)
+comp_2    = input.symbol("QQQ",    "Correlation Ticker B",         group=grp_mtf)
+comp_3    = input.symbol("IWM",    "Correlation Ticker C",         group=grp_mtf)
+comp_4    = input.symbol("DIA",    "Correlation Ticker D",         group=grp_mtf)
+
+grp_vis   = "Visualisation"
+show_boxes   = input.bool(true,  "Draw S/R Boxes",          group=grp_vis)
+show_labels  = input.bool(true,  "Draw Pattern Labels",     group=grp_vis)
+show_table   = input.bool(true,  "Show Dashboard Table",    group=grp_vis)
+show_poly    = input.bool(true,  "Draw Pattern Polylines",  group=grp_vis)
+
+// ============================================================================
+// 3. GLOBAL ENGINE INITIALISATION
+// ============================================================================
+var GlobalMatrix GM = GlobalMatrix.new(
+     registry              = array.new<PatternManifest>(),
+     corr_matrix           = matrix.new<float>(4, 2, 0.0),
+     vol_profile_matrix    = matrix.new<float>(20, 2, 0.0),
+     htf_volatility_index  = 0.0,
+     ltf_precision_factor  = 1.0,
+     composite_bias        = 0.0,
+     total_patterns_seen   = 0,
+     active_pattern_count  = 0
+ )
+
+// ============================================================================
+// 4. DERIVED PRIMITIVES  (calculated once per bar, reused everywhere)
+// ============================================================================
+float atr_val   = ta.atr(atr_len)
+float vol_mean  = ta.sma(volume, vol_len)
+float vol_std   = ta.stdev(volume, vol_len)
+float norm_vol  = vol_std != 0 ? (volume - vol_mean) / vol_std : 0.0
+
+// Rolling price-centre (midpoint of highest-high / lowest-low over lookback)
+float h_hi      = ta.highest(high,  lookback * 2)
+float l_lo      = ta.lowest(low,    lookback * 2)
+float price_ctr = math.avg(h_hi, l_lo)
+
+// ============================================================================
+// 5. MULTI-TICKER CORRELATION MATRIX  (4 tickers)
+// ============================================================================
+// request.security calls outside of if-blocks are cached by Pine per-bar
+float s1_close = request.security(comp_1, htf_tf, close)
+float s2_close = request.security(comp_2, htf_tf, close)
+float s3_close = request.security(comp_3, htf_tf, close)
+float s4_close = request.security(comp_4, htf_tf, close)
+
+// HTF & LTF derived series
+float htf_atr   = request.security(syminfo.tickerid, htf_tf, ta.atr(atr_len))
+float ltf_close = request.security(syminfo.tickerid, ltf_tf, close)
+
+// Populate correlation matrix only on the last bar to avoid redundant calls
+if barstate.islast
+    float c1 = ta.correlation(close, s1_close, corr_len)
+    float c2 = ta.correlation(close, s2_close, corr_len)
+    float c3 = ta.correlation(close, s3_close, corr_len)
+    float c4 = ta.correlation(close, s4_close, corr_len)
+
+    matrix.set(GM.corr_matrix, 0, 0, s1_close) // row=ticker, col=0 → latest close
+    matrix.set(GM.corr_matrix, 1, 0, s2_close)
+    matrix.set(GM.corr_matrix, 2, 0, s3_close)
+    matrix.set(GM.corr_matrix, 3, 0, s4_close)
+
+    matrix.set(GM.corr_matrix, 0, 1, c1)       // col=1 → correlation coefficient
+    matrix.set(GM.corr_matrix, 1, 1, c2)
+    matrix.set(GM.corr_matrix, 2, 1, c3)
+    matrix.set(GM.corr_matrix, 3, 1, c4)
+
+    // Composite bias: average correlation weighted by sign
+    float bias_sum = (c1 + c2 + c3 + c4) / 4.0
+    GM.composite_bias := bias_sum > 0.3 ? 1.0 : bias_sum < -0.3 ? -1.0 : 0.0
+
+    // HTF volatility index (normalised)
+    GM.htf_volatility_index := htf_atr / close * 100.0
+
+    // LTF precision factor (how many LTF bars per current TF bar, clamped)
+    float ltf_ratio = close / (ltf_close != 0 ? ltf_close : close)
+    GM.ltf_precision_factor := math.max(0.5, math.min(2.0, ltf_ratio))
+
+// ============================================================================
+// 6. ROLLING VOLUME-PROFILE MATRIX  (price-bucket → cumulative volume)
+//    Updated every bar for an intrabar mini volume-profile
+// ============================================================================
+// Volume profile updates every bar regardless of registry state
+if atr_val > 0
+    int   bucket    = int(close / atr_val) % 20  // which of 20 ATR-sized buckets
+    float cum_vol   = matrix.get(GM.vol_profile_matrix, bucket, 1) + volume
+    matrix.set(GM.vol_profile_matrix, bucket, 0, close)
+    matrix.set(GM.vol_profile_matrix, bucket, 1, cum_vol)
+
+// Helper: read POC (point-of-control) price from volume profile
+f_poc_price() =>
+    float max_vol  = 0.0
+    float poc      = close
+    for i = 0 to matrix.rows(GM.vol_profile_matrix) - 1
+        float bv = matrix.get(GM.vol_profile_matrix, i, 1)
+        if bv > max_vol
+            max_vol := bv
+            poc     := matrix.get(GM.vol_profile_matrix, i, 0)
+    poc
+
+// ============================================================================
+// 7. POINT & SEGMENT FACTORY FUNCTIONS
+// ============================================================================
+
+// Construct a MatrixPoint at a given bar offset
+f_make_point(int bi, float price, float v) =>
+    float nv  = vol_std != 0 ? (v - vol_mean) / vol_std : 0.0
+    MatrixPoint.new(bi, price, v, nv, atr_val)
+
+// Construct a VectorSegment from two MatrixPoints
+f_make_segment(MatrixPoint sp, MatrixPoint ep) =>
+    float dx      = float(ep.x - sp.x)
+    float dy      = ep.y - sp.y
+    float slp     = dx != 0 ? dy / dx : 0.0
+    float atr_slp = ep.atr_snap != 0 ? slp / ep.atr_snap : 0.0
+    float vd      = ep.norm_vol - sp.norm_vol
+    bool  exp     = math.abs(ep.y - price_ctr) > math.abs(sp.y - price_ctr)
+    bool  valid   = dx > 0 and math.abs(dy) > atr_val * 0.1
+    VectorSegment.new(sp, ep, slp, atr_slp, vd, exp, valid)
+
+// Construct a SwingPath from an array of segments
+f_make_path(VectorSegment[] segs, int bs, int be) =>
+    float total = 0.0
+    float slope_sum = 0.0
+    for s in segs
+        total     += math.abs(s.end_pt.y - s.start_pt.y)
+        slope_sum += s.slope
+    float avg_slp = array.size(segs) > 0 ? slope_sum / array.size(segs) : 0.0
+    bool  imp     = math.abs(avg_slp) > atr_val * 0.05
+    SwingPath.new(segs, total, avg_slp, imp, bs, be)
+
+// Weighted confidence score using all 4 correlations + volume quality
+f_confidence(float base_corr, float vol_w, bool is_bull) =>
+    float c1 = matrix.get(GM.corr_matrix, 0, 1)
+    float c2 = matrix.get(GM.corr_matrix, 1, 1)
+    float c3 = matrix.get(GM.corr_matrix, 2, 1)
+    float c4 = matrix.get(GM.corr_matrix, 3, 1)
+    // Mean absolute agreement between tickers
+    float avg_corr  = (math.abs(c1) + math.abs(c2) + math.abs(c3) + math.abs(c4)) / 4.0
+    // Directional alignment bonus (all tickers agree on direction)
+    float dir_sign  = is_bull ? 1.0 : -1.0
+    float align     = (c1 * dir_sign + c2 * dir_sign + c3 * dir_sign + c4 * dir_sign) / 4.0
+    float raw_score = (avg_corr * 50.0) + (align * 30.0) + (vol_w * 20.0)
+    math.max(0.0, math.min(100.0, raw_score))
+
+// ============================================================================
+// 8. PIVOT STACK MANAGEMENT
+// ============================================================================
+var MatrixPoint[] ph_stack = array.new<MatrixPoint>()
+var MatrixPoint[] pl_stack = array.new<MatrixPoint>()
+
+float ph_val = ta.pivothigh(high, lookback, lookback)
+float pl_val = ta.pivotlow(low,   lookback, lookback)
+
+if not na(ph_val)
+    array.unshift(ph_stack, f_make_point(bar_index - lookback, ph_val, volume[lookback]))
+if not na(pl_val)
+    array.unshift(pl_stack, f_make_point(bar_index - lookback, pl_val, volume[lookback]))
+
+// Keep stacks trimmed to at most 12 elements (memory cap)
+if array.size(ph_stack) > 12
+    array.pop(ph_stack)
+if array.size(pl_stack) > 12
+    array.pop(pl_stack)
+
+// ============================================================================
+// 9. FOUR-PATTERN DETECTOR
+//    Each detector builds full nested SwingPath → PatternManifest objects.
+//    Returns na(PatternManifest) when pattern not found.
+// ============================================================================
+
+// --- 9A. MEGA-EXPANSION  (higher-highs + lower-lows divergence) ---
+f_detect_expansion(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 3
+        MatrixPoint p0 = array.get(phs, 0)
+        MatrixPoint p1 = array.get(phs, 1)
+        MatrixPoint p2 = array.get(phs, 2)
+        MatrixPoint l0 = array.get(pls, 0)
+        MatrixPoint l1 = array.get(pls, 1)
+        // Condition: two consecutive HH + two consecutive LL
+        if p0.y > p1.y and p1.y > p2.y and l0.y < l1.y
+            VectorSegment[] segs_up   = array.new<VectorSegment>()
+            VectorSegment[] segs_down = array.new<VectorSegment>()
+            segs_up.push(f_make_segment(p2, p1))
+            segs_up.push(f_make_segment(p1, p0))
+            segs_down.push(f_make_segment(l1, l0))
+            SwingPath up_path   = f_make_path(segs_up,   p2.x, p0.x)
+            SwingPath down_path = f_make_path(segs_down, l1.x, l0.x)
+            bool bullish        = close > l0.y
+            float tgt           = p0.y + (p0.y - l0.y) * 1.618
+            float stp           = l0.y - atr_val
+            float inv           = l1.y - atr_val * 2.0
+            float rr            = math.abs(close - stp) != 0 ? math.abs(tgt - close) / math.abs(close - stp) : 0.0
+            float vw            = math.max(0.0, math.min(1.0, (p0.norm_vol + l0.norm_vol) / 4.0 + 0.5))
+            float conf          = f_confidence(matrix.get(GM.corr_matrix, 0, 1), vw, bullish)
+            result := PatternManifest.new("MEGA-EXPANSION", up_path, down_path,
+                         tgt, stp, inv, conf, vw, rr, bullish, true,
+                         bullish ? color.lime : color.red)
+    result
+
+// --- 9B. COMPRESSION  (converging highs and lows → pennant / triangle) ---
+f_detect_compression(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 3
+        MatrixPoint p0 = array.get(phs, 0)
+        MatrixPoint p1 = array.get(phs, 1)
+        MatrixPoint l0 = array.get(pls, 0)
+        MatrixPoint l1 = array.get(pls, 1)
+        // Condition: lower-highs AND higher-lows (wedge / pennant)
+        if p0.y < p1.y and l0.y > l1.y
+            VectorSegment[] segs_res = array.new<VectorSegment>()
+            VectorSegment[] segs_sup = array.new<VectorSegment>()
+            segs_res.push(f_make_segment(p1, p0))
+            segs_sup.push(f_make_segment(l1, l0))
+            SwingPath res_path = f_make_path(segs_res, p1.x, p0.x)
+            SwingPath sup_path = f_make_path(segs_sup, l1.x, l0.x)
+            // Breakout direction biased by volume trend
+            bool bullish   = l0.norm_vol > p0.norm_vol
+            float width    = p0.y - l0.y
+            float tgt      = bullish ? p0.y + width * 0.786 : l0.y - width * 0.786
+            float stp      = bullish ? l0.y - atr_val       : p0.y + atr_val
+            float inv      = bullish ? l1.y - atr_val       : p1.y + atr_val
+            float rr       = math.abs(stp - close) != 0 ? math.abs(tgt - close) / math.abs(stp - close) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (l0.norm_vol - p0.norm_vol) * 0.3 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 1, 1), vw, bullish)
+            result := PatternManifest.new("COMPRESSION", res_path, sup_path,
+                         tgt, stp, inv, conf, vw, rr, bullish, true,
+                         bullish ? color.yellow : color.orange)
+    result
+
+// --- 9C. HEAD-AND-SHOULDERS  (three pivots; middle is tallest) ---
+f_detect_hs(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 2
+        MatrixPoint ls  = array.get(phs, 2)  // left shoulder
+        MatrixPoint hd  = array.get(phs, 1)  // head
+        MatrixPoint rs  = array.get(phs, 0)  // right shoulder
+        MatrixPoint nl  = array.get(pls, 0)  // neckline anchor
+        // Classic H&S: head taller than both shoulders; shoulder symmetry within 1 ATR
+        float shoulder_tol = hd.y != 0 ? atr_val / hd.y : 0.05
+        bool hs_shape = hd.y > ls.y * 1.005 and hd.y > rs.y * 1.005 and
+                        math.abs(ls.y - rs.y) / hd.y < shoulder_tol
+        if hs_shape
+            VectorSegment[] segs_top = array.new<VectorSegment>()
+            VectorSegment[] segs_neck = array.new<VectorSegment>()
+            segs_top.push(f_make_segment(ls, hd))
+            segs_top.push(f_make_segment(hd, rs))
+            segs_neck.push(f_make_segment(nl, f_make_point(rs.x, nl.y, nl.vol)))
+            SwingPath top_path  = f_make_path(segs_top,  ls.x, rs.x)
+            SwingPath neck_path = f_make_path(segs_neck, nl.x, rs.x)
+            float neckline  = nl.y
+            float head_ht   = hd.y - neckline
+            float tgt       = neckline - head_ht           // measured move
+            float stp       = rs.y + atr_val
+            float inv       = hd.y + atr_val
+            float rr        = math.abs(stp - neckline) != 0 ? math.abs(neckline - tgt) / math.abs(stp - neckline) : 0.0
+            float vw        = math.max(0.0, math.min(1.0, (hd.norm_vol - rs.norm_vol) * 0.5 + 0.5))
+            float conf      = f_confidence(matrix.get(GM.corr_matrix, 2, 1), vw, false)
+            result := PatternManifest.new("HEAD-AND-SHOULDERS", top_path, neck_path,
+                         tgt, stp, inv, conf, vw, rr, false, true, color.fuchsia)
+    result
+
+// --- 9D. DOUBLE TOP / DOUBLE BOTTOM ---
+f_detect_double(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    // Double Top: two highs within 0.5% of each other
+    if array.size(phs) >= 2 and array.size(pls) >= 1
+        MatrixPoint t1 = array.get(phs, 1)
+        MatrixPoint t2 = array.get(phs, 0)
+        MatrixPoint vl = array.get(pls, 0)
+        bool dbl_top = t1.y != 0 and math.abs(t1.y - t2.y) / t1.y < 0.005 and t2.x > t1.x
+        if dbl_top
+            VectorSegment[] segs_t = array.new<VectorSegment>()
+            VectorSegment[] segs_v = array.new<VectorSegment>()
+            segs_t.push(f_make_segment(t1, t2))
+            segs_v.push(f_make_segment(t1, vl))
+            SwingPath top_path  = f_make_path(segs_t, t1.x, t2.x)
+            SwingPath val_path  = f_make_path(segs_v, t1.x, vl.x)
+            float neckline = vl.y
+            float height   = t2.y - neckline
+            float tgt      = neckline - height
+            float stp      = t2.y + atr_val
+            float inv      = math.max(t1.y, t2.y) + atr_val * 1.5
+            float rr       = height != 0 ? math.abs(neckline - tgt) / (atr_val + height * 0.1) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (vl.norm_vol - t2.norm_vol) * 0.4 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 3, 1), vw, false)
+            result := PatternManifest.new("DOUBLE-TOP", top_path, val_path,
+                         tgt, stp, inv, conf, vw, rr, false, true, color.red)
+
+    // Double Bottom: two lows within 0.5%
+    if na(result) and array.size(pls) >= 2 and array.size(phs) >= 1
+        MatrixPoint b1 = array.get(pls, 1)
+        MatrixPoint b2 = array.get(pls, 0)
+        MatrixPoint pk = array.get(phs, 0)
+        bool dbl_bot = b1.y != 0 and math.abs(b1.y - b2.y) / b1.y < 0.005 and b2.x > b1.x
+        if dbl_bot
+            VectorSegment[] segs_b = array.new<VectorSegment>()
+            VectorSegment[] segs_p = array.new<VectorSegment>()
+            segs_b.push(f_make_segment(b1, b2))
+            segs_p.push(f_make_segment(b1, pk))
+            SwingPath bot_path  = f_make_path(segs_b, b1.x, b2.x)
+            SwingPath peak_path = f_make_path(segs_p, b1.x, pk.x)
+            float neckline = pk.y
+            float height   = neckline - b2.y
+            float tgt      = neckline + height
+            float stp      = b2.y - atr_val
+            float inv      = math.min(b1.y, b2.y) - atr_val * 1.5
+            float rr       = height != 0 ? math.abs(tgt - neckline) / (atr_val + height * 0.1) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (b2.norm_vol - pk.norm_vol) * 0.4 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 0, 1), vw, true)
+            result := PatternManifest.new("DOUBLE-BOTTOM", bot_path, peak_path,
+                         tgt, stp, inv, conf, vw, rr, true, true, color.aqua)
+    result
+
+// ============================================================================
+// 10. PATTERN EVALUATION LOOP  (single-pass over all four detectors)
+// ============================================================================
+// Run detectors
+PatternManifest pm_exp  = f_detect_expansion(ph_stack,   pl_stack)
+PatternManifest pm_cmp  = f_detect_compression(ph_stack, pl_stack)
+PatternManifest pm_hs   = f_detect_hs(ph_stack,          pl_stack)
+PatternManifest pm_dbl  = f_detect_double(ph_stack,      pl_stack)
+
+// Collect valid detections in priority order (highest confidence wins per bar)
+PatternManifest[] bar_detections = array.new<PatternManifest>()
+if not na(pm_exp) and pm_exp.confidence_matrix_score >= min_conf
+    bar_detections.push(pm_exp)
+if not na(pm_cmp) and pm_cmp.confidence_matrix_score >= min_conf
+    bar_detections.push(pm_cmp)
+if not na(pm_hs)  and pm_hs.confidence_matrix_score  >= min_conf
+    bar_detections.push(pm_hs)
+if not na(pm_dbl) and pm_dbl.confidence_matrix_score >= min_conf
+    bar_detections.push(pm_dbl)
+
+// Push all new detections into global registry (LIFO, capped at depth)
+for pm in bar_detections
+    array.unshift(GM.registry, pm)
+    GM.total_patterns_seen += 1
+    if array.size(GM.registry) > depth
+        array.pop(GM.registry)
+
+// Keep active pattern count current (directional stop check per pattern)
+int active_cnt = 0
+for pm in GM.registry
+    bool still_active = pm.is_active and
+                        (pm.is_bullish ? close > pm.stop_price : close < pm.stop_price)
+    if still_active
+        active_cnt += 1
+    else
+        pm.is_active := false
+GM.active_pattern_count := active_cnt
+
+// ============================================================================
+// 11. RENDERING  (executed only for new bar_detections to avoid redundancy)
+// ============================================================================
+if array.size(bar_detections) > 0
+    // Only draw the highest-confidence detection from this bar
+    float  best_conf   = -1.0
+    int    best_idx    = -1
+    for i = 0 to array.size(bar_detections) - 1
+        if array.get(bar_detections, i).confidence_matrix_score > best_conf
+            best_conf := array.get(bar_detections, i).confidence_matrix_score
+            best_idx  := i
+
+    PatternManifest pm = array.get(bar_detections, best_idx)
+
+    // --- Polyline through all segment endpoints (no duplicates at junctions) ---
+    if show_poly
+        chart.point[] draw_pts = array.new<chart.point>()
+        for i = 0 to array.size(pm.primary_path.segs) - 1
+            VectorSegment seg = array.get(pm.primary_path.segs, i)
+            if i == 0
+                draw_pts.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
+            draw_pts.push(chart.point.from_index(seg.end_pt.x, seg.end_pt.y))
+        if array.size(draw_pts) >= 2
+            polyline.new(draw_pts, curved=true, line_color=pm.theme_color, line_width=2)
+
+        // Secondary path polyline (dashed via colour opacity)
+        chart.point[] draw_pts2 = array.new<chart.point>()
+        for i = 0 to array.size(pm.secondary_path.segs) - 1
+            VectorSegment seg = array.get(pm.secondary_path.segs, i)
+            if i == 0
+                draw_pts2.push(chart.point.from_index(seg.start_pt.x, seg.start_pt.y))
+            draw_pts2.push(chart.point.from_index(seg.end_pt.x, seg.end_pt.y))
+        if array.size(draw_pts2) >= 2
+            polyline.new(draw_pts2, curved=false,
+                         line_color=color.new(pm.theme_color, 60), line_width=1)
+
+    // --- Target / Stop boxes ---
+    if show_boxes
+        int box_left  = bar_index - lookback
+        int box_right = bar_index + lookback * 3
+        // Target box
+        box.new(box_left,  pm.target_price + atr_val * 0.25,
+                box_right, pm.target_price - atr_val * 0.25,
+                bgcolor=color.new(pm.theme_color, 80),
+                border_color=pm.theme_color, border_width=1)
+        // Stop box
+        box.new(box_left,  pm.stop_price + atr_val * 0.25,
+                box_right, pm.stop_price - atr_val * 0.25,
+                bgcolor=color.new(color.gray, 80),
+                border_color=color.gray, border_width=1)
+        // Volume-profile POC line (as a thin box)
+        float poc_px = f_poc_price()
+        box.new(box_left, poc_px + atr_val * 0.1,
+                box_right, poc_px - atr_val * 0.1,
+                bgcolor=color.new(color.blue, 85),
+                border_color=color.new(color.blue, 40), border_width=1)
+
+    // --- Annotation label ---
+    if show_labels
+        string hud  = "Σ " + pm.signature + "\n" +
+                      "CONF: "   + str.tostring(pm.confidence_matrix_score, "#.#") + "%" + "\n" +
+                      "R/R: "    + str.tostring(pm.rr_ratio,                "#.##")      + "\n" +
+                      "VOL-W: "  + str.tostring(pm.vol_weight,              "#.##")      + "\n" +
+                      "TGT: "    + str.tostring(pm.target_price,            format.mintick) + "\n" +
+                      "STP: "    + str.tostring(pm.stop_price,              format.mintick) + "\n" +
+                      "BIAS: "   + (GM.composite_bias > 0 ? "BULL" : GM.composite_bias < 0 ? "BEAR" : "NEUT")
+        label.new(bar_index, high + atr_val, hud,
+                  color      = color.new(color.black, 20),
+                  textcolor  = pm.theme_color,
+                  style      = label.style_label_down,
+                  size       = size.small)
+
+// ============================================================================
+// 12. DASHBOARD TABLE  (updated only on last bar for performance)
+// ============================================================================
+var table hud_table = table.new(position.bottom_right, 3, 8,
+                                bgcolor     = color.new(color.black, 70),
+                                border_width = 1,
+                                frame_color  = color.new(color.white, 60))
+
+if barstate.islast and show_table
+    // Header
+    table.cell(hud_table, 0, 0, "METRIC",            text_color=color.white,  text_size=size.small)
+    table.cell(hud_table, 1, 0, "VALUE",             text_color=color.white,  text_size=size.small)
+    table.cell(hud_table, 2, 0, "TICKER",            text_color=color.white,  text_size=size.small)
+
+    // Correlations
+    table.cell(hud_table, 0, 1, "Corr " + comp_1,   text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 1, str.tostring(matrix.get(GM.corr_matrix, 0, 1), "#.###"),
+               text_color=matrix.get(GM.corr_matrix, 0, 1) > 0 ? color.lime : color.red, text_size=size.small)
+    table.cell(hud_table, 2, 1, str.tostring(matrix.get(GM.corr_matrix, 0, 0), format.mintick),
+               text_color=color.yellow, text_size=size.small)
+
+    table.cell(hud_table, 0, 2, "Corr " + comp_2,   text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 2, str.tostring(matrix.get(GM.corr_matrix, 1, 1), "#.###"),
+               text_color=matrix.get(GM.corr_matrix, 1, 1) > 0 ? color.lime : color.red, text_size=size.small)
+    table.cell(hud_table, 2, 2, str.tostring(matrix.get(GM.corr_matrix, 1, 0), format.mintick),
+               text_color=color.yellow, text_size=size.small)
+
+    table.cell(hud_table, 0, 3, "Corr " + comp_3,   text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 3, str.tostring(matrix.get(GM.corr_matrix, 2, 1), "#.###"),
+               text_color=matrix.get(GM.corr_matrix, 2, 1) > 0 ? color.lime : color.red, text_size=size.small)
+    table.cell(hud_table, 2, 3, str.tostring(matrix.get(GM.corr_matrix, 2, 0), format.mintick),
+               text_color=color.yellow, text_size=size.small)
+
+    table.cell(hud_table, 0, 4, "Corr " + comp_4,   text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 4, str.tostring(matrix.get(GM.corr_matrix, 3, 1), "#.###"),
+               text_color=matrix.get(GM.corr_matrix, 3, 1) > 0 ? color.lime : color.red, text_size=size.small)
+    table.cell(hud_table, 2, 4, str.tostring(matrix.get(GM.corr_matrix, 3, 0), format.mintick),
+               text_color=color.yellow, text_size=size.small)
+
+    // Engine stats
+    table.cell(hud_table, 0, 5, "Active Nodes",      text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 5, str.tostring(GM.active_pattern_count),
+               text_color=color.aqua, text_size=size.small)
+    table.cell(hud_table, 2, 5, "/ " + str.tostring(GM.total_patterns_seen),
+               text_color=color.gray, text_size=size.small)
+
+    table.cell(hud_table, 0, 6, "HTF Vol-Idx",       text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 6, str.tostring(GM.htf_volatility_index, "#.###") + "%",
+               text_color=color.orange, text_size=size.small)
+    table.cell(hud_table, 2, 6, htf_tf,              text_color=color.gray,   text_size=size.small)
+
+    string bias_str   = GM.composite_bias > 0 ? "▲ BULL" : GM.composite_bias < 0 ? "▼ BEAR" : "◆ NEUT"
+    color  bias_col   = GM.composite_bias > 0 ? color.lime : GM.composite_bias < 0 ? color.red : color.gray
+    table.cell(hud_table, 0, 7, "Composite Bias",    text_color=color.silver, text_size=size.small)
+    table.cell(hud_table, 1, 7, bias_str,            text_color=bias_col,     text_size=size.small)
+    table.cell(hud_table, 2, 7, "LTF×" + str.tostring(GM.ltf_precision_factor, "#.##"),
+               text_color=color.gray, text_size=size.small)

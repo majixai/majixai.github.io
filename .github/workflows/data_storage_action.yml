@@ -16,4 +16,14 @@ jobs:
       with:
         python-version: '3.x'
     - name: Run script
-      run: python -c "import json; new_link = {'text': 'New Link from Action', 'url': 'https://www.newlinkfromaction.com'}; with open('menu/menu.json', 'r+') as f: data = json.load(f); data['links'].append(new_link); f.seek(0); json.dump(data, f, indent=4); f.truncate()"
+      run: |
+        python - << 'PYEOF'
+        import json
+        new_link = {'text': 'New Link from Action', 'url': 'https://www.newlinkfromaction.com'}
+        with open('menu/menu.json', 'r+') as f:
+            data = json.load(f)
+            data['links'].append(new_link)
+            f.seek(0)
+            json.dump(data, f, indent=4)
+            f.truncate()
+        PYEOF

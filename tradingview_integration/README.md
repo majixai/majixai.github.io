@@ -5,7 +5,12 @@ This project demonstrates how to integrate TradingView's Pine Script with Google
 ## Project Structure
 
 - **`pine_ml_indicator.pine`** — Neural Network ML indicator (Pine Script v5) with RSI, MACD, Bollinger Bands, and volume scoring.
-- **`/pine_script`** — Additional Pine Script files.
+- **`/pine_script`** — Additional Pine Script files:
+  - `advanced_indicator.pine` — Multi-indicator strategy combining RSI, MACD, Bollinger Bands, ATR, Stochastic, ADX, VWAP, candlestick patterns, S/R, and MTF signals.
+  - `data_reader.pine` — Reads compressed Pine Seeds external data via `request.seed()`.
+  - `jinx_alpha_trend_v13.pine` — JINX Alpha Trend v13 strategy.
+  - `scalp_poi_hs_dirac.pine` — Scalp POI strategy with 15 analytical engines (see `/pine_script/README.md` for full documentation).
+  - `recursive_nested_matrix_engine.pine` — Recursive Nested Matrix Engine v6: 5-level UDT hierarchy (MatrixPoint → VectorSegment → SwingPath → PatternManifest → GlobalMatrix), four pattern detectors (Expansion, Compression, H&S, Double-Top/Bottom), 4-ticker weighted correlation matrix, and rolling volume-profile POC.
 - **`/google_apps_script`** — Google Apps Script files that push data to GitHub.
 - **`/data`** — Data files in `.csv` and compressed `.dat` format.
 - **`/.github/workflows`** — GitHub Actions workflow for scheduled data updates.
