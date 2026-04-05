@@ -2,17 +2,17 @@
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- 9b189938cc -- 2026-04-05 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci]
-- 9b9d9a800a -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- 1ade003864 -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- 5ed15a7dae -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- e3939cc508 -- 2026-04-05 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
+- bc3d98f6ec -- 2026-04-05 -- github-actions[bot] -- Update scraped financial data
+- 6e050ed9f8 -- 2026-04-05 -- majixai -- Update yfinance data
+- 2cf9fbc74b -- 2026-04-04 -- majixai -- Merge pull request #348 from majixai/copilot/enhance-finance-dirs-again
+- 3bb03a26e2 -- 2026-04-05 -- github-actions[bot] -- docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy)
+- 5dc797f3b1 -- 2026-04-04 -- majixai -- Merge pull request #347 from majixai/copilot/implement-recursive-nested-typing
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `a4cb4d7` — 2026-04-05 — **github-actions[bot]** — projection: Update S&P 500 closing projection - 2026-04-05 02:26:06 UTC  
-  _756 lines changed (363+ / 393-)_
+- **Biggest update today:** `2cf9fbc` — 2026-04-04 — **majixai** — Merge pull request #348 from majixai/copilot/enhance-finance-dirs-again  
+  _3705 lines changed (3580+ / 125-)_
 - **Biggest update this week:** `ae87f8d` — 2026-04-02 — **github-actions[bot]** — data: Update index data - 2026-04-02 01:45:55 UTC  
   _351872 lines changed (350783+ / 1089-)_
 - **Biggest update this month:** `ae87f8d` — 2026-04-02 — **github-actions[bot]** — data: Update index data - 2026-04-02 01:45:55 UTC  
