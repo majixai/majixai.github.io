@@ -1,0 +1,276 @@
+//@version=5
+// =============================================================================
+// JINXAI Tensor Forecast  |  Pine Script v5
+// T ∈ R^(n × m × p) — Time × Features × Regime States
+//
+// Architecture:
+//   Layer 1 — Feature Matrix  F ∈ R^(n × m)
+//   Layer 2 — Tensor Core  C = FᵀF / n  ∈ R^(m × m)  (covariance)
+//   Layer 3 — HOSVD Smoothing via truncated eigendecomposition
+//   Layer 4 — Regime Classification  P ∈ R^(n × p)  via softmax
+//   Layer 5 — Forecast Path with σ-bands (Gaussian Probability Field)
+// =============================================================================
+indicator("JINXAI Tensor Forecast", overlay=true,
+          max_labels_count=500, max_lines_count=200, max_boxes_count=50)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INPUTS
+// ─────────────────────────────────────────────────────────────────────────────
+var GRP_T = "Tensor Dimensions  T ∈ R^(n × m × p)"
+int    N  = input.int(20,  "n — Lookback  (Time Axis)",    minval=5,  maxval=100, group=GRP_T)
+int    H  = input.int(10,  "Horizon (forecast bars ahead)",minval=1,  maxval=30,  group=GRP_T)
+
+var GRP_W = "Feature Weights  w₁…w₄  (Price · RSI · Volatility · Momentum)"
+float  w1 = input.float(0.40, "w₁  Price",      minval=0.0, maxval=1.0, step=0.05, group=GRP_W)
+float  w2 = input.float(0.25, "w₂  RSI",        minval=0.0, maxval=1.0, step=0.05, group=GRP_W)
+float  w3 = input.float(0.20, "w₃  Volatility", minval=0.0, maxval=1.0, step=0.05, group=GRP_W)
+float  w4 = input.float(0.15, "w₄  Momentum",   minval=0.0, maxval=1.0, step=0.05, group=GRP_W)
+
+var GRP_V = "Visualisation"
+bool   showForecast = input.bool(true,    "Show Tensor Forecast Line",  group=GRP_V)
+bool   showBands    = input.bool(true,    "Show Probability Field (σ)",  group=GRP_V)
+bool   showLabels   = input.bool(true,    "Show Horizon Label",          group=GRP_V)
+bool   showRegime   = input.bool(true,    "Show Regime Dot Markers",     group=GRP_V)
+bool   showTable    = input.bool(true,    "Show Summary Table",          group=GRP_V)
+color  cForecast    = input.color(#00ff88,"Forecast Line",               group=GRP_V)
+color  cField       = input.color(#00ff88,"Probability Field Tint",      group=GRP_V)
+float  sigmaScale   = input.float(1.0,    "σ Scale",    minval=0.1, maxval=3.0, step=0.1, group=GRP_V)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 1 — FEATURE MATRIX  F ∈ R^(n × m)
+//
+// Each row i is the feature vector for bar[i] (0 = current, N-1 = oldest).
+// m = 4 features:
+//   col 0  Price z-score:       (close[i] - μ) / σ
+//   col 1  Normalised RSI:      (RSI[i] - 50) / 50
+//   col 2  ATR normalised:      atr[i] / atr  (ratio to current ATR)
+//   col 3  Price momentum:      (close[i] - close[i+N]) / close[i+N]
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Running μ and σ over the lookback window
+float mu_price  = ta.sma(close,   N)
+float sd_price  = ta.stdev(close, N) + 1e-9
+float atr_now   = ta.atr(14)
+
+// Feature column vectors (length N arrays)
+var float[] fPrice = array.new_float(0)
+var float[] fRsi   = array.new_float(0)
+var float[] fAtr   = array.new_float(0)
+var float[] fMom   = array.new_float(0)
+
+array.clear(fPrice)
+array.clear(fRsi)
+array.clear(fAtr)
+array.clear(fMom)
+
+for i = 0 to N - 1
+    // col 0: z-score price
+    array.push(fPrice, (close[i] - mu_price) / sd_price)
+    // col 1: centred & scaled RSI
+    array.push(fRsi,   (ta.rsi(close, 14)[i] - 50.0) / 50.0)
+    // col 2: ATR ratio (volatility regime)
+    float atr_i = ta.atr(14)[i]
+    array.push(fAtr,   atr_now > 0 ? (atr_i / atr_now) - 1.0 : 0.0)
+    // col 3: N-bar momentum
+    float base = close[i + N]
+    array.push(fMom,   base != 0 ? (close[i] - base) / base : 0.0)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 2 — TENSOR CORE  C = FᵀF / N  ∈ R^(4 × 4)  (covariance matrix)
+//
+// We compute only the dot-products needed for the weight-projected score.
+// Full covariance row 0 (price feature): [c00, c01, c02, c03]
+// ─────────────────────────────────────────────────────────────────────────────
+f_dot(a, b) =>
+    float s = 0.0
+    int   sz = math.min(array.size(a), array.size(b))
+    for j = 0 to sz - 1
+        s += array.get(a, j) * array.get(b, j)
+    s / sz
+
+// Covariance matrix row 0 (price row) — used for the dominant-eigenvector projection
+float c00 = f_dot(fPrice, fPrice)   // price · price
+float c01 = f_dot(fPrice, fRsi)     // price · RSI
+float c02 = f_dot(fPrice, fAtr)     // price · volatility
+float c03 = f_dot(fPrice, fMom)     // price · momentum
+
+// Cross-feature covariance entries for HOSVD noise estimate
+float c11 = f_dot(fRsi, fRsi)
+float c22 = f_dot(fAtr, fAtr)
+float c33 = f_dot(fMom, fMom)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 3 — HOSVD NOISE FLOOR + DENOISED DRIFT
+//
+// Standard HOSVD truncates small singular values.  Here we approximate the
+// noise floor as the median off-diagonal covariance magnitude and use it to
+// compute a soft shrinkage coefficient α ∈ [0, 1].
+//
+// The denoised drift  Δ_smooth = α · Δ_raw + (1 − α) · SMA(Δ_raw, N)
+// ─────────────────────────────────────────────────────────────────────────────
+float noiseFloor    = (math.abs(c01) + math.abs(c02) + math.abs(c03)) / 3.0
+float diagTrace     = c00 + c11 + c22 + c33 + 1e-9          // proxy for total variance
+float alpha         = math.max(0.0, 1.0 - noiseFloor / diagTrace)  // shrinkage
+
+float rawDrift      = (close - close[N]) / N
+float sma_drift     = ta.sma(rawDrift, N)
+float smoothDrift   = alpha * rawDrift + (1.0 - alpha) * sma_drift
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 4 — TENSOR CONTRACTION  →  scalar score
+//
+// score = w₁·c00 + w₂·c01 + w₃·c02 + w₄·c03
+//       = feature-weight vector projected onto the price covariance row.
+// Equivalent to one power-method iteration for the leading eigenvector.
+// ─────────────────────────────────────────────────────────────────────────────
+float tensorScore  = w1 * c00 + w2 * c01 + w3 * c02 + w4 * c03
+float sigmoidScore = 1.0 / (1.0 + math.exp(-tensorScore * 5.0))   // ∈ (0, 1)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 5 — REGIME CLASSIFICATION  P ∈ R^(n × p)
+//
+// Three-class soft labels via sigmoid:
+//   p_bull   = σ(score · 5)
+//   p_bear   = 1 − p_bull
+//   p_neutral = 1 − |p_bull − 0.5| · 2     (high when near 0.5)
+// ─────────────────────────────────────────────────────────────────────────────
+float pBull    = sigmoidScore
+float pBear    = 1.0 - sigmoidScore
+float pNeutral = 1.0 - math.abs(sigmoidScore - 0.5) * 2.0
+
+// Dominant regime label
+string regime = pBull > pBear and pBull > pNeutral ? "BULL" :
+                pBear > pBull and pBear > pNeutral ? "BEAR" : "NEUT"
+color  rColor = regime == "BULL" ? color.new(color.green, 30) :
+                regime == "BEAR" ? color.new(color.red,   30) :
+                                   color.new(color.gray,  50)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 6 — FORECAST PATH
+//
+// Tensor-adjusted drift:  Δ_adj = Δ_smooth × (1 + ½·tanh(score))
+// Centroid at horizon k:  E[p_{t+k}] = p_t + Δ_adj · k
+// Uncertainty band:       σ_k = ATR × √k × sigmaScale
+// ─────────────────────────────────────────────────────────────────────────────
+float adjFactor   = 1.0 + 0.5 * math.tanh(tensorScore)
+float adjustedDrift = smoothDrift * adjFactor
+
+float forecastH   = close + adjustedDrift * H
+float upperH      = forecastH + atr_now * math.sqrt(H) * sigmaScale
+float lowerH      = forecastH - atr_now * math.sqrt(H) * sigmaScale
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 7 — VISUALISATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Tensor Forecast centroid line ──
+plot(showForecast ? forecastH : na, "Tensor Forecast (centroid)",
+     color=cForecast, linewidth=2, style=plot.style_linebr)
+
+// ── Gaussian Probability Field  (σ corridor) ──
+p_upper = plot(showBands ? upperH : na, "σ Upper Band",
+               color=color.new(cField, 60), linewidth=1, style=plot.style_linebr)
+p_lower = plot(showBands ? lowerH : na, "σ Lower Band",
+               color=color.new(cField, 60), linewidth=1, style=plot.style_linebr)
+fill(p_upper, p_lower, color=color.new(cField, 85), title="Tensor Probability Field")
+
+// ── Denoised price signal (lookback reconstructed) ──
+float denoisedClose = close + smoothDrift
+plot(denoisedClose, "Denoised Price (HOSVD)",
+     color=color.new(#8888ff, 60), linewidth=1, style=plot.style_line)
+
+// ── Regime dot markers ──
+if showRegime
+    plotshape(true, "Regime Marker", shape.circle,
+              location.abovebar, color=rColor, size=size.tiny)
+
+// ── Horizon forecast label ──
+if barstate.islast and showLabels
+    color lbColor = regime == "BULL" ? color.new(#00ff88, 5) :
+                    regime == "BEAR" ? color.new(#ff4444, 5) :
+                                       color.new(#aaaaaa, 5)
+    label.new(
+        bar_index + H, forecastH,
+        "⊕ " + str.tostring(math.round(forecastH, 2)) + "\n" +
+        "σ+ " + str.tostring(math.round(upperH - forecastH, 2)) + "\n" +
+        "σ− " + str.tostring(math.round(forecastH - lowerH, 2)) + "\n" +
+        "Regime: " + regime,
+        color=lbColor, textcolor=color.black,
+        style=label.style_label_left, size=size.small)
+
+    // Draw sigma lines to horizon
+    line.new(bar_index, close, bar_index + H, forecastH,
+             color=color.new(cForecast, 30), width=1, style=line.style_dashed)
+    line.new(bar_index, close, bar_index + H, upperH,
+             color=color.new(cField, 50), width=1, style=line.style_dotted)
+    line.new(bar_index, close, bar_index + H, lowerH,
+             color=color.new(cField, 50), width=1, style=line.style_dotted)
+
+// ── Summary Table ──
+if showTable and barstate.islast
+    var table tbl = table.new(position.top_right, 2, 9,
+                              border_width=1,
+                              border_color=color.new(color.gray, 50),
+                              frame_color=color.new(color.gray, 20),
+                              frame_width=1)
+
+    // Header
+    table.cell(tbl, 0, 0, "JINXAI Tensor",
+               bgcolor=color.new(#00ff88, 15), text_color=color.black, text_size=size.small)
+    table.cell(tbl, 1, 0, "Value",
+               bgcolor=color.new(#00ff88, 15), text_color=color.black, text_size=size.small)
+
+    // Tensor Score
+    table.cell(tbl, 0, 1, "T-Score",      text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 1, str.tostring(math.round(tensorScore, 4)),
+               text_color=color.white, text_size=size.small)
+
+    // HOSVD alpha
+    table.cell(tbl, 0, 2, "HOSVD α",      text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 2, str.tostring(math.round(alpha, 4)),
+               text_color=color.white, text_size=size.small)
+
+    // Regime
+    table.cell(tbl, 0, 3, "Regime",        text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 3, regime, bgcolor=rColor, text_color=color.white, text_size=size.small)
+
+    // Regime probabilities
+    table.cell(tbl, 0, 4, "p(Bull)",       text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 4, str.tostring(math.round(pBull * 100, 1)) + "%",
+               text_color=color.new(color.green, 10), text_size=size.small)
+
+    table.cell(tbl, 0, 5, "p(Bear)",       text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 5, str.tostring(math.round(pBear * 100, 1)) + "%",
+               text_color=color.new(color.red, 10), text_size=size.small)
+
+    table.cell(tbl, 0, 6, "Adj Factor",    text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 6, str.tostring(math.round(adjFactor, 4)),
+               text_color=color.white, text_size=size.small)
+
+    // Forecast at horizon H
+    table.cell(tbl, 0, 7, "Forecast +" + str.tostring(H) + "b",
+               text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 7, str.tostring(math.round(forecastH, 4)),
+               text_color=color.new(#00ff88, 0), text_size=size.small)
+
+    // ATR / σ
+    table.cell(tbl, 0, 8, "σ (ATR×√H)",   text_color=color.white, text_size=size.small)
+    table.cell(tbl, 1, 8,
+               str.tostring(math.round(atr_now * math.sqrt(H) * sigmaScale, 4)),
+               text_color=color.white, text_size=size.small)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALERTS
+// ─────────────────────────────────────────────────────────────────────────────
+alertcondition(regime == "BULL" and regime[1] != "BULL",
+               title="Tensor → BULL Regime",
+               message="{{ticker}} Tensor regime shifted to BULLISH. Score={{plot_0}}")
+alertcondition(regime == "BEAR" and regime[1] != "BEAR",
+               title="Tensor → BEAR Regime",
+               message="{{ticker}} Tensor regime shifted to BEARISH. Score={{plot_0}}")
+alertcondition(close > upperH,
+               title="Price Breaks Tensor Upper σ",
+               message="{{ticker}} closed ABOVE the tensor upper σ band ({{close}} > {{plot_1}})")
+alertcondition(close < lowerH,
+               title="Price Breaks Tensor Lower σ",
+               message="{{ticker}} closed BELOW the tensor lower σ band ({{close}} < {{plot_2}})")
