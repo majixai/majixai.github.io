@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2c3e50">
+  <meta name="description" content="MajixAI Router — Central routing hub for all projects">
+  <title>MajixAI Router</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent: #06d6a0;
+      --secondary: #3498db;
+      --bg: #e8f0fe;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1a252f 100%);
+      color: #fff;
+      padding: 2.5rem 1.5rem 2rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: .12em; margin: 0 0 .4rem; }
+    header p  { opacity: .85; margin: 0; font-size: 1.05rem; }
+    header a.back-link {
+      position: absolute;
+      top: 1.1rem; left: 1.2rem;
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+      font-size: .9rem;
+    }
+    header a.back-link:hover { color: #fff; }
+
+    /* ── Controls ──────────────────────────────────────────────── */
+    .controls {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,.97);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+      padding: .75rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .controls .search-wrap {
+      flex: 1 1 240px;
+      max-width: 420px;
+      position: relative;
+    }
+    .controls .search-wrap input {
+      width: 100%;
+      padding: .5rem 1rem .5rem 2.3rem;
+      border: 2px solid #cdd8e3;
+      border-radius: 999px;
+      outline: none;
+      font-size: .95rem;
+      transition: border-color .2s;
+    }
+    .controls .search-wrap input:focus { border-color: var(--accent); }
+    .controls .search-wrap .fa-magnifying-glass {
+      position: absolute;
+      left: .85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      pointer-events: none;
+    }
+    .controls .cats {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .controls .cats button {
+      padding: .35rem .85rem;
+      border: 2px solid transparent;
+      border-radius: 999px;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #eef2f7;
+      color: var(--primary);
+      text-transform: capitalize;
+      transition: background .2s, border-color .2s, color .2s;
+    }
+    .controls .cats button.active,
+    .controls .cats button:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    #route-count {
+      font-size: .82rem;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    /* ── Grid ──────────────────────────────────────────────────── */
+    main {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.1rem;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────────── */
+    .route-card {
+      background: #fff;
+      border-radius: .9rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: transform .25s, box-shadow .25s;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+    .route-card:hover {
+      transform: translateY(-5px) scale(1.015);
+      box-shadow: 0 10px 28px rgba(0,0,0,.15);
+      text-decoration: none;
+      color: inherit;
+    }
+    .card-stripe {
+      height: 6px;
+    }
+    .card-body-custom {
+      padding: 1rem 1.1rem .85rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .card-name {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: .2rem;
+      color: var(--primary);
+    }
+    .card-desc {
+      font-size: .82rem;
+      color: #555;
+      flex: 1;
+      line-height: 1.4;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .card-footer-custom {
+      padding: .55rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #f0f2f5;
+      font-size: .75rem;
+    }
+    .cat-badge {
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: .68rem;
+      letter-spacing: .04em;
+    }
+    .card-path { color: #888; font-family: monospace; }
+
+    /* Category colours */
+    .cat-finance  { background: #dff0d8; color: #2d6a4f; }
+    .cat-gaming   { background: #fde8d8; color: #a84300; }
+    .cat-tools    { background: #dce8fd; color: #1a3a6e; }
+    .cat-web      { background: #ede8fd; color: #5a1a8a; }
+    .cat-data     { background: #fef3cd; color: #7a5200; }
+    .stripe-finance  { background: #52b788; }
+    .stripe-gaming   { background: #f4845f; }
+    .stripe-tools    { background: #4895ef; }
+    .stripe-web      { background: #9b72cf; }
+    .stripe-data     { background: #f4a261; }
+
+    /* ── Empty state ────────────────────────────────────────────── */
+    #empty-state {
+      display: none;
+      text-align: center;
+      padding: 4rem 1rem;
+      color: #888;
+      grid-column: 1 / -1;
+    }
+    #empty-state i { font-size: 3rem; margin-bottom: 1rem; display: block; }
+
+    /* ── Jump bar ───────────────────────────────────────────────── */
+    #jump-bar {
+      background: #fff;
+      border: 2px solid var(--accent);
+      border-radius: .7rem;
+      padding: .6rem 1rem;
+      margin-bottom: 1.2rem;
+      display: none;
+      align-items: center;
+      gap: .75rem;
+    }
+    #jump-bar span { font-size: .9rem; flex: 1; }
+    #jump-bar a.btn { font-size: .8rem; }
+  </style>
+</head>
+<body>
+
+<header style="position:relative">
+  <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
+  <h1><i class="fa fa-route"></i> MajixAI Router</h1>
+  <p>Central routing hub — navigate to any of the <strong id="total-count">…</strong> projects instantly</p>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <i class="fa fa-magnifying-glass"></i>
+    <input type="search" id="search-input" placeholder="Search projects…" autocomplete="off" aria-label="Search projects">
+  </div>
+  <div class="cats" id="cat-buttons">
+    <button class="active" data-cat="all">All</button>
+    <button data-cat="finance">Finance</button>
+    <button data-cat="gaming">Gaming</button>
+    <button data-cat="tools">Tools</button>
+    <button data-cat="web">Web</button>
+    <button data-cat="data">Data</button>
+  </div>
+  <span id="route-count"></span>
+</div>
+
+<main>
+  <!-- Jump bar shown when URL has ?go= or #path -->
+  <div id="jump-bar">
+    <i class="fa fa-compass"></i>
+    <span id="jump-msg"></span>
+    <a id="jump-link" class="btn btn-sm btn-success" href="#">Go <i class="fa fa-arrow-right"></i></a>
+    <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('jump-bar').style.display='none'">✕</button>
+  </div>
+
+  <div id="grid">
+    <div id="empty-state">
+      <i class="fa fa-circle-xmark"></i>
+      <p>No projects match your search.</p>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script type="module">
+  import router from './router.js';
+
+  const grid       = document.getElementById('grid');
+  const searchInput = document.getElementById('search-input');
+  const catButtons  = document.querySelectorAll('#cat-buttons button');
+  const routeCount  = document.getElementById('route-count');
+  const emptyState  = document.getElementById('empty-state');
+  const totalCount  = document.getElementById('total-count');
+  const jumpBar     = document.getElementById('jump-bar');
+  const jumpMsg     = document.getElementById('jump-msg');
+  const jumpLink    = document.getElementById('jump-link');
+
+  let activeCat   = 'all';
+  let searchQuery = '';
+
+  const CAT_STRIPE = {
+    finance: 'stripe-finance', gaming: 'stripe-gaming',
+    tools: 'stripe-tools', web: 'stripe-web', data: 'stripe-data',
+  };
+  const CAT_BADGE = {
+    finance: 'cat-finance', gaming: 'cat-gaming',
+    tools: 'cat-tools', web: 'cat-web', data: 'cat-data',
+  };
+
+  function buildCard(route) {
+    const cat   = (route.category || 'tools').toLowerCase();
+    const stripe = CAT_STRIPE[cat] || 'stripe-tools';
+    const badge  = CAT_BADGE[cat]  || 'cat-tools';
+    const href   = `https://majixai.github.io${route.path}`;
+
+    const a = document.createElement('a');
+    a.className = 'route-card';
+    a.href = href;
+    a.setAttribute('data-cat', cat);
+    a.setAttribute('data-name', route.name.toLowerCase());
+    a.setAttribute('data-desc', (route.desc || '').toLowerCase());
+    a.innerHTML = `
+      <div class="card-stripe ${stripe}"></div>
+      <div class="card-body-custom">
+        <div class="card-name">${escHtml(route.name)}</div>
+        <div class="card-desc">${escHtml(route.desc || '')}</div>
+      </div>
+      <div class="card-footer-custom">
+        <span class="cat-badge ${badge}">${escHtml(cat)}</span>
+        <span class="card-path">${escHtml(route.path)}</span>
+      </div>`;
+    return a;
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderGrid(routes) {
+    // Remove all existing cards (keep #empty-state)
+    [...grid.querySelectorAll('.route-card')].forEach(el => el.remove());
+
+    if (routes.length === 0) {
+      emptyState.style.display = 'block';
+      routeCount.textContent = '0 projects';
+      return;
+    }
+    emptyState.style.display = 'none';
+    routeCount.textContent = `${routes.length} project${routes.length !== 1 ? 's' : ''}`;
+
+    const frag = document.createDocumentFragment();
+    routes.forEach(r => frag.appendChild(buildCard(r)));
+    grid.insertBefore(frag, emptyState);
+  }
+
+  function applyFilters() {
+    let results = activeCat === 'all'
+      ? router.routes
+      : router.filter(activeCat);
+
+    if (searchQuery) {
+      const terms = searchQuery.toLowerCase().split(/\s+/);
+      results = results.filter(r => {
+        const hay = `${r.name} ${r.desc} ${r.category} ${r.lastCommitMessage || ''}`.toLowerCase();
+        return terms.every(t => hay.includes(t));
+      });
+    }
+    renderGrid(results);
+  }
+
+  // ── Search ──────────────────────────────────────────────────────────────────
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value.trim();
+    applyFilters();
+  });
+
+  // ── Category buttons ────────────────────────────────────────────────────────
+  catButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      catButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeCat = btn.dataset.cat;
+      applyFilters();
+    });
+  });
+
+  const AUTO_REDIRECT_DELAY_MS = 1500;
+
+  // ── Jump bar (handle ?go=<name> or ?go=<path> query param) ─────────────────
+  function handleJump() {
+    const params  = new URLSearchParams(location.search);
+    const goParam = params.get('go') || location.hash.slice(1);
+    if (!goParam) return;
+
+    const route = router.resolve(goParam);
+    if (route) {
+      const href = `https://majixai.github.io${route.path}`;
+      jumpMsg.textContent = `Routing to: ${route.name} (${route.path})`;
+      jumpLink.href = href;
+      jumpBar.style.display = 'flex';
+      // Auto-redirect after delay unless user dismisses
+      setTimeout(() => { if (jumpBar.style.display !== 'none') location.href = href; }, AUTO_REDIRECT_DELAY_MS);
+    }
+  }
+
+  // ── Bootstrap ───────────────────────────────────────────────────────────────
+  router.ready().then(() => {
+    totalCount.textContent = router.routes.length;
+    renderGrid(router.routes);
+    handleJump();
+    // Pre-fill search if ?q= present
+    const q = new URLSearchParams(location.search).get('q');
+    if (q) { searchInput.value = q; searchQuery = q; applyFilters(); }
+  });
+</script>
+</body>
+</html>
