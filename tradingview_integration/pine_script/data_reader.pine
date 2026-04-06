@@ -1,11 +1,23 @@
 //@version=5
 // =============================================================================
-// Pine Seeds · External Data Reader  |  Pine Script v5
+// Pine Seeds · External Data Reader  (Extended Edition)  |  Pine Script v5
+//
 // Reads a GitHub-hosted CSV / .dat file via request.seed(), parses date-aligned
 // OHLCV rows, and overlays the external close price on the current chart.
+//
+// Extensions:
+//   • OLS linear regression on ext close with R², slope, std-error
+//   • Polynomial curvature (2nd + 3rd order finite difference)
+//   • RSI proxy on ext close series
+//   • Z-score channel (ext close vs. rolling mean ± 2σ)
+//   • Cross-series deviation signals (buy/sell when chart diverges from ext)
+//   • Extended summary table (14 rows)
+//   • 5 alert conditions
+//
 // CSV format expected: date(YYYY-MM-DD), open, high, low, close, volume
 // =============================================================================
-indicator("External Data Reader", overlay=true, max_labels_count=100)
+indicator("External Data Reader — Extended", overlay=true,
+          max_labels_count=200, max_lines_count=100)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INPUTS
@@ -29,8 +41,21 @@ var GRP_DISP  = "Display"
 showExtClose  = input.bool(true,  "Show External Close",      group=GRP_DISP)
 showExtHL     = input.bool(true,  "Show External High/Low",   group=GRP_DISP)
 showDeviation = input.bool(true,  "Show Close Deviation %",   group=GRP_DISP)
+showRegCh     = input.bool(true,  "Show OLS Regression Channel", group=GRP_DISP)
+showZChannel  = input.bool(true,  "Show Z-Score Channel",     group=GRP_DISP)
 showSummary   = input.bool(true,  "Show Summary Table",       group=GRP_DISP)
+showSignals   = input.bool(true,  "Show Divergence Signals",  group=GRP_DISP)
 lineCol       = input.color(color.new(color.blue, 0), "Line Colour", group=GRP_DISP)
+
+var GRP_REG   = "Regression"
+regLen        = input.int(20,   "OLS Lookback Length",  minval=5,  maxval=100, group=GRP_REG)
+regBandMult   = input.float(2.0,"Band Multiplier",      minval=0.5,maxval=5.0, group=GRP_REG)
+
+var GRP_SIG   = "Divergence Signals"
+devBuyThr     = input.float(-3.0,"Buy  Divergence Threshold %", minval=-20.0, maxval=0.0,  step=0.5, group=GRP_SIG)
+devSellThr    = input.float( 3.0,"Sell Divergence Threshold %", minval=0.0,   maxval=20.0, step=0.5, group=GRP_SIG)
+rsiOversold   = input.float(30.0,"RSI Proxy Oversold",          minval=10.0,  maxval=45.0, step=1.0, group=GRP_SIG)
+rsiOverbought = input.float(70.0,"RSI Proxy Overbought",        minval=55.0,  maxval=90.0, step=1.0, group=GRP_SIG)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FETCH EXTERNAL DATA
@@ -40,7 +65,6 @@ var string rawData = request.seed(dataUrl, "")
 // ─────────────────────────────────────────────────────────────────────────────
 // PARSE CSV INTO ARRAYS
 // ─────────────────────────────────────────────────────────────────────────────
-// Storage arrays (var → persist across bars, populated only once on first bar)
 var float[] extOpen   = array.new_float(0)
 var float[] extHigh   = array.new_float(0)
 var float[] extLow    = array.new_float(0)
@@ -57,14 +81,12 @@ if not parsed and not na(rawData) and str.length(rawData) > 0
     if nLines > startRow
         for i = startRow to nLines - 1
             string ln = array.get(lines, i)
-            // Strip trailing carriage return (Windows line endings)
             if str.endswith(ln, "\r")
                 ln := str.substring(ln, 0, str.length(ln) - 1)
             if str.length(ln) < 3
                 continue
             string[] cols = str.split(ln, delimiter)
             int nc = array.size(cols)
-            // Require at least closeCol + 1 columns
             if nc <= closeCol
                 continue
             float c = str.tonumber(array.get(cols, closeCol))
@@ -83,7 +105,7 @@ if not parsed and not na(rawData) and str.length(rawData) > 0
             array.push(extDates, d)
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPUTE SUMMARY STATISTICS
+// SUMMARY STATISTICS
 // ─────────────────────────────────────────────────────────────────────────────
 int   nRows       = array.size(extClose)
 float extLastC    = nRows > 0 ? array.get(extClose, nRows - 1) : na
@@ -93,7 +115,7 @@ float extLastV    = nRows > 0 ? array.get(extVol,   nRows - 1) : na
 float extMinC     = nRows > 0 ? array.min(extClose) : na
 float extMaxC     = nRows > 0 ? array.max(extClose) : na
 
-// Simple moving average over the external close series
+// SMA(20) over ext close
 float extSmaClose = na
 if nRows >= 5
     float s = 0.0
@@ -102,15 +124,126 @@ if nRows >= 5
         s += array.get(extClose, j)
     extSmaClose := s / n
 
-// Deviation of current chart close vs. external close
+// Rolling std of ext close (last 20 bars)
+float extStdClose = na
+if nRows >= 5
+    int   n  = math.min(20, nRows)
+    float mu = extSmaClose
+    float ss = 0.0
+    for j = nRows - n to nRows - 1
+        float d = array.get(extClose, j) - mu
+        ss += d * d
+    extStdClose := math.sqrt(ss / n + 1e-9)
+
+// Deviation of chart close vs. ext close
 float deviation = not na(extLastC) and extLastC != 0 ?
                   (close - extLastC) / extLastC * 100 : na
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OLS LINEAR REGRESSION  on last regLen bars of ext close
+// ─────────────────────────────────────────────────────────────────────────────
+// Manual OLS: slope, intercept, R², std-error
+float regSlope     = na
+float regIntercept = na
+float regR2        = na
+float regStdErr    = na
+float regLineVal   = na
+float regUpper     = na
+float regLower     = na
+
+if nRows >= regLen
+    int   n_reg = math.min(regLen, nRows)
+    float sx    = 0.0
+    float sy    = 0.0
+    float sxy   = 0.0
+    float sxx   = 0.0
+    float syy   = 0.0
+    for j = 0 to n_reg - 1
+        float xj = float(j)
+        float yj = array.get(extClose, nRows - n_reg + j)
+        sx  += xj
+        sy  += yj
+        sxy += xj * yj
+        sxx += xj * xj
+        syy += yj * yj
+    float denom = n_reg * sxx - sx * sx + 1e-9
+    regSlope     := (n_reg * sxy - sx * sy) / denom
+    regIntercept := (sy - regSlope * sx) / n_reg
+
+    // R² and std-error
+    float ss_res = 0.0
+    float ss_tot = 0.0
+    float ymean  = sy / n_reg
+    for j = 0 to n_reg - 1
+        float xj   = float(j)
+        float yj   = array.get(extClose, nRows - n_reg + j)
+        float y_hat = regSlope * xj + regIntercept
+        ss_res += math.pow(yj - y_hat, 2)
+        ss_tot += math.pow(yj - ymean, 2)
+    regR2     := ss_tot > 0 ? 1.0 - ss_res / ss_tot : 0.0
+    regStdErr := n_reg > 2 ? math.sqrt(ss_res / (n_reg - 2)) : 0.0
+
+    // Projected line value at last bar
+    regLineVal := regSlope * float(n_reg - 1) + regIntercept
+    regUpper   := regLineVal + regBandMult * regStdErr
+    regLower   := regLineVal - regBandMult * regStdErr
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLYNOMIAL CURVATURE  (2nd and 3rd order differences via linreg)
+// ─────────────────────────────────────────────────────────────────────────────
+float lrNow  = not na(extLastC) ? extLastC : close
+float lrPrev = nRows > 1 ? array.get(extClose, nRows - 2) : lrNow
+float lrPrev2= nRows > 2 ? array.get(extClose, nRows - 3) : lrPrev
+float accel  = (lrNow - lrPrev) - (lrPrev - lrPrev2)        // 2nd order
+float jerk   = nRows > 3
+    ? accel - ((lrPrev - lrPrev2) - (lrPrev2 - array.get(extClose, nRows - 4)))
+    : 0.0                                                     // 3rd order
+float atrExt = ta.atr(14) + 1e-9
+float accelN = accel / atrExt    // ATR-normalised
+float jerkN  = jerk  / atrExt
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RSI PROXY  on ext close series (Wilder's method, last N bars)
+// ─────────────────────────────────────────────────────────────────────────────
+float extRsi = na
+if nRows >= 16
+    int   np   = 14
+    float avgG = 0.0
+    float avgL = 0.0
+    for j = nRows - np - 1 to nRows - 2
+        float d = array.get(extClose, j + 1) - array.get(extClose, j)
+        if d > 0
+            avgG += d
+        else
+            avgL -= d
+    avgG /= np
+    avgL /= np
+    float rs = avgG / (avgL + 1e-9)
+    extRsi := 100.0 - 100.0 / (1.0 + rs)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Z-SCORE CHANNEL  (ext close vs. its own rolling μ ± 2σ)
+// ─────────────────────────────────────────────────────────────────────────────
+float extZScore = not na(extLastC) and not na(extSmaClose) and not na(extStdClose) ?
+                  (extLastC - extSmaClose) / extStdClose : na
+float extZUpper = not na(extSmaClose) and not na(extStdClose) ?
+                  extSmaClose + 2.0 * extStdClose : na
+float extZLower = not na(extSmaClose) and not na(extStdClose) ?
+                  extSmaClose - 2.0 * extStdClose : na
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DIVERGENCE SIGNALS
+// ─────────────────────────────────────────────────────────────────────────────
+bool divBuy  = showSignals and not na(deviation) and deviation <= devBuyThr
+               and (na(extRsi) or extRsi < rsiOversold)
+bool divSell = showSignals and not na(deviation) and deviation >= devSellThr
+               and (na(extRsi) or extRsi > rsiOverbought)
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PLOTS
 // ─────────────────────────────────────────────────────────────────────────────
-plot(showExtClose ? extLastC    : na, "Ext Close",     color=lineCol,
-     style=plot.style_circles, linewidth=2)
+plot(showExtClose ? extLastC    : na, "Ext Close",
+     color=lineCol, style=plot.style_circles, linewidth=2)
 plot(showExtHL    ? extLastH    : na, "Ext High",
      color=color.new(color.green, 30), style=plot.style_circles, linewidth=1)
 plot(showExtHL    ? extLastL    : na, "Ext Low",
@@ -118,10 +251,32 @@ plot(showExtHL    ? extLastL    : na, "Ext Low",
 plot(not na(extSmaClose) ? extSmaClose : na, "Ext SMA(20)",
      color=color.new(color.orange, 10), linewidth=2, style=plot.style_line)
 
-// Reference band between ext high and ext low
+// OLS Regression channel (plotted on ext price level)
+regLine  = plot(showRegCh and not na(regLineVal) ? regLineVal : na, "Ext Reg Line",
+                color=color.new(#00bcd4, 20), linewidth=2, style=plot.style_line)
+regUp    = plot(showRegCh and not na(regUpper)   ? regUpper   : na, "Ext Reg Upper",
+                color=color.new(#00bcd4, 50), linewidth=1, style=plot.style_line)
+regDn    = plot(showRegCh and not na(regLower)   ? regLower   : na, "Ext Reg Lower",
+                color=color.new(#00bcd4, 50), linewidth=1, style=plot.style_line)
+fill(regUp, regDn, color=color.new(#00bcd4, 88), title="Reg Channel")
+
+// Z-score channel
+zUp  = plot(showZChannel and not na(extZUpper) ? extZUpper : na, "Z +2σ",
+            color=color.new(color.purple, 60), linewidth=1, style=plot.style_linebr)
+zDn  = plot(showZChannel and not na(extZLower) ? extZLower : na, "Z −2σ",
+            color=color.new(color.purple, 60), linewidth=1, style=plot.style_linebr)
+fill(zUp, zDn, color=color.new(color.purple, 90), title="Z-Score Channel")
+
+// Ext H/L reference band
 extHighPlot = plot(showExtHL ? extLastH : na, display=display.none)
 extLowPlot  = plot(showExtHL ? extLastL : na, display=display.none)
 fill(extHighPlot, extLowPlot, color=color.new(color.blue, 88), title="Ext H/L Band")
+
+// Divergence signals
+plotshape(divBuy,  "Div Buy",  shape.triangleup,   location.belowbar,
+          color=color.new(color.lime, 10),   size=size.small)
+plotshape(divSell, "Div Sell", shape.triangledown, location.abovebar,
+          color=color.new(color.orange, 10), size=size.small)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LABEL on last bar
@@ -130,58 +285,58 @@ if barstate.islast and not na(extLastC)
     string lDate  = nRows > 0 ? array.get(extDates, nRows - 1) : "N/A"
     string devStr = not na(deviation) ?
                     (deviation >= 0 ? "+" : "") + str.tostring(math.round(deviation, 2)) + "%" : "N/A"
-    string lblTxt = "Ext Close: "  + str.tostring(extLastC)   + "\n" +
-                    "Date: "       + lDate                     + "\n" +
-                    "Deviation: "  + devStr                    + "\n" +
-                    "Rows loaded: "+ str.tostring(nRows)
+    string rsiStr = not na(extRsi) ? str.tostring(math.round(extRsi, 1)) : "N/A"
+    string r2Str  = not na(regR2)  ? str.tostring(math.round(regR2, 3)) : "N/A"
+    string lblTxt = "Ext Close: "  + str.tostring(extLastC)            + "\n" +
+                    "Date: "       + lDate                              + "\n" +
+                    "Deviation: "  + devStr                             + "\n" +
+                    "RSI proxy: "  + rsiStr                             + "\n" +
+                    "R²: "         + r2Str                              + "\n" +
+                    "Accel: "      + str.tostring(math.round(accelN, 3))+ "\n" +
+                    "Rows: "       + str.tostring(nRows)
     label.new(bar_index, extLastC, lblTxt,
               color=color.new(color.blue, 10), textcolor=color.white,
               style=label.style_label_left, size=size.small)
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SUMMARY TABLE
+// SUMMARY TABLE  (14 rows)
 // ─────────────────────────────────────────────────────────────────────────────
 if showSummary and barstate.islast
-    var table tbl = table.new(position.bottom_right, 2, 8,
+    var table tbl = table.new(position.bottom_right, 2, 15,
                               border_width=1,
                               border_color=color.new(color.gray, 50),
                               frame_color=color.new(color.gray, 20),
                               frame_width=1)
+
+    // Header
     table.cell(tbl, 0, 0, "Pine Seeds Data",
-               bgcolor=color.new(color.navy, 10), text_color=color.white,
-               text_size=size.small)
+               bgcolor=color.new(color.navy, 10), text_color=color.white, text_size=size.small)
     table.cell(tbl, 1, 0, "Value",
-               bgcolor=color.new(color.navy, 10), text_color=color.white,
-               text_size=size.small)
+               bgcolor=color.new(color.navy, 10), text_color=color.white, text_size=size.small)
 
-    table.cell(tbl, 0, 1, "Rows loaded",  text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 1, str.tostring(nRows),
-               text_color=color.white, text_size=size.small)
+    _tc(r, lbl, val) =>
+        table.cell(tbl, 0, r, lbl, text_color=color.white, text_size=size.small)
+        table.cell(tbl, 1, r, val, text_color=color.white, text_size=size.small)
 
-    table.cell(tbl, 0, 2, "Ext Close",    text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 2, not na(extLastC) ? str.tostring(extLastC) : "N/A",
-               text_color=color.white, text_size=size.small)
+    _tc(1,  "Rows loaded",  str.tostring(nRows))
+    _tc(2,  "Ext Close",    not na(extLastC) ? str.tostring(extLastC)                      : "N/A")
+    _tc(3,  "Ext High",     not na(extLastH) ? str.tostring(extLastH)                      : "N/A")
+    _tc(4,  "Ext Low",      not na(extLastL) ? str.tostring(extLastL)                      : "N/A")
+    _tc(5,  "Series Min",   not na(extMinC)  ? str.tostring(math.round(extMinC,  2))       : "N/A")
+    _tc(6,  "Series Max",   not na(extMaxC)  ? str.tostring(math.round(extMaxC,  2))       : "N/A")
+    _tc(7,  "RSI proxy",    not na(extRsi)   ? str.tostring(math.round(extRsi,   1))       : "N/A")
+    _tc(8,  "Z-Score",      not na(extZScore)? str.tostring(math.round(extZScore, 3))      : "N/A")
+    _tc(9,  "Reg Slope",    not na(regSlope) ? str.tostring(math.round(regSlope,  4))      : "N/A")
+    _tc(10, "Reg R²",       not na(regR2)    ? str.tostring(math.round(regR2,    3))       : "N/A")
+    _tc(11, "Reg StdErr",   not na(regStdErr)? str.tostring(math.round(regStdErr, 3))      : "N/A")
+    _tc(12, "Curvature",    str.tostring(math.round(accelN, 4)))
+    _tc(13, "Jerk",         str.tostring(math.round(jerkN,  4)))
 
-    table.cell(tbl, 0, 3, "Ext High",     text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 3, not na(extLastH) ? str.tostring(extLastH) : "N/A",
-               text_color=color.white, text_size=size.small)
-
-    table.cell(tbl, 0, 4, "Ext Low",      text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 4, not na(extLastL) ? str.tostring(extLastL) : "N/A",
-               text_color=color.white, text_size=size.small)
-
-    table.cell(tbl, 0, 5, "Series Min",   text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 5, not na(extMinC) ? str.tostring(math.round(extMinC, 2)) : "N/A",
-               text_color=color.white, text_size=size.small)
-
-    table.cell(tbl, 0, 6, "Series Max",   text_color=color.white, text_size=size.small)
-    table.cell(tbl, 1, 6, not na(extMaxC) ? str.tostring(math.round(extMaxC, 2)) : "N/A",
-               text_color=color.white, text_size=size.small)
-
-    table.cell(tbl, 0, 7, "Deviation %",  text_color=color.white, text_size=size.small)
-    devColor = not na(deviation) and deviation >= 0 ?
-               color.new(color.green, 30) : color.new(color.red, 30)
-    table.cell(tbl, 1, 7,
+    // Deviation with colour
+    table.cell(tbl, 0, 14, "Deviation %",  text_color=color.white, text_size=size.small)
+    color devColor = not na(deviation) and deviation >= 0 ?
+                     color.new(color.green, 30) : color.new(color.red, 30)
+    table.cell(tbl, 1, 14,
                not na(deviation) ?
                (deviation >= 0 ? "+" : "") + str.tostring(math.round(deviation, 2)) + "%" : "N/A",
                bgcolor=showDeviation ? devColor : color.new(color.gray, 60),
@@ -202,3 +357,10 @@ alertcondition(not na(deviation) and math.abs(deviation) > 5,
                title="Large Deviation from External Data",
                message="{{ticker}} has a " + str.tostring(math.round(deviation, 2)) +
                        "% deviation from external seed data")
+alertcondition(divBuy,
+               title="Divergence Buy Signal",
+               message="{{ticker}} is oversold vs. external seed data — potential reversion buy")
+alertcondition(divSell,
+               title="Divergence Sell Signal",
+               message="{{ticker}} is overbought vs. external seed data — potential reversion sell")
+
