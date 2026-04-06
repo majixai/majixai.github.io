@@ -317,8 +317,9 @@ class UIManager {
     refreshSlideshows() {
         // Restart all active slideshows (called on periodic fetch)
         document.querySelectorAll('.slideshow-carousel[data-images]').forEach(carousel => {
-            const urls = (() => { try { return JSON.parse(carousel.dataset.images); } catch(e) { return []; } })();
-            if (urls.length < 2) return;
+            let urls;
+            try { urls = JSON.parse(carousel.dataset.images); } catch(e) { return; }
+            if (!Array.isArray(urls) || urls.length < 2) return;
             const imgEl = carousel.querySelector('.slide-img');
             const progressBar = carousel.querySelector('.slide-progress');
             const counterEl = carousel.querySelector('.slide-counter');

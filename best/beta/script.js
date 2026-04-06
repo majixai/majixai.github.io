@@ -1024,10 +1024,15 @@
         }
 
         #validateDOMReferences() {
-            const critical = [this.onlineUsersDiv, this.previousUsersDiv, this.storageTypeSelector, this.filterTagsSelect, this.filterAgeSelect];
-            if (critical.some(el => !el)) { 
-                const names = ["onlineUsersDiv","previousUsersDiv","storageTypeSelector","filterTagsSelect","filterAgeSelect"];
-                const missing = critical.map((el, i) => el ? null : names[i]).filter(Boolean).join(', ');
+            const refs = [
+                { name: "onlineUsersDiv",      el: this.onlineUsersDiv },
+                { name: "previousUsersDiv",    el: this.previousUsersDiv },
+                { name: "storageTypeSelector", el: this.storageTypeSelector },
+                { name: "filterTagsSelect",    el: this.filterTagsSelect },
+                { name: "filterAgeSelect",     el: this.filterAgeSelect },
+            ];
+            const missing = refs.filter(r => !r.el).map(r => r.name).join(', ');
+            if (missing) {
                 console.error(`CRITICAL ERROR: Missing essential DOM elements: ${missing}. App might not function.`);
                 this.uiManager.showOnlineErrorDisplay(`Initialization failed: Missing elements (${missing}).`);
                 return false;
