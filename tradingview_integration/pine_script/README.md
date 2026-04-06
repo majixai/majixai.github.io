@@ -224,20 +224,20 @@ Patterns below the configurable **Min Confidence Filter** (default 25 %) are sup
 ---
 
 <!-- AUTO-UPDATE-START -->
-_Last updated: 2026-04-05 07:25 UTC_
+_Last updated: 2026-04-06 14:33 UTC_
 
 ### Live Google Finance Snapshot
 
 | Ticker | Exchange | Price | Change | Change % | Updated |
 |--------|----------|-------|--------|----------|---------|
-| [SPY](https://www.google.com/finance/quote/SPY:NYSEARCA) | NYSEARCA | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [QQQ](https://www.google.com/finance/quote/QQQ:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [DIA](https://www.google.com/finance/quote/DIA:NYSEARCA) | NYSEARCA | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [AAPL](https://www.google.com/finance/quote/AAPL:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [MSFT](https://www.google.com/finance/quote/MSFT:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [GOOGL](https://www.google.com/finance/quote/GOOGL:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [TSLA](https://www.google.com/finance/quote/TSLA:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [NVDA](https://www.google.com/finance/quote/NVDA:NASDAQ) | NASDAQ | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
-| [BTC-USD](https://www.google.com/finance/quote/BTC-USD:CRYPTO) | CRYPTO | $46504.67 | -61.07 | -50% | 2026-04-05 07:25 UTC |
+| [SPY](https://www.google.com/finance/quote/SPY:NYSEARCA) | NYSEARCA | $46667.19 | +162.52 | -50% | 2026-04-06 14:33 UTC |
+| [QQQ](https://www.google.com/finance/quote/QQQ:NASDAQ) | NASDAQ | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [DIA](https://www.google.com/finance/quote/DIA:NYSEARCA) | NYSEARCA | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [AAPL](https://www.google.com/finance/quote/AAPL:NASDAQ) | NASDAQ | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [MSFT](https://www.google.com/finance/quote/MSFT:NASDAQ) | NASDAQ | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [GOOGL](https://www.google.com/finance/quote/GOOGL:NASDAQ) | NASDAQ | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [TSLA](https://www.google.com/finance/quote/TSLA:NASDAQ) | NASDAQ | $46665.94 | +161.27 | -50% | 2026-04-06 14:33 UTC |
+| [NVDA](https://www.google.com/finance/quote/NVDA:NASDAQ) | NASDAQ | $46667.19 | +162.52 | -50% | 2026-04-06 14:33 UTC |
+| [BTC-USD](https://www.google.com/finance/quote/BTC-USD:CRYPTO) | CRYPTO | $46667.19 | +162.52 | -50% | 2026-04-06 14:33 UTC |
 
 <!-- AUTO-UPDATE-END -->
