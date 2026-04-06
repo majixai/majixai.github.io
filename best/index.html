@@ -973,6 +973,8 @@ async function renderNextPage() {
   for (const item of pageItems) {
     const user = item.username || 'unknown';
     const images = [...new Set([item.image_url, ...(item.image_history || [])])].filter(Boolean);
+    // Keep _imageCount current so sorting/filtering works correctly
+    item._imageCount = images.length;
     if(images.length === 0) images.push('https://placehold.co/300x400/191c22/f472b6?text=No+Image');
 
     const score = sortAlgoValue(item);
@@ -1320,6 +1322,11 @@ function initSlideshowRuntime(card) {
           const fetched = [...new Set(JSON.parse(decompressed).filter(Boolean))];
           if (fetched.length > 1) {
             card._imgArray = fetched;
+                // Update _imageCount on the dataset item for sort/filter accuracy
+                if (state.filteredDataset) {
+                  const dataItem = state.filteredDataset.find(d => d.username === card.dataset.user);
+                  if (dataItem) dataItem._imageCount = fetched.length;
+                }
             const badge = card.querySelector('.img-count-badge');
             if (badge) badge.textContent = `🖼 ${fetched.length}`;
             else {

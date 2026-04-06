@@ -257,18 +257,30 @@ class UIManager {
         const imgEl = carousel?.querySelector('.slide-img');
         if (!carousel || !imgEl) return;
 
-        const datPath = `../history/${encodeURIComponent(user.username)}.dat`;
-        fetch(datPath).then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status} for ${datPath}`))).then(buffer => {
-            const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
-            const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
-            if (urls.length < 2) return;
-            carousel.dataset.images = JSON.stringify(urls);
-            const counter = carousel.querySelector('.slide-counter');
-            if (counter) { counter.textContent = `1/${urls.length}`; counter.style.display = 'block'; }
-            this._startCardSlideshow(carousel, imgEl, urls, carousel.querySelector('.slide-progress'), counter);
-        }).catch(() => {
-            // No dat file; leave as single image
-        });
+        // Use IntersectionObserver to lazy-load slideshow data only when visible
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                obs.disconnect();
+                const datPath = `../history/${encodeURIComponent(user.username)}.dat`;
+                fetch(datPath)
+                    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
+                    .then(buffer => {
+                        const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+                        const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
+                        if (urls.length < 2) return;
+                        carousel.dataset.images = JSON.stringify(urls);
+                        const counter = carousel.querySelector('.slide-counter');
+                        if (counter) { counter.textContent = `1/${urls.length}`; counter.style.display = 'block'; }
+                        this._startCardSlideshow(carousel, imgEl, urls, carousel.querySelector('.slide-progress'), counter);
+                    })
+                    .catch(() => {
+                        // No dat file; leave as single image
+                    });
+            });
+        }, { rootMargin: '200px' });
+
+        observer.observe(cardElement);
     }
 
     /**
@@ -302,6 +314,19 @@ class UIManager {
      * Initializes zoom functionality for iframes and images.
      * Call this method after DOM is ready.
      */
+    refreshSlideshows() {
+        // Restart all active slideshows (called on periodic fetch)
+        document.querySelectorAll('.slideshow-carousel[data-images]').forEach(carousel => {
+            let urls;
+            try { urls = JSON.parse(carousel.dataset.images); } catch(e) { return; }
+            if (!Array.isArray(urls) || urls.length < 2) return;
+            const imgEl = carousel.querySelector('.slide-img');
+            const progressBar = carousel.querySelector('.slide-progress');
+            const counterEl = carousel.querySelector('.slide-counter');
+            if (imgEl) this._startCardSlideshow(carousel, imgEl, urls, progressBar, counterEl);
+        });
+    }
+
     initZoomHandlers() {
         // Iframe zoom - double-click to toggle fullscreen
         document.querySelectorAll('.iframe-container').forEach(container => {

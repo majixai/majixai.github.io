@@ -54,6 +54,18 @@
         #fetchInterval = null;
         #initialIframesSet = false;
         #tensorEngine = new TensorSimilarityEngine();
+        #iframeCount = defaultIframeCount;
+        #iframes = []; // Array of iframe DOM elements
+        #layoutMode = 'split'; // 'performers' | 'split' | 'iframes'
+
+        // Pagination state for online users list
+        #onlinePageSize = 50;
+        #onlineCurrentPage = 0;
+        #onlinePages = []; // pre-sliced pages of filtered users
+
+        // Pagination state for previous users list
+        #prevPageSize = 25;
+        #prevCurrentPage = 0;
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -74,8 +86,10 @@
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
             this.previousUsersDiv = document.getElementById("previousUsers")?.querySelector('.user-list');
-            this.mainIframe = document.getElementById("mainIframe");
-            this.mainIframe2 = document.getElementById("mainIframe2");
+            this.mainIframe = null; // set dynamically
+            this.mainIframe2 = null; // set dynamically
+            this.iframeGrid = document.getElementById('iframeGrid');
+            this.iframeCountInput = document.getElementById('iframeCountInput');
             this.storageTypeSelector = document.getElementById("storageType");
             this.filterTagsSelect = document.getElementById("filterTags");
             this.filterAgeSelect = document.getElementById("filterAge");
@@ -296,6 +310,8 @@
                 this.uiManager.showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
+                // Refresh slideshows for currently-loaded cards
+                this.uiManager.refreshSlideshows();
                 console.log("App: fetchDataAndUpdateUI execution finished.");
             }
         }
@@ -392,19 +408,142 @@
             this.currentSnippetDisplay.appendChild(fragment);
         }
 
+        #buildIframeGrid(count) {
+            if (!this.iframeGrid) return;
+            count = Math.max(1, Math.min(9, count));
+            this.#iframeCount = count;
+
+            // Clear existing
+            this.iframeGrid.innerHTML = '';
+            this.iframeGrid.className = `iframe-grid grid-${count}`;
+            this.#iframes = [];
+
+            // Update target slot dropdown
+            const targetSlot = document.getElementById('targetSlot');
+            if (targetSlot) {
+                targetSlot.innerHTML = '';
+                for (let i = 1; i <= count; i++) {
+                    const opt = document.createElement('option');
+                    opt.value = String(i - 1);
+                    opt.textContent = `Slot ${i}`;
+                    targetSlot.appendChild(opt);
+                }
+            }
+
+            for (let i = 0; i < count; i++) {
+                const container = document.createElement('div');
+                container.className = 'iframe-container';
+
+                const header = document.createElement('div');
+                header.className = 'iframe-header';
+                header.innerHTML = `
+                    <span class="slot-number">#${i + 1}</span>
+                    <span class="performer-name" id="iframeName${i}">-</span>
+                    <button class="close-iframe-btn" data-slot="${i}" title="Clear">&times;</button>
+                `;
+
+                const iframe = document.createElement('iframe');
+                iframe.id = `dynamicIframe${i}`;
+                iframe.src = defaultIframeUrl;
+                iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads');
+                iframe.loading = 'lazy';
+
+                const toggleBar = document.createElement('div');
+                toggleBar.className = 'iframe-toggle-bar';
+                toggleBar.innerHTML = `
+                    <button class="iframe-toggle-btn size-btn" data-slot="${i}" data-size="compact" title="Compact">▪</button>
+                    <button class="iframe-toggle-btn size-btn active" data-slot="${i}" data-size="normal" title="Normal">◻</button>
+                    <button class="iframe-toggle-btn size-btn" data-slot="${i}" data-size="large" title="Large">⬛</button>
+                    <span style="color:#aaa;margin:0 4px;">|</span>
+                    <button class="iframe-toggle-btn type-btn active" data-slot="${i}" data-type="stream" title="Live Stream">📺</button>
+                    <button class="iframe-toggle-btn type-btn" data-slot="${i}" data-type="thumbnail" title="Snapshot">🖼</button>
+                `;
+
+                const thumb = document.createElement('img');
+                thumb.className = 'iframe-thumbnail';
+                thumb.id = `dynamicIframeThumb${i}`;
+                thumb.src = '';
+                thumb.alt = `Performer thumbnail ${i + 1}`;
+
+                container.appendChild(header);
+                container.appendChild(iframe);
+                container.appendChild(toggleBar);
+                container.appendChild(thumb);
+                this.iframeGrid.appendChild(container);
+                this.#iframes.push(iframe);
+
+                // Wire close button
+                header.querySelector('.close-iframe-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    iframe.src = defaultIframeUrl;
+                    const nameEl = document.getElementById(`iframeName${i}`);
+                    if (nameEl) nameEl.textContent = '-';
+                });
+            }
+
+            // Wire size buttons
+            this.iframeGrid.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const slot = this.dataset.slot;
+                    const size = this.dataset.size;
+                    const container = document.getElementById(`dynamicIframe${slot}`)?.closest('.iframe-container');
+                    if (!container) return;
+                    container.classList.remove('size-compact', 'size-normal', 'size-large');
+                    container.classList.add(`size-${size}`);
+                    this.closest('.iframe-toggle-bar').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Wire type buttons
+            this.iframeGrid.querySelectorAll('.type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const slot = this.dataset.slot;
+                    const type = this.dataset.type;
+                    const container = document.getElementById(`dynamicIframe${slot}`)?.closest('.iframe-container');
+                    if (!container) return;
+                    container.classList.remove('type-stream', 'type-thumbnail');
+                    container.classList.add(`type-${type}`);
+                    this.closest('.iframe-toggle-bar').querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // Update legacy refs for compat
+            this.mainIframe = this.#iframes[0] || null;
+            this.mainIframe2 = this.#iframes[1] || null;
+
+            // Re-init zoom handlers for new containers
+            this.uiManager.initZoomHandlers();
+        }
+
+        #setLayoutMode(mode) {
+            this.#layoutMode = mode;
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.classList.remove('layout-performers', 'layout-split', 'layout-iframes');
+                mainContent.classList.add(`layout-${mode}`);
+            }
+            document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active'));
+            const btnId = mode === 'performers' ? 'layoutPerformers' : mode === 'iframes' ? 'layoutIframes' : 'layoutSplit';
+            document.getElementById(btnId)?.classList.add('active');
+            this.#adjustLayoutHeights();
+        }
+
         #setDefaultIframes() {
             if (this.#initialIframesSet || !this.#allOnlineUsersData || this.#allOnlineUsersData.length === 0) return;
             const femaleUsers = this.#allOnlineUsersData.filter(user => user.gender === 'f');
             femaleUsers.sort((a, b) => (b.num_viewers || 0) - (a.num_viewers || 0));
-            const topUser1 = femaleUsers[0];
-            const topUser2 = femaleUsers[1];
-            if (this.mainIframe && topUser1) {
-                this.mainIframe.src = `https://chaturbate.com/embed/${topUser1.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            }
-            if (this.mainIframe2 && topUser2) {
-                this.mainIframe2.src = `https://chaturbate.com/embed/${topUser2.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
-            } else if (this.mainIframe2 && topUser1 && !topUser2) {
-                 console.log("Only one top female user found. mainIframe2 not changed or cleared.");
+            const slotsToFill = Math.min(this.#iframeCount, femaleUsers.length);
+            for (let i = 0; i < slotsToFill; i++) {
+                const iframe = this.#iframes[i];
+                const user = femaleUsers[i];
+                if (iframe && user) {
+                    iframe.src = buildEmbedUrl(user.username);
+                    const nameEl = document.getElementById(`iframeName${i}`);
+                    if (nameEl) nameEl.textContent = user.username;
+                }
             }
             this.#initialIframesSet = true;
         }
@@ -485,18 +624,30 @@
 
         #displayOnlineUsersList(usersToDisplay) {
             if (!this.onlineUsersDiv) return;
-            this.onlineUsersDiv.innerHTML = "";
-            if (usersToDisplay.length === 0) {
+            // Build pages
+            this.#onlinePages = [];
+            for (let i = 0; i < usersToDisplay.length; i += this.#onlinePageSize) {
+                this.#onlinePages.push(usersToDisplay.slice(i, i + this.#onlinePageSize));
+            }
+            this.#onlineCurrentPage = 0;
+            this.#renderOnlinePage();
+        }
+
+        #renderOnlinePage() {
+            if (!this.onlineUsersDiv) return;
+            this.onlineUsersDiv.innerHTML = '';
+            const page = this.#onlinePages[this.#onlineCurrentPage];
+            if (!page || page.length === 0) {
                 this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match filters.</p>';
+                this.#updateOnlinePagination();
                 return;
             }
             const fragment = document.createDocumentFragment();
-            usersToDisplay.forEach(user => {
+            page.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
-                    user,
-                    'online',
+                    user, 'online',
                     this.#handleUserClick.bind(this),
                     this.#removeFromPreviousUsers.bind(this),
                     (username) => this.storageManager.getUserClickCount(username, this.#previousUsers),
@@ -505,39 +656,43 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this),
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia // Add the new socialMedia object here
+                    socialMedia
                 );
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
+            this.#updateOnlinePagination();
+            this.onlineUsersDiv.scrollTop = 0;
+        }
+
+        #updateOnlinePagination() {
+            const col = document.getElementById('onlineUsers');
+            if (!col) return;
+            let paginationBar = col.querySelector('.pagination-bar');
+            if (!paginationBar) {
+                paginationBar = document.createElement('div');
+                paginationBar.className = 'pagination-bar';
+                col.appendChild(paginationBar);
+            }
+            const total = this.#onlinePages.length;
+            const cur = this.#onlineCurrentPage;
+            paginationBar.innerHTML = `
+                <button class="pagination-btn" id="onlinePrevPage" ${cur === 0 ? 'disabled' : ''}>◀</button>
+                <span class="pagination-info">Page ${total ? cur + 1 : 0}/${total}</span>
+                <button class="pagination-btn" id="onlineNextPage" ${cur >= total - 1 ? 'disabled' : ''}>▶</button>
+            `;
+            paginationBar.querySelector('#onlinePrevPage')?.addEventListener('click', () => {
+                if (this.#onlineCurrentPage > 0) { this.#onlineCurrentPage--; this.#renderOnlinePage(); }
+            });
+            paginationBar.querySelector('#onlineNextPage')?.addEventListener('click', () => {
+                if (this.#onlineCurrentPage < this.#onlinePages.length - 1) { this.#onlineCurrentPage++; this.#renderOnlinePage(); }
+            });
         }
 
         async #appendOnlineUsersList(newUsers) {
-            if (!this.onlineUsersDiv || newUsers.length === 0) {
-                console.log("App: No new users to append or onlineUsersDiv not found.");
-                return;
-            }
-            console.log(`App: Appending ${newUsers.length} new users to the list.`);
-            const fragment = document.createDocumentFragment();
-            newUsers.forEach(user => {
-                if (!user || !user.image_url || !user.username) return;
-                const socialMedia = this.#extractSocialMedia(user.description);
-                const userElement = this.uiManager.createUserElement(
-                    user, 
-                    'online', 
-                    this.#handleUserClick.bind(this), 
-                    this.#removeFromPreviousUsers.bind(this), 
-                    (username) => this.storageManager.getUserClickCount(username, this.#previousUsers), 
-                    this.#isBirthday.bind(this), 
-                    this.uiManager.showOnlineLoadingIndicator.bind(this.uiManager),
-                    this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
-                    this.#displayPreviousUsers.bind(this), 
-                    (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia // Add the new socialMedia object here
-                );
-                fragment.appendChild(userElement);
-            });
-            this.onlineUsersDiv.appendChild(fragment);
+            if (!newUsers || newUsers.length === 0) return;
+            // Re-apply filters to include new users
+            this.#applyFiltersAndDisplay();
         }
         
         async #fetchMoreOnlineUsers() {
@@ -759,18 +914,44 @@
             }
             this.#isLoadingMorePreviousUsers = false;
             console.log("App: Finally finished #displayPreviousUsers. isLoading:", this.#isLoadingMorePreviousUsers, "hasMore:", this.#hasMorePreviousUsersToLoad, "nextOffset:", this.#previousUsersDisplayOffset);
+            this.#updatePrevPagination();
         }
+        }
+
+        #updatePrevPagination() {
+            const col = document.getElementById('previousUsers');
+            if (!col) return;
+            let paginationBar = col.querySelector('.pagination-bar');
+            if (!paginationBar) {
+                paginationBar = document.createElement('div');
+                paginationBar.className = 'pagination-bar';
+                col.appendChild(paginationBar);
+            }
+            const hasMore = this.#hasMorePreviousUsersToLoad;
+            paginationBar.innerHTML = `
+                <button class="pagination-btn" id="prevUsersLoadMore" ${!hasMore ? 'disabled' : ''}>Load More History ▼</button>
+            `;
+            paginationBar.querySelector('#prevUsersLoadMore')?.addEventListener('click', () => {
+                this.#displayPreviousUsers();
+            });
         }
 
         #handleUserClick(user) {
-            if (!this.mainIframe || !this.mainIframe2 || !user || !user.username) return;
-            const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
-            const selectedIframe = (iframeChoiceRadio?.value === 'mainIframe2') ? this.mainIframe2 : this.mainIframe;
-            selectedIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+            if (!user || !user.username) return;
+            const targetSlotSelect = document.getElementById('targetSlot');
+            const slotIdx = targetSlotSelect ? parseInt(targetSlotSelect.value, 10) : 0;
+            const selectedIframe = this.#iframes[slotIdx] || this.#iframes[0];
+            if (selectedIframe) {
+                selectedIframe.src = buildEmbedUrl(user.username);
+                const nameEl = document.getElementById(`iframeName${slotIdx}`);
+                if (nameEl) nameEl.textContent = user.username;
+                // Update thumbnail
+                const thumbEl = document.getElementById(`dynamicIframeThumb${slotIdx}`);
+                if (thumbEl) thumbEl.src = user.image_url || '';
+            }
             this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
             this.#addToPreviousUsers(user).catch(console.error);
 
-            // Background tensor similarity: award one bonus click to visually similar performers
             const allUsers = this.#allOnlineUsersData.length > 0 ? this.#allOnlineUsersData : this.#previousUsers;
             this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername) => {
                 if (allUsers.some(u => u.username === similarUsername)) {
@@ -843,9 +1024,15 @@
         }
 
         #validateDOMReferences() {
-            const critical = [this.onlineUsersDiv, this.previousUsersDiv, this.mainIframe, this.mainIframe2, this.storageTypeSelector, this.filterTagsSelect, this.filterAgeSelect];
-            if (critical.some(el => !el)) { 
-                const missing = critical.map((el,i)=>el?null:["onlineUsersDiv","previousUsersDiv","mainIframe","mainIframe2","storageTypeSelector","filterTagsSelect","filterAgeSelect"][i]).filter(Boolean).join(', ');
+            const refs = [
+                { name: "onlineUsersDiv",      el: this.onlineUsersDiv },
+                { name: "previousUsersDiv",    el: this.previousUsersDiv },
+                { name: "storageTypeSelector", el: this.storageTypeSelector },
+                { name: "filterTagsSelect",    el: this.filterTagsSelect },
+                { name: "filterAgeSelect",     el: this.filterAgeSelect },
+            ];
+            const missing = refs.filter(r => !r.el).map(r => r.name).join(', ');
+            if (missing) {
                 console.error(`CRITICAL ERROR: Missing essential DOM elements: ${missing}. App might not function.`);
                 this.uiManager.showOnlineErrorDisplay(`Initialization failed: Missing elements (${missing}).`);
                 return false;
@@ -854,6 +1041,21 @@
         }
 
         #setupEventListeners() {
+            // Layout toggle buttons
+            document.getElementById('layoutPerformers')?.addEventListener('click', () => this.#setLayoutMode('performers'));
+            document.getElementById('layoutSplit')?.addEventListener('click', () => this.#setLayoutMode('split'));
+            document.getElementById('layoutIframes')?.addEventListener('click', () => this.#setLayoutMode('iframes'));
+
+            // Iframe count input
+            this.iframeCountInput?.addEventListener('change', () => {
+                const count = Math.max(1, Math.min(9, parseInt(this.iframeCountInput.value, 10) || 2));
+                this.iframeCountInput.value = count;
+                this.#buildIframeGrid(count);
+                this.#initialIframesSet = false;
+                this.#setDefaultIframes();
+                this.#adjustLayoutHeights();
+            });
+
             this.storageTypeSelector?.addEventListener("change", async (event) => {
                 const newStorageType = event.target.value;
                 if (newStorageType !== this.#storageType) {
@@ -1016,26 +1218,6 @@
                 }, 100); // Debounce resize event
             });
 
-            // Infinite scroll for online users list
-            if (this.onlineUsersDiv) {
-                let scrollTimeout;
-                this.onlineUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(() => {
-                        const element = this.onlineUsersDiv;
-                        const threshold = 100; // Pixels from bottom to trigger
-                        
-                        // Check if scrolled to near the bottom and if we should fetch more
-                        if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of online users list. Fetching more...');
-                                this.#fetchMoreOnlineUsers();
-                            }
-                        }
-                    }, 150); // Debounce delay of 150ms
-                });
-            }
-
             // Infinite scroll for previous users list
             if (this.previousUsersDiv) {
                 let previousUsersScrollTimeout;
@@ -1072,6 +1254,11 @@
             this.#storageType = window.storageType; 
 
             this.#setupEventListeners(); 
+
+            // Build dynamic iframe grid and set initial layout BEFORE fetching data
+            // (so #iframes is populated before #setDefaultIframes is called)
+            this.#buildIframeGrid(this.#iframeCount);
+            this.#setLayoutMode('split');
             
             if (this.currentSnippetDisplay) {
                 this.storageManager.loadAllTextSnippets()
@@ -1104,9 +1291,6 @@
             
             this.#adjustLayoutHeights(); // Adjust heights after initial load
 
-            // Initialize zoom handlers for iframes and images
-            this.uiManager.initZoomHandlers();
-
             console.log("App: Initialization complete and periodic fetching started.");
             this.uiManager.hideOnlineLoadingIndicator();
         }
@@ -1126,8 +1310,12 @@
                 return;
             }
 
-            const iframeColumnTotalHeight = iframeColumn.offsetHeight;
-            console.log(`App: iframeColumn.offsetHeight = ${iframeColumnTotalHeight}px`);
+            // Account for the iframe-controls-bar height
+            const controlsBar = iframeColumn.querySelector('.iframe-controls-bar');
+            const controlsBarHeight = controlsBar ? (controlsBar.offsetHeight + parseFloat(window.getComputedStyle(controlsBar).marginBottom || '0')) : 0;
+
+            const iframeColumnTotalHeight = iframeColumn.offsetHeight - controlsBarHeight;
+            console.log(`App: iframeColumn.offsetHeight = ${iframeColumn.offsetHeight}px, controlsBarHeight = ${controlsBarHeight}px, effective = ${iframeColumnTotalHeight}px`);
 
             if (iframeColumnTotalHeight < 100) { // Threshold for iframe column height
                 console.warn(`App: iframeColumnTotalHeight is ${iframeColumnTotalHeight}px, which is less than 100px. This might lead to very small user list heights.`);
