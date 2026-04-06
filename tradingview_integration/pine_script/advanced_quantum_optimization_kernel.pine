@@ -1,0 +1,574 @@
+//@version=5
+indicator("Advanced Quantum Optimization Kernel", overlay=true)
+
+// ==========================================
+// TIER 0: BASE TYPES (No Dependencies)
+// ==========================================
+type VolumeMetrics
+    float rvol
+    float spread
+    bool is_climax
+    bool effort_vs_result_anomaly
+    string liquidity_state
+
+type ProbabilityMatrix
+    float hit_rate
+    float miss_rate
+    float decay_factor
+    string signal_strength
+    float bayesian_weight
+
+type GC_State
+    int active_objects
+    int swept_objects
+    int total_bytes_saved
+    int last_sweep_bar
+
+type ObjectMetadata
+    int creation_bar
+    int access_count
+    float memory_footprint
+    bool is_persistent
+
+type JacobianHessianPair
+    matrix<float> jacobian_matrix
+    matrix<float> hessian_tensor
+    float determinant
+    float trace
+    bool is_positive_definite
+
+type EigenDecomposition
+    array<float> eigenvalues
+    matrix<float> eigenvectors
+    float spectral_radius
+    float condition_number
+
+type DampingCoefficients
+    float viscous_drag
+    float frictional_loss
+    float inertial_resistance
+    float harmonic_frequency
+    float decay_constant
+
+type GreenTheoremContext
+    float line_integral_p
+    float line_integral_q
+    float double_integral_region
+    float vorticity
+    bool is_simply_connected
+
+type TopologicalManifold
+    int genus
+    float euler_characteristic
+    bool is_orientable
+    array<float> homology_groups
+    string boundary_condition
+
+type LagrangeMultiplier
+    float objective_function_val
+    array<float> constraint_functions
+    array<float> lambda_weights
+    float shadow_price
+    bool is_kkt_compliant
+
+type TensorField
+    matrix<float> covariant_metric
+    matrix<float> contravariant_metric
+    array<float> christoffel_symbols
+    int rank
+    bool is_flat
+
+type HessianManifold
+    matrix<float> hessian_matrix
+    array<float> gradient_vector
+    float laplacian_value
+    bool is_convex
+    float sparsity_ratio
+
+type SpectralAnalysis
+    matrix<float> covariance_matrix
+    array<float> eigenvalues
+    matrix<float> eigenvectors
+    float condition_number
+
+type DampingSystem
+    float damping_ratio
+    float natural_frequency
+    float damped_frequency
+    string decay_mode
+    array<float> friction_coefficients
+
+type RungeKuttaState
+    array<float> k1
+    array<float> k2
+    array<float> k3
+    array<float> k4
+    float step_size
+    int iterations
+
+type SimplicialComplex
+    int dimension
+    array<int> betti_numbers
+    float persistence_entropy
+    bool is_compact
+    string manifold_type
+
+type ItoProcess
+    float drift_coefficient
+    float diffusion_coefficient
+    float brownian_increment
+    float stochastic_integral
+    bool is_martingale
+
+type KalmanFilterState
+    matrix<float> state_transition
+    matrix<float> observation_model
+    matrix<float> process_noise_cov
+    matrix<float> measurement_noise_cov
+    matrix<float> posterior_error_cov
+
+type BayesianPrior
+    string distribution_type
+    float hyper_alpha
+    float hyper_beta
+    float evidence_lower_bound
+
+type LagrangeOptimization
+    float lambda_multiplier
+    float mu_penalty
+    array<float> dual_variables
+    matrix<float> constraint_jacobian
+    bool duality_gap_closed
+
+type MetricTensor
+    matrix<float> g_ij
+    matrix<float> g_inv
+    float determinant
+    int dimensions
+
+type ChristoffelSymbols
+    matrix<float> Gamma_k_ij
+    array<int> indices
+    float scalar_curvature
+
+type MultivariateJacobian
+    matrix<float> partial_derivatives
+    array<float> gradient_vector
+    float divergence
+    array<float> curl_components
+
+type GeneralizedCoordinates
+    array<float> q_position
+    array<float> q_velocity
+    array<float> q_acceleration
+
+type PhaseSpaceCoordinates
+    array<float> q_position
+    array<float> p_momentum
+    array<float> q_dot
+
+type ActionIntegral
+    float S_action
+    array<float> path_history
+    float variation_delta
+    bool is_stationary_point
+
+type CohomologyGroup
+    int dimension
+    array<float> cocycles
+    matrix<float> cup_product
+    int betti_number
+
+type HomologyPersistence
+    array<int> betti_numbers
+    matrix<float> boundary_operator
+    array<float> filtration_values
+
+type OrnsteinUhlenbeck
+    float theta_reversion_speed
+    float mu_long_term_mean
+    float sigma_volatility
+    array<float> noise_process
+
+type LevyFlight
+    float stability_alpha
+    float skewness_beta
+    float scale_gamma
+    float location_delta
+    array<float> jump_sizes
+
+type WienerProcess
+    float drift_mu
+    float diffusion_sigma
+    array<float> dW_increments
+    float quadratic_variation
+
+type JumpDiffusion
+    float lambda_intensity
+    float jump_mean
+    float jump_std_dev
+    array<float> jump_events
+
+type ComplexDamping
+    float viscous_coefficient
+    float structural_damping
+    float aerodynamic_drag
+    float coulomb_friction
+    array<float> damping_matrix_diagonal
+
+type MultiDampingEngine
+    float viscous_c
+    float structural_eta
+    float dry_friction_mu
+    array<float> damping_ratios
+
+type GreenGaussField
+    float flux_integral
+    float surface_divergence
+    matrix<float> kernel_matrix
+    array<float> source_terms
+
+type LagrangeOptimizer
+    float objective_value
+    array<float> lambda_multipliers
+    matrix<float> constraint_jacobian
+    array<float> slack_variables
+    bool is_optimal
+
+type DistributionSkew
+    float third_moment
+    float fourth_moment
+    float fisher_skew
+    array<float> moment_history
+    bool is_leptokurtic
+
+type VolatilitySmile
+    float at_the_money_vol
+    float skew_slope
+    float smile_curvature
+    matrix<float> surface_map
+    array<float> moneyness_axis
+
+
+// ==========================================
+// TIER 1: First-Order Dependencies
+// ==========================================
+type MatrixPattern
+    string name
+    int score
+    float target
+    float stop
+    int pType
+    bool isBull
+    array<chart.point> poly_pts
+    ProbabilityMatrix stats
+    string forecast_next
+
+type NodeLiquidity
+    float bid_depth
+    float ask_depth
+    float delta_imbalance
+    float absorption_ratio
+    VolumeMetrics volume_profile
+
+type InferenceLayer
+    string layer_id
+    ProbabilityMatrix baseline
+    float recursive_bias
+    float confidence_interval
+
+type SystemTelemetry
+    GC_State garbage_collector
+    array<ObjectMetadata> registry
+    int heap_utilization_pct
+    int stack_depth_limit
+    int total_execution_time_ms
+
+type MatrixManifold
+    string coordinate_system
+    matrix<float> basis_vectors
+    float curvature_tensor
+    JacobianHessianPair derivatives
+    int dimensions
+
+type ODESystem
+    string solver_method
+    float initial_state
+    float time_step
+    DampingCoefficients damping
+    float forcing_function_result
+
+type VectorFieldPath
+    array<chart.point> path_nodes
+    array<float> divergence_values
+    array<float> curl_values
+    GreenTheoremContext flux_area
+
+type BayesianInferenceEngine
+    float prior_distribution
+    float likelihood_function
+    float marginal_likelihood
+    float posterior_estimate
+    ProbabilityMatrix accuracy_stats
+
+type PersistentHomology
+    matrix<float> distance_matrix
+    float filtration_threshold
+    SimplicialComplex topology
+    array<float> birth_death_intervals
+
+type VectorFluxField
+    GreenTheoremContext flux_context
+    float line_integral_closed_loop
+    float curl_intensity
+    float divergence_score
+    array<chart.point> path_boundary
+
+type RiemannManifold
+    MetricTensor metric
+    ChristoffelSymbols connection
+    matrix<float> ricci_tensor
+    matrix<float> weyl_tensor
+
+type RiemannTensor
+    matrix<float> ricci_curvature
+    matrix<float> metric_tensor
+    ChristoffelSymbols christoffel
+    float scalar_curvature
+
+type LagrangeSystem
+    float kinetic_energy
+    float potential_energy
+    float lagrangian_l
+    array<float> multipliers_lambda
+    GeneralizedCoordinates coordinates
+
+type HamiltonianSystem
+    float total_energy_H
+    float kinetic_T
+    float potential_V
+    matrix<float> symplectic_form
+    PhaseSpaceCoordinates state
+
+type MorseFunction
+    float f_val
+    int morse_index
+    HessianManifold local_hessian
+    bool is_non_degenerate
+
+type SDE_Solver
+    WienerProcess continuous
+    JumpDiffusion discrete
+    float ito_integral
+    string method
+
+type HarmonicResonator
+    DampingSystem primary_damper
+    ComplexDamping secondary_resistances
+    float driving_force_amplitude
+    float resonance_peak
+
+type ResonantOscillator
+    float omega_natural
+    float omega_damped
+    MultiDampingEngine dampers
+    array<float> amplitude_envelope
+
+type RecursiveBayes
+    BayesianPrior prior_state
+    matrix<float> transition_kernel
+    array<float> observation_vector
+    float evidence_approximation
+
+type SkewDeviations
+    float positive_semi_variance
+    float negative_semi_variance
+    float downside_deviation
+    float upside_potential
+    DistributionSkew moments
+
+type AsymmetricJumpDiffusion
+    float left_tail_alpha
+    float right_tail_beta
+    JumpDiffusion base_jump
+    float skew_intensity
+
+
+// ==========================================
+// TIER 2: Second-Order Dependencies
+// ==========================================
+type MarketRegime
+    string regime_type
+    float volatility_index
+    float trend_intensity
+    NodeLiquidity liquidity
+    bool is_high_impact_news
+
+type CompositeStrategy
+    string strategy_uuid
+    array<MatrixPattern> patterns
+    InferenceLayer logic_gate
+    float max_drawdown_limit
+    int signal_cooldown_bars
+
+type PhaseSpaceState
+    float position
+    float velocity
+    float acceleration
+    float jerk
+    ODESystem evolution_logic
+
+type StochasticKernel
+    BayesianInferenceEngine bayes_core
+    float brownian_motion_sigma
+    float mean_reversion_kappa
+    float jump_intensity
+
+type BoundaryValueProblem
+    float dirichlet_condition
+    float neumann_condition
+    float robin_condition
+    ODESystem internal_ode
+
+type LogicProcessor
+    BayesianPrior inference_core
+    KalmanFilterState filter_engine
+    ItoProcess volatility_model
+    LagrangeOptimization optimizer
+
+type HamiltonianState
+    float total_energy_h
+    array<float> conjugate_momenta
+    matrix<float> phase_space_mapping
+    LagrangeSystem base_mechanics
+
+type ReebGraph
+    array<int> vertex_ids
+    array<int> adjacency_map
+    float persistence_threshold
+    array<MorseFunction> critical_set
+
+type StochasticIntegrator
+    ItoProcess diffusion_core
+    OrnsteinUhlenbeck reversion_logic
+    LevyFlight jump_component
+    float quadratic_variation
+
+type GreenFunctionKernel
+    matrix<float> impulse_response
+    float source_intensity
+    array<float> boundary_integrals
+    VectorFluxField flux_dynamics
+
+type InformationGeometry
+    matrix<float> fisher_information
+    float kullback_leibler_div
+    float jensen_shannon_dist
+    SkewDeviations empirical_skew
+    bool is_manifold_convex
+
+type SkewBayesContext
+    BayesianPrior prior_skew
+    float posterior_skew
+    float credibility_weight
+    array<float> likelihood_skew
+
+
+// ==========================================
+// TIER 3: Third-Order Dependencies
+// ==========================================
+type TradingEnvironment
+    string environment_id
+    MarketRegime current_regime
+    CompositeStrategy active_strategy
+    SystemTelemetry telemetry
+    chart.point anchor_point
+    bool is_live_execution
+    string kernel_version
+
+type QuantumOptimizationState
+    LagrangeMultiplier optimizer
+    StochasticKernel probability_core
+    EigenDecomposition market_modes
+    float entropy_level
+
+type SystemKernel
+    SystemTelemetry telemetry
+    LogicProcessor processor
+    TopologicalManifold geometry
+    DampingSystem dynamics
+    HessianManifold derivatives
+
+type PosteriorManifold
+    RecursiveBayes inference_engine
+    GreenFunctionKernel propagator
+    float kl_divergence
+    float shannon_entropy
+
+type ErrorManifold
+    RiemannManifold geometry
+    InformationGeometry info
+    array<float> residual_errors
+    float log_likelihood
+
+type DampedSkewOscillator
+    ResonantOscillator base_phys
+    float skew_resistance
+    float asymmetric_damping
+    SkewDeviations current_skew
+
+
+// ==========================================
+// TIER 4: Fourth-Order Dependencies
+// ==========================================
+type GlobalKernelEnvironment
+    string kernel_id
+    GC_State memory_manager
+    QuantumOptimizationState math_engine
+    PhaseSpaceState price_physics
+    TopologicalManifold data_shape
+
+type QuantumState
+    RiemannManifold geometry
+    HamiltonianSystem mechanics
+    ReebGraph topology
+    SDE_Solver stochastic_logic
+    ResonantOscillator physics
+    LagrangeOptimizer optimizer
+
+
+// ==========================================
+// TIER 5: Fifth-Order Dependencies
+// ==========================================
+type QuantumKernel
+    SystemKernel system_core
+    HamiltonianState energy_dynamics
+    ReebGraph topological_map
+    StochasticIntegrator probability_engine
+    HarmonicResonator physics_engine
+    PosteriorManifold logic_center
+
+type GlobalProcessor
+    string kernel_id
+    QuantumState state
+    SystemTelemetry telemetry
+    LogicProcessor analytics
+    int lifecycle_stage
+
+type AsymmetricQuantumState
+    QuantumState symmetric_core
+    SkewDeviations skew_metrics
+    VolatilitySmile smile_logic
+    ErrorManifold uncertainty_map
+    SkewBayesContext recursive_skew
+
+
+// ==========================================
+// TIER 6: The Master Execution Layer
+// ==========================================
+type MasterExecutionKernel
+    string kernel_uuid
+    AsymmetricQuantumState state
+    GlobalProcessor processor
+    SystemTelemetry telemetry
+    int recursion_depth
