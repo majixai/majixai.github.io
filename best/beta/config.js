@@ -12,6 +12,8 @@ const fetchIntervalDuration = 60000; // 1 minute (60 * 1000 milliseconds)
 const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
 const maxIframes = 9; // Max iframe slots
 const defaultIframeCount = 2; // Default iframe slots
+const defaultIframeUrl = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
+const buildEmbedUrl = (username) => `https://chaturbate.com/embed/${username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
 const apiFetchTimeout = 25000; // Timeout for each API fetch request (milliseconds)
 const reportSendTimeout = 45000; // Timeout for sending the report (milliseconds)
 const maxApiFetchLimit = 20000; // Safety limit for total users fetched in one cycle

@@ -444,8 +444,7 @@
 
                 const iframe = document.createElement('iframe');
                 iframe.id = `dynamicIframe${i}`;
-                iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
-                iframe.title = `Viewer Slot ${i + 1}`;
+                iframe.src = defaultIframeUrl;
                 iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
                 iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads');
                 iframe.loading = 'lazy';
@@ -477,7 +476,7 @@
                 // Wire close button
                 header.querySelector('.close-iframe-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    iframe.src = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
+                    iframe.src = defaultIframeUrl;
                     const nameEl = document.getElementById(`iframeName${i}`);
                     if (nameEl) nameEl.textContent = '-';
                 });
@@ -541,7 +540,7 @@
                 const iframe = this.#iframes[i];
                 const user = femaleUsers[i];
                 if (iframe && user) {
-                    iframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                    iframe.src = buildEmbedUrl(user.username);
                     const nameEl = document.getElementById(`iframeName${i}`);
                     if (nameEl) nameEl.textContent = user.username;
                 }
@@ -943,7 +942,7 @@
             const slotIdx = targetSlotSelect ? parseInt(targetSlotSelect.value, 10) : 0;
             const selectedIframe = this.#iframes[slotIdx] || this.#iframes[0];
             if (selectedIframe) {
-                selectedIframe.src = `https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                selectedIframe.src = buildEmbedUrl(user.username);
                 const nameEl = document.getElementById(`iframeName${slotIdx}`);
                 if (nameEl) nameEl.textContent = user.username;
                 // Update thumbnail
