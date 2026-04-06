@@ -1027,6 +1027,11 @@
             const refs = [
                 { name: "onlineUsersDiv",      el: this.onlineUsersDiv },
                 { name: "previousUsersDiv",    el: this.previousUsersDiv },
+                // iframeGrid is the dynamic iframe container built by #buildIframeGrid().
+                // mainIframe / mainIframe2 are NOT static HTML elements in beta — they are
+                // set programmatically by #buildIframeGrid() after this validation runs, so
+                // they must NOT appear here.
+                { name: "iframeGrid",          el: this.iframeGrid },
                 { name: "storageTypeSelector", el: this.storageTypeSelector },
                 { name: "filterTagsSelect",    el: this.filterTagsSelect },
                 { name: "filterAgeSelect",     el: this.filterAgeSelect },
