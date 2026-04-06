@@ -422,3 +422,175 @@ html, body {
     color: #aaa;
 }
 .fav-btn.favorited { color: #f4b400; }
+
+/* ==================== Multi-Column Performer Lists ==================== */
+.user-list.cols-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
+    align-content: start;
+}
+
+.user-list.cols-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    align-content: start;
+}
+
+.user-list.cols-2 .user-info,
+.user-list.cols-3 .user-info {
+    margin-bottom: 0;
+    flex-direction: column;
+}
+
+.user-list.cols-2 .user-image-container,
+.user-list.cols-3 .user-image-container {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 4px;
+}
+
+.user-list.cols-2 .slideshow-carousel,
+.user-list.cols-3 .slideshow-carousel {
+    width: 100%;
+}
+
+/* ==================== Iframe Controls Bar ==================== */
+.iframe-controls-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    background: #222;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.layout-toggle-group,
+.iframe-count-group,
+.iframe-target-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.iframe-controls-bar label {
+    color: #ccc;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.layout-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    font-size: 1em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.layout-btn:hover { background: rgba(255,255,255,0.25); }
+.layout-btn.active { background: #4CAF50; border-color: #4CAF50; }
+
+#iframeCountInput {
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.85em;
+    text-align: center;
+}
+
+/* ==================== Column Count Bar ==================== */
+.col-count-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 0.8em;
+    flex-shrink: 0;
+}
+
+.col-count-bar label { font-weight: bold; }
+
+.col-count-btn {
+    background: #ddd;
+    border: 1px solid #bbb;
+    border-radius: 3px;
+    padding: 1px 7px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.col-count-btn:hover { background: #ccc; }
+.col-count-btn.active { background: #4CAF50; color: #fff; border-color: #4CAF50; }
+
+/* ==================== Dynamic Iframe Grid ==================== */
+.iframe-grid {
+    flex: 1;
+    display: grid;
+    gap: 4px;
+    min-height: 0;
+}
+
+/* Grid layouts by iframe count */
+.iframe-grid.grid-1  { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.iframe-grid.grid-2  { grid-template-columns: repeat(2, 1fr); grid-template-rows: 1fr; }
+.iframe-grid.grid-3  { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; }
+.iframe-grid.grid-4  { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+.iframe-grid.grid-5  { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.iframe-grid.grid-6  { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); }
+.iframe-grid.grid-7  { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+.iframe-grid.grid-8  { grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 1fr); }
+.iframe-grid.grid-9  { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+
+/* ==================== Layout Modes ==================== */
+/* Performers only: hide iframe column */
+.main-content.layout-performers .iframe-column { display: none; }
+.main-content.layout-performers .user-column { flex: 1; }
+
+/* Iframes only: hide user columns */
+.main-content.layout-iframes .user-column { display: none; }
+.main-content.layout-iframes .iframe-column { flex: 1; }
+
+/* Split: default */
+.main-content.layout-split .user-column { flex: 1; }
+.main-content.layout-split .iframe-column { flex: 3; }
+
+/* ==================== Pagination Controls ==================== */
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 0;
+    flex-shrink: 0;
+    font-size: 0.85em;
+}
+
+.pagination-btn {
+    background: #e8e8e8;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.pagination-btn:hover:not(:disabled) { background: #d0d0d0; }
+.pagination-btn:disabled { opacity: 0.5; cursor: default; }
+
+.pagination-info {
+    color: #555;
+    font-size: 0.8em;
+    min-width: 70px;
+    text-align: center;
+}

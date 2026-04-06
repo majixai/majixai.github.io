@@ -73,6 +73,12 @@
             <!-- Previous Users Column -->
             <div class="user-column" id="previousUsers">
                 <h2>History (Online Now)</h2>
+                <div class="col-count-bar">
+                    <label>Cols:</label>
+                    <button class="col-count-btn active" data-cols="1" data-column="previousUsers">1</button>
+                    <button class="col-count-btn" data-cols="2" data-column="previousUsers">2</button>
+                    <button class="col-count-btn" data-cols="3" data-column="previousUsers">3</button>
+                </div>
                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
                 <div class="autoscroller-bar" id="autoscrollerBar">
                     <label>Auto-scroll:</label>
@@ -86,55 +92,38 @@
             </div>
 
             <!-- Main Viewing Column -->
-            <div class="iframe-column">
-                <div class="iframe-selector">
-                    <label>Target Slot:</label>
-                    <select id="targetSlot" class="form-select form-select-sm" style="display:inline-block; width:auto; margin-left:10px;">
-                        <option value="mainIframe">Slot 1</option>
-                        <option value="mainIframe2">Slot 2</option>
-                    </select>
+            <div class="iframe-column" id="iframeColumn">
+                <div class="iframe-controls-bar">
+                    <!-- Layout toggle -->
+                    <div class="layout-toggle-group">
+                        <button class="layout-btn" id="layoutPerformers" title="Performers only">👥</button>
+                        <button class="layout-btn active" id="layoutSplit" title="Split view">⊞</button>
+                        <button class="layout-btn" id="layoutIframes" title="Iframes only">📺</button>
+                    </div>
+                    <!-- Iframe count -->
+                    <div class="iframe-count-group">
+                        <label for="iframeCountInput">Slots:</label>
+                        <input type="number" id="iframeCountInput" min="1" max="9" value="2" style="width:45px;">
+                    </div>
+                    <!-- Target slot selector -->
+                    <div class="iframe-target-group">
+                        <label>Target:</label>
+                        <select id="targetSlot" class="form-select form-select-sm" style="display:inline-block; width:auto; margin-left:4px;"></select>
+                    </div>
                 </div>
-                <div class="iframe-container">
-                    <div class="iframe-header">
-                        <span class="slot-number">#1</span>
-                        <span class="performer-name" id="iframe1Name">-</span>
-                        <button class="close-iframe-btn" data-iframe="mainIframe" title="Clear">&times;</button>
-                    </div>
-                    <!-- Note: allow-same-origin required for embedded content to function properly -->
-                    <iframe id="mainIframe" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never" title="Main Viewer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads"></iframe>
-                    <div class="iframe-toggle-bar">
-                        <button class="iframe-toggle-btn size-btn" data-iframe="mainIframe" data-size="compact" title="Compact">▪</button>
-                        <button class="iframe-toggle-btn size-btn active" data-iframe="mainIframe" data-size="normal" title="Normal">◻</button>
-                        <button class="iframe-toggle-btn size-btn" data-iframe="mainIframe" data-size="large" title="Large">⬛</button>
-                        <span style="color:#aaa;margin:0 4px;">|</span>
-                        <button class="iframe-toggle-btn type-btn active" data-iframe="mainIframe" data-type="stream" title="Live Stream">📺</button>
-                        <button class="iframe-toggle-btn type-btn" data-iframe="mainIframe" data-type="thumbnail" title="Snapshot">🖼</button>
-                    </div>
-                    <img class="iframe-thumbnail" id="mainIframeThumb" src="" alt="Performer thumbnail">
-                </div>
-                <div class="iframe-container">
-                    <div class="iframe-header">
-                        <span class="slot-number">#2</span>
-                        <span class="performer-name" id="iframe2Name">-</span>
-                        <button class="close-iframe-btn" data-iframe="mainIframe2" title="Clear">&times;</button>
-                    </div>
-                    <!-- Note: allow-same-origin required for embedded content to function properly -->
-                    <iframe id="mainIframe2" src="https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never" title="Secondary Viewer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-presentation allow-forms allow-popups allow-modals allow-downloads"></iframe>
-                    <div class="iframe-toggle-bar">
-                        <button class="iframe-toggle-btn size-btn" data-iframe="mainIframe2" data-size="compact" title="Compact">▪</button>
-                        <button class="iframe-toggle-btn size-btn active" data-iframe="mainIframe2" data-size="normal" title="Normal">◻</button>
-                        <button class="iframe-toggle-btn size-btn" data-iframe="mainIframe2" data-size="large" title="Large">⬛</button>
-                        <span style="color:#aaa;margin:0 4px;">|</span>
-                        <button class="iframe-toggle-btn type-btn active" data-iframe="mainIframe2" data-type="stream" title="Live Stream">📺</button>
-                        <button class="iframe-toggle-btn type-btn" data-iframe="mainIframe2" data-type="thumbnail" title="Snapshot">🖼</button>
-                    </div>
-                    <img class="iframe-thumbnail" id="mainIframe2Thumb" src="" alt="Performer thumbnail">
-                </div>
+                <!-- Dynamic iframe grid - populated by JS -->
+                <div class="iframe-grid" id="iframeGrid"></div>
             </div>
 
             <!-- Online Users Column -->
             <div class="user-column" id="onlineUsers">
                 <h2>Online Users</h2>
+                <div class="col-count-bar">
+                    <label>Cols:</label>
+                    <button class="col-count-btn active" data-cols="1" data-column="onlineUsers">1</button>
+                    <button class="col-count-btn" data-cols="2" data-column="onlineUsers">2</button>
+                    <button class="col-count-btn" data-cols="3" data-column="onlineUsers">3</button>
+                </div>
                 <div id="onlineLoadingIndicator" class="loading-indicator" style="display: none;">Loading...</div>
                 <div id="onlineErrorDisplay" class="error-message" style="display: none;"></div>
                 <div class="user-list"></div>
@@ -245,30 +234,16 @@
         document.getElementById('autoscrollSpeed').addEventListener('input', () => _autoscroller.onSpeedChange());
     }
 
-    // Iframe size toggle
-    document.querySelectorAll('.size-btn').forEach(btn => {
+    // Column count toggles for performer lists
+    document.querySelectorAll('.col-count-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            const iframeId = this.dataset.iframe;
-            const size = this.dataset.size;
-            const container = document.getElementById(iframeId)?.closest('.iframe-container');
-            if (!container) return;
-            container.classList.remove('size-compact', 'size-normal', 'size-large');
-            container.classList.add(`size-${size}`);
-            this.closest('.iframe-toggle-bar').querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
-
-    // Iframe type toggle (stream vs thumbnail)
-    document.querySelectorAll('.type-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const iframeId = this.dataset.iframe;
-            const type = this.dataset.type;
-            const container = document.getElementById(iframeId)?.closest('.iframe-container');
-            if (!container) return;
-            container.classList.remove('type-stream', 'type-thumbnail');
-            container.classList.add(`type-${type}`);
-            this.closest('.iframe-toggle-bar').querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            const cols = parseInt(this.dataset.cols, 10);
+            const columnId = this.dataset.column;
+            const userList = document.getElementById(columnId)?.querySelector('.user-list');
+            if (!userList) return;
+            userList.classList.remove('cols-1', 'cols-2', 'cols-3');
+            userList.classList.add(`cols-${cols}`);
+            this.closest('.col-count-bar').querySelectorAll('.col-count-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
         });
     });
