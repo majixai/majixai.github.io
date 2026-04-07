@@ -87,7 +87,7 @@ class UIManager {
 
         userElement.innerHTML = `
             <div class="user-image-container">
-                <img src="${user.image_urls[0]}" alt="${user.username} thumbnail" loading="lazy" class="w3-image" crossOrigin="anonymous">
+                <img src="${LAZY_PLACEHOLDER}" data-src="${user.image_urls[0]}" alt="${user.username} thumbnail" class="w3-image" crossOrigin="anonymous">
                 <canvas></canvas>
                 ${slideshowControls}
                 ${removeButtonHTML}
@@ -173,6 +173,10 @@ class UIManager {
                 img.src = user.image_urls[currentImageIndex];
             });
         }
+
+        // Lazy-load the card image once it enters the viewport
+        const lazyImg = userElement.querySelector('img[data-src]');
+        if (lazyImg) LazyImageObserver.observe(lazyImg);
 
         return userElement;
     }

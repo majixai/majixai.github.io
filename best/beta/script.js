@@ -58,14 +58,13 @@
         #iframes = []; // Array of iframe DOM elements
         #layoutMode = 'split'; // 'performers' | 'split' | 'iframes'
 
-        // Pagination state for online users list
-        #onlinePageSize = 50;
-        #onlineCurrentPage = 0;
-        #onlinePages = []; // pre-sliced pages of filtered users
+        // Infinite-scroll state for online users list (local filtered batch rendering)
+        #onlineBatchSize = 50;
+        #onlineDisplayOffset = 0;
+        #onlineSentinelObserver = null; // IntersectionObserver for online list sentinel
 
-        // Pagination state for previous users list
-        #prevPageSize = 25;
-        #prevCurrentPage = 0;
+        // IntersectionObserver for previous users (history) list sentinel
+        #prevSentinelObserver = null;
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -293,7 +292,7 @@
                     if (this.#allOnlineUsersData && this.#allOnlineUsersData.length > 0) {
                         console.log("Sample user object:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
                     }
-                    this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
+                    scheduleIdleTask(() => this.#populateFilters(this.#allOnlineUsersData)); // Populate filters with initial data
                     this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
                     await this.#displayPreviousUsers();
                     if (!this.#initialIframesSet) {
@@ -301,7 +300,7 @@
                     }
                 } else {
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
-                    this.#populateFilters([]);
+                    scheduleIdleTask(() => this.#populateFilters([]));
                     this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
                     await this.#displayPreviousUsers();
                 }
@@ -624,26 +623,46 @@
 
         #displayOnlineUsersList(usersToDisplay) {
             if (!this.onlineUsersDiv) return;
-            // Build pages
-            this.#onlinePages = [];
-            for (let i = 0; i < usersToDisplay.length; i += this.#onlinePageSize) {
-                this.#onlinePages.push(usersToDisplay.slice(i, i + this.#onlinePageSize));
-            }
-            this.#onlineCurrentPage = 0;
-            this.#renderOnlinePage();
-        }
 
-        #renderOnlinePage() {
-            if (!this.onlineUsersDiv) return;
+            // Disconnect any previous sentinel observer
+            if (this.#onlineSentinelObserver) {
+                this.#onlineSentinelObserver.disconnect();
+                this.#onlineSentinelObserver = null;
+            }
+
+            // Remove old pagination bar if present from a previous render
+            const col = document.getElementById('onlineUsers');
+            col?.querySelector('.pagination-bar')?.remove();
+
+            this.#onlineDisplayOffset = 0;
             this.onlineUsersDiv.innerHTML = '';
-            const page = this.#onlinePages[this.#onlineCurrentPage];
-            if (!page || page.length === 0) {
+
+            if (!usersToDisplay || usersToDisplay.length === 0) {
                 this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match filters.</p>';
-                this.#updateOnlinePagination();
                 return;
             }
+
+            this.#renderNextOnlineBatch(usersToDisplay);
+        }
+
+        #renderNextOnlineBatch(usersToDisplay) {
+            if (!this.onlineUsersDiv) return;
+
+            // Disconnect previous sentinel before appending new content
+            if (this.#onlineSentinelObserver) {
+                this.#onlineSentinelObserver.disconnect();
+                this.#onlineSentinelObserver = null;
+            }
+            this.onlineUsersDiv.querySelector('.online-sentinel')?.remove();
+
+            const batch = usersToDisplay.slice(
+                this.#onlineDisplayOffset,
+                this.#onlineDisplayOffset + this.#onlineBatchSize
+            );
+            if (batch.length === 0) return;
+
             const fragment = document.createDocumentFragment();
-            page.forEach(user => {
+            batch.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
@@ -661,32 +680,21 @@
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
-            this.#updateOnlinePagination();
-            this.onlineUsersDiv.scrollTop = 0;
-        }
+            this.#onlineDisplayOffset += batch.length;
 
-        #updateOnlinePagination() {
-            const col = document.getElementById('onlineUsers');
-            if (!col) return;
-            let paginationBar = col.querySelector('.pagination-bar');
-            if (!paginationBar) {
-                paginationBar = document.createElement('div');
-                paginationBar.className = 'pagination-bar';
-                col.appendChild(paginationBar);
+            // If there are more items, append a sentinel and watch it
+            const hasMore = this.#onlineDisplayOffset < usersToDisplay.length;
+            if (hasMore) {
+                const sentinel = document.createElement('div');
+                sentinel.className = 'online-sentinel';
+                sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+                this.onlineUsersDiv.appendChild(sentinel);
+                this.#onlineSentinelObserver = createSentinelObserver(
+                    () => this.#renderNextOnlineBatch(usersToDisplay),
+                    this.onlineUsersDiv
+                );
+                this.#onlineSentinelObserver.observe(sentinel);
             }
-            const total = this.#onlinePages.length;
-            const cur = this.#onlineCurrentPage;
-            paginationBar.innerHTML = `
-                <button class="pagination-btn" id="onlinePrevPage" ${cur === 0 ? 'disabled' : ''}>◀</button>
-                <span class="pagination-info">Page ${total ? cur + 1 : 0}/${total}</span>
-                <button class="pagination-btn" id="onlineNextPage" ${cur >= total - 1 ? 'disabled' : ''}>▶</button>
-            `;
-            paginationBar.querySelector('#onlinePrevPage')?.addEventListener('click', () => {
-                if (this.#onlineCurrentPage > 0) { this.#onlineCurrentPage--; this.#renderOnlinePage(); }
-            });
-            paginationBar.querySelector('#onlineNextPage')?.addEventListener('click', () => {
-                if (this.#onlineCurrentPage < this.#onlinePages.length - 1) { this.#onlineCurrentPage++; this.#renderOnlinePage(); }
-            });
         }
 
         async #appendOnlineUsersList(newUsers) {
@@ -914,26 +922,24 @@
             }
             this.#isLoadingMorePreviousUsers = false;
             console.log("App: Finally finished #displayPreviousUsers. isLoading:", this.#isLoadingMorePreviousUsers, "hasMore:", this.#hasMorePreviousUsersToLoad, "nextOffset:", this.#previousUsersDisplayOffset);
-            this.#updatePrevPagination();
+            this.#attachPrevSentinel();
         }
         }
 
-        #updatePrevPagination() {
-            const col = document.getElementById('previousUsers');
-            if (!col) return;
-            let paginationBar = col.querySelector('.pagination-bar');
-            if (!paginationBar) {
-                paginationBar = document.createElement('div');
-                paginationBar.className = 'pagination-bar';
-                col.appendChild(paginationBar);
-            }
-            const hasMore = this.#hasMorePreviousUsersToLoad;
-            paginationBar.innerHTML = `
-                <button class="pagination-btn" id="prevUsersLoadMore" ${!hasMore ? 'disabled' : ''}>Load More History ▼</button>
-            `;
-            paginationBar.querySelector('#prevUsersLoadMore')?.addEventListener('click', () => {
-                this.#displayPreviousUsers();
-            });
+        /**
+         * Appends a sentinel <div> at the bottom of the history list.
+         * The #prevSentinelObserver watches it and triggers the next batch load.
+         */
+        #attachPrevSentinel() {
+            if (!this.previousUsersDiv || !this.#prevSentinelObserver) return;
+            // Remove any old sentinel first
+            this.previousUsersDiv.querySelector('.prev-sentinel')?.remove();
+            if (!this.#hasMorePreviousUsersToLoad) return;
+            const sentinel = document.createElement('div');
+            sentinel.className = 'prev-sentinel';
+            sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+            this.previousUsersDiv.appendChild(sentinel);
+            this.#prevSentinelObserver.observe(sentinel);
         }
 
         #handleUserClick(user) {
@@ -1223,26 +1229,17 @@
                 }, 100); // Debounce resize event
             });
 
-            // Infinite scroll for previous users list
-            if (this.previousUsersDiv) {
-                let previousUsersScrollTimeout;
-                this.previousUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(previousUsersScrollTimeout);
-                    previousUsersScrollTimeout = setTimeout(() => {
-                        // Ensure 'this' correctly references the App instance
-                        const appInstance = this; 
-                        const element = appInstance.previousUsersDiv;
-                        const threshold = 100; 
-
-                        if (appInstance.#hasMorePreviousUsersToLoad && !appInstance.#isLoadingMorePreviousUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of previous users list. Loading more...');
-                                appInstance.#displayPreviousUsers(); // Call the updated method
-                            }
-                        }
-                    }, 150); // Debounce delay of 150ms
-                });
-            }
+            // IntersectionObserver infinite scroll for previous users (history) list
+            // A sentinel element is appended by #displayPreviousUsers after each batch.
+            // When it enters the viewport the observer fires #displayPreviousUsers again.
+            this.#prevSentinelObserver = createSentinelObserver(
+                () => {
+                    if (this.#hasMorePreviousUsersToLoad && !this.#isLoadingMorePreviousUsers) {
+                        this.#displayPreviousUsers();
+                    }
+                },
+                this.previousUsersDiv
+            );
         }
 
         async start() { 

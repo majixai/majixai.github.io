@@ -63,6 +63,14 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
+
+        // Infinite-scroll state for local filtered list (online users)
+        #onlineBatchSize = 50;
+        #onlineDisplayOffset = 0;
+        #onlineSentinelObserver = null;
+
+        // IntersectionObserver for history list sentinel
+        #prevSentinelObserver = null;
         
         constructor() {
             // Instantiate services and managers
@@ -279,7 +287,7 @@
                     if (this.#allOnlineUsersData && this.#allOnlineUsersData.length > 0) {
                         console.log("Sample user object:", JSON.stringify(this.#allOnlineUsersData[0], null, 2));
                     }
-                    this.#populateFilters(this.#allOnlineUsersData); // Populate filters with initial data
+                    scheduleIdleTask(() => this.#populateFilters(this.#allOnlineUsersData)); // Populate filters with initial data
                     this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
                     await this.#displayPreviousUsers();
                     if (!this.#initialIframesSet) {
@@ -287,7 +295,7 @@
                     }
                 } else {
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
-                    this.#populateFilters([]);
+                    scheduleIdleTask(() => this.#populateFilters([]));
                     this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
                     await this.#displayPreviousUsers();
                 }
@@ -485,13 +493,40 @@
 
         #displayOnlineUsersList(usersToDisplay) {
             if (!this.onlineUsersDiv) return;
-            this.onlineUsersDiv.innerHTML = "";
-            if (usersToDisplay.length === 0) {
+
+            if (this.#onlineSentinelObserver) {
+                this.#onlineSentinelObserver.disconnect();
+                this.#onlineSentinelObserver = null;
+            }
+
+            this.#onlineDisplayOffset = 0;
+            this.onlineUsersDiv.innerHTML = '';
+
+            if (!usersToDisplay || usersToDisplay.length === 0) {
                 this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users match filters.</p>';
                 return;
             }
+
+            this.#renderNextOnlineBatch(usersToDisplay);
+        }
+
+        #renderNextOnlineBatch(usersToDisplay) {
+            if (!this.onlineUsersDiv) return;
+
+            if (this.#onlineSentinelObserver) {
+                this.#onlineSentinelObserver.disconnect();
+                this.#onlineSentinelObserver = null;
+            }
+            this.onlineUsersDiv.querySelector('.online-sentinel')?.remove();
+
+            const batch = usersToDisplay.slice(
+                this.#onlineDisplayOffset,
+                this.#onlineDisplayOffset + this.#onlineBatchSize
+            );
+            if (batch.length === 0) return;
+
             const fragment = document.createDocumentFragment();
-            usersToDisplay.forEach(user => {
+            batch.forEach(user => {
                 if (!user || !user.image_url || !user.username) return;
                 const socialMedia = this.#extractSocialMedia(user.description);
                 const userElement = this.uiManager.createUserElement(
@@ -505,11 +540,25 @@
                     this.uiManager.hideOnlineLoadingIndicator.bind(this.uiManager),
                     this.#displayPreviousUsers.bind(this),
                     (birthdayStr, age) => this.#getDaysSinceOrUntil18thBirthday(birthdayStr, age),
-                    socialMedia // Add the new socialMedia object here
+                    socialMedia
                 );
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
+            this.#onlineDisplayOffset += batch.length;
+
+            const hasMore = this.#onlineDisplayOffset < usersToDisplay.length;
+            if (hasMore) {
+                const sentinel = document.createElement('div');
+                sentinel.className = 'online-sentinel';
+                sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+                this.onlineUsersDiv.appendChild(sentinel);
+                this.#onlineSentinelObserver = createSentinelObserver(
+                    () => this.#renderNextOnlineBatch(usersToDisplay),
+                    this.onlineUsersDiv
+                );
+                this.#onlineSentinelObserver.observe(sentinel);
+            }
         }
 
         async #appendOnlineUsersList(newUsers) {
@@ -759,7 +808,19 @@
             }
             this.#isLoadingMorePreviousUsers = false;
             console.log("App: Finally finished #displayPreviousUsers. isLoading:", this.#isLoadingMorePreviousUsers, "hasMore:", this.#hasMorePreviousUsersToLoad, "nextOffset:", this.#previousUsersDisplayOffset);
+            this.#attachPrevSentinel();
         }
+        }
+
+        #attachPrevSentinel() {
+            if (!this.previousUsersDiv || !this.#prevSentinelObserver) return;
+            this.previousUsersDiv.querySelector('.prev-sentinel')?.remove();
+            if (!this.#hasMorePreviousUsersToLoad) return;
+            const sentinel = document.createElement('div');
+            sentinel.className = 'prev-sentinel';
+            sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+            this.previousUsersDiv.appendChild(sentinel);
+            this.#prevSentinelObserver.observe(sentinel);
         }
 
         #handleUserClick(user) {
@@ -1016,46 +1077,34 @@
                 }, 100); // Debounce resize event
             });
 
-            // Infinite scroll for online users list
+            // IntersectionObserver for API-level fetch (more pages from server)
             if (this.onlineUsersDiv) {
-                let scrollTimeout;
-                this.onlineUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(() => {
-                        const element = this.onlineUsersDiv;
-                        const threshold = 100; // Pixels from bottom to trigger
-                        
-                        // Check if scrolled to near the bottom and if we should fetch more
+                const apiSentinel = document.createElement('div');
+                apiSentinel.className = 'api-load-sentinel';
+                apiSentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+                this.onlineUsersDiv.appendChild(apiSentinel);
+                const apiObserver = createSentinelObserver(
+                    () => {
                         if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of online users list. Fetching more...');
-                                this.#fetchMoreOnlineUsers();
-                            }
+                            this.#fetchMoreOnlineUsers();
                         }
-                    }, 150); // Debounce delay of 150ms
-                });
+                        this.onlineUsersDiv.appendChild(apiSentinel);
+                        apiObserver.observe(apiSentinel);
+                    },
+                    this.onlineUsersDiv
+                );
+                apiObserver.observe(apiSentinel);
             }
 
-            // Infinite scroll for previous users list
-            if (this.previousUsersDiv) {
-                let previousUsersScrollTimeout;
-                this.previousUsersDiv.addEventListener('scroll', () => {
-                    clearTimeout(previousUsersScrollTimeout);
-                    previousUsersScrollTimeout = setTimeout(() => {
-                        // Ensure 'this' correctly references the App instance
-                        const appInstance = this; 
-                        const element = appInstance.previousUsersDiv;
-                        const threshold = 100; 
-
-                        if (appInstance.#hasMorePreviousUsersToLoad && !appInstance.#isLoadingMorePreviousUsers) {
-                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
-                                console.log('App: Scrolled near bottom of previous users list. Loading more...');
-                                appInstance.#displayPreviousUsers(); // Call the updated method
-                            }
-                        }
-                    }, 150); // Debounce delay of 150ms
-                });
-            }
+            // IntersectionObserver infinite scroll for previous users (history) list
+            this.#prevSentinelObserver = createSentinelObserver(
+                () => {
+                    if (this.#hasMorePreviousUsersToLoad && !this.#isLoadingMorePreviousUsers) {
+                        this.#displayPreviousUsers();
+                    }
+                },
+                this.previousUsersDiv
+            );
         }
 
         async start() { 
