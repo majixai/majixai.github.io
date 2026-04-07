@@ -35,6 +35,11 @@
     <div class="app-container">
         <div class="header-controls">
             <h1>Room Viewer</h1>
+            <div class="layout-toggle-group">
+                <button class="layout-btn" id="layoutPerformers" title="Performers only">👥</button>
+                <button class="layout-btn active" id="layoutSplit" title="Split view">⊞</button>
+                <button class="layout-btn" id="layoutIframes" title="Iframes only">📺</button>
+            </div>
             <div class="control-buttons">
                 <button id="settingsButton">Settings</button>
                 <button id="storageButton">Chat Storage</button>
@@ -95,12 +100,6 @@
             <!-- Main Viewing Column -->
             <div class="iframe-column" id="iframeColumn">
                 <div class="iframe-controls-bar">
-                    <!-- Layout toggle -->
-                    <div class="layout-toggle-group">
-                        <button class="layout-btn" id="layoutPerformers" title="Performers only">👥</button>
-                        <button class="layout-btn active" id="layoutSplit" title="Split view">⊞</button>
-                        <button class="layout-btn" id="layoutIframes" title="Iframes only">📺</button>
-                    </div>
                     <!-- Iframe count -->
                     <div class="iframe-count-group">
                         <label for="iframeCountInput">Slots:</label>
