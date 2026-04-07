@@ -38,6 +38,7 @@
             <div class="control-buttons">
                 <button id="settingsButton">Settings</button>
                 <button id="storageButton">Chat Storage</button>
+                <button id="archiveButton">📁 Archive</button>
                 <button id="toggleControlsButton">Toggle Controls</button>
             </div>
         </div>
@@ -205,6 +206,23 @@
                 <iframe id="bigTipperAppIframe" src="about:blank"></iframe>
             </div>
         </div>
+
+        <!-- Archive Modal -->
+        <div id="archiveModal" class="modal archive-modal" style="display:none;">
+            <div class="archive-modal-content">
+                <div class="archive-header">
+                    <h2>📁 Archive — Performer Slideshows</h2>
+                    <div class="archive-search-bar">
+                        <input type="text" id="archiveSearch" placeholder="Search performers..." autocomplete="off">
+                        <span id="archiveCount" class="archive-count"></span>
+                    </div>
+                    <button class="close-button" id="closeArchiveModal">&times;</button>
+                </div>
+                <div id="archiveGrid" class="archive-grid">
+                    <p class="text-muted archive-loading">Loading archive...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="config.js"></script>
@@ -247,6 +265,182 @@
             this.classList.add('active');
         });
     });
+
+    // ==================== Archive ====================
+    (function() {
+        let allArchiveNames = [];
+        let archiveLoaded = false;
+        let activeSlideshows = [];
+
+        const archiveBtn = document.getElementById('archiveButton');
+        const archiveModal = document.getElementById('archiveModal');
+        const closeArchiveBtn = document.getElementById('closeArchiveModal');
+        const archiveSearch = document.getElementById('archiveSearch');
+        const archiveGrid = document.getElementById('archiveGrid');
+        const archiveCount = document.getElementById('archiveCount');
+
+        function stopAllArchiveSlideshows() {
+            activeSlideshows.forEach(t => clearInterval(t));
+            activeSlideshows = [];
+        }
+
+        function startArchiveSlideshow(carousel, imgEl, urls) {
+            if (carousel._archiveTimer) clearInterval(carousel._archiveTimer);
+            let idx = 0;
+            const dur = 3500;
+            const progressBar = carousel.querySelector('.slide-progress');
+            const counterEl = carousel.querySelector('.slide-counter');
+            if (progressBar) {
+                progressBar.style.transition = `width ${dur}ms linear`;
+                progressBar.style.width = '100%';
+            }
+            const timer = setInterval(() => {
+                idx = (idx + 1) % urls.length;
+                if (progressBar) {
+                    progressBar.style.transition = 'none'; progressBar.style.width = '0%';
+                    void progressBar.offsetWidth;
+                    progressBar.style.transition = `width ${dur}ms linear`; progressBar.style.width = '100%';
+                }
+                imgEl.style.opacity = '0.4';
+                setTimeout(() => {
+                    imgEl.src = urls[idx];
+                    imgEl.style.opacity = '1';
+                    if (counterEl) counterEl.textContent = `${idx + 1}/${urls.length}`;
+                }, 280);
+            }, dur);
+            carousel._archiveTimer = timer;
+            activeSlideshows.push(timer);
+        }
+
+        function createArchiveCard(username) {
+            const card = document.createElement('div');
+            card.className = 'archive-card';
+            card.dataset.username = username;
+
+            const carousel = document.createElement('div');
+            carousel.className = 'archive-carousel slideshow-carousel';
+
+            const img = document.createElement('img');
+            img.alt = username;
+            img.loading = 'lazy';
+            img.className = 'slide-img archive-img';
+            img.src = `https://cdn3.imlive.com/pics/${username}/preview.jpg`;
+            img.onerror = function() { this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="120" height="90" fill="%23333"/><text x="50%" y="50%" font-size="11" fill="%23aaa" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'; };
+
+            const progressBar = document.createElement('div');
+            progressBar.className = 'slide-progress';
+
+            const counter = document.createElement('span');
+            counter.className = 'slide-counter';
+            counter.style.display = 'none';
+
+            carousel.appendChild(img);
+            carousel.appendChild(progressBar);
+            carousel.appendChild(counter);
+
+            const label = document.createElement('div');
+            label.className = 'archive-label';
+            label.textContent = username;
+
+            card.appendChild(carousel);
+            card.appendChild(label);
+
+            // Lazy-load dat file when card enters viewport
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    obs.disconnect();
+                    const datPath = `../history/${encodeURIComponent(username)}.dat`;
+                    fetch(datPath)
+                        .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+                        .then(buffer => {
+                            const urls = [...new Set(JSON.parse(pako.inflate(new Uint8Array(buffer), { to: 'string' })).filter(Boolean))];
+                            if (urls.length > 0) {
+                                img.src = urls[0];
+                            }
+                            if (urls.length > 1) {
+                                counter.textContent = `1/${urls.length}`;
+                                counter.style.display = 'block';
+                                startArchiveSlideshow(carousel, img, urls);
+                            }
+                        })
+                        .catch(() => {});
+                });
+            }, { rootMargin: '300px' });
+            observer.observe(card);
+
+            // Click to load in active iframe slot
+            card.addEventListener('click', () => {
+                const targetSlot = document.getElementById('targetSlot');
+                const iframeId = targetSlot ? targetSlot.value : null;
+                const iframes = document.querySelectorAll('#iframeGrid iframe');
+                let targetIframe = iframeId ? document.getElementById(iframeId) : null;
+                if (!targetIframe && iframes.length > 0) targetIframe = iframes[0];
+                if (targetIframe) {
+                    targetIframe.src = `https://chaturbate.com/embed/${username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                }
+                archiveModal.style.display = 'none';
+                stopAllArchiveSlideshows();
+            });
+
+            return card;
+        }
+
+        function renderArchive(names) {
+            stopAllArchiveSlideshows();
+            archiveGrid.innerHTML = '';
+            if (names.length === 0) {
+                archiveGrid.innerHTML = '<p class="text-muted archive-loading">No performers found.</p>';
+                archiveCount.textContent = '';
+                return;
+            }
+            archiveCount.textContent = `${names.length} performer${names.length !== 1 ? 's' : ''}`;
+            const frag = document.createDocumentFragment();
+            names.forEach(name => frag.appendChild(createArchiveCard(name)));
+            archiveGrid.appendChild(frag);
+        }
+
+        async function loadArchive() {
+            if (archiveLoaded) return;
+            archiveGrid.innerHTML = '<p class="text-muted archive-loading">Loading archive index...</p>';
+            try {
+                const resp = await fetch('../history_index.json');
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                allArchiveNames = await resp.json();
+                archiveLoaded = true;
+                renderArchive(allArchiveNames);
+            } catch (e) {
+                archiveGrid.innerHTML = `<p class="text-muted archive-loading">Failed to load archive: ${e.message}</p>`;
+            }
+        }
+
+        archiveBtn?.addEventListener('click', () => {
+            archiveModal.style.display = 'flex';
+            loadArchive();
+        });
+
+        closeArchiveBtn?.addEventListener('click', () => {
+            archiveModal.style.display = 'none';
+            stopAllArchiveSlideshows();
+        });
+
+        archiveModal?.addEventListener('click', e => {
+            if (e.target === archiveModal) {
+                archiveModal.style.display = 'none';
+                stopAllArchiveSlideshows();
+            }
+        });
+
+        let searchDebounce;
+        archiveSearch?.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                const q = archiveSearch.value.trim().toLowerCase();
+                const filtered = q ? allArchiveNames.filter(n => n.toLowerCase().includes(q)) : allArchiveNames;
+                renderArchive(filtered);
+            }, 250);
+        });
+    })();
     </script>
 </body>
 </html>

@@ -594,3 +594,136 @@ html, body {
     min-width: 70px;
     text-align: center;
 }
+
+/* ==================== Archive Modal ==================== */
+.archive-modal {
+    z-index: 200;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+}
+
+.archive-modal-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    overflow: hidden;
+}
+
+.archive-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: #0f3460;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.archive-header h2 {
+    margin: 0;
+    font-size: 1.1em;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.archive-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 160px;
+}
+
+#archiveSearch {
+    flex: 1;
+    padding: 5px 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background: #16213e;
+    color: #e0e0e0;
+    font-size: 0.9em;
+    outline: none;
+}
+
+#archiveSearch:focus {
+    border-color: #4CAF50;
+}
+
+.archive-count {
+    color: #aaa;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.archive-header .close-button {
+    position: static;
+    font-size: 1.4em;
+    color: #ccc;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.archive-header .close-button:hover { color: #fff; }
+
+.archive-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    align-content: start;
+}
+
+.archive-loading {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #aaa;
+    padding: 20px;
+}
+
+.archive-card {
+    background: #16213e;
+    border: 1px solid #2a2f4a;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.archive-card:hover {
+    transform: translateY(-3px) scale(1.03);
+    border-color: #4CAF50;
+}
+
+.archive-carousel {
+    width: 100%;
+    position: relative;
+    background: #000;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+}
+
+.archive-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.35s ease;
+}
+
+.archive-label {
+    padding: 4px 6px;
+    font-size: 0.7em;
+    color: #ccc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: #0d1b2e;
+}
