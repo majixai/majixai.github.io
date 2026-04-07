@@ -164,6 +164,12 @@
             <div class="user-column" id="previousUsers">
                 <h2>History (Online Now)</h2>
                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
+                <div class="autoscroller-bar" id="autoscrollerBar">
+                    <label>Auto-scroll:</label>
+                    <button id="autoscrollToggle">▶ Play</button>
+                    <span>Speed:</span>
+                    <input type="range" id="autoscrollSpeed" min="1" max="10" value="5">
+                </div>
                 <div class="user-list" id="historyUserList">
                     <p class="text-muted w3-center">Loading history...</p>
                 </div>
@@ -220,8 +226,109 @@
                 <div class="user-list" id="onlineUserList"></div>
             </div>
         </div>
-        
+
+        <!-- Snippet Manager Section -->
+        <div class="snippet-manager-container" id="snippetManagerContainer" style="display: none;">
+            <fieldset>
+                <legend>Text Snippet Manager</legend>
+                <div class="control-group">
+                    <label for="newSnippetInput">Add New Snippet:</label>
+                    <textarea id="newSnippetInput" rows="3"></textarea>
+                </div>
+                <button id="saveSnippetButton">Add Snippet</button>
+                <p>Saved Snippets (click to copy):</p>
+                <div id="currentSnippetDisplay">
+                    <p>Loading snippets...</p>
+                </div>
+                <div id="snippetStatusMessage" style="display: none;"></div>
+            </fieldset>
         </div>
+
+        <!-- Main Text Area with Autocomplete -->
+        <div class="main-text-area-container" id="mainTextAreaContainer" style="display: none;">
+            <fieldset>
+                <legend>Main Text Area (with Snippet Autocomplete)</legend>
+                <textarea id="mainTextArea" rows="6" placeholder="Type here... try '{{' to trigger snippets"></textarea>
+                <div id="autocompleteSuggestionsContainer" class="autocomplete-suggestions" style="display: none;"></div>
+            </fieldset>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeSettingsModal">&times;</span>
+                <h2>Settings</h2>
+                <div class="controls-bar" id="controlsBarContainer">
+                    <fieldset>
+                        <legend>Filters &amp; Settings</legend>
+                        <div class="control-group">
+                            <label for="filterTags">Filter by Tag(s):</label>
+                            <select id="filterTags" multiple size="3">
+                                <option value="">-- All Tags --</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="filterAge">Filter by Age(s):</label>
+                            <select id="filterAge" multiple size="3">
+                                <option value="">-- All Ages --</option>
+                            </select>
+                        </div>
+                        <div class="control-group quick-filters">
+                            <span>Quick Filters:</span>
+                            <button id="filterAge18" class="quick-filter-btn">Age 18</button>
+                            <button id="filterTagAsian" class="quick-filter-btn">Asian</button>
+                            <button id="filterTagBlonde" class="quick-filter-btn">Blonde</button>
+                            <button id="filterTagDeepthroat" class="quick-filter-btn">Deepthroat</button>
+                            <button id="filterTagBigboobs" class="quick-filter-btn">bigboobs</button>
+                            <button id="filterBirthdayBanner" class="quick-filter-btn">Birthday Banners</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Reporting</legend>
+                        <div class="control-group report-controls">
+                            <button id="sendReportButton">Send Report</button>
+                            <span id="reportLoadingIndicator" class="loading-indicator" style="display: none;">Sending...</span>
+                            <div id="reportStatusDisplay" class="report-status" style="display: none;"></div>
+                        </div>
+                        <div class="control-group">
+                            <button id="bigTipperPopupButton">Open Big Tipper App</button>
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend>Debug</legend>
+                        <div class="control-group">
+                            <button id="copyJsErrorsButton">Copy JS Errors</button>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Storage Modal -->
+        <div id="storageModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeStorageModal">&times;</span>
+                <h2>Chat Storage</h2>
+                <div class="control-group">
+                    <label for="storageType">History Storage:</label>
+                    <select id="storageType">
+                        <option value="local">Local Storage</option>
+                        <option value="session">Session Storage</option>
+                        <option value="indexedClicked">IndexedDB (Default History)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Big Tipper App Modal -->
+        <div id="bigTipperAppModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close-button" id="closeBigTipperAppModal">&times;</span>
+                <h2>Big Tipper App</h2>
+                <iframe id="bigTipperAppIframe" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
 
     <script src="config.js"></script>
     <script src="logger.js"></script>
@@ -234,6 +341,7 @@
     <script src="ui.js"></script>
     <script src="tensor.js"></script>
     <script src="script.js"></script>
+    <script src="autoscroller.js"></script>
     <script src="slideshow-manager.js"></script>
     <script>
         $(document).ready(function() {
@@ -277,6 +385,18 @@
     // --- 4. .DAT File Slideshow Logic (via SlideshowManager) ---
     // Called externally when rendering performer cards
 });
+
+    // --- 5. Autoscroller integration ---
+    if (typeof Autoscroller !== 'undefined') {
+        const _autoscroller = new Autoscroller(
+            document.getElementById('onlineUsers').querySelector('.user-list'),
+            document.getElementById('previousUsers').querySelector('.user-list'),
+            document.getElementById('autoscrollToggle'),
+            document.getElementById('autoscrollSpeed')
+        );
+        document.getElementById('autoscrollToggle')?.addEventListener('click', () => _autoscroller.toggle());
+        document.getElementById('autoscrollSpeed')?.addEventListener('input', () => _autoscroller.onSpeedChange());
+    }
 
     // --- 5. Iframe Size & Type Toggles ---
     document.querySelectorAll('.size-btn').forEach(btn => {
@@ -329,6 +449,13 @@
 
     // Expose for use by script.js when creating performer cards
     window.loadPerformerSlideshow = loadPerformerSlideshow;
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('../sw.js', { scope: '../' })
+            .then(r => console.log('SW registered:', r.scope))
+            .catch(e => console.error('SW registration failed:', e));
+    }
     </script>
 </body>
 </html>
