@@ -446,7 +446,8 @@ class UIManager {
             }
         });
 
-        // Load more button
+        // IntersectionObserver sentinel replaces "Load More" button
+        // The sentinel is appended/replaced by showLoadMore(); clicking the button is kept as a fallback.
         document.querySelector('#loadMoreBtn')?.addEventListener('click', () => {
             if (this.#_onFilterChangeCallback) {
                 this.#_onFilterChangeCallback(this.getFilters(), true); // true = load more
@@ -470,7 +471,7 @@ class UIManager {
                     );
                     
                     this.#_showContextMenu(e.clientX, e.clientY, {
-                        imageUrl: img.src,
+                        imageUrl: img.dataset.imgUrl || img.src,
                         username: performerData.username,
                         x: coords.xPercent,
                         y: coords.yPercent,
@@ -674,7 +675,7 @@ class UIManager {
 
         card.innerHTML = `
             <div class="card-image-container">
-                <img src="${imageUrl}" alt="${this.#_escapeHtml(name)}" loading="lazy" data-role="performer-image">
+                <img src="${LAZY_PLACEHOLDER}" data-src="${imageUrl}" data-img-url="${imageUrl}" alt="${this.#_escapeHtml(name)}" data-role="performer-image">
                 <div class="card-badges">
                     ${performer.is_new ? '<span class="badge badge-new">NEW</span>' : ''}
                     ${rank <= 10 ? `<span class="badge badge-rank">#${rank}</span>` : ''}
@@ -693,6 +694,10 @@ class UIManager {
                 <div class="card-vision" data-vision-for="${this.#_escapeHtml(performer.username)}">Vision: pending...</div>
             </div>
         `;
+
+        // Lazy-load the card image once it enters the viewport
+        const lazyImg = card.querySelector('img[data-src]');
+        if (lazyImg) LazyImageObserver.observe(lazyImg);
 
         return card;
     }
@@ -800,7 +805,7 @@ class UIManager {
             const image = card.querySelector('img[data-role="performer-image"]');
             const visionEl = card.querySelector('.card-vision');
             if (!image || !visionEl) continue;
-            const prediction = await this.#_inferImageLabel(image.src);
+            const prediction = await this.#_inferImageLabel(image.dataset.imgUrl || image.src);
             if (!prediction) {
                 visionEl.textContent = 'Vision: unavailable';
                 continue;
@@ -1041,13 +1046,33 @@ class UIManager {
     }
 
     /**
-     * Show/hide load more button
+     * Show/hide load more. When showing, attaches an IntersectionObserver sentinel
+     * that auto-triggers loading; falls back to the visible button for manual trigger.
      * @param {boolean} show 
      */
     showLoadMore(show) {
         const btn = document.querySelector('#loadMoreBtn');
-        if (btn) {
-            btn.style.display = show ? 'inline-block' : 'none';
+        const container = document.querySelector('#loadMoreContainer');
+        if (btn) btn.style.display = show ? 'inline-block' : 'none';
+
+        // Detach any existing sentinel
+        container?.querySelector('.performers-sentinel')?.remove();
+        if (this._loadMoreSentinelObserver) {
+            this._loadMoreSentinelObserver.disconnect();
+            this._loadMoreSentinelObserver = null;
+        }
+
+        if (show && container && this.#_onFilterChangeCallback) {
+            const sentinel = document.createElement('div');
+            sentinel.className = 'performers-sentinel';
+            sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
+            container.appendChild(sentinel);
+            this._loadMoreSentinelObserver = createSentinelObserver(() => {
+                if (this.#_onFilterChangeCallback) {
+                    this.#_onFilterChangeCallback(this.getFilters(), true);
+                }
+            });
+            this._loadMoreSentinelObserver.observe(sentinel);
         }
     }
 
@@ -1411,7 +1436,7 @@ class UIManager {
             if (!clickedImage) return [];
 
             // Get features for clicked image
-            const clickedFeatures = await this.#_getImageFeatures(clickedImage.src);
+            const clickedFeatures = await this.#_getImageFeatures(clickedImage.dataset.imgUrl || clickedImage.src);
             if (!clickedFeatures) return [];
 
             // Calculate similarity for all visible performers
@@ -1419,11 +1444,12 @@ class UIManager {
             const similarities = await Promise.all(
                 allCards.map(async (card) => {
                     const img = card.querySelector('img[data-role="performer-image"]');
-                    if (!img || img.src === clickedImage.src) {
+                    const imgSrc = img?.dataset.imgUrl || img?.src;
+                    if (!img || imgSrc === (clickedImage.dataset.imgUrl || clickedImage.src)) {
                         return { card, username: null, similarity: 0 };
                     }
 
-                    const features = await this.#_getImageFeatures(img.src);
+                    const features = await this.#_getImageFeatures(imgSrc);
                     if (!features) {
                         return { card, username: null, similarity: 0 };
                     }
@@ -1684,8 +1710,8 @@ class BackgroundImageAnalyzer {
             try {
                 const data = JSON.parse(card.dataset.performer || '{}');
                 const img = card.querySelector('img[data-role="performer-image"]');
-                if (data.username && img?.src) {
-                    result.push({ username: data.username, imageUrl: img.src });
+                if (data.username && (img?.dataset.imgUrl || img?.src)) {
+                    result.push({ username: data.username, imageUrl: img.dataset.imgUrl || img.src });
                 }
             } catch (e) {
                 // Skip cards with invalid data
