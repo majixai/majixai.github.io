@@ -1185,7 +1185,8 @@
                         if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
                             this.#fetchMoreOnlineUsers();
                         }
-                        // Re-attach after use since createSentinelObserver disconnects after firing
+                        // Re-attach after use: remove first to avoid duplicates, then re-append
+                        apiSentinel.remove();
                         this.onlineUsersDiv.appendChild(apiSentinel);
                         apiObserver.observe(apiSentinel);
                     },

@@ -1088,6 +1088,7 @@
                         if (this.#hasMoreOnlineUsersToLoad && !this.#isLoadingOnlineUsers) {
                             this.#fetchMoreOnlineUsers();
                         }
+                        apiSentinel.remove();
                         this.onlineUsersDiv.appendChild(apiSentinel);
                         apiObserver.observe(apiSentinel);
                     },

@@ -1,7 +1,7 @@
 /**
  * @file Shared lazy-loading utility for the Best suite.
  * @description Provides a global LazyImageObserver that swaps data-src → src
- * as images enter the viewport, and a scheduleMicrotask helper that defers
+ * as images enter the viewport, and a scheduleIdleTask helper that defers
  * non-critical work via requestIdleCallback (with a setTimeout fallback).
  */
 
