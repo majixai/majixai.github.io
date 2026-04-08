@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f3460">
+  <meta name="description" content="Browse real OHLCV data for indices, Fortune 500 companies, and top cryptocurrencies">
+  <title>Financial Data Browser</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root { --bg: #0d1117; --card: #161b22; --accent: #00d9ff; --text: #e6edf3; --muted: #8b949e; --border: #30363d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    header { background: #0f3460; padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    header h1 { margin: 0; font-size: 1.4rem; color: var(--accent); }
+    header a { color: var(--muted); text-decoration: none; font-size: .85rem; }
+    .controls { display: flex; flex-wrap: wrap; gap: .75rem; padding: 1rem 1.5rem; background: var(--card); border-bottom: 1px solid var(--border); }
+    .controls select, .controls input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: .4rem .7rem; font-size: .9rem; }
+    .controls select { min-width: 180px; }
+    .controls input { width: 200px; }
+    .btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: .4rem 1rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn:hover { opacity: .85; }
+    .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .layout { display: grid; grid-template-columns: 280px 1fr; gap: 0; min-height: calc(100vh - 120px); }
+    .sidebar { background: var(--card); border-right: 1px solid var(--border); overflow-y: auto; max-height: calc(100vh - 120px); }
+    .sidebar-header { padding: .75rem 1rem; font-size: .8rem; font-weight: 700; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); z-index: 1; }
+    .ticker-list { list-style: none; padding: 0; margin: 0; }
+    .ticker-list li { border-bottom: 1px solid var(--border); }
+    .ticker-list li button { width: 100%; text-align: left; background: none; border: none; padding: .55rem 1rem; color: var(--text); cursor: pointer; font-size: .85rem; display: flex; justify-content: space-between; align-items: center; }
+    .ticker-list li button:hover, .ticker-list li button.active { background: rgba(0,217,255,.08); color: var(--accent); }
+    .ticker-list li button .badge { font-size: .7rem; color: var(--muted); background: var(--bg); padding: 2px 6px; border-radius: 10px; border: 1px solid var(--border); }
+    .main { padding: 1.5rem; overflow-y: auto; }
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    .chart-card h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+    .chart-card .subtitle { color: var(--muted); font-size: .85rem; margin-bottom: 1rem; }
+    canvas { max-height: 320px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; }
+    .stat-card .label { font-size: .75rem; color: var(--muted); margin-bottom: .2rem; }
+    .stat-card .value { font-size: 1.1rem; font-weight: 700; }
+    .stat-card .value.up { color: #3fb950; }
+    .stat-card .value.down { color: #f85149; }
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { background: var(--bg); color: var(--muted); padding: .5rem .75rem; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+    td { padding: .4rem .75rem; border-bottom: 1px solid rgba(48,54,61,.5); }
+    tr:last-child td { border-bottom: none; }
+    td.up { color: #3fb950; } td.down { color: #f85149; }
+    .placeholder { color: var(--muted); text-align: center; padding: 3rem; }
+    .cat-tabs { display: flex; gap: .5rem; padding: .5rem 1rem; border-bottom: 1px solid var(--border); background: var(--card); }
+    .cat-tab { background: none; border: 1px solid var(--border); border-radius: 20px; padding: .3rem .9rem; color: var(--muted); cursor: pointer; font-size: .82rem; }
+    .cat-tab.active, .cat-tab:hover { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+    .search-box { width: calc(100% - 2rem); margin: .75rem 1rem; padding: .4rem .7rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; font-size: .85rem; }
+    @media (max-width: 700px) { .layout { grid-template-columns: 1fr; } .sidebar { max-height: 220px; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <i class="fas fa-database" style="font-size:1.5rem;color:var(--accent)"></i>
+  <h1>Financial Data Browser</h1>
+  <a href="../finance/">← Finance Hub</a>
+</header>
+
+<div class="cat-tabs" id="catTabs">
+  <button class="cat-tab active" data-cat="all">All (155+)</button>
+  <button class="cat-tab" data-cat="index">Indices (30)</button>
+  <button class="cat-tab" data-cat="equity">Fortune 500 (92)</button>
+  <button class="cat-tab" data-cat="crypto">Crypto (34)</button>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">Instruments</div>
+    <input type="search" id="searchBox" class="search-box" placeholder="Search ticker or name…">
+    <ul class="ticker-list" id="tickerList"></ul>
+  </div>
+  <div class="main" id="mainPanel">
+    <div class="placeholder">
+      <i class="fas fa-chart-line" style="font-size:3rem;margin-bottom:1rem;display:block;color:var(--accent)"></i>
+      <p>Select an instrument from the left to view its historical OHLCV data.</p>
+      <p style="font-size:.85rem">Data covers ~2 years of daily bars. Updated daily via GitHub Actions.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let manifest = null;
+let currentChart = null;
+let activeCategory = 'all';
+let activeTicker = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch('../data/manifest.json');
+    if (!res.ok) throw new Error('manifest not found');
+    manifest = await res.json();
+    renderSidebar(manifest.files);
+  } catch (e) {
+    document.getElementById('tickerList').innerHTML =
+      '<li style="padding:1rem;color:#f85149">Failed to load manifest.json – run the data generator first.</li>';
+  }
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────
+function renderSidebar(files) {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const list = document.getElementById('tickerList');
+  const filtered = files.filter(f => {
+    const catMatch = activeCategory === 'all' || f.category === activeCategory;
+    const txtMatch = !q || f.ticker.toLowerCase().includes(q) || (f.name || '').toLowerCase().includes(q);
+    return catMatch && txtMatch;
+  });
+  list.innerHTML = filtered.map(f => `
+    <li><button onclick="loadTicker('${f.path}','${f.ticker}','${(f.name||'').replace(/'/g,"\\'")}','${f.category}')"
+        class="${activeTicker === f.path ? 'active' : ''}" title="${f.name}">
+      <span>${f.ticker}</span>
+      <span class="badge">${f.record_count}d</span>
+    </button></li>`).join('');
+}
+
+document.getElementById('searchBox').addEventListener('input', () => renderSidebar(manifest?.files || []));
+document.getElementById('catTabs').addEventListener('click', e => {
+  const tab = e.target.closest('[data-cat]');
+  if (!tab) return;
+  activeCategory = tab.dataset.cat;
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.toggle('active', t === tab));
+  renderSidebar(manifest?.files || []);
+});
+
+// ── Load ticker ───────────────────────────────────────────────────────────
+async function loadTicker(path, ticker, name, category) {
+  activeTicker = path;
+  renderSidebar(manifest?.files || []);
+  const panel = document.getElementById('mainPanel');
+  panel.innerHTML = '<div class="placeholder"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+  try {
+    const res = await fetch('../' + path);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderTicker(data);
+  } catch (e) {
+    panel.innerHTML = `<div class="placeholder" style="color:#f85149">Error loading ${path}: ${e.message}</div>`;
+  }
+}
+
+// ── Render ticker ─────────────────────────────────────────────────────────
+function renderTicker(data) {
+  const { ticker, name, category, currency, last_updated, ohlcv } = data;
+  if (!ohlcv || !ohlcv.length) { document.getElementById('mainPanel').innerHTML = '<div class="placeholder">No data</div>'; return; }
+
+  const last  = ohlcv[ohlcv.length - 1];
+  const prev  = ohlcv[ohlcv.length - 2] || last;
+  const first = ohlcv[0];
+  const chg   = last.close - prev.close;
+  const pct   = (chg / prev.close * 100);
+  const ytdChg= last.close - ohlcv[Math.max(0, ohlcv.length - 252)].close;
+  const ytdPct= ytdChg / ohlcv[Math.max(0, ohlcv.length - 252)].close * 100;
+  const hi52  = Math.max(...ohlcv.slice(-252).map(r => r.high));
+  const lo52  = Math.min(...ohlcv.slice(-252).map(r => r.low));
+
+  const fmt = n => n == null ? '—' : (Math.abs(n) >= 1000 ? n.toLocaleString('en-US', {maximumFractionDigits: 2}) : n.toFixed(4));
+  const fmtPct = p => (p >= 0 ? '+' : '') + p.toFixed(2) + '%';
+
+  document.getElementById('mainPanel').innerHTML = `
+    <div class="chart-card">
+      <h2>${ticker} <small style="font-weight:400;font-size:.9rem;color:var(--muted)">${name}</small></h2>
+      <div class="subtitle">
+        ${category.toUpperCase()} · ${currency} · Updated: ${last_updated ? last_updated.split('T')[0] : '—'}
+      </div>
+      <canvas id="priceChart"></canvas>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Last Close</div><div class="value">${currency} ${fmt(last.close)}</div></div>
+      <div class="stat-card"><div class="label">Day Change</div><div class="value ${chg >= 0 ? 'up':'down'}">${fmtPct(pct)}</div></div>
+      <div class="stat-card"><div class="label">YTD Return</div><div class="value ${ytdChg >= 0 ? 'up':'down'}">${fmtPct(ytdPct)}</div></div>
+      <div class="stat-card"><div class="label">52w High</div><div class="value">${fmt(hi52)}</div></div>
+      <div class="stat-card"><div class="label">52w Low</div><div class="value">${fmt(lo52)}</div></div>
+      <div class="stat-card"><div class="label">Records</div><div class="value">${ohlcv.length}</div></div>
+      <div class="stat-card"><div class="label">From</div><div class="value" style="font-size:.85rem">${first.date}</div></div>
+      <div class="stat-card"><div class="label">To</div><div class="value" style="font-size:.85rem">${last.date}</div></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Volume</th><th>Chg%</th></tr></thead>
+        <tbody id="priceTable"></tbody>
+      </table>
+    </div>`;
+
+  // Chart
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+  const labels = ohlcv.map(r => r.date);
+  const closes = ohlcv.map(r => r.close);
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  currentChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: ticker,
+        data: closes,
+        borderColor: '#00d9ff',
+        backgroundColor: 'rgba(0,217,255,.07)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { type: 'time', time: { unit: 'month' }, ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+        y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } }
+      },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#161b22', titleColor: '#00d9ff', bodyColor: '#e6edf3', borderColor: '#30363d', borderWidth: 1 } }
+    }
+  });
+
+  // Table (last 100 rows reversed)
+  const rows = ohlcv.slice(-100).reverse();
+  const tbody = document.getElementById('priceTable');
+  tbody.innerHTML = rows.map((r, i) => {
+    const prev2 = rows[i + 1];
+    const rc = prev2 ? ((r.close - prev2.close) / prev2.close * 100) : 0;
+    return `<tr>
+      <td>${r.date}</td>
+      <td>${fmt(r.open)}</td>
+      <td>${fmt(r.high)}</td>
+      <td>${fmt(r.low)}</td>
+      <td>${fmt(r.close)}</td>
+      <td>${r.volume ? r.volume.toLocaleString() : '—'}</td>
+      <td class="${rc >= 0 ? 'up':'down'}">${prev2 ? fmtPct(rc) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+init();
+</script>
+
+<!-- Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

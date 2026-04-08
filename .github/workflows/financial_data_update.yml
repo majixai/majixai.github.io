@@ -1,0 +1,172 @@
+name: Update Financial Data (.dat files)
+
+on:
+  schedule:
+    # Run daily at 22:00 UTC (after US market close)
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'yfinance period (e.g. 2y, 1y, 6mo)'
+        required: false
+        default: '2y'
+      categories:
+        description: 'Comma-separated categories: indices,fortune500,crypto'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: financial-data-update
+  cancel-in-progress: true
+
+jobs:
+  generate-indices:
+    name: Fetch Index Data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Generate index .dat files
+        run: |
+          python scripts/generate_financial_data.py \
+            --categories indices \
+            --period ${{ github.event.inputs.period || '2y' }} \
+            --no-meta
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: indices-dat
+          path: data/indices/
+          retention-days: 1
+
+  generate-fortune500:
+    name: Fetch Fortune 500 Data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Generate Fortune 500 .dat files
+        run: |
+          python scripts/generate_financial_data.py \
+            --categories fortune500 \
+            --period ${{ github.event.inputs.period || '2y' }} \
+            --no-meta
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fortune500-dat
+          path: data/fortune500/
+          retention-days: 1
+
+  generate-crypto:
+    name: Fetch Crypto Data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Generate crypto .dat files
+        run: |
+          python scripts/generate_financial_data.py \
+            --categories crypto \
+            --period ${{ github.event.inputs.period || '2y' }} \
+            --no-meta
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crypto-dat
+          path: data/crypto/
+          retention-days: 1
+
+  commit-data:
+    name: Commit Updated .dat Files
+    runs-on: ubuntu-latest
+    needs: [generate-indices, generate-fortune500, generate-crypto]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: indices-dat
+          path: data/indices/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: fortune500-dat
+          path: data/fortune500/
+        continue-on-error: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: crypto-dat
+          path: data/crypto/
+        continue-on-error: true
+
+      - name: Write manifest
+        run: |
+          python - <<'PYEOF'
+          import json, os, glob
+          from datetime import datetime, timezone
+
+          manifest = {"generated_at": datetime.now(timezone.utc).isoformat(), "files": []}
+          for dat in sorted(glob.glob("data/**/*.dat", recursive=True)):
+              try:
+                  with open(dat) as f:
+                      d = json.load(f)
+                  manifest["files"].append({
+                      "path": dat,
+                      "ticker": d.get("ticker"),
+                      "name": d.get("name"),
+                      "category": d.get("category"),
+                      "last_updated": d.get("last_updated"),
+                      "record_count": d.get("record_count", 0),
+                  })
+              except Exception:
+                  pass
+          os.makedirs("data", exist_ok=True)
+          with open("data/manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          print(f"Manifest: {len(manifest['files'])} files")
+          PYEOF
+
+      - name: Commit all .dat files
+        run: |
+          git config user.name  "financial-data[bot]"
+          git config user.email "financial-data[bot]@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || \
+            git commit -m "data: update financial .dat files $(date -u +%Y-%m-%dT%H:%M:%SZ) [skip ci]"
+          git push
