@@ -1,17 +1,19 @@
-const CACHE_VERSION = 'funstay-pwa-v2';
-const SHELL_CACHE = `${CACHE_VERSION}-shell`;
-const DATA_CACHE = `${CACHE_VERSION}-data`;
-
-const APP_SHELL = [
-  './',
-  './index.html',
-  './styles.css',
-  './app.js',
-  './config.js',
-  './manifest.webmanifest',
-  './icons/icon-192.svg',
-  './icons/icon-512.svg'
-];
+// Service Worker for FunStay Hotel Reservations PWA
+// Core caching is handled by sw-core; task engine is app-specific.
+self.SW_CONFIG = {
+  cacheVersion: 'funstay-pwa-v3',
+  appShellFiles: [
+    './',
+    './index.html',
+    './styles.css',
+    './app.js',
+    './config.js',
+    './manifest.webmanifest',
+    './icons/icon-192.svg',
+    './icons/icon-512.svg'
+  ],
+};
+importScripts('/pwa/sw-core.js');
 
 const swLog = {
   ring: [],
@@ -157,66 +159,7 @@ const taskEngine = {
   }
 };
 
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open(SHELL_CACHE).then(cache => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => !k.startsWith(CACHE_VERSION)).map(k => caches.delete(k))))
-  );
-  self.clients.claim();
-});
-
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  if (response && response.ok) {
-    const cache = await caches.open(DATA_CACHE);
-    cache.put(request, response.clone());
-  }
-  return response;
-}
-
-async function networkFirst(request) {
-  try {
-    const response = await fetch(request);
-    if (response && response.ok) {
-      const cache = await caches.open(DATA_CACHE);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return (await caches.match(request)) || (await caches.match('./index.html'));
-  }
-}
-
-self.addEventListener('fetch', event => {
-  const { request } = event;
-  if (request.method !== 'GET') return;
-
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  const url = new URL(request.url);
-  if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  if (
-    url.hostname.includes('accounts.google.com') ||
-    url.hostname.includes('maps.googleapis.com') ||
-    url.hostname.includes('maps.gstatic.com')
-  ) {
-    event.respondWith(networkFirst(request));
-  }
-});
+// ── App-specific: background task engine ─────────────────────────────────
 
 self.addEventListener('message', event => {
   const data = event.data || {};
