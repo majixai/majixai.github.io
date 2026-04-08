@@ -91,11 +91,26 @@ class UIManager {
                 ${socialMediaHTML}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
                 ${birthdayBanner}
+                <div class="card-vision" style="display:none;"></div>
             </div>
         `;
 
         // Initialize slideshow for this card
         this._initCardSlideshow(userElement, user);
+
+        // Trigger GPU vision scoring for this card via idle callback
+        if (user.image_url && typeof window.visionScorer !== 'undefined') {
+            scheduleIdleTask(async () => {
+                const result = await window.visionScorer.scoreImage(user.image_url).catch(() => null);
+                if (!result) return;
+                userElement.dataset.featureScore = result.featureScore;
+                const visionEl = userElement.querySelector('.card-vision');
+                if (visionEl) {
+                    visionEl.textContent = `🔍 ${result.label} ${result.confidence}%`;
+                    visionEl.style.display = '';
+                }
+            }, { timeout: 8000 });
+        }
 
         // Favorites button
         const favBtn = userElement.querySelector('.fav-btn');
