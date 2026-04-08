@@ -36,7 +36,7 @@
     /* Grid & Cards */
     .grid-container { 
         display: grid; 
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); 
+        grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width, 260px), 1fr)); 
         gap: 1.25rem; 
         transition: grid-template-columns 0.3s ease;
     }
@@ -55,7 +55,7 @@
         font-weight: bold; z-index: 20; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
 
-    .slide-container { position: relative; width: 100%; height: 260px; background: #000; }
+    .slide-container { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
     .slide-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.4s ease-in-out; }
     
     .card-overlay { 
@@ -88,7 +88,7 @@
     
     /* Multi-Modal specific */
     .multi-grid { display: grid; gap: 10px; padding: 10px; background: #000; height: 75vh; overflow-y: auto; }
-    .multi-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; }
+    .multi-cell { position: relative; background: #111; border-radius: 8px; overflow: hidden; aspect-ratio: 16/9; }
     .multi-cell img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
     .multi-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; padding: 5px; font-size: 0.8rem; font-weight: bold; text-align: center; backdrop-filter: blur(2px); }
 
@@ -159,9 +159,8 @@
     to   { transform: scale(1.08) translate(-3%, -2%); }
   }
 
-  /* Card height CSS variable */
-  :root { --card-height: 260px; }
-  .slide-container { height: var(--card-height) !important; }
+  /* Card width CSS variable */
+  :root { --card-min-width: 260px; }
 
   /* Image count badge on card */
   .img-count-badge {
@@ -384,7 +383,7 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Card Height: <span id="heightVal" class="text-white">260px</span></label>
+        <label class="form-label">Card Width: <span id="heightVal" class="text-white">260px</span></label>
         <input type="range" class="form-range" id="cardHeightSlider" min="140" max="480" step="20" value="260">
       </div>
 
@@ -1674,7 +1673,7 @@ document.getElementById('cardHeightSlider').addEventListener('input', (e) => {
     const h = parseInt(e.target.value);
     state.cardHeight = h;
     document.getElementById('heightVal').innerText = h + 'px';
-    document.documentElement.style.setProperty('--card-height', h + 'px');
+    document.documentElement.style.setProperty('--card-min-width', h + 'px');
 });
 document.getElementById('excludeTagFilter').addEventListener('input', () => {
     clearTimeout(searchTimeout);
