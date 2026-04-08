@@ -162,7 +162,8 @@ class VisionScorer {
             }
 
             return bestMatch;
-        } catch (_) {
+        } catch (err) {
+            console.warn('VisionScorer.scoreImage: failed to score', imageUrl, err);
             return null;
         }
     }
@@ -194,7 +195,7 @@ class VisionScorer {
                         visionEl.textContent = `🔍 ${result.label} ${result.confidence}%`;
                         visionEl.style.display = '';
                     }
-                } catch (_) { /* skip individual failures */ }
+                } catch (err) { console.warn('VisionScorer: background analysis error for card', err); }
             }
         };
         // Run once immediately, then on interval

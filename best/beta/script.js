@@ -728,11 +728,6 @@
             }
         }
 
-        /** @deprecated Replaced by page-based #renderOnlinePage. Kept for internal consistency. */
-        #renderNextOnlineBatch(usersToDisplay) {
-            this.#renderOnlinePage(usersToDisplay, this.#onlinePage);
-        }
-
         async #appendOnlineUsersList(newUsers) {
             if (!newUsers || newUsers.length === 0) return;
             // Re-apply filters to include new users

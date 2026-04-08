@@ -248,7 +248,9 @@
         window.visionScorer.init()
             .then(model => {
                 if (!model) return;
-                // Start background analysis of visible cards every 30 s
+                // Start background analysis of visible cards every 30 s.
+                // The selector is evaluated on each tick to capture newly rendered
+                // cards (pagination page changes, history loads) without extra state.
                 window.visionScorer.startBackgroundAnalysis(() =>
                     document.querySelectorAll('#onlineUsers .user-info, #previousUsers .user-info')
                 );
