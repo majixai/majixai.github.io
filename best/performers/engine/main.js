@@ -65,9 +65,13 @@ class BestPerformersEngine {
     #_shapeEngine = null;
     // Background GPU image recognition analyzer
     #_backgroundAnalyzer = null;
+    // MVC — Model layer (DataAPI + CacheManager)
+    #_model = null;
 
     constructor() {
-        this.#_dataAPI = new DataAPI(CacheManager);
+        // MVC — Model layer (data + persistence)
+        this.#_model   = new PerformerEngineModel();
+        this.#_dataAPI = this.#_model.dataAPI;   // backward-compat alias
         this.#_shapeEngine = new ShapeEngine(AppConfig.SHAPE_ENGINE_CONFIG);
         this.#_backgroundAnalyzer = new BackgroundImageAnalyzer({
             onResults: (results) => this.#_handleBackgroundAnalysisResults(results)

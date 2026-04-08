@@ -78,9 +78,12 @@
         constructor() {
             // Instantiate services and managers
             // Config variables (apiUrlBase, etc.) are globally available from config.js
-            this.apiService = new ApiService(apiUrlBase, apiLimit, maxApiFetchLimit, apiFetchTimeout);
+            // MVC — Model layer (data + persistence)
+            this.model = new PerformerModel();
+            this.apiService = this.model.api;          // backward-compat alias
+            this.storageManager = this.model.storage;  // backward-compat alias
+            // MVC — View layer (DOM / presentation)
             this.uiManager = new UIManager();
-            this.storageManager = new StorageManager(); 
 
             // DOM References
             this.onlineUsersDiv = document.getElementById("onlineUsers")?.querySelector('.user-list');
