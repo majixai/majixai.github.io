@@ -63,6 +63,10 @@
         #onlineDisplayOffset = 0;
         #onlineSentinelObserver = null; // IntersectionObserver for online list sentinel
 
+        // Pagination state for online users list
+        #onlinePage = 0;
+        #onlinePagedUsers = []; // current filtered set held for page navigation
+
         // IntersectionObserver for previous users (history) list sentinel
         #prevSentinelObserver = null;
 
@@ -627,17 +631,37 @@
         #displayOnlineUsersList(usersToDisplay) {
             if (!this.onlineUsersDiv) return;
 
-            // Disconnect any previous sentinel observer
+            // Disconnect any previous sentinel observer (legacy, kept for safety)
             if (this.#onlineSentinelObserver) {
                 this.#onlineSentinelObserver.disconnect();
                 this.#onlineSentinelObserver = null;
             }
 
-            // Remove old pagination bar if present from a previous render
+            // Sort by GPU vision feature score when scorer is active
+            if (window.visionScorer?.isActive && usersToDisplay?.length > 0) {
+                usersToDisplay = [...usersToDisplay].sort((a, b) => {
+                    const sA = window.visionScorer.getCachedFeatureScore(a.image_url);
+                    const sB = window.visionScorer.getCachedFeatureScore(b.image_url);
+                    return sB - sA;
+                });
+            }
+
+            this.#onlinePagedUsers = usersToDisplay || [];
+            this.#renderOnlinePage(this.#onlinePagedUsers, 0);
+        }
+
+        /**
+         * Render one page of the online users list and attach Prev/Next controls.
+         * @param {Object[]} usersToDisplay - Full sorted+filtered array.
+         * @param {number}   page           - Zero-based page index.
+         */
+        #renderOnlinePage(usersToDisplay, page) {
+            if (!this.onlineUsersDiv) return;
+            this.#onlinePage = page;
+
             const col = document.getElementById('onlineUsers');
             col?.querySelector('.pagination-bar')?.remove();
 
-            this.#onlineDisplayOffset = 0;
             this.onlineUsersDiv.innerHTML = '';
 
             if (!usersToDisplay || usersToDisplay.length === 0) {
@@ -645,24 +669,10 @@
                 return;
             }
 
-            this.#renderNextOnlineBatch(usersToDisplay);
-        }
-
-        #renderNextOnlineBatch(usersToDisplay) {
-            if (!this.onlineUsersDiv) return;
-
-            // Disconnect previous sentinel before appending new content
-            if (this.#onlineSentinelObserver) {
-                this.#onlineSentinelObserver.disconnect();
-                this.#onlineSentinelObserver = null;
-            }
-            this.onlineUsersDiv.querySelector('.online-sentinel')?.remove();
-
-            const batch = usersToDisplay.slice(
-                this.#onlineDisplayOffset,
-                this.#onlineDisplayOffset + this.#onlineBatchSize
-            );
-            if (batch.length === 0) return;
+            const pageSize = this.#onlineBatchSize;
+            const totalPages = Math.ceil(usersToDisplay.length / pageSize);
+            const safePage = Math.max(0, Math.min(page, totalPages - 1));
+            const batch = usersToDisplay.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
             const fragment = document.createDocumentFragment();
             batch.forEach(user => {
@@ -683,20 +693,38 @@
                 fragment.appendChild(userElement);
             });
             this.onlineUsersDiv.appendChild(fragment);
-            this.#onlineDisplayOffset += batch.length;
 
-            // If there are more items, append a sentinel and watch it
-            const hasMore = this.#onlineDisplayOffset < usersToDisplay.length;
-            if (hasMore) {
-                const sentinel = document.createElement('div');
-                sentinel.className = 'online-sentinel';
-                sentinel.style.cssText = 'height:1px;visibility:hidden;pointer-events:none;';
-                this.onlineUsersDiv.appendChild(sentinel);
-                this.#onlineSentinelObserver = createSentinelObserver(
-                    () => this.#renderNextOnlineBatch(usersToDisplay),
-                    this.onlineUsersDiv
-                );
-                this.#onlineSentinelObserver.observe(sentinel);
+            // Render Prev/Next pagination bar when there is more than one page
+            if (totalPages > 1 && col) {
+                const bar = document.createElement('div');
+                bar.className = 'pagination-bar';
+
+                const prevBtn = document.createElement('button');
+                prevBtn.className = 'pagination-btn';
+                prevBtn.textContent = '‹ Prev';
+                prevBtn.disabled = safePage === 0;
+                prevBtn.addEventListener('click', () => {
+                    this.#renderOnlinePage(this.#onlinePagedUsers, this.#onlinePage - 1);
+                    this.onlineUsersDiv.scrollTop = 0;
+                });
+
+                const info = document.createElement('span');
+                info.className = 'pagination-info';
+                info.textContent = `${safePage + 1} / ${totalPages}`;
+
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'pagination-btn';
+                nextBtn.textContent = 'Next ›';
+                nextBtn.disabled = safePage >= totalPages - 1;
+                nextBtn.addEventListener('click', () => {
+                    this.#renderOnlinePage(this.#onlinePagedUsers, this.#onlinePage + 1);
+                    this.onlineUsersDiv.scrollTop = 0;
+                });
+
+                bar.appendChild(prevBtn);
+                bar.appendChild(info);
+                bar.appendChild(nextBtn);
+                col.appendChild(bar);
             }
         }
 

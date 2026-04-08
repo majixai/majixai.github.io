@@ -231,6 +231,7 @@
     <script src="model.js"></script>
     <script src="ui.js"></script>
     <script src="tensor.js"></script>
+    <script src="vision.js"></script>
     <script src="autoscroller.js"></script>
     <script src="script.js"></script>
     <script>
@@ -239,6 +240,22 @@
       navigator.serviceWorker.register('../sw.js', { scope: '../' })
         .then(registration => console.log('SW registered:', registration.scope))
         .catch(error => console.error('SW registration failed:', error));
+    }
+
+    // GPU vision scorer — lazy-loads MobileNet and runs background analysis
+    if (typeof VisionScorer !== 'undefined') {
+        window.visionScorer = new VisionScorer();
+        window.visionScorer.init()
+            .then(model => {
+                if (!model) return;
+                // Start background analysis of visible cards every 30 s.
+                // The selector is evaluated on each tick to capture newly rendered
+                // cards (pagination page changes, history loads) without extra state.
+                window.visionScorer.startBackgroundAnalysis(() =>
+                    document.querySelectorAll('#onlineUsers .user-info, #previousUsers .user-info')
+                );
+            })
+            .catch(() => {});
     }
 
     // Autoscroller integration
