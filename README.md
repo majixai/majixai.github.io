@@ -1,4 +1,20 @@
-# Project Overview
+# majixai.github.io
+
+> **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
+
+<!-- START_LAST_UPDATED -->
+_Last updated: 2026-04-08 16:57 UTC_
+<!-- END_LAST_UPDATED -->
+
+## Repository Stats
+
+<!-- START_REPO_STATS -->
+| Metric | Value |
+|--------|-------|
+| 📁 Project Directories | 112 |
+| ⚙️ GitHub Actions Workflows | 51 |
+| 📝 Total Commits | 3 |
+<!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
@@ -25,6 +41,48 @@
 
 
 This repository is a collection of diverse projects, including web applications, data scrapers, financial analysis tools, and simple web pages. Each project is self-contained in its own directory.
+
+## Financial & AI Tools
+
+### [TradingView Integration](tradingview_integration/) (`tradingview_integration/`)
+
+A suite of server-side financial analytics tools including a 3D tensor pipeline (`tensor_engine.py`) producing market forecasts, Pine Script indicators, a unified financial feed, and GenAI-powered analysis. Forecasts are auto-updated every 6 hours via GitHub Actions.
+
+### [Quantix](redirect.html?url=https://majixai.github.io/quantix/) (`quantix/`)
+
+A quantitative finance library providing portfolio management, market data analysis, risk calculations, and financial computations following an MVC architecture.
+
+### [Neural Tensor Network](neural_tensor_network/) (`neural_tensor_network/`)
+
+A neural network implementation for tensor-based financial forecasting and market pattern recognition.
+
+### [Predictive Ledger](redirect.html?url=https://majixai.github.io/predictive_ledger/) (`predictive_ledger/`)
+
+A predictive financial ledger application leveraging AI to forecast transaction patterns and account balances.
+
+### [QuantumMarket](redirect.html?url=https://majixai.github.io/QuantumMarket/) (`QuantumMarket/`)
+
+An advanced market analysis application combining quantum-inspired algorithms with real-time financial data.
+
+### [S&P Monte Carlo Simulator](redirect.html?url=https://majixai.github.io/sp_monte_carlo/) (`sp_monte_carlo/`)
+
+A Monte Carlo simulation tool for S&P 500 price projections, providing statistical distributions of potential outcomes.
+
+### [DJI Monte Carlo Simulator](redirect.html?url=https://majixai.github.io/dji_monte_carlo/) (`dji_monte_carlo/`)
+
+Monte Carlo simulations for Dow Jones Industrial Average forecasting.
+
+### [S&P Closing Projection](redirect.html?url=https://majixai.github.io/sp_closing_projection/) (`sp_closing_projection/`)
+
+Real-time S&P 500 closing price projections updated automatically via GitHub Actions.
+
+### [Market Prediction](redirect.html?url=https://majixai.github.io/market_prediction/) (`market_prediction/`)
+
+An ML-driven market prediction engine providing directional forecasts for major indices.
+
+### [Finance](redirect.html?url=https://majixai.github.io/finance/) (`finance/`)
+
+A financial data dashboard aggregating market data, charts, and analytics.
 
 ## Web Applications
 
@@ -76,6 +134,34 @@ A simple Texas Hold'em game written in Python, which can be run locally or with 
 
 A UI showcase that demonstrates advanced JavaScript and modern UI techniques. It fetches and displays the latest commits from this repository.
 
+### [Contact Ledger PWA](redirect.html?url=https://majixai.github.io/contact_ledger_pwa/) (`contact_ledger_pwa/`)
+
+A Progressive Web App for managing contacts and ledger entries, with offline support via a service worker.
+
+### [Holdem App](redirect.html?url=https://majixai.github.io/holdem_app/) (`holdem_app/`)
+
+A full-featured Texas Hold'em poker application.
+
+### [Dice Golf](redirect.html?url=https://majixai.github.io/dice_golf/) (`dice_golf/`)
+
+A dice-based golf game application.
+
+### [Daily Check-In](redirect.html?url=https://majixai.github.io/daily-checkin-db/) (`daily-checkin-db/`)
+
+A daily check-in tracker backed by a local database.
+
+### [Showcase](redirect.html?url=https://majixai.github.io/showcase/) (`showcase/`)
+
+A showcase of advanced UI techniques and experimental features deployed via GitHub Actions.
+
+### [JinxOS](redirect.html?url=https://majixai.github.io/jinxos/) (`jinxos/`)
+
+An OS-inspired web application interface.
+
+### [JinxCo](redirect.html?url=https://majixai.github.io/jinxco/) (`jinxco/`)
+
+A company/brand web presence for the Jinx product line.
+
 ## Data Scrapers
 
 ### Bedpage Scraper (`bedpage_scraper/`)
@@ -90,9 +176,42 @@ A Python script to scrape job postings from the software/qa/dba section of Craig
 
 A Python script that periodically fetches financial data and stores it in an SQLite database.
 
+### Gas & Stock Ticker Fetcher (`gas_stock_ticker_fetcher/`)
+
+Fetches gas prices and stock ticker data for display and analysis.
+
+### yFinance Data (`yfinance_data/`)
+
+Automated yFinance data collection and storage, updated by scheduled GitHub Actions.
+
+### yFinance Chart (`yfinance_chart/`)
+
+Chart rendering for yFinance-sourced market data.
+
+## Progressive Web Apps (PWA)
+
+This repository implements a shared PWA architecture. The core service-worker logic lives in [`pwa/sw-core.js`](pwa/sw-core.js). All app `sw.js` files set `self.SW_CONFIG` then call `importScripts('/pwa/sw-core.js')`. See [`pwa/README.md`](pwa/README.md) for full documentation.
+
+## GitHub Actions Automation
+
+This repository uses extensively automated GitHub Actions for background data updates. Key workflows include:
+
+| Workflow | Schedule | Purpose |
+|----------|----------|---------|
+| `update-readme.yml` | Every hour + on every push/workflow | Auto-updates README stats |
+| `tensor_forecast.yml` | Every 6 hours | Runs the Titan ML tensor forecasting pipeline |
+| `market_prediction.yml` | Scheduled | Updates SPY/market predictions |
+| `sp_closing_projection.yml` | Scheduled | S&P 500 closing projections |
+| `yfinance_scheduled_fetch.yml` | Scheduled | Fetches yFinance market data |
+| `best_performer_minute.yml` | Per-minute | Tracks best-performing rooms |
+| `click-analytics.yml` | Daily | Generates click analytics report |
+| `transaction_report.yml` | Daily | Generates Visa transaction report |
+| `titan_ml_pipeline.yml` | Scheduled | Full Titan ML model training |
+| `neural_finance.yml` | Scheduled | Neural network financial analysis |
+
 ## Simple Web Pages & Other Projects
 
-- **[`7t/`](redirect.html?url=https://majixai.github.io/7t/)**, **[`Gridiron/`](redirect.html?url=https://majixai.github.io/Gridiron/)**, **[`Menus/`](redirect.html?url=https://majixai.github.io/Menus/)**, **[`Touchdown/`](redirect.html?url=https://majixai.github.io/Touchdown/)**, **[`Trades/`](redirect.html?url=https://majixai.github.io/Trades/)**, **[`beta/`](redirect.html?url=https://majixai.github.io/beta/)**, **[`boxstore/`](redirect.html?url=https://majixai.github.io/boxstore/)**, **[`golf_simulator/`](redirect.html?url=https://majixai.github.io/golf_simulator/)**, **[`hotel_booking/`](redirect.html?url=https://majixai.github.io/hotel_booking/)**, **[`hotel_reservation_system/`](redirect.html?url=https://majixai.github.io/hotel_reservation_system/)**, **[`investing_blog/`](redirect.html?url=https://majixai.github.io/investing_blog/)**, **[`jinx/`](redirect.html?url=https://majixai.github.io/jinx/)**, **[`link_indexer/`](redirect.html?url=https://majixai.github.io/link_indexer/)**, **[`link_manager_app/`](redirect.html?url=https://majixai.github.io/link_manager_app/)**, **[`market/`](redirect.html?url=https://majixai.github.io/market/)**, **[`menu/`](redirect.html?url=https://majixai.github.io/menu/)**, **[`model_request_app/`](redirect.html?url=https://majixai.github.io/model_request_app/)**, **[`nfl_offensive_playbook/`](redirect.html?url=https://majixai.github.io/nfl_offensive_playbook/)**, **[`pj/`](redirect.html?url=https://majixai.github.io/pj/)**, **[`playbook/`](redirect.html?url=https://majixai.github.io/playbook/)**, **[`playbook_app/`](redirect.html?url=https://majixai.github.io/playbook_app/)**, **[`referrals/`](redirect.html?url=https://majixai.github.io/referrals/)**, **[`reit_company/`](redirect.html?url=https://majixai.github.io/reit_company/)**, **[`reit_company_static/`](redirect.html?url=https://majixai.github.io/reit_company_static/)**, **[`reservations/`](redirect.html?url=https://majixai.github.io/reservations/)**, **[`reserve/`](redirect.html?url=https://majixai.github.io/reserve/)**, **[`seventy/`](redirect.html?url=https://majixai.github.io/seventy/)**, **[`simple/`](redirect.html?url=https://majixai.github.io/simple/)**, **[`stays/`](redirect.html?url=https://majixai.github.io/stays/)**, **[`stock/`](redirect.html?url=https://majixai.github.io/stock/)**, **[`study/`](redirect.html?url=https://majixai.github.io/study/)**, **[`ticker/`](redirect.html?url=https://majixai.github.io/ticker/)**, **[`tickers/`](redirect.html?url=https://majixai.github.io/tickers/)**, **[`whatsapp_integration/`](redirect.html?url=https://majixai.github.io/whatsapp_integration/)**: These directories contain a variety of smaller projects, simple web pages, and data files. Many of these are simple HTML/CSS/JS projects, while others contain data or scripts for various purposes.
+- **[`7t/`](redirect.html?url=https://majixai.github.io/7t/)**, **[`Gridiron/`](redirect.html?url=https://majixai.github.io/Gridiron/)**, **[`Menus/`](redirect.html?url=https://majixai.github.io/Menus/)**, **[`Touchdown/`](redirect.html?url=https://majixai.github.io/Touchdown/)**, **[`Trades/`](redirect.html?url=https://majixai.github.io/Trades/)**, **[`beta/`](redirect.html?url=https://majixai.github.io/beta/)**, **[`boxstore/`](redirect.html?url=https://majixai.github.io/boxstore/)**, **[`church_school_lesson_plan/`](redirect.html?url=https://majixai.github.io/church_school_lesson_plan/)**, **[`clips/`](redirect.html?url=https://majixai.github.io/clips/)**, **[`companies/`](redirect.html?url=https://majixai.github.io/companies/)**, **[`fintst/`](redirect.html?url=https://majixai.github.io/fintst/)**, **[`fun_hotel_reservation/`](redirect.html?url=https://majixai.github.io/fun_hotel_reservation/)**, **[`gas/`](redirect.html?url=https://majixai.github.io/gas/)**, **[`golf_simulator/`](redirect.html?url=https://majixai.github.io/golf_simulator/)**, **[`hotel_booking/`](redirect.html?url=https://majixai.github.io/hotel_booking/)**, **[`hotel_reservation_system/`](redirect.html?url=https://majixai.github.io/hotel_reservation_system/)**, **[`investing_blog/`](redirect.html?url=https://majixai.github.io/investing_blog/)**, **[`jacmy/`](redirect.html?url=https://majixai.github.io/jacmy/)**, **[`jinx/`](redirect.html?url=https://majixai.github.io/jinx/)**, **[`jump/`](redirect.html?url=https://majixai.github.io/jump/)**, **[`link_indexer/`](redirect.html?url=https://majixai.github.io/link_indexer/)**, **[`link_manager_app/`](redirect.html?url=https://majixai.github.io/link_manager_app/)**, **[`login/`](redirect.html?url=https://majixai.github.io/login/)**, **[`market/`](redirect.html?url=https://majixai.github.io/market/)**, **[`menu/`](redirect.html?url=https://majixai.github.io/menu/)**, **[`model_request_app/`](redirect.html?url=https://majixai.github.io/model_request_app/)**, **[`nfl_offensive_playbook/`](redirect.html?url=https://majixai.github.io/nfl_offensive_playbook/)**, **[`pj/`](redirect.html?url=https://majixai.github.io/pj/)**, **[`playbook/`](redirect.html?url=https://majixai.github.io/playbook/)**, **[`playbook_app/`](redirect.html?url=https://majixai.github.io/playbook_app/)**, **[`referrals/`](redirect.html?url=https://majixai.github.io/referrals/)**, **[`reit_company/`](redirect.html?url=https://majixai.github.io/reit_company/)**, **[`reit_company_static/`](redirect.html?url=https://majixai.github.io/reit_company_static/)**, **[`reservations/`](redirect.html?url=https://majixai.github.io/reservations/)**, **[`reserve/`](redirect.html?url=https://majixai.github.io/reserve/)**, **[`screen_recorder/`](redirect.html?url=https://majixai.github.io/screen_recorder/)**, **[`Security/`](redirect.html?url=https://majixai.github.io/Security/)**, **[`serverroom/`](redirect.html?url=https://majixai.github.io/serverroom/)**, **[`seventy/`](redirect.html?url=https://majixai.github.io/seventy/)**, **[`simple/`](redirect.html?url=https://majixai.github.io/simple/)**, **[`simple_calculator/`](redirect.html?url=https://majixai.github.io/simple_calculator/)**, **[`stays/`](redirect.html?url=https://majixai.github.io/stays/)**, **[`stock/`](redirect.html?url=https://majixai.github.io/stock/)**, **[`study/`](redirect.html?url=https://majixai.github.io/study/)**, **[`ticker/`](redirect.html?url=https://majixai.github.io/ticker/)**, **[`tickerlaunch/`](redirect.html?url=https://majixai.github.io/tickerlaunch/)**, **[`tickers/`](redirect.html?url=https://majixai.github.io/tickers/)**, **[`whatsapp_integration/`](redirect.html?url=https://majixai.github.io/whatsapp_integration/)**: These directories contain a variety of smaller projects, simple web pages, and data files.
 
 ## Root Directory Files
 

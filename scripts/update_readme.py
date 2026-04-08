@@ -5,10 +5,13 @@ Reads the git log to compute:
   - Recent activity (last 5 commits)
   - Biggest commit (by files changed) for: today, this week, this month,
     this quarter, and this year.
+  - Repository stats (project count, workflow count)
+  - Last updated timestamp
 
 Then rewrites the corresponding <!-- marker --> sections in README.md.
 """
 
+import os
 import re
 import subprocess
 from datetime import datetime, timezone, timedelta
@@ -137,6 +140,53 @@ def build_biggest_updates():
     return "\n".join(lines)
 
 
+def build_last_updated():
+    now = datetime.now(timezone.utc)
+    return f"_Last updated: {now.strftime('%Y-%m-%d %H:%M UTC')}_"
+
+
+def build_repo_stats():
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Count top-level project directories (ignore hidden dirs and __pycache__)
+    try:
+        dirs = [
+            d for d in os.listdir(root)
+            if os.path.isdir(os.path.join(root, d))
+            and not d.startswith('.')
+            and d not in ('__pycache__',)
+        ]
+        project_count = len(dirs)
+    except OSError:
+        project_count = 0
+
+    # Count workflow files
+    workflows_dir = os.path.join(root, '.github', 'workflows')
+    try:
+        workflow_count = len([
+            f for f in os.listdir(workflows_dir)
+            if f.endswith('.yml') or f.endswith('.yaml')
+        ])
+    except OSError:
+        workflow_count = 0
+
+    # Total commits in repo
+    total_commits = run(["git", "rev-list", "--count", "HEAD"])
+    try:
+        total_commits = int(total_commits)
+    except (ValueError, TypeError):
+        total_commits = 0
+
+    lines = [
+        f"| Metric | Value |",
+        f"|--------|-------|",
+        f"| 📁 Project Directories | {project_count} |",
+        f"| ⚙️ GitHub Actions Workflows | {workflow_count} |",
+        f"| 📝 Total Commits | {total_commits} |",
+    ]
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # README rewriter
 # ---------------------------------------------------------------------------
@@ -154,6 +204,22 @@ def main():
 
     with open(readme_path, "r", encoding="utf-8") as f:
         content = f.read()
+
+    # Last updated timestamp
+    content = replace_section(
+        content,
+        "<!-- START_LAST_UPDATED -->",
+        "<!-- END_LAST_UPDATED -->",
+        build_last_updated(),
+    )
+
+    # Repository stats
+    content = replace_section(
+        content,
+        "<!-- START_REPO_STATS -->",
+        "<!-- END_REPO_STATS -->",
+        build_repo_stats(),
+    )
 
     # Recent activity
     content = replace_section(

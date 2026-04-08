@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 * * * *'
   workflow_run:
     workflows: ["*"]
     types:
@@ -18,8 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    # Skip if the triggering commit was made by this workflow itself
+    # Skip if the triggering commit was made by this workflow itself (scheduled runs always proceed)
     if: |
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
       !contains(github.event.head_commit.message, 'docs: auto-update README stats [skip ci]')
 
     steps:
