@@ -166,6 +166,31 @@ def run_ml(blocks, fees_rec, mempool, prev_samples):
     }
 
 
+# ── Block-reward helpers ───────────────────────────────────────────────────────
+def block_subsidy_btc(height: int) -> float:
+    """Return the current block subsidy in BTC given a block height."""
+    halvings = height // 210_000
+    if halvings >= 64:
+        return 0.0
+    return 50.0 / (2 ** halvings)
+
+
+def reward_info(height: int, total_fees_sat: int, price_usd: float) -> dict:
+    halvings       = height // 210_000
+    subsidy        = block_subsidy_btc(height)
+    reward_btc     = subsidy + total_fees_sat / 1e8
+    next_halving   = (halvings + 1) * 210_000
+    blocks_to_halv = next_halving - height
+    return {
+        "halvings":                halvings,
+        "block_subsidy_btc":       round(subsidy, 8),
+        "total_block_reward_btc":  round(reward_btc, 8),
+        "total_block_reward_usd":  round(reward_btc * price_usd, 2) if price_usd else 0,
+        "next_halving_block":      next_halving,
+        "blocks_to_halving":       blocks_to_halv,
+    }
+
+
 # ── Data collection ────────────────────────────────────────────────────────────
 def collect(prev_samples):
     blocks   = fetch(f"{API_BASE}/v1/blocks")          or []
@@ -173,6 +198,7 @@ def collect(prev_samples):
     mempool  = fetch(f"{API_BASE}/mempool")             or {}
     recent   = fetch(f"{API_BASE}/mempool/recent")      or []
     hashrate = fetch(f"{API_BASE}/v1/mining/hashrate/1w") or {}
+    price    = fetch(f"{API_BASE}/v1/prices")           or {}
 
     latest = blocks[0] if blocks else {}
 
@@ -187,6 +213,11 @@ def collect(prev_samples):
             })
 
     ml = run_ml(blocks, fees_rec, mempool, prev_samples)
+
+    height       = latest.get("height", 0)
+    total_fees_s = latest.get("extras", {}).get("totalFees", 0) or 0
+    price_usd    = price.get("USD", 0) or 0
+    rew          = reward_info(height, total_fees_s, price_usd)
 
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -210,10 +241,15 @@ def collect(prev_samples):
             "merkle_root":latest.get("merkle_root", ""),
             "previousblockhash": latest.get("previousblockhash", ""),
             "medianFee":  latest.get("extras", {}).get("medianFee", 0),
+            "totalFees":  total_fees_s,
         },
         "fees_recommended": fees_rec,
         "mempool_sample_txs": txs,
         "ml_analysis": ml,
+        "price": {
+            "usd": price_usd,
+        },
+        "rewards": rew,
     }
 
 
