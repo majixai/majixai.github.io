@@ -3,257 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bitcoin Mining Demo — Educational Proof-of-Work Simulator</title>
+  <title>Bitcoin Miner &#8212; Real Network Data &middot; GPU/ML Engine</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         integrity="sha384-OLBgp1GsljhM2TJ+sbHjaiH9txEUvgdDTAzHv2P24donTt6/529l+9Ua0vFImLlb" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
   <style>
     :root {
-      --btc-orange: #f7931a;
-      --btc-dark:   #1a1a2e;
-      --btc-mid:    #16213e;
-      --btc-panel:  #0f3460;
-      --btc-green:  #00b894;
-      --btc-red:    #d63031;
-      --hash-color: #74b9ff;
+      --btc-orange:#f7931a; --btc-dark:#1a1a2e; --btc-mid:#16213e;
+      --btc-panel:#0f3460;  --btc-green:#00b894; --btc-red:#d63031;
+      --hash-color:#74b9ff; --gpu-color:#a29bfe;
     }
-    *, *::before, *::after { box-sizing: border-box; }
-    body {
-      background: linear-gradient(135deg, var(--btc-dark) 0%, var(--btc-mid) 100%);
-      color: #e0e0e0;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      min-height: 100vh;
-      padding-bottom: 40px;
-    }
-    h1 .btc-icon { color: var(--btc-orange); }
-    .badge-edu {
-      background: var(--btc-orange);
-      color: #fff;
-      font-size: .65rem;
-      vertical-align: middle;
-      padding: 3px 8px;
-      border-radius: 20px;
-      margin-left: 8px;
-    }
-    .panel {
-      background: var(--btc-panel);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.4);
-    }
-    .panel-title {
-      font-size: .75rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--btc-orange);
-      margin-bottom: 12px;
-    }
-    .stat-card {
-      background: rgba(255,255,255,.05);
-      border-radius: 8px;
-      padding: 14px 16px;
-      text-align: center;
-    }
-    .stat-value {
-      font-size: 1.7rem;
-      font-weight: 700;
-      color: var(--btc-orange);
-      font-variant-numeric: tabular-nums;
-    }
-    .stat-label { font-size: .72rem; color: #aaa; margin-top: 2px; }
-    #current-hash {
-      font-family: 'Courier New', monospace;
-      font-size: .82rem;
-      word-break: break-all;
-      background: rgba(0,0,0,.3);
-      padding: 10px 14px;
-      border-radius: 6px;
-      min-height: 44px;
-      color: var(--hash-color);
-    }
-    #current-hash.valid { color: var(--btc-green); font-weight: 700; }
-    #difficulty-display {
-      font-family: monospace;
-      font-size: .9rem;
-      color: var(--btc-orange);
-      letter-spacing: 1px;
-    }
-    .progress { background: rgba(255,255,255,.1); height: 8px; border-radius: 4px; }
-    .progress-bar { background: var(--btc-orange); border-radius: 4px; transition: width .3s; }
-    .btn-mine {
-      background: var(--btc-orange);
-      border: none;
-      color: #fff;
-      font-weight: 700;
-      padding: 12px 32px;
-      border-radius: 8px;
-      font-size: 1rem;
-      transition: opacity .2s, transform .1s;
-    }
-    .btn-mine:hover:not(:disabled) { opacity: .88; transform: translateY(-1px); }
-    .btn-stop {
-      background: var(--btc-red);
-      border: none;
-      color: #fff;
-      font-weight: 700;
-      padding: 12px 32px;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    .chain-wrapper {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      gap: 0;
-    }
-    .block-card {
-      min-width: 220px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(247,147,26,.35);
-      border-radius: 10px;
-      padding: 14px;
-      font-size: .74rem;
-      flex-shrink: 0;
-    }
-    .block-card .blk-num {
-      color: var(--btc-orange);
-      font-weight: 700;
-      font-size: .9rem;
-      margin-bottom: 6px;
-    }
-    .block-card .blk-field { color: #aaa; margin-bottom: 2px; }
-    .block-card .blk-val {
-      font-family: monospace;
-      color: var(--hash-color);
-      word-break: break-all;
-      font-size: .68rem;
-    }
-    .chain-arrow {
-      display: flex;
-      align-items: center;
-      padding: 0 6px;
-      color: var(--btc-orange);
-      font-size: 1.2rem;
-      flex-shrink: 0;
-    }
-    #mine-log {
-      font-family: 'Courier New', monospace;
-      font-size: .75rem;
-      max-height: 180px;
-      overflow-y: auto;
-      background: rgba(0,0,0,.3);
-      border-radius: 6px;
-      padding: 10px 14px;
-      color: #ccc;
-    }
-    #mine-log .log-found { color: var(--btc-green); font-weight: 700; }
-    #mine-log .log-info  { color: #aaa; }
-    .notice {
-      background: rgba(247,147,26,.12);
-      border-left: 3px solid var(--btc-orange);
-      border-radius: 0 6px 6px 0;
-      padding: 12px 16px;
-      font-size: .82rem;
-      color: #ccc;
-    }
+    *,*::before,*::after{box-sizing:border-box}
+    body{background:linear-gradient(135deg,var(--btc-dark) 0%,var(--btc-mid) 100%);
+         color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;
+         min-height:100vh;padding-bottom:40px}
+    h1 .btc-icon{color:var(--btc-orange)}
+    .badge-live{background:var(--btc-green);color:#fff;font-size:.65rem;padding:3px 8px;
+                border-radius:20px;margin-left:8px;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+    .panel{background:var(--btc-panel);border-radius:12px;padding:20px;
+           margin-bottom:20px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+    .panel-title{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;
+                 color:var(--btc-orange);margin-bottom:12px}
+    .stat-card{background:rgba(255,255,255,.05);border-radius:8px;
+               padding:14px 16px;text-align:center}
+    .stat-value{font-size:1.5rem;font-weight:700;color:var(--btc-orange);
+                font-variant-numeric:tabular-nums}
+    .stat-label{font-size:.72rem;color:#aaa;margin-top:2px}
+    .net-stat{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 14px;font-size:.8rem}
+    .net-stat .ns-label{color:#888;font-size:.7rem}
+    .net-stat .ns-val{color:var(--btc-orange);font-weight:700}
+    #current-hash{font-family:'Courier New',monospace;font-size:.8rem;word-break:break-all;
+                  background:rgba(0,0,0,.3);padding:10px 14px;border-radius:6px;
+                  min-height:44px;color:var(--hash-color)}
+    #current-hash.valid{color:var(--btc-green);font-weight:700}
+    .progress{background:rgba(255,255,255,.1);height:8px;border-radius:4px}
+    .progress-bar{background:var(--btc-orange);border-radius:4px;transition:width .3s}
+    .btn-mine{background:var(--btc-orange);border:none;color:#fff;font-weight:700;
+              padding:12px 28px;border-radius:8px;font-size:1rem;
+              transition:opacity .2s,transform .1s}
+    .btn-mine:hover:not(:disabled){opacity:.88;transform:translateY(-1px)}
+    .btn-stop{background:var(--btc-red);border:none;color:#fff;font-weight:700;
+              padding:12px 28px;border-radius:8px;font-size:1rem}
+    .chain-wrapper{display:flex;flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px;gap:0}
+    .block-card{min-width:220px;background:rgba(255,255,255,.06);
+                border:1px solid rgba(247,147,26,.35);border-radius:10px;
+                padding:14px;font-size:.74rem;flex-shrink:0}
+    .block-card .blk-num{color:var(--btc-orange);font-weight:700;font-size:.9rem;margin-bottom:6px}
+    .block-card .blk-field{color:#aaa;margin-bottom:2px}
+    .block-card .blk-val{font-family:monospace;color:var(--hash-color);
+                         word-break:break-all;font-size:.68rem}
+    .chain-arrow{display:flex;align-items:center;padding:0 6px;
+                 color:var(--btc-orange);font-size:1.2rem;flex-shrink:0}
+    #mine-log{font-family:'Courier New',monospace;font-size:.75rem;max-height:180px;
+              overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;
+              padding:10px 14px;color:#ccc}
+    #mine-log .log-found{color:var(--btc-green);font-weight:700}
+    #mine-log .log-info{color:#aaa}
+    #mine-log .log-net{color:var(--hash-color)}
+    #mine-log .log-ml{color:var(--gpu-color)}
+    .engine-badge{display:inline-block;font-size:.68rem;padding:3px 9px;
+                  border-radius:12px;margin-right:4px;font-weight:700}
+    .badge-gpu{background:rgba(162,155,254,.2);color:var(--gpu-color);
+               border:1px solid var(--gpu-color)}
+    .badge-cpu{background:rgba(247,147,26,.15);color:var(--btc-orange);
+               border:1px solid var(--btc-orange)}
+    .badge-ml{background:rgba(0,184,148,.15);color:var(--btc-green);
+              border:1px solid var(--btc-green)}
+    .fee-bar{height:6px;border-radius:3px;margin-top:3px}
+    .data-age{font-size:.68rem;color:#888}
+    #difficulty-display{font-family:monospace;font-size:.9rem;color:var(--btc-orange)}
   </style>
 </head>
 <body>
-<div class="container-fluid" style="max-width:960px; padding:30px 16px 0;">
+<div class="container-fluid" style="max-width:1040px;padding:30px 16px 0">
 
-  <!-- Header -->
   <div class="text-center mb-4">
     <h1 class="fw-bold mb-1">
-      <i class="fa-brands fa-bitcoin btc-icon"></i> Bitcoin Mining Demo
-      <span class="badge-edu">EDUCATIONAL</span>
+      <i class="fa-brands fa-bitcoin btc-icon"></i> Bitcoin Miner
+      <span class="badge-live"><i class="fa fa-circle fa-xs me-1"></i>LIVE</span>
     </h1>
-    <p class="text-secondary mb-0" style="font-size:.9rem;">
-      A real SHA-256 proof-of-work simulator running entirely in your browser.
-      No real Bitcoin is mined. No external connections are made.
+    <p class="text-secondary mb-0" style="font-size:.9rem">
+      Real Bitcoin network data &middot; Multi-threaded CPU workers &middot; TensorFlow.js GPU neural engine
     </p>
+    <div class="mt-2">
+      <span class="engine-badge badge-cpu"><i class="fa fa-microchip me-1"></i>Workers: <span id="badge-workers">?</span></span>
+      <span class="engine-badge badge-gpu"><i class="fa fa-bolt me-1"></i>TF Backend: <span id="badge-tfback">loading&hellip;</span></span>
+      <span class="engine-badge badge-ml"><i class="fa fa-brain me-1"></i>Neural: <span id="badge-ml">initialising</span></span>
+    </div>
   </div>
 
-  <!-- Notice -->
-  <div class="notice mb-4">
-    <i class="fa fa-circle-info me-2" style="color:var(--btc-orange);"></i>
-    <strong>How Bitcoin mining works:</strong> Miners repeatedly hash a block header (data&nbsp;+&nbsp;nonce)
-    with SHA-256 until the result starts with enough leading zeros — the <em>difficulty target</em>.
-    Finding that nonce is pure trial-and-error, illustrating why real-world mining requires
-    specialised hardware. Adjust the difficulty slider to experience this first-hand.
-  </div>
-
-  <!-- Controls -->
+  <!-- Network Stats -->
   <div class="panel">
-    <div class="panel-title"><i class="fa fa-sliders me-1"></i> Controls</div>
-    <div class="row g-3 align-items-end">
-      <div class="col-sm-5">
-        <label class="form-label" style="font-size:.82rem; color:#aaa;">
-          Difficulty — leading zeros required
-        </label>
-        <input type="range" class="form-range" id="difficulty" min="1" max="6" value="4"
-               oninput="updateDifficultyDisplay()">
-        <div class="mt-1" style="font-size:.82rem;">
-          Target prefix: <span id="difficulty-display">0000</span>
+    <div class="panel-title"><i class="fa fa-network-wired me-1"></i> Live Bitcoin Network <span class="data-age ms-2" id="data-age"></span></div>
+    <div class="row g-2">
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Block Height</div><div class="ns-val" id="net-height">&mdash;</div></div></div>
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Difficulty (T)</div><div class="ns-val" id="net-diff">&mdash;</div></div></div>
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Hashrate (EH/s)</div><div class="ns-val" id="net-hash">&mdash;</div></div></div>
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Mempool Txs</div><div class="ns-val" id="net-mempool">&mdash;</div></div></div>
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Fast Fee (sat/vB)</div><div class="ns-val" id="net-fee-fast">&mdash;</div></div></div>
+      <div class="col-6 col-md-2"><div class="net-stat"><div class="ns-label">Median Block Fee</div><div class="ns-val" id="net-fee-med">&mdash;</div></div></div>
+    </div>
+  </div>
+
+  <!-- ML / Neural Analysis -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-brain me-1"></i> TensorFlow.js Neural Fee Engine <small class="text-secondary ms-2">(GPU via WebGL/WebGPU)</small></div>
+    <div class="row g-2 align-items-start">
+      <div class="col-md-8">
+        <div style="font-size:.78rem;color:#aaa;margin-bottom:6px">Fee Rate Predictions (sat/vB)</div>
+        <div class="d-flex align-items-center mb-1 gap-2">
+          <span style="width:90px;font-size:.72rem;color:#aaa">Fastest</span>
+          <div class="flex-grow-1"><div class="fee-bar" id="fb-fast" style="background:var(--btc-red);width:0%"></div></div>
+          <span style="width:46px;text-align:right;font-size:.75rem;color:var(--btc-red)" id="fv-fast">&mdash;</span>
+        </div>
+        <div class="d-flex align-items-center mb-1 gap-2">
+          <span style="width:90px;font-size:.72rem;color:#aaa">30-min</span>
+          <div class="flex-grow-1"><div class="fee-bar" id="fb-half" style="background:var(--btc-orange);width:0%"></div></div>
+          <span style="width:46px;text-align:right;font-size:.75rem;color:var(--btc-orange)" id="fv-half">&mdash;</span>
+        </div>
+        <div class="d-flex align-items-center mb-1 gap-2">
+          <span style="width:90px;font-size:.72rem;color:#aaa">1-hour</span>
+          <div class="flex-grow-1"><div class="fee-bar" id="fb-hour" style="background:var(--hash-color);width:0%"></div></div>
+          <span style="width:46px;text-align:right;font-size:.75rem;color:var(--hash-color)" id="fv-hour">&mdash;</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span style="width:90px;font-size:.72rem;color:#aaa">Economy</span>
+          <div class="flex-grow-1"><div class="fee-bar" id="fb-econ" style="background:var(--btc-green);width:0%"></div></div>
+          <span style="width:46px;text-align:right;font-size:.75rem;color:var(--btc-green)" id="fv-econ">&mdash;</span>
         </div>
       </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div style="font-size:.72rem;color:#aaa">Neural Priority Score</div>
+          <div class="stat-value" id="ml-score" style="font-size:2rem">&mdash;</div>
+          <div style="font-size:.72rem;margin-top:4px">Forecast: <span id="ml-forecast" style="color:var(--btc-green)">&mdash;</span></div>
+          <div style="font-size:.72rem;color:#aaa;margin-top:2px">Trend: <span id="ml-trend">&mdash;</span></div>
+          <div style="font-size:.72rem;color:#aaa;margin-top:2px">Retarget in <span id="ml-retarget">&mdash;</span> blocks</div>
+          <div style="font-size:.72rem;color:#aaa;margin-top:2px">NN loss: <span id="ml-loss" style="color:var(--gpu-color)">&mdash;</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-2" style="font-size:.72rem;color:#888">
+      Model: 6&rarr;16&rarr;8&rarr;1 dense regression &middot; Adam optimiser &middot; re-trains on live fee samples every 60&thinsp;s
+    </div>
+  </div>
+
+  <!-- Mining Controls -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-sliders me-1"></i> Mining Controls</div>
+    <div class="row g-3 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label" style="font-size:.82rem;color:#aaa">
+          Demo difficulty &mdash; leading zero nibbles
+          <span class="ms-1" style="color:#888;font-size:.7rem">(real Bitcoin &asymp;19)</span>
+        </label>
+        <input type="range" class="form-range" id="difficulty" min="1" max="7" value="4"
+               oninput="updateDifficultyDisplay()">
+        <div class="mt-1" style="font-size:.82rem">Target prefix: <span id="difficulty-display">0000</span></div>
+      </div>
       <div class="col-sm-5">
-        <label class="form-label" style="font-size:.82rem; color:#aaa;">
-          Block data (simulated transactions)
+        <label class="form-label" style="font-size:.82rem;color:#aaa">
+          Block data <span id="tx-source" style="color:var(--btc-green);font-size:.7rem">(loading real mempool txs&hellip;)</span>
         </label>
         <input type="text" class="form-control" id="block-data"
-               value="Alice→Bob: 1.5 BTC; Bob→Carol: 0.3 BTC"
-               style="background:rgba(255,255,255,.07); color:#e0e0e0;
-                      border-color:rgba(255,255,255,.2); font-size:.82rem;">
+               value="Loading real mempool transactions&hellip;"
+               style="background:rgba(255,255,255,.07);color:#e0e0e0;
+                      border-color:rgba(255,255,255,.2);font-size:.78rem">
+        <div class="mt-1" style="font-size:.7rem;color:#888">
+          Prev hash: <span id="prev-hash-display" style="font-family:monospace;color:var(--hash-color)">&mdash;</span>
+        </div>
       </div>
-      <div class="col-sm-2 d-flex gap-2 justify-content-end">
-        <button class="btn-mine" id="btn-start" onclick="startMining()">
-          <i class="fa fa-play me-1"></i> Mine
-        </button>
-        <button class="btn-stop d-none" id="btn-stop" onclick="stopMining()">
-          <i class="fa fa-stop me-1"></i> Stop
-        </button>
+      <div class="col-sm-3 d-flex gap-2 justify-content-end">
+        <button class="btn-mine" id="btn-start" onclick="startMining()"><i class="fa fa-play me-1"></i> Mine</button>
+        <button class="btn-stop d-none" id="btn-stop" onclick="stopMining()"><i class="fa fa-stop me-1"></i> Stop</button>
       </div>
     </div>
   </div>
 
-  <!-- Live stats -->
+  <!-- Live Stats -->
   <div class="panel">
-    <div class="panel-title"><i class="fa fa-chart-line me-1"></i> Live Stats</div>
+    <div class="panel-title"><i class="fa fa-chart-line me-1"></i> Mining Engine &mdash; Live Stats</div>
     <div class="row g-3 mb-3">
-      <div class="col-6 col-sm-3">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-hashrate">0</div>
-          <div class="stat-label">Hashes / sec</div>
-        </div>
-      </div>
-      <div class="col-6 col-sm-3">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-attempts">0</div>
-          <div class="stat-label">Attempts this block</div>
-        </div>
-      </div>
-      <div class="col-6 col-sm-3">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-blocks">0</div>
-          <div class="stat-label">Blocks mined</div>
-        </div>
-      </div>
-      <div class="col-6 col-sm-3">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-nonce" style="font-size:1.1rem;">—</div>
-          <div class="stat-label">Current nonce</div>
-        </div>
-      </div>
+      <div class="col-6 col-sm-3"><div class="stat-card"><div class="stat-value" id="stat-hashrate">0</div><div class="stat-label">Total H/s</div></div></div>
+      <div class="col-6 col-sm-3"><div class="stat-card"><div class="stat-value" id="stat-attempts">0</div><div class="stat-label">Attempts this block</div></div></div>
+      <div class="col-6 col-sm-3"><div class="stat-card"><div class="stat-value" id="stat-blocks">0</div><div class="stat-label">Blocks mined</div></div></div>
+      <div class="col-6 col-sm-3"><div class="stat-card"><div class="stat-value" id="stat-workers" style="font-size:1.1rem">&mdash;</div><div class="stat-label">Active workers</div></div></div>
     </div>
-
-    <div style="font-size:.75rem; color:#aaa; margin-bottom:4px;">Current hash attempt:</div>
-    <div id="current-hash">—</div>
-
-    <div class="mt-3" style="font-size:.75rem; color:#aaa; margin-bottom:4px;">
-      Estimated cumulative probability of success: <span id="prob-label">0%</span>
+    <div style="font-size:.75rem;color:#aaa;margin-bottom:4px">Current hash attempt:</div>
+    <div id="current-hash">&mdash;</div>
+    <div class="mt-3" style="font-size:.75rem;color:#aaa;margin-bottom:4px">
+      Cumulative PoW probability: <span id="prob-label">0%</span>
     </div>
     <div class="progress"><div class="progress-bar" id="prob-bar" style="width:0%"></div></div>
   </div>
@@ -263,11 +205,11 @@
     <div class="panel-title"><i class="fa fa-link me-1"></i> Blockchain (this session)</div>
     <div class="chain-wrapper" id="chain-container">
       <div class="block-card">
-        <div class="blk-num">#0 — Genesis Block</div>
+        <div class="blk-num">#0 &mdash; Genesis</div>
         <div class="blk-field">Previous Hash</div>
-        <div class="blk-val">0000…0000</div>
+        <div class="blk-val">0000&hellip;0000</div>
         <div class="blk-field mt-1">Hash</div>
-        <div class="blk-val" id="genesis-hash-val">computing…</div>
+        <div class="blk-val" id="genesis-hash-val">computing&hellip;</div>
       </div>
     </div>
   </div>
@@ -275,172 +217,367 @@
   <!-- Log -->
   <div class="panel">
     <div class="panel-title"><i class="fa fa-terminal me-1"></i> Mining Log</div>
-    <div id="mine-log"><span class="log-info">Waiting to start…</span></div>
+    <div id="mine-log"><span class="log-info">Initialising&hellip;</span></div>
   </div>
 
 </div>
-
 <script>
-  /* ── HTML escape helper ── */
-  function escapeHtml(str) {
-    const d = document.createElement('div');
-    d.appendChild(document.createTextNode(str));
-    return d.innerHTML;
-  }
+/* ── HTML escape ─────────────────────────────────────────────────────────── */
+function esc(s) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s)));
+  return d.innerHTML;
+}
 
-  /* ── SHA-256 via Web Crypto API ── */
-  const buf2hex = buf =>
-    Array.from(new Uint8Array(buf))
-         .map(b => b.toString(16).padStart(2, '0'))
-         .join('');
+/* ── SHA-256 (main thread) ───────────────────────────────────────────────── */
+const buf2hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
+async function sha256(msg) {
+  return buf2hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)));
+}
 
-  async function sha256(msg) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
-    return buf2hex(buf);
-  }
-
-  /* ── State ── */
-  let mining      = false;
-  let blocksMined = 0;
-  let prevHash    = '0000000000000000000000000000000000000000000000000000000000000000';
-  let hashCount   = 0;
-  let lastTick    = 0;
-
-  /* ── Genesis block hash ── */
-  (async () => {
-    const h = await sha256('Genesis Block — majixai bitcoin mining demo');
-    prevHash = h;
-    document.getElementById('genesis-hash-val').textContent = h.slice(0, 20) + '…';
-  })();
-
-  /* ── UI helpers ── */
-  function updateDifficultyDisplay() {
-    const d = document.getElementById('difficulty').value;
-    document.getElementById('difficulty-display').textContent = '0'.repeat(d);
-  }
-
-  function appendLog(html) {
-    const log  = document.getElementById('mine-log');
-    const line = document.createElement('div');
-    /* html is always constructed from internal computed values (integers, hex hashes)
-       and fixed string literals — never from raw user input */
-    line.innerHTML = html;
-    log.appendChild(line);
-    log.scrollTop  = log.scrollHeight;
-    while (log.childElementCount > 200) log.removeChild(log.firstChild);
-  }
-
-  function setHashDisplay(hash, valid) {
-    const el = document.getElementById('current-hash');
-    el.textContent = hash || '—';
-    el.className   = valid ? 'valid' : '';
-  }
-
-  function addBlockToChain(num, data, nonce, hash) {
-    const c = document.getElementById('chain-container');
-    const a = document.createElement('div');
-    a.className   = 'chain-arrow';
-    a.innerHTML   = '<i class="fa fa-arrow-right"></i>';
-    c.appendChild(a);
-    const card = document.createElement('div');
-    card.className = 'block-card';
-    card.innerHTML = `
-      <div class="blk-num">#${escapeHtml(String(num))}</div>
-      <div class="blk-field">Data</div>
-      <div class="blk-val">${escapeHtml(data.slice(0, 40))}${data.length > 40 ? '…' : ''}</div>
-      <div class="blk-field mt-1">Nonce</div>
-      <div class="blk-val">${escapeHtml(nonce.toLocaleString())}</div>
-      <div class="blk-field mt-1">Hash</div>
-      <div class="blk-val">${escapeHtml(hash.slice(0, 20))}…</div>`;
-    c.appendChild(card);
-    c.scrollLeft = c.scrollWidth;
-  }
-
-  function updateProbBar(attempts, difficulty) {
-    const p   = 1 - Math.pow(1 - Math.pow(16, -difficulty), attempts);
-    const pct = Math.min(99.9, p * 100).toFixed(1);
-    document.getElementById('prob-bar').style.width  = pct + '%';
-    document.getElementById('prob-label').textContent = pct + '%';
-  }
-
-  /* ── Mining loop ── */
-  async function mineBlock() {
-    const difficulty = parseInt(document.getElementById('difficulty').value, 10);
-    const target     = '0'.repeat(difficulty);
-    const data       = document.getElementById('block-data').value || 'Empty block';
-    const blockNum   = blocksMined + 1;
-    let   nonce      = 0;
-    let   attempts   = 0;
-
-    lastTick   = performance.now();
-    hashCount  = 0;
-
-    document.getElementById('stat-attempts').textContent = '0';
-    document.getElementById('stat-nonce').textContent    = '0';
-
-    appendLog(`<span class="log-info">⛏ Mining block #${blockNum} | difficulty: ${difficulty} | target prefix: ${target}…</span>`);
-
-    const BATCH = 100; // hashes per micro-tick
-
-    while (mining) {
-      for (let i = 0; i < BATCH; i++) {
-        const hash = await sha256(`${prevHash}|${blockNum}|${data}|${nonce}`);
-        hashCount++;
-        attempts++;
-
-        if (hash.startsWith(target)) {
-          /* ── block found ── */
-          setHashDisplay(hash, true);
-          document.getElementById('stat-attempts').textContent = attempts.toLocaleString();
-          document.getElementById('stat-nonce').textContent    = nonce.toLocaleString();
-          const elapsed = (performance.now() - lastTick) / 1000;
-          const hr = elapsed > 0 ? Math.round(hashCount / elapsed) : 0;
-          document.getElementById('stat-hashrate').textContent = hr.toLocaleString();
-          updateProbBar(attempts, difficulty);
-          blocksMined++;
-          document.getElementById('stat-blocks').textContent = blocksMined;
-          appendLog(`<span class="log-found">✅ Block #${blockNum} found! Nonce: ${nonce.toLocaleString()} | Hash: ${hash.slice(0,16)}… | Attempts: ${attempts.toLocaleString()}</span>`);
-          addBlockToChain(blockNum, data, nonce, hash);
-          prevHash = hash;
-          await new Promise(r => setTimeout(r, 700));
-          if (mining) mineBlock();
-          return;
-        }
-        nonce++;
+/* ── Web Worker source (inlined as Blob) ─────────────────────────────────── */
+const WORKER_SRC = `
+const b2h=b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
+async function sha256w(m){return b2h(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m)));}
+let running=false;
+self.onmessage=async({data})=>{
+  if(data.cmd==='stop'){running=false;return;}
+  if(data.cmd==='start'){
+    running=true;
+    const{prevHash,blockNum,blockData,target,nonceStart,step}=data.payload;
+    let nonce=nonceStart,count=0,t0=performance.now();
+    while(running){
+      for(let i=0;i<150;i++){
+        const h=await sha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+nonce);
+        count++;
+        if(h.startsWith(target)){self.postMessage({type:'found',nonce,hash:h});running=false;return;}
+        nonce+=step;
       }
-
-      /* yield to browser every batch */
-      const elapsed = (performance.now() - lastTick) / 1000;
-      if (elapsed > 0) {
-        document.getElementById('stat-hashrate').textContent =
-          Math.round(hashCount / elapsed).toLocaleString();
-      }
-      document.getElementById('stat-attempts').textContent = attempts.toLocaleString();
-      document.getElementById('stat-nonce').textContent    = (nonce - 1).toLocaleString();
-      setHashDisplay(await sha256(`${prevHash}|${blockNum}|${data}|${nonce - 1}`));
-      updateProbBar(attempts, difficulty);
-      await new Promise(r => setTimeout(r, 0));
+      const el=(performance.now()-t0)/1000;
+      const lh=await sha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+(nonce-step));
+      self.postMessage({type:'progress',count,nonce,hashrate:el>0?count/el:0,lastHash:lh});
+      await new Promise(r=>setTimeout(r,0));
     }
+    self.postMessage({type:'stopped'});
   }
+};`;
 
-  function startMining() {
-    if (mining) return;
-    mining = true;
-    document.getElementById('btn-start').classList.add('d-none');
-    document.getElementById('btn-stop').classList.remove('d-none');
-    document.getElementById('mine-log').innerHTML = '';
-    appendLog('<span class="log-info">Mining started…</span>');
-    mineBlock();
+/* ── Worker pool ─────────────────────────────────────────────────────────── */
+const N_WORKERS = Math.max(2, Math.min(8, navigator.hardwareConcurrency || 4));
+document.getElementById('badge-workers').textContent = N_WORKERS;
+document.getElementById('stat-workers').textContent  = '0/' + N_WORKERS;
+
+let workers = [];
+function spawnWorkers() {
+  workers.forEach(w => w.terminate());
+  workers = [];
+  const url = URL.createObjectURL(new Blob([WORKER_SRC], {type:'application/javascript'}));
+  for (let i = 0; i < N_WORKERS; i++) workers.push(new Worker(url));
+}
+
+/* ── TF.js neural fee model: 6 -> 16 -> 8 -> 1 ──────────────────────────── */
+let tfModel = null, feeSamples = [];
+
+async function buildTFModel() {
+  const m = tf.sequential();
+  m.add(tf.layers.dense({inputShape:[6], units:16, activation:'relu', kernelInitializer:'glorotUniform'}));
+  m.add(tf.layers.dense({units:8, activation:'relu'}));
+  m.add(tf.layers.dense({units:1}));
+  m.compile({optimizer: tf.train.adam(0.01), loss:'meanSquaredError'});
+  tfModel = m;
+  document.getElementById('badge-ml').textContent = 'ready';
+}
+
+function featureVec(fees, net) {
+  const cap = (v,lo,hi) => Math.max(0, Math.min(1, (v-lo) / (hi-lo || 1)));
+  return [
+    cap(fees.fastestFee  || 0, 1, 500),
+    cap(fees.halfHourFee || 0, 1, 500),
+    cap(fees.hourFee     || 0, 1, 500),
+    cap(fees.economyFee  || 0, 1, 200),
+    cap(net.mempool_count || 0, 0, 150000),
+    cap(net.mempool_vsize || 0, 0, 1e8),
+  ];
+}
+
+async function trainAndPredict(fees, net) {
+  if (!tfModel) return null;
+  const xArr = featureVec(fees, net);
+  const yNorm = (fees.halfHourFee || 10) / 500;
+  feeSamples.push({x: xArr, y: yNorm});
+  if (feeSamples.length > 60) feeSamples.shift();
+  const xs = tf.tensor2d(feeSamples.map(s => s.x));
+  const ys = tf.tensor2d(feeSamples.map(s => [s.y]));
+  const h  = await tfModel.fit(xs, ys, {epochs:5, verbose:0});
+  xs.dispose(); ys.dispose();
+  document.getElementById('ml-loss').textContent = h.history.loss.at(-1).toFixed(6);
+  const xT  = tf.tensor2d([xArr]);
+  const out = tfModel.predict(xT);
+  const raw = (await out.data())[0];
+  xT.dispose(); out.dispose();
+  return Math.max(1, Math.round(raw * 500));
+}
+
+/* ── Live data (GitHub Actions JSON + direct mempool.space API) ──────────── */
+let liveData = null, lastApiAge = null;
+
+async function fetchLiveData() {
+  try {
+    const r = await fetch('/bitcoin_miner/data/live_data.json?_=' + Date.now());
+    if (r.ok) { liveData = await r.json(); lastApiAge = new Date(liveData.updated_at); }
+  } catch(_) {}
+
+  try {
+    const [fR, mR, bR] = await Promise.allSettled([
+      fetch('https://mempool.space/api/v1/fees/recommended').then(r => r.json()),
+      fetch('https://mempool.space/api/mempool').then(r => r.json()),
+      fetch('https://mempool.space/api/v1/blocks').then(r => r.json()),
+    ]);
+    if (!liveData) liveData = {network:{},latest_block:{},fees_recommended:{},mempool_sample_txs:[],ml_analysis:{}};
+    if (fR.status === 'fulfilled') liveData.fees_recommended = fR.value;
+    if (mR.status === 'fulfilled') {
+      const m = mR.value;
+      liveData.network = {...liveData.network, mempool_count: m.count, mempool_vsize: m.vsize};
+    }
+    if (bR.status === 'fulfilled' && Array.isArray(bR.value) && bR.value.length) {
+      const b = bR.value[0];
+      liveData.network     = {...liveData.network, height: b.height, difficulty: b.difficulty};
+      liveData.latest_block = {...liveData.latest_block, ...b};
+      lastApiAge = new Date();
+    }
+  } catch(_) {}
+
+  if (liveData) { updateNetworkPanel(); updateBlockData(); await updateMLPanel(); }
+}
+
+function updateNetworkPanel() {
+  const n = liveData.network          || {};
+  const f = liveData.fees_recommended || {};
+  const b = liveData.latest_block     || {};
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  set('net-height',   n.height ? n.height.toLocaleString() : '—');
+  set('net-diff',     n.difficulty ? (n.difficulty/1e12).toFixed(2)+'T' : '—');
+  set('net-hash',     n.hashrate_7d ? (n.hashrate_7d/1e18).toFixed(2) : '—');
+  set('net-mempool',  n.mempool_count ? n.mempool_count.toLocaleString() : '—');
+  set('net-fee-fast', f.fastestFee  || '—');
+  set('net-fee-med',  b.medianFee   ? Number(b.medianFee).toFixed(1) : '—');
+  if (lastApiAge) {
+    const s = Math.floor((Date.now() - lastApiAge) / 1000);
+    set('data-age', 'data ' + (s < 60 ? s+'s' : Math.floor(s/60)+'m') + ' ago');
   }
+}
 
-  function stopMining() {
-    mining = false;
-    document.getElementById('btn-stop').classList.add('d-none');
-    document.getElementById('btn-start').classList.remove('d-none');
-    appendLog('<span style="color:var(--btc-red)">⏹ Mining stopped.</span>');
+function updateBlockData() {
+  const txs = liveData.mempool_sample_txs || [];
+  const blk  = liveData.latest_block     || {};
+  const str  = txs.length
+    ? txs.slice(0,8).map(t => (t.txid||'?') + ':' + (t.fee||0) + 'sat').join(';')
+    : 'block-' + (blk.height||0) + '-realdata';
+  document.getElementById('block-data').value = str;
+  const ph = blk.id || '0'.repeat(64);
+  document.getElementById('prev-hash-display').textContent = ph.slice(0,24) + '…';
+  if (txs.length) document.getElementById('tx-source').textContent = '(' + txs.length + ' real mempool txs)';
+}
+
+async function updateMLPanel() {
+  const fees = liveData.fees_recommended || {};
+  const ml   = liveData.ml_analysis      || {};
+  const net  = liveData.network          || {};
+  const mx   = Math.max(fees.fastestFee || 1, 1);
+  function bar(id, valId, val) {
+    document.getElementById(id).style.width = Math.min(100, (val/mx)*100) + '%';
+    document.getElementById(valId).textContent = val ? val+' s/vB' : '—';
   }
+  bar('fb-fast','fv-fast', fees.fastestFee);
+  bar('fb-half','fv-half', fees.halfHourFee);
+  bar('fb-hour','fv-hour', fees.hourFee);
+  bar('fb-econ','fv-econ', fees.economyFee);
+  const predicted = await trainAndPredict(fees, net);
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  set('ml-score',    ml.neural_priority_score ?? '—');
+  set('ml-forecast', ml.forecast   || '—');
+  set('ml-trend',    ml.fee_trend  || '—');
+  set('ml-retarget', ml.blocks_to_difficulty_adj || '—');
+  appendLog('<span class="log-ml">&#x1F9E0; Neural: predicted ' + predicted + ' sat/vB &middot; score=' + (ml.neural_priority_score||'?') + ' &middot; ' + esc(ml.forecast||'?') + '</span>');
+}
 
+/* ── Mining state ────────────────────────────────────────────────────────── */
+let mining = false, blocksMined = 0, prevHash = '0'.repeat(64);
+let workerHashes = new Array(N_WORKERS).fill(0);
+let workerRates  = new Array(N_WORKERS).fill(0);
+let totalAttempts = 0;
+
+/* Genesis */
+(async () => {
+  const h = await sha256('Genesis Block — majixai bitcoin mining demo');
+  prevHash = h;
+  document.getElementById('genesis-hash-val').textContent = h.slice(0,20) + '…';
+})();
+
+/* ── UI helpers ──────────────────────────────────────────────────────────── */
+function updateDifficultyDisplay() {
+  document.getElementById('difficulty-display').textContent =
+    '0'.repeat(document.getElementById('difficulty').value);
+}
+
+function appendLog(html) {
+  const log  = document.getElementById('mine-log');
+  const line = document.createElement('div');
+  /* html built from internal computed values and fixed string literals only */
+  line.innerHTML = html;
+  log.appendChild(line);
+  log.scrollTop  = log.scrollHeight;
+  while (log.childElementCount > 300) log.removeChild(log.firstChild);
+}
+
+function setHashDisplay(hash, valid) {
+  const el = document.getElementById('current-hash');
+  el.textContent = hash || '—';
+  el.className   = valid ? 'valid' : '';
+}
+
+function addBlockToChain(num, data, nonce, hash) {
+  const c = document.getElementById('chain-container');
+  const a = document.createElement('div');
+  a.className = 'chain-arrow';
+  a.innerHTML = '<i class="fa fa-arrow-right"></i>';
+  c.appendChild(a);
+  const txCount = data.split(';').length;
+  const card = document.createElement('div');
+  card.className = 'block-card';
+  card.innerHTML =
+    '<div class="blk-num">#' + esc(num) + '</div>'
+    + '<div class="blk-field">Data (' + esc(txCount) + ' txs)</div>'
+    + '<div class="blk-val">' + esc(data.slice(0,45)) + (data.length>45?'…':'') + '</div>'
+    + '<div class="blk-field mt-1">Nonce</div>'
+    + '<div class="blk-val">' + esc(Number(nonce).toLocaleString()) + '</div>'
+    + '<div class="blk-field mt-1">Hash</div>'
+    + '<div class="blk-val">' + esc(hash.slice(0,20)) + '…</div>';
+  c.appendChild(card);
+  c.scrollLeft = c.scrollWidth;
+}
+
+function updateProbBar(attempts, difficulty) {
+  const p   = 1 - Math.pow(1 - Math.pow(16, -difficulty), attempts);
+  const pct = Math.min(99.9, p * 100).toFixed(2);
+  document.getElementById('prob-bar').style.width   = pct + '%';
+  document.getElementById('prob-label').textContent = pct + '%';
+}
+
+/* ── Mining engine ───────────────────────────────────────────────────────── */
+function startMining() {
+  if (mining) return;
+  mining = true;
+  spawnWorkers();
+  document.getElementById('btn-start').classList.add('d-none');
+  document.getElementById('btn-stop').classList.remove('d-none');
+  document.getElementById('mine-log').innerHTML = '';
+  appendLog('<span class="log-info">&#x26CF; Starting ' + N_WORKERS + '-worker mining engine…</span>');
+  mineNextBlock();
+}
+
+function stopMining() {
+  mining = false;
+  workers.forEach(w => w.postMessage({cmd:'stop'}));
+  document.getElementById('btn-stop').classList.add('d-none');
+  document.getElementById('btn-start').classList.remove('d-none');
+  document.getElementById('stat-workers').textContent = '0/' + N_WORKERS;
+  appendLog('<span style="color:var(--btc-red)">&#x23F9; Mining stopped.</span>');
+}
+
+function mineNextBlock() {
+  if (!mining) return;
+  const difficulty = parseInt(document.getElementById('difficulty').value, 10);
+  const target     = '0'.repeat(difficulty);
+  const blockData  = document.getElementById('block-data').value || 'Empty block';
+  const blockNum   = blocksMined + 1;
+  let   found      = false;
+  totalAttempts    = 0;
+  workerHashes     = new Array(N_WORKERS).fill(0);
+  workerRates      = new Array(N_WORKERS).fill(0);
+
+  document.getElementById('stat-attempts').textContent = '0';
+  document.getElementById('stat-workers').textContent  = N_WORKERS + '/' + N_WORKERS;
+  appendLog('<span class="log-info">&#x26CF; Block #' + blockNum
+    + ' &middot; diff=' + difficulty + ' &middot; target=' + esc(target)
+    + ' &middot; ' + N_WORKERS + ' workers</span>');
+
+  workers.forEach((w, i) => {
+    w.onmessage = async ({ data: msg }) => {
+      if (!mining || found) return;
+      if (msg.type === 'found') {
+        found = true;
+        workers.forEach((ww, j) => { if (j !== i) ww.postMessage({cmd:'stop'}); });
+        const totalR = workerRates.reduce((a,b) => a+b, 0);
+        setHashDisplay(msg.hash, true);
+        document.getElementById('stat-attempts').textContent = totalAttempts.toLocaleString();
+        document.getElementById('stat-hashrate').textContent = Math.round(totalR).toLocaleString();
+        document.getElementById('stat-workers').textContent  = '0/' + N_WORKERS;
+        updateProbBar(totalAttempts, difficulty);
+        blocksMined++;
+        document.getElementById('stat-blocks').textContent = blocksMined;
+        appendLog('<span class="log-found">&#x2705; Block #' + blockNum
+          + ' found! Worker ' + i
+          + ' &middot; Nonce: ' + Number(msg.nonce).toLocaleString()
+          + ' &middot; Hash: ' + esc(msg.hash.slice(0,16)) + '…'
+          + ' &middot; ' + totalAttempts.toLocaleString() + ' attempts'
+          + ' &middot; ' + Math.round(totalR).toLocaleString() + ' H/s</span>');
+        addBlockToChain(blockNum, blockData, msg.nonce, msg.hash);
+        prevHash = msg.hash;
+        document.getElementById('prev-hash-display').textContent = prevHash.slice(0,24) + '…';
+        await new Promise(r => setTimeout(r, 600));
+        if (mining) mineNextBlock();
+      } else if (msg.type === 'progress') {
+        workerHashes[i] = msg.count;
+        workerRates[i]  = msg.hashrate;
+        totalAttempts   = workerHashes.reduce((a,b) => a+b, 0);
+        document.getElementById('stat-attempts').textContent =
+          totalAttempts.toLocaleString();
+        document.getElementById('stat-hashrate').textContent =
+          Math.round(workerRates.reduce((a,b) => a+b, 0)).toLocaleString();
+        if (msg.lastHash) setHashDisplay(msg.lastHash, false);
+        updateProbBar(totalAttempts, difficulty);
+      }
+    };
+    w.postMessage({
+      cmd: 'start',
+      payload: {prevHash, blockNum, blockData, target, nonceStart: i, step: N_WORKERS},
+    });
+  });
+}
+
+/* ── WebGPU detection (TF.js backend switch) ─────────────────────────────── */
+async function detectGPU() {
+  if (navigator.gpu) {
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        document.getElementById('badge-tfback').textContent = 'WebGPU ✓';
+        appendLog('<span class="log-ml">&#x26A1; WebGPU detected — TF.js will use GPU compute</span>');
+        return true;
+      }
+    } catch(_) {}
+  }
+  document.getElementById('badge-tfback').textContent = 'WebGL';
+  return false;
+}
+
+/* ── Boot ────────────────────────────────────────────────────────────────── */
+(async () => {
+  const hasWebGPU = await detectGPU();
+  if (hasWebGPU) { try { await tf.setBackend('webgpu'); } catch(_) {} }
+  await tf.ready();
+  document.getElementById('badge-tfback').textContent = (tf.getBackend() || 'cpu').toUpperCase();
+  await buildTFModel();
+  appendLog('<span class="log-ml">&#x1F9E0; TF.js model ready (' + (tf.getBackend()||'cpu').toUpperCase() + ' backend)</span>');
+  appendLog('<span class="log-net">&#x1F310; Fetching live Bitcoin network data…</span>');
+  await fetchLiveData();
+  setInterval(async () => {
+    appendLog('<span class="log-net">&#x1F504; Refreshing network data…</span>');
+    await fetchLiveData();
+  }, 60000);
   updateDifficultyDisplay();
+})();
 </script>
 </body>
 </html>

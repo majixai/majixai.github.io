@@ -1,0 +1,74 @@
+name: Bitcoin Miner — Real Data Feed
+
+# Runs every minute; each run fetches + analyses live Bitcoin network
+# data for 3 minutes (180 s), writing bitcoin_miner/data/live_data.json
+# after every 20-second sample so the page always serves fresh data.
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'   # Every minute (GitHub may throttle to ~5 min)
+  workflow_dispatch:         # Manual trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bitcoin-miner-data
+  cancel-in-progress: true   # Discard stale runs; only the latest matters
+
+jobs:
+  fetch-and-analyze:
+    name: Fetch Real Bitcoin Data + ML Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python runtime ──────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 3. Run fetcher (loops for 3 minutes) ───────────────────────────
+      - name: Run Bitcoin Data Fetcher (3-minute collection loop)
+        run: |
+          echo "Starting data collection at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python bitcoin_miner/fetch_real_data.py --runtime 180
+          echo "Collection complete at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      # ── 4. Commit live_data.json back to repo ──────────────────────────
+      - name: Commit updated live data
+        run: |
+          git config user.name  "bitcoin-miner-bot[bot]"
+          git config user.email "bitcoin-miner-bot[bot]@users.noreply.github.com"
+
+          git add bitcoin_miner/data/live_data.json
+
+          # Only commit if the file actually changed
+          if git diff --staged --quiet; then
+            echo "No new data — skipping commit."
+          else
+            HEIGHT=$(python3 -c "
+import json, sys
+try:
+  d = json.load(open('bitcoin_miner/data/live_data.json'))
+  print(d['network']['height'])
+except:
+  print('?')
+")
+            git commit -m "⛏ Bitcoin live data height=${HEIGHT} $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            # Fetch latest remote state and rebase to avoid push conflicts
+            git fetch origin
+            git rebase origin/main || {
+              echo "::warning::Rebase conflict — skipping push (data was saved locally)"
+              git rebase --abort
+              git reset --soft HEAD~1
+              exit 0
+            }
+            git push origin HEAD:main
+          fi
