@@ -1025,7 +1025,7 @@ async function renderNextPage() {
         toggleFavorite(favBtn.dataset.fav, favBtn);
         return;
       }
-      handleCardClick(card, user, item, images);
+      handleCardClick(card, user, item, card._imgArray);
     });
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -1437,8 +1437,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const imgEl = document.getElementById('modalImg');
             const iframeEl = document.getElementById('modalLiveIframe');
             if (_modalLiveMode) {
-                const username = encodeURIComponent(document.getElementById('modalUsername').innerText.replace('@','').trim());
-                iframeEl.src = `https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&room=${username}`;
+                const username = state.singleModalItem?.username || '';
+                iframeEl.src = `https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never&room=${encodeURIComponent(username)}`;
                 imgEl.style.display = 'none';
                 iframeEl.style.display = 'block';
                 this.innerText = '📷 Show Images';
@@ -1452,6 +1452,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.innerText = '📺 Watch Live';
                 this.classList.remove('btn-success');
                 this.classList.add('btn-outline-success');
+                // Restart slideshow if there are multiple images
+                if (state.singleModalImages && state.singleModalImages.length > 1) {
+                    clearInterval(state.singleModalInterval);
+                    const progBar = document.getElementById('modalProg');
+                    const step = () => {
+                        if (progBar) {
+                            progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth;
+                            progBar.style.transition = 'width 4000ms linear'; progBar.style.width = '100%';
+                        }
+                        state.singleModalIdx = (state.singleModalIdx + 1) % state.singleModalImages.length;
+                        imgEl.style.opacity = '0.5';
+                        setTimeout(() => {
+                            imgEl.src = state.singleModalImages[state.singleModalIdx];
+                            imgEl.style.opacity = '1';
+                            document.getElementById('modalImageCounter').innerText = `Image ${state.singleModalIdx + 1} of ${state.singleModalImages.length}`;
+                        }, 300);
+                    };
+                    if (progBar) { progBar.style.transition = 'width 4000ms linear'; progBar.style.width = '100%'; }
+                    state.singleModalInterval = setInterval(step, 4000);
+                }
             }
         });
     }
