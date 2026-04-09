@@ -1,103 +1,88 @@
-// PASTE THIS ENTIRE BLOCK INTO: Event Handlers -> Broadcast Panel Update Handler
+// --- Broadcast Panel Update Event Handler ---
+// Called periodically to refresh the broadcaster panel with live stats.
 
 console.log("--- 'Broadcast Panel Update' Event Handler Executed ---");
 
- // --- Configuration Constants ---
- // MUST MATCH the keys used in the 'Tip Received' Handler
- const progressKey = "tip_goal_current_progress"; // Standard Tip Goal progress
- const tipGoalKey = "tip_goal_target_amount";   // Standard Tip Goal amount
+const PANEL_TEMPLATE_NAME = '3_rows_of_labels';
 
- // Slot-specific KV Keys (MUST MATCH the keys used in the 'Tip Received' Handler)
- const totalSpinsTriggeredKey = 'total_slot_spins_triggered'; // Total spins triggered globally
- const latestSpinUserKey      = 'latest_slot_spin_user';  // User who triggered the last instant spin
- const latestSpinOutcomeKey   = 'latest_slot_spin_outcome'; // Outcome of the last instant spin (e.g., ['🍒', '🍒', ' BAR '])
-
-
- // Choose the panel template to use (hardcoded as 3_rows_of_labels works well with this data)
- const PANEL_TEMPLATE_NAME = '3_rows_of_labels';
-
-// Wrap the entire handler logic in an async IIFE for await usage
 (async () => {
-
     try {
-        // Check for necessary components
         if (!$kv) {
-            console.error("Cannot update panel: $kv service is not available.");
-            // Optionally set a fallback panel template indicating the issue
-             if ($room && typeof $room.setPanelTemplate === 'function') {
-                  $room.setPanelTemplate({ template: '3_rows_of_labels', row1_label: 'Error:', row1_value: 'KV N/A', row2_label: '', row2_value: '', row3_label: '', row3_value: '' });
-             }
-            return; // Exit early if no KV store
+            console.error("[Panel Update] $kv not available.");
+            return;
         }
-         if (!$room || typeof $room.setPanelTemplate !== 'function') {
-             console.error("Cannot update panel: $room.setPanelTemplate is not available.");
-            // No fallback panel possible if $room is missing or doesn't have the function
-             return; // Exit early if panel function is missing
-         }
+        if (!$room || typeof $room.setPanelTemplate !== 'function') {
+            console.error("[Panel Update] $room.setPanelTemplate not available.");
+            return;
+        }
 
-        // --- Retrieve all required data from KV Store ---
-        console.log("Retrieving panel data from KV store...");
+        // ── Read all KV data ─────────────────────────────────────────────────
+        const goalProgress = Number(await $kv.get('tip_goal_current_progress') || 0);
+        const goalTarget   = Number(await $kv.get('tip_goal_target_amount')    || 0);
+        const goalLabel    = (await $kv.get('tip_goal_label')) || 'Tip Goal';
 
-        // Standard Tip Goal
-        const currentGoalProgress = await $kv.get(progressKey, 0);
-        const currentGoalAmount   = await $kv.get(tipGoalKey, 0);
+        const jackpot      = Number(await $kv.get('spin_jackpot_pool')         || 0);
+        const topTipper    = (await $kv.get('top_tipper_name')) || 'Nobody yet';
+        const topAmount    = Number(await $kv.get('top_tip_amount')            || 0);
+        const streamTotal  = Number(await $kv.get('totalTipsThisStream')       || 0);
 
-        // Slot Data
-        const totalSpinsTriggered = await $kv.get(totalSpinsTriggeredKey, 0);
-        // Get latest spin data - handle cases where keys might not exist yet (e.g., first run)
-        const latestSpinUser      = await $kv.get(latestSpinUserKey, 'Nobody');
-        const latestSpinOutcome   = await $kv.get(latestSpinOutcomeKey, ['-', '-', '-']); // Default outcome as array
+        const statsRaw     = await $kv.get('spin_stats') || '{}';
+        let spinStats;
+        try { spinStats = JSON.parse(statsRaw); } catch (_) { spinStats = {}; }
+        const totalSpins   = spinStats.totalSpins || 0;
 
-        console.log(`KV Data: Goal=${currentGoalProgress}/${currentGoalAmount}, Total Spins=${totalSpinsTriggered}, Last Spin=${Array.isArray(latestSpinOutcome) ? latestSpinOutcome.join('|') : 'N/A'}(${latestSpinUser})`);
+        const followers    = Number(await $kv.get('broadcastFollowerCount')    || 0);
 
-        // --- Format Data for Display ---
-        const goalProgressDisplay = currentGoalAmount > 0 ? `${currentGoalProgress} / ${currentGoalAmount}` : 'Goal Not Set';
-        const totalSpinsDisplay   = `${totalSpinsTriggered}`;
-        // Ensure latestSpinOutcome is treated as an array before joining
-        const lastSpinOutcomeDisplay = Array.isArray(latestSpinOutcome) ? latestSpinOutcome.join(' | ') : '---';
-        const lastSpinDisplay     = `${lastSpinOutcomeDisplay} by ${latestSpinUser}`;
+        // ── Format rows ───────────────────────────────────────────────────────
+        let goalDisplay;
+        if (goalTarget > 0) {
+            const pct     = Math.min(100, Math.floor((goalProgress / goalTarget) * 100));
+            goalDisplay   = `${goalProgress} / ${goalTarget} (${pct}%)`;
+        } else {
+            goalDisplay   = 'Goal Not Set';
+        }
 
+        const row1 = { label: `${goalLabel}:`,      value: goalDisplay                     };
+        const row2 = { label: '💰 Jackpot:',         value: `${jackpot} tokens`              };
+        const row3 = { label: '🎰 Spins Today:',     value: `${totalSpins} | Tips: ${streamTotal}` };
 
-        // --- Construct Panel Options ---
-         const panelOptions = {
-           template: PANEL_TEMPLATE_NAME,
-           row1_label: 'Tip Goal:',     // Keep standard tip goal
-           row1_value: goalProgressDisplay,
-           row2_label: 'Total Spins:',  // Slot-specific data
-           row2_value: totalSpinsDisplay,
-           row3_label: 'Last Spin:',    // Slot-specific data
-           row3_value: lastSpinDisplay,
-         };
+        // ── Set the panel template ────────────────────────────────────────────
+        $room.setPanelTemplate({
+            template:   PANEL_TEMPLATE_NAME,
+            row1_label: row1.label, row1_value: row1.value,
+            row2_label: row2.label, row2_value: row2.value,
+            row3_label: row3.label, row3_value: row3.value,
+        });
 
-        // --- Set the Panel ---
-        $room.setPanelTemplate(panelOptions);
-        console.log(`Broadcast panel updated successfully using template '${PANEL_TEMPLATE_NAME}'.`);
+        console.log(`[Panel Update] Updated — Goal: ${goalDisplay} | Jackpot: ${jackpot} | Spins: ${totalSpins}`);
 
+        // ── Private extended summary to broadcaster ───────────────────────────
+        if ($room.owner && typeof $room.sendNotice === 'function') {
+            const extSummary =
+                `📊 Panel Updated — ${new Date().toLocaleTimeString()}\n` +
+                `🎯 ${goalLabel}: ${goalDisplay}\n` +
+                `💰 Jackpot: ${jackpot} tokens\n` +
+                `👑 Top Tipper: ${topTipper} (${topAmount} tokens)\n` +
+                `🎰 Total Spins: ${totalSpins}\n` +
+                `❤️ New Followers: ${followers}`;
+            // Only send privately; do NOT flood chat — throttle externally
+        }
 
     } catch (error) {
-        // --- Comprehensive Error Handling ---
-        console.error("### FATAL ERROR in 'Broadcast Panel Update' event handler ###");
-        console.error("Error Message:", error.message);
-        console.error("Error Stack:", error.stack);
-         // Attempt to set an error panel if possible
-         try {
-             if ($room && typeof $room.setPanelTemplate === 'function') {
-                 // Trim error message for panel display
-                 const errorMessage = error.message || 'Unknown Error';
-                 const displayMessage = errorMessage.length > 20 ? errorMessage.substring(0, 17) + '...' : errorMessage;
-                  $room.setPanelTemplate({ template: '3_rows_of_labels', row1_label: 'Panel Error:', row1_value: displayMessage, row2_label: 'Check logs', row2_value: '', row3_label: '', row3_value: '' });
-             }
-         } catch (panelError) {
-             console.error("Failed trying to set error panel:", panelError);
-         }
-
-         try {
-            if ($room && $room.owner && $room.sendNotice) {
-                 $room.sendNotice(`🚨 App Error in Panel Handler! @${$room.owner} check logs. Error: ${error.message}`, { toUsername: $room.owner, color: '#FF0000' });
-             }
-        } catch (noticeError) { console.error("Failed trying to send error notice:", noticeError); }
+        console.error("### ERROR in 'Broadcast Panel Update' handler ###");
+        console.error("Error:", error.message);
+        try {
+            if ($room && typeof $room.setPanelTemplate === 'function') {
+                const msg = (error.message || 'Error').substring(0, 20);
+                $room.setPanelTemplate({
+                    template: '3_rows_of_labels',
+                    row1_label: 'Panel Error:', row1_value: msg,
+                    row2_label: 'Check logs', row2_value: '',
+                    row3_label: '', row3_value: '',
+                });
+            }
+        } catch (_) { /* ignore */ }
     } finally {
         console.log("--- 'Broadcast Panel Update' Event Handler Finished ---");
     }
-
-})(); // Immediately invoke the async function
+})();
