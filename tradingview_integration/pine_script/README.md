@@ -224,20 +224,36 @@ Patterns below the configurable **Min Confidence Filter** (default 25 %) are sup
 ---
 
 <!-- AUTO-UPDATE-START -->
-_Last updated: 2026-04-06 19:39 UTC_
+_Last updated: 2026-04-09 21:12 UTC_
 
-### Live Google Finance Snapshot
+### Live Market Snapshot  (yfinance · Yahoo Finance chart fallback)
 
-| Ticker | Exchange | Price | Change | Change % | Updated |
-|--------|----------|-------|--------|----------|---------|
-| [SPY](https://www.google.com/finance/quote/SPY:NYSEARCA) | NYSEARCA | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [QQQ](https://www.google.com/finance/quote/QQQ:NASDAQ) | NASDAQ | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [DIA](https://www.google.com/finance/quote/DIA:NYSEARCA) | NYSEARCA | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [AAPL](https://www.google.com/finance/quote/AAPL:NASDAQ) | NASDAQ | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [MSFT](https://www.google.com/finance/quote/MSFT:NASDAQ) | NASDAQ | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [GOOGL](https://www.google.com/finance/quote/GOOGL:NASDAQ) | NASDAQ | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [TSLA](https://www.google.com/finance/quote/TSLA:NASDAQ) | NASDAQ | $46613.20 | +108.53 | -50% | 2026-04-06 19:39 UTC |
-| [NVDA](https://www.google.com/finance/quote/NVDA:NASDAQ) | NASDAQ | $46618.58 | +113.91 | -50% | 2026-04-06 19:39 UTC |
-| [BTC-USD](https://www.google.com/finance/quote/BTC-USD:CRYPTO) | CRYPTO | $46613.20 | +108.53 | -50% | 2026-04-06 19:39 UTC |
+| Ticker | Exch | Price | Chg | Chg% | Mom-5b | RSI~ | Src | Updated |
+|--------|------|-------|-----|------|--------|------|-----|---------|
+| [SPY](https://finance.yahoo.com/quote/SPY) | NYSEARCA | $679.91 | 5.16 | 0.7647% | ─ | — | yfinance | 2026-04-09 21:12 UTC |
+| [QQQ](https://finance.yahoo.com/quote/QQQ) | NASDAQ | $610.19 | 5.67 | 0.9379% | ─ | — | yfinance | 2026-04-09 21:12 UTC |
+| [DIA](https://finance.yahoo.com/quote/DIA) | NYSEARCA | $481.9 | 3.35 | 0.7% | ─ | — | yfinance | 2026-04-09 21:12 UTC |
+| [IWM](https://finance.yahoo.com/quote/IWM) | NYSEARCA | $261.96 | 2.0381 | 0.7841% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [AAPL](https://finance.yahoo.com/quote/AAPL) | NASDAQ | $260.49 | 1.79 | 0.6919% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [MSFT](https://finance.yahoo.com/quote/MSFT) | NASDAQ | $373.07 | -0.93 | -0.2487% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [GOOGL](https://finance.yahoo.com/quote/GOOGL) | NASDAQ | $318.49 | 1.7011 | 0.537% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [AMZN](https://finance.yahoo.com/quote/AMZN) | NASDAQ | $233.65 | 13.33 | 6.0503% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [TSLA](https://finance.yahoo.com/quote/TSLA) | NASDAQ | $345.62 | 4.37 | 1.2806% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [NVDA](https://finance.yahoo.com/quote/NVDA) | NASDAQ | $183.91 | 2.9699 | 1.6414% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [META](https://finance.yahoo.com/quote/META) | NASDAQ | $628.39 | 12.31 | 1.9981% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [JPM](https://finance.yahoo.com/quote/JPM) | NYSE | $310.33 | 2.73 | 0.8875% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [BAC](https://finance.yahoo.com/quote/BAC) | NYSE | $52.71 | 0.96 | 1.8551% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [GS](https://finance.yahoo.com/quote/GS) | NYSE | $903.72 | -1.24 | -0.137% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [XOM](https://finance.yahoo.com/quote/XOM) | NYSE | $155.04 | -1.35 | -0.8632% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [GLD](https://finance.yahoo.com/quote/GLD) | NYSEARCA | $437.91 | 4.86 | 1.1223% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [SLV](https://finance.yahoo.com/quote/SLV) | NYSEARCA | $68.39 | 1.6458 | 2.4658% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [TLT](https://finance.yahoo.com/quote/TLT) | NASDAQ | $86.7 | -0.11 | -0.1267% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [VIX](https://finance.yahoo.com/quote/^VIX) | INDEXCBOE | $19.49 | -1.55 | -7.3669% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+| [BTC-USD](https://finance.yahoo.com/quote/BTC-USD) | CRYPTO | $72236.1016 | 1120.9766 | 1.5763% | ─ | — | yfinance | 2026-04-09 21:13 UTC |
+
+#### Market Breadth
+- Advancing: **15** / 20  | Declining: **5**  | Unchanged: 0
+- Composite score: **+1178.68**  | Avg RSI proxy: 0.0
+- Positive momentum (5b): 0  | Negative: 0
 
 <!-- AUTO-UPDATE-END -->
