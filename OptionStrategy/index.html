@@ -638,7 +638,7 @@ function computePoP(legs, S, T, r, sigma) {
     const sigLog = sigma * Math.sqrt(T);
     const lo = Math.exp(muLog - 4 * sigLog);
     const hi = Math.exp(muLog + 4 * sigLog);
-    const STEPS = 500;
+    const STEPS = 300;
     const step = (hi - lo) / STEPS;
     let totalP = 0, profitP = 0;
     for (let i = 0; i < STEPS; i++) {
@@ -893,7 +893,7 @@ function plotPayoff(divId, legs, S, title, opts) {
     const strikes = legs.map(l => l.K);
     const minK = Math.min(...strikes), maxK = Math.max(...strikes);
     const spread = Math.max(maxK - minK, 50);
-    const lo = Math.max(1, minK - spread * 1.5);
+    const lo = Math.max(0.01, minK - spread * 1.5);
     const hi = maxK + spread * 1.5;
     const prices = [];
     const step = (hi - lo) / 200;
@@ -1239,7 +1239,8 @@ function removeLeg(id) {
         legCount = Math.max(0, legCount - 1);
         // Re-number remaining legs
         document.querySelectorAll('#legs-container [id^="leg-"]').forEach((div, idx) => {
-            div.querySelector('strong').textContent = `Leg ${idx + 1}`;
+            const strong = div.querySelector('strong');
+            if (strong) strong.textContent = `Leg ${idx + 1}`;
         });
     }
 }
@@ -1305,6 +1306,11 @@ function buildAndPlot() {
 // IMPLIED VOLATILITY SOLVER (Newton-Raphson)
 // ============================================================
 function solveIV() {
+    const MAX_ITER         = 200;
+    const MAX_SIGMA        = 20;     // 2000% volatility cap
+    const INTRINSIC_TOL    = 0.001;
+    const CONVERGENCE_TOL  = 0.05;
+
     const S    = parseFloat(document.getElementById('bs-s').value);
     const K    = parseFloat(document.getElementById('bs-k').value);
     const dte  = parseFloat(document.getElementById('bs-t').value);
@@ -1328,7 +1334,7 @@ function solveIV() {
     const intrinsic = type === 'call'
         ? Math.max(0, S - K * Math.exp(-r * T))
         : Math.max(0, K * Math.exp(-r * T) - S);
-    if (mkt < intrinsic - 0.001) {
+    if (mkt < intrinsic - INTRINSIC_TOL) {
         errEl.textContent = `Market price ($${mkt}) is below intrinsic value ($${intrinsic.toFixed(4)}). Check inputs.`;
         errEl.style.display = 'block';
         return;
@@ -1336,7 +1342,7 @@ function solveIV() {
 
     // Newton-Raphson iteration
     let sigma = 0.20;
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < MAX_ITER; i++) {
         const price = bsPrice(S, K, T, r, sigma, type);
         const diff  = price - mkt;
         if (Math.abs(diff) < 1e-8) break;
@@ -1344,11 +1350,11 @@ function solveIV() {
         const vega = S * normPDF(d1) * Math.sqrt(T);
         if (Math.abs(vega) < 1e-12) { sigma += 0.01; continue; }
         sigma -= diff / vega;
-        sigma  = Math.min(Math.max(sigma, 1e-6), 20);
+        sigma  = Math.min(Math.max(sigma, 1e-6), MAX_SIGMA);
     }
 
     const finalPrice = bsPrice(S, K, T, r, sigma, type);
-    if (Math.abs(finalPrice - mkt) > 0.05) {
+    if (Math.abs(finalPrice - mkt) > CONVERGENCE_TOL) {
         errEl.textContent = `IV solver did not fully converge (BS price: $${finalPrice.toFixed(4)} vs market: $${mkt}). The option may be very deep in/out of the money.`;
         errEl.style.display = 'block';
         return;
