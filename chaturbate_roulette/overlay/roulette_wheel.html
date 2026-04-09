@@ -400,7 +400,9 @@
             const spinAngle = (5 * 360) + (360 - targetAngle);
             spinWheel(spinAngle, 4000, () => {
                 showResult('TestUser', segments[randomIndex]);
-                launchConfetti(randomIndex === 9 ? 120 : 50); // More confetti for jackpot
+                // Use jackpot label to detect jackpot segment instead of hardcoded index
+                const isJackpot = (segments[randomIndex].label || '').toUpperCase().includes('JACKPOT');
+                launchConfetti(isJackpot ? 120 : 50);
             });
         };
 
@@ -488,9 +490,16 @@
             const listEl = document.getElementById('hotList');
             if (!panel || !listEl || !hotList || hotList.length === 0) { panel && (panel.style.display = 'none'); return; }
             panel.style.display = 'block';
-            listEl.innerHTML = hotList.slice(0, 3)
-                .map((s, i) => `<div>${i + 1}. <b>${s.label}</b> (${s.count}×)</div>`)
-                .join('');
+            listEl.innerHTML = '';
+            hotList.slice(0, 3).forEach((s, i) => {
+                const row = document.createElement('div');
+                const bold = document.createElement('b');
+                bold.textContent = s.label;
+                row.textContent  = `${i + 1}. `;
+                row.appendChild(bold);
+                row.appendChild(document.createTextNode(` (${s.count}\u00d7)`));
+                listEl.appendChild(row);
+            });
         }
 
         function showFollowerAlert(username) {

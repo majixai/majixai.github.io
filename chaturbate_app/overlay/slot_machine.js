@@ -115,11 +115,23 @@ console.log("--- Slot Machine Overlay JS Loading ---");
         leaderboardEl.classList.add('visible');
         leaderboardEntries.innerHTML = '';
         entries.slice(0, 5).forEach((e, i) => {
-            const row = document.createElement('div');
+            const row  = document.createElement('div');
             row.className = 'lb-entry';
-            row.innerHTML =
-                `<span>${MEDALS[i]} <span class="lb-name">${e.username}</span></span>` +
-                `<span class="lb-score">${formatNumber(e.score)}</span>`;
+
+            const left  = document.createElement('span');
+            const medal = document.createTextNode(`${MEDALS[i]} `);
+            const name  = document.createElement('span');
+            name.className   = 'lb-name';
+            name.textContent = e.username;
+            left.appendChild(medal);
+            left.appendChild(name);
+
+            const right = document.createElement('span');
+            right.className   = 'lb-score';
+            right.textContent = formatNumber(e.score);
+
+            row.appendChild(left);
+            row.appendChild(right);
             leaderboardEntries.appendChild(row);
         });
     }
@@ -193,20 +205,24 @@ console.log("--- Slot Machine Overlay JS Loading ---");
 
     function populateReels(symbolsArray) {
         reelElements.forEach(reel => {
-            reel.innerHTML = '';
-            let html = '';
             const shuffled = symbolsArray.slice().sort(() => Math.random() - 0.5);
+
+            // Build symbols strip safely without innerHTML on user data
+            reel.innerHTML = '';
+            const fragment = document.createDocumentFragment();
+            const allSyms = [];
             for (let i = 0; i < SYMBOLS_IN_STRIP; i++) {
-                const sym   = shuffled[i % shuffled.length];
-                const cls   = `symbol-${sym.trim().replace(/\s+/g, '-')}`;
-                html += `<div class="symbol ${cls}">${sym}</div>`;
+                allSyms.push(shuffled[i % shuffled.length]);
             }
-            // Guaranteed tail — one of each symbol
-            symbolsArray.forEach(sym => {
-                const cls = `symbol-${sym.trim().replace(/\s+/g, '-')}`;
-                html += `<div class="symbol ${cls}">${sym}</div>`;
+            symbolsArray.forEach(sym => allSyms.push(sym));
+
+            allSyms.forEach(sym => {
+                const div = document.createElement('div');
+                div.className = `symbol symbol-${sym.trim().replace(/\s+/g, '-')}`;
+                div.textContent = sym;
+                fragment.appendChild(div);
             });
-            reel.innerHTML = html;
+            reel.appendChild(fragment);
             reel.style.transition = 'none';
             reel.style.transform  = 'translateY(0)';
             reel.offsetHeight; // force reflow
@@ -326,10 +342,19 @@ console.log("--- Slot Machine Overlay JS Loading ---");
         spinHistory.forEach(e => {
             const li = document.createElement('li');
             li.className = `history-item${e.isJackpot ? ' jackpot' : e.isWin ? ' win' : ''}`;
+
+            const userLine = document.createElement('div');
+            userLine.className = 'history-item-user';
+            userLine.textContent = `${e.username || '?'} ${e.isJackpot ? '💰' : e.isWin ? '🎉' : ''}`;
+
+            const detailLine = document.createElement('span');
+            detailLine.className = 'history-item-details';
             const ts = e.ts ? new Date(e.ts).toLocaleTimeString() : '';
-            li.innerHTML =
-                `<div class="history-item-user">${e.username} ${e.isJackpot ? '💰' : e.isWin ? '🎉' : ''}</div>` +
-                `<span class="history-item-details">${e.outcome ? e.outcome.join(' ') : ''} — ${e.prize || '—'}${ts ? ` (${ts})` : ''}</span>`;
+            const outcomeStr = Array.isArray(e.outcome) ? e.outcome.join(' ') : '';
+            detailLine.textContent = `${outcomeStr} — ${e.prize || '—'}${ts ? ` (${ts})` : ''}`;
+
+            li.appendChild(userLine);
+            li.appendChild(detailLine);
             historyList.appendChild(li);
         });
     }

@@ -17,21 +17,21 @@ const PANEL_TEMPLATE_NAME = '3_rows_of_labels';
         }
 
         // ── Read all KV data ─────────────────────────────────────────────────
-        const goalProgress = Number(await $kv.get('tip_goal_current_progress') || 0);
-        const goalTarget   = Number(await $kv.get('tip_goal_target_amount')    || 0);
+        const goalProgress = Number((await $kv.get('tip_goal_current_progress')) || 0);
+        const goalTarget   = Number((await $kv.get('tip_goal_target_amount'))    || 0);
         const goalLabel    = (await $kv.get('tip_goal_label')) || 'Tip Goal';
 
-        const jackpot      = Number(await $kv.get('spin_jackpot_pool')         || 0);
+        const jackpot      = Number((await $kv.get('spin_jackpot_pool'))         || 0);
         const topTipper    = (await $kv.get('top_tipper_name')) || 'Nobody yet';
-        const topAmount    = Number(await $kv.get('top_tip_amount')            || 0);
-        const streamTotal  = Number(await $kv.get('totalTipsThisStream')       || 0);
+        const topAmount    = Number((await $kv.get('top_tip_amount'))            || 0);
+        const streamTotal  = Number((await $kv.get('totalTipsThisStream'))       || 0);
 
-        const statsRaw     = await $kv.get('spin_stats') || '{}';
+        const statsRaw     = (await $kv.get('spin_stats')) || '{}';
         let spinStats;
         try { spinStats = JSON.parse(statsRaw); } catch (_) { spinStats = {}; }
         const totalSpins   = spinStats.totalSpins || 0;
 
-        const followers    = Number(await $kv.get('broadcastFollowerCount')    || 0);
+        const followers    = Number((await $kv.get('broadcastFollowerCount'))    || 0);
 
         // ── Format rows ───────────────────────────────────────────────────────
         let goalDisplay;

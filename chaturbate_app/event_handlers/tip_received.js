@@ -60,8 +60,8 @@ console.log("--- 'Tip Received' Event Handler Executed ---");
         }
 
         // ── 4. Jackpot Pool Contribution ─────────────────────────────────────
-        const spinCfg  = getSpinWheelConfig($kv);
-        const newJackpot = addToJackpot(tipAmount, $kv, spinCfg);
+        const spinCfg  = typeof getSpinWheelConfig === 'function' ? getSpinWheelConfig($kv) : null;
+        const newJackpot = spinCfg ? addToJackpot(tipAmount, $kv, spinCfg) : Number($kv.get('spin_jackpot_pool') || 0);
         console.log(`[Tip Received] Jackpot pool now: ${newJackpot}`);
 
         // ── 5. VIP Tier Check ─────────────────────────────────────────────────
