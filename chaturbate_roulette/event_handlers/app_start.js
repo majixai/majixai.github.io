@@ -94,3 +94,63 @@ console.log("--- Roulette App Start Event Handler ---");
         }
     }
 })();
+
+// ─── Post-init: Additional setup appended below ───────────────────────────────
+
+(async () => {
+    try {
+        // ── Jackpot Initialization ────────────────────────────────────────────
+        if (!$kv.get('roulette_jackpot_pool')) {
+            const jackpotCfg = typeof getDefaultJackpotConfig === 'function'
+                ? getDefaultJackpotConfig()
+                : { seed: 200 };
+            $kv.set('roulette_jackpot_pool', jackpotCfg.seed);
+            console.log(`[Roulette App Start] Jackpot pool initialized to ${jackpotCfg.seed} tokens.`);
+        }
+        $kv.set('roulette_last_jackpot', null);
+
+        // ── Daily Challenge Initialization ────────────────────────────────────
+        if (typeof getDailyChallenge === 'function') {
+            const cfgRaw    = $kv.get('roulette_config') || '{}';
+            const config    = JSON.parse(cfgRaw);
+            const challenge = getDailyChallenge($kv, config.segments || []);
+            console.log(`[Roulette App Start] Daily challenge: "${challenge.description}"`);
+            if ($room && typeof $room.sendNotice === 'function') {
+                $room.sendNotice(
+                    `🏆 TODAY'S ROULETTE CHALLENGE: ${challenge.description}\n` +
+                    `Complete it for ${challenge.reward} bonus tokens! Type !rdaily for details.`,
+                    { color: '#FF9800' }
+                );
+            }
+        }
+
+        // ── Hot Segment Tracking Reset ────────────────────────────────────────
+        $kv.set('roulette_segment_hits', '{}');
+
+        // ── Announce Jackpot + Commands ───────────────────────────────────────
+        const jackpot = Number($kv.get('roulette_jackpot_pool') || 0);
+        const cfgRaw2 = $kv.get('roulette_config') || '{}';
+        const config2 = JSON.parse(cfgRaw2);
+        const spinCost = config2.spinCost || 50;
+
+        if ($room && typeof $room.sendNotice === 'function') {
+            $room.sendNotice(
+                `🎡 ROULETTE WHEEL IS READY!\n` +
+                `💰 Jackpot Pool: ${jackpot} tokens!\n` +
+                `🎯 Tip ${spinCost}+ tokens to spin!\n` +
+                `Commands: !rjackpot !rstreak !rhot !rfortune !rdaily !rtop !help`
+            );
+        }
+
+        // ── Schedule Callbacks ────────────────────────────────────────────────
+        if ($callback && typeof $callback.create === 'function') {
+            $callback.create('rouletteAnnounce',    900);  // 15 min
+            $callback.create('rouletteJackpot',    1800);  // 30 min
+            $callback.create('rouletteDailyReset', 86400); // 24 hr (daily challenge reset)
+            console.log("[Roulette App Start] Scheduled callbacks: rouletteAnnounce, rouletteJackpot, rouletteDailyReset");
+        }
+
+    } catch (e) {
+        console.error("[Roulette App Start] Post-init error:", e.message);
+    }
+})();
