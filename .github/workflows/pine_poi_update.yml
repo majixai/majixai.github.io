@@ -50,11 +50,11 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --quiet --upgrade pip
-          # requests is optional but preferred; the script falls back to urllib
-          pip install --quiet requests
+          # yfinance is the primary live data provider; requests is preferred for HTTP
+          pip install --quiet requests yfinance
 
-      # ── 4. Fetch Google Finance quotes ─────────────────────────────────────
-      - name: Fetch quotes from google.com/finance/quote/
+      # ── 4. Fetch quotes via yfinance / Yahoo Finance chart ─────────────────
+      - name: Fetch quotes (yfinance primary · Yahoo chart fallback)
         env:
           # Forward any manual tickers_override so the script can read it
           TICKERS_OVERRIDE: ${{ github.event.inputs.tickers_override }}
@@ -78,6 +78,8 @@ jobs:
           file_pattern: |
             tradingview_integration/pine_script/README.md
             tradingview_integration/data/google_finance_quotes.json
+            tradingview_integration/data/quotes_db.json
+            tradingview_integration/data/quotes_snapshot.csv
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"
           commit_author: >
