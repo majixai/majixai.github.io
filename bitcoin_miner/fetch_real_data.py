@@ -735,7 +735,7 @@ def compute_price_volatility(price_history: list) -> dict:
     samples_per_day = 288
     ann_vol = daily_std * math.sqrt(samples_per_day * 365) * 100
 
-    old_24h = prices[max(0, len(prices) - min(288, len(prices)))]
+    old_24h = prices[max(0, len(prices) - 288)]
     change_24h = round((prices[-1] - old_24h) / old_24h * 100, 2) if old_24h > 0 else 0.0
 
     change_7d = round((prices[-1] - prices[0]) / prices[0] * 100, 2) if prices[0] > 0 else 0.0
@@ -1273,6 +1273,9 @@ def compute_profitability(
         efficiency_score = 100.0
 
     breakeven_price    = daily_elec_usd / daily_btc if daily_btc > 0 else 0.0
+    # Rough hardware cost proxy: $2 per watt (industry rule-of-thumb for ASIC miners).
+    # Pass hardware_cost_usd as a parameter to get an accurate ROI if the real
+    # purchase price is known; this default gives a conservative ballpark estimate.
     hardware_cost_proxy = power_watts * 2.0
     roi_days = int(hardware_cost_proxy / daily_profit_usd) if daily_profit_usd > 0 else 0
 
