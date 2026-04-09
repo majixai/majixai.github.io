@@ -238,6 +238,52 @@
         .value.positive { color: var(--color-accent2); }
         .value.negative { color: var(--color-danger); }
 
+        /* ── Global Parameters Bar ── */
+        #globalParamsBar {
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #globalParamsBar .bar-label {
+            color: var(--color-accent);
+            font-weight: 600;
+            font-size: .82rem;
+            white-space: nowrap;
+            margin-right: 4px;
+        }
+        .gparam {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .8rem;
+        }
+        .gparam label { color: var(--color-text-muted); white-space: nowrap; }
+        .gparam input {
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            color: var(--color-text);
+            padding: 3px 7px;
+            font-size: .8rem;
+            width: 72px;
+        }
+        .gparam input:focus { outline: none; border-color: var(--color-accent); }
+
+        /* ── Inline messages ── */
+        .inline-error {
+            background: rgba(248,81,73,0.1);
+            border: 1px solid rgba(248,81,73,0.3);
+            border-radius: 6px;
+            color: var(--color-danger);
+            padding: 8px 12px;
+            font-size: .82rem;
+            margin-top: 10px;
+        }
+
         /* ── Section visibility ── */
         .section { display: none; }
         .section.active { display: block; }
@@ -340,6 +386,30 @@
 <!-- Main page content -->
 <div class="page-content">
 
+    <!-- Global Market Context Bar -->
+    <div id="globalParamsBar">
+        <span class="bar-label"><i class="fa-solid fa-sliders"></i> Market Context:</span>
+        <div class="gparam">
+            <label for="g-s">Spot (S)</label>
+            <input type="number" id="g-s" value="5975" step="1" min="1" onchange="onGlobalParamChange()">
+        </div>
+        <div class="gparam">
+            <label for="g-dte">DTE</label>
+            <input type="number" id="g-dte" value="30" step="1" min="1" max="730" onchange="onGlobalParamChange()">
+        </div>
+        <div class="gparam">
+            <label for="g-r">Rate%</label>
+            <input type="number" id="g-r" value="5.25" step="0.05" onchange="onGlobalParamChange()">
+        </div>
+        <div class="gparam">
+            <label for="g-sigma">IV%</label>
+            <input type="number" id="g-sigma" value="18" step="0.5" min="0.1" onchange="onGlobalParamChange()">
+        </div>
+        <label style="font-size:.78rem; color:var(--color-text-muted); display:flex; align-items:center; gap:5px; cursor:pointer; margin-left:8px;">
+            <input type="checkbox" id="g-slices" onchange="onGlobalParamChange()"> Time slices
+        </label>
+    </div>
+
     <!-- ── Black-Scholes Calculator Section ── -->
     <div id="section-calculator" class="section">
         <div class="content-panel">
@@ -354,8 +424,8 @@
                     <input type="number" id="bs-k" value="6000" step="1">
                 </div>
                 <div class="input-group">
-                    <label>Time to Expiry (T, years)</label>
-                    <input type="number" id="bs-t" value="0.0833" step="0.001" min="0.001">
+                    <label>Days to Expiry (DTE)</label>
+                    <input type="number" id="bs-t" value="30" step="1" min="1">
                 </div>
                 <div class="input-group">
                     <label>Risk-Free Rate (r, %)</label>
@@ -372,9 +442,17 @@
                         <option value="put">Put</option>
                     </select>
                 </div>
+                <div class="input-group">
+                    <label>Position (chart)</label>
+                    <select id="bs-pos">
+                        <option value="long">Long (Buy)</option>
+                        <option value="short">Short (Sell)</option>
+                    </select>
+                </div>
             </div>
             <button class="btn-primary" onclick="computeBS()"><i class="fa-solid fa-play"></i> Calculate</button>
             <button class="btn-secondary" style="margin-left:8px;" onclick="computeBS(); renderBSPayoff()"><i class="fa-solid fa-chart-area"></i> Calculate &amp; Plot</button>
+            <div id="bs-error" class="inline-error" style="display:none;"></div>
 
             <div id="bs-results" class="metrics-grid" style="display:none;"></div>
         </div>
@@ -382,6 +460,22 @@
         <div class="content-panel" id="bs-chart-panel" style="display:none;">
             <h2><i class="fa-solid fa-chart-area"></i> Payoff at Expiration</h2>
             <div id="bs-chart" class="chart-container"></div>
+        </div>
+
+        <div class="content-panel">
+            <h2><i class="fa-solid fa-magnifying-glass-chart"></i> Implied Volatility Solver</h2>
+            <p style="color:var(--color-text-muted); font-size:.85rem; margin-top:0;">
+                Enter an observed market premium to back-solve implied volatility using Newton-Raphson. Uses the S, K, DTE, r, and option type fields from the calculator above.
+            </p>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                <div class="input-group" style="min-width:160px;">
+                    <label>Observed Market Price</label>
+                    <input type="number" id="iv-market-price" value="25" step="0.5" min="0.01">
+                </div>
+                <button class="btn-primary" onclick="solveIV()"><i class="fa-solid fa-wand-magic-sparkles"></i> Solve IV</button>
+            </div>
+            <div id="iv-result" class="metrics-grid" style="display:none; margin-top:12px;"></div>
+            <div id="iv-error" class="inline-error" style="display:none;"></div>
         </div>
     </div>
 
@@ -395,6 +489,7 @@
             <div id="legs-container"></div>
             <button class="btn-secondary" onclick="addLeg()" style="margin-top:8px;"><i class="fa-solid fa-plus"></i> Add Leg</button>
             <button class="btn-primary" onclick="buildAndPlot()" style="margin-left:8px;"><i class="fa-solid fa-chart-line"></i> Plot Strategy</button>
+            <div id="builder-error" class="inline-error" style="display:none;"></div>
         </div>
         <div class="content-panel" id="builder-chart-panel" style="display:none;">
             <h2><i class="fa-solid fa-chart-area"></i> Combined Payoff Diagram</h2>
@@ -519,6 +614,53 @@ function bsGreeks(S, K, T, r, sigma, type) {
         rho   = -K*T*Math.exp(-r*T)*normCDF(-d2) / 100;
     }
     return { delta, gamma, theta, vega, rho };
+}
+
+// ============================================================
+// GLOBAL MARKET CONTEXT HELPERS
+// ============================================================
+function getGS()     { return parseFloat(document.getElementById('g-s').value)     || 5975; }
+function getGT()     { return (parseFloat(document.getElementById('g-dte').value)   || 30) / 365; }
+function getGR()     { return (parseFloat(document.getElementById('g-r').value)     || 5.25) / 100; }
+function getGSigma() { return (parseFloat(document.getElementById('g-sigma').value) || 18) / 100; }
+
+let _lastStrategyId = null;
+function onGlobalParamChange() {
+    if (_lastStrategyId) loadStrategy(_lastStrategyId);
+}
+
+// ============================================================
+// PROBABILITY OF PROFIT (numerical log-normal integration)
+// ============================================================
+function computePoP(legs, S, T, r, sigma) {
+    if (T <= 0) return 0;
+    const muLog  = Math.log(S) + (r - 0.5 * sigma * sigma) * T;
+    const sigLog = sigma * Math.sqrt(T);
+    const lo = Math.exp(muLog - 4 * sigLog);
+    const hi = Math.exp(muLog + 4 * sigLog);
+    const STEPS = 500;
+    const step = (hi - lo) / STEPS;
+    let totalP = 0, profitP = 0;
+    for (let i = 0; i < STEPS; i++) {
+        const p   = lo + (i + 0.5) * step;
+        const lnp = Math.log(p);
+        const pdf = Math.exp(-0.5 * ((lnp - muLog) / sigLog) ** 2) / (sigLog * p * Math.sqrt(2 * Math.PI));
+        totalP += pdf * step;
+        if (calcPayoff(legs, p, S, T, r, sigma) > 0) profitP += pdf * step;
+    }
+    return totalP > 0 ? (profitP / totalP * 100) : 0;
+}
+
+// Current theoretical P&L of the position with T_rem time remaining
+function calcValue(legs, price, T_rem, r, sigma) {
+    return legs.reduce((sum, leg) => {
+        const qty  = leg.qty || 1;
+        const sign = leg.pos === 'long' ? 1 : -1;
+        const bsVal = T_rem > 1e-6
+            ? bsPrice(price, leg.K, T_rem, r, sigma, leg.type)
+            : (leg.type === 'call' ? Math.max(0, price - leg.K) : Math.max(0, leg.K - price));
+        return sum + sign * (bsVal - leg.premium) * qty;
+    }, 0);
 }
 
 // ============================================================
@@ -740,14 +882,18 @@ function calcPayoff(legs, price, defaultS, T, r, sigma) {
     }, 0);
 }
 
-function plotPayoff(divId, legs, S, title) {
-    const T = 0.0833, r = 0.0525, sigma = 0.18;
+function plotPayoff(divId, legs, S, title, opts) {
+    opts = opts || {};
+    const T     = opts.T     !== undefined ? opts.T     : getGT();
+    const r     = opts.r     !== undefined ? opts.r     : getGR();
+    const sigma = opts.sigma !== undefined ? opts.sigma : getGSigma();
+    const showSlices = opts.showSlices || false;
 
     // Determine price range
     const strikes = legs.map(l => l.K);
     const minK = Math.min(...strikes), maxK = Math.max(...strikes);
     const spread = Math.max(maxK - minK, 50);
-    const lo = Math.max(0, minK - spread * 1.5);
+    const lo = Math.max(1, minK - spread * 1.5);
     const hi = maxK + spread * 1.5;
     const prices = [];
     const step = (hi - lo) / 200;
@@ -771,15 +917,36 @@ function plotPayoff(divId, legs, S, title) {
             type: 'scatter', mode: 'none',
             fill: 'tozeroy', fillcolor: 'rgba(63,185,80,0.15)',
             showlegend: false, hoverinfo: 'skip'
-        },
-        {
-            x: prices, y: payoffs,
-            type: 'scatter', mode: 'lines',
-            name: 'P&L at Expiry',
-            line: { color: '#58a6ff', width: 2.5 },
-            hovertemplate: 'Price: %{x:.2f}<br>P&L: %{y:.2f}<extra></extra>'
         }
     ];
+
+    // Optional time-slice traces (current theoretical value at intermediate DTEs)
+    if (showSlices && T > 0) {
+        const slices = [
+            { frac: 0.75, color: '#bc8cff', label: '75% DTE' },
+            { frac: 0.50, color: '#d29922', label: '50% DTE' },
+            { frac: 0.25, color: '#3fb950', label: '25% DTE' }
+        ];
+        slices.forEach(sl => {
+            const T_rem = sl.frac * T;
+            const vals  = prices.map(p => calcValue(legs, p, T_rem, r, sigma));
+            traces.push({
+                x: prices, y: vals,
+                type: 'scatter', mode: 'lines',
+                name: sl.label,
+                line: { color: sl.color, width: 1.5, dash: 'dot' },
+                hovertemplate: `Price: %{x:.2f}<br>${sl.label}: %{y:.2f}<extra></extra>`
+            });
+        });
+    }
+
+    traces.push({
+        x: prices, y: payoffs,
+        type: 'scatter', mode: 'lines',
+        name: 'P&L at Expiry',
+        line: { color: '#58a6ff', width: 2.5 },
+        hovertemplate: 'Price: %{x:.2f}<br>P&L: %{y:.2f}<extra></extra>'
+    });
 
     // Add current price marker
     const currentPnL = calcPayoff(legs, S, S, T, r, sigma);
@@ -844,8 +1011,9 @@ function loadStrategy(id) {
     const def = STRATEGIES[id];
     if (!def) return;
 
-    const S = 5975;
-    const T = 0.0833, r = 0.0525, sigma = 0.18;
+    _lastStrategyId = id;
+    const S = getGS();
+    const T = getGT(), r = getGR(), sigma = getGSigma();
     const legs = def.legs(S);
 
     // Auto-calculate premiums for display
@@ -919,7 +1087,8 @@ function loadStrategy(id) {
         `<i class="fa-solid fa-chart-area"></i> ${def.name} – Payoff at Expiration`;
 
     setTimeout(() => {
-        plotPayoff('strategy-chart', legsWithPremiums, S, def.name);
+        const showSlices = document.getElementById('g-slices').checked;
+        plotPayoff('strategy-chart', legsWithPremiums, S, def.name, { T, r, sigma, showSlices });
         // Metrics
         const greeksList = legsWithPremiums.map(l => {
             const g = bsGreeks(S, l.K, T, r, sigma, l.type);
@@ -932,6 +1101,7 @@ function loadStrategy(id) {
         const netGamma = greeksList.reduce((s,g)=>s+g.gamma,0);
         const netTheta = greeksList.reduce((s,g)=>s+g.theta,0);
         const netVega  = greeksList.reduce((s,g)=>s+g.vega,0);
+        const pop = computePoP(legsWithPremiums, S, T, r, sigma);
         document.getElementById('strategy-metrics').innerHTML = `
             <div class="metric-box"><div class="label">Net Premium</div>
                 <div class="value ${netPremium>=0?'positive':'negative'}">$${netPremium.toFixed(2)}</div></div>
@@ -943,6 +1113,8 @@ function loadStrategy(id) {
                 <div class="value ${netTheta>=0?'positive':'negative'}">$${netTheta.toFixed(3)}</div></div>
             <div class="metric-box"><div class="label">ν Vega / 1%σ</div>
                 <div class="value ${netVega>=0?'positive':'negative'}">$${netVega.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Prob. of Profit</div>
+                <div class="value ${pop>=50?'positive':'negative'}">${pop.toFixed(1)}%</div></div>
         `;
     }, 50);
 
@@ -953,15 +1125,20 @@ function loadStrategy(id) {
 // BLACK-SCHOLES CALCULATOR UI
 // ============================================================
 function computeBS() {
-    const S = parseFloat(document.getElementById('bs-s').value);
-    const K = parseFloat(document.getElementById('bs-k').value);
-    const T = parseFloat(document.getElementById('bs-t').value);
-    const r = parseFloat(document.getElementById('bs-r').value) / 100;
+    const S     = parseFloat(document.getElementById('bs-s').value);
+    const K     = parseFloat(document.getElementById('bs-k').value);
+    const dte   = parseFloat(document.getElementById('bs-t').value);
+    const r     = parseFloat(document.getElementById('bs-r').value) / 100;
     const sigma = parseFloat(document.getElementById('bs-v').value) / 100;
-    const type = document.getElementById('bs-type').value;
+    const type  = document.getElementById('bs-type').value;
+    const T     = dte / 365;
 
-    if ([S,K,T,r,sigma].some(isNaN) || T <= 0 || sigma <= 0) {
-        alert('Please enter valid positive inputs.');
+    const errEl = document.getElementById('bs-error');
+    errEl.style.display = 'none';
+
+    if ([S,K,dte,r,sigma].some(isNaN) || dte <= 0 || sigma <= 0) {
+        errEl.textContent = 'Please enter valid positive inputs.';
+        errEl.style.display = 'block';
         return;
     }
 
@@ -991,18 +1168,19 @@ function computeBS() {
 }
 
 function renderBSPayoff() {
-    const S = parseFloat(document.getElementById('bs-s').value);
-    const K = parseFloat(document.getElementById('bs-k').value);
-    const T = parseFloat(document.getElementById('bs-t').value);
-    const r = parseFloat(document.getElementById('bs-r').value) / 100;
+    const S     = parseFloat(document.getElementById('bs-s').value);
+    const K     = parseFloat(document.getElementById('bs-k').value);
+    const dte   = parseFloat(document.getElementById('bs-t').value);
+    const r     = parseFloat(document.getElementById('bs-r').value) / 100;
     const sigma = parseFloat(document.getElementById('bs-v').value) / 100;
-    const type = document.getElementById('bs-type').value;
-    const pos  = 'long';
+    const type  = document.getElementById('bs-type').value;
+    const pos   = document.getElementById('bs-pos').value;
+    const T     = dte / 365;
     const premium = bsPrice(S, K, T, r, sigma, type);
 
     document.getElementById('bs-chart-panel').style.display = 'block';
     setTimeout(() => {
-        plotPayoff('bs-chart', [{ type, pos, K, premium }], S, `${pos} ${type} – Strike ${K}`);
+        plotPayoff('bs-chart', [{ type, pos, K, premium }], S, `${pos} ${type} – Strike ${K}`, { T, r, sigma });
     }, 50);
 }
 
@@ -1012,10 +1190,15 @@ function renderBSPayoff() {
 let legCount = 0;
 
 function addLeg() {
-    if (legCount >= 4) { alert('Maximum 4 legs allowed.'); return; }
+    if (legCount >= 4) {
+        const errEl = document.getElementById('builder-error');
+        errEl.textContent = 'Maximum 4 legs allowed.';
+        errEl.style.display = 'block';
+        return;
+    }
     legCount++;
     const id = 'leg-' + legCount;
-    const S = 5975;
+    const S = getGS();
     const div = document.createElement('div');
     div.id = id;
     div.style.cssText = 'background:var(--color-bg);border:1px solid var(--color-border);border-radius:6px;padding:12px;margin-bottom:10px;';
@@ -1051,15 +1234,28 @@ function addLeg() {
 
 function removeLeg(id) {
     const el = document.getElementById(id);
-    if (el) { el.remove(); legCount = Math.max(0, legCount-1); }
+    if (el) {
+        el.remove();
+        legCount = Math.max(0, legCount - 1);
+        // Re-number remaining legs
+        document.querySelectorAll('#legs-container [id^="leg-"]').forEach((div, idx) => {
+            div.querySelector('strong').textContent = `Leg ${idx + 1}`;
+        });
+    }
 }
 
 function buildAndPlot() {
     const container = document.getElementById('legs-container');
     const legDivs = container.querySelectorAll('[id^="leg-"]');
-    if (legDivs.length === 0) { alert('Add at least one leg.'); return; }
+    const errEl = document.getElementById('builder-error');
+    errEl.style.display = 'none';
+    if (legDivs.length === 0) {
+        errEl.textContent = 'Add at least one leg before plotting.';
+        errEl.style.display = 'block';
+        return;
+    }
 
-    const S = 5975, T = 0.0833, r = 0.0525, sigma = 0.18;
+    const S = getGS(), T = getGT(), r = getGR(), sigma = getGSigma();
     const legs = [];
     legDivs.forEach(div => {
         const pos  = div.querySelector('.leg-pos').value;
@@ -1073,22 +1269,107 @@ function buildAndPlot() {
 
     document.getElementById('builder-chart-panel').style.display = 'block';
     setTimeout(() => {
-        plotPayoff('builder-chart', legs, S, 'Custom Strategy');
-        // Net premium
+        const showSlices = document.getElementById('g-slices').checked;
+        plotPayoff('builder-chart', legs, S, 'Custom Strategy', { T, r, sigma, showSlices });
         const net = legs.reduce((s,l) => s + (l.pos==='long'?-1:1)*l.qty*l.premium, 0);
-        const netDelta = legs.reduce((s,l) => {
-            const g = bsGreeks(S, l.K, T, r, sigma, l.type);
-            return s + (l.pos==='long'?1:-1)*l.qty*g.delta;
-        }, 0);
+        const netGreeks = legs.reduce((acc, l) => {
+            const g    = bsGreeks(S, l.K, T, r, sigma, l.type);
+            const sign = l.pos === 'long' ? 1 : -1;
+            acc.delta += sign * l.qty * g.delta;
+            acc.gamma += sign * l.qty * g.gamma;
+            acc.theta += sign * l.qty * g.theta;
+            acc.vega  += sign * l.qty * g.vega;
+            return acc;
+        }, { delta: 0, gamma: 0, theta: 0, vega: 0 });
+        const pop = computePoP(legs, S, T, r, sigma);
         document.getElementById('builder-metrics').innerHTML = `
             <div class="metric-box"><div class="label">Net Premium</div>
                 <div class="value ${net>=0?'positive':'negative'}">$${net.toFixed(2)}</div></div>
-            <div class="metric-box"><div class="label">Δ Net Delta</div>
-                <div class="value ${netDelta>=0?'positive':'negative'}">${netDelta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Δ Delta</div>
+                <div class="value ${netGreeks.delta>=0?'positive':'negative'}">${netGreeks.delta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Γ Gamma</div>
+                <div class="value">${netGreeks.gamma.toFixed(4)}</div></div>
+            <div class="metric-box"><div class="label">Θ Theta / day</div>
+                <div class="value ${netGreeks.theta>=0?'positive':'negative'}">$${netGreeks.theta.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">ν Vega / 1%σ</div>
+                <div class="value ${netGreeks.vega>=0?'positive':'negative'}">$${netGreeks.vega.toFixed(3)}</div></div>
+            <div class="metric-box"><div class="label">Prob. of Profit</div>
+                <div class="value ${pop>=50?'positive':'negative'}">${pop.toFixed(1)}%</div></div>
             <div class="metric-box"><div class="label">Legs</div>
                 <div class="value">${legs.length}</div></div>
         `;
     }, 50);
+}
+
+// ============================================================
+// IMPLIED VOLATILITY SOLVER (Newton-Raphson)
+// ============================================================
+function solveIV() {
+    const S    = parseFloat(document.getElementById('bs-s').value);
+    const K    = parseFloat(document.getElementById('bs-k').value);
+    const dte  = parseFloat(document.getElementById('bs-t').value);
+    const r    = parseFloat(document.getElementById('bs-r').value) / 100;
+    const type = document.getElementById('bs-type').value;
+    const mkt  = parseFloat(document.getElementById('iv-market-price').value);
+
+    const errEl = document.getElementById('iv-error');
+    const resEl = document.getElementById('iv-result');
+    errEl.style.display = 'none';
+    resEl.style.display = 'none';
+
+    if ([S, K, dte, r, mkt].some(isNaN) || dte <= 0 || mkt <= 0) {
+        errEl.textContent = 'Please fill in valid inputs in the BS Calculator above and a positive market price.';
+        errEl.style.display = 'block';
+        return;
+    }
+    const T = dte / 365;
+
+    // Check against intrinsic value floor
+    const intrinsic = type === 'call'
+        ? Math.max(0, S - K * Math.exp(-r * T))
+        : Math.max(0, K * Math.exp(-r * T) - S);
+    if (mkt < intrinsic - 0.001) {
+        errEl.textContent = `Market price ($${mkt}) is below intrinsic value ($${intrinsic.toFixed(4)}). Check inputs.`;
+        errEl.style.display = 'block';
+        return;
+    }
+
+    // Newton-Raphson iteration
+    let sigma = 0.20;
+    for (let i = 0; i < 200; i++) {
+        const price = bsPrice(S, K, T, r, sigma, type);
+        const diff  = price - mkt;
+        if (Math.abs(diff) < 1e-8) break;
+        const d1   = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+        const vega = S * normPDF(d1) * Math.sqrt(T);
+        if (Math.abs(vega) < 1e-12) { sigma += 0.01; continue; }
+        sigma -= diff / vega;
+        sigma  = Math.min(Math.max(sigma, 1e-6), 20);
+    }
+
+    const finalPrice = bsPrice(S, K, T, r, sigma, type);
+    if (Math.abs(finalPrice - mkt) > 0.05) {
+        errEl.textContent = `IV solver did not fully converge (BS price: $${finalPrice.toFixed(4)} vs market: $${mkt}). The option may be very deep in/out of the money.`;
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const g = bsGreeks(S, K, T, r, sigma, type);
+    resEl.style.display = 'grid';
+    resEl.innerHTML = `
+        <div class="metric-box"><div class="label">Implied Vol (σ)</div>
+            <div class="value positive">${(sigma * 100).toFixed(2)}%</div></div>
+        <div class="metric-box"><div class="label">BS Check Price</div>
+            <div class="value">$${finalPrice.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Δ Delta</div>
+            <div class="value">${g.delta.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">Γ Gamma</div>
+            <div class="value">${g.gamma.toFixed(5)}</div></div>
+        <div class="metric-box"><div class="label">Θ Theta / day</div>
+            <div class="value negative">$${g.theta.toFixed(4)}</div></div>
+        <div class="metric-box"><div class="label">ν Vega / 1%σ</div>
+            <div class="value">$${g.vega.toFixed(4)}</div></div>
+    `;
 }
 
 // ============================================================

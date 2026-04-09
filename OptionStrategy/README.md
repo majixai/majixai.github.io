@@ -10,6 +10,7 @@ An interactive, browser-based options strategy visualizer and analytics tool. No
 
 | Date | Change | Description |
 |------|--------|-------------|
+| 2026-04-09 | **v2 Enhancement** | Global Market Context bar (S, DTE, r%, σ%) replaces all hardcoded values; IV Solver (Newton-Raphson); full Greeks + PoP in builder; multi-DTE time slices; inline error messages; leg-removal renumbering fix |
 | 2026-02-22 | **Initial Release** | Created `index.html` with full rendering engine, Black-Scholes pricer, 13 strategy templates, and custom Strategy Builder |
 | 2026-02-22 | **PWA Support** | Added `manifest.json` and `sw.js` service worker for offline capability and installability |
 | 2026-02-22 | **Dark-mode UI** | Dark theme using CSS custom properties with GitHub-inspired color palette |
@@ -19,18 +20,32 @@ An interactive, browser-based options strategy visualizer and analytics tool. No
 
 ## ✨ Features
 
+### Global Market Context Bar
+- Persistent bar under the top navigation with **Spot (S)**, **DTE**, **Rate%**, and **IV%** inputs
+- All strategy templates, the Custom Builder, and the BS Calculator payoff chart react instantly to context changes
+- **Time slices** toggle overlays P&L curves at 75%, 50%, and 25% DTE to visualise theta decay
+
 ### Rendering Engines
 - **Plotly.js** (v2.32.0) — Primary charting engine for payoff diagrams
   - Interactive hover, zoom, pan
   - Profit zone (green fill) / loss zone (red fill) shading
   - Current-price marker overlay
   - Zero-line breakeven reference
+  - Optional multi-DTE time-slice curves (dotted, colour-coded)
 
 ### Black-Scholes Calculator
 - Full BSM pricing implementation (call & put)
 - All Greeks: **Δ Delta, Γ Gamma, Θ Theta, ν Vega, ρ Rho**
 - Intrinsic value and time value decomposition
+- **DTE (days)** input — no more fractional-year arithmetic
+- **Position selector** (Long / Short) for payoff chart
+- Inline error messages (no disruptive `alert()` dialogs)
 - "Calculate & Plot" button renders the single-leg payoff diagram
+
+### Implied Volatility Solver *(new)*
+- Enter an observed market premium to back-solve **IV** using Newton-Raphson iteration
+- Convergence check with residual guard and intrinsic-value floor validation
+- Displays solved IV%, BS check price, and full Greeks for the solved parameters
 
 ### Strategy Templates (13 built-in)
 | Category | Strategies |
@@ -41,16 +56,20 @@ An interactive, browser-based options strategy visualizer and analytics tool. No
 | Multi-Leg | Iron Condor, Iron Butterfly, Long Butterfly |
 
 Each template auto-generates:
-- Strike selection relative to current underlying price
-- BS-computed premiums
-- Net debit/credit
-- Per-strategy Greeks (Delta, Gamma, Theta, Vega)
-- Payoff diagram
+- Strike selection relative to global spot price
+- BS-computed premiums using global r% and σ%
+- Net debit/credit, per-strategy Greeks (Delta, Gamma, Theta, Vega)
+- **Probability of Profit (PoP)** via log-normal numerical integration
+- Payoff diagram with optional time-slice overlay
 
 ### Custom Strategy Builder
 - Add up to 4 independent legs (buy/sell, call/put, any strike)
+- Default strike populates from global Spot input
 - Enter your own premium or use auto-BS pricing (set to 0)
-- Combined payoff diagram with net delta display
+- Full Greeks: **Delta, Gamma, Theta, Vega** + **Probability of Profit**
+- Combined payoff diagram with optional time-slice overlay
+- **Fixed leg-removal** — remaining legs re-number correctly after removal
+- Inline error messages for user-input validation
 
 ---
 
@@ -98,7 +117,7 @@ The embedded BS engine uses:
 - **Normal CDF** approximation (Abramowitz & Stegun method, error < 1.5×10⁻⁷)
 - **Standard BSM** formulae for European options
 - All Greeks are computed analytically (not numerically)
-- Default parameters: S=5975, T=30 days (~0.0833 yr), r=5.25%, σ=18%
+- Default parameters: S=5975, DTE=30, r=5.25%, σ=18% (all user-editable via the global context bar)
 
 > ⚠️ **Note**: The BS model assumes European-style exercise, constant volatility, and no dividends. It is an approximation for American-style equity/index options.
 
@@ -110,21 +129,21 @@ The following enhancements are recommended in rough priority order:
 
 ### High Priority
 
-1. **Real-time underlying price** — Fetch live spot price (e.g., Yahoo Finance unofficial API or a public proxy) to replace the hardcoded `S=5975` default. Persist last-used ticker via `localStorage`.
+1. ~~**Real-time underlying price**~~ ✅ **Done** — Global Market Context bar with user-editable Spot input; persists within session.
 
-2. **Implied Volatility solver** — Given a market premium, compute IV using Newton-Raphson or bisection. Display IV rank/percentile using stored history.
+2. ~~**Implied Volatility solver**~~ ✅ **Done** — Newton-Raphson IV back-solver panel in the BS Calculator section.
 
-3. **Expiration date picker** — Let the user select an actual expiration date; auto-calculate `T` in years (excluding weekends and holidays).
+3. ~~**Expiration date / DTE picker**~~ ✅ **Done** — BS Calculator and Global Context bar now use DTE (days) inputs; T computed internally.
 
 4. **Options chain integration** — Fetch live options chain data from Nasdaq or Yahoo Finance API to populate strikes and real market premiums instead of BS-theoretical values.
 
 ### Medium Priority
 
-5. **Probability of Profit (PoP)** — Calculate PoP from the BS distribution (log-normal assumption) for each strategy and display it as a metric.
+5. ~~**Probability of Profit (PoP)**~~ ✅ **Done** — Shown in strategy metrics and builder metrics via log-normal numerical integration.
 
 6. **Greeks heatmap** — Visualize how Delta and Theta evolve across the price range over time (2D surface plot with Plotly).
 
-7. **P&L at various DTE** — Plot multiple time-slice curves (e.g., at 30, 15, 7, 0 DTE) on the same diagram to visualize theta decay.
+7. ~~**P&L at various DTE**~~ ✅ **Done** — "Time slices" checkbox in the Market Context bar overlays P&L curves at 75%, 50%, and 25% DTE.
 
 8. **Strategy comparison** — Allow plotting two strategies side by side to compare their payoff profiles.
 
