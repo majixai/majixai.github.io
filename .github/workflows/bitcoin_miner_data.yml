@@ -64,6 +64,11 @@ except:
 
             # Fetch latest remote state and rebase to avoid push conflicts
             git fetch origin
-            git rebase origin/main || (git rebase --abort && git reset --soft HEAD~1 && echo "Rebase failed — skipping push." && exit 0)
+            git rebase origin/main || {
+              echo "::warning::Rebase conflict — skipping push (data was saved locally)"
+              git rebase --abort
+              git reset --soft HEAD~1
+              exit 0
+            }
             git push origin HEAD:main
           fi

@@ -47,17 +47,22 @@ def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
 
 # ── Pure-Python 2-layer neural network ────────────────────────────────────────
 #
-#  Architecture: 6 inputs → 12 hidden (ReLU) → 1 output
+#  Architecture: NN_INPUTS → NN_HIDDEN (ReLU) → 1 output
 #  Weights are deterministic (seeded RNG) — trained by one pass of
 #  gradient descent on synthetic fee-vs-mempool pairs generated from
 #  the live data so the model "learns" the current fee environment.
+
+NN_INPUTS          = 6
+NN_HIDDEN          = 12
+NN_TRAINING_ITERS  = 200
+
 
 class TinyNet:
     def __init__(self, seed: int = 0):
         rng = random.Random(seed)
         g   = lambda r, c: [[rng.gauss(0, 0.3) for _ in range(c)] for _ in range(r)]
-        self.W1 = g(12, 6);  self.b1 = [0.0] * 12
-        self.W2 = g(1,  12); self.b2 = [0.0]
+        self.W1 = g(NN_HIDDEN, NN_INPUTS); self.b1 = [0.0] * NN_HIDDEN
+        self.W2 = g(1, NN_HIDDEN);         self.b2 = [0.0]
 
     # ── helpers ──
     @staticmethod
@@ -120,7 +125,7 @@ def run_ml(blocks, fees_rec, mempool, prev_samples):
     # Generate synthetic training pairs using fee-congestion heuristic
     net = TinyNet(seed=int(fastest * 7 + mem_cnt) & 0xFFFFFF)
     rng = random.Random(42)
-    for _ in range(200):
+    for _ in range(NN_TRAINING_ITERS):
         noise      = [rng.gauss(0, 0.05) for _ in range(6)]
         xs         = [max(0.0, min(1.0, x[i] + noise[i])) for i in range(6)]
         # Label: congested mempool → higher fee is "optimal"
