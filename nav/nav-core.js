@@ -82,19 +82,30 @@
 
     function _merge(defaults, overrides) {
         var out = {};
-        for (var k in defaults) {
-            if (Object.prototype.hasOwnProperty.call(defaults, k)) {
-                out[k] = defaults[k];
+        for (var key in defaults) {
+            if (Object.prototype.hasOwnProperty.call(defaults, key)) {
+                out[key] = defaults[key];
             }
         }
         if (overrides && typeof overrides === 'object') {
-            for (var k2 in overrides) {
-                if (Object.prototype.hasOwnProperty.call(overrides, k2)) {
-                    out[k2] = overrides[k2];
+            for (var overrideKey in overrides) {
+                if (Object.prototype.hasOwnProperty.call(overrides, overrideKey)) {
+                    out[overrideKey] = overrides[overrideKey];
                 }
             }
         }
         return out;
+    }
+
+    // ─── Utility: URL safety check ────────────────────────────────────────────
+
+    function _isSafeUrl(url) {
+        try {
+            var parsed = new URL(url, global.location && global.location.href);
+            return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+        } catch (e) {
+            return false;
+        }
     }
 
     // ─── Storage: IndexedDB ───────────────────────────────────────────────────
@@ -161,13 +172,13 @@
                     } else {
                         // Fallback cursor iteration for older browsers
                         var items = [];
-                        var cursor = store.openCursor();
-                        cursor.onsuccess = function (e) {
-                            var c = e.target.result;
-                            if (c) { items.push(c.value); c.continue(); }
-                            else   { resolve(items); }
+                        var cursorReq = store.openCursor();
+                        cursorReq.onsuccess = function (e) {
+                            var cursor = e.target.result;
+                            if (cursor) { items.push(cursor.value); cursor.continue(); }
+                            else        { resolve(items); }
                         };
-                        cursor.onerror = function () { resolve(items); };
+                        cursorReq.onerror = function () { resolve(items); };
                     }
                 } catch (err) {
                     console.warn('[nav-core] IndexedDB read failed:', err);
@@ -280,6 +291,11 @@
     // ─── DOM: render one link item ────────────────────────────────────────────
 
     function _renderLink(link, listEl) {
+        if (!_isSafeUrl(link.url)) {
+            console.warn('[nav-core] Skipping link with unsafe URL:', link.url);
+            return;
+        }
+
         var displayName = link.name || link.text || link.url;
 
         var li = document.createElement('li');
@@ -339,7 +355,11 @@
             var name = document.getElementById('nav-core-link-name').value.trim();
             var url  = document.getElementById('nav-core-link-url').value.trim();
             if (!name || !url) {
-                alert('Please enter both a name and a URL.');
+                alert('Please enter both a name and a valid URL (http:// or https://).');
+                return;
+            }
+            if (!_isSafeUrl(url)) {
+                alert('URL must start with http:// or https://');
                 return;
             }
             MajixNav.addLink({ name: name, url: url });
@@ -399,6 +419,10 @@
         addLink: function (link) {
             if (!link || !link.url) {
                 console.warn('[nav-core] addLink: url is required');
+                return;
+            }
+            if (!_isSafeUrl(link.url)) {
+                console.warn('[nav-core] addLink: rejected unsafe URL:', link.url);
                 return;
             }
             var normalized = { name: link.name || link.text || link.url, url: link.url };
