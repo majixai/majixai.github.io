@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="description" content="Cosine calculations of any order in n-space — interactive demo for the MajixAI cos library">
+  <title>Cos Library — N-Space Cosine Calculations</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- W3.CSS Framework -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --accent:    #58a6ff;
+      --accent2:   #3fb950;
+      --accent3:   #d29922;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --danger:    #f85149;
+      --radius:    8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      margin: 0;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      background: linear-gradient(135deg, #1c2b4a, #0d2137);
+      border-bottom: 1px solid var(--border);
+      padding: 22px 28px 18px;
+    }
+    .site-header h1 { margin: 0 0 4px; font-size: 1.5rem; color: var(--accent); }
+    .site-header p  { margin: 0; color: var(--muted); font-size: .875rem; }
+
+    /* ── Nav tabs ── */
+    .tab-bar {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 0;
+    }
+    .tab-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: .85rem; padding: 8px 14px;
+      border-bottom: 3px solid transparent; border-radius: 4px 4px 0 0;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    /* ── Main layout ── */
+    .main { max-width: 920px; margin: 0 auto; padding: 24px 16px 48px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card p.desc { margin: 0 0 14px; color: var(--muted); font-size: .85rem; }
+
+    /* ── Inputs ── */
+    label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    input[type="text"], input[type="number"], textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: .9rem;
+      font-family: monospace;
+      transition: border-color .15s;
+    }
+    input:focus, textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 180px; }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none; border-radius: 6px;
+      padding: 9px 20px;
+      font-size: .875rem; cursor: pointer;
+      transition: opacity .15s;
+      margin-top: 12px;
+    }
+    .btn:hover { opacity: .85; }
+    .btn.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Result boxes ── */
+    .result {
+      margin-top: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: .9rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 36px;
+      color: var(--accent2);
+      display: none;
+    }
+    .result.visible { display: block; }
+    .result.error { color: var(--danger); }
+
+    /* ── Metric row ── */
+    .metric-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+    .metric-box {
+      flex: 1; min-width: 120px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+    .metric-box .label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .metric-box .value { font-size: 1.4rem; font-weight: 700; color: var(--accent); margin-top: 4px; }
+
+    /* ── Series chart ── */
+    .series-canvas-wrap { margin-top: 16px; }
+    canvas {
+      width: 100%; height: 220px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: block;
+    }
+
+    /* ── Matrix / Gram display ── */
+    .matrix-wrap { overflow-x: auto; margin-top: 14px; }
+    table.gram {
+      border-collapse: collapse;
+      font-size: .78rem; font-family: monospace;
+    }
+    table.gram th, table.gram td {
+      border: 1px solid var(--border);
+      padding: 5px 9px;
+      text-align: center;
+    }
+    table.gram th { background: #1c2b4a; color: var(--muted); }
+    table.gram td { color: var(--accent2); }
+
+    /* ── Info badge ── */
+    .info { font-size: .78rem; color: var(--muted); margin-top: 8px; }
+
+    /* ── Decomposition bar ── */
+    .decomp-row { margin-top: 14px; }
+    .decomp-label { font-size: .78rem; color: var(--muted); margin-bottom: 3px; }
+    .bar-track {
+      height: 14px; border-radius: 7px; background: var(--border); overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .bar-fill { height: 100%; border-radius: 7px; transition: width .3s; }
+
+    @media (max-width: 580px) {
+      .site-header h1 { font-size: 1.15rem; }
+      .tab-btn { font-size: .78rem; padding: 6px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="site-header">
+  <h1><i class="fas fa-wave-square"></i> Cos Library — N-Space Cosine Calculations</h1>
+  <p>Cosine of any order in any number of dimensions — powered by <code>MajixCos</code></p>
+</header>
+
+<!-- ── Tabs ── -->
+<nav class="tab-bar" id="tabBar">
+  <button class="tab-btn active" data-tab="series">Taylor Series</button>
+  <button class="tab-btn" data-tab="vectors">Vector Cosine</button>
+  <button class="tab-btn" data-tab="tensor">Tensor (Higher-Order)</button>
+  <button class="tab-btn" data-tab="direction">Direction Cosines</button>
+  <button class="tab-btn" data-tab="gram">Gram Matrix</button>
+  <button class="tab-btn" data-tab="decompose">Decompose</button>
+  <button class="tab-btn" data-tab="advanced">Advanced</button>
+</nav>
+
+<!-- ── Main ── -->
+<main class="main">
+
+  <!-- ── Tab: Taylor Series ── -->
+  <section class="tab-panel active" id="tab-series">
+    <div class="card">
+      <h2><i class="fas fa-function"></i> Taylor-Series cos(x)</h2>
+      <p class="desc">
+        Approximates <strong>cos(x)</strong> using
+        cos(x) = &Sigma;<sub>k=0</sub><sup>N</sup> (&minus;1)<sup>k</sup> &middot; x<sup>2k</sup> / (2k)!
+        — compare the result to the exact value and watch the error shrink as <em>order</em> grows.
+      </p>
+      <div class="row">
+        <div>
+          <label for="seriesX">x (radians)</label>
+          <input type="number" id="seriesX" value="1.0" step="0.1">
+        </div>
+        <div>
+          <label for="seriesOrder">Terms (order)</label>
+          <input type="number" id="seriesOrder" value="5" min="0" max="20">
+        </div>
+      </div>
+      <button class="btn" onclick="runSeries()"><i class="fas fa-calculator"></i> Compute</button>
+
+      <div class="metric-row" id="seriesMetrics" style="display:none">
+        <div class="metric-box">
+          <div class="label">Series approx.</div>
+          <div class="value" id="mApprox">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Math.cos (exact)</div>
+          <div class="value" id="mExact" style="color:var(--accent3)">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Relative error</div>
+          <div class="value" id="mError" style="color:var(--muted)">—</div>
+        </div>
+      </div>
+
+      <div class="series-canvas-wrap">
+        <canvas id="seriesChart" width="900" height="220"></canvas>
+      </div>
+      <p class="info">
+        <i class="fas fa-info-circle"></i>
+        Blue curve = exact cos(x). Each orange curve shows the Taylor series
+        with 1 through <em>N</em> terms. The chart covers x&nbsp;&isin;&nbsp;[&minus;3&pi;, 3&pi;].
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Tab: Vector Cosine ── -->
+  <section class="tab-panel" id="tab-vectors">
+    <div class="card">
+      <h2><i class="fas fa-arrows-alt"></i> Cosine Similarity in N-Space</h2>
+      <p class="desc">
+        Enter two vectors of equal dimension (comma-separated numbers).
+        Works for any <em>n</em> &ge; 1.
+      </p>
+      <div class="row">
+        <div>
+          <label for="vecA">Vector A</label>
+          <input type="text" id="vecA" value="1, 0, 0">
+        </div>
+        <div>
+          <label for="vecB">Vector B</label>
+          <input type="text" id="vecB" value="0, 1, 0">
+        </div>
+      </div>
+      <button class="btn" onclick="runVec()"><i class="fas fa-calculator"></i> Compute</button>
+
+      <div class="metric-row" id="vecMetrics" style="display:none">
+        <div class="metric-box">
+          <div class="label">Cosine similarity</div>
+          <div class="value" id="vSim">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Angle (rad)</div>
+          <div class="value" id="vAngleRad" style="color:var(--accent3)">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Angle (°)</div>
+          <div class="value" id="vAngleDeg" style="color:var(--accent2)">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Cosine distance</div>
+          <div class="value" id="vDist" style="color:var(--muted)">—</div>
+        </div>
+      </div>
+      <div class="result" id="vecResult"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab: Tensor Higher-Order ── -->
+  <section class="tab-panel" id="tab-tensor">
+    <div class="card">
+      <h2><i class="fas fa-cubes"></i> Higher-Order Tensor Cosine</h2>
+      <p class="desc">
+        Enter two tensors of <strong>any rank</strong> as JSON arrays
+        (e.g. <code>[[1,2],[3,4]]</code> for a 2&times;2 matrix).
+        The library flattens each tensor and uses the Frobenius inner product.
+      </p>
+      <div class="row">
+        <div>
+          <label for="tenA">Tensor A (JSON)</label>
+          <textarea id="tenA">[[1,2,3],[4,5,6]]</textarea>
+        </div>
+        <div>
+          <label for="tenB">Tensor B (JSON)</label>
+          <textarea id="tenB">[[7,8,9],[1,2,3]]</textarea>
+        </div>
+      </div>
+      <button class="btn" onclick="runTensor()"><i class="fas fa-calculator"></i> Compute</button>
+
+      <div class="metric-row" id="tenMetrics" style="display:none">
+        <div class="metric-box">
+          <div class="label">Tensor order A</div>
+          <div class="value" id="tOrdA">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Shape A</div>
+          <div class="value" id="tShpA" style="color:var(--muted)">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Frobenius cos sim</div>
+          <div class="value" id="tSim">—</div>
+        </div>
+        <div class="metric-box">
+          <div class="label">Angle (°)</div>
+          <div class="value" id="tAngle" style="color:var(--accent2)">—</div>
+        </div>
+      </div>
+      <div class="result" id="tenResult"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab: Direction Cosines ── -->
+  <section class="tab-panel" id="tab-direction">
+    <div class="card">
+      <h2><i class="fas fa-compass"></i> Direction Cosines & Axis Angles</h2>
+      <p class="desc">
+        For an n-dimensional vector <strong>v</strong>, the direction cosines are
+        the components of the unit vector v̂ = v/|v| — equal to cos(θᵢ) where
+        θᵢ is the angle from v to the i-th coordinate axis.
+      </p>
+      <div>
+        <label for="dirVec">Vector (comma-separated)</label>
+        <input type="text" id="dirVec" value="3, 4, 0">
+      </div>
+      <button class="btn" onclick="runDir()"><i class="fas fa-calculator"></i> Compute</button>
+      <div class="result visible" id="dirResult" style="display:none"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab: Gram Matrix ── -->
+  <section class="tab-panel" id="tab-gram">
+    <div class="card">
+      <h2><i class="fas fa-table"></i> Gram / Pairwise Cosine Matrix</h2>
+      <p class="desc">
+        Enter one vector per line (comma-separated numbers).
+        Returns the m&times;m matrix of all pairwise cosine similarities.
+      </p>
+      <div>
+        <label for="gramVecs">Vectors (one per line)</label>
+        <textarea id="gramVecs" style="min-height:110px">1, 0, 0
+0, 1, 0
+0, 0, 1
+1, 1, 0</textarea>
+      </div>
+      <button class="btn" onclick="runGram()"><i class="fas fa-calculator"></i> Compute</button>
+      <div class="matrix-wrap" id="gramWrap" style="display:none">
+        <table class="gram" id="gramTable"></table>
+      </div>
+      <div class="result" id="gramResult"></div>
+    </div>
+  </section>
+
+  <!-- ── Tab: Decompose ── -->
+  <section class="tab-panel" id="tab-decompose">
+    <div class="card">
+      <h2><i class="fas fa-project-diagram"></i> Parallel & Perpendicular Decomposition</h2>
+      <p class="desc">
+        Decompose vector <strong>v</strong> into components
+        parallel and perpendicular to a <strong>direction</strong> vector.
+      </p>
+      <div class="row">
+        <div>
+          <label for="decV">Vector v</label>
+          <input type="text" id="decV" value="3, 4, 0">
+        </div>
+        <div>
+          <label for="decD">Direction</label>
+          <input type="text" id="decD" value="1, 0, 0">
+        </div>
+      </div>
+      <button class="btn" onclick="runDecomp()"><i class="fas fa-calculator"></i> Decompose</button>
+      <div class="result" id="decResult"></div>
+      <div class="decomp-row" id="decBars" style="display:none">
+        <div class="decomp-label">Parallel magnitude</div>
+        <div class="bar-track"><div class="bar-fill" id="barPar" style="background:var(--accent);width:0%"></div></div>
+        <div class="decomp-label">Perpendicular magnitude</div>
+        <div class="bar-track"><div class="bar-fill" id="barPerp" style="background:var(--accent2);width:0%"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Tab: Advanced ── -->
+  <section class="tab-panel" id="tab-advanced">
+    <div class="card">
+      <h2><i class="fas fa-sliders-h"></i> Weighted Cosine Similarity</h2>
+      <p class="desc">
+        Rescale each dimension by a weight before computing cosine similarity.
+        Useful when dimensions have different importance.
+      </p>
+      <div class="row">
+        <div><label for="wA">Vector A</label><input type="text" id="wA" value="1, 2, 3"></div>
+        <div><label for="wB">Vector B</label><input type="text" id="wB" value="4, 5, 6"></div>
+        <div><label for="wW">Weights</label><input type="text" id="wW" value="1, 2, 1"></div>
+      </div>
+      <button class="btn" onclick="runWeighted()"><i class="fas fa-calculator"></i> Compute</button>
+      <div class="result" id="wResult"></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-th"></i> Soft Cosine Similarity</h2>
+      <p class="desc">
+        Uses a feature-similarity matrix <strong>S</strong> to account for
+        correlations between dimensions.
+        softCos(a,&nbsp;b,&nbsp;S) = &langle;a,b&rangle;<sub>S</sub> / &radic;(&langle;a,a&rangle;<sub>S</sub>&middot;&langle;b,b&rangle;<sub>S</sub>).
+      </p>
+      <div class="row">
+        <div><label for="scA">Vector A</label><input type="text" id="scA" value="1, 0, 1"></div>
+        <div><label for="scB">Vector B</label><input type="text" id="scB" value="0, 1, 1"></div>
+      </div>
+      <div>
+        <label for="scS">Similarity matrix S (JSON, must be n&times;n)</label>
+        <textarea id="scS">[[1, 0.5, 0.1],[0.5, 1, 0.3],[0.1, 0.3, 1]]</textarea>
+      </div>
+      <button class="btn" onclick="runSoftCos()"><i class="fas fa-calculator"></i> Compute</button>
+      <div class="result" id="scResult"></div>
+    </div>
+
+    <div class="card">
+      <h2><i class="fas fa-code"></i> Live API Playground</h2>
+      <p class="desc">
+        Run any <code>MajixCos</code> expression directly.
+      </p>
+      <div>
+        <label for="playInput">Expression (JS)</label>
+        <input type="text" id="playInput" value="MajixCos.cosVec([1,2,3],[4,5,6])">
+      </div>
+      <button class="btn" onclick="runPlay()"><i class="fas fa-play"></i> Run</button>
+      <div class="result" id="playResult"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── cos-core.js ── -->
+<script src="cos-core.js"></script>
+
+<script>
+  // ── Tab switching ──
+  document.getElementById('tabBar').addEventListener('click', function (e) {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'series') drawSeriesChart();
+  });
+
+  // ── Helpers ──
+  function parseVec(s) {
+    return s.split(',').map(v => {
+      const n = parseFloat(v.trim());
+      if (isNaN(n)) throw new Error('Invalid number: ' + v.trim());
+      return n;
+    });
+  }
+
+  function fmt(v) {
+    if (typeof v === 'number') return parseFloat(v.toFixed(8)).toString();
+    return JSON.stringify(v, null, 2);
+  }
+
+  function showResult(id, text, isError) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'result visible' + (isError ? ' error' : '');
+  }
+
+  function hideResult(id) {
+    document.getElementById(id).className = 'result';
+  }
+
+  // ── Taylor Series ──
+  function runSeries() {
+    const x     = parseFloat(document.getElementById('seriesX').value);
+    const order = parseInt(document.getElementById('seriesOrder').value, 10);
+    const approx = MajixCos.cosSeries(x, order);
+    const exact  = Math.cos(x);
+    const err    = MajixCos.cosSeriesError(x, order);
+
+    document.getElementById('seriesMetrics').style.display = 'flex';
+    document.getElementById('mApprox').textContent = approx.toFixed(8);
+    document.getElementById('mExact').textContent  = exact.toFixed(8);
+    document.getElementById('mError').textContent  = err.toExponential(2);
+    drawSeriesChart(order, x);
+  }
+
+  function drawSeriesChart(maxOrder, markX) {
+    const canvas = document.getElementById('seriesChart');
+    const ctx = canvas.getContext('2d');
+    canvas.width  = canvas.offsetWidth  || 900;
+    canvas.height = canvas.offsetHeight || 220;
+    const W = canvas.width, H = canvas.height;
+
+    const PI = Math.PI;
+    const xMin = -3 * PI, xMax = 3 * PI;
+    const yMin = -1.6, yMax = 1.6;
+    const toX = x => (x - xMin) / (xMax - xMin) * W;
+    const toY = y => (1 - (y - yMin) / (yMax - yMin)) * H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // grid
+    ctx.strokeStyle = '#21262d'; ctx.lineWidth = 1;
+    for (let x = -9; x <= 9; x++) {
+      const px = toX(x * PI / 3);
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    }
+    for (let y = -1.5; y <= 1.5; y += 0.5) {
+      const py = toY(y);
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(W, py); ctx.stroke();
+    }
+
+    // axes
+    ctx.strokeStyle = '#484f58'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, toY(0)); ctx.lineTo(W, toY(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(toX(0), 0); ctx.lineTo(toX(0), H); ctx.stroke();
+
+    const steps = W;
+    // Taylor series curves (order 1..maxOrder)
+    const ord = maxOrder != null ? maxOrder : parseInt(document.getElementById('seriesOrder').value, 10) || 5;
+    for (let o = 1; o <= ord; o++) {
+      const alpha = 0.15 + 0.7 * (o / ord);
+      ctx.strokeStyle = `rgba(210, 153, 34, ${alpha})`;
+      ctx.lineWidth = o === ord ? 2 : 1;
+      ctx.beginPath();
+      let first = true;
+      for (let i = 0; i <= steps; i++) {
+        const x  = xMin + (xMax - xMin) * i / steps;
+        const y  = MajixCos.cosSeries(x, o);
+        const py = toY(y);
+        if (!isFinite(py) || py < -H * 5 || py > H * 6) { first = true; continue; }
+        first ? ctx.moveTo(toX(x), py) : ctx.lineTo(toX(x), py);
+        first = false;
+      }
+      ctx.stroke();
+    }
+
+    // exact cos(x)
+    ctx.strokeStyle = '#58a6ff'; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const x  = xMin + (xMax - xMin) * i / steps;
+      const y  = Math.cos(x);
+      const py = toY(y);
+      i === 0 ? ctx.moveTo(toX(x), py) : ctx.lineTo(toX(x), py);
+    }
+    ctx.stroke();
+
+    // mark x position
+    if (markX != null) {
+      ctx.strokeStyle = '#f85149'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(toX(markX), 0); ctx.lineTo(toX(markX), H); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // legend
+    ctx.font = '11px Segoe UI, Arial'; ctx.fillStyle = '#58a6ff';
+    ctx.fillText('exact cos(x)', 8, 16);
+    ctx.fillStyle = `rgba(210, 153, 34, 0.9)`;
+    ctx.fillText('Taylor series (1 … N terms)', 8, 30);
+  }
+
+  window.addEventListener('resize', function () {
+    if (document.getElementById('tab-series').classList.contains('active')) drawSeriesChart();
+  });
+
+  // ── Vector Cosine ──
+  function runVec() {
+    try {
+      const a = parseVec(document.getElementById('vecA').value);
+      const b = parseVec(document.getElementById('vecB').value);
+      const sim  = MajixCos.cosVec(a, b);
+      const ang  = MajixCos.cosAngle(a, b);
+      const dist = MajixCos.cosDistance(a, b);
+
+      document.getElementById('vecMetrics').style.display = 'flex';
+      document.getElementById('vSim').textContent      = sim.toFixed(6);
+      document.getElementById('vAngleRad').textContent = ang.toFixed(6);
+      document.getElementById('vAngleDeg').textContent = (ang * 180 / Math.PI).toFixed(3) + '°';
+      document.getElementById('vDist').textContent     = dist.toFixed(6);
+
+      showResult('vecResult',
+        `A · B  = ${MajixCos.dot(a, b)}\n` +
+        `|A|    = ${MajixCos.norm(a).toFixed(8)}\n` +
+        `|B|    = ${MajixCos.norm(b).toFixed(8)}\n` +
+        `dim(n) = ${a.length}`
+      );
+    } catch (e) { showResult('vecResult', e.message, true); }
+  }
+
+  // ── Tensor ──
+  function runTensor() {
+    try {
+      const A    = JSON.parse(document.getElementById('tenA').value);
+      const B    = JSON.parse(document.getElementById('tenB').value);
+      const sim  = MajixCos.cosTensor(A, B);
+      const ordA = MajixCos.tensorOrder(A);
+      const shpA = MajixCos.tensorShape(A);
+
+      document.getElementById('tenMetrics').style.display = 'flex';
+      document.getElementById('tOrdA').textContent = ordA;
+      document.getElementById('tShpA').textContent = '[' + shpA.join(' × ') + ']';
+      document.getElementById('tSim').textContent  = sim.toFixed(6);
+      document.getElementById('tAngle').textContent =
+        (Math.acos(Math.max(-1, Math.min(1, sim))) * 180 / Math.PI).toFixed(3) + '°';
+
+      showResult('tenResult',
+        `Order A: ${MajixCos.tensorOrder(A)}, Shape A: [${MajixCos.tensorShape(A)}]\n` +
+        `Order B: ${MajixCos.tensorOrder(B)}, Shape B: [${MajixCos.tensorShape(B)}]\n` +
+        `Frobenius cos similarity: ${sim.toFixed(8)}\n` +
+        `Angle (°): ${(Math.acos(Math.max(-1,Math.min(1,sim)))*180/Math.PI).toFixed(4)}`
+      );
+    } catch (e) { showResult('tenResult', e.message, true); }
+  }
+
+  // ── Direction cosines ──
+  function runDir() {
+    try {
+      const v  = parseVec(document.getElementById('dirVec').value);
+      const dc = MajixCos.directionCosines(v);
+      const aa = MajixCos.axisAngles(v);
+      const lines = dc.map((d, i) =>
+        `axis ${i+1}: cos = ${d.toFixed(8)},  angle = ${(aa[i]*180/Math.PI).toFixed(4)}°`
+      ).join('\n');
+      const el = document.getElementById('dirResult');
+      el.textContent = lines;
+      el.style.display = 'block';
+      el.className = 'result visible';
+    } catch (e) {
+      showResult('dirResult', e.message, true);
+    }
+  }
+
+  // ── Gram matrix ──
+  function runGram() {
+    try {
+      const lines   = document.getElementById('gramVecs').value.trim().split('\n').filter(l => l.trim());
+      const vectors = lines.map(l => parseVec(l));
+      const G       = MajixCos.gram(vectors);
+      const table   = document.getElementById('gramTable');
+      let html = '<tr><th></th>';
+      vectors.forEach((_, i) => { html += `<th>v${i+1}</th>`; });
+      html += '</tr>';
+      G.forEach((row, i) => {
+        html += `<tr><th>v${i+1}</th>`;
+        row.forEach(v => {
+          const bg = v > 0.8 ? 'rgba(63,185,80,.15)' : v < -0.5 ? 'rgba(248,81,73,.1)' : '';
+          html += `<td style="background:${bg}">${v.toFixed(4)}</td>`;
+        });
+        html += '</tr>';
+      });
+      table.innerHTML = html;
+      document.getElementById('gramWrap').style.display = 'block';
+      hideResult('gramResult');
+    } catch (e) { showResult('gramResult', e.message, true); }
+  }
+
+  // ── Decompose ──
+  function runDecomp() {
+    try {
+      const v = parseVec(document.getElementById('decV').value);
+      const d = parseVec(document.getElementById('decD').value);
+      const { parallel, perpendicular } = MajixCos.decompose(v, d);
+      const normPar  = MajixCos.norm(parallel);
+      const normPerp = MajixCos.norm(perpendicular);
+      const total    = MajixCos.norm(v);
+      const pct = total < 1e-14 ? 0 : 100;
+      const parPct   = total < 1e-14 ? 0 : (normPar  / total * 100);
+      const perpPct  = total < 1e-14 ? 0 : (normPerp / total * 100);
+
+      showResult('decResult',
+        `parallel:      [${parallel.map(x=>x.toFixed(6)).join(', ')}]  |mag = ${normPar.toFixed(6)}|\n` +
+        `perpendicular: [${perpendicular.map(x=>x.toFixed(6)).join(', ')}]  |mag = ${normPerp.toFixed(6)}|\n` +
+        `|v| = ${total.toFixed(6)},  cos(θ) = ${(normPar/total).toFixed(6)}`
+      );
+
+      document.getElementById('decBars').style.display = 'block';
+      document.getElementById('barPar').style.width  = parPct  + '%';
+      document.getElementById('barPerp').style.width = perpPct + '%';
+    } catch (e) { showResult('decResult', e.message, true); }
+  }
+
+  // ── Weighted cosine ──
+  function runWeighted() {
+    try {
+      const a = parseVec(document.getElementById('wA').value);
+      const b = parseVec(document.getElementById('wB').value);
+      const w = parseVec(document.getElementById('wW').value);
+      const sim     = MajixCos.weightedCosVec(a, b, w);
+      const simPlain = MajixCos.cosVec(a, b);
+      showResult('wResult',
+        `Weighted cosine similarity: ${sim.toFixed(8)}\n` +
+        `Unweighted (for comparison): ${simPlain.toFixed(8)}`
+      );
+    } catch (e) { showResult('wResult', e.message, true); }
+  }
+
+  // ── Soft cosine ──
+  function runSoftCos() {
+    try {
+      const a = parseVec(document.getElementById('scA').value);
+      const b = parseVec(document.getElementById('scB').value);
+      const S = JSON.parse(document.getElementById('scS').value);
+      const soft  = MajixCos.softCosSimilarity(a, b, S);
+      const plain = MajixCos.cosVec(a, b);
+      showResult('scResult',
+        `Soft cosine similarity:  ${soft.toFixed(8)}\n` +
+        `Standard (for comparison): ${plain.toFixed(8)}`
+      );
+    } catch (e) { showResult('scResult', e.message, true); }
+  }
+
+  // ── Live playground ──
+  function runPlay() {
+    try {
+      // eslint-disable-next-line no-eval
+      const result = eval(document.getElementById('playInput').value);
+      showResult('playResult', fmt(result));
+    } catch (e) { showResult('playResult', e.message, true); }
+  }
+
+  // Draw chart on first load
+  drawSeriesChart();
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
