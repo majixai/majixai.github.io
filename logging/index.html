@@ -211,18 +211,50 @@ window.addEventListener('beforeunload', MajixLogger.flush);</pre>
   var LEVEL_COLOR = { debug: 'var(--debug)', info: 'var(--info)', warn: 'var(--warn)', error: 'var(--error)' };
   var LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 
+  function _buildLogRow(entry) {
+    var ts = new Date(entry.timestamp).toLocaleTimeString() + '.' + String(new Date(entry.timestamp).getMilliseconds()).padStart(3,'0');
+    var row = document.createElement('div');
+    row.className = 'le ' + entry.level;
+
+    var lvlSpan = document.createElement('span');
+    lvlSpan.className = 'lvl';
+    lvlSpan.textContent = entry.level;
+
+    var msgSpan = document.createElement('span');
+    msgSpan.className = 'msg';
+
+    if (entry.context) {
+      var ctxSpan = document.createElement('span');
+      ctxSpan.className = 'ctx';
+      ctxSpan.textContent = '[' + entry.context + ']';
+      msgSpan.appendChild(ctxSpan);
+      msgSpan.appendChild(document.createTextNode(' '));
+    }
+
+    msgSpan.appendChild(document.createTextNode(entry.message));
+
+    if (entry.data) {
+      var dataSpan = document.createElement('span');
+      dataSpan.style.color = '#484f58';
+      dataSpan.textContent = ' ' + JSON.stringify(entry.data).slice(0, 60);
+      msgSpan.appendChild(dataSpan);
+    }
+
+    var tsSpan = document.createElement('span');
+    tsSpan.className = 'ts';
+    tsSpan.textContent = ts;
+
+    row.appendChild(lvlSpan);
+    row.appendChild(msgSpan);
+    row.appendChild(tsSpan);
+    return row;
+  }
+
   function renderEntry(entry) {
     if (_filterLevel !== 'all' && (LEVELS[entry.level] || 0) < (LEVELS[_filterLevel] || 0)) return;
     var log = document.getElementById('live-log');
     if (log.querySelector('[data-placeholder]')) log.innerHTML = '';
-    var row = document.createElement('div');
-    row.className = 'le ' + entry.level;
-    var ts   = new Date(entry.timestamp).toLocaleTimeString() + '.' + String(new Date(entry.timestamp).getMilliseconds()).padStart(3,'0');
-    var ctx  = entry.context ? '<span class="ctx">[' + entry.context + ']</span> ' : '';
-    var data = entry.data ? ' <span style="color:#484f58">' + JSON.stringify(entry.data).slice(0,60) + '</span>' : '';
-    row.innerHTML = '<span class="lvl">' + entry.level + '</span>'
-                  + '<span class="msg">' + ctx + entry.message + data + '</span>'
-                  + '<span class="ts">' + ts + '</span>';
+    var row = _buildLogRow(entry);
     log.insertBefore(row, log.firstChild);
     document.getElementById('entry-count').textContent = MajixLogger.size;
     // keep at most 200 visible rows
@@ -239,15 +271,7 @@ window.addEventListener('beforeunload', MajixLogger.flush);</pre>
     }
     log.innerHTML = '';
     entries.slice(0, 200).forEach(function (entry) {
-      var row = document.createElement('div');
-      row.className = 'le ' + entry.level;
-      var ts   = new Date(entry.timestamp).toLocaleTimeString() + '.' + String(new Date(entry.timestamp).getMilliseconds()).padStart(3,'0');
-      var ctx  = entry.context ? '<span class="ctx">[' + entry.context + ']</span> ' : '';
-      var data = entry.data ? ' <span style="color:#484f58">' + JSON.stringify(entry.data).slice(0,60) + '</span>' : '';
-      row.innerHTML = '<span class="lvl">' + entry.level + '</span>'
-                    + '<span class="msg">' + ctx + entry.message + data + '</span>'
-                    + '<span class="ts">' + ts + '</span>';
-      log.appendChild(row);
+      log.appendChild(_buildLogRow(entry));
     });
   }
 

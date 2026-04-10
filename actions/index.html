@@ -218,14 +218,34 @@ off();                        // unsubscribe</pre>
       log.innerHTML = '<div class="log-entry" style="color:#484f58">No actions dispatched yet.</div>';
       return;
     }
-    log.innerHTML = hist.slice(0, 50).map(function (a) {
+    log.innerHTML = '';
+    hist.slice(0, 50).forEach(function (a) {
       var d = new Date(a.meta.timestamp);
       var ts = d.toLocaleTimeString() + '.' + String(d.getMilliseconds()).padStart(3, '0');
       var payload = a.payload ? JSON.stringify(a.payload).slice(0, 60) : 'null';
-      return '<div class="log-entry"><span class="type">' + a.type + '</span> '
-           + '<span style="color:var(--text)">' + payload + '</span> '
-           + '<span class="ts">' + ts + '</span></div>';
-    }).join('');
+
+      var row  = document.createElement('div');
+      row.className = 'log-entry';
+
+      var typeSpan = document.createElement('span');
+      typeSpan.className = 'type';
+      typeSpan.textContent = a.type;
+
+      var paySpan = document.createElement('span');
+      paySpan.style.color = 'var(--text)';
+      paySpan.textContent = payload;
+
+      var tsSpan = document.createElement('span');
+      tsSpan.className = 'ts';
+      tsSpan.textContent = ts;
+
+      row.appendChild(typeSpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(paySpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(tsSpan);
+      log.appendChild(row);
+    });
   }
 
   function refreshConfig() {
