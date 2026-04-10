@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Centralized pagination module for majixai.github.io — live demo and integration guide">
+  <title>Pagination Module — majixai.github.io</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="pagination.css">
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent:  #3498db;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .page-hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #1a252f 100%);
+      color: #fff;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .page-hero h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .page-hero p  { opacity: 0.85; max-width: 600px; margin: 0 auto; }
+
+    .demo-card {
+      background: #fff;
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.09);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .demo-card h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--primary);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .demo-card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #555;
+      margin: 1.25rem 0 0.5rem;
+    }
+
+    /* Table demo */
+    #demo-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    #demo-table th { background: var(--accent); color: #fff; padding: 0.6rem 0.8rem; text-align: left; }
+    #demo-table td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #e5e7eb; }
+    #demo-table tbody tr:hover { background: #f0f7ff; }
+
+    /* List demo */
+    #demo-list { list-style: none; padding: 0; margin: 0; }
+    #demo-list li {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+    }
+    #demo-list li:last-child { border-bottom: none; }
+
+    /* Card grid demo */
+    #demo-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .demo-item-card {
+      background: linear-gradient(135deg, #e8f4fd, #d0e8fa);
+      border: 1px solid #b3d7f5;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--primary);
+    }
+
+    /* Data-array demo */
+    #demo-data-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.6rem; min-height: 4rem; }
+    .data-card {
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+    }
+    .data-card .label { font-weight: 600; color: var(--primary); font-size: 0.8rem; }
+    .data-card .val   { color: #374151; }
+
+    /* Pagination rows */
+    .pgr-row {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .pgr-info { font-size: 0.8rem; color: #6b7280; }
+
+    /* Dark demo wrapper */
+    .dark-wrapper {
+      background: #111827;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      color: #d1d5db;
+    }
+    #demo-dark-list { list-style: none; padding: 0; margin: 0 0 0.75rem; }
+    #demo-dark-list li { padding: 0.45rem 0.5rem; border-bottom: 1px solid #374151; font-size: 0.875rem; color: #d1d5db; }
+    #demo-dark-list li:last-child { border-bottom: none; }
+
+    /* Controls for per-page demo */
+    .per-page-select { font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid #d1d5db; }
+
+    /* Code snippet */
+    pre {
+      background: #1e293b;
+      color: #93c5fd;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    code { font-family: 'Consolas', 'Courier New', monospace; }
+
+    a.back-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    a.back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <div class="page-hero">
+    <h1>📄 Pagination Module</h1>
+    <p>Centralized, reusable pagination for every directory on majixai.github.io</p>
+  </div>
+
+  <div class="container pb-5">
+    <p class="mb-3"><a href="/" class="back-link">← Back to MajixAI Home</a></p>
+
+    <!-- ── 1. Table pagination demo ───────────────────────────────────────── -->
+    <div class="demo-card">
+      <h2>1 · Table Pagination (DOM mode — <code>Paginator.fromTable</code>)</h2>
+      <p class="text-muted small mb-3">Existing <code>&lt;tbody&gt;</code> rows are hidden/shown without re-rendering.</p>
+
+      <table id="demo-table">
+        <thead><tr><th>#</th><th>Ticker</th><th>Sector</th><th>Price</th></tr></thead>
+        <tbody id="table-body">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
+
+      <div class="pgr-row">
+        <nav id="table-pg"></nav>
+        <span class="pgr-info" id="table-info"></span>
+      </div>
+    </div>
+
+    <!-- ── 2. List pagination demo ────────────────────────────────────────── -->
+    <div class="demo-card">
+      <h2>2 · List Pagination (DOM mode — <code>Paginator.fromList</code>)</h2>
+      <p class="text-muted small mb-3">Works with any <code>&lt;ul&gt;</code> or <code>&lt;ol&gt;</code>.</p>
+
+      <ul id="demo-list">
+        <!-- items injected by JS -->
+      </ul>
+
+      <div class="pgr-row">
+        <nav id="list-pg" class="pgr-sm"></nav>
+        <span class="pgr-info" id="list-info"></span>
+      </div>
+    </div>
+
+    <!-- ── 3. Card grid pagination demo ──────────────────────────────────── -->
+    <div class="demo-card">
+      <h2>3 · Card Grid Pagination (DOM mode — <code>Paginator.fromCards</code>)</h2>
+      <p class="text-muted small mb-3">Paginates any container whose children are cards.</p>
+
+      <div id="demo-cards">
+        <!-- cards injected by JS -->
+      </div>
+
+      <div class="pgr-row">
+        <nav id="cards-pg" class="pgr-lg"></nav>
+        <span class="pgr-info" id="cards-info"></span>
+      </div>
+    </div>
+
+    <!-- ── 4. Data-array + render callback demo ───────────────────────────── -->
+    <div class="demo-card">
+      <h2>4 · Data-Array Mode (custom <code>render</code> callback)</h2>
+      <p class="text-muted small mb-3">
+        Pass a <code>data</code> array and a <code>render(item, container)</code> function.
+        The container is cleared and re-rendered on each page change.
+      </p>
+
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <label class="pgr-info fw-semibold" for="per-page-sel">Items per page:</label>
+        <select id="per-page-sel" class="per-page-select">
+          <option value="4">4</option>
+          <option value="8" selected>8</option>
+          <option value="12">12</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+
+      <div id="demo-data-container"></div>
+
+      <div class="pgr-row">
+        <nav id="data-pg"></nav>
+        <span class="pgr-info" id="data-info"></span>
+      </div>
+    </div>
+
+    <!-- ── 5. Dark theme demo ─────────────────────────────────────────────── -->
+    <div class="demo-card">
+      <h2>5 · Dark Theme (<code>.pgr-dark</code>)</h2>
+      <p class="text-muted small mb-3">Add <code>pgr-dark</code> class to the <code>.pgr-nav</code> element or any ancestor.</p>
+
+      <div class="dark-wrapper">
+        <ul id="demo-dark-list">
+          <!-- items injected by JS -->
+        </ul>
+        <nav id="dark-pg" class="pgr-dark"></nav>
+      </div>
+    </div>
+
+    <!-- ── 6. Integration guide ───────────────────────────────────────────── -->
+    <div class="demo-card">
+      <h2>6 · Integration Guide</h2>
+
+      <h3>Include in any page</h3>
+      <pre><code>&lt;link rel="stylesheet" href="/pagination/pagination.css"&gt;
+&lt;script src="/pagination/pagination.js"&gt;&lt;/script&gt;</code></pre>
+
+      <h3>Paginate a data array</h3>
+      <pre><code>const pager = new Paginator({
+  data:         myArray,
+  container:    '#my-list',
+  paginationEl: '#my-pg',
+  perPage:      10,
+  render(item, container) {
+    container.insertAdjacentHTML('beforeend', `&lt;li&gt;${item.name}&lt;/li&gt;`);
+  },
+  onPageChange(page, items) {
+    console.log('Page', page, 'showing', items.length, 'items');
+  },
+});</code></pre>
+
+      <h3>Paginate an existing <code>&lt;tbody&gt;</code></h3>
+      <pre><code>// Rows already in DOM — no re-render needed
+const pager = Paginator.fromTable('#my-tbody', {
+  paginationEl: '#my-pg',
+  perPage: 10,
+});</code></pre>
+
+      <h3>Paginate a list</h3>
+      <pre><code>const pager = Paginator.fromList('#my-ul', {
+  paginationEl: '#my-pg',
+  perPage: 8,
+});</code></pre>
+
+      <h3>Paginate a card grid</h3>
+      <pre><code>const pager = Paginator.fromCards('#my-cards', {
+  paginationEl: '#my-pg',
+  perPage: 12,
+});</code></pre>
+
+      <h3>URL hash state persistence</h3>
+      <pre><code>const pager = new Paginator({
+  data:         rows,
+  paginationEl: '#pg',
+  container:    '#list',
+  perPage:      20,
+  urlHash:      true,   // page survives browser reload / back button
+  hashParam:    'page', // URL becomes #page=3
+  render(item, el) { /* ... */ },
+});</code></pre>
+
+      <h3>Dynamic updates</h3>
+      <pre><code>pager.setData(newArray);    // replace data, reset to page 1
+pager.setPerPage(20);       // change items per page
+pager.goTo(3);              // jump to page 3
+pager.next();               // next page
+pager.prev();               // previous page
+pager.destroy();            // clean up event listeners</code></pre>
+
+      <h3>Theme modifiers</h3>
+      <pre><code>&lt;!-- Default (light) --&gt;
+&lt;nav id="pg"&gt;&lt;/nav&gt;
+
+&lt;!-- Dark --&gt;
+&lt;nav id="pg" class="pgr-dark"&gt;&lt;/nav&gt;
+
+&lt;!-- Small --&gt;
+&lt;nav id="pg" class="pgr-sm"&gt;&lt;/nav&gt;
+
+&lt;!-- Large --&gt;
+&lt;nav id="pg" class="pgr-lg"&gt;&lt;/nav&gt;
+
+&lt;!-- Override colors via CSS variables --&gt;
+&lt;style&gt;
+  #pg {
+    --pgr-active-bg:    #06d6a0;
+    --pgr-active-border: #06d6a0;
+  }
+&lt;/style&gt;</code></pre>
+    </div>
+
+  </div><!-- /container -->
+
+  <script src="pagination.js"></script>
+  <script>
+    // ── Shared sample data ──────────────────────────────────────────────────
+    const TICKERS = [
+      'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','BRK.B','JPM','V',
+      'UNH','XOM','JNJ','PG','MA','LLY','HD','MRK','ABBV','PEP',
+      'BAC','KO','AVGO','COST','MCD','TMO','WMT','DIS','CSCO','ABT',
+      'ACN','DHR','ORCL','NKE','CRM','CVX','PM','ADBE','VZ','TXN',
+      'NFLX','NEE','INTC','QCOM','AMD','RTX','HON','LOW','AMGN','UPS',
+    ];
+    const SECTORS = ['Technology','Healthcare','Financials','Consumer','Energy','Utilities','Industrials'];
+    const COLORS  = ['#e8f4fd','#fef3c7','#d1fae5','#ede9fe','#fee2e2','#fce7f3','#f0fdf4'];
+
+    // ── 1. Table demo ────────────────────────────────────────────────────────
+    (function () {
+      const tbody = document.getElementById('table-body');
+      TICKERS.forEach((t, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td><strong>${t}</strong></td>
+          <td>${SECTORS[i % SECTORS.length]}</td>
+          <td>$${(100 + Math.random() * 900).toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      const pager = Paginator.fromTable('#table-body', {
+        paginationEl: '#table-pg',
+        perPage: 8,
+        onPageChange(page, items) {
+          const total = TICKERS.length;
+          const pp    = 8;
+          const start = (page - 1) * pp + 1;
+          const end   = Math.min(page * pp, total);
+          document.getElementById('table-info').textContent =
+            `Showing ${start}–${end} of ${total} rows`;
+        },
+      });
+    }());
+
+    // ── 2. List demo ─────────────────────────────────────────────────────────
+    (function () {
+      const ul = document.getElementById('demo-list');
+      for (let i = 1; i <= 45; i++) {
+        const li = document.createElement('li');
+        li.textContent = `Item ${i} — ${SECTORS[i % SECTORS.length]}`;
+        ul.appendChild(li);
+      }
+
+      const pager = Paginator.fromList('#demo-list', {
+        paginationEl: '#list-pg',
+        perPage: 7,
+        showFirstLast: false,
+        onPageChange(page) {
+          document.getElementById('list-info').textContent = `Page ${page} of ${pager.pageCount}`;
+        },
+      });
+    }());
+
+    // ── 3. Card grid demo ─────────────────────────────────────────────────────
+    (function () {
+      const grid = document.getElementById('demo-cards');
+      for (let i = 1; i <= 40; i++) {
+        const card = document.createElement('div');
+        card.className = 'demo-item-card';
+        card.style.background = `linear-gradient(135deg, ${COLORS[i % COLORS.length]}, white)`;
+        card.textContent = TICKERS[(i - 1) % TICKERS.length];
+        grid.appendChild(card);
+      }
+
+      const pager = Paginator.fromCards('#demo-cards', {
+        paginationEl: '#cards-pg',
+        perPage: 12,
+        onPageChange(page) {
+          document.getElementById('cards-info').textContent = `Page ${page} of ${pager.pageCount}`;
+        },
+      });
+    }());
+
+    // ── 4. Data-array + render callback demo ─────────────────────────────────
+    (function () {
+      const dataSet = Array.from({ length: 60 }, (_, i) => ({
+        id:     i + 1,
+        name:   TICKERS[i % TICKERS.length],
+        sector: SECTORS[i % SECTORS.length],
+        value:  (Math.random() * 500 + 50).toFixed(2),
+      }));
+
+      let pager = new Paginator({
+        data:         dataSet,
+        container:    '#demo-data-container',
+        paginationEl: '#data-pg',
+        perPage:      8,
+        render(item, container) {
+          const div = document.createElement('div');
+          div.className = 'data-card';
+          div.innerHTML = `
+            <div class="label">${item.name}</div>
+            <div class="val">$${item.value}</div>
+            <div class="pgr-info">${item.sector}</div>`;
+          container.appendChild(div);
+        },
+        onPageChange(page) {
+          document.getElementById('data-info').textContent =
+            `Page ${page} of ${pager.pageCount} · ${dataSet.length} items`;
+        },
+      });
+
+      document.getElementById('per-page-sel').addEventListener('change', function () {
+        pager.setPerPage(parseInt(this.value, 10));
+      });
+    }());
+
+    // ── 5. Dark theme demo ────────────────────────────────────────────────────
+    (function () {
+      const ul = document.getElementById('demo-dark-list');
+      for (let i = 1; i <= 30; i++) {
+        const li = document.createElement('li');
+        li.textContent = `🔒 Secure entry ${i} — ${SECTORS[i % SECTORS.length]}`;
+        ul.appendChild(li);
+      }
+
+      Paginator.fromList('#demo-dark-list', {
+        paginationEl: '#dark-pg',
+        perPage: 5,
+        showFirstLast: true,
+      });
+    }());
+  </script>
+</body>
+</html>
