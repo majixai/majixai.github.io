@@ -1,5 +1,35 @@
 //@version=5
 
+strategy('JinxAlpha Unified Strategy v1',
+    shorttitle='JAU v1',
+    overlay=true,
+    max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100,
+    default_qty_type=strategy.percent_of_equity, default_qty_value=10,
+    commission_type=strategy.commission.percent, commission_value=0.05,
+    slippage=1, pyramiding=0,
+    calc_on_order_fills=false, process_orders_on_close=false, calc_on_every_tick=false,
+    initial_capital=10000, currency=currency.USD,
+    margin_long=100, margin_short=100,
+    format=format.price, precision=4)
+
+// ============================================================================
+// 0. STRATEGY ENGINE SELECTION  (user-optionable: enable any combination)
+// ============================================================================
+
+g_mode = "🎛 Strategy Engine Selection"
+en_jat     = input.bool(true,  "Enable JAT+BSM Engine",       group=g_mode,
+    tooltip="JinxAlphaTrend + MACD Synergy + Bayesian + Black-Scholes options-delta engine")
+en_poi     = input.bool(true,  "Enable POI Scalp Engine",     group=g_mode,
+    tooltip="POI Scalp v2: H&S / Double-Top / Dirac / Poly / Cosh / Skew composite score engine")
+sig_comb   = input.string("OR – Either signal fires", "Signal Combination Mode",
+    options=["OR – Either signal fires", "AND – Both must agree", "JAT Only", "POI Only"],
+    group=g_mode,
+    tooltip="How to combine signals from the two enabled engines:\n• OR  – entry fires when either engine gives a signal\n• AND – entry fires only when both engines agree\n• JAT Only / POI Only – ignore the other engine entirely")
+use_jat_risk = input.bool(true, "Use JAT ATR-based SL/TP (off = POI %-based)",
+    group=g_mode,
+    tooltip="ON: stop-loss = low – ATR×CI-mult, take-profit = SL×RR-mult (JAT risk)\nOFF: stop-loss = close×sl%, take-profit = close×tp% (POI risk)")
+
+
 strategy('JinxAlphaTrend + MACD/BSM ULTIMATE v13', shorttitle='JAT+BSM Pro v13', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false) // indicator('JinxAlphaTrend + Projections ULTIMATE v11.1', shorttitle='JAT ULT v11.1', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, format=format.price, precision=2)
 
 // ============================================================================
@@ -2338,17 +2368,6 @@ if s_tr and barstate.isconfirmed
 bool g_lg = al_bl and (not rq_syn or m_bl) and s_by.probBull > 50 and grs.p_it > 0.4
 bool g_sh = not al_bl and (not rq_syn or m_br) and s_by.probBear > 50 and (1.0 - grs.p_it) > 0.4
 
-if g_lg and strategy.opentrades < mx_tr
-    float sl = low - (at_v * rk_bf), float tp = close + ((close - sl) * rw_ml)
-    strategy.entry("J_LG", strategy.long), strategy.exit("X_LG", "J_LG", stop=sl, limit=tp)
-    a_tr := trd_e.new(close, sl, tp, rw_ml, 1, false)
-
-if g_sh and strategy.opentrades < mx_tr
-    float sl = high + (at_v * rk_bf), float tp = close - ((sl - close) * rw_ml)
-    strategy.entry("J_SH", strategy.short), strategy.exit("X_SH", "J_SH", stop=sl, limit=tp)
-    a_tr := trd_e.new(close, sl, tp, rw_ml, 1, false)
-
-// ============================================================================
 // 13. VISUALS
 // ============================================================================
 
@@ -2437,3 +2456,570 @@ plot(grs.dlt, "OPT DLT", display=display.data_window)
 plot(grs.gma, "OPT GMA", display=display.data_window)
 // For strings/states in data window, we use plotchar with a value
 plot(m_bl ? 1 : m_br ? -1 : 0, "MCD SYN (1:Bul, -1:Ber)", display=display.data_window)
+
+// ============================================================================
+// POI SCALP ENGINE (poi-scalp v2) — inputs, logic and visuals
+// All POI inputs appear under "psv2 …" groups in the TradingView settings panel.
+// Key internal renames to avoid variable collisions with JAT:
+//   bs  → p2_bs  (bull score)     brs → p2_brs (bear score)
+//   le  → p2_le  (long signal)    se  → p2_se  (short signal)
+//   tlo → p2_tlo (trail long)     tsh → p2_tsh (trail short)
+//   bae → p2_bae (cooldown cnt)   slb → p2_slb (label)   tbl → p2_tbl (table)
+// ============================================================================
+
+iLB=input.int(5,"pivot l",minval=1,group="psv2 pivot")
+iRB=input.int(5,"pivot r",minval=1,group="psv2 pivot")
+iMP=input.int(12,"max pivots",minval=4,maxval=25,group="psv2 pivot")
+iNT=input.float(0.006,"neck tol%",minval=0.001,step=0.001,group="psv2 h&s")
+iSS=input.float(0.10,"shoulder sym%",minval=0.01,step=0.01,group="psv2 h&s")
+iHW=input.float(2.0,"h&s wt",minval=0.1,step=0.1,group="psv2 h&s")
+iRTB=input.int(10,"retest win",minval=1,maxval=50,group="psv2 h&s")
+iDTT=input.float(0.008,"dt tol%",minval=0.001,step=0.001,group="psv2 dt/db")
+iDMD=input.float(0.015,"valley%",minval=0.005,step=0.001,group="psv2 dt/db")
+iDTL=input.int(50,"dt lookback",minval=10,maxval=200,group="psv2 dt/db")
+iDTW=input.float(1.5,"dt wt",minval=0.1,step=0.1,group="psv2 dt/db")
+iSL=input.int(20,"std len",minval=5,group="psv2 stat")
+iAL=input.int(14,"atr len",minval=1,group="psv2 stat")
+iRL=input.int(14,"rsi len",minval=2,group="psv2 stat")
+iCL=input.int(20,"cmf len",minval=5,group="psv2 stat")
+iREL=input.int(50,"reg len",minval=10,maxval=200,group="psv2 reg")
+iRBM=input.float(2.0,"reg band mult",minval=0.5,step=0.1,group="psv2 reg")
+iR2T=input.float(0.55,"min r2",minval=0.1,step=0.05,group="psv2 reg")
+iREW=input.float(1.5,"reg wt",minval=0.1,step=0.1,group="psv2 reg")
+iSF=input.bool(true,"slope filt",group="psv2 reg")
+iPL=input.int(20,"poly len",minval=5,group="psv2 poly")
+iPW=input.float(0.8,"poly wt",minval=0.1,step=0.1,group="psv2 poly")
+iJW=input.float(0.4,"jerk wt",minval=0.1,step=0.1,group="psv2 poly")
+iDW=input.float(1.0,"dirac w",minval=0.1,step=0.1,group="psv2 dirac")
+iDiW=input.float(0.8,"dirac wt",minval=0.1,step=0.1,group="psv2 dirac")
+iCS=input.float(2.0,"cosh sc",minval=0.1,step=0.1,group="psv2 cosh")
+iCT=input.float(1.05,"cosh thr",minval=1.0,step=0.01,group="psv2 cosh")
+iCW=input.float(0.5,"cosh wt",minval=0.1,step=0.1,group="psv2 cosh")
+iBSk=input.float(1.3,"bull skew",minval=0.1,step=0.1,group="psv2 skew")
+iBRk=input.float(0.7,"bear skew",minval=0.1,step=0.1,group="psv2 skew")
+iSKL=input.int(14,"skew len",minval=5,group="psv2 skew")
+iSKW=input.float(1.0,"skew wt",minval=0.1,step=0.1,group="psv2 skew")
+iDL=input.int(5,"div lb",minval=2,maxval=8,group="psv2 div")
+iDVW=input.float(1.2,"div wt",minval=0.1,step=0.1,group="psv2 div")
+iCMW=input.float(0.6,"cmf wt",minval=0.1,step=0.1,group="psv2 vol")
+iOL=input.int(10,"obv len",minval=3,group="psv2 vol")
+iOW=input.float(0.4,"obv wt",minval=0.1,step=0.1,group="psv2 vol")
+iUV=input.bool(true,"use vwap",group="psv2 vwap")
+iVL=input.int(20,"vwap len",minval=5,group="psv2 vwap")
+iVW=input.float(0.6,"vwap wt",minval=0.1,step=0.1,group="psv2 vwap")
+iADL=input.int(14,"adx len",minval=2,group="psv2 regime")
+iADT=input.float(20.0,"adx thr",minval=5.0,step=1.0,group="psv2 regime")
+iMTF=input.timeframe("60","mtf tf",group="psv2 regime")
+iMEL=input.int(21,"mtf ema",minval=2,group="psv2 regime")
+iUR=input.bool(true,"req trend",group="psv2 regime")
+iET=input.float(3.0,"entry thr",minval=0.5,step=0.1,group="psv2 entry")
+iED=input.float(1.0,"edge delta",minval=0.1,step=0.1,group="psv2 entry")
+iUC=input.bool(true,"adaptive thr",group="psv2 entry")
+iCD=input.int(3,"cooldown",minval=0,group="psv2 entry")
+iSP=input.float(0.8,"sl%",minval=0.1,step=0.1,group="psv2 risk")
+iTP=input.float(1.6,"tp%",minval=0.1,step=0.1,group="psv2 risk")
+iUT=input.bool(true,"trail stop",group="psv2 risk")
+iTRP=input.float(0.5,"trail%",minval=0.1,step=0.1,group="psv2 risk")
+iUVO=input.bool(true,"vol filt",group="psv2 filt")
+iVM=input.float(1.5,"vol mult",minval=1.0,step=0.1,group="psv2 filt")
+iUA=input.bool(true,"atr filt",group="psv2 filt")
+iMAP=input.float(0.25,"min atr%",minval=0.01,step=0.05,group="psv2 filt")
+iSPV=input.bool(true,"pivots",group="psv2 display")
+iSPO=input.bool(true,"poi lvls",group="psv2 display")
+iSBD=input.bool(true,"bands",group="psv2 display")
+iSRC=input.bool(true,"reg ch",group="psv2 display")
+iSVP=input.bool(true,"vwap",group="psv2 display")
+iSLB=input.bool(true,"score lbl",group="psv2 display")
+iSTB=input.bool(true,"table",group="psv2 display")
+iSDP=input.bool(true,"daily ohlc",group="psv2 forecast")
+iS24=input.bool(true,"24h h/l",group="psv2 forecast")
+iSFC=input.bool(true,"forecast",group="psv2 forecast")
+iBMM=input.float(1.0,"bull mult",minval=0.1,step=0.1,group="psv2 forecast")
+iL24=input.int(24,"24h bars",minval=1,maxval=1000,group="psv2 forecast")
+iPWT=input.float(0.6,"mpp vwap wt",minval=0.1,maxval=0.9,step=0.1,group="psv2 forecast")
+iDYW=input.float(0.8,"daily wt",minval=0.1,step=0.1,group="psv2 forecast")
+iFCW=input.float(1.2,"fcast wt",minval=0.1,step=0.1,group="psv2 forecast")
+iUML=input.bool(true,"use ml seed",group="psv2 ml feed")
+iMLSrc=input.string("majixai/majixai.github.io","ml seed repo",group="psv2 ml feed")
+float MSD=1e-10
+csh(x,sc)=>
+    ea=math.max(-20.0,math.min(20.0,sc*x))
+    e=math.exp(ea)
+    (e+1.0/e)*0.5
+dlr(x,w)=>
+    w>0.0?1.0/(math.pi*w*(1.0+(x/w)*(x/w))):0.0
+skz(r,bm,rm,ln)=>
+    ag=ta.sma(r,ln)
+    sg=ta.stdev(r,ln)
+    z=sg>MSD?(r-ag)/sg:0.0
+    z>=0.0?z*bm:z*rm
+lrs(src,ln)=>
+    float sx=0.0
+    float sy=0.0
+    float sxy=0.0
+    float sx2=0.0
+    for i=0 to ln-1
+        xi=float(ln-1-i)
+        yi=nz(src[i])
+        sx+=xi
+        sy+=yi
+        sxy+=xi*yi
+        sx2+=xi*xi
+    n=float(ln)
+    det=n*sx2-sx*sx
+    sl=det!=0.0?(n*sxy-sx*sy)/det:0.0
+    ic=(sy-sl*sx)/n
+    ym=sy/n
+    float st=0.0
+    float sr=0.0
+    for i=0 to ln-1
+        xi=float(ln-1-i)
+        yi=nz(src[i])
+        yh=sl*xi+ic
+        st+=(yi-ym)*(yi-ym)
+        sr+=(yi-yh)*(yi-yh)
+    r2=st>MSD?math.max(0.0,1.0-sr/st):0.0
+    lse=ln>2?math.sqrt(sr/(n-2.0)):0.0
+    [sl,ic,r2,lse]
+pc2(src,ln)=>
+    a=ta.linreg(src,ln,0)
+    b=ta.linreg(src,ln,1)
+    c=ta.linreg(src,ln,2)
+    (a-b)-(b-c)
+pc3(src,ln)=>
+    a=ta.linreg(src,ln,0)
+    b=ta.linreg(src,ln,1)
+    c=ta.linreg(src,ln,2)
+    d=ta.linreg(src,ln,3)
+    ac0=(a-b)-(b-c)
+    ac1=(b-c)-(c-d)
+    ac0-ac1
+vdz(vv,src,ln)=>
+    dv=src-vv
+    ag=ta.sma(dv,ln)
+    sg=ta.stdev(dv,ln)
+    sg>MSD?(dv-ag)/sg:0.0
+at=ta.atr(iAL)
+atp=close>0.0?at/close*100.0:0.0
+vs=ta.sma(volume,20)
+mn=ta.sma(close,iSL)
+sd1=ta.stdev(close,iSL)
+u1=mn+sd1
+l1=mn-sd1
+u2=mn+2.0*sd1
+l2=mn-2.0*sd1
+u3=mn+3.0*sd1
+l3=mn-3.0*sd1
+rv=ta.rsi(close,iRL)
+br=close>0.0?(close-close[1])/close[1]*100.0:0.0
+[dp,dm,av]=ta.dmi(iADL,iADL)
+it=av>=iADT
+vv=ta.vwap(hlc3)
+vz=vdz(vv,close,iVL)
+me=request.security(syminfo.tickerid,iMTF,ta.ema(close,iMEL),lookahead=barmerge.lookahead_off)
+mb=close>me
+mr=close<me
+mfr=(high-low)>0.0?(close-low-(high-close))/(high-low)*volume:0.0
+cv=ta.sma(mfr,iCL)/math.max(ta.sma(volume,iCL),1.0)
+ov=ta.obv
+os=(ov-ov[iOL])/math.max(math.abs(ov[iOL]),1.0)
+var float sop=na
+if session.isfirstbar
+    sop:=open
+dO=request.security(syminfo.tickerid,"D",open,lookahead=barmerge.lookahead_off)
+dH=request.security(syminfo.tickerid,"D",high,lookahead=barmerge.lookahead_off)
+dL=request.security(syminfo.tickerid,"D",low,lookahead=barmerge.lookahead_off)
+pdH=request.security(syminfo.tickerid,"D",high[1],lookahead=barmerge.lookahead_off)
+pdL=request.security(syminfo.tickerid,"D",low[1],lookahead=barmerge.lookahead_off)
+pdC=request.security(syminfo.tickerid,"D",close[1],lookahead=barmerge.lookahead_off)
+adr=request.security(syminfo.tickerid,"D",ta.sma(high-low,20),lookahead=barmerge.lookahead_off)
+mbt=not na(dO) and not na(adr) and adr>0.0?dO+adr*iBMM:float(na)
+h24=ta.highest(high,iL24)
+l24=ta.lowest(low,iL24)
+float vn24=ta.sma(hlc3*volume,iL24)
+float vd24=ta.sma(volume,iL24)
+v24=vd24>0.0?vn24/vd24:hlc3
+mp24=(h24+l24)*0.5
+mpp=v24*iPWT+mp24*(1.0-iPWT)
+mlSym="unified_"+str.replace(str.lower(syminfo.ticker),"-","")
+mlH=iUML?request.seed(iMLSrc,str.upper(mlSym),high,ignore_invalid_symbol=true):float(na)
+mlL=iUML?request.seed(iMLSrc,str.upper(mlSym),low,ignore_invalid_symbol=true):float(na)
+mlC=iUML?request.seed(iMLSrc,str.upper(mlSym),close,ignore_invalid_symbol=true):float(na)
+mlV=iUML?request.seed(iMLSrc,str.upper(mlSym),volume,ignore_invalid_symbol=true):float(na)
+mpp:=not na(mlC)?mlC*iPWT+mpp*(1.0-iPWT):mpp
+mbt:=not na(mlH)?mlH:mbt
+[rsl,ric,rr2,rse]=lrs(close,iREL)
+lrl=ta.linreg(close,iREL,0)
+lru=lrl+iRBM*rse
+lrlo=lrl-iRBM*rse
+rsn=mn>0.0?rsl/mn*100.0:0.0
+su=rsn>0.0
+sdn=rsn<0.0
+tq=rr2>=iR2T
+rgb=tq and su?rr2*iREW:0.0
+rgnb=tq and sdn?rr2*iREW:0.0
+c2=pc2(close,iPL)
+c2n=at>0.0?c2/at:0.0
+c2b=c2n>0.0?math.min(c2n,1.0)*iPW:0.0
+c2r=c2n<0.0?math.min(-c2n,1.0)*iPW:0.0
+c3=pc3(close,iPL)
+c3n=at>0.0?c3/at:0.0
+c3b=c3n>0.0?math.min(c3n,1.0)*iJW:0.0
+c3r=c3n<0.0?math.min(-c3n,1.0)*iJW:0.0
+cvbr=c2b+c3b
+cvrr=c2r+c3r
+rph=ta.pivothigh(high,iLB,iRB)
+rpl=ta.pivotlow(low,iLB,iRB)
+var float[] pha=array.new_float(0)
+var float[] pla=array.new_float(0)
+var float[] phr=array.new_float(0)
+var float[] plr=array.new_float(0)
+var int[] phb=array.new_int(0)
+var int[] plb=array.new_int(0)
+if not na(rph)
+    array.insert(pha,0,rph)
+    array.insert(phr,0,rv)
+    array.insert(phb,0,bar_index)
+    if array.size(pha)>iMP
+        array.pop(pha)
+        array.pop(phr)
+        array.pop(phb)
+if not na(rpl)
+    array.insert(pla,0,rpl)
+    array.insert(plr,0,rv)
+    array.insert(plb,0,bar_index)
+    if array.size(pla)>iMP
+        array.pop(pla)
+        array.pop(plr)
+        array.pop(plb)
+nr=float(na)
+nr2=float(na)
+ns=float(na)
+ns2=float(na)
+if array.size(pha)>0
+    for i=0 to array.size(pha)-1
+        p=array.get(pha,i)
+        if p>close
+            if na(nr) or p<nr
+                nr2:=nr
+                nr:=p
+            else if na(nr2) or p<nr2
+                nr2:=p
+if array.size(pla)>0
+    for i=0 to array.size(pla)-1
+        p=array.get(pla,i)
+        if p<close
+            if na(ns) or p>ns
+                ns2:=ns
+                ns:=p
+            else if na(ns2) or p>ns2
+                ns2:=p
+pbu=not na(nr) and ta.crossover(close,nr)
+pbd=not na(ns) and ta.crossunder(close,ns)
+var bool hs=false
+var bool ihs=false
+var float hn=na
+var float ihn=na
+var int hbb=na
+var int ibb=na
+hs:=false
+ihs:=false
+if array.size(pha)>=3
+    rs=array.get(pha,0)
+    hd=array.get(pha,1)
+    ls=array.get(pha,2)
+    nk=(ls+rs)*0.5
+    cl=hd>nk*(1.0+iNT)
+    sd=math.max(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close<nk*(1.0-iNT)
+        hs:=true
+        hn:=nk
+        hbb:=bar_index
+if array.size(pla)>=3
+    rs=array.get(pla,0)
+    hd=array.get(pla,1)
+    ls=array.get(pla,2)
+    nk=(ls+rs)*0.5
+    cl=hd<nk*(1.0-iNT)
+    sd=math.min(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close>nk*(1.0+iNT)
+        ihs:=true
+        ihn:=nk
+        ibb:=bar_index
+var bool dts=false
+var bool dbs=false
+var float dtn=na
+var float dbn=na
+dts:=false
+dbs:=false
+if array.size(pha)>=2
+    t1=array.get(pha,0)
+    t2=array.get(pha,1)
+    ta2=(t1+t2)*0.5
+    if ta2>0.0 and math.abs(t1-t2)/ta2<iDTT
+        vlo=ta.lowest(low,iDTL)
+        vd=ta2>0.0?(ta2-vlo)/ta2:0.0
+        if vd>=iDMD and close<vlo*(1.0-iNT)
+            dts:=true
+            dtn:=vlo
+if array.size(pla)>=2
+    b1=array.get(pla,0)
+    b2=array.get(pla,1)
+    ba2=(b1+b2)*0.5
+    if ba2>0.0 and math.abs(b1-b2)/ba2<iDTT
+        phi2=ta.highest(high,iDTL)
+        pd2=ba2>0.0?(phi2-ba2)/ba2:0.0
+        if pd2>=iDMD and close>phi2*(1.0+iNT)
+            dbs:=true
+            dbn:=phi2
+rts=not na(hbb) and (bar_index-hbb)<=iRTB and not na(hn) and close>=hn*(1.0-iNT*2.0) and close<=hn*(1.0+iNT*2.0)
+rtl=not na(ibb) and (bar_index-ibb)<=iRTB and not na(ihn) and close>=ihn*(1.0-iNT*2.0) and close<=ihn*(1.0+iNT*2.0)
+dw=iDW*at
+dre=not na(nr)?dlr(close-nr,dw):0.0
+dsu=not na(ns)?dlr(close-ns,dw):0.0
+dn=dw>0.0?math.pi*dw:1.0
+drn=dre*dn
+dsn=dsu*dn
+ddo=not na(dO)?dlr(close-dO,dw)*dn:0.0
+ddh=not na(dH)?dlr(close-dH,dw)*dn:0.0
+ddl=not na(dL)?dlr(close-dL,dw)*dn:0.0
+dph=not na(pdH)?dlr(close-pdH,dw)*dn:0.0
+dpl=not na(pdL)?dlr(close-pdL,dw)*dn:0.0
+dpc=not na(pdC)?dlr(close-pdC,dw)*dn:0.0
+d2h=dlr(close-h24,dw)*dn
+d2l=dlr(close-l24,dw)*dn
+dmp=not na(mpp)?dlr(close-mpp,dw)*dn:0.0
+dbt=not na(mbt)?dlr(close-mbt,dw)*dn:0.0
+dybr=((not na(dO) and close>=dO)?ddo:0.0)+((not na(dL) and close>=dL)?ddl:0.0)+((not na(pdL) and close>=pdL)?dpl:0.0)+((not na(pdC) and close>=pdC)?dpc:0.0)+(close>=l24?d2l:0.0)+dmp*0.5
+dybr*=iDYW
+dyrr=((not na(dH) and close<=dH)?ddh:0.0)+((not na(pdH) and close<=pdH)?dph:0.0)+(close<=h24?d2h:0.0)+dmp*0.5
+dyrr*=iDYW
+fbr=not na(mbt) and close<mbt?math.min((mbt-close)/math.max(adr,at),1.0)*iFCW:0.0
+fbrr=not na(mbt) and close>=mbt?dbt*iFCW:0.0
+cm=csh(br,iCS)
+cf=cm>iCT
+sz=skz(br,iBSk,iBRk,iSKL)
+var bool rbd=false
+var bool rsd=false
+rbd:=false
+rsd:=false
+if array.size(pla)>=2
+    mx=math.min(iDL,array.size(pla)-1)
+    for i=1 to mx
+        p0=array.get(pla,0)
+        pi=array.get(pla,i)
+        r0=array.get(plr,0)
+        ri=array.get(plr,i)
+        if p0<pi and r0>ri
+            rbd:=true
+if array.size(pha)>=2
+    mx=math.min(iDL,array.size(pha)-1)
+    for i=1 to mx
+        p0=array.get(pha,0)
+        pi=array.get(pha,i)
+        r0=array.get(phr,0)
+        ri=array.get(phr,i)
+        if p0>pi and r0<ri
+            rsd:=true
+cbs=cv>0.1?math.min(cv,1.0)*iCMW:0.0
+cbrs=cv<-0.1?math.min(-cv,1.0)*iCMW:0.0
+obs=os>0.0?math.min(os*10.0,1.0)*iOW:0.0
+obrs=os<0.0?math.min(-os*10.0,1.0)*iOW:0.0
+vbs=iUV and vz>0.0?math.min(vz,2.0)*iVW:0.0
+vrs=iUV and vz<0.0?math.min(-vz,2.0)*iVW:0.0
+rm=it?1.0:0.5
+mbb=mb?0.3:0.0
+mrb=mr?0.3:0.0
+rb=(ihs?iHW:0.0)+(rtl?iHW*0.6:0.0)+(dbs?iDTW:0.0)+rgb+cvbr+(pbu[1]?1.5:0.0)+dsn*iDiW+(cf and br>0?iCW:0.0)+(sz>0.0?sz*iSKW:0.0)+(rbd?iDVW:0.0)+cbs+obs+vbs+mbb+dybr+fbr
+rba=(hs?iHW:0.0)+(rts?iHW*0.6:0.0)+(dts?iDTW:0.0)+rgnb+cvrr+(pbd[1]?1.5:0.0)+drn*iDiW+(cf and br<0?iCW:0.0)+(sz<0.0?math.abs(sz)*iSKW:0.0)+(rsd?iDVW:0.0)+cbrs+obrs+vrs+mrb+dyrr+fbrr
+p2_bs=rb*rm
+p2_brs=rba*rm
+cbu=(ihs?1:0)+(dbs?1:0)+(su?1:0)+(cvbr>0.0?1:0)+(rbd?1:0)+(cv>0.1?1:0)+(os>0?1:0)+(vz>0.0?1:0)+(mb?1:0)+(close<mpp?1:0)
+cbe=(hs?1:0)+(dts?1:0)+(sdn?1:0)+(cvrr>0.0?1:0)+(rsd?1:0)+(cv<-0.1?1:0)+(os<0?1:0)+(vz<0.0?1:0)+(mr?1:0)+(close>mpp?1:0)
+ca=iUC?0.5:0.0
+dtb=iET-(cbu>=5?ca:0.0)
+dtr=iET-(cbe>=5?ca:0.0)
+vok=not iUVO or volume>vs*iVM
+aok=not iUA or atp>=iMAP
+rok=not iUR or it
+sok=not iSF or (p2_bs>p2_brs?su:true) or (p2_brs>p2_bs?sdn:true)
+var int p2_bae=999
+if strategy.position_size==0 and strategy.position_size[1]!=0
+    p2_bae:=0
+else
+    p2_bae+=1
+cok=p2_bae>=iCD
+p2_le=p2_bs>=dtb and p2_bs-p2_brs>=iED and vok and aok and rok and sok and cok
+p2_se=p2_brs>=dtr and p2_brs-p2_bs>=iED and vok and aok and rok and sok and cok
+var float p2_tlo=na
+var float p2_tsh=na
+if strategy.position_size>0
+    ntl=close*(1.0-iTRP/100.0)
+    p2_tlo:=na(p2_tlo)?ntl:math.max(p2_tlo,ntl)
+else
+    p2_tlo:=na
+if strategy.position_size<0
+    nts=close*(1.0+iTRP/100.0)
+    p2_tsh:=na(p2_tsh)?nts:math.min(p2_tsh,nts)
+else
+    p2_tsh:=na
+lst=close*(1.0-iSP/100.0)
+ltp=close*(1.0+iTP/100.0)
+sst=close*(1.0+iSP/100.0)
+stp=close*(1.0-iTP/100.0)
+alertcondition(p2_le,title="long",message="psv2 long "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(p2_se,title="short",message="psv2 short "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(hs,title="h&s",message="psv2 h&s "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(ihs,title="ih&s",message="psv2 ih&s "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(dts,title="dt",message="psv2 dt "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(dbs,title="db",message="psv2 db "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mbt) and ta.crossover(close,mbt),title="bull tgt",message="psv2 bull tgt "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mpp) and ta.cross(close,mpp),title="mpp",message="psv2 mpp cross "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(pdH) and ta.crossover(close,pdH),title="pdh break",message="psv2 pdh break "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(pdL) and ta.crossunder(close,pdL),title="pdl break",message="psv2 pdl break "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mlC) and ta.cross(close,mlC),title="ml cross",message="psv2 ml cross "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+p1u=plot(iSBD?u1:na,"1su",color=color.new(color.teal,70),linewidth=1)
+p1l=plot(iSBD?l1:na,"1sl",color=color.new(color.teal,70),linewidth=1)
+p2u=plot(iSBD?u2:na,"2su",color=color.new(color.orange,70),linewidth=1)
+p2l=plot(iSBD?l2:na,"2sl",color=color.new(color.orange,70),linewidth=1)
+p3u=plot(iSBD?u3:na,"3su",color=color.new(color.red,75),linewidth=1)
+p3l=plot(iSBD?l3:na,"3sl",color=color.new(color.red,75),linewidth=1)
+fill(p1u,p1l,color=color.new(color.teal,92))
+fill(p2u,p2l,color=color.new(color.orange,95))
+fill(p3u,p3l,color=color.new(color.red,97))
+prc=plot(iSRC?lrl:na,"reg",color=color.new(color.blue,20),linewidth=2)
+prcu=plot(iSRC?lru:na,"regu",color=color.new(color.blue,55),linewidth=1)
+prcl=plot(iSRC?lrlo:na,"regl",color=color.new(color.blue,55),linewidth=1)
+fill(prcu,prcl,color=color.new(color.blue,90))
+plot(iSVP?vv:na,"vwap",color=color.new(color.purple,20),linewidth=1,style=plot.style_stepline)
+plot(iSPO and not na(sop)?sop:na,"sess open",color=color.new(color.yellow,40),linewidth=1,style=plot.style_stepline)
+plot(iSPO and not na(nr)?nr:na,"r1",color=color.new(color.red,30),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(nr2)?nr2:na,"r2",color=color.new(color.red,65),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(ns)?ns:na,"s1",color=color.new(color.green,30),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(ns2)?ns2:na,"s2",color=color.new(color.green,65),style=plot.style_stepline,linewidth=1)
+plot(not na(hn)?hn:na,"hsnk",color=color.new(color.fuchsia,40),linewidth=1,style=plot.style_dashed)
+plot(not na(ihn)?ihn:na,"ihsnk",color=color.new(color.lime,40),linewidth=1,style=plot.style_dashed)
+plot(not na(dtn)?dtn:na,"dtnk",color=color.new(color.maroon,50),linewidth=1,style=plot.style_dashed)
+plot(not na(dbn)?dbn:na,"dbnk",color=color.new(color.navy,50),linewidth=1,style=plot.style_dashed)
+plot(iUT and not na(p2_tlo)?p2_tlo:na,"trl",color=color.new(color.green,30),linewidth=1,style=plot.style_circles)
+plot(iUT and not na(p2_tsh)?p2_tsh:na,"trs",color=color.new(color.red,30),linewidth=1,style=plot.style_circles)
+plot(iSDP and not na(dO)?dO:na,"day o",color=color.new(color.yellow,20),linewidth=1,style=plot.style_stepline)
+plot(iSDP and not na(dH)?dH:na,"day h",color=color.new(color.lime,40),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(dL)?dL:na,"day l",color=color.new(color.red,40),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdH)?pdH:na,"pdh",color=color.new(color.lime,60),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdL)?pdL:na,"pdl",color=color.new(color.red,60),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdC)?pdC:na,"pdc",color=color.new(color.silver,40),linewidth=1,style=plot.style_dashed)
+plot(iS24?h24:na,"24h",color=color.new(color.aqua,30),linewidth=1,style=plot.style_stepline)
+plot(iS24?l24:na,"24l",color=color.new(color.aqua,30),linewidth=1,style=plot.style_stepline)
+plot(iSFC and not na(mbt)?mbt:na,"bull tgt",color=color.new(color.green,0),linewidth=2,style=plot.style_dashed)
+plot(iSFC?mpp:na,"mpp",color=color.new(color.orange,0),linewidth=2,style=plot.style_stepline)
+plot(iUML and not na(mlH)?mlH:na,"ml h",color=color.new(color.green,20),linewidth=1,style=plot.style_dashed)
+plot(iUML and not na(mlL)?mlL:na,"ml l",color=color.new(color.red,20),linewidth=1,style=plot.style_dashed)
+plot(iUML and not na(mlC)?mlC:na,"ml close",color=color.new(color.white,30),linewidth=2,style=plot.style_stepline)
+plotshape(iSPV and not na(rph),"ph",style=shape.triangledown,location=location.abovebar,color=color.new(color.red,10),size=size.tiny)
+plotshape(iSPV and not na(rpl),"pl",style=shape.triangleup,location=location.belowbar,color=color.new(color.green,10),size=size.tiny)
+plotshape(hs,"h&s",style=shape.labeldown,location=location.abovebar,color=color.fuchsia,textcolor=color.white,text="h&s",size=size.small)
+plotshape(ihs,"ih&s",style=shape.labelup,location=location.belowbar,color=color.lime,textcolor=color.black,text="ih&s",size=size.small)
+plotshape(dts,"dt",style=shape.labeldown,location=location.abovebar,color=color.new(color.maroon,0),textcolor=color.white,text="dt",size=size.small)
+plotshape(dbs,"db",style=shape.labelup,location=location.belowbar,color=color.new(color.navy,0),textcolor=color.white,text="db",size=size.small)
+plotshape(rts,"rts",style=shape.diamond,location=location.abovebar,color=color.new(color.red,20),size=size.tiny)
+plotshape(rtl,"rtl",style=shape.diamond,location=location.belowbar,color=color.new(color.green,20),size=size.tiny)
+plotshape(rbd,"bdiv",style=shape.circle,location=location.belowbar,color=color.new(color.aqua,20),size=size.tiny)
+plotshape(rsd,"rdiv",style=shape.circle,location=location.abovebar,color=color.new(color.orange,20),size=size.tiny)
+plotshape(p2_le,"l",style=shape.arrowup,location=location.belowbar,color=color.new(color.green,0),size=size.normal)
+plotshape(p2_se,"s",style=shape.arrowdown,location=location.abovebar,color=color.new(color.red,0),size=size.normal)
+bgcolor(p2_le?color.new(color.green,90):na,title="lbg")
+bgcolor(p2_se?color.new(color.red,90):na,title="sbg")
+bgcolor(not it?color.new(color.gray,96):na,title="rng")
+var label p2_slb=na
+if iSLB and barstate.islast
+    label.delete(p2_slb)
+    tx="bull:"+str.tostring(math.round(p2_bs,2))+" bear:"+str.tostring(math.round(p2_brs,2))+"\ncbu:"+str.tostring(cbu)+"/10 cbe:"+str.tostring(cbe)+"/10"+"\nsz:"+str.tostring(math.round(sz,2))+" csh:"+str.tostring(math.round(cm,3))+"\nr2:"+str.tostring(math.round(rr2,3))+" sl%:"+str.tostring(math.round(rsn,4))+"\nc2:"+str.tostring(math.round(c2n,4))+" c3:"+str.tostring(math.round(c3n,4))+"\natr%:"+str.tostring(math.round(atp,2))+" adx:"+str.tostring(math.round(av,1))+"\nvz:"+str.tostring(math.round(vz,2))+" cmf:"+str.tostring(math.round(cv,3))+"\nmbt:"+str.tostring(not na(mbt)?math.round(mbt,2):0.0)+" mpp:"+str.tostring(math.round(mpp,2))+"\n24h:"+str.tostring(math.round(h24,2))+" 24l:"+str.tostring(math.round(l24,2))+"\nml:"+str.tostring(not na(mlC)?math.round(mlC,2):0.0)+" tk:"+str.lower(syminfo.ticker)
+    p2_slb:=label.new(bar_index,high*1.002,tx,style=label.style_label_left,color=color.new(color.gray,45),textcolor=color.white,size=size.small)
+var table p2_tbl=na
+if iSTB and barstate.islast
+    table.delete(p2_tbl)
+    p2_tbl:=table.new(position.top_right,3,20,bgcolor=color.new(color.black,60),border_color=color.new(color.gray,50),border_width=1,frame_color=color.new(color.silver,30),frame_width=1)
+    table.cell(p2_tbl,0,0,"eng",text_color=color.silver,text_size=size.small,bgcolor=color.new(color.navy,50))
+    table.cell(p2_tbl,1,0,"bull",text_color=color.lime,text_size=size.small,bgcolor=color.new(color.navy,50))
+    table.cell(p2_tbl,2,0,"bear",text_color=color.red,text_size=size.small,bgcolor=color.new(color.navy,50))
+    _bv(v)=>str.tostring(math.round(v,2))
+    _bc(v)=>v>0.0?color.new(color.lime,20):color.gray
+    _rn(r,lb,bv,bev)=>
+        table.cell(p2_tbl,0,r,lb,text_color=color.silver,text_size=size.tiny)
+        table.cell(p2_tbl,1,r,_bv(bv),text_color=_bc(bv),text_size=size.tiny)
+        table.cell(p2_tbl,2,r,_bv(bev),text_color=_bc(bev),text_size=size.tiny)
+    _rn(1,"h&s",ihs?iHW:0.0,hs?iHW:0.0)
+    _rn(2,"retest",rtl?iHW*0.6:0.0,rts?iHW*0.6:0.0)
+    _rn(3,"dt/db",dbs?iDTW:0.0,dts?iDTW:0.0)
+    _rn(4,"reg",rgb,rgnb)
+    _rn(5,"curv",cvbr,cvrr)
+    _rn(6,"poi brk",pbu[1]?1.5:0.0,pbd[1]?1.5:0.0)
+    _rn(7,"dirac",dsn*iDiW,drn*iDiW)
+    _rn(8,"cosh",(cf and br>0)?iCW:0.0,(cf and br<0)?iCW:0.0)
+    _rn(9,"skew",sz>0.0?sz*iSKW:0.0,sz<0.0?math.abs(sz)*iSKW:0.0)
+    _rn(10,"rsi div",rbd?iDVW:0.0,rsd?iDVW:0.0)
+    _rn(11,"cmf",cbs,cbrs)
+    _rn(12,"obv",obs,obrs)
+    _rn(13,"vwap",vbs,vrs)
+    _rn(14,"mtf",mbb,mrb)
+    _rn(15,"daily poi",dybr,dyrr)
+    _rn(16,"fcast",fbr,fbrr)
+    _rn(17,"ml feed",not na(mlC)?math.min(nz(mlV)/1e6,1.0)*iFCW:0.0,0.0)
+    _rn(18,"total",p2_bs,p2_brs)
+    table.cell(p2_tbl,0,19,"conf",text_color=color.silver,text_size=size.tiny)
+    table.cell(p2_tbl,1,19,str.tostring(cbu)+"/10",text_color=cbu>=5?color.lime:color.gray,text_size=size.tiny)
+    table.cell(p2_tbl,2,19,str.tostring(cbe)+"/10",text_color=cbe>=5?color.red:color.gray,text_size=size.tiny)
+
+// ============================================================================
+// UNIFIED SIGNAL COMBINATION & TRADE EXECUTION
+// ============================================================================
+
+// --- Engine-gated signals ---
+bool jat_long  = en_jat ? g_lg  : false
+bool jat_short = en_jat ? g_sh  : false
+bool poi_long  = en_poi ? p2_le : false
+bool poi_short = en_poi ? p2_se : false
+
+// --- Combination logic ---
+bool uni_long  = sig_comb == "AND – Both must agree" ? (jat_long  and poi_long)  :
+                 sig_comb == "JAT Only"               ? jat_long                  :
+                 sig_comb == "POI Only"               ? poi_long                  :
+                 (jat_long or poi_long)   // default: OR
+
+bool uni_short = sig_comb == "AND – Both must agree" ? (jat_short and poi_short) :
+                 sig_comb == "JAT Only"               ? jat_short                 :
+                 sig_comb == "POI Only"               ? poi_short                 :
+                 (jat_short or poi_short) // default: OR
+
+// --- POI Trailing Stop (active when POI engine is enabled) ---
+if en_poi and iUT and strategy.position_size > 0 and not na(p2_tlo) and close <= p2_tlo
+    strategy.close("UNI_LG", comment="POI trail")
+if en_poi and iUT and strategy.position_size < 0 and not na(p2_tsh) and close >= p2_tsh
+    strategy.close("UNI_SH", comment="POI trail")
+
+// --- Unified risk levels: JAT ATR-based or POI percentage-based ---
+float uni_lsl = use_jat_risk ? low  - (at_v * rk_bf)         : close * (1.0 - iSP / 100.0)
+float uni_ltp = use_jat_risk ? close + ((close - uni_lsl) * rw_ml) : close * (1.0 + iTP / 100.0)
+float uni_ssl = use_jat_risk ? high + (at_v * rk_bf)          : close * (1.0 + iSP / 100.0)
+float uni_stp = use_jat_risk ? close - ((uni_ssl - close) * rw_ml) : close * (1.0 - iTP / 100.0)
+
+// --- Unified Entry / Exit ---
+if uni_long and strategy.opentrades < mx_tr
+    strategy.entry("UNI_LG", strategy.long)
+    strategy.exit("X_UNI_LG", "UNI_LG", stop=uni_lsl, limit=uni_ltp)
+    a_tr := trd_e.new(close, uni_lsl, uni_ltp, rw_ml, 1, false)
+
+if uni_short and strategy.opentrades < mx_tr
+    strategy.entry("UNI_SH", strategy.short)
+    strategy.exit("X_UNI_SH", "UNI_SH", stop=uni_ssl, limit=uni_stp)
+    a_tr := trd_e.new(close, uni_ssl, uni_stp, rw_ml, 1, false)
+
+// --- Unified Alert Conditions ---
+alertcondition(uni_long,  title="Unified Long",  message="[JAT+POI Unified] Long "  + str.lower(syminfo.ticker) + " @" + str.tostring(close))
+alertcondition(uni_short, title="Unified Short", message="[JAT+POI Unified] Short " + str.lower(syminfo.ticker) + " @" + str.tostring(close))
+alertcondition(jat_long,  title="JAT Long Only", message="[JAT] Long "  + str.lower(syminfo.ticker) + " @" + str.tostring(close))
+alertcondition(jat_short, title="JAT Short Only",message="[JAT] Short " + str.lower(syminfo.ticker) + " @" + str.tostring(close))
+
