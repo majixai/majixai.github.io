@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 import logging
@@ -70,6 +71,11 @@ class GitDatabaseEngine:
         else:
             response.raise_for_status()
 
+    async def _get_blob_info_async(self, path):
+        """Async wrapper for _get_blob_info using a thread pool."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._get_blob_info, path)
+
     def commit_record(self, file_path, data_dict, commit_message="Ledger update: Versioned object commit"):
         if not file_path.endswith('.dat'):
             file_path += '.dat'
@@ -98,6 +104,13 @@ class GitDatabaseEngine:
         action = "Updated" if sha else "Created"
         log.info(f"Database Transaction Successful: {action} {file_path}")
         return response.json()
+
+    async def commit_record_async(self, file_path, data_dict, commit_message="Ledger update: Versioned object commit"):
+        """Async version of commit_record — I/O runs in a thread pool."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None, self.commit_record, file_path, data_dict, commit_message
+        )
 
 # ==========================================
 # 3. DATA INGESTION

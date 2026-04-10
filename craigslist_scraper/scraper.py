@@ -1,5 +1,13 @@
+import asyncio
 import requests
 from bs4 import BeautifulSoup
+
+
+async def scrape_craigslist_jobs_async(city="sfbay"):
+    """Async version — runs the blocking scrape in a thread pool."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, scrape_craigslist_jobs, city)
+
 
 def scrape_craigslist_jobs(city="sfbay"):
     """

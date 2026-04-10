@@ -12,6 +12,7 @@ Features:
     - Notification templates
     - Notification history tracking
 """
+import asyncio
 import json
 import logging
 import smtplib
@@ -146,6 +147,15 @@ class RateLimiter:
             time.sleep(0.5)
         return False
 
+    async def wait_for_slot_async(self, timeout: float = 60.0) -> bool:
+        """Async version of wait_for_slot — yields control while waiting."""
+        start = time.time()
+        while time.time() - start < timeout:
+            if self.acquire():
+                return True
+            await asyncio.sleep(0.5)
+        return False
+
 
 class NotificationView:
     """View class for handling notifications (email and webhook)."""
@@ -240,6 +250,28 @@ class NotificationView:
                 delay = base_delay * (2 ** attempt)
                 time.sleep(delay)
         
+        return False, max_attempts
+
+    async def _retry_with_backoff_async(
+        self,
+        func: Callable[[], bool],
+        max_attempts: int = None,
+        base_delay: float = DEFAULT_RETRY_BASE_DELAY
+    ) -> tuple[bool, int]:
+        """Async version of _retry_with_backoff — uses asyncio.sleep for backoff delays."""
+        max_attempts = max_attempts or self.retry_attempts
+
+        for attempt in range(max_attempts):
+            try:
+                if func():
+                    return True, attempt
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed: {e}")
+
+            if attempt < max_attempts - 1:
+                delay = base_delay * (2 ** attempt)
+                await asyncio.sleep(delay)
+
         return False, max_attempts
 
     def send_email(

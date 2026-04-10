@@ -17,7 +17,15 @@ Usage:
   python bitcoin_miner/fetch_real_data.py [--runtime N]
 """
 
-import json, time, sys, os, math, random, urllib.request, urllib.error
+import asyncio
+import json
+import time
+import sys
+import os
+import math
+import random
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from argparse import ArgumentParser
 
@@ -30,7 +38,8 @@ REQUEST_TIMEOUT = 12
 
 
 # ── HTTP helper ────────────────────────────────────────────────────────────────
-def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
+def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
+    """Blocking HTTP fetch used as the thread-pool target."""
     try:
         req = urllib.request.Request(
             url,
@@ -43,6 +52,12 @@ def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
     except Exception as e:
         print(f"[WARN] fetch({url}): {e}", file=sys.stderr)
     return None
+
+
+async def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
+    """Async HTTP fetch — runs the blocking urllib call in a thread pool."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _fetch_sync, url, timeout)
 
 
 # ── Pure-Python 2-layer neural network ────────────────────────────────────────
@@ -167,12 +182,19 @@ def run_ml(blocks, fees_rec, mempool, prev_samples):
 
 
 # ── Data collection ────────────────────────────────────────────────────────────
-def collect(prev_samples):
-    blocks   = fetch(f"{API_BASE}/v1/blocks")          or []
-    fees_rec = fetch(f"{API_BASE}/v1/fees/recommended") or {}
-    mempool  = fetch(f"{API_BASE}/mempool")             or {}
-    recent   = fetch(f"{API_BASE}/mempool/recent")      or []
-    hashrate = fetch(f"{API_BASE}/v1/mining/hashrate/1w") or {}
+async def collect(prev_samples):
+    blocks, fees_rec, mempool, recent, hashrate = await asyncio.gather(
+        fetch(f"{API_BASE}/v1/blocks"),
+        fetch(f"{API_BASE}/v1/fees/recommended"),
+        fetch(f"{API_BASE}/mempool"),
+        fetch(f"{API_BASE}/mempool/recent"),
+        fetch(f"{API_BASE}/v1/mining/hashrate/1w"),
+    )
+    blocks   = blocks   or []
+    fees_rec = fees_rec or {}
+    mempool  = mempool  or {}
+    recent   = recent   or []
+    hashrate = hashrate or {}
 
     latest = blocks[0] if blocks else {}
 
@@ -218,12 +240,7 @@ def collect(prev_samples):
 
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
-def main():
-    parser = ArgumentParser(description="Bitcoin real data fetcher + ML analyser")
-    parser.add_argument("--runtime", type=int, default=RUNTIME,
-                        help="How many seconds to run (default 180)")
-    args = parser.parse_args()
-
+async def _run(args):
     os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_FILE)), exist_ok=True)
 
     deadline      = time.time() + args.runtime
@@ -240,7 +257,7 @@ def main():
         print(f"[{ts}] Sample #{sample_n} ...", flush=True)
 
         try:
-            data = collect(prev_samples[-5:])
+            data = await collect(prev_samples[-5:])
             last_data = data
             prev_samples.append({"fees_recommended": data["fees_recommended"]})
             if len(prev_samples) > 10:
@@ -268,7 +285,7 @@ def main():
         remaining = deadline - time.time()
         if remaining <= 0:
             break
-        time.sleep(min(SAMPLE_INTERVAL, remaining))
+        await asyncio.sleep(min(SAMPLE_INTERVAL, remaining))
 
     if last_data:
         print(f"\nCompleted {sample_n} samples. "
@@ -278,5 +295,12 @@ def main():
         sys.exit(1)
 
 
-if __name__ == "__main__":
+def main():
+    parser = ArgumentParser(description="Bitcoin real data fetcher + ML analyser")
+    parser.add_argument("--runtime", type=int, default=RUNTIME,
+                        help="How many seconds to run (default 180)")
+    args = parser.parse_args()
+    asyncio.run(_run(args))
+
+if __name__ == '__main__':
     main()
