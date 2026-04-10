@@ -45,6 +45,8 @@ jobs:
           LIMIT  = int(os.environ.get('LIMIT', '100'))
 
           # ── 1. Read raw git log ───────────────────────────────────────────────
+          # Format fields: %H=full SHA, %aI=ISO-8601 author date,
+          #                %s=subject, %aN=author name, %ae=author email
           cmd = [
               'git', 'log',
               f'-{LIMIT}',
@@ -70,7 +72,10 @@ jobs:
                   # Blank lines are separators; skip them but don't flush yet
                   continue
 
-              if SHA_RE.match(line) and line.count('|') >= 4:
+              # A commit meta-line starts with a 40-char hex SHA followed by '|'.
+              # We rely on the SHA_RE anchor rather than counting pipes, because
+              # commit subjects (%s) or email (%ae) can themselves contain '|'.
+              if SHA_RE.match(line):
                   # New commit meta line – flush the previous one first
                   if cur_meta is not None:
                       cur_meta['files'] = cur_files
@@ -214,7 +219,6 @@ jobs:
                           'priority': 'medium',
                           'tags':     ['quality'],
                       })
-                      break   # one keyword rec is enough
 
           # ── 4. Assemble output ────────────────────────────────────────────────
           insights = {
