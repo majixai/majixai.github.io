@@ -148,7 +148,7 @@ Replace hand-written pagination with:
 <!-- In your HTML -->
 <div id="pagination-container"></div>
 
-<script src="/pagination/pagination.css"></script>
+<link rel="stylesheet" href="/pagination/pagination.css">
 <script src="/pagination/pagination.js"></script>
 <script>
   // After allRows is populated:

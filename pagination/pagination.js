@@ -165,11 +165,14 @@
     }
 
     /**
-     * Update items per page and reset to page 1.
+     * Update items per page.
+     * The current page is preserved when it is still within the new range;
+     * otherwise it is clamped to the new last page.
      * @param {number} n
      */
     setPerPage(n) {
       this._cfg.perPage = Math.max(1, n);
+      // Preserve current page if valid; clamp only when it now exceeds pageCount
       this._page = clamp(this._page, 1, this.pageCount);
       this._buildControls();
       this._render();
