@@ -31,24 +31,22 @@ class TestGenerateCalendarData(unittest.TestCase):
 
     def test_json_file_is_written(self):
         """generate_calendar_data writes a valid JSON file."""
+        import builtins
+
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = os.path.join(tmpdir, "calendar.json")
-            with patch.object(calendar_data, "__builtins__", calendar_data.__builtins__):
-                # Patch the hardcoded path inside the function
-                original = open  # noqa: F841
+            real_open = builtins.open
 
-                written_data: dict = {}
+            def fake_open(path, mode="r", **kwargs):
+                if path == "json/calendar.json" and "w" in mode:
+                    return real_open(json_path, mode, **kwargs)
+                return real_open(path, mode, **kwargs)
 
-                def fake_open(path, mode="r", **kwargs):
-                    if path == "json/calendar.json" and "w" in mode:
-                        return open(json_path, mode, **kwargs)
-                    return original(path, mode, **kwargs)
+            with patch("builtins.open", side_effect=fake_open):
+                calendar_data.generate_calendar_data(2024, 6)
 
-                with patch("builtins.open", side_effect=fake_open):
-                    calendar_data.generate_calendar_data(2024, 6)
-
-                with open(json_path) as fh:
-                    written_data = json.load(fh)
+            with real_open(json_path) as fh:
+                written_data = json.load(fh)
 
         self.assertEqual(written_data["year"], 2024)
         self.assertEqual(written_data["month"], 6)
