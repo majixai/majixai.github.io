@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  /java/template/pom.xml  —  Sub-project Maven POM template
+  ==========================================================
+
+  Copy this file into any sub-directory that needs Java processing
+  powered by JavaCore, then:
+
+  1. Replace MY_APP_ID   with your project's artifact ID (e.g. "stock-fetcher").
+  2. Replace MY_APP_DESC with a one-line description.
+  3. Add any extra <dependencies> under the comment below.
+  4. Build:
+       mvn -f <your-dir>/pom.xml package
+
+  The parent section pulls in JavaCore automatically — no extra imports needed.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ─── Inherit shared config from the JavaCore parent ─────────────── -->
+  <parent>
+    <groupId>ai.majix</groupId>
+    <artifactId>java-core</artifactId>
+    <version>1.0.0</version>
+    <!-- Relative path from YOUR sub-project directory to /java/pom.xml -->
+    <relativePath>../../java/pom.xml</relativePath>
+  </parent>
+
+  <!-- ─── Sub-project identity ─────────────────────────────────────────── -->
+  <artifactId>MY_APP_ID</artifactId>
+  <description>MY_APP_DESC</description>
+
+  <!-- ─── Sub-project source layout ────────────────────────────────────── -->
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>test</testSourceDirectory>
+  </build>
+
+  <!-- ─── Sub-project dependencies (add as needed) ─────────────────────── -->
+  <dependencies>
+
+    <!-- JavaCore is provided by the parent; no extra entry needed. -->
+
+    <!-- Example: Jackson for JSON parsing
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    -->
+
+  </dependencies>
+
+</project>
