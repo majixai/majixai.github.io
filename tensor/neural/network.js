@@ -1,9 +1,12 @@
 /**
- * network.js — Feed-forward Neural Network using Tensor + Adam optimizer.
+ * network.js — Canonical feed-forward neural network using Tensor + Adam optimizer.
+ *
  * Processes market signal vectors and predicts bullish probability scores.
+ * This is the authoritative source; neural_tensor_network/network.js re-exports
+ * from here.
  */
 
-import { Tensor, AdamOptimizer } from '/tensor/neural/tensor.js';
+import { Tensor, AdamOptimizer } from './tensor.js';
 
 export class DenseLayer {
   constructor(inputSize, outputSize, activation = 'relu') {
