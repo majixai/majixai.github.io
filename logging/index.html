@@ -600,21 +600,24 @@ MajixLogger.error('Unexpected state', { code: 'E_INVALID' });</code></pre>
   }
 
   // ── Demo actions ─────────────────────────────────────────────────────────
+  var _demoUserId = 1;
   function demoChild() {
-    var child = MajixLogger.child('auth', { userId: Math.floor(Math.random() * 1000) });
+    var child = MajixLogger.child('session', { userId: _demoUserId++ });
     child.info('User authenticated');
     child.debug('Token refreshed', { expiresIn: 3600 });
   }
 
+  var _timerDelay = 50;
   function demoTimer() {
     MajixLogger.time('demoOp');
-    setTimeout(function () { MajixLogger.timeEnd('demoOp'); }, Math.random() * 300 + 50);
+    _timerDelay = (_timerDelay % 350) + 50;
+    setTimeout(function () { MajixLogger.timeEnd('demoOp'); }, _timerDelay);
   }
 
   function demoBurst() {
     var levels = ['trace','debug','info','warn','error','fatal'];
     for (var i = 0; i < 20; i++) {
-      var lvl = levels[Math.floor(Math.random() * levels.length)];
+      var lvl = levels[i % levels.length];
       MajixLogger[lvl]('Burst entry #' + i, { i: i });
     }
   }
