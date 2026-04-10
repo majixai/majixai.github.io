@@ -337,7 +337,7 @@ def process_group(assets: dict, out_dir: Path, category: str,
             print(f"ERROR: {exc}")
             return "error"
 
-    max_workers = min(8, max(1, len(assets)))
+    max_workers = min(8, len(assets)) or 1
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {pool.submit(_process_one, item): item for item in assets.items()}
         for future in as_completed(futures):

@@ -21,7 +21,7 @@ async def log_event_async(event_name, event_params={}, client_id=None):
     Async version of log_event — sends the GA4 HTTP request in a thread pool
     so the caller is not blocked by network I/O.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, log_event, event_name, event_params, client_id)
 
 

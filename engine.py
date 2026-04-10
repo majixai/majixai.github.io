@@ -73,7 +73,7 @@ class GitDatabaseEngine:
 
     async def _get_blob_info_async(self, path):
         """Async wrapper for _get_blob_info using a thread pool."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._get_blob_info, path)
 
     def commit_record(self, file_path, data_dict, commit_message="Ledger update: Versioned object commit"):
@@ -107,7 +107,7 @@ class GitDatabaseEngine:
 
     async def commit_record_async(self, file_path, data_dict, commit_message="Ledger update: Versioned object commit"):
         """Async version of commit_record — I/O runs in a thread pool."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self.commit_record, file_path, data_dict, commit_message
         )

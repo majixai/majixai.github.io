@@ -258,12 +258,15 @@ class NotificationView:
         max_attempts: int = None,
         base_delay: float = DEFAULT_RETRY_BASE_DELAY
     ) -> tuple[bool, int]:
-        """Async version of _retry_with_backoff — uses asyncio.sleep for backoff delays."""
+        """Async version of _retry_with_backoff — runs the blocking func in a thread pool
+        and uses asyncio.sleep for non-blocking backoff delays."""
         max_attempts = max_attempts or self.retry_attempts
+        loop = asyncio.get_running_loop()
 
         for attempt in range(max_attempts):
             try:
-                if func():
+                success = await loop.run_in_executor(None, func)
+                if success:
                     return True, attempt
             except Exception as e:
                 logger.warning(f"Attempt {attempt + 1} failed: {e}")
