@@ -229,7 +229,7 @@ showConso = input.bool(true, "Highlight Active Consolidations", group=g_vis)
 sh_gb = input.bool(true, "Show Ghost Bars", group=g_vis)
 
 src = input.source(close, 'Source Data', group=g_alp)
-al_sr = src  // alias: al_sr and src reference the same Source Data input
+al_sr = src  // backward-compatibility: al_sr references src (same Source Data value)
 
 // ============================================================================
 // 2. INPUT CONFIGURATIONS
