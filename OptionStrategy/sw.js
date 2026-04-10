@@ -1,6 +1,6 @@
 // Service Worker for Option Strategy Lab PWA
 self.SW_CONFIG = {
-  cacheVersion: 'option-strategy-lab-v1',
+  cacheVersion: 'option-strategy-lab-v2',
   appShellFiles: ['./', './index.html', './manifest.json'],
   trustedCdnHosts: [
     'www.w3schools.com',
