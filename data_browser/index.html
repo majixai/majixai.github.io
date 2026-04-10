@@ -11,6 +11,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script>
+    window.LOGGER_CONFIG = {
+      appName: 'data-browser',
+      level:   'debug',
+      targets: ['console', 'memory', 'localStorage'],
+      localStorageLimit: 100,
+    };
+    window.ACTIONS_CONFIG = {
+      namespace:      'browser',
+      logToConsole:   false,
+      persistHistory: true,
+      storageKey:     'dataBrowserActions',
+      historyLimit:   100,
+    };
+  </script>
+  <script src="/logging/logging-core.js"></script>
+  <script src="/actions/actions-core.js"></script>
   <style>
     :root { --bg: #0d1117; --card: #161b22; --accent: #00d9ff; --text: #e6edf3; --muted: #8b949e; --border: #30363d; }
     * { box-sizing: border-box; }
@@ -89,6 +106,31 @@
 </div>
 
 <script>
+// ── Initialize shared infrastructure ──────────────────────────────────────
+MajixLogger.init();
+MajixActions.init();
+MajixLogger.info('Data Browser loaded');
+
+// Register action handlers
+MajixActions.on('manifest/load', function (payload) {
+  MajixLogger.info('Manifest loaded', payload, 'data');
+});
+MajixActions.on('manifest/error', function (payload) {
+  MajixLogger.error('Manifest load failed', payload, 'data');
+});
+MajixActions.on('ticker/select', function (payload) {
+  MajixLogger.info('Ticker selected', payload, 'ui');
+});
+MajixActions.on('ticker/loaded', function (payload) {
+  MajixLogger.info('Ticker data loaded', payload, 'data');
+});
+MajixActions.on('ticker/error', function (payload) {
+  MajixLogger.error('Ticker load failed', payload, 'data');
+});
+MajixActions.on('search/filter', function (payload) {
+  MajixLogger.debug('Search/filter applied', payload, 'ui');
+});
+
 // ── State ─────────────────────────────────────────────────────────────────
 let manifest = null;
 let currentChart = null;
@@ -101,8 +143,10 @@ async function init() {
     const res = await fetch('../data/manifest.json');
     if (!res.ok) throw new Error('manifest not found');
     manifest = await res.json();
+    MajixActions.dispatch('manifest/load', { fileCount: manifest.files ? manifest.files.length : 0 });
     renderSidebar(manifest.files);
   } catch (e) {
+    MajixActions.dispatch('manifest/error', { error: e.message });
     document.getElementById('tickerList').innerHTML =
       '<li style="padding:1rem;color:#f85149">Failed to load manifest.json – run the data generator first.</li>';
   }
@@ -125,27 +169,37 @@ function renderSidebar(files) {
     </button></li>`).join('');
 }
 
-document.getElementById('searchBox').addEventListener('input', () => renderSidebar(manifest?.files || []));
+document.getElementById('searchBox').addEventListener('input', () => {
+  MajixActions.dispatch('search/filter', { query: document.getElementById('searchBox').value, category: activeCategory });
+  renderSidebar(manifest?.files || []);
+});
 document.getElementById('catTabs').addEventListener('click', e => {
   const tab = e.target.closest('[data-cat]');
   if (!tab) return;
   activeCategory = tab.dataset.cat;
   document.querySelectorAll('.cat-tab').forEach(t => t.classList.toggle('active', t === tab));
+  MajixActions.dispatch('search/filter', { query: document.getElementById('searchBox').value, category: activeCategory });
   renderSidebar(manifest?.files || []);
 });
 
 // ── Load ticker ───────────────────────────────────────────────────────────
 async function loadTicker(path, ticker, name, category) {
   activeTicker = path;
+  MajixActions.dispatch('ticker/select', { ticker, name, category });
   renderSidebar(manifest?.files || []);
   const panel = document.getElementById('mainPanel');
   panel.innerHTML = '<div class="placeholder"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+  const stopTimer = MajixLogger.time('ticker-load-' + ticker);
   try {
     const res = await fetch('../' + path);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    const ms = stopTimer();
+    MajixActions.dispatch('ticker/loaded', { ticker, rows: data.ohlcv ? data.ohlcv.length : 0, ms });
     renderTicker(data);
   } catch (e) {
+    stopTimer();
+    MajixActions.dispatch('ticker/error', { ticker, error: e.message });
     panel.innerHTML = `<div class="placeholder" style="color:#f85149">Error loading ${path}: ${e.message}</div>`;
   }
 }

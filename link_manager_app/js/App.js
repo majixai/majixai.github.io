@@ -98,6 +98,7 @@ class App {
 
             if (!name || !link) {
                 NotificationService.showError('Name and link are required.');
+                if (typeof MajixActions !== 'undefined') MajixActions.dispatch('error', { reason: 'validation', fields: ['name','link'] });
                 return;
             }
 
@@ -109,9 +110,11 @@ class App {
             };
 
             await this.entityManager.addLinkToEntity(name, section, linkData);
+            if (typeof MajixActions !== 'undefined') MajixActions.dispatch('link/add', { name, section, link });
             this.uiManager.resetForm();
         } catch (error) {
             NotificationService.showError('An error occurred.');
+            if (typeof MajixActions !== 'undefined') MajixActions.dispatch('error', { reason: 'exception', message: error.message });
             console.error(error);
         }
     }
@@ -122,12 +125,14 @@ class App {
         const attachments = this.contactUIManager.attachments;
         if (name) {
             await this.contactManager.addContact({ name, attachments });
+            if (typeof MajixActions !== 'undefined') MajixActions.dispatch('contact/add', { name });
             nameInput.value = '';
             this.contactUIManager.attachments = [];
             this.contactUIManager.renderAttachments();
             NotificationService.showSuccess('Contact added successfully!');
         } else {
             NotificationService.showError('Contact name is required.');
+            if (typeof MajixActions !== 'undefined') MajixActions.dispatch('error', { reason: 'validation', fields: ['contact-name'] });
         }
     }
 
