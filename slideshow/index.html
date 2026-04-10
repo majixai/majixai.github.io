@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideshowManager — Demo & Docs</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="slideshow.css">
+    <style>
+        pre { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 1rem; font-size: 0.82rem; overflow-x: auto; }
+        code { font-family: 'Courier New', Courier, monospace; }
+        .demo-carousel { width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; }
+        .demo-carousel .slide-img { height: 100%; }
+        section { padding-top: 2rem; }
+        .badge-pill { font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">🎞 SlideshowManager</span>
+        <span class="text-muted small">Shared slideshow library — <code>/slideshow/</code></span>
+    </div>
+</nav>
+
+<div class="container py-4">
+
+    <!-- ── Hero demo ───────────────────────────────────────────── -->
+    <section id="demo">
+        <h2 class="h4 mb-3">Live Demo</h2>
+
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="demoCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="demoImg" class="slide-img"
+                         src="https://picsum.photos/seed/slide1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="demoPrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="demoNext">&#8250;</button>
+                    <div class="slide-progress" id="demoProgress"></div>
+                    <div class="slide-counter"  id="demoCounter"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">Controls</h6>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="btn btn-sm btn-success" id="btnStart">▶ Start</button>
+                            <button class="btn btn-sm btn-warning" id="btnStop">⏹ Stop</button>
+                            <button class="btn btn-sm btn-secondary" id="btnPrev">⟵ Prev</button>
+                            <button class="btn btn-sm btn-secondary" id="btnNext">Next ⟶</button>
+                        </div>
+                        <p class="small text-muted mb-1">Features enabled in this demo:</p>
+                        <ul class="small text-muted mb-0">
+                            <li>Auto-rotation (2 – 6 s random)</li>
+                            <li>Progress bar animation</li>
+                            <li>Slide counter</li>
+                            <li>Hover overlay prev/next buttons</li>
+                            <li>Keyboard ← / → (click carousel first)</li>
+                            <li>Touch / swipe</li>
+                            <li>Pause on hover</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Quick start ─────────────────────────────────────────── -->
+    <section id="quickstart">
+        <h2 class="h4 mb-3">Quick Start</h2>
+
+        <h6>1 — Include the CSS and JS in your page</h6>
+        <pre><code>&lt;!-- In &lt;head&gt; --&gt;
+&lt;link rel="stylesheet" href="/slideshow/slideshow.css"&gt;
+
+&lt;!-- Before &lt;/body&gt; --&gt;
+&lt;script src="/slideshow/slideshow-core.js"&gt;&lt;/script&gt;</code></pre>
+
+        <h6 class="mt-3">2 — Add the markup</h6>
+        <pre><code>&lt;div class="slideshow-carousel" id="myCarousel"&gt;
+    &lt;img class="slide-img" id="myImg" src="first.jpg" alt="Slide"&gt;
+    &lt;button class="slide-btn slide-btn-prev" id="myPrev"&gt;&amp;#8249;&lt;/button&gt;
+    &lt;button class="slide-btn slide-btn-next" id="myNext"&gt;&amp;#8250;&lt;/button&gt;
+    &lt;div class="slide-progress" id="myProgress"&gt;&lt;/div&gt;
+    &lt;div class="slide-counter"  id="myCounter"&gt;&lt;/div&gt;
+&lt;/div&gt;</code></pre>
+
+        <h6 class="mt-3">3 — Initialise</h6>
+        <pre><code>const mgr = new SlideshowManager(
+    document.getElementById('myImg'),
+    ['one.jpg', 'two.jpg', 'three.jpg'],
+    {
+        minDelay:     2000,
+        maxDelay:     6000,
+        progressBar:  document.getElementById('myProgress'),
+        counter:      document.getElementById('myCounter'),
+        prevBtn:      document.getElementById('myPrev'),
+        nextBtn:      document.getElementById('myNext'),
+        container:    document.getElementById('myCarousel'),
+        keyboard:     true,
+        touch:        true,
+        pauseOnHover: true,
+    }
+);
+mgr.start();</code></pre>
+    </section>
+
+    <!-- ── Load from .dat ──────────────────────────────────────── -->
+    <section id="dat-loader">
+        <h2 class="h4 mb-3">Loading from a .dat File (gzip compressed)</h2>
+        <p class="text-muted small">Requires <a href="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" target="_blank">pako</a> to be loaded before <code>slideshow-core.js</code>.</p>
+        <pre><code>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"
+        integrity="sha512-F0nSK98Snn1dTBjRbFJTBnYdmdSWxFNcXfhb8rPXxIBqDFIJBvDdX89xmwrZJlZVePl8Fl8Jv/JSVK1+Kzlg=="
+        crossorigin="anonymous"&gt;&lt;/script&gt;
+&lt;script src="/slideshow/slideshow-core.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    SlideshowManager.fromDatFile(
+        document.getElementById('myImg'),
+        '/data/images.dat',
+        { progressBar: ..., counter: ..., keyboard: true, touch: true }
+    ).then(mgr =&gt; mgr.start());
+&lt;/script&gt;</code></pre>
+    </section>
+
+    <!-- ── Load from JSON ─────────────────────────────────────── -->
+    <section id="json-loader">
+        <h2 class="h4 mb-3">Loading from a JSON File</h2>
+        <p class="text-muted small">No extra dependencies. JSON must be an array of URL strings, or an object with an <code>images</code> array.</p>
+        <pre><code>// images.json
+["https://example.com/a.jpg", "https://example.com/b.jpg"]
+
+// or
+{ "images": ["https://example.com/a.jpg", "https://example.com/b.jpg"] }</code></pre>
+        <pre><code>SlideshowManager.fromJsonUrl(
+    document.getElementById('myImg'),
+    '/data/images.json',
+    { minDelay: 3000, maxDelay: 8000 }
+).then(mgr =&gt; mgr.start());</code></pre>
+    </section>
+
+    <!-- ── API Reference ──────────────────────────────────────── -->
+    <section id="api">
+        <h2 class="h4 mb-3">API Reference</h2>
+
+        <h6>Constructor</h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>minDelay</code></td><td>number</td><td>2000</td><td>Minimum ms per slide</td></tr>
+                <tr><td><code>maxDelay</code></td><td>number</td><td>6000</td><td>Maximum ms per slide</td></tr>
+                <tr><td><code>progressBar</code></td><td>HTMLElement</td><td>null</td><td>Element animated 0 → 100% width per slide</td></tr>
+                <tr><td><code>counter</code></td><td>HTMLElement</td><td>null</td><td>Element showing "N/M"</td></tr>
+                <tr><td><code>prevBtn</code></td><td>HTMLElement</td><td>null</td><td>Previous button — stops auto-rotation on click</td></tr>
+                <tr><td><code>nextBtn</code></td><td>HTMLElement</td><td>null</td><td>Next button — stops auto-rotation on click</td></tr>
+                <tr><td><code>container</code></td><td>HTMLElement</td><td>null</td><td>Element receiving keyboard/touch events (falls back to imgElement)</td></tr>
+                <tr><td><code>keyboard</code></td><td>boolean</td><td>false</td><td>Enable ←/→ key navigation</td></tr>
+                <tr><td><code>touch</code></td><td>boolean</td><td>false</td><td>Enable touch swipe navigation</td></tr>
+                <tr><td><code>pauseOnHover</code></td><td>boolean</td><td>false</td><td>Pause while mouse is over container</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Instance Methods</h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>start()</code></td><td>Begin auto-rotation (no-op if &lt;2 images)</td></tr>
+                <tr><td><code>stop()</code></td><td>Stop auto-rotation and reset progress bar</td></tr>
+                <tr><td><code>next()</code></td><td>Advance one slide</td></tr>
+                <tr><td><code>prev()</code></td><td>Go back one slide</td></tr>
+                <tr><td><code>goTo(index)</code></td><td>Jump to a specific index (wraps)</td></tr>
+                <tr><td><code>destroy()</code></td><td>Remove all listeners and clear timer</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Static Factories</h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>SlideshowManager.fromDatFile(imgEl, url, opts)</code></td><td><code>Promise&lt;SlideshowManager&gt;</code></td><td>Load from gzip-compressed .dat file (requires pako)</td></tr>
+                <tr><td><code>SlideshowManager.fromJsonUrl(imgEl, url, opts)</code></td><td><code>Promise&lt;SlideshowManager&gt;</code></td><td>Load from plain JSON array file</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <!-- ── CSS classes ───────────────────────────────────────── -->
+    <section id="css">
+        <h2 class="h4 mb-3">CSS Classes (slideshow.css)</h2>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Class</th><th>Element</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>.slideshow-carousel</code></td><td>wrapper div</td><td>Relative container; clips overflowing content</td></tr>
+                <tr><td><code>.slide-img</code></td><td>img</td><td>100% width/height, object-fit: cover, opacity transition</td></tr>
+                <tr><td><code>.slide-progress</code></td><td>div</td><td>Absolute bottom bar, animated by JS</td></tr>
+                <tr><td><code>.slide-counter</code></td><td>div</td><td>Absolute top-right badge showing "N/M"</td></tr>
+                <tr><td><code>.slide-btn</code></td><td>button</td><td>Arrow overlay button (appears on hover)</td></tr>
+                <tr><td><code>.slide-btn-prev</code></td><td>button</td><td>Left arrow position modifier</td></tr>
+                <tr><td><code>.slide-btn-next</code></td><td>button</td><td>Right arrow position modifier</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </section>
+
+    <footer class="text-muted small mt-5 border-top pt-3 pb-4">
+        Source: <a href="/slideshow/slideshow-core.js"><code>/slideshow/slideshow-core.js</code></a> &amp;
+        <a href="/slideshow/slideshow.css"><code>/slideshow/slideshow.css</code></a>
+    </footer>
+
+</div><!-- /container -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+<script src="slideshow-core.js"></script>
+<script>
+    const DEMO_IMAGES = [
+        'https://picsum.photos/seed/slide1/800/450',
+        'https://picsum.photos/seed/slide2/800/450',
+        'https://picsum.photos/seed/slide3/800/450',
+        'https://picsum.photos/seed/slide4/800/450',
+        'https://picsum.photos/seed/slide5/800/450',
+    ];
+
+    const mgr = new SlideshowManager(
+        document.getElementById('demoImg'),
+        DEMO_IMAGES,
+        {
+            minDelay:     2000,
+            maxDelay:     6000,
+            progressBar:  document.getElementById('demoProgress'),
+            counter:      document.getElementById('demoCounter'),
+            prevBtn:      document.getElementById('demoPrev'),
+            nextBtn:      document.getElementById('demoNext'),
+            container:    document.getElementById('demoCarousel'),
+            keyboard:     true,
+            touch:        true,
+            pauseOnHover: true,
+        }
+    );
+    mgr.start();
+
+    document.getElementById('btnStart').addEventListener('click', () => mgr.start());
+    document.getElementById('btnStop').addEventListener('click',  () => mgr.stop());
+    document.getElementById('btnPrev').addEventListener('click',  () => { mgr.stop(); mgr.prev(); });
+    document.getElementById('btnNext').addEventListener('click',  () => { mgr.stop(); mgr.next(); });
+</script>
+</body>
+</html>
