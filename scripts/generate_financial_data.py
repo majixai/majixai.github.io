@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -317,7 +318,9 @@ def write_dat(out_path: Path, ticker: str, name: str, category: str,
 def process_group(assets: dict, out_dir: Path, category: str,
                   period: str, fetch_meta: bool) -> dict:
     results = {"ok": 0, "empty": 0, "error": 0}
-    for symbol, name in assets.items():
+
+    def _process_one(symbol_name):
+        symbol, name = symbol_name
         safe_name = symbol.replace("^", "").replace("-", "_").lower()
         out_path = out_dir / f"{safe_name}.dat"
         print(f"  [{category}] {symbol} → {out_path.name} ...", end=" ", flush=True)
@@ -326,15 +329,21 @@ def process_group(assets: dict, out_dir: Path, category: str,
             meta = fetch_ticker_info(symbol) if fetch_meta else {}
             if not ohlcv:
                 print("EMPTY – skipped")
-                results["empty"] += 1
-                continue
+                return "empty"
             n = write_dat(out_path, symbol, name, category, ohlcv, meta)
             print(f"OK ({n} rows)")
-            results["ok"] += 1
+            return "ok"
         except Exception as exc:
             print(f"ERROR: {exc}")
-            results["error"] += 1
-        time.sleep(0.5)   # gentle rate-limit
+            return "error"
+
+    max_workers = min(8, len(assets)) or 1
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_process_one, item): item for item in assets.items()}
+        for future in as_completed(futures):
+            outcome = future.result()
+            results[outcome] += 1
+
     return results
 
 
