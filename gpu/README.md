@@ -119,7 +119,7 @@ with mgr.device():
 |-------------------------------|-----------------------------------|------------------------------------------|
 | `matrix_ops.matmul`           | Matrix multiply C = A @ B         | `a`, `b`                                 |
 | `matrix_ops.svd_truncated`    | Truncated SVD (U, s, Vt)          | `matrix`, `rank`                         |
-| `matrix_ops.pca`              | PCA via SVD                       | `data`, `n_components`, `centre`         |
+| `matrix_ops.pca`              | PCA via SVD                       | `data`, `n_components`, `center`         |
 | `matrix_ops.covariance`       | Sample covariance matrix          | `matrix`, `ddof`                         |
 | `matrix_ops.normalize`        | Z-score normalisation             | `matrix`, `axis`, `eps`                  |
 | `matrix_ops.softmax`          | Row-wise softmax                  | `logits`                                 |

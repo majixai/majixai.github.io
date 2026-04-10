@@ -5,7 +5,7 @@ Common matrix operations used across multiple directories:
   - matmul        : batched matrix multiplication
   - svd_truncated : truncated SVD (low-rank approximation)
   - pca           : principal component analysis
-  - covariance    : rolling/expanding covariance matrix
+  - covariance    : sample covariance matrix
   - normalize     : row/column-wise normalisation
   - softmax       : 2-D softmax (row-wise)
 
@@ -118,7 +118,7 @@ def covariance(
     return (F_c.T @ F_c) / n
 
 
-# ── Normalise ────────────────────────────────────────────────────────────────
+# ── Normalize ────────────────────────────────────────────────────────────────
 def normalize(
     manager: Any,
     matrix: Any,

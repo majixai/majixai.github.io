@@ -2,7 +2,7 @@
 gpu/manager.py — GPU Resource Manager
 ======================================
 Central manager for GPU detection, backend selection, memory allocation,
-and utilisation monitoring.  Designed to be imported by any script in any
+and utilization monitoring.  Designed to be imported by any script in any
 subdirectory of this repository.
 
 Usage
@@ -80,7 +80,7 @@ class GPUManager:
         self._tf_device: Optional[str] = None
         self._torch_device: Optional[Any] = None
 
-        self.log.info("GPUManager initialised — backend=%s", self._backend)
+        self.log.info("GPUManager initialized — backend=%s", self._backend)
 
     # ── Singleton helper (optional) ────────────────────────────────────────────
     @classmethod
