@@ -1,0 +1,271 @@
+name: Commit Advisor – Insights & Recommendations
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 */4 * * *'   # Every 4 hours
+  workflow_dispatch:
+    inputs:
+      author:
+        description: 'GitHub username to filter commits by (leave blank for all)'
+        required: false
+        default: ''
+      limit:
+        description: 'Max number of commits to analyse'
+        required: false
+        default: '100'
+
+permissions:
+  contents: write
+
+jobs:
+  generate_insights:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0          # full history required for analysis
+
+      - name: Generate commit insights & recommendations
+        env:
+          AUTHOR: ${{ github.event.inputs.author || '' }}
+          LIMIT:  ${{ github.event.inputs.limit  || '100' }}
+        run: |
+          python3 << 'PYEOF'
+          import subprocess, json, os, re
+          from collections import defaultdict, Counter
+          from datetime import datetime, timezone
+
+          AUTHOR = os.environ.get('AUTHOR', '').strip()
+          LIMIT  = int(os.environ.get('LIMIT', '100'))
+
+          # ── 1. Read raw git log ───────────────────────────────────────────────
+          cmd = [
+              'git', 'log',
+              f'-{LIMIT}',
+              '--name-only',
+              '--format=%H|%aI|%s|%aN|%ae',
+              '--diff-filter=ACDMR',
+          ]
+          if AUTHOR:
+              cmd.append(f'--author={AUTHOR}')
+
+          result = subprocess.run(cmd, capture_output=True, text=True)
+          lines  = result.stdout.splitlines()
+
+          commits   = []
+          cur_meta  = None
+          cur_files = []
+
+          SHA_RE = re.compile(r'^[0-9a-f]{40}\|')
+
+          for raw in lines:
+              line = raw.rstrip()
+              if not line:
+                  # Blank lines are separators; skip them but don't flush yet
+                  continue
+
+              if SHA_RE.match(line) and line.count('|') >= 4:
+                  # New commit meta line – flush the previous one first
+                  if cur_meta is not None:
+                      cur_meta['files'] = cur_files
+                      commits.append(cur_meta)
+                  parts = line.split('|', 4)
+                  cur_meta  = {
+                      'sha':      parts[0],
+                      'shortSha': parts[0][:7],
+                      'date':     parts[1],
+                      'message':  parts[2],
+                      'author':   parts[3],
+                      'email':    parts[4],
+                  }
+                  cur_files = []
+              elif cur_meta is not None:
+                  cur_files.append(line)
+
+          if cur_meta is not None:
+              cur_meta['files'] = cur_files
+              commits.append(cur_meta)
+
+          # ── 2. Derive statistics ──────────────────────────────────────────────
+          dir_counts      = Counter()
+          ext_counts      = Counter()
+          author_counts   = Counter()
+          weekday_counts  = Counter()
+          hour_counts     = Counter()
+          word_counts     = Counter()
+
+          STOP_WORDS = {
+              'a','an','the','and','or','but','in','on','at','to','for',
+              'of','with','by','from','up','as','is','it','its','be',
+              'this','that','was','are','were','has','have','had',
+              'do','does','did','not','no','so','if','my','we','you',
+          }
+
+          for c in commits:
+              author_counts[c['author']] += 1
+              try:
+                  dt = datetime.fromisoformat(c['date'])
+                  weekday_counts[dt.strftime('%A')] += 1
+                  hour_counts[dt.hour]              += 1
+              except Exception:
+                  pass
+
+              words = re.findall(r'\b[a-z]{3,}\b', c['message'].lower())
+              for w in words:
+                  if w not in STOP_WORDS:
+                      word_counts[w] += 1
+
+              for f in c['files']:
+                  parts = f.split('/')
+                  if parts[0] and not parts[0].startswith('.'):
+                      dir_counts[parts[0]] += 1
+                  ext = os.path.splitext(f)[1].lstrip('.')
+                  if ext:
+                      ext_counts[ext] += 1
+
+          # ── 3. Build recommendations ──────────────────────────────────────────
+          recommendations = []
+
+          # Hot directories
+          top_dirs = dir_counts.most_common(5)
+          if top_dirs:
+              names = ', '.join(f'`{d}`' for d, _ in top_dirs[:3])
+              recommendations.append({
+                  'id':       'hot-dirs',
+                  'category': 'Focus Area',
+                  'title':    'Most Active Directories',
+                  'detail':   f'The directories receiving the most attention are {names}. '
+                              f'Consider adding tests or documentation to these areas.',
+                  'priority': 'high',
+                  'tags':     ['maintenance', 'docs'],
+              })
+
+          # Commit frequency by weekday
+          if weekday_counts:
+              busiest_day  = weekday_counts.most_common(1)[0][0]
+              quietest_day = weekday_counts.most_common()[-1][0]
+              recommendations.append({
+                  'id':       'commit-cadence',
+                  'category': 'Cadence',
+                  'title':    'Commit Rhythm',
+                  'detail':   f'Most commits land on **{busiest_day}**; '
+                              f'**{quietest_day}** sees the least activity. '
+                              f'Distributing work more evenly can reduce integration risk.',
+                  'priority': 'medium',
+                  'tags':     ['process'],
+              })
+
+          # Commit hour pattern
+          if hour_counts:
+              peak_hour = hour_counts.most_common(1)[0][0]
+              recommendations.append({
+                  'id':       'peak-hour',
+                  'category': 'Productivity',
+                  'title':    'Peak Commit Hour',
+                  'detail':   f'The peak commit hour is **{peak_hour:02d}:00 UTC**. '
+                              f'Scheduling code reviews shortly after this window '
+                              f'means reviewers see fresh context.',
+                  'priority': 'low',
+                  'tags':     ['process', 'review'],
+              })
+
+          # File type insights
+          if ext_counts:
+              top_exts = ext_counts.most_common(3)
+              ext_str  = ', '.join(f'.{e}' for e, _ in top_exts)
+              recommendations.append({
+                  'id':       'file-types',
+                  'category': 'Tech Stack',
+                  'title':    'Dominant File Types',
+                  'detail':   f'The most-changed file types are **{ext_str}**. '
+                              f'Ensure linting and CI coverage exists for each type.',
+                  'priority': 'medium',
+                  'tags':     ['ci', 'quality'],
+              })
+
+          # Common commit keywords → next-action suggestion
+          if word_counts:
+              top_words = [w for w, _ in word_counts.most_common(10)]
+              action_map = {
+                  'fix':    ('Bug Fixes Trend',    'Frequent `fix` commits suggest recurring bugs. '
+                                                   'Consider adding regression tests.'),
+                  'update': ('Update-Heavy Repo',  'Heavy `update` usage may hide unrelated changes. '
+                                                   'Aim for atomic, single-purpose commits.'),
+                  'add':    ('Feature Growth',     'Many `add` commits indicate rapid feature work. '
+                                                   'Ensure each feature has a corresponding test.'),
+                  'refactor':('Refactoring Cycle', 'Active refactoring is healthy. '
+                                                   'Track coverage to confirm no regressions.'),
+                  'wip':    ('WIP Commits Present','WIP commits in `main` can confuse history. '
+                                                   'Use feature branches and squash before merging.'),
+              }
+              for kw, (title, detail) in action_map.items():
+                  if kw in top_words:
+                      recommendations.append({
+                          'id':       f'kw-{kw}',
+                          'category': 'Commit Quality',
+                          'title':    title,
+                          'detail':   detail,
+                          'priority': 'medium',
+                          'tags':     ['quality'],
+                      })
+                      break   # one keyword rec is enough
+
+          # ── 4. Assemble output ────────────────────────────────────────────────
+          insights = {
+              'generatedAt':       datetime.now(timezone.utc).isoformat(),
+              'commitCount':       len(commits),
+              'authorFilter':      AUTHOR or 'all',
+              'topDirectories':    [{'name': d, 'count': n} for d, n in dir_counts.most_common(10)],
+              'topFileTypes':      [{'ext':  e, 'count': n} for e, n in ext_counts.most_common(10)],
+              'topAuthors':        [{'name': a, 'count': n} for a, n in author_counts.most_common(10)],
+              'commitsByWeekday':  dict(weekday_counts),
+              'commitsByHour':     {str(h): n for h, n in hour_counts.items()},
+              'topKeywords':       [w for w, _ in word_counts.most_common(20)],
+              'recommendations':   recommendations,
+              'recentCommits':     [
+                  {k: v for k, v in c.items() if k != 'email'}
+                  for c in commits[:30]
+              ],
+          }
+
+          os.makedirs('commit_advisor/data', exist_ok=True)
+          with open('commit_advisor/data/insights.json', 'w', encoding='utf-8') as f:
+              json.dump(insights, f, indent=2)
+
+          print(f'Wrote insights: {len(commits)} commits, {len(recommendations)} recommendations')
+          PYEOF
+
+      - name: Configure Git
+        run: |
+          git config --global user.name  'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push insights
+        run: |
+          git add commit_advisor/data/insights.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: Update commit_advisor insights – $TIMESTAMP"
+            git push
+            echo "Pushed commit_advisor/data/insights.json"
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Commit Advisor Insights" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Generated at:** $(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          python3 -c "
+          import json
+          d = json.load(open('commit_advisor/data/insights.json'))
+          print(f'**Commits analysed:** {d[\"commitCount\"]}')
+          print(f'**Recommendations:** {len(d[\"recommendations\"])}')
+          " >> $GITHUB_STEP_SUMMARY
