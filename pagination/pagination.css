@@ -1,0 +1,149 @@
+/*
+ * pagination.css — Centralized pagination styles for majixai.github.io
+ *
+ * Themes: default (light), .pgr-dark, .pgr-blue
+ * Include with: <link rel="stylesheet" href="/pagination/pagination.css">
+ * Optionally override CSS variables on the .pgr-nav element or a parent.
+ */
+
+/* ─── CSS custom properties (light theme defaults) ─────────────────────────── */
+:root {
+  --pgr-font-size:      0.875rem;
+  --pgr-gap:            0.25rem;
+  --pgr-btn-size:       2.25rem;
+  --pgr-border-radius:  0.375rem;
+  --pgr-bg:             #ffffff;
+  --pgr-color:          #374151;
+  --pgr-border:         #d1d5db;
+  --pgr-hover-bg:       #f3f4f6;
+  --pgr-hover-color:    #111827;
+  --pgr-active-bg:      #2563eb;
+  --pgr-active-color:   #ffffff;
+  --pgr-active-border:  #2563eb;
+  --pgr-disabled-color: #9ca3af;
+  --pgr-disabled-bg:    #f9fafb;
+  --pgr-ellipsis-color: #6b7280;
+  --pgr-shadow:         0 1px 3px rgba(0,0,0,0.10);
+  --pgr-transition:     background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* ─── Wrapper nav ───────────────────────────────────────────────────────────── */
+.pgr-nav {
+  display:     flex;
+  flex-wrap:   wrap;
+  align-items: center;
+  gap:         var(--pgr-gap);
+  font-size:   var(--pgr-font-size);
+  user-select: none;
+}
+
+/* ─── Numbers group ─────────────────────────────────────────────────────────── */
+.pgr-numbers {
+  display:     inline-flex;
+  flex-wrap:   wrap;
+  align-items: center;
+  gap:         var(--pgr-gap);
+}
+
+/* ─── All buttons ───────────────────────────────────────────────────────────── */
+.pgr-btn {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  min-width:       var(--pgr-btn-size);
+  height:          var(--pgr-btn-size);
+  padding:         0 0.5rem;
+  border:          1px solid var(--pgr-border);
+  border-radius:   var(--pgr-border-radius);
+  background:      var(--pgr-bg);
+  color:           var(--pgr-color);
+  cursor:          pointer;
+  line-height:     1;
+  font-size:       inherit;
+  font-family:     inherit;
+  transition:      var(--pgr-transition);
+  box-shadow:      var(--pgr-shadow);
+  white-space:     nowrap;
+}
+
+.pgr-btn:hover:not(:disabled):not(.pgr-active) {
+  background:    var(--pgr-hover-bg);
+  color:         var(--pgr-hover-color);
+  border-color:  var(--pgr-hover-color);
+}
+
+.pgr-btn.pgr-active {
+  background:   var(--pgr-active-bg);
+  color:        var(--pgr-active-color);
+  border-color: var(--pgr-active-border);
+  font-weight:  600;
+  cursor:       default;
+}
+
+.pgr-btn:disabled {
+  background:   var(--pgr-disabled-bg);
+  color:        var(--pgr-disabled-color);
+  border-color: var(--pgr-border);
+  cursor:       not-allowed;
+  box-shadow:   none;
+}
+
+/* ─── Ellipsis ──────────────────────────────────────────────────────────────── */
+.pgr-ellipsis {
+  display:         inline-flex;
+  align-items:     center;
+  justify-content: center;
+  min-width:       var(--pgr-btn-size);
+  height:          var(--pgr-btn-size);
+  color:           var(--pgr-ellipsis-color);
+  font-size:       var(--pgr-font-size);
+  letter-spacing:  0.05em;
+}
+
+/* ─── Dark theme (.pgr-dark on .pgr-nav or any ancestor) ───────────────────── */
+.pgr-dark,
+.pgr-dark .pgr-nav {
+  --pgr-bg:             #1f2937;
+  --pgr-color:          #d1d5db;
+  --pgr-border:         #374151;
+  --pgr-hover-bg:       #374151;
+  --pgr-hover-color:    #f9fafb;
+  --pgr-active-bg:      #3b82f6;
+  --pgr-active-color:   #ffffff;
+  --pgr-active-border:  #3b82f6;
+  --pgr-disabled-color: #6b7280;
+  --pgr-disabled-bg:    #111827;
+  --pgr-ellipsis-color: #9ca3af;
+  --pgr-shadow:         0 1px 3px rgba(0,0,0,0.40);
+}
+
+/* ─── Blue accent theme (.pgr-blue) ────────────────────────────────────────── */
+.pgr-blue,
+.pgr-blue .pgr-nav {
+  --pgr-active-bg:     #0056b3;
+  --pgr-active-border: #0056b3;
+  --pgr-hover-bg:      #e8f0fe;
+  --pgr-hover-color:   #0056b3;
+}
+
+/* ─── Compact size modifier (.pgr-sm on .pgr-nav) ──────────────────────────── */
+.pgr-nav.pgr-sm {
+  --pgr-font-size:  0.75rem;
+  --pgr-btn-size:   1.75rem;
+  --pgr-gap:        0.2rem;
+}
+
+/* ─── Large size modifier (.pgr-lg on .pgr-nav) ────────────────────────────── */
+.pgr-nav.pgr-lg {
+  --pgr-font-size:  1rem;
+  --pgr-btn-size:   2.75rem;
+  --pgr-gap:        0.375rem;
+}
+
+/* ─── Responsive: collapse first/last on small screens ─────────────────────── */
+@media (max-width: 480px) {
+  .pgr-btn.pgr-first,
+  .pgr-btn.pgr-last {
+    display: none;
+  }
+}
