@@ -34,6 +34,8 @@ jobs:
     name: Run R Scripts
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -71,10 +73,10 @@ jobs:
 
       - name: Run all R scripts
         env:
-          RLANG_DIRS:      ${{ github.event.inputs.dirs }}
-          RLANG_DRY_RUN:   ${{ github.event.inputs.dry_run || '0' }}
+          RLANG_DIRS: ${{ github.event.inputs.dirs }}
+          RLANG_DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
           RLANG_LOG_LEVEL: ${{ github.event.inputs.log_level || 'INFO' }}
-          RLANG_TIMEOUT:   '300'
+          RLANG_TIMEOUT: '300'
         run: Rscript rlang/runner.R
 
       - name: Upload runner results

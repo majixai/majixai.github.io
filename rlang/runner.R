@@ -26,7 +26,7 @@
 
 .runner_file <- tryCatch(
   normalizePath(sys.frame(1)$ofile, mustWork = FALSE),
-  error = function(e) file.path(getwd(), "rlang", "runner.R")
+  error = function(e) normalizePath(file.path(getwd(), "rlang", "runner.R"), mustWork = FALSE)
 )
 .rlang_root <- dirname(.runner_file)
 Sys.setenv(RLANG_ROOT = .rlang_root)

@@ -111,7 +111,7 @@ path_exists <- function(path) file.exists(path) || dir.exists(path)
 #' Left-pad a string to width
 str_pad_left <- function(x, width, pad = " ") {
   x <- as.character(x)
-  formatC(x, width = width, flag = " ")
+  sprintf(paste0("%-", width, "s"), x)
 }
 
 #' Repeat a character n times and return single string
