@@ -1,94 +1,140 @@
-// --- Chat Message Transform Event Handler (Advanced) ---
+// --- Chat Message Transform Event Handler ---
+// Filters, enriches, and transforms incoming chat messages before display.
 
-// --- Configuration (Loaded from $kv) ---
-const naughtyWordPatternsRaw = $kv.get('naughty_word_patterns') || ['\\b(freak|darn|nipple|boobs|tit|fuck|dildo|pussy|little|girl|ass)\\b', '\\b(idiot|moron)\\b'];
-const naughtyWordPatterns = naughtyWordPatternsRaw.map(pattern => new RegExp(pattern, 'gi')); // 'gi' for global and case-insensitive
+// ─── Config (from $kv) ────────────────────────────────────────────────────────
+const naughtyPatternsRaw = $kv.get('naughty_word_patterns') ||
+    ['\\b(freak|darn|nipple|boobs|tit|fuck|dildo|pussy|little|girl|ass)\\b', '\\b(idiot|moron)\\b'];
+const naughtyPatterns = naughtyPatternsRaw.map(p => new RegExp(p, 'gi'));
 
-const vipUsers = $kv.get('vip_users') || []; // Array of usernames who get special treatment
-const repetitionThresholdMs = parseInt($kv.get('repetition_threshold_ms') || '5000'); // Time in milliseconds
-const maxRepetitionCount = parseInt($kv.get('max_repetition_count') || '3');
+const vipUsers               = $kv.get('vip_users')               || [];
+const repetitionThresholdMs  = parseInt($kv.get('repetition_threshold_ms') || '5000');
+const maxRepetitionCount     = parseInt($kv.get('max_repetition_count')    || '3');
 
-// --- User-Specific Tracking (Volatile, resets each event handler execution) ---
-// This is NOT for persistent storage, just for tracking within this transform cycle.
-// CB App environment might not persist this across separate message events if each transform is a new execution scope.
-// For true cross-message state, $kv would be needed, but that's too slow for this type of check.
-// This will only catch repetitions if the same user sends messages handled by the *same instance* of this script.
-// In many FaaS/serverless environments, this means it's only effective for very rapid succession of messages.
-let lastMessagesByUser = {}; // { username: { lastMessage: '...', count: 0, timestamp: Date.now() } }
+// ─── User-Specific Session Tracking (volatile — resets each execution) ────────
+const lastMessagesByUser = {};
 
-// --- Helper Functions ---
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function isVIP(username) {
+function isVipChatUser(username) {
     return vipUsers.includes(username);
 }
 
-function filterMessage(messageBody) {
-    let filteredBody = messageBody;
-    naughtyWordPatterns.forEach(pattern => {
-        filteredBody = filteredBody.replace(pattern, (match) => {
-            // Replace with asterisks, keeping the length (more subtle than '****')
-            return '*'.repeat(match.length);
-            // Or a more context-aware replacement: '[Filtered]'
-        });
-    });
-    return filteredBody;
+function isHighTipper(username) {
+    const lifetime = Number($kv.get(`lifetime_tips_${username}`) || 0);
+    return lifetime >= 500; // Silver tier and above
 }
 
-function handleRepetition(username, currentMessage) {
-    const now = Date.now();
-    // Ensure $user is available before accessing username
-    const userKey = username || 'unknown_user';
-    const userData = lastMessagesByUser.hasOwnProperty(userKey) ? lastMessagesByUser[userKey] : { lastMessage: '', count: 0, timestamp: 0 };
+function getUserChatTier(username) {
+    if (typeof calculateUserTier === 'function') {
+        const lifetime = Number($kv.get(`lifetime_tips_${username}`) || 0);
+        return calculateUserTier(lifetime);
+    }
+    return null;
+}
 
-    if (currentMessage.trim() === userData.lastMessage.trim() && (now - userData.timestamp) < repetitionThresholdMs) {
-        userData.count++;
-        if (userData.count >= maxRepetitionCount) {
-            console.log(`Chat Transform: Repetitive message detected from ${userKey}. Marking as spam.`);
-            return true; // Mark as spam
+function filterMessage(body) {
+    let filtered = body;
+    for (const pattern of naughtyPatterns) {
+        filtered = filtered.replace(pattern, (match) => '*'.repeat(match.length));
+    }
+    return filtered;
+}
+
+function isSpamRepetition(username, currentMessage) {
+    const now  = Date.now();
+    const data = lastMessagesByUser[username] || { lastMessage: '', count: 0, timestamp: 0 };
+
+    if (currentMessage.trim() === data.lastMessage.trim() && (now - data.timestamp) < repetitionThresholdMs) {
+        data.count++;
+        if (data.count >= maxRepetitionCount) {
+            console.log(`[Transform] Spam detected: ${username}`);
+            lastMessagesByUser[username] = data;
+            return true;
         }
     } else {
-        userData.lastMessage = currentMessage;
-        userData.count = 1;
-        userData.timestamp = now;
+        data.lastMessage  = currentMessage;
+        data.count        = 1;
+        data.timestamp    = now;
     }
-    lastMessagesByUser[userKey] = userData;
-    return false; // Not spam (yet)
+    lastMessagesByUser[username] = data;
+    return false;
 }
 
-// --- Main Transformation Logic ---
+/** Amplify lucky keywords with surrounding emojis */
+function amplifyLuckyWords(body) {
+    const luckyKeywords = [
+        { word: /\bjackpot\b/gi, emoji: '💰' },
+        { word: /\bwin\b/gi,     emoji: '🏆' },
+        { word: /\blucky\b/gi,   emoji: '🍀' },
+        { word: /\bspin\b/gi,    emoji: '🎰' },
+        { word: /\bhot\b/gi,     emoji: '🔥' },
+        { word: /\bamazing\b/gi, emoji: '✨' },
+        { word: /\bwow\b/gi,     emoji: '😱' },
+        { word: /\bgoal\b/gi,    emoji: '🎯' },
+    ];
+    let result = body;
+    for (const { word, emoji } of luckyKeywords) {
+        result = result.replace(word, (match) => `${emoji}${match}${emoji}`);
+    }
+    return result;
+}
 
-// Ensure $user and $message are available (standard in CB transform handlers)
-if (typeof $user !== 'undefined' && typeof $message !== 'undefined') {
-    const senderUsername = $user.username;
-    let originalBody = $message.body; // Keep original for logging
-    let transformedBody = originalBody;
+/** Build a VIP prefix badge for the user */
+function buildVipBadge(username) {
+    const tier = getUserChatTier(username);
+    if (tier && tier.name !== 'Bronze') {
+        return `${tier.emoji}[${tier.name}] `;
+    }
+    if (isVipChatUser(username)) {
+        return `✨[VIP] `;
+    }
+    return '';
+}
 
-    // --- Repetition Prevention ---
-    // Note: Effectiveness of lastMessagesByUser depends on execution environment persistence.
-    if (handleRepetition(senderUsername, transformedBody)) {
+// ─── Main Transform ───────────────────────────────────────────────────────────
+
+const senderUsername = $user.username;
+let   messageBody    = $message.body;
+
+// 1. Spam / repetition check (mark as spam, halt processing)
+if (isSpamRepetition(senderUsername, messageBody)) {
+    if (typeof $message.setSpam === 'function') {
         $message.setSpam(true);
-        // Optionally, clear the message body or set a generic spam message if setSpam(true) doesn't hide it
-        // transformedBody = "[Message flagged as spam]";
-    } else { // Only apply other transforms if not marked as spam
-        // --- VIP User Handling ---
-        if (isVIP(senderUsername)) {
-            // Example: Add a VIP badge to their messages
-            transformedBody = `✨ [VIP] ${transformedBody} ✨`;
-        } else {
-            // --- Apply Filtering for Non-VIP Users ---
-            transformedBody = filterMessage(transformedBody);
+    }
+    // Early exit — do not modify the message further
+    console.log(`[Transform] Message from ${senderUsername} marked as spam.`);
+} else {
+    // 2. Apply naughty word filter to non-VIP / non-tipper users
+    if (!isVipChatUser(senderUsername) && !isHighTipper(senderUsername)) {
+        messageBody = filterMessage(messageBody);
+    }
+
+    // 3. Amplify lucky keyword words for everyone (fun feature)
+    messageBody = amplifyLuckyWords(messageBody);
+
+    // 4. Add VIP / tier badge prefix for qualifying users
+    const badge = buildVipBadge(senderUsername);
+    if (badge) {
+        messageBody = badge + messageBody;
+    }
+
+    // 5. Increment chat message counter (for chatterbox achievement)
+    const chatCountKey = `chat_count_${senderUsername}`;
+    const chatCount    = Number($kv.get(chatCountKey) || 0) + 1;
+    $kv.set(chatCountKey, chatCount);
+
+    // Check chatterbox achievement
+    if (typeof checkAchievement === 'function' && typeof getAchievementBadge === 'function') {
+        const ach = checkAchievement('chatterbox', chatCount);
+        if (ach && $room && typeof $room.sendNotice === 'function') {
+            $room.sendNotice(getAchievementBadge(ach, senderUsername));
         }
     }
 
-    // --- Set the Transformed Message Body ---
-    // Only set if it actually changed or if it was marked as spam (to potentially clear it)
-    if (transformedBody !== originalBody || $message.isSpam()) {
-        $message.setBody(transformedBody);
+    // 6. Apply the transformed message
+    if (typeof $message.setBody === 'function') {
+        $message.setBody(messageBody);
     }
 
-    // --- Optional: Log the transformation ---
-    console.log(`Chat Transform: User ${senderUsername} - Spam: ${$message.isSpam()} - Original: "${originalBody}" - Transformed: "${transformedBody}"`);
-
-} else {
-    console.error("Chat Transform: $user or $message object not available. Transformation skipped.");
+    console.log(`[Transform] ${senderUsername}: "${$message.body}" → "${messageBody}"`);
 }

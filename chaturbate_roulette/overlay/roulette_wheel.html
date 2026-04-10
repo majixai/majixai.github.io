@@ -378,12 +378,18 @@
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             initWheel();
+            initEnhancedUI();
             
             // Listen for Chaturbate overlay events
-            // The CB platform will inject the overlay API
             if (typeof CB !== 'undefined' && CB.overlay) {
                 CB.overlay.on('*', handleOverlayEvent);
             }
+            // Also listen via postMessage for platform compatibility
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'overlayMessage') {
+                    handleOverlayEvent(event.data.payload || {});
+                }
+            });
         });
 
         // For testing outside Chaturbate
@@ -392,10 +398,171 @@
             const segmentAngle = 360 / segments.length;
             const targetAngle = (randomIndex * segmentAngle) + (segmentAngle / 2);
             const spinAngle = (5 * 360) + (360 - targetAngle);
-            
             spinWheel(spinAngle, 4000, () => {
                 showResult('TestUser', segments[randomIndex]);
+                // Use jackpot label to detect jackpot segment instead of hardcoded index
+                const isJackpot = (segments[randomIndex].label || '').toUpperCase().includes('JACKPOT');
+                launchConfetti(isJackpot ? 120 : 50);
             });
+        };
+
+        // ─── Enhanced UI ──────────────────────────────────────────────────────
+
+        function initEnhancedUI() {
+            // Inject jackpot ticker if not present
+            if (!document.getElementById('rouletteJackpotTicker')) {
+                const ticker = document.createElement('div');
+                ticker.id = 'rouletteJackpotTicker';
+                ticker.style.cssText = [
+                    'position:fixed', 'top:0', 'left:0', 'right:0',
+                    'background:linear-gradient(90deg,#1a1a2e,#b8860b,#1a1a2e)',
+                    'color:#FFD700', 'font-size:1rem', 'font-weight:bold',
+                    'text-align:center', 'padding:5px 0', 'letter-spacing:2px',
+                    'z-index:500', 'border-bottom:2px solid #FFD700',
+                    'text-transform:uppercase',
+                ].join(';');
+                ticker.textContent = '💰 ROULETTE JACKPOT: Loading... 💰';
+                document.body.appendChild(ticker);
+            }
+
+            // Streak banner
+            if (!document.getElementById('rouletteStreakBanner')) {
+                const banner = document.createElement('div');
+                banner.id = 'rouletteStreakBanner';
+                banner.style.cssText = [
+                    'position:fixed', 'top:40px', 'right:12px',
+                    'background:rgba(0,0,0,0.75)', 'border:2px solid #ff4500',
+                    'border-radius:8px', 'padding:6px 14px',
+                    'font-size:0.85rem', 'font-weight:bold', 'color:#ff6a00',
+                    'display:none', 'z-index:400',
+                ].join(';');
+                document.body.appendChild(banner);
+            }
+
+            // Hot segments panel
+            if (!document.getElementById('hotSegmentsPanel')) {
+                const panel = document.createElement('div');
+                panel.id = 'hotSegmentsPanel';
+                panel.style.cssText = [
+                    'position:fixed', 'bottom:12px', 'left:12px',
+                    'background:rgba(0,0,0,0.7)', 'border:2px solid #ff4500',
+                    'border-radius:8px', 'padding:8px 12px',
+                    'font-size:0.75rem', 'color:#ecf0f1', 'display:none',
+                    'z-index:300', 'min-width:140px',
+                ].join(';');
+                panel.innerHTML = '<div style="font-weight:bold;color:#ff6a00;margin-bottom:4px">🔥 HOT</div><div id="hotList"></div>';
+                document.body.appendChild(panel);
+            }
+
+            // New follower alert
+            if (!document.getElementById('rouletteFollowerAlert')) {
+                const alert = document.createElement('div');
+                alert.id = 'rouletteFollowerAlert';
+                alert.style.cssText = [
+                    'position:fixed', 'bottom:80px', 'left:50%',
+                    'transform:translateX(-50%) scale(0)',
+                    'background:linear-gradient(135deg,#e91e63,#9c27b0)',
+                    'color:#fff', 'border-radius:30px', 'padding:10px 22px',
+                    'font-size:1rem', 'font-weight:bold', 'text-align:center',
+                    'z-index:600', 'transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+                    'white-space:nowrap',
+                ].join(';');
+                document.body.appendChild(alert);
+            }
+        }
+
+        function updateJackpotTicker(amount) {
+            const el = document.getElementById('rouletteJackpotTicker');
+            if (el) el.textContent = `💰 ROULETTE JACKPOT: ${Number(amount).toLocaleString()} TOKENS — TIP TO SPIN & WIN! 💰`;
+        }
+
+        function showStreakBanner(username, streak) {
+            const el = document.getElementById('rouletteStreakBanner');
+            if (!el || !streak || streak < 2) return;
+            const emoji = streak >= 10 ? '👑' : streak >= 5 ? '💥' : streak >= 3 ? '⚡' : '🔥';
+            el.textContent = `${emoji} ${username} — ${streak}-Win Streak!`;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 8000);
+        }
+
+        function updateHotSegments(hotList) {
+            const panel  = document.getElementById('hotSegmentsPanel');
+            const listEl = document.getElementById('hotList');
+            if (!panel || !listEl || !hotList || hotList.length === 0) { panel && (panel.style.display = 'none'); return; }
+            panel.style.display = 'block';
+            listEl.innerHTML = '';
+            hotList.slice(0, 3).forEach((s, i) => {
+                const row = document.createElement('div');
+                const bold = document.createElement('b');
+                bold.textContent = s.label;
+                row.textContent  = `${i + 1}. `;
+                row.appendChild(bold);
+                row.appendChild(document.createTextNode(` (${s.count}\u00d7)`));
+                listEl.appendChild(row);
+            });
+        }
+
+        function showFollowerAlert(username) {
+            const el = document.getElementById('rouletteFollowerAlert');
+            if (!el) return;
+            el.textContent = `❤️ ${username} just followed! Welcome!`;
+            el.style.transform = 'translateX(-50%) scale(1)';
+            setTimeout(() => { el.style.transform = 'translateX(-50%) scale(0)'; }, 4500);
+        }
+
+        // ─── Confetti ────────────────────────────────────────────────────────
+        function launchConfetti(count = 60) {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#FF69B4', '#00FF7F', '#FF4500'];
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const p = document.createElement('div');
+                    p.style.cssText = [
+                        'position:fixed', `left:${Math.random() * 100}vw`, 'top:-10px',
+                        `background:${colors[Math.floor(Math.random() * colors.length)]}`,
+                        `width:${6 + Math.random() * 8}px`, `height:${6 + Math.random() * 8}px`,
+                        'border-radius:2px', 'pointer-events:none', 'z-index:999',
+                        `animation:confettiFall ${2 + Math.random() * 2}s linear forwards`,
+                    ].join(';');
+                    document.body.appendChild(p);
+                    setTimeout(() => p.remove(), 5000);
+                }, i * 30);
+            }
+        }
+
+        // Inject confetti keyframes if not present
+        if (!document.getElementById('confettiStyle')) {
+            const style = document.createElement('style');
+            style.id = 'confettiStyle';
+            style.textContent = `@keyframes confettiFall {
+                0%   { transform:translateY(-10px) rotate(0deg); opacity:1; }
+                100% { transform:translateY(110vh) rotate(720deg); opacity:0; }
+            }`;
+            document.head.appendChild(style);
+        }
+
+        // ─── Extended overlay event handling ─────────────────────────────────
+        const _origHandleOverlayEvent = handleOverlayEvent;
+        handleOverlayEvent = function(data) {
+            _origHandleOverlayEvent(data);
+
+            if (!data) return;
+
+            if (data.eventName === 'jackpotUpdate' && typeof data.jackpot === 'number') {
+                updateJackpotTicker(data.jackpot);
+            }
+            if (data.eventName === 'streakUpdate') {
+                showStreakBanner(data.username, data.streak);
+            }
+            if (data.eventName === 'hotSegments') {
+                updateHotSegments(data.segments);
+            }
+            if (data.eventName === 'newFollower') {
+                showFollowerAlert(data.username || 'New Fan');
+            }
+            if (data.eventName === 'jackpotWon') {
+                updateJackpotTicker(data.newPool || 0);
+                launchConfetti(150);
+            }
         };
     </script>
 </body>

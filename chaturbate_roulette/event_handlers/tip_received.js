@@ -217,3 +217,99 @@ console.log("--- Roulette Tip Received Event Handler ---");
         }
     }
 })();
+
+// ─── Enhanced tip processing appended below ───────────────────────────────────
+
+(async () => {
+    try {
+        if (typeof $tip === 'undefined') return;
+
+        const username  = $tip.from_user ? $tip.from_user.username : ($tip.from_username || 'Anonymous');
+        const tipAmount = Number($tip.tokens) || 0;
+
+        const cfgRaw    = $kv.get('roulette_config') || '{}';
+        const config    = JSON.parse(cfgRaw);
+
+        // ── Jackpot Contribution ──────────────────────────────────────────────
+        if (typeof addToRouletteJackpot === 'function') {
+            const newJackpot = addToRouletteJackpot(tipAmount, $kv, config);
+            console.log(`[Roulette Tip+] Jackpot now: ${newJackpot}`);
+        }
+
+        // ── Combo Multiplier ──────────────────────────────────────────────────
+        if (typeof calculateComboMultiplier === 'function') {
+            const { multiplier, comboCount } = calculateComboMultiplier(username, tipAmount, $kv, 60000);
+            if (comboCount >= 2 && multiplier > 1.0 && $room && typeof $room.sendNotice === 'function') {
+                $room.sendNotice(
+                    `⚡ ${username} is on a TIP COMBO! ×${multiplier} bonus active (${comboCount} tips in a row)! 🔥`,
+                    { color: '#FF9800' }
+                );
+            }
+        }
+
+        // ── VIP Tier Check ────────────────────────────────────────────────────
+        if (typeof getRouletteVipTier === 'function') {
+            const lifetimeTokens    = Number($kv.get(`lifetime_tips_${username}`) || 0) + tipAmount;
+            $kv.set(`lifetime_tips_${username}`, lifetimeTokens);
+
+            const tier     = getRouletteVipTier(lifetimeTokens);
+            const prevLife = lifetimeTokens - tipAmount;
+            const prevTier = getRouletteVipTier(prevLife);
+            if (tier.name !== prevTier.name && $room && typeof $room.sendNotice === 'function') {
+                $room.sendNotice(
+                    `${tier.emoji} ${username} reached ${tier.name} VIP tier! ` +
+                    `${tier.spinsBonus > 0 ? `You now earn +${tier.spinsBonus} bonus spin(s) per tip! ` : ''}` +
+                    `And a ×${tier.multiplier} token multiplier! Congrats! 🎉`,
+                    { color: '#FFD700' }
+                );
+            }
+        }
+
+        // ── Daily Challenge Progress ──────────────────────────────────────────
+        if (typeof updateDailyChallenge === 'function') {
+            const cfgData = getTrackingData ? getTrackingData($kv) : null;
+            const spinCount = cfgData ? cfgData.totalSpins : 0;
+
+            // Update spin_count challenge
+            const spinResult = updateDailyChallenge('spin_count', spinCount, $kv);
+            // Update total_tips challenge
+            const totalTipped = Number($kv.get('roulette_total_tips_today') || 0) + tipAmount;
+            $kv.set('roulette_total_tips_today', totalTipped);
+            const tipsResult = updateDailyChallenge('total_tips', totalTipped, $kv);
+
+            // Announce completion
+            if ((spinResult.justCompleted || tipsResult.justCompleted) && $room && typeof $room.sendNotice === 'function') {
+                const challenge = typeof getDailyChallenge === 'function' ? getDailyChallenge($kv, []) : null;
+                if (challenge) {
+                    $room.sendNotice(
+                        `🎊 DAILY CHALLENGE COMPLETED! 🎊\n` +
+                        `"${challenge.description}" — DONE!\n` +
+                        `${challenge.reward} bonus tokens awarded! Amazing job! 🏆`
+                    );
+                }
+            }
+        }
+
+        // ── Jackpot Segment Handler ───────────────────────────────────────────
+        // Check if the spin outcome (already handled above) was a jackpot segment
+        // The base handler sends jackpot announcements, but we add extra flair here
+        // by emitting to overlay
+        const jackpot = typeof getRouletteJackpot === 'function'
+            ? getRouletteJackpot($kv, config)
+            : Number($kv.get('roulette_jackpot_pool') || 0);
+
+        if ($overlay) {
+            try {
+                $overlay.emit('Roulette', {
+                    eventName:   'jackpotUpdate',
+                    jackpot:     jackpot,
+                    username:    username,
+                    tipAmount:   tipAmount,
+                });
+            } catch (e) { console.warn("[Roulette Tip+] Overlay emit failed:", e.message); }
+        }
+
+    } catch (error) {
+        console.error("[Roulette Tip+] Error:", error.message);
+    }
+})();
