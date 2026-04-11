@@ -161,6 +161,7 @@ Every `compile()` and `run()` call resolves with a `Result` object:
 | `elapsed` | `number` | Time taken in milliseconds |
 | `output` | `*` | Arbitrary artefact: JS return value, parsed JSON object, blob URL for HTML, etc. |
 | `error` | `string\|null` | Human-readable error summary, or `null` on success |
+| `timestamp` | `number` | `Date.now()` captured when the result was created |
 
 ---
 

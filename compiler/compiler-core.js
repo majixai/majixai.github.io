@@ -162,14 +162,15 @@
 
     function _makeResult(lang, overrides) {
         return _merge({
-            language: lang,
-            status:   'ok',
-            stdout:   '',
-            stderr:   '',
-            exitCode: 0,
-            elapsed:  0,
-            output:   null,
-            error:    null,
+            language:  lang,
+            status:    'ok',
+            stdout:    '',
+            stderr:    '',
+            exitCode:  0,
+            elapsed:   0,
+            output:    null,
+            error:     null,
+            timestamp: Date.now(),
         }, overrides || {});
     }
 

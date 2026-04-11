@@ -474,12 +474,41 @@ MajixCompiler.clearHistory();</pre>
       var stClass = r.status === 'ok' ? 'st-ok' : (r.status === 'timeout' ? 'st-to' : 'st-err');
       var icon    = r.status === 'ok' ? '✔' : (r.status === 'timeout' ? '⏱' : '✘');
 
-      row.innerHTML =
-        '<span class="lang">' + r.language + '</span> ' +
-        '<span class="' + stClass + '">' + icon + ' ' + r.status + '</span> ' +
-        '<span style="color:var(--text)">' + (r.elapsed || 0) + 'ms</span> ' +
-        (r.error ? '<span style="color:var(--red); font-size:.75rem">' + r.error + '</span> ' : '') +
-        '<span class="ts">' + new Date().toLocaleTimeString() + '</span>';
+      var langSpan = document.createElement('span');
+      langSpan.className   = 'lang';
+      langSpan.textContent = r.language;
+
+      var stSpan = document.createElement('span');
+      stSpan.className   = stClass;
+      stSpan.textContent = icon + ' ' + r.status;
+
+      var elSpan = document.createElement('span');
+      elSpan.style.color  = 'var(--text)';
+      elSpan.textContent  = (r.elapsed || 0) + 'ms';
+
+      var tsSpan = document.createElement('span');
+      tsSpan.className   = 'ts';
+      tsSpan.textContent = r.timestamp
+        ? new Date(r.timestamp).toLocaleTimeString()
+        : new Date().toLocaleTimeString();
+
+      row.appendChild(langSpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(stSpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(elSpan);
+      row.appendChild(document.createTextNode(' '));
+
+      if (r.error) {
+        var errSpan = document.createElement('span');
+        errSpan.style.color    = 'var(--red)';
+        errSpan.style.fontSize = '.75rem';
+        errSpan.textContent    = r.error;
+        row.appendChild(errSpan);
+        row.appendChild(document.createTextNode(' '));
+      }
+
+      row.appendChild(tsSpan);
       log.appendChild(row);
     });
   }
