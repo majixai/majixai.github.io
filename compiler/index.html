@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixCompiler — Multi-Language Compiler Demo</title>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --card:    #161b22;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --yellow:  #d29922;
+      --red:     #f85149;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --border:  #30363d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+    header { background: #0f3460; padding: 1.5rem 2rem; border-bottom: 2px solid var(--accent); }
+    header h1 { color: var(--accent); font-size: 1.8rem; }
+    header p  { color: var(--muted); margin-top: .25rem; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .card h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .3rem; }
+    input, select, textarea {
+      width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: .4rem .7rem; font-size: .9rem; font-family: inherit;
+    }
+    textarea { resize: vertical; font-family: 'Courier New', 'Menlo', monospace; font-size: .85rem; }
+    .row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; align-items: center; }
+    .btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn:hover { opacity: .85; }
+    .btn.green  { background: var(--green);  color: #000; }
+    .btn.yellow { background: var(--yellow); color: #000; }
+    .btn.red    { background: var(--red);    color: #fff; }
+    .log-wrap { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: .75rem; max-height: 300px; overflow-y: auto; font-size: .8rem; font-family: 'Courier New', monospace; }
+    .log-entry { padding: .2rem 0; border-bottom: 1px solid #1c2128; color: var(--muted); }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .lang  { color: var(--accent);  font-weight: bold; }
+    .log-entry .st-ok   { color: var(--green); }
+    .log-entry .st-err  { color: var(--red); }
+    .log-entry .st-to   { color: var(--yellow); }
+    .log-entry .ts    { color: #484f58; font-size: .72rem; }
+    .badge { display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 10px; background: #21262d; color: var(--muted); margin-left: .3rem; }
+    .status { padding: .5rem .75rem; border-radius: 6px; font-size: .85rem; margin-top: .75rem; background: #161b22; border: 1px solid var(--border); }
+    code { background: #21262d; color: var(--green); padding: .15rem .4rem; border-radius: 4px; font-size: .82rem; }
+    pre  { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .82rem; color: var(--text); margin-top: .5rem; }
+    .full-width { grid-column: 1 / -1; }
+    .output-block { margin-top: .5rem; }
+    .output-block .label { font-size: .75rem; color: var(--muted); margin-bottom: .2rem; }
+    .output-ok  { border-color: var(--green) !important; }
+    .output-err { border-color: var(--red)   !important; }
+    .output-to  { border-color: var(--yellow)!important; }
+    iframe#html-preview { width: 100%; height: 220px; border: 1px solid var(--border); border-radius: 6px; background: #fff; margin-top: .5rem; }
+    .lang-pill { display: inline-block; font-size: .72rem; padding: .15rem .5rem; border-radius: 10px; background: #21262d; color: var(--accent); border: 1px solid var(--border); margin: .15rem; cursor: default; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚙ MajixCompiler</h1>
+  <p>Shared Multi-Language Compiler Core — live demo &amp; documentation</p>
+</header>
+
+<div class="layout">
+
+  <!-- Code Editor -->
+  <div class="card full-width">
+    <h2>Code Editor</h2>
+    <div class="row" style="margin-top:0; margin-bottom:.75rem">
+      <div style="flex:1; min-width:160px">
+        <label>Language</label>
+        <select id="lang-select" onchange="onLangChange()"></select>
+      </div>
+      <div style="flex:2">
+        <label>Preset snippets</label>
+        <select id="snippet-select" onchange="loadSnippet()"></select>
+      </div>
+    </div>
+    <textarea id="code-editor" style="min-height:220px" spellcheck="false"></textarea>
+    <div class="row">
+      <button class="btn green" onclick="doRun()">▶ Run</button>
+      <button class="btn" onclick="doCompile()">⚙ Compile / Check</button>
+      <button class="btn red" onclick="clearOutput()">✕ Clear Output</button>
+      <span id="run-elapsed" style="font-size:.8rem; color:var(--muted); margin-left:.5rem"></span>
+    </div>
+    <div id="run-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Output -->
+  <div class="card">
+    <h2>Output</h2>
+    <div class="output-block">
+      <div class="label">stdout</div>
+      <pre id="out-stdout" style="min-height:80px; color:var(--green)">—</pre>
+    </div>
+    <div class="output-block">
+      <div class="label">stderr / diagnostics</div>
+      <pre id="out-stderr" style="min-height:60px; color:var(--red)">—</pre>
+    </div>
+    <div id="html-preview-wrap" style="display:none">
+      <div class="label" style="margin-top:.5rem">HTML Preview</div>
+      <iframe id="html-preview" sandbox="allow-scripts" title="HTML preview"></iframe>
+    </div>
+  </div>
+
+  <!-- Result details -->
+  <div class="card">
+    <h2>Last Result</h2>
+    <pre id="result-detail" style="min-height:160px; color:var(--muted)">No result yet.</pre>
+  </div>
+
+  <!-- History -->
+  <div class="card">
+    <h2>History <span id="history-count" class="badge">0</span></h2>
+    <div class="log-wrap" id="history-log">
+      <div class="log-entry" style="color:#484f58">No runs yet.</div>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="refreshHistory()">Refresh</button>
+      <button class="btn red" onclick="doClearHistory()">Clear History</button>
+    </div>
+  </div>
+
+  <!-- Supported languages -->
+  <div class="card">
+    <h2>Supported Languages</h2>
+    <div id="lang-pills" style="margin-top:.25rem"></div>
+    <p style="font-size:.8rem; color:var(--muted); margin-top:.75rem">
+      <strong style="color:var(--green)">Browser-native:</strong> javascript, html, json<br>
+      <strong style="color:var(--accent)">Remote (HTTP adapter):</strong> python, r, java, typescript, sql, bash, go, rust, c, cpp, ruby, php, kotlin, swift, perl, lua, scala …
+    </p>
+  </div>
+
+  <!-- Register custom adapter -->
+  <div class="card">
+    <h2>Register Custom Adapter</h2>
+    <div>
+      <label>Language ID</label>
+      <input id="custom-lang" type="text" placeholder="e.g. brainfuck" value="demo">
+    </div>
+    <div style="margin-top:.75rem">
+      <label>run(code, options) body — must return a Result-like object or Promise</label>
+      <textarea id="custom-body" style="min-height:120px">// example: reverse the source code
+return Promise.resolve({
+  language: 'demo',
+  status:   'ok',
+  stdout:   code.split('').reverse().join(''),
+  stderr:   '',
+  exitCode: 0,
+  elapsed:  1,
+  output:   null,
+  error:    null,
+});</textarea>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doRegisterCustom()">Register Adapter</button>
+    </div>
+    <div id="custom-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Quick reference -->
+  <div class="card full-width">
+    <h2>Quick Reference</h2>
+    <pre>// 1. Configure (before script load — all fields are optional)
+window.COMPILER_CONFIG = {
+  logToConsole:    true,
+  apiEndpoint:     '/compiler/api',   // for remote languages
+  defaultLanguage: 'javascript',
+  timeout:         10000,
+};
+
+// 2. Initialize
+MajixCompiler.init();
+
+// 3. Run code
+MajixCompiler.run('javascript', 'console.log("hello")')
+  .then(function (result) {
+    console.log(result.stdout);   // "hello"
+    console.log(result.elapsed);  // ms
+  });
+
+// 4. Compile / syntax-check
+MajixCompiler.compile('javascript', 'const x = ;')
+  .then(function (result) {
+    if (result.status === 'error') console.error(result.stderr);
+  });
+
+// 5. Remote language (requires API endpoint)
+MajixCompiler.run('python', 'print("hello from Python")')
+  .then(function (r) { console.log(r.stdout); });
+
+// 6. Register a custom adapter
+MajixCompiler.register('brainfuck', {
+  canRun: true,
+  run: function (code, options) {
+    return Promise.resolve({ language:'brainfuck', status:'ok',
+      stdout: '(brainfuck output)', stderr:'', exitCode:0,
+      elapsed:0, output:null, error:null });
+  }
+}, ['bf']);
+
+// 7. Inspect
+MajixCompiler.getSupportedLanguages();   // ['javascript', 'html', 'json', 'python', ...]
+MajixCompiler.isSupported('rust');       // true
+MajixCompiler.history(5);               // last 5 results (most recent first)
+MajixCompiler.clearHistory();</pre>
+  </div>
+
+</div>
+
+<script>
+  window.COMPILER_CONFIG = {
+    logToConsole:    true,
+    logLevel:        'debug',
+    apiEndpoint:     '/compiler/api',
+    defaultLanguage: 'javascript',
+    timeout:         10000,
+  };
+</script>
+<script src="/compiler/compiler-core.js"></script>
+<script>
+  // ── Snippets ──────────────────────────────────────────────────────────────
+  var SNIPPETS = {
+    javascript: [
+      {
+        label: 'Hello World',
+        code:  'console.log("Hello, World!");\nconsole.log("From MajixCompiler ⚙");',
+      },
+      {
+        label: 'Fibonacci',
+        code:  'function fib(n) {\n  if (n <= 1) return n;\n  return fib(n-1) + fib(n-2);\n}\nfor (var i = 0; i <= 10; i++) {\n  console.log("fib(" + i + ") =", fib(i));\n}',
+      },
+      {
+        label: 'Syntax Error',
+        code:  'const x = ;  // intentional syntax error',
+      },
+    ],
+    html: [
+      {
+        label: 'Basic Page',
+        code:  '<!DOCTYPE html>\n<html>\n<head><title>Demo</title>\n<style>body{font-family:sans-serif;background:#1a1a2e;color:#e0e0e0;padding:2rem}</style>\n</head>\n<body>\n<h1 style="color:#58a6ff">Hello from MajixCompiler ⚙</h1>\n<p>This is an HTML preview rendered in a sandboxed iframe.</p>\n</body>\n</html>',
+      },
+      {
+        label: 'Button Counter',
+        code:  '<!DOCTYPE html>\n<html>\n<body style="font-family:sans-serif;padding:2rem;background:#0d1117;color:#e6edf3">\n<h2>Counter</h2>\n<button onclick="c.textContent=+c.textContent+1" style="padding:.5rem 1.5rem;font-size:1.2rem">+1</button>\n<span id="c" style="margin-left:1rem;font-size:1.5rem">0</span>\n</body>\n</html>',
+      },
+    ],
+    json: [
+      {
+        label: 'Valid JSON',
+        code:  '{\n  "name": "MajixCompiler",\n  "version": "1.0.0",\n  "languages": ["javascript","python","r","java","go","rust"],\n  "browserNative": true\n}',
+      },
+      {
+        label: 'Invalid JSON',
+        code:  '{ "key": "value", trailing: true, }',
+      },
+    ],
+    python: [
+      {
+        label: 'Hello World',
+        code:  'print("Hello from Python!")\nfor i in range(5):\n    print(f"  {i}: {i**2}")',
+      },
+    ],
+    r: [
+      {
+        label: 'Hello World',
+        code:  'cat("Hello from R!\\n")\nprint(summary(c(1,2,3,4,5)))',
+      },
+    ],
+    java: [
+      {
+        label: 'Hello World',
+        code:  'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java!");\n    }\n}',
+      },
+    ],
+    typescript: [
+      {
+        label: 'Hello World',
+        code:  'const greet = (name: string): string => `Hello, ${name}!`;\nconsole.log(greet("TypeScript"));',
+      },
+    ],
+    go: [
+      {
+        label: 'Hello World',
+        code:  'package main\nimport "fmt"\nfunc main() {\n    fmt.Println("Hello from Go!")\n}',
+      },
+    ],
+    rust: [
+      {
+        label: 'Hello World',
+        code:  'fn main() {\n    println!("Hello from Rust!");\n}',
+      },
+    ],
+    c: [
+      {
+        label: 'Hello World',
+        code:  '#include <stdio.h>\nint main() {\n    printf("Hello from C!\\n");\n    return 0;\n}',
+      },
+    ],
+    cpp: [
+      {
+        label: 'Hello World',
+        code:  '#include <iostream>\nint main() {\n    std::cout << "Hello from C++!" << std::endl;\n    return 0;\n}',
+      },
+    ],
+    sql: [
+      {
+        label: 'SELECT',
+        code:  'SELECT id, name, value\nFROM my_table\nWHERE value > 100\nORDER BY name;',
+      },
+    ],
+    bash: [
+      {
+        label: 'Hello World',
+        code:  'echo "Hello from Bash!"\nfor i in 1 2 3; do\n  echo "  line $i"\ndone',
+      },
+    ],
+  };
+
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  function showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    el.style.display = 'block';
+    el.style.color   = ok ? 'var(--green)' : 'var(--red)';
+    el.textContent   = msg;
+    setTimeout(function () { el.style.display = 'none'; }, 3500);
+  }
+
+  function applyOutputClass(el, status) {
+    el.classList.remove('output-ok', 'output-err', 'output-to');
+    if (status === 'ok')      el.classList.add('output-ok');
+    else if (status === 'error')   el.classList.add('output-err');
+    else if (status === 'timeout') el.classList.add('output-to');
+  }
+
+  // ── Language / snippet selectors ─────────────────────────────────────────
+  function populateLangSelect() {
+    var sel = document.getElementById('lang-select');
+    sel.innerHTML = '';
+    var langs = MajixCompiler.getSupportedLanguages().sort();
+    langs.forEach(function (l) {
+      var opt = document.createElement('option');
+      opt.value = l;
+      opt.textContent = l;
+      sel.appendChild(opt);
+    });
+    sel.value = 'javascript';
+  }
+
+  function populateLangPills() {
+    var container = document.getElementById('lang-pills');
+    container.innerHTML = '';
+    MajixCompiler.getSupportedLanguages().sort().forEach(function (l) {
+      var pill = document.createElement('span');
+      pill.className   = 'lang-pill';
+      pill.textContent = l;
+      pill.title       = 'Click to select';
+      pill.onclick     = function () {
+        document.getElementById('lang-select').value = l;
+        onLangChange();
+      };
+      container.appendChild(pill);
+    });
+  }
+
+  function onLangChange() {
+    var lang    = document.getElementById('lang-select').value;
+    var snipSel = document.getElementById('snippet-select');
+    snipSel.innerHTML = '';
+    var list = SNIPPETS[lang] || [];
+    if (!list.length) {
+      var opt = document.createElement('option');
+      opt.textContent = '(no presets for ' + lang + ')';
+      snipSel.appendChild(opt);
+      return;
+    }
+    list.forEach(function (s, i) {
+      var opt = document.createElement('option');
+      opt.value       = i;
+      opt.textContent = s.label;
+      snipSel.appendChild(opt);
+    });
+    loadSnippet();
+  }
+
+  function loadSnippet() {
+    var lang = document.getElementById('lang-select').value;
+    var idx  = parseInt(document.getElementById('snippet-select').value, 10);
+    var list = SNIPPETS[lang] || [];
+    if (list[idx]) {
+      document.getElementById('code-editor').value = list[idx].code;
+    }
+  }
+
+  // ── Run / Compile ─────────────────────────────────────────────────────────
+  function doRun() {
+    var lang = document.getElementById('lang-select').value;
+    var code = document.getElementById('code-editor').value;
+    document.getElementById('run-elapsed').textContent = 'Running…';
+    MajixCompiler.run(lang, code).then(displayResult);
+  }
+
+  function doCompile() {
+    var lang = document.getElementById('lang-select').value;
+    var code = document.getElementById('code-editor').value;
+    document.getElementById('run-elapsed').textContent = 'Compiling…';
+    MajixCompiler.compile(lang, code).then(displayResult);
+  }
+
+  function displayResult(result) {
+    // Status bar
+    var ok = result.status === 'ok';
+    showStatus('run-status',
+      (ok ? '✔ ' : '✘ ') + result.language + ' — ' + result.status +
+      (result.error ? ': ' + result.error : ''),
+      ok
+    );
+    document.getElementById('run-elapsed').textContent = result.elapsed + 'ms';
+
+    // stdout / stderr
+    var stdoutEl = document.getElementById('out-stdout');
+    var stderrEl = document.getElementById('out-stderr');
+    stdoutEl.textContent = result.stdout || '(no output)';
+    stderrEl.textContent = result.stderr || '—';
+    applyOutputClass(stdoutEl, result.status);
+    applyOutputClass(stderrEl, result.status);
+
+    // HTML preview
+    var previewWrap = document.getElementById('html-preview-wrap');
+    if (result.language === 'html' && result.status === 'ok' && result.output) {
+      previewWrap.style.display = 'block';
+      document.getElementById('html-preview').src = result.output;
+    } else {
+      previewWrap.style.display = 'none';
+    }
+
+    // Full result JSON
+    var detail = _merge({}, result);
+    if (detail.output && typeof detail.output === 'string' && detail.output.startsWith('blob:')) {
+      detail.output = '(blob URL)';
+    }
+    document.getElementById('result-detail').textContent = JSON.stringify(detail, null, 2);
+
+    refreshHistory();
+  }
+
+  function clearOutput() {
+    document.getElementById('out-stdout').textContent = '—';
+    document.getElementById('out-stderr').textContent = '—';
+    document.getElementById('result-detail').textContent = 'Cleared.';
+    document.getElementById('run-elapsed').textContent = '';
+    document.getElementById('html-preview-wrap').style.display = 'none';
+  }
+
+  // ── History ───────────────────────────────────────────────────────────────
+  function refreshHistory() {
+    var hist = MajixCompiler.history();
+    var log  = document.getElementById('history-log');
+    document.getElementById('history-count').textContent = hist.length;
+    if (!hist.length) {
+      log.innerHTML = '<div class="log-entry" style="color:#484f58">No runs yet.</div>';
+      return;
+    }
+    log.innerHTML = '';
+    hist.slice(0, 50).forEach(function (r) {
+      var row = document.createElement('div');
+      row.className = 'log-entry';
+
+      var stClass = r.status === 'ok' ? 'st-ok' : (r.status === 'timeout' ? 'st-to' : 'st-err');
+      var icon    = r.status === 'ok' ? '✔' : (r.status === 'timeout' ? '⏱' : '✘');
+
+      row.innerHTML =
+        '<span class="lang">' + r.language + '</span> ' +
+        '<span class="' + stClass + '">' + icon + ' ' + r.status + '</span> ' +
+        '<span style="color:var(--text)">' + (r.elapsed || 0) + 'ms</span> ' +
+        (r.error ? '<span style="color:var(--red); font-size:.75rem">' + r.error + '</span> ' : '') +
+        '<span class="ts">' + new Date().toLocaleTimeString() + '</span>';
+      log.appendChild(row);
+    });
+  }
+
+  function doClearHistory() {
+    MajixCompiler.clearHistory();
+    refreshHistory();
+  }
+
+  // ── Custom adapter registration ───────────────────────────────────────────
+  function doRegisterCustom() {
+    var lang = document.getElementById('custom-lang').value.trim();
+    var body = document.getElementById('custom-body').value.trim();
+    if (!lang || !body) {
+      showStatus('custom-status', 'Language ID and adapter body are required', false);
+      return;
+    }
+    try {
+      var runFn = new Function('code', 'options', body);
+      MajixCompiler.register(lang, {
+        canRun: true,
+        run: function (code, options) { return runFn(code, options); },
+      });
+      populateLangSelect();
+      populateLangPills();
+      document.getElementById('lang-select').value = lang;
+      onLangChange();
+      showStatus('custom-status', 'Adapter registered for: ' + lang, true);
+    } catch (e) {
+      showStatus('custom-status', 'JS error: ' + e.message, false);
+    }
+  }
+
+  // ── Shallow merge utility (local copy for the UI) ─────────────────────────
+  function _merge(defaults, overrides) {
+    var out = {};
+    for (var k in defaults)  { if (Object.prototype.hasOwnProperty.call(defaults,  k)) out[k] = defaults[k];  }
+    for (var ov in overrides){ if (Object.prototype.hasOwnProperty.call(overrides, ov)) out[ov] = overrides[ov]; }
+    return out;
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function () {
+    MajixCompiler.init();
+    populateLangSelect();
+    populateLangPills();
+    onLangChange();
+  });
+</script>
+</body>
+</html>
