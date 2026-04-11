@@ -3,7 +3,7 @@
  * Processes market signal vectors and predicts bullish probability scores.
  */
 
-import { Tensor, AdamOptimizer } from './tensor.js';
+import { Tensor, AdamOptimizer } from '/tensor/neural/tensor.js';
 
 export class DenseLayer {
   constructor(inputSize, outputSize, activation = 'relu') {

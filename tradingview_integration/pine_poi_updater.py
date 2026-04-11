@@ -23,8 +23,10 @@ import csv
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Lock
 from typing import Optional
 
 # ── Optional dependency: requests (with urllib fallback) ──────────────────────
@@ -619,26 +621,41 @@ def main() -> None:
     price_cache  = _load_price_cache()
     quotes_db    = _load_quotes_db()
     quotes: list[dict] = []
+    cache_lock   = Lock()
 
     yf_status = "available" if _YFINANCE_AVAILABLE else "NOT INSTALLED (using yahoo_chart fallback)"
     print(f"[pine_poi_updater] yfinance: {yf_status}")
     print(f"[pine_poi_updater] Fetching {len(TICKERS)} tickers …")
-    for idx, (ticker, exchange) in enumerate(TICKERS):
-        print(f"  [{idx + 1:2d}/{len(TICKERS)}] {ticker}:{exchange} … ", end="", flush=True)
+
+    # Fetch all tickers concurrently with a semaphore-style worker limit to
+    # respect rate limits while still parallelising I/O.
+    max_workers = min(8, len(TICKERS))
+    ticker_order = {(t, e): i for i, (t, e) in enumerate(TICKERS)}
+    results: dict[tuple, dict] = {}
+
+    def _fetch_one(ticker, exchange):
         q = fetch_quote(ticker, exchange, price_cache, quotes_db)
-        quotes.append(q)
-        if q["error"] and q["price"] is None:
-            print(f"ERROR — {q['error']}")
-        else:
-            rsi_s = f"  rsi~={q['rsi_proxy']}" if q["rsi_proxy"] is not None else ""
-            mom_s = f"  mom5={q['momentum_5b']:+.2f}%" if q["momentum_5b"] is not None else ""
-            print(
-                f"price={q['price']}  chg={q['change']}  "
-                f"chg%={q['change_pct']}  src={q['source']}{rsi_s}{mom_s}"
-            )
-        # Rate limiting
-        if idx < len(TICKERS) - 1:
-            time.sleep(REQUEST_DELAY_S)
+        with cache_lock:
+            if q["error"] and q["price"] is None:
+                print(f"  {ticker}:{exchange} ERROR — {q['error']}", flush=True)
+            else:
+                rsi_s = f"  rsi~={q['rsi_proxy']}" if q["rsi_proxy"] is not None else ""
+                mom_s = f"  mom5={q['momentum_5b']:+.2f}%" if q["momentum_5b"] is not None else ""
+                print(
+                    f"  {ticker}:{exchange}  price={q['price']}  chg={q['change']}  "
+                    f"chg%={q['change_pct']}  src={q['source']}{rsi_s}{mom_s}",
+                    flush=True,
+                )
+        return (ticker, exchange), q
+
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {pool.submit(_fetch_one, t, e): (t, e) for t, e in TICKERS}
+        for future in as_completed(futures):
+            key, q = future.result()
+            results[key] = q
+
+    # Restore original ticker order for deterministic output
+    quotes = [results[key] for key in sorted(results, key=lambda k: ticker_order[k])]
 
     _save_price_cache(price_cache)
     _save_quotes_db(quotes_db)

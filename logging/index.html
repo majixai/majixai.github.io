@@ -3,670 +3,365 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MajixLogger — Shared Logging Library</title>
+  <title>MajixLogger — Logging Core Demo</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0d1117;
-      color: #c9d1d9;
-      line-height: 1.6;
+    :root {
+      --bg:     #0d1117;
+      --card:   #161b22;
+      --accent: #58a6ff;
+      --green:  #3fb950;
+      --yellow: #d29922;
+      --red:    #f85149;
+      --text:   #e6edf3;
+      --muted:  #8b949e;
+      --border: #30363d;
+      --debug:  #9E9E9E;
+      --info:   #29B6F6;
+      --warn:   #FFA726;
+      --error:  #EF5350;
     }
-
-    header {
-      background: linear-gradient(135deg, #161b22 0%, #21262d 100%);
-      border-bottom: 1px solid #30363d;
-      padding: 24px 32px;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+    header { background: #0f3460; padding: 1.5rem 2rem; border-bottom: 2px solid var(--accent); }
+    header h1 { color: var(--accent); font-size: 1.8rem; }
+    header p  { color: var(--muted); margin-top: .25rem; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .card h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .3rem; }
+    input, select, textarea {
+      width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: .4rem .7rem; font-size: .9rem; font-family: inherit;
     }
-    header h1 { font-size: 1.6rem; color: #58a6ff; }
-    header p  { color: #8b949e; margin-top: 4px; font-size: 0.95rem; }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 220px 1fr;
-      min-height: calc(100vh - 80px);
-    }
-
-    nav {
-      background: #161b22;
-      border-right: 1px solid #30363d;
-      padding: 24px 0;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      overflow-y: auto;
-    }
-    nav a {
-      display: block;
-      padding: 7px 24px;
-      color: #8b949e;
-      text-decoration: none;
-      font-size: 0.875rem;
-      border-left: 3px solid transparent;
-      transition: all .15s;
-    }
-    nav a:hover, nav a.active {
-      color: #58a6ff;
-      border-left-color: #58a6ff;
-      background: #1c2128;
-    }
-    nav .nav-section {
-      padding: 14px 24px 4px;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      color: #6e7681;
-    }
-
-    main {
-      padding: 32px 40px;
-      max-width: 960px;
-    }
-
-    section { margin-bottom: 48px; }
-    h2 { font-size: 1.25rem; color: #e6edf3; border-bottom: 1px solid #30363d; padding-bottom: 8px; margin-bottom: 16px; }
-    h3 { font-size: 1rem; color: #cdd9e5; margin: 20px 0 8px; }
-    p  { color: #8b949e; margin-bottom: 12px; font-size: 0.9rem; }
-
-    code {
-      font-family: 'SFMono-Regular', Consolas, monospace;
-      font-size: 0.85em;
-      background: #1c2128;
-      border: 1px solid #30363d;
-      border-radius: 4px;
-      padding: 1px 5px;
-      color: #79c0ff;
-    }
-    pre {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 16px 18px;
-      overflow-x: auto;
-      margin-bottom: 16px;
-    }
-    pre code {
-      background: none;
-      border: none;
-      padding: 0;
-      color: #e6edf3;
-      font-size: 0.85rem;
-    }
-
-    /* Demo panel */
-    .demo-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    @media (max-width: 700px) { .demo-grid { grid-template-columns: 1fr; } .layout { grid-template-columns: 1fr; } nav { display: none; } }
-
-    .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 16px;
-    }
-    .card h3 { margin-top: 0; }
-
-    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    button {
-      background: #21262d;
-      color: #cdd9e5;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 6px 14px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    button:hover { background: #30363d; }
-    button.primary { background: #1f6feb; border-color: #1f6feb; color: #fff; }
-    button.primary:hover { background: #388bfd; }
-    button.danger  { background: #da3633; border-color: #da3633; color: #fff; }
-    button.danger:hover  { background: #f85149; }
-
-    select, input[type="text"], input[type="number"] {
-      background: #21262d;
-      color: #cdd9e5;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 5px 10px;
-      font-size: 0.82rem;
-    }
-    label { font-size: 0.82rem; color: #8b949e; display: block; margin-bottom: 4px; }
-    .field { margin-bottom: 10px; }
-
-    #log-output {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      height: 340px;
-      overflow-y: auto;
-      padding: 12px;
-      font-family: 'SFMono-Regular', Consolas, monospace;
-      font-size: 0.78rem;
-    }
-    .log-line { padding: 2px 0; border-bottom: 1px solid #1c2128; white-space: pre-wrap; word-break: break-word; }
-    .log-TRACE { color: #6e7681; }
-    .log-DEBUG { color: #79c0ff; }
-    .log-INFO  { color: #3fb950; }
-    .log-WARN  { color: #d29922; }
-    .log-ERROR { color: #f85149; }
-    .log-FATAL { color: #bc8cff; font-weight: bold; }
-
-    #query-output {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      height: 220px;
-      overflow-y: auto;
-      padding: 12px;
-      font-size: 0.78rem;
-      font-family: 'SFMono-Regular', Consolas, monospace;
-      white-space: pre-wrap;
-      color: #8b949e;
-    }
-
-    .badge {
-      display: inline-block;
-      border-radius: 12px;
-      padding: 2px 9px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: .03em;
-    }
-    .badge-trace { background:#21262d; color:#6e7681; }
-    .badge-debug { background:#1c2c3e; color:#79c0ff; }
-    .badge-info  { background:#1a2e1a; color:#3fb950; }
-    .badge-warn  { background:#2e2100; color:#d29922; }
-    .badge-error { background:#2e1212; color:#f85149; }
-    .badge-fatal { background:#21132e; color:#bc8cff; }
-
-    table { width:100%; border-collapse:collapse; font-size:0.85rem; margin-bottom:16px; }
-    th { background:#161b22; color:#8b949e; padding:8px 12px; text-align:left; border-bottom:1px solid #30363d; font-weight:500; }
-    td { padding:7px 12px; border-bottom:1px solid #21262d; color:#cdd9e5; vertical-align:top; }
-    td:first-child { white-space:nowrap; }
-    td code { font-size:0.82em; }
-
-    .pill { display:inline-block; border-radius:4px; padding:1px 7px; font-size:0.75rem; margin:1px; }
-    .pill-console { background:#0c2d4d; color:#79c0ff; }
-    .pill-memory  { background:#0c2e1e; color:#3fb950; }
-    .pill-ls      { background:#2e2500; color:#d29922; }
-    .pill-idb     { background:#2a1e3a; color:#bc8cff; }
-    .pill-remote  { background:#2e1212; color:#f85149; }
+    textarea { resize: vertical; }
+    .row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+    .btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn:hover { opacity: .85; }
+    .btn.green  { background: var(--green);  color: #000; }
+    .btn.yellow { background: var(--yellow); color: #000; }
+    .btn.red    { background: var(--red);    color: #fff; }
+    .log-wrap { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: .75rem; max-height: 380px; overflow-y: auto; font-size: .8rem; font-family: 'Courier New', monospace; }
+    .le { padding: .2rem 0; border-bottom: 1px solid #1c2128; display: flex; gap: .5rem; align-items: baseline; }
+    .le:last-child { border-bottom: none; }
+    .le .lvl { font-weight: bold; width: 42px; flex-shrink: 0; }
+    .le.debug .lvl { color: var(--debug); }
+    .le.info  .lvl { color: var(--info); }
+    .le.warn  .lvl { color: var(--warn); }
+    .le.error .lvl { color: var(--error); }
+    .le .msg  { color: var(--text); flex: 1; }
+    .le .ts   { color: #484f58; font-size: .72rem; flex-shrink: 0; }
+    .le .ctx  { color: var(--accent); font-size: .72rem; }
+    .badge { display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 10px; background: #21262d; color: var(--muted); margin-left: .3rem; }
+    .status { padding: .5rem .75rem; border-radius: 6px; font-size: .85rem; margin-top: .75rem; background: #161b22; border: 1px solid var(--border); }
+    code { background: #21262d; color: var(--green); padding: .15rem .4rem; border-radius: 4px; font-size: .82rem; }
+    pre  { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .82rem; color: var(--text); margin-top: .5rem; }
+    .full-width { grid-column: 1 / -1; }
+    .level-pill { display: inline-block; padding: .1rem .5rem; border-radius: 10px; font-size: .78rem; font-weight: bold; cursor: pointer; border: 1px solid transparent; }
+    .level-pill.active { border-color: var(--accent); }
+    .filter-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
   </style>
 </head>
 <body>
 
 <header>
   <h1>📋 MajixLogger</h1>
-  <p>Shared logging library — multi-target · level filtering · perf timers · ring buffer · IndexedDB · remote batching</p>
+  <p>Shared Logging Core — live demo &amp; documentation</p>
 </header>
 
 <div class="layout">
 
-  <nav id="sidebar">
-    <div class="nav-section">Getting started</div>
-    <a href="#overview">Overview</a>
-    <a href="#quickstart">Quick start</a>
-    <div class="nav-section">Demo</div>
-    <a href="#demo">Live demo</a>
-    <a href="#query-demo">Query demo</a>
-    <div class="nav-section">Reference</div>
-    <a href="#targets">Targets</a>
-    <a href="#levels">Levels</a>
-    <a href="#config">LOGGER_CONFIG</a>
-    <a href="#api">API</a>
-    <div class="nav-section">Examples</div>
-    <a href="#examples">Usage examples</a>
-  </nav>
+  <!-- Write a Log Entry -->
+  <div class="card">
+    <h2>Write a Log Entry</h2>
+    <div>
+      <label>Level</label>
+      <select id="log-level">
+        <option value="debug">debug</option>
+        <option value="info" selected>info</option>
+        <option value="warn">warn</option>
+        <option value="error">error</option>
+      </select>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Message</label>
+      <input id="log-message" type="text" value="Sample log entry">
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Data (JSON, optional)</label>
+      <input id="log-data" type="text" placeholder='{"key":"value"}'>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Context tag (optional)</label>
+      <input id="log-context" type="text" placeholder="network, auth, ui …">
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doLog()">Write Entry</button>
+      <button class="btn yellow" onclick="doPerf()">⏱ Perf Sample</button>
+      <button class="btn yellow" onclick="doTimer()">⏱ Start Timer (2 s)</button>
+    </div>
+    <div id="write-status" class="status" style="display:none"></div>
+  </div>
 
-  <main>
+  <!-- Quick Fire Buttons -->
+  <div class="card">
+    <h2>Quick Scenarios</h2>
+    <div class="row" style="margin-top:0">
+      <button class="btn" onclick="scenario('app-start')">🚀 App Start</button>
+      <button class="btn green" onclick="scenario('data-fetch')">📡 Data Fetch</button>
+      <button class="btn yellow" onclick="scenario('auth-warn')">⚠ Auth Warning</button>
+      <button class="btn red" onclick="scenario('network-error')">💥 Network Error</button>
+      <button class="btn" onclick="scenario('stress')">🌊 Stress (×20)</button>
+    </div>
+    <div style="margin-top:1rem">
+      <label>Export / Filter</label>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doExport()">⬇ Download JSON</button>
+      <button class="btn red" onclick="doClear()">🗑 Clear Log</button>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Buffer size: <span id="buf-size">0</span> entries</label>
+    </div>
+  </div>
 
-    <!-- Overview -->
-    <section id="overview">
-      <h2>Overview</h2>
-      <p>
-        <code>logging-core.js</code> is a global, IIFE-style library (no ES modules) that provides
-        structured logging for every MajixAI page and script. Include the file once,
-        set <code>window.LOGGER_CONFIG</code>, call <code>MajixLogger.init()</code>, and all five output
-        targets are immediately available.
-      </p>
-      <p>
-        Targets:
-        <span class="pill pill-console">console</span>
-        <span class="pill pill-memory">memory</span>
-        <span class="pill pill-ls">localStorage</span>
-        <span class="pill pill-idb">indexedDB</span>
-        <span class="pill pill-remote">remote</span>
-      </p>
-    </section>
+  <!-- Live Log Viewer -->
+  <div class="card full-width">
+    <h2>Live Log Viewer <span id="entry-count" class="badge">0</span></h2>
+    <div class="filter-row">
+      <span class="level-pill active" style="color:var(--muted);background:#21262d" data-filter="all" onclick="setFilter('all')">ALL</span>
+      <span class="level-pill" style="color:var(--debug);background:#1c2128" data-filter="debug" onclick="setFilter('debug')">DEBUG</span>
+      <span class="level-pill" style="color:var(--info);background:#1c2128"  data-filter="info"  onclick="setFilter('info')">INFO</span>
+      <span class="level-pill" style="color:var(--warn);background:#1c2128"  data-filter="warn"  onclick="setFilter('warn')">WARN</span>
+      <span class="level-pill" style="color:var(--error);background:#1c2128" data-filter="error" onclick="setFilter('error')">ERROR</span>
+    </div>
+    <div class="log-wrap" id="live-log">
+      <div class="le" style="color:#484f58">No entries yet.</div>
+    </div>
+  </div>
 
-    <!-- Quick start -->
-    <section id="quickstart">
-      <h2>Quick start</h2>
-      <pre><code>&lt;!-- 1. Include the library --&gt;
-&lt;script src="/logging/logging-core.js"&gt;&lt;/script&gt;
+  <!-- Config Viewer -->
+  <div class="card">
+    <h2>Current Configuration</h2>
+    <pre id="config-view">Loading…</pre>
+  </div>
 
-&lt;!-- 2. Configure and initialise --&gt;
-&lt;script&gt;
+  <!-- Quick Reference -->
+  <div class="card">
+    <h2>Quick Reference</h2>
+    <pre style="font-size:.78rem">// 1. Configure (before script load)
 window.LOGGER_CONFIG = {
-  namespace: 'my-app',
-  level:     'DEBUG',
-  targets:   ['console', 'memory'],
+  appName: 'myapp',
+  level:   'info',
+  targets: ['console','memory','localStorage'],
 };
-MajixLogger.init();
-&lt;/script&gt;</code></pre>
 
-      <pre><code>// 3. Log messages
-MajixLogger.info('Page loaded');
-MajixLogger.warn('Slow network', { latencyMs: 1200 });
-MajixLogger.error('Fetch failed', { url: '/api/data', status: 500 });
-
-// Child logger with inherited namespace + metadata
-const auth = MajixLogger.child('auth', { userId: 42 });
-auth.info('Login successful');
-
-// Perf timer
-MajixLogger.time('fetchData');
-// … async work …
-MajixLogger.timeEnd('fetchData');
-// → DEBUG [app] fetchData: 123.456ms</code></pre>
-    </section>
-
-    <!-- Live demo -->
-    <section id="demo">
-      <h2>Live demo</h2>
-      <div class="demo-grid">
-        <div class="card">
-          <h3>Controls</h3>
-          <div class="field">
-            <label>Namespace</label>
-            <input type="text" id="ctrl-ns" value="demo" style="width:100%">
-          </div>
-          <div class="field">
-            <label>Min level</label>
-            <select id="ctrl-level">
-              <option>TRACE</option><option>DEBUG</option><option selected>INFO</option>
-              <option>WARN</option><option>ERROR</option><option>FATAL</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Targets</label><br>
-            <label><input type="checkbox" id="t-console" checked> console</label>
-            <label><input type="checkbox" id="t-memory"  checked> memory</label>
-            <label><input type="checkbox" id="t-ls"> localStorage</label>
-            <label><input type="checkbox" id="t-idb"> indexedDB</label>
-          </div>
-          <div class="btn-row">
-            <button class="primary" onclick="demoInit()">Init / Re-init</button>
-          </div>
-          <hr style="border-color:#30363d;margin:12px 0">
-          <h3>Emit</h3>
-          <div class="btn-row">
-            <button onclick="MajixLogger.trace('Trace message', {x:1})">TRACE</button>
-            <button onclick="MajixLogger.debug('Debug message', {x:2})">DEBUG</button>
-            <button onclick="MajixLogger.info('Info message',  {x:3})">INFO</button>
-            <button onclick="MajixLogger.warn('Warn message',  {x:4})">WARN</button>
-            <button onclick="MajixLogger.error('Error message',{x:5})">ERROR</button>
-            <button onclick="MajixLogger.fatal('Fatal message',{x:6})">FATAL</button>
-          </div>
-          <div class="btn-row">
-            <button onclick="demoChild()">Child logger</button>
-            <button onclick="demoTimer()">Perf timer</button>
-            <button onclick="demoBurst()">Burst ×20</button>
-          </div>
-          <hr style="border-color:#30363d;margin:12px 0">
-          <div class="btn-row">
-            <button class="danger" onclick="document.getElementById('log-output').innerHTML=''">Clear panel</button>
-          </div>
-        </div>
-
-        <div class="card" style="display:flex;flex-direction:column;">
-          <h3 style="margin-bottom:8px;">Log output <span id="entry-count" style="color:#8b949e;font-weight:normal;font-size:0.8rem;">(0 entries)</span></h3>
-          <div id="log-output"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Query demo -->
-    <section id="query-demo">
-      <h2>Query demo</h2>
-      <div class="card">
-        <h3>Memory buffer query</h3>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
-          <div class="field" style="margin:0">
-            <label>Min level</label>
-            <select id="q-level">
-              <option value="">— any —</option>
-              <option>TRACE</option><option>DEBUG</option><option>INFO</option>
-              <option>WARN</option><option>ERROR</option><option>FATAL</option>
-            </select>
-          </div>
-          <div class="field" style="margin:0">
-            <label>Namespace contains</label>
-            <input type="text" id="q-ns" placeholder="e.g. auth" style="width:130px">
-          </div>
-          <div class="field" style="margin:0">
-            <label>Search text</label>
-            <input type="text" id="q-search" placeholder="keyword" style="width:130px">
-          </div>
-          <div class="field" style="margin:0">
-            <label>Limit</label>
-            <input type="number" id="q-limit" value="20" min="1" max="500" style="width:70px">
-          </div>
-          <button class="primary" onclick="runQuery()">Run query</button>
-          <button onclick="document.getElementById('query-output').textContent=''">Clear</button>
-        </div>
-        <div id="query-output">— run a query to see results —</div>
-      </div>
-      <div class="card" style="margin-top:16px;">
-        <h3>JSON export</h3>
-        <div class="btn-row">
-          <button onclick="exportJSON()">Export buffer as JSON</button>
-          <button onclick="document.getElementById('query-output').textContent=''">Clear</button>
-        </div>
-        <p style="margin:0">Exports the entire in-memory ring buffer as a downloadable JSON file.</p>
-      </div>
-    </section>
-
-    <!-- Targets reference -->
-    <section id="targets">
-      <h2>Output targets</h2>
-      <table>
-        <thead><tr><th>Target</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>'console'</code></td><td>Colour-coded output to <code>window.console</code>, using <code>console.debug/log/warn/error</code> by level.</td></tr>
-          <tr><td><code>'memory'</code></td><td>In-process ring buffer bounded by <code>bufferSize</code>. Query with <code>MajixLogger.query(filter)</code>.</td></tr>
-          <tr><td><code>'localStorage'</code></td><td>JSON array persisted to <code>localStorage[localStorageKey]</code>. Trimmed to <code>localStorageMax</code> entries.</td></tr>
-          <tr><td><code>'indexedDB'</code></td><td>Persisted to IndexedDB with level/namespace/ts indexes. Query with <code>MajixLogger.queryDB(filter, cb)</code>.</td></tr>
-          <tr><td><code>'remote'</code></td><td>Batched HTTP POST (JSON) to <code>remoteUrl</code>. Auto-flushes at <code>remoteBatchSize</code> or <code>remoteFlushMs</code>.</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Levels reference -->
-    <section id="levels">
-      <h2>Log levels</h2>
-      <table>
-        <thead><tr><th>Level</th><th>Numeric</th><th>Use case</th></tr></thead>
-        <tbody>
-          <tr><td><span class="badge badge-trace">TRACE</span></td><td>0</td><td>Very verbose diagnostic information.</td></tr>
-          <tr><td><span class="badge badge-debug">DEBUG</span></td><td>1</td><td>Detailed debug information.</td></tr>
-          <tr><td><span class="badge badge-info">INFO</span></td><td>2</td><td>Normal operational messages.</td></tr>
-          <tr><td><span class="badge badge-warn">WARN</span></td><td>3</td><td>Recoverable issues worth monitoring.</td></tr>
-          <tr><td><span class="badge badge-error">ERROR</span></td><td>4</td><td>Unexpected errors that may impact functionality.</td></tr>
-          <tr><td><span class="badge badge-fatal">FATAL</span></td><td>5</td><td>Critical failures requiring immediate attention.</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Config reference -->
-    <section id="config">
-      <h2>LOGGER_CONFIG reference</h2>
-      <table>
-        <thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>namespace</code></td><td>string</td><td><code>'app'</code></td><td>Prefix for every entry's namespace field.</td></tr>
-          <tr><td><code>level</code></td><td>string</td><td><code>'DEBUG'</code></td><td>Minimum log level.</td></tr>
-          <tr><td><code>targets</code></td><td>string[]</td><td><code>['console','memory']</code></td><td>Active output targets.</td></tr>
-          <tr><td><code>bufferSize</code></td><td>number</td><td><code>500</code></td><td>Max entries in the memory ring buffer.</td></tr>
-          <tr><td><code>remoteUrl</code></td><td>string</td><td><code>''</code></td><td>HTTP POST endpoint for the remote target.</td></tr>
-          <tr><td><code>remoteBatchSize</code></td><td>number</td><td><code>10</code></td><td>Entries before auto-flush to remote.</td></tr>
-          <tr><td><code>remoteFlushMs</code></td><td>number</td><td><code>5000</code></td><td>Max ms between remote flushes.</td></tr>
-          <tr><td><code>localStorageKey</code></td><td>string</td><td><code>'majix_log'</code></td><td>localStorage key name.</td></tr>
-          <tr><td><code>localStorageMax</code></td><td>number</td><td><code>200</code></td><td>Max entries kept in localStorage.</td></tr>
-          <tr><td><code>dbName</code></td><td>string</td><td><code>'MajixLog'</code></td><td>IndexedDB database name.</td></tr>
-          <tr><td><code>dbStore</code></td><td>string</td><td><code>'entries'</code></td><td>IndexedDB object store name.</td></tr>
-          <tr><td><code>dbMaxEntries</code></td><td>number</td><td><code>5000</code></td><td>Max IndexedDB entries before purge.</td></tr>
-          <tr><td><code>timestampFormat</code></td><td>string</td><td><code>'iso'</code></td><td><code>'iso'</code> | <code>'unix'</code> | <code>'relative'</code>.</td></tr>
-          <tr><td><code>includeStack</code></td><td>boolean</td><td><code>false</code></td><td>Attach stack trace to WARN/ERROR/FATAL.</td></tr>
-          <tr><td><code>meta</code></td><td>object</td><td><code>{}</code></td><td>Static fields merged into every entry.</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- API reference -->
-    <section id="api">
-      <h2>API reference</h2>
-
-      <h3>Logging</h3>
-      <pre><code>MajixLogger.trace(msg, data?)
-MajixLogger.debug(msg, data?)
-MajixLogger.info(msg, data?)
-MajixLogger.warn(msg, data?)
-MajixLogger.error(msg, data?)
-MajixLogger.fatal(msg, data?)
-MajixLogger.log(level, msg, data?)   // generic — level as string</code></pre>
-
-      <h3>Child loggers</h3>
-      <pre><code>const db = MajixLogger.child('db', { poolId: 1 });
-db.info('Connection acquired');
-// → namespace: 'app:db', poolId: 1
-
-const query = db.child('query');
-query.debug('Executing', { sql: 'SELECT ...' });
-// → namespace: 'app:db:query'</code></pre>
-
-      <h3>Performance timers</h3>
-      <pre><code>MajixLogger.time('init');
-// … work …
-MajixLogger.timeEnd('init');
-// → DEBUG [app] init: 42.100ms  { elapsed_ms: 42.1 }</code></pre>
-
-      <h3>Memory buffer</h3>
-      <pre><code>// All entries
-MajixLogger.query();
-
-// Filtered
-MajixLogger.query({ level: 'WARN' });
-MajixLogger.query({ namespace: 'auth', limit: 10 });
-MajixLogger.query({ search: 'failed', since: Date.now() - 60000 });
-
-// JSON export
-const json = MajixLogger.exportJSON();</code></pre>
-
-      <h3>IndexedDB</h3>
-      <pre><code>MajixLogger.queryDB({ level: 'ERROR', limit: 50 }, function (err, entries) {
-  console.table(entries);
-});
-
-MajixLogger.clearDB(function (err) {
-  console.log('DB cleared');
-});</code></pre>
-
-      <h3>Remote</h3>
-      <pre><code>MajixLogger.flush();   // immediately POST pending batch</code></pre>
-
-      <h3>Runtime configuration</h3>
-      <pre><code>MajixLogger.setLevel('WARN');
-MajixLogger.addTarget('localStorage');
-MajixLogger.removeTarget('console');</code></pre>
-
-      <h3>Event bus</h3>
-      <pre><code>MajixLogger.on('entry', function (entry) {
-  // called synchronously for every dispatched entry
-});
-
-MajixLogger.on('flush', function ({ count, url }) {
-  // called after each remote POST
-});
-
-MajixLogger.on('error', function (err) {
-  // internal errors (DB failures, fetch errors, …)
-});
-
-MajixLogger.off('entry', handler);</code></pre>
-
-      <h3>Introspection</h3>
-      <pre><code>MajixLogger.getConfig();   // copy of current config
-MajixLogger.getBuffer();   // copy of memory buffer array
-MajixLogger.getLevels();   // ['TRACE','DEBUG','INFO','WARN','ERROR','FATAL']</code></pre>
-    </section>
-
-    <!-- Examples -->
-    <section id="examples">
-      <h2>Usage examples</h2>
-
-      <h3>Basic app logging</h3>
-      <pre><code>window.LOGGER_CONFIG = {
-  namespace: 'dashboard',
-  level:     'INFO',
-  targets:   ['console', 'memory'],
-  meta:      { appVersion: '2.1.0' },
-};
+// 2. Initialize
 MajixLogger.init();
 
-MajixLogger.info('Dashboard ready');</code></pre>
+// 3. Write entries
+MajixLogger.debug('verbose detail', { val: 42 });
+MajixLogger.info('User logged in', { userId: 1 }, 'auth');
+MajixLogger.warn('Slow response', { ms: 2400 }, 'network');
+MajixLogger.error('Fetch failed', { status: 500 });
 
-      <h3>Persist logs across reloads</h3>
-      <pre><code>window.LOGGER_CONFIG = {
-  namespace: 'tracker',
-  targets:   ['console', 'memory', 'localStorage', 'indexedDB'],
-  level:     'DEBUG',
-};
-MajixLogger.init();</code></pre>
+// 4. Performance timers
+var stop = MajixLogger.time('data-fetch');
+fetch('/api/data').then(stop);
 
-      <h3>Send errors to a remote endpoint</h3>
-      <pre><code>window.LOGGER_CONFIG = {
-  namespace:       'trading',
-  level:           'INFO',
-  targets:         ['console', 'memory', 'remote'],
-  remoteUrl:       'https://logs.example.com/ingest',
-  remoteBatchSize: 5,
-  remoteFlushMs:   10000,
-};
-MajixLogger.init();</code></pre>
+// 5. Inspect / export
+MajixLogger.getEntries({ level: 'warn' });
+MajixLogger.exportJSON();
+MajixLogger.queryDB({ level: 'error', limit: 50 })
+           .then(console.table);
 
-      <h3>Structured logging with child loggers</h3>
-      <pre><code>MajixLogger.init({ namespace: 'api', level: 'DEBUG', targets: ['console', 'memory'] });
+// 6. Flush remote queue
+window.addEventListener('beforeunload', MajixLogger.flush);</pre>
+  </div>
 
-const req = MajixLogger.child('request', { requestId: 'abc-123' });
-req.info('Received');
-req.debug('Validating payload', { bodySize: 512 });
-req.warn('Rate limit approaching', { remaining: 3 });</code></pre>
-
-      <h3>Stack trace capture</h3>
-      <pre><code>window.LOGGER_CONFIG = {
-  namespace:    'app',
-  includeStack: true,
-  targets:      ['console', 'memory'],
-};
-MajixLogger.init();
-
-MajixLogger.error('Unexpected state', { code: 'E_INVALID' });</code></pre>
-    </section>
-
-  </main>
 </div>
 
+<script>
+  window.LOGGER_CONFIG = {
+    appName:          'logging-demo',
+    level:            'debug',
+    targets:          ['console', 'memory', 'localStorage'],
+    memoryLimit:      500,
+    localStorageLimit: 100,
+    consoleTimestamp: true,
+    consoleColorize:  true,
+    onLog: function (entry) {
+      renderEntry(entry);
+      document.getElementById('buf-size').textContent = MajixLogger.size;
+    },
+  };
+</script>
 <script src="/logging/logging-core.js"></script>
 <script>
-  // ── Helpers ──────────────────────────────────────────────────────────────
-  var entryCount = 0;
+  var _filterLevel = 'all';
 
-  function appendLine(entry) {
-    var out = document.getElementById('log-output');
-    if (!out) return;
-    entryCount++;
-    document.getElementById('entry-count').textContent = '(' + entryCount + ' entries)';
-    var line = document.createElement('div');
-    line.className = 'log-line log-' + entry.level;
-    var ts = typeof entry.ts === 'string' ? entry.ts.slice(11, 23) : entry.ts;
-    line.textContent = ts + ' [' + entry.level + '] [' + entry.namespace + '] ' + entry.message;
-    out.appendChild(line);
-    out.scrollTop = out.scrollHeight;
-  }
-
-  // ── Init ─────────────────────────────────────────────────────────────────
-  function demoInit() {
-    entryCount = 0;
-    document.getElementById('entry-count').textContent = '(0 entries)';
-
-    var ns      = document.getElementById('ctrl-ns').value.trim() || 'demo';
-    var level   = document.getElementById('ctrl-level').value;
-    var targets = [];
-    if (document.getElementById('t-console').checked) targets.push('console');
-    if (document.getElementById('t-memory').checked)  targets.push('memory');
-    if (document.getElementById('t-ls').checked)      targets.push('localStorage');
-    if (document.getElementById('t-idb').checked)     targets.push('indexedDB');
-
-    window.LOGGER_CONFIG = { namespace: ns, level: level, targets: targets };
-    MajixLogger.init();
-
-    MajixLogger.on('entry', appendLine);
-  }
-
-  // ── Demo actions ─────────────────────────────────────────────────────────
-  var _demoUserId = 1;
-  function demoChild() {
-    var child = MajixLogger.child('session', { userId: _demoUserId++ });
-    child.info('User authenticated');
-    child.debug('Token refreshed', { expiresIn: 3600 });
-  }
-
-  var _timerDelay = 50;
-  function demoTimer() {
-    MajixLogger.time('demoOp');
-    _timerDelay = (_timerDelay % 350) + 50;
-    setTimeout(function () { MajixLogger.timeEnd('demoOp'); }, _timerDelay);
-  }
-
-  function demoBurst() {
-    var levels = ['trace','debug','info','warn','error','fatal'];
-    for (var i = 0; i < 20; i++) {
-      var lvl = levels[i % levels.length];
-      MajixLogger[lvl]('Burst entry #' + i, { i: i });
-    }
-  }
-
-  // ── Query ────────────────────────────────────────────────────────────────
-  function runQuery() {
-    var filter = {};
-    var level  = document.getElementById('q-level').value;
-    var ns     = document.getElementById('q-ns').value.trim();
-    var search = document.getElementById('q-search').value.trim();
-    var limit  = parseInt(document.getElementById('q-limit').value, 10);
-    if (level)  filter.level  = level;
-    if (ns)     filter.namespace = ns;
-    if (search) filter.search = search;
-    if (limit)  filter.limit  = limit;
-    var results = MajixLogger.query(filter);
-    document.getElementById('query-output').textContent =
-      results.length + ' result(s):\n' + JSON.stringify(results, null, 2);
-  }
-
-  function exportJSON() {
-    var json = MajixLogger.exportJSON();
-    var blob = new Blob([json], { type: 'application/json' });
-    var url  = URL.createObjectURL(blob);
-    var a    = document.createElement('a');
-    a.href = url;
-    a.download = 'majix-log-' + Date.now() + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    document.getElementById('query-output').textContent = 'Exported ' + MajixLogger.query().length + ' entries.';
-  }
-
-  // ── Nav highlight ─────────────────────────────────────────────────────────
-  var navLinks = document.querySelectorAll('nav a');
-  var sections = document.querySelectorAll('section[id]');
-  window.addEventListener('scroll', function () {
-    var scrollY = window.scrollY + 80;
-    var current = '';
-    sections.forEach(function (s) { if (s.offsetTop <= scrollY) current = s.id; });
-    navLinks.forEach(function (a) {
-      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  function setFilter(lvl) {
+    _filterLevel = lvl;
+    document.querySelectorAll('.level-pill').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.filter === lvl);
     });
-  }, { passive: true });
+    rebuildLog();
+  }
 
-  // ── Auto-init demo ────────────────────────────────────────────────────────
-  demoInit();
+  var LEVEL_COLOR = { debug: 'var(--debug)', info: 'var(--info)', warn: 'var(--warn)', error: 'var(--error)' };
+  var LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+  function _buildLogRow(entry) {
+    var ts = new Date(entry.timestamp).toLocaleTimeString() + '.' + String(new Date(entry.timestamp).getMilliseconds()).padStart(3,'0');
+    var row = document.createElement('div');
+    row.className = 'le ' + entry.level;
+
+    var lvlSpan = document.createElement('span');
+    lvlSpan.className = 'lvl';
+    lvlSpan.textContent = entry.level;
+
+    var msgSpan = document.createElement('span');
+    msgSpan.className = 'msg';
+
+    if (entry.context) {
+      var ctxSpan = document.createElement('span');
+      ctxSpan.className = 'ctx';
+      ctxSpan.textContent = '[' + entry.context + ']';
+      msgSpan.appendChild(ctxSpan);
+      msgSpan.appendChild(document.createTextNode(' '));
+    }
+
+    msgSpan.appendChild(document.createTextNode(entry.message));
+
+    if (entry.data) {
+      var dataSpan = document.createElement('span');
+      dataSpan.style.color = '#484f58';
+      dataSpan.textContent = ' ' + JSON.stringify(entry.data).slice(0, 60);
+      msgSpan.appendChild(dataSpan);
+    }
+
+    var tsSpan = document.createElement('span');
+    tsSpan.className = 'ts';
+    tsSpan.textContent = ts;
+
+    row.appendChild(lvlSpan);
+    row.appendChild(msgSpan);
+    row.appendChild(tsSpan);
+    return row;
+  }
+
+  function renderEntry(entry) {
+    if (_filterLevel !== 'all' && (LEVELS[entry.level] || 0) < (LEVELS[_filterLevel] || 0)) return;
+    var log = document.getElementById('live-log');
+    if (log.querySelector('[data-placeholder]')) log.innerHTML = '';
+    var row = _buildLogRow(entry);
+    log.insertBefore(row, log.firstChild);
+    document.getElementById('entry-count').textContent = MajixLogger.size;
+    // keep at most 200 visible rows
+    while (log.children.length > 200) log.removeChild(log.lastChild);
+  }
+
+  function rebuildLog() {
+    var filter = _filterLevel === 'all' ? {} : { level: _filterLevel };
+    var entries = MajixLogger.getEntries(filter).slice().reverse();
+    var log = document.getElementById('live-log');
+    if (!entries.length) {
+      log.innerHTML = '<div class="le" data-placeholder style="color:#484f58">No entries at this level.</div>';
+      return;
+    }
+    log.innerHTML = '';
+    entries.slice(0, 200).forEach(function (entry) {
+      log.appendChild(_buildLogRow(entry));
+    });
+  }
+
+  function showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    el.style.display = 'block';
+    el.style.color   = ok ? '#3fb950' : '#f85149';
+    el.textContent   = msg;
+    setTimeout(function () { el.style.display = 'none'; }, 2500);
+  }
+
+  function doLog() {
+    var level   = document.getElementById('log-level').value;
+    var message = document.getElementById('log-message').value.trim();
+    var dataStr = document.getElementById('log-data').value.trim();
+    var context = document.getElementById('log-context').value.trim() || undefined;
+    if (!message) { showStatus('write-status', 'Message is required', false); return; }
+    var data;
+    try { data = dataStr ? JSON.parse(dataStr) : undefined; } catch (e) { showStatus('write-status', 'Invalid data JSON', false); return; }
+    MajixLogger.log(level, message, data, context);
+    showStatus('write-status', 'Entry written at [' + level + ']', true);
+  }
+
+  function doPerf() {
+    MajixLogger.perf('demo-render', Math.round(Math.random() * 200 + 50), { component: 'chart' });
+    showStatus('write-status', 'Perf entry written', true);
+  }
+
+  function doTimer() {
+    var stop = MajixLogger.time('2-second-demo-timer');
+    setTimeout(function () {
+      var ms = stop();
+      showStatus('write-status', 'Timer stopped: ' + ms + ' ms', true);
+    }, 2000);
+    showStatus('write-status', 'Timer started — fires in 2 s', true);
+  }
+
+  var _scenarios = {
+    'app-start': function () {
+      MajixLogger.info('Application initializing', { version: '1.0.0' }, 'app');
+      MajixLogger.debug('Config loaded', { theme: 'dark', locale: 'en-US' }, 'app');
+      MajixLogger.info('App ready', null, 'app');
+    },
+    'data-fetch': function () {
+      MajixLogger.debug('Fetch started', { url: '/api/tickers', method: 'GET' }, 'network');
+      MajixLogger.info('Fetch complete', { status: 200, rows: 42, ms: 312 }, 'network');
+    },
+    'auth-warn': function () {
+      MajixLogger.warn('Session expiring soon', { expiresIn: '5m' }, 'auth');
+      MajixLogger.warn('Rate limit approaching', { remaining: 5, limit: 100 }, 'network');
+    },
+    'network-error': function () {
+      MajixLogger.error('Fetch failed', { status: 503, url: '/api/data' }, 'network');
+      MajixLogger.error('Retry 1 failed', { attempt: 1 }, 'network');
+    },
+    'stress': function () {
+      var levels = ['debug','info','info','warn','error'];
+      for (var i = 0; i < 20; i++) {
+        var lvl = levels[Math.floor(Math.random() * levels.length)];
+        MajixLogger.log(lvl, 'Stress entry #' + i, { i: i }, 'stress');
+      }
+    },
+  };
+
+  function scenario(name) {
+    if (_scenarios[name]) _scenarios[name]();
+  }
+
+  function doExport() {
+    var json = MajixLogger.exportJSON(_filterLevel !== 'all' ? { level: _filterLevel } : undefined);
+    var blob = new Blob([json], { type: 'application/json' });
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = 'majix-logs.json';
+    a.click();
+  }
+
+  function doClear() {
+    MajixLogger.clear();
+    document.getElementById('live-log').innerHTML = '<div class="le" data-placeholder style="color:#484f58">Log cleared.</div>';
+    document.getElementById('entry-count').textContent = '0';
+    document.getElementById('buf-size').textContent = '0';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    MajixLogger.init();
+    document.getElementById('config-view').textContent = JSON.stringify(MajixLogger.config, null, 2);
+    MajixLogger.info('Logging demo loaded', { page: 'logging/index.html' }, 'app');
+    MajixLogger.debug('Config applied', MajixLogger.config, 'app');
+  });
 </script>
-
 </body>
 </html>

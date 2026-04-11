@@ -7,6 +7,23 @@
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script>
+        window.LOGGER_CONFIG = {
+            appName: 'market-prediction',
+            level:   'debug',
+            targets: ['console', 'memory', 'localStorage'],
+            localStorageLimit: 100,
+        };
+        window.ACTIONS_CONFIG = {
+            namespace:    'market',
+            logToConsole: false,
+            persistHistory: true,
+            storageKey:   'marketPredictionActions',
+            historyLimit: 50,
+        };
+    </script>
+    <script src="/logging/logging-core.js"></script>
+    <script src="/actions/actions-core.js"></script>
     <style>
         :root {
             --bg-primary: #0E1117;
@@ -279,6 +296,26 @@
 </div>
 
 <script>
+    // Initialize shared infrastructure
+    MajixLogger.init();
+    MajixActions.init();
+
+    MajixLogger.info('Market Prediction app loaded');
+
+    // Register action handlers
+    MajixActions.on('run', function (payload) {
+        MajixLogger.info('Running prediction', payload, 'prediction');
+    });
+    MajixActions.on('ticker/change', function (payload) {
+        MajixLogger.info('Ticker changed', payload, 'ui');
+    });
+    MajixActions.on('result/ready', function (payload) {
+        MajixLogger.info('Prediction result ready', payload, 'prediction');
+    });
+    MajixActions.on('error', function (payload) {
+        MajixLogger.error('Prediction error', payload, 'prediction');
+    });
+
     // Configuration
     const CONFIG = {
         simulations: 500,
@@ -389,6 +426,8 @@
     // Main prediction function
     function runPrediction() {
         const ticker = document.getElementById('tickerSelect').value;
+        MajixActions.dispatch('run', { ticker: ticker });
+        var stopTimer = MajixLogger.time('prediction-' + ticker);
         const currentPrice = BASE_PRICES[ticker] * (1 + (Math.random() - 0.5) * 0.01);
         const sigma = 0.15 + Math.random() * 0.10; // 15-25% volatility
         
@@ -425,6 +464,8 @@
         renderCharts(paths, stats, currentPrice, rsi, bb, greeks, ticker);
         
         document.getElementById('timestamp').textContent = 'Last Updated: ' + new Date().toLocaleString();
+        stopTimer();
+        MajixActions.dispatch('result/ready', { ticker: ticker, signal: signal, confidence: confidence.toFixed(0), currentPrice: currentPrice.toFixed(2) });
     }
 
     function updateStats(currentPrice, stats, sigma, signal, confidence) {
@@ -545,7 +586,10 @@
 
     // Event listeners
     document.getElementById('runPrediction').addEventListener('click', runPrediction);
-    document.getElementById('tickerSelect').addEventListener('change', runPrediction);
+    document.getElementById('tickerSelect').addEventListener('change', function () {
+        MajixActions.dispatch('ticker/change', { ticker: this.value });
+        runPrediction();
+    });
 
     // Initial run
     runPrediction();

@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import csv
 import hashlib
 import json
@@ -303,6 +304,14 @@ def _git_value(command: str) -> str:
     return value or "unknown"
 
 
+async def send_gas_webhook_async(gas_webhook_url: str, payload: dict) -> bool:
+    """Send GAS webhook asynchronously using a thread pool."""
+    if not gas_webhook_url:
+        return False
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, send_gas_webhook, gas_webhook_url, payload)
+
+
 def send_gas_webhook(gas_webhook_url: str, payload: dict) -> bool:
     if not gas_webhook_url:
         return False
@@ -397,11 +406,15 @@ def main() -> None:
     if args.loop_minutely:
         interval = max(1, args.loop_seconds)
         print(f"Starting append-only loop: every {interval}s")
-        while True:
-            run_once(args, dirs)
-            if args.git_add:
-                maybe_git_add(dirs["base"])
-            time.sleep(interval)
+
+        async def _loop():
+            while True:
+                run_once(args, dirs)
+                if args.git_add:
+                    maybe_git_add(dirs["base"])
+                await asyncio.sleep(interval)
+
+        asyncio.run(_loop())
     else:
         run_once(args, dirs)
         if args.git_add:
