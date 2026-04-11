@@ -1,149 +1,131 @@
-# Regression — PhD-Level Reference
+# Regression Analysis — PhD-Level Reference
 
 ## Overview
 
-Regression analysis is the mathematical study of relationships between a response variable
-**Y** and a set of predictors **X**, framed within statistical decision theory and
-functional analysis.
+Regression analysis models the conditional expectation (or other functionals) of a
+response variable given predictors.  This module covers the full spectrum from
+classical least-squares to Bayesian nonparametric methods, with emphasis on
+statistical theory, asymptotic results, and computational algorithms.
 
 ---
 
-## 1. Classical Linear Model
+## 1. Ordinary Least Squares (OLS)
 
-### 1.1 Ordinary Least Squares (OLS)
+### 1.1 Model and Estimator
 
-Given the linear model
+$$\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon}\sim\mathcal{N}(\mathbf{0},\sigma^2\mathbf{I}_n)$$
 
-$$\mathbf{y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}, \quad \boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I}_n)$$
+Closed-form solution: $\hat{\boldsymbol{\beta}} = (\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$
 
-the OLS estimator minimises the residual sum of squares:
+**Gauss-Markov theorem:** $\hat{\boldsymbol{\beta}}$ is the Best Linear Unbiased Estimator (BLUE):
+$\text{Var}(\hat{\boldsymbol{\beta}}) = \sigma^2(\mathbf{X}^\top\mathbf{X})^{-1}$
 
-$$\hat{\boldsymbol{\beta}}_{\text{OLS}} = \operatorname*{argmin}_{\boldsymbol{\beta}} \|\mathbf{y} - \mathbf{X}\boldsymbol{\beta}\|_2^2 = (\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$$
+### 1.2 Geometric Interpretation
 
-**Gauss–Markov Theorem:** Under the classical assumptions (strict exogeneity,
-spherical disturbances, full rank **X**), the OLS estimator is the *Best Linear
-Unbiased Estimator* (BLUE) in the sense that no other linear unbiased estimator
-has smaller variance.
+$\hat{\mathbf{y}} = \mathbf{H}\mathbf{y}$ where $\mathbf{H} = \mathbf{X}(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top$
+(hat matrix / projection matrix).
 
-**Frisch–Waugh–Lovell Theorem:** The OLS estimator of a sub-vector $\boldsymbol{\beta}_2$
-in the partitioned model $\mathbf{y} = \mathbf{X}_1\boldsymbol{\beta}_1 + \mathbf{X}_2\boldsymbol{\beta}_2 + \boldsymbol{\varepsilon}$
-equals the OLS estimator from regressing $\mathbf{M}_1\mathbf{y}$ on $\mathbf{M}_1\mathbf{X}_2$,
-where $\mathbf{M}_1 = \mathbf{I} - \mathbf{X}_1(\mathbf{X}_1^\top\mathbf{X}_1)^{-1}\mathbf{X}_1^\top$.
+$\hat{\boldsymbol{\varepsilon}} = (\mathbf{I}-\mathbf{H})\mathbf{y}$; $\text{rank}(\mathbf{H}) = p$ (number of regressors).
 
-### 1.2 Generalised Least Squares (GLS)
+**Frisch-Waugh-Lovell theorem:** The coefficient on $\mathbf{X}_2$ in $\mathbf{y} = \mathbf{X}_1\boldsymbol{\beta}_1+\mathbf{X}_2\boldsymbol{\beta}_2+\boldsymbol{\varepsilon}$
+equals the OLS coefficient from regressing $\mathbf{M}_1\mathbf{y}$ on $\mathbf{M}_1\mathbf{X}_2$,
+where $\mathbf{M}_1 = \mathbf{I} - \mathbf{H}_1$.
 
-When $\boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \sigma^2\boldsymbol{\Omega})$
-with $\boldsymbol{\Omega}$ positive definite and known:
+### 1.3 Inference
 
-$$\hat{\boldsymbol{\beta}}_{\text{GLS}} = (\mathbf{X}^\top\boldsymbol{\Omega}^{-1}\mathbf{X})^{-1}\mathbf{X}^\top\boldsymbol{\Omega}^{-1}\mathbf{y}$$
+**t-statistic:** $t_j = \hat{\beta}_j / \text{SE}(\hat{\beta}_j)$ follows $t_{n-p}$ under $H_0: \beta_j = 0$.
 
-The transformation $\mathbf{P}^{-1}\mathbf{y}$, $\mathbf{P}^{-1}\mathbf{X}$ where
-$\boldsymbol{\Omega}^{-1} = (\mathbf{P}^{-1})^\top\mathbf{P}^{-1}$ reduces GLS to OLS.
+**F-statistic:** $F = (R\hat{\boldsymbol{\beta}} - r)^\top[R(\mathbf{X}^\top\mathbf{X})^{-1}R^\top]^{-1}(R\hat{\boldsymbol{\beta}}-r)/(q\hat{\sigma}^2)$
 
----
+**Heteroskedasticity-robust (HC0–HC3):**
+$$\widehat{\text{Var}}_{HC0}(\hat{\boldsymbol{\beta}}) = (\mathbf{X}^\top\mathbf{X})^{-1}\left(\sum_i\hat\varepsilon_i^2\mathbf{x}_i\mathbf{x}_i^\top\right)(\mathbf{X}^\top\mathbf{X})^{-1}$$
 
-## 2. Regularised Regression
+### 1.4 Diagnostics
 
-### 2.1 Ridge Regression ($\ell_2$ penalty)
-
-$$\hat{\boldsymbol{\beta}}_{\text{ridge}} = (\mathbf{X}^\top\mathbf{X} + \lambda\mathbf{I})^{-1}\mathbf{X}^\top\mathbf{y}, \quad \lambda > 0$$
-
-The ridge estimator shrinks singular values $d_j$ to $d_j/(d_j^2+\lambda)$ in the
-SVD $\mathbf{X} = \mathbf{U}\mathbf{D}\mathbf{V}^\top$ and reduces variance at the
-cost of bias. The optimal $\lambda$ minimises mean squared error and can be chosen
-by generalised cross-validation (GCV):
-
-$$\text{GCV}(\lambda) = \frac{n^{-1}\|\mathbf{y} - \hat{\mathbf{y}}_\lambda\|^2}{(1 - n^{-1}\operatorname{tr}(\mathbf{H}_\lambda))^2}$$
-
-where $\mathbf{H}_\lambda = \mathbf{X}(\mathbf{X}^\top\mathbf{X}+\lambda\mathbf{I})^{-1}\mathbf{X}^\top$.
-
-### 2.2 LASSO ($\ell_1$ penalty)
-
-$$\hat{\boldsymbol{\beta}}_{\text{LASSO}} = \operatorname*{argmin}_{\boldsymbol{\beta}}\left\{\frac{1}{2n}\|\mathbf{y}-\mathbf{X}\boldsymbol{\beta}\|_2^2 + \lambda\|\boldsymbol{\beta}\|_1\right\}$$
-
-The soft-thresholding operator $S_\lambda(\cdot)$ characterises coordinate-descent updates.
-Under the *restricted eigenvalue condition* (REC) with constant $\kappa$,
-
-$$\|\hat{\boldsymbol{\beta}}_{\text{LASSO}} - \boldsymbol{\beta}^*\|_2 \leq \frac{4\lambda\sqrt{s}}{\kappa}$$
-
-with probability $\geq 1 - 2\exp(-n\lambda^2/2)$ when $\lambda \geq 2\sigma\sqrt{\log p / n}$
-and $s = \|\boldsymbol{\beta}^*\|_0$.
-
-### 2.3 Elastic Net
-
-$$\hat{\boldsymbol{\beta}}_{\text{EN}} = \operatorname*{argmin}_{\boldsymbol{\beta}}\left\{\frac{1}{2n}\|\mathbf{y}-\mathbf{X}\boldsymbol{\beta}\|_2^2 + \lambda_1\|\boldsymbol{\beta}\|_1 + \frac{\lambda_2}{2}\|\boldsymbol{\beta}\|_2^2\right\}$$
-
-The elastic net interpolates between ridge and LASSO, encouraging grouped selection
-of correlated predictors.
+| Diagnostic | Formula |
+|---|---|
+| Leverage | $h_i = \mathbf{x}_i^\top(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{x}_i$ |
+| Studentised residual | $r_i = \hat\varepsilon_i / (\hat\sigma\sqrt{1-h_i})$ |
+| Cook's distance | $D_i = r_i^2 h_i / (p(1-h_i))$ |
+| DFFITS | $\text{DFFITS}_i = r_i\sqrt{h_i/(1-h_i)}$ |
 
 ---
 
-## 3. Nonlinear Regression
+## 2. Generalised Least Squares (GLS)
 
-The model $y_i = f(\mathbf{x}_i; \boldsymbol{\theta}) + \varepsilon_i$ requires iterative
-minimisation of $S(\boldsymbol{\theta}) = \sum_i (y_i - f(\mathbf{x}_i;\boldsymbol{\theta}))^2$.
+For $\boldsymbol{\varepsilon}\sim\mathcal{N}(\mathbf{0},\sigma^2\boldsymbol{\Omega})$:
+$$\hat{\boldsymbol{\beta}}_{GLS} = (\mathbf{X}^\top\boldsymbol{\Omega}^{-1}\mathbf{X})^{-1}\mathbf{X}^\top\boldsymbol{\Omega}^{-1}\mathbf{y}$$
 
-**Gauss–Newton algorithm:**
-$$\boldsymbol{\theta}^{(t+1)} = \boldsymbol{\theta}^{(t)} + \left(\mathbf{J}^\top\mathbf{J}\right)^{-1}\mathbf{J}^\top\mathbf{r}$$
-
-where $\mathbf{J}_{ij} = \partial f(\mathbf{x}_i;\boldsymbol{\theta})/\partial\theta_j$ and
-$r_i = y_i - f(\mathbf{x}_i;\boldsymbol{\theta}^{(t)})$.
-
-**Levenberg–Marquardt** adds a damping factor: $(\mathbf{J}^\top\mathbf{J} + \mu\mathbf{I})^{-1}$.
+BLUE when $\boldsymbol{\Omega}$ is known.  When unknown, use FGLS (feasible GLS)
+with $\hat{\boldsymbol{\Omega}}$ estimated from OLS residuals.
 
 ---
 
-## 4. Generalised Linear Models (GLM)
+## 3. Ridge Regression
 
-The GLM specifies:
-- **Random component:** $Y_i \sim$ exponential family with mean $\mu_i$
-- **Systematic component:** $\eta_i = \mathbf{x}_i^\top\boldsymbol{\beta}$
-- **Link function:** $g(\mu_i) = \eta_i$
+Shrinkage estimator: $\hat{\boldsymbol{\beta}}_\lambda = (\mathbf{X}^\top\mathbf{X}+\lambda\mathbf{I})^{-1}\mathbf{X}^\top\mathbf{y}$
 
-Score equations: $\mathbf{X}^\top\mathbf{W}(\mathbf{y} - \boldsymbol{\mu}) = \mathbf{0}$
+**Bias-variance tradeoff:**
+$$\text{Bias}^2(\hat{\boldsymbol{\beta}}_\lambda) = \lambda^2\boldsymbol{\beta}^\top(\mathbf{X}^\top\mathbf{X}+\lambda\mathbf{I})^{-2}\boldsymbol{\beta}$$
+$$\text{Var}(\hat{\boldsymbol{\beta}}_\lambda) = \sigma^2\text{tr}[(\mathbf{X}^\top\mathbf{X})(\mathbf{X}^\top\mathbf{X}+\lambda\mathbf{I})^{-2}]$$
 
-solved by **Iteratively Reweighted Least Squares (IRLS)**:
-$$\hat{\boldsymbol{\beta}}^{(t+1)} = (\mathbf{X}^\top\mathbf{W}^{(t)}\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{W}^{(t)}\mathbf{z}^{(t)}$$
+**GCV for λ selection:**
+$$\text{GCV}(\lambda) = \frac{\text{RSS}(\lambda)/n}{(1-\text{tr}(\mathbf{H}_\lambda)/n)^2}$$
 
-with working response $z_i^{(t)} = \eta_i^{(t)} + (y_i - \mu_i^{(t)})g'(\mu_i^{(t)})$.
+---
+
+## 4. LASSO and Sparsity
+
+Objective: $\min_\beta \frac{1}{2n}\|\mathbf{y}-\mathbf{X}\boldsymbol{\beta}\|^2 + \lambda\|\boldsymbol{\beta}\|_1$
+
+**KKT conditions:** $\frac{1}{n}\mathbf{x}_j^\top(\mathbf{y}-\mathbf{X}\hat{\boldsymbol{\beta}}) = \lambda\,\text{sgn}(\hat\beta_j)$ for $\hat\beta_j\neq 0$, $\leq\lambda$ for $\hat\beta_j=0$.
+
+**Restricted Eigenvalue condition (REC):** For $S$ = true support, $|S|\leq s$:
+$$\kappa^2(s) = \min_{\boldsymbol{\delta}\neq 0,\|\delta_{S^c}\|_1\leq 3\|\delta_S\|_1}\frac{\|\mathbf{X}\boldsymbol{\delta}\|_2^2}{n\|\boldsymbol{\delta}\|_2^2} > 0$$
+
+Under REC, LASSO achieves $\|\hat{\boldsymbol{\beta}}-\boldsymbol{\beta}^*\|_2 = O(\lambda\sqrt{s})$.
 
 ---
 
 ## 5. Gaussian Process Regression
 
-A Gaussian process $f \sim \mathcal{GP}(m, k)$ is specified by a mean function
-$m(\mathbf{x})$ and positive-definite kernel $k(\mathbf{x},\mathbf{x}')$.
+**Prior:** $f \sim \mathcal{GP}(m(\cdot), k(\cdot,\cdot))$
 
-**Posterior predictive distribution** at test points $\mathbf{X}_*$:
+**Posterior** (after observing $\mathbf{y} = \mathbf{f} + \boldsymbol{\varepsilon}$, $\varepsilon_i \sim \mathcal{N}(0,\sigma^2)$):
+$$f(\mathbf{x}_*) | \mathbf{y} \sim \mathcal{N}(\bar{f}(\mathbf{x}_*), \mathbb{V}[f(\mathbf{x}_*)])$$
+$$\bar{f}(\mathbf{x}_*) = m(\mathbf{x}_*) + \mathbf{k}_*^\top(\mathbf{K}+\sigma^2\mathbf{I})^{-1}(\mathbf{y}-\mathbf{m})$$
+$$\mathbb{V}[f(\mathbf{x}_*)] = k(\mathbf{x}_*,\mathbf{x}_*) - \mathbf{k}_*^\top(\mathbf{K}+\sigma^2\mathbf{I})^{-1}\mathbf{k}_*$$
 
-$$f_* | \mathbf{X}, \mathbf{y}, \mathbf{X}_* \sim \mathcal{N}(\bar{f}_*, \operatorname{cov}(f_*))$$
-
-$$\bar{f}_* = K(\mathbf{X}_*, \mathbf{X})[K(\mathbf{X},\mathbf{X}) + \sigma_n^2\mathbf{I}]^{-1}\mathbf{y}$$
-
-$$\operatorname{cov}(f_*) = K(\mathbf{X}_*,\mathbf{X}_*) - K(\mathbf{X}_*,\mathbf{X})[K(\mathbf{X},\mathbf{X})+\sigma_n^2\mathbf{I}]^{-1}K(\mathbf{X},\mathbf{X}_*)$$
-
-Kernel examples: Squared Exponential $k(\mathbf{x},\mathbf{x}') = \sigma^2\exp\!\left(-\tfrac{\|\mathbf{x}-\mathbf{x}'\|^2}{2\ell^2}\right)$,
-Matérn-$5/2$, Rational Quadratic, Spectral Mixture.
+**Hyperparameter optimisation via log marginal likelihood:**
+$$\log p(\mathbf{y}|\mathbf{X},\boldsymbol{\theta}) = -\frac{1}{2}\mathbf{y}^\top\mathbf{K}_y^{-1}\mathbf{y} - \frac{1}{2}\log|\mathbf{K}_y| - \frac{n}{2}\log 2\pi$$
 
 ---
 
-## 6. Survival Analysis Regression
+## 6. Logistic and Generalised Linear Models
 
-**Cox Proportional Hazards Model:**
-$$\lambda(t|\mathbf{x}) = \lambda_0(t)\exp(\mathbf{x}^\top\boldsymbol{\beta})$$
+**GLM:** $g(\mathbb{E}[Y|X]) = \mathbf{x}^\top\boldsymbol{\beta}$ where $g$ is the link function.
 
-Partial likelihood (Cox, 1972):
-$$\mathcal{L}_\text{partial}(\boldsymbol{\beta}) = \prod_{i:\delta_i=1}\frac{\exp(\mathbf{x}_i^\top\boldsymbol{\beta})}{\sum_{j\in\mathcal{R}(t_i)}\exp(\mathbf{x}_j^\top\boldsymbol{\beta})}$$
+| Family | Link | Variance |
+|---|---|---|
+| Gaussian | Identity | $\sigma^2$ |
+| Binomial | Logit $\log(p/(1-p))$ | $p(1-p)$ |
+| Poisson | Log $\log\mu$ | $\mu$ |
+| Gamma | Inverse $1/\mu$ | $\mu^2$ |
+| Inverse Gaussian | $1/\mu^2$ | $\mu^3$ |
+
+**Deviance:** $D(\mathbf{y};\hat{\boldsymbol{\mu}}) = 2[\ell(\mathbf{y};\mathbf{y}) - \ell(\mathbf{y};\hat{\boldsymbol{\mu}})]$
 
 ---
 
-## 7. Multivariate Regression
+## 7. Survival Analysis (Cox PH)
 
-**Reduced Rank Regression (RRR):** Constrains $\mathbf{B}$ to have rank $r < \min(p,q)$:
-$$\hat{\mathbf{B}}_{\text{RRR}} = \mathbf{A}_r\mathbf{G}_r^\top$$
-where $\mathbf{A}_r, \mathbf{G}_r$ are the leading $r$ left/right singular vectors of
-$\hat{\mathbf{B}}_{\text{OLS}}$ weighted by $\hat{\boldsymbol{\Sigma}}_{YY}^{1/2}$ and
-$\hat{\boldsymbol{\Sigma}}_{XX}^{1/2}$.
+**Hazard function:** $h(t|\mathbf{x}) = h_0(t)\exp(\mathbf{x}^\top\boldsymbol{\beta})$
+
+**Partial log-likelihood:**
+$$\ell(\boldsymbol{\beta}) = \sum_{i:\delta_i=1}\left[\mathbf{x}_i^\top\boldsymbol{\beta} - \log\sum_{j\in\mathcal{R}(t_i)}e^{\mathbf{x}_j^\top\boldsymbol{\beta}}\right]$$
+
+**Breslow estimator for baseline hazard:**
+$$\hat{H}_0(t) = \sum_{t_i\leq t,\delta_i=1}\frac{1}{\sum_{j\in\mathcal{R}(t_i)}\exp(\mathbf{x}_j^\top\hat{\boldsymbol{\beta}})}$$
 
 ---
 
@@ -151,13 +133,13 @@ $\hat{\boldsymbol{\Sigma}}_{XX}^{1/2}$.
 
 | Directory | Content |
 |---|---|
-| `linear/` | OLS, GLS, FGLS, WLS, instrumental variables |
-| `nonlinear/` | Gauss–Newton, Levenberg–Marquardt, separable NLS |
-| `logistic/` | Binary/multinomial/ordinal logistic, probit, complementary log-log |
-| `regularized/` | Ridge, LASSO, elastic net, SCAD, MCP, group LASSO |
-| `bayesian/` | Bayesian linear model, spike-and-slab, horseshoe prior |
-| `gaussian_process/` | GP regression, sparse GPs, deep kernel learning |
-| `kernel/` | Nadaraya–Watson, local polynomial, reproducing kernel Hilbert spaces |
-| `survival/` | Cox PH, AFT models, frailty models, competing risks |
-| `multivariate/` | MANOVA, canonical correlation, reduced rank, SUR |
-| `time_series/` | ARMA regression, state-space, dynamic linear models |
+| `linear/` | OLS, GLS, FGLS, WLS, SUR |
+| `nonlinear/` | NLS, Gauss-Newton, Levenberg-Marquardt |
+| `logistic/` | Logistic, multinomial logit, probit, GLMs |
+| `regularized/` | Ridge, LASSO, Elastic Net, SCAD, MCP |
+| `bayesian/` | Bayesian linear regression, spike-and-slab, Horseshoe prior |
+| `gaussian_process/` | GP regression, sparse GPs, deep kernels |
+| `kernel/` | Kernel ridge regression, SVR, representer theorem |
+| `time_series/` | AR, MA, ARMA, ARIMA, GARCH, state-space |
+| `survival/` | Cox PH, AFT models, Kaplan-Meier |
+| `multivariate/` | MANOVA, CCA, factor analysis, SEM |
