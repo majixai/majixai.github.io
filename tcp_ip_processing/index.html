@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="description" content="TCP/IP packet capture and analysis dashboard">
+  <title>TCP/IP Processing Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav>
+  <a href="../" class="brand">🔌 TCP/IP Processing</a>
+  <span id="last-updated"></span>
+</nav>
+
+<main>
+  <div id="error-banner"></div>
+  <div id="loading-banner">Loading analysis data…</div>
+
+  <div id="dashboard" style="display:none">
+
+    <!-- Summary tiles -->
+    <div class="grid-4">
+      <div class="stat-tile">
+        <span class="label">Total Packets</span>
+        <span class="value" id="tile-total-packets">—</span>
+      </div>
+      <div class="stat-tile">
+        <span class="label">Total Bytes</span>
+        <span class="value" id="tile-total-bytes">—</span>
+      </div>
+      <div class="stat-tile">
+        <span class="label">Avg Packet Size</span>
+        <span class="value" id="tile-avg-size">—</span>
+      </div>
+      <div class="stat-tile">
+        <span class="label">Median Packet Size</span>
+        <span class="value" id="tile-median-size">—</span>
+      </div>
+    </div>
+
+    <!-- Protocol distribution + packet-rate timeline -->
+    <div class="grid-2">
+      <div class="card">
+        <h2>Protocol Distribution</h2>
+        <canvas id="chart-proto" height="220"></canvas>
+      </div>
+      <div class="card">
+        <h2>Packet Rate Timeline</h2>
+        <canvas id="chart-rate" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Packet-size histogram + TCP flags -->
+    <div class="grid-2">
+      <div class="card">
+        <h2>Packet Size Histogram</h2>
+        <canvas id="chart-size-hist" height="220"></canvas>
+      </div>
+      <div class="card">
+        <h2>TCP Flag Distribution</h2>
+        <canvas id="chart-tcp-flags" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Top destination ports -->
+    <div class="grid-2">
+      <div class="card">
+        <h2>Top Destination Ports</h2>
+        <canvas id="chart-ports" height="220"></canvas>
+      </div>
+
+      <!-- Top IPs -->
+      <div class="card">
+        <h2>Top Source IPs</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>#</th><th>IP Address</th><th>Packets</th></tr></thead>
+            <tbody id="src-ip-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top destination IPs -->
+    <div class="grid-2">
+      <div class="card">
+        <h2>Top Destination IPs</h2>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>#</th><th>IP Address</th><th>Packets</th></tr></thead>
+            <tbody id="dst-ip-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;justify-content:center;color:#5f6368;font-size:13px;text-align:center;padding:32px">
+        <div>
+          <p style="font-size:32px;margin-bottom:8px">🔍</p>
+          <p>Run <code>python main.py demo</code> to generate demo data,<br>
+          or <code>sudo python main.py capture</code> to capture live traffic.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connection table -->
+    <div class="card full">
+      <h2>Top Connections (by bytes transferred)</h2>
+      <div id="conn-table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Destination</th>
+              <th>Protocol</th>
+              <th>Packets</th>
+              <th>Bytes</th>
+            </tr>
+          </thead>
+          <tbody id="conn-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</main>
+
+<script src="script.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js")
+        .then(r => console.log("SW registered:", r.scope))
+        .catch(e => console.error("SW registration failed:", e));
+    });
+  }
+</script>
+</body>
+</html>
