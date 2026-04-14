@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixEmail — Shared Email Library</title>
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent:  #3498db;
+      --success: #27ae60;
+      --danger:  #e74c3c;
+      --bg:      #f4f6f9;
+      --card-bg: #ffffff;
+      --border:  #dee2e6;
+      --radius:  8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--primary);
+      line-height: 1.6;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 2rem 1.5rem 1.5rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+    header p  { opacity: 0.8; font-size: 1rem; }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem 4rem; }
+    section { margin-bottom: 2.5rem; }
+    h2 {
+      font-size: 1.3rem;
+      border-left: 4px solid var(--accent);
+      padding-left: 0.75rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    pre, code {
+      font-family: 'Fira Code', Consolas, 'Courier New', monospace;
+      font-size: 0.88rem;
+    }
+    pre {
+      background: #1e2a38;
+      color: #c8d6e5;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Demo form */
+    .form-row { display: flex; flex-direction: column; gap: 0.75rem; }
+    @media (min-width: 600px) {
+      .form-row.two-col { flex-direction: row; }
+      .form-row.two-col > * { flex: 1; }
+    }
+    label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.25rem; }
+    input[type="text"], input[type="email"], textarea, select {
+      width: 100%; padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border); border-radius: 5px;
+      font-size: 0.95rem; font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 90px; }
+    button[type="submit"] {
+      background: var(--accent); color: #fff; border: none;
+      padding: 0.6rem 1.5rem; border-radius: 5px;
+      font-size: 1rem; cursor: pointer; margin-top: 0.5rem;
+    }
+    button[type="submit"]:hover { opacity: 0.9; }
+    .email-status { margin-top: 0.6rem; font-size: 0.9rem; padding: 0.5rem 0.75rem; border-radius: 5px; }
+    .email-status.sending { background: #eaf4fb; color: #2980b9; }
+    .email-status.success { background: #eafaf1; color: var(--success); }
+    .email-status.error   { background: #fdecea; color: var(--danger); }
+
+    /* History */
+    #historyList { list-style: none; }
+    #historyList li {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    #historyList li:last-child { border-bottom: none; }
+    #historyList li span { color: #888; margin-left: 0.5rem; font-size: 0.8rem; }
+    #clearHistoryBtn {
+      background: var(--danger); color: #fff; border: none;
+      padding: 0.4rem 1rem; border-radius: 5px;
+      font-size: 0.85rem; cursor: pointer; margin-top: 0.75rem;
+    }
+    #clearHistoryBtn:hover { opacity: 0.85; }
+    .empty-note { color: #888; font-style: italic; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>MajixEmail</h1>
+  <p>Shared email library — usable from any MajixAI directory</p>
+</header>
+
+<main>
+
+  <!-- Quick-start -->
+  <section>
+    <h2>Quick Start</h2>
+    <div class="card">
+      <pre>
+&lt;!-- 1. Optional: load EmailJS if you use that provider --&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"&gt;&lt;/script&gt;
+
+&lt;!-- 2. Load email-core.js --&gt;
+&lt;script src="/email/email-core.js"&gt;&lt;/script&gt;
+
+&lt;!-- 3. Configure and initialise --&gt;
+&lt;script&gt;
+  window.EMAIL_CONFIG = {
+    provider:  'mailto',      // 'mailto' | 'emailjs' | 'formsubmit'
+    toEmail:   'hello@example.com',
+    subject:   'Hello from MajixAI',
+  };
+  MajixEmail.init();
+&lt;/script&gt;</pre>
+    </div>
+  </section>
+
+  <!-- API Reference -->
+  <section>
+    <h2>API Reference</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>MajixEmail.init(config?)</code></td>
+            <td>Initialise with the given config (or <code>window.EMAIL_CONFIG</code>). Returns <code>MajixEmail</code> for chaining.</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.send(payload)</code></td>
+            <td>Send an email. Returns a Promise. <code>payload</code>: <code>{ to, from, fromName, subject, body, replyTo }</code></td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.validate(payload)</code></td>
+            <td>Validate a payload. Returns an array of error strings (empty = valid).</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.render(name, vars)</code></td>
+            <td>Render a named template with <code>{{var}}</code> substitution. Returns <code>{ subject, body }</code>.</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.bindForm(el, opts?)</code></td>
+            <td>Attach to a <code>&lt;form&gt;</code> element and send on submit. Reads <code>name</code> attributes.</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.buildMailtoLink(payload)</code></td>
+            <td>Build a <code>mailto:</code> URL string without opening it.</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.getHistory()</code></td>
+            <td>Return the sent-email history array from localStorage.</td>
+          </tr>
+          <tr>
+            <td><code>MajixEmail.clearHistory()</code></td>
+            <td>Erase the sent-email history from localStorage.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- EMAIL_CONFIG reference -->
+  <section>
+    <h2>EMAIL_CONFIG Reference</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>provider</code></td><td>string</td><td><code>'mailto'</code></td><td><code>'mailto'</code> | <code>'emailjs'</code> | <code>'formsubmit'</code></td></tr>
+          <tr><td><code>toEmail</code></td><td>string</td><td><code>''</code></td><td>Default recipient address</td></tr>
+          <tr><td><code>fromName</code></td><td>string</td><td><code>''</code></td><td>Default sender display name</td></tr>
+          <tr><td><code>subject</code></td><td>string</td><td><code>''</code></td><td>Default subject line</td></tr>
+          <tr><td><code>serviceId</code></td><td>string</td><td><code>''</code></td><td>EmailJS service ID</td></tr>
+          <tr><td><code>templateId</code></td><td>string</td><td><code>''</code></td><td>EmailJS template ID</td></tr>
+          <tr><td><code>publicKey</code></td><td>string</td><td><code>''</code></td><td>EmailJS public key</td></tr>
+          <tr><td><code>templates</code></td><td>object</td><td><code>{}</code></td><td>Named <code>{ subject, body }</code> templates with <code>{{var}}</code> slots</td></tr>
+          <tr><td><code>maxHistory</code></td><td>number</td><td><code>50</code></td><td>Max sent records kept in localStorage</td></tr>
+          <tr><td><code>storageKey</code></td><td>string</td><td><code>'majix-email-history'</code></td><td>localStorage key for history</td></tr>
+          <tr><td><code>onSend</code></td><td>function</td><td><code>null</code></td><td>Callback after successful send</td></tr>
+          <tr><td><code>onError</code></td><td>function</td><td><code>null</code></td><td>Callback on send failure</td></tr>
+          <tr><td><code>debug</code></td><td>boolean</td><td><code>false</code></td><td>Log all operations to console</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Providers -->
+  <section>
+    <h2>Providers</h2>
+    <div class="card">
+      <table>
+        <thead>
+          <tr><th>Provider</th><th>How it works</th><th>Requirements</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>mailto</code></td>
+            <td>Opens the visitor's native mail client via a <code>mailto:</code> link</td>
+            <td>None — works on every static site</td>
+          </tr>
+          <tr>
+            <td><code>emailjs</code></td>
+            <td>Uses the <a href="https://www.emailjs.com/" target="_blank" rel="noopener">EmailJS</a> SDK to send from the browser without a server</td>
+            <td>Free EmailJS account + <code>serviceId</code>, <code>templateId</code>, <code>publicKey</code></td>
+          </tr>
+          <tr>
+            <td><code>formsubmit</code></td>
+            <td>POSTs form data to <a href="https://formsubmit.co/" target="_blank" rel="noopener">FormSubmit.co</a></td>
+            <td>Free FormSubmit account + verified <code>toEmail</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Live demo -->
+  <section>
+    <h2>Live Demo — mailto provider</h2>
+    <div class="card">
+      <form id="demoForm">
+        <div class="form-row two-col">
+          <div>
+            <label for="demoTo">To</label>
+            <input type="email" id="demoTo" name="to" placeholder="recipient@example.com">
+          </div>
+          <div>
+            <label for="demoFrom">From (your email)</label>
+            <input type="email" id="demoFrom" name="from" placeholder="you@example.com">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:0.75rem;">
+          <div>
+            <label for="demoSubject">Subject</label>
+            <input type="text" id="demoSubject" name="subject" placeholder="Hello from MajixAI">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:0.75rem;">
+          <div>
+            <label for="demoBody">Message</label>
+            <textarea id="demoBody" name="body" placeholder="Your message here…"></textarea>
+          </div>
+        </div>
+        <button type="submit">Open in Mail Client</button>
+        <div data-email-status class="email-status" id="demoStatus" style="display:none;"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Template example -->
+  <section>
+    <h2>Template Example</h2>
+    <div class="card">
+      <pre>
+window.EMAIL_CONFIG = {
+  provider: 'mailto',
+  toEmail:  'support@example.com',
+  templates: {
+    welcome: {
+      subject: 'Welcome, {{name}}!',
+      body:    'Hi {{name}},\n\nThanks for joining MajixAI.\n\nBest,\nThe Team',
+    },
+    reset: {
+      subject: 'Password reset for {{email}}',
+      body:    'Click the link to reset your password:\n{{link}}',
+    },
+  },
+};
+MajixEmail.init();
+
+// Render and send a template
+const msg = MajixEmail.render('welcome', { name: 'Alice' });
+MajixEmail.send({ ...msg, to: 'alice@example.com' });
+</pre>
+    </div>
+  </section>
+
+  <!-- Form binding -->
+  <section>
+    <h2>Form Binding</h2>
+    <div class="card">
+      <pre>
+&lt;!-- HTML --&gt;
+&lt;form id="contactForm"&gt;
+  &lt;input name="name"    placeholder="Your name"&gt;
+  &lt;input name="email"   placeholder="Your email"&gt;
+  &lt;input name="subject" placeholder="Subject"&gt;
+  &lt;textarea name="message"&gt;&lt;/textarea&gt;
+  &lt;button type="submit"&gt;Send&lt;/button&gt;
+  &lt;span data-email-status&gt;&lt;/span&gt;
+&lt;/form&gt;
+
+&lt;script&gt;
+MajixEmail.init({ provider: 'formsubmit', toEmail: 'you@example.com' });
+MajixEmail.bindForm(document.getElementById('contactForm'));
+&lt;/script&gt;</pre>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section>
+    <h2>Sent History</h2>
+    <div class="card">
+      <ul id="historyList"><li class="empty-note">No emails sent yet in this session.</li></ul>
+      <button id="clearHistoryBtn" style="display:none;">Clear History</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="/email/email-core.js"></script>
+<script>
+  window.EMAIL_CONFIG = {
+    provider: 'mailto',
+    debug: true,
+    onSend: function () { renderHistory(); },
+  };
+  MajixEmail.init();
+
+  // Demo form
+  const demoStatus = document.getElementById('demoStatus');
+  MajixEmail.bindForm(document.getElementById('demoForm'), {
+    statusEl: demoStatus,
+    onSuccess: function () { demoStatus.style.display = 'block'; },
+    onError:   function () { demoStatus.style.display = 'block'; },
+  });
+
+  // History panel
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const btn  = document.getElementById('clearHistoryBtn');
+    const h    = MajixEmail.getHistory();
+    if (!h.length) {
+      list.innerHTML = '<li class="empty-note">No emails sent yet in this session.</li>';
+      btn.style.display = 'none';
+      return;
+    }
+    list.innerHTML = h.map(function (e) {
+      const d = new Date(e.timestamp).toLocaleString();
+      return '<li><strong>' + (e.to || '(no to)') + '</strong> &mdash; ' + (e.subject || '(no subject)') + '<span>' + d + '</span></li>';
+    }).join('');
+    btn.style.display = 'inline-block';
+  }
+
+  document.getElementById('clearHistoryBtn').addEventListener('click', function () {
+    MajixEmail.clearHistory();
+    renderHistory();
+  });
+
+  renderHistory();
+</script>
+</body>
+</html>

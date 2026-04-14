@@ -32,6 +32,35 @@ CORS_ALLOWED_ORIGINS = ["*"]
 CORS_ALLOWED_METHODS = ["GET", "POST", "OPTIONS", "HEAD"]
 CORS_ALLOWED_HEADERS = ["Content-Type", "X-Client-Session", "X-Request-ID", "Authorization"]
 
+# Comprehensive ticker list
+_ALL_TICKERS = [
+    # US Large-Cap / ETFs
+    "SPY", "QQQ", "IWM", "DIA", "VTI", "VOO", "IVV", "GLD", "SLV", "USO",
+    # Technology
+    "AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "TSLA", "META", "NVDA", "AVGO",
+    "INTC", "AMD", "QCOM", "TXN", "MU", "AMAT", "LRCX", "KLAC", "MRVL",
+    "CRM", "ORCL", "CSCO", "ADBE", "NOW", "SNOW", "PLTR", "PANW", "CRWD",
+    "ZS", "OKTA", "DDOG", "NET", "MDB", "TEAM", "SHOP", "SQ", "PYPL",
+    # Finance
+    "JPM", "BAC", "WFC", "C", "GS", "MS", "BLK", "SCHW", "AXP", "V", "MA",
+    "BRK-B", "ICE", "CME", "SPGI", "MCO", "FIS", "FISV", "TROW",
+    # Healthcare
+    "JNJ", "UNH", "PFE", "MRK", "ABBV", "LLY", "BMY", "AMGN", "GILD", "BIIB",
+    "VRTX", "REGN", "CVS", "CI", "HUM", "MDT", "ABT", "SYK", "BSX", "ZBH",
+    # Consumer
+    "WMT", "AMZN", "HD", "TGT", "COST", "LOW", "MCD", "SBUX", "NKE", "PG",
+    "KO", "PEP", "PM", "MO", "CL", "EL", "ULTA", "ROST", "TJX",
+    # Energy
+    "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "VLO", "OXY", "PXD",
+    # Industrials / Other
+    "BA", "CAT", "HON", "GE", "MMM", "UPS", "FDX", "LMT", "RTX", "NOC",
+    "DE", "EMR", "ETN", "PH", "ROK", "ITW", "CMI", "PCAR",
+    # Telecom / Utilities
+    "T", "VZ", "TMUS", "NEE", "DUK", "SO", "AEP", "D", "EXC", "XEL",
+    # Real Estate
+    "AMT", "PLD", "EQIX", "CCI", "SPG", "O", "VICI", "WELL",
+]
+
 
 def _add_cors_headers(response: Response) -> Response:
     """Add CORS headers to a response.
@@ -61,6 +90,9 @@ def _rate_limit_key() -> str:
 def rate_limit(max_requests: int = 100, window_seconds: int = 60):
     """Decorator to apply rate limiting to a route.
     
+    Adds ``X-RateLimit-Limit``, ``X-RateLimit-Remaining``, and
+    ``X-RateLimit-Reset`` headers to every response from the decorated view.
+    
     Args:
         max_requests: Maximum requests allowed in the window
         window_seconds: Time window in seconds
@@ -80,17 +112,35 @@ def rate_limit(max_requests: int = 100, window_seconds: int = 60):
             if key not in _rate_limits:
                 _rate_limits[key] = []
             
-            # Remove old timestamps
-            _rate_limits[key] = [ts for ts in _rate_limits[key] if now - ts < window_seconds]
+            # Remove old timestamps outside the current window
+            window_start = now - window_seconds
+            _rate_limits[key] = [ts for ts in _rate_limits[key] if ts > window_start]
             
-            if len(_rate_limits[key]) >= max_requests:
-                return jsonify({
+            remaining = max_requests - len(_rate_limits[key])
+            reset_ts   = int((_rate_limits[key][0] if _rate_limits[key] else now) + window_seconds)
+            
+            if remaining <= 0:
+                resp = jsonify({
                     "error": "Rate limit exceeded",
                     "retry_after": window_seconds,
-                }), 429
+                })
+                resp.status_code = 429
+                resp.headers["X-RateLimit-Limit"]     = str(max_requests)
+                resp.headers["X-RateLimit-Remaining"] = "0"
+                resp.headers["X-RateLimit-Reset"]     = str(reset_ts)
+                resp.headers["Retry-After"]           = str(window_seconds)
+                return resp
             
             _rate_limits[key].append(now)
-            return f(*args, **kwargs)
+            
+            result = f(*args, **kwargs)
+            
+            # Attach rate-limit headers to the response
+            response = result if isinstance(result, Response) else make_response(result)
+            response.headers.setdefault("X-RateLimit-Limit",     str(max_requests))
+            response.headers.setdefault("X-RateLimit-Remaining", str(remaining - 1))
+            response.headers.setdefault("X-RateLimit-Reset",     str(reset_ts))
+            return response
         
         return wrapper
     return decorator
@@ -153,7 +203,14 @@ def create_router(base_dir: Path, data_base_dir: Path) -> Blueprint:
     def _start_request_timer():
         """Start timing the request and initialize request context."""
         g.start_ts = time.time()
-        g.request_id = f"{int(time.time() * 1000)}-{id(request)}"
+        # Honour a client-provided request ID (alphanumeric, hyphens, underscores only),
+        # or generate one server-side. Strict validation prevents log injection.
+        import re as _re
+        client_id = request.headers.get("X-Request-ID", "").strip()
+        if client_id and _re.fullmatch(r"[\w\-]{1,64}", client_id):
+            g.request_id = client_id
+        else:
+            g.request_id = f"{int(time.time() * 1000)}-{id(request)}"
 
     @router.after_app_request
     def _log_request(response: Response) -> Response:
@@ -283,24 +340,16 @@ def create_router(base_dir: Path, data_base_dir: Path) -> Blueprint:
         """Get list of supported stock tickers.
         
         Query Parameters:
-            search: Filter tickers by search string
-            limit: Maximum tickers to return (default: 100)
+            search: Filter tickers by search string (case-insensitive, searches symbol and prefix)
+            limit: Maximum tickers to return (default: 100, max: 500)
             
         Returns:
             JSON with list of ticker symbols
         """
-        search = request.args.get("search", "").upper()
-        limit = min(int(request.args.get("limit", 100)), 500)
+        search = request.args.get("search", "").upper().strip()
+        limit  = min(int(request.args.get("limit", 100)), 500)
         
-        # Default list of popular tickers
-        tickers = [
-            "SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META",
-            "NVDA", "JPM", "V", "JNJ", "WMT", "PG", "MA", "HD", "DIS",
-            "NFLX", "PYPL", "INTC", "AMD", "CRM", "ORCL", "CSCO", "ADBE",
-            "PFE", "MRK", "ABBV", "KO", "PEP", "NKE", "MCD", "BA", "CAT",
-            "GS", "MS", "C", "BAC", "WFC", "AXP", "BLK", "SCHW",
-        ]
-        
+        tickers = _ALL_TICKERS
         if search:
             tickers = [t for t in tickers if search in t]
         
@@ -331,7 +380,9 @@ def create_router(base_dir: Path, data_base_dir: Path) -> Blueprint:
             {"value": "1mo", "label": "1 Month", "intraday": False},
             {"value": "3mo", "label": "3 Months", "intraday": False},
         ]
-        return jsonify({"intervals": intervals})
+        resp = jsonify({"intervals": intervals})
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
     @router.get("/api/periods")
     def get_periods():
@@ -353,7 +404,9 @@ def create_router(base_dir: Path, data_base_dir: Path) -> Blueprint:
             {"value": "ytd", "label": "Year to Date"},
             {"value": "max", "label": "Maximum Available"},
         ]
-        return jsonify({"periods": periods})
+        resp = jsonify({"periods": periods})
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
     @router.get("/api/stats")
     def get_api_stats():
@@ -461,12 +514,38 @@ def create_router(base_dir: Path, data_base_dir: Path) -> Blueprint:
         Returns:
             JSON with version details
         """
-        return jsonify({
+        resp = jsonify({
             "version": "2.0.0",
             "api_version": API_VERSION,
             "name": "YFinance Chart API",
             "documentation": "/api-docs",
             "health_endpoint": "/health",
         })
+        resp.headers["Cache-Control"] = "public, max-age=3600"
+        return resp
+
+    @router.get("/api/routes")
+    def list_routes():
+        """Introspection endpoint — lists all registered routes.
+        
+        Returns:
+            JSON with all URL rules, methods, and endpoint names for this app.
+        """
+        from flask import current_app
+
+        rules = []
+        for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
+            rules.append({
+                "path":     rule.rule,
+                "methods":  sorted(m for m in rule.methods if m not in ("HEAD", "OPTIONS")),
+                "endpoint": rule.endpoint,
+            })
+        resp = jsonify({
+            "count":     len(rules),
+            "routes":    rules,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     return router

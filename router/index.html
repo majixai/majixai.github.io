@@ -107,6 +107,40 @@
       white-space: nowrap;
     }
 
+    /* ── Sort selector ─────────────────────────────────────────────── */
+    .sort-wrap {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .sort-wrap label { font-size: .82rem; color: #666; white-space: nowrap; }
+    .sort-wrap select {
+      padding: .3rem .6rem;
+      border: 2px solid #cdd8e3;
+      border-radius: 999px;
+      font-size: .82rem;
+      outline: none;
+      cursor: pointer;
+      transition: border-color .2s;
+      background: #fff;
+    }
+    .sort-wrap select:focus { border-color: var(--accent); }
+
+    /* ── Keyboard shortcut hint ────────────────────────────────────── */
+    .kbd-hint {
+      font-size: .72rem;
+      color: #aaa;
+      white-space: nowrap;
+    }
+    .kbd-hint kbd {
+      background: #eef2f7;
+      border: 1px solid #cdd8e3;
+      border-radius: 3px;
+      padding: .05rem .3rem;
+      font-size: .72rem;
+      font-family: monospace;
+    }
+
     /* ── Grid ──────────────────────────────────────────────────── */
     main {
       max-width: 1500px;
@@ -229,7 +263,7 @@
 <div class="controls">
   <div class="search-wrap">
     <i class="fa fa-magnifying-glass"></i>
-    <input type="search" id="search-input" placeholder="Search projects…" autocomplete="off" aria-label="Search projects">
+    <input type="search" id="search-input" placeholder="Search projects… (press / to focus)" autocomplete="off" aria-label="Search projects">
   </div>
   <div class="cats" id="cat-buttons">
     <button class="active" data-cat="all">All</button>
@@ -239,7 +273,18 @@
     <button data-cat="web">Web</button>
     <button data-cat="data">Data</button>
   </div>
+  <div class="sort-wrap">
+    <label for="sort-select">Sort:</label>
+    <select id="sort-select" aria-label="Sort projects">
+      <option value="default">Default</option>
+      <option value="name-asc">Name A→Z</option>
+      <option value="name-desc">Name Z→A</option>
+      <option value="date-desc">Newest first</option>
+      <option value="date-asc">Oldest first</option>
+    </select>
+  </div>
   <span id="route-count"></span>
+  <span class="kbd-hint"><kbd>/</kbd> search &nbsp;<kbd>Esc</kbd> clear</span>
 </div>
 
 <main>
@@ -263,9 +308,10 @@
 <script type="module">
   import router from './router.js';
 
-  const grid       = document.getElementById('grid');
+  const grid        = document.getElementById('grid');
   const searchInput = document.getElementById('search-input');
   const catButtons  = document.querySelectorAll('#cat-buttons button');
+  const sortSelect  = document.getElementById('sort-select');
   const routeCount  = document.getElementById('route-count');
   const emptyState  = document.getElementById('empty-state');
   const totalCount  = document.getElementById('total-count');
@@ -275,6 +321,7 @@
 
   let activeCat   = 'all';
   let searchQuery = '';
+  let sortOrder   = 'default';
 
   const CAT_STRIPE = {
     finance: 'stripe-finance', gaming: 'stripe-gaming',
@@ -316,6 +363,17 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /** Apply the current sortOrder to a routes array (non-destructive). */
+  function applySort(routes) {
+    if (sortOrder === 'default') return routes;
+    const copy = [...routes];
+    if (sortOrder === 'name-asc')  copy.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortOrder === 'name-desc') copy.sort((a, b) => b.name.localeCompare(a.name));
+    if (sortOrder === 'date-asc')  copy.sort((a, b) => (a.lastUpdated || '').localeCompare(b.lastUpdated || ''));
+    if (sortOrder === 'date-desc') copy.sort((a, b) => (b.lastUpdated || '').localeCompare(a.lastUpdated || ''));
+    return copy;
+  }
+
   function renderGrid(routes) {
     // Remove all existing cards (keep #empty-state)
     [...grid.querySelectorAll('.route-card')].forEach(el => el.remove());
@@ -329,8 +387,26 @@
     routeCount.textContent = `${routes.length} project${routes.length !== 1 ? 's' : ''}`;
 
     const frag = document.createDocumentFragment();
-    routes.forEach(r => frag.appendChild(buildCard(r)));
+    applySort(routes).forEach(r => frag.appendChild(buildCard(r)));
     grid.insertBefore(frag, emptyState);
+  }
+
+  /** Update the document title to reflect the active filters. */
+  function updateTitle() {
+    const parts = ['MajixAI Router'];
+    if (activeCat !== 'all') parts.push(activeCat.charAt(0).toUpperCase() + activeCat.slice(1));
+    if (searchQuery) parts.push(`"${searchQuery}"`);
+    document.title = parts.join(' · ');
+  }
+
+  /** Reflect current search + category state into the URL query string. */
+  function syncUrl() {
+    const params = new URLSearchParams();
+    if (searchQuery)        params.set('q', searchQuery);
+    if (activeCat !== 'all') params.set('cat', activeCat);
+    const qs = params.toString();
+    const newUrl = qs ? `${location.pathname}?${qs}` : location.pathname;
+    history.replaceState(null, '', newUrl);
   }
 
   function applyFilters() {
@@ -346,6 +422,8 @@
       });
     }
     renderGrid(results);
+    updateTitle();
+    syncUrl();
   }
 
   // ── Search ──────────────────────────────────────────────────────────────────
@@ -362,6 +440,30 @@
       activeCat = btn.dataset.cat;
       applyFilters();
     });
+  });
+
+  // ── Sort selector ────────────────────────────────────────────────────────────
+  sortSelect.addEventListener('change', () => {
+    sortOrder = sortSelect.value;
+    applyFilters();
+  });
+
+  // ── Keyboard shortcuts ───────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    // '/' focuses the search input (unless already focused or in another input)
+    if (e.key === '/' && document.activeElement !== searchInput &&
+        !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+      e.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    }
+    // Escape clears the search and re-focuses body
+    if (e.key === 'Escape' && document.activeElement === searchInput) {
+      searchInput.value = '';
+      searchInput.blur();
+      searchQuery = '';
+      applyFilters();
+    }
   });
 
   const AUTO_REDIRECT_DELAY_MS = 1500;
@@ -386,11 +488,25 @@
   // ── Bootstrap ───────────────────────────────────────────────────────────────
   router.ready().then(() => {
     totalCount.textContent = router.routes.length;
-    renderGrid(router.routes);
+
+    // Restore state from URL query params
+    const params = new URLSearchParams(location.search);
+    const q   = params.get('q');
+    const cat = params.get('cat');
+
+    if (q) {
+      searchInput.value = q;
+      searchQuery = q;
+    }
+    if (cat) {
+      catButtons.forEach(b => {
+        b.classList.toggle('active', b.dataset.cat === cat);
+      });
+      activeCat = cat;
+    }
+
+    applyFilters();
     handleJump();
-    // Pre-fill search if ?q= present
-    const q = new URLSearchParams(location.search).get('q');
-    if (q) { searchInput.value = q; searchQuery = q; applyFilters(); }
   });
 </script>
 </body>
