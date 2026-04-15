@@ -15,21 +15,6 @@ type HTFBar
 
 var HTFBar lastKnownHTF = na
 
-type htf_b
-    float o
-    float h
-    float l
-    float c
-    int   t
-    color col
-
-type kin_m
-    float vel        
-    float acc    
-    float inc       
-    float err       
-    int len            
-
 type KinematicModel
     float velocity        
     float acceleration    
@@ -37,24 +22,11 @@ type KinematicModel
     float errorTerm       
     int length            
 
-type unc_z
-    float u_bn
-    float d_bn
-    float s_er
-    float a_cf   
-
 type UncertaintyZone
     float upperBound
     float lowerBound
     float standardError
     float adaptiveCoeff   
-
-type bys_i
-    float p_bl
-    float p_br
-    float e_hi
-    float e_lo
-    float e_cl
 
 type BayesianInference
     float probBull
@@ -85,31 +57,6 @@ type acc_e
     float h_rt
     float d_sc     
     bool i_dv           
-
-type prj_m
-    int t_pj
-    int ht
-    int ms
-    float l_tg
-    int t_br
-    float ac
-
-type con_z
-    int id                 
-    bool i_ac
-    int s_br
-    int dur
-    float u_bn
-    float d_bn
-    float poc   
-    float t_vl
-    box b_id
-    line p_ln
-    label t_lb
-    map<string, float> v_mp
-
-
-
 
 type PinnedForecast
     int anchorBar
@@ -173,14 +120,6 @@ type AdvancedPatternEngine
     float currentSkew
     float currentStdev
 
-type brk_s
-    bool i_vl
-    string dir       
-    float b_vl
-    float e_tg  
-    float v_ml
-    float a_pc
-
 type pat_e
     string a_cp
     string a_mp
@@ -188,11 +127,6 @@ type pat_e
     float s_tg
     bool i_rv
     bool i_cn
-
-type pvt_n
-    int b_ix
-    float px
-    bool i_hi
 
 type PivotNode
     int barIndex
@@ -211,15 +145,6 @@ type trd_e
     int a_st
     bool i_be
 
-type mc_sm
-    float w_rt
-    float e_vl
-    float m_dd
-    string vr
-
-type pt_ar
-    array<chart.point> pts
-
 type opt_g
     float dlt
     float gma
@@ -235,7 +160,6 @@ type HTFContext
 g_alp = "AlphaTrend Core Engines"
 b_cf  = input.float(1.5, 'Base Volatility Coeff', step=0.1, group=g_alp)
 al_pr = input.int(14, 'Common Period', group=g_alp)
-al_sr = input.source(close, 'Source Data', group=g_alp)
 
 // --- Multi-Timeframe Structure ---
 g_htf = "Multi-Timeframe Structure"
@@ -297,19 +221,15 @@ rf_rt = input.float(0.05, "Risk-Free Rate", step=0.01, group=g_bsm)
 t_ex  = input.float(30.0, "Days to Exp", group=g_bsm) 
 st_ml = input.float(1.0, "Strike Mult", step=0.01, group=g_bsm)
 
-grp_vis = "Visuals & Auditing"
-curvePath = input.bool(true, "Smooth Polyline Curves", group=grp_vis)
-showMC = input.bool(true, "Show Monte Carlo Random Paths", group=grp_vis)
-showConso = input.bool(true, "Highlight Active Consolidations", group=grp_vis)
-
 // --- Visuals & Auditing ---
 g_vis = "Visuals & Auditing"
-curvP = input.bool(true, "Smooth Polyline Curves", group=g_vis)
-sh_mc = input.bool(true, "Show Monte Carlo Random Paths", group=g_vis)
-sh_co = input.bool(true, "Highlight Active Consolidations", group=g_vis)
+curvePath = input.bool(true, "Smooth Polyline Curves", group=g_vis)
+showMC = input.bool(true, "Show Monte Carlo Random Paths", group=g_vis)
+showConso = input.bool(true, "Highlight Active Consolidations", group=g_vis)
 sh_gb = input.bool(true, "Show Ghost Bars", group=g_vis)
 
 src = input.source(close, 'Source Data', group=g_alp)
+al_sr = src  // backward-compatibility: al_sr references src (same Source Data value)
 
 // ============================================================================
 // 2. INPUT CONFIGURATIONS
@@ -317,7 +237,6 @@ src = input.source(close, 'Source Data', group=g_alp)
 
 g_mcd = "MACD Settings"
 g_lmt = "Rolling Limits"
-n_mr = input.bool(true, "Enable Mean Rev", group=g_cst)
 g_vsx = "Extended Projections"
 
 // ============================================================================
@@ -2165,25 +2084,25 @@ g_mcd(float src, int f, int s, int sg) =>
 // 4. GLOBAL OBJECT INITIALIZATION
 // ============================================================================
 
-var s_kn = kin_m.new(0.0, 0.0, 0.0, 0.0, 20)
-var s_uz = unc_z.new(0.0, 0.0, 0.0, b_cf) 
+var s_kn = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var s_uz = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf) 
 var s_pf = pin_f.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), false, "NONE")
 var s_ac = acc_e.new(0, 0, array.new_float(0), 0.5, 0.5, 1.0, 0.0, false)
-var s_bk = brk_s.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
+var s_bk = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
 var s_pe = pat_e.new("NONE", "NONE", 0, na, false, false)
 
 var fb_b = 0.0
-var s_pm = prj_m.new(0, 0, 0, na, 0, 0.0)
-var s_by = bys_i.new(0,0,0,0,0)
+var s_pm = ProjectionMetrics.new(0, 0, 0, na, 0, 0.0)
+var s_by = BayesianInference.new(0,0,0,0,0)
 
-var z_1 = con_z.new(1, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
-var z_2 = con_z.new(2, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
-var z_3 = con_z.new(3, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var z_1 = ConsolidationZone.new(1, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var z_2 = ConsolidationZone.new(2, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var z_3 = ConsolidationZone.new(3, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
 
 var g_bd = array.new_box()
 var g_wk = array.new_line()
-var p_hi = array.new<pvt_n>()
-var p_lo = array.new<pvt_n>()
+var p_hi = array.new<PivotNode>()
+var p_lo = array.new<PivotNode>()
 var a_tr = trd_e.new(0.0, 0.0, 0.0, 0.0, 0, false)
 
 max_bars_back(close, 4000)
@@ -2241,7 +2160,7 @@ c_kn(float[] s_ar, int ln) =>
         ss_r += math.pow(v - (in_c + vl * i), 2)
     float p_vl = nz(vl[2], vl) 
     float ac = (vl - p_vl) / 2.0
-    kin_m.new(vl, ac, in_c, math.sqrt(ss_r / n), ln)
+    KinematicModel.new(vl, ac, in_c, math.sqrt(ss_r / n), ln)
 
 var float[] h_cl = array.new_float(50, close)
 if barstate.isrealtime or barstate.ishistory
@@ -2251,7 +2170,7 @@ if barstate.isrealtime or barstate.ishistory
 
 if array.size(h_cl) >= 20
     s_kn := c_kn(h_cl, 20)
-    s_uz.s_er := s_kn.err
+    s_uz.standardError := s_kn.errorTerm
 
 float at_v = ta.sma(ta.tr, al_pr)
 float rs_v = ta.rsi(al_sr, al_pr)
@@ -2262,10 +2181,10 @@ float n_rs = math.max(-1.0, math.min(1.0, (rs_v - 50) / 50.0))
 float p_sh = math.acos(n_rs) 
 float t_fc = math.cos(((bar_index % 360) * math.pi / 180) + p_sh) * 0.1
 
-s_uz.a_cf := math.max(1.0, math.min(3.5, b_cf + (s_kn.err / close * 100) + t_fc))
+s_uz.adaptiveCoeff := math.max(1.0, math.min(3.5, b_cf + (s_kn.errorTerm / close * 100) + t_fc))
 
-float up_t = low - at_v * s_uz.a_cf
-float dn_t = high + at_v * s_uz.a_cf
+float up_t = low - at_v * s_uz.adaptiveCoeff
+float dn_t = high + at_v * s_uz.adaptiveCoeff
 
 var float al_tr = 0.0
 al_tr := mo_en ? (up_t < nz(al_tr[1]) ? nz(al_tr[1]) : up_t) : (dn_t > nz(al_tr[1]) ? nz(al_tr[1]) : dn_t)
@@ -2315,16 +2234,16 @@ s_pe.a_cp := c_nm
 
 float ph = ta.pivothigh(high, pv_lb, 2), float pl = ta.pivotlow(low, pv_lb, 2)
 if not na(ph)
-    array.unshift(p_hi, pvt_n.new(bar_index - 2, ph, true))
+    array.unshift(p_hi, PivotNode.new(bar_index - 2, ph, true))
     if array.size(p_hi) > 50
         array.pop(p_hi)
 if not na(pl)
-    array.unshift(p_lo, pvt_n.new(bar_index - 2, pl, false))
+    array.unshift(p_lo, PivotNode.new(bar_index - 2, pl, false))
     if array.size(p_lo) > 50
         array.pop(p_lo)
 
-ph_i(int i) => array.size(p_hi) > i ? array.get(p_hi, i).px : na
-pl_i(int i) => array.size(p_lo) > i ? array.get(p_lo, i).px : na
+ph_i(int i) => array.size(p_hi) > i ? array.get(p_hi, i).price : na
+pl_i(int i) => array.size(p_lo) > i ? array.get(p_lo, i).price : na
 f_rt(float m1, float m2) => m1 == 0 ? 0 : math.abs(m2 / m1)
 
 int m_sc = 0, string m_nm = "NONE", float m_tg = na
@@ -2359,17 +2278,17 @@ float t_up = close + (at_v * b_cf * 1.8), float t_dn = close - (at_v * b_cf * 1.
 float pb_r = math.sum(al_tr > al_tr[2] and high > nz(t_up[fc_hz]) ? 1 : 0, by_lb) / by_lb * 100
 float pr_r = math.sum(al_tr <= al_tr[2] and low < nz(t_dn[fc_hz]) ? 1 : 0, by_lb) / by_lb * 100
 
-s_by.p_bl := math.max(0, math.min(100, pb_r + (fb_b * 5) + (s_pe.p_sc * 2)))
-s_by.p_br := math.max(0, math.min(100, pr_r - (fb_b * 5) - (s_pe.p_sc * 2)))
-s_by.e_cl := s_by.p_bl > s_by.p_br ? t_up : t_dn
+s_by.probBull := math.max(0, math.min(100, pb_r + (fb_b * 5) + (s_pe.p_sc * 2)))
+s_by.probBear := math.max(0, math.min(100, pr_r - (fb_b * 5) - (s_pe.p_sc * 2)))
+s_by.expectedClose := s_by.probBull > s_by.probBear ? t_up : t_dn
 
-if not na(s_pm.l_tg) and bar_index == s_pm.t_br
-    fb_b += ((close - s_pm.l_tg) / nz(at_v, 1) * lr_rt)
-    if (s_pm.l_tg > close[fc_hz] and high >= s_pm.l_tg) or (s_pm.l_tg < close[fc_hz] and low <= s_pm.l_tg)
-        s_pm.ht += 1
+if not na(s_pm.lastTarget) and bar_index == s_pm.targetBar
+    fb_b += ((close - s_pm.lastTarget) / nz(at_v, 1) * lr_rt)
+    if (s_pm.lastTarget > close[fc_hz] and high >= s_pm.lastTarget) or (s_pm.lastTarget < close[fc_hz] and low <= s_pm.lastTarget)
+        s_pm.hits += 1
     else
-        s_pm.ms += 1
-    s_pm.t_pj += 1, s_pm.ac := s_pm.t_pj > 0 ? (s_pm.ht / s_pm.t_pj) * 100 : 0, s_pm.l_tg := na
+        s_pm.misses += 1
+    s_pm.totalProjections += 1, s_pm.accuracy := s_pm.totalProjections > 0 ? (s_pm.hits / s_pm.totalProjections) * 100 : 0, s_pm.lastTarget := na
 
 opt_g grs = g_grk(close, close * st_ml, rf_rt, t_ex / 365.0, ta.stdev(close, 20) / close * math.sqrt(252))
 
@@ -2377,7 +2296,7 @@ opt_g grs = g_grk(close, close * st_ml, rf_rt, t_ex / 365.0, ta.stdev(close, 20)
 // 11. FORECAST PINNING & GHOST BARS
 // ============================================================================
 
-bool s_tr = al_fl or s_bk.i_vl or s_pe.i_rv
+bool s_tr = al_fl or s_bk.isValidBreakout or s_pe.i_rv
 
 m_rnd(int r, int c) =>
     mt = matrix.new<float>(r, c)
@@ -2389,9 +2308,9 @@ m_rnd(int r, int c) =>
 var m_mat = matrix.new<float>(3, fc_hz, 0.0)
 
 if s_tr and barstate.isconfirmed
-    s_pm.l_tg := s_by.e_cl, s_pm.t_br := bar_index + fc_hz
+    s_pm.lastTarget := s_by.expectedClose, s_pm.targetBar := bar_index + fc_hz
     s_pf.i_ac := true, s_pf.a_br := bar_index, s_pf.a_tm := time, s_pf.a_px := close
-    s_pf.t_sr := s_pe.i_rv ? "GEO REV" : (s_bk.i_vl ? "BRK SYN" : "ALP FLP")
+    s_pf.t_sr := s_pe.i_rv ? "GEO REV" : (s_bk.isValidBreakout ? "BRK SYN" : "ALP FLP")
 
     array.clear(s_pf.t_pt), array.clear(s_pf.t_op), array.clear(s_pf.t_cl), array.clear(s_pf.c_up), array.clear(s_pf.c_dn)
     m_mat := m_rnd(3, fc_hz)
@@ -2399,15 +2318,15 @@ if s_tr and barstate.isconfirmed
 
     for i = 1 to fc_hz
         float ad = math.exp(-i / (fc_hz * 0.5))
-        float ap = s_bk.i_vl ? (s_kn.vel * s_bk.v_ml) : s_kn.vel
+        float ap = s_bk.isValidBreakout ? (s_kn.velocity * s_bk.velocityMultiplier) : s_kn.velocity
         if s_pe.i_rv and not na(s_pe.s_tg)
             ap += ((s_pe.s_tg - close) / fc_hz * 0.5)
 
-        float kp = s_pf.a_px + (ap * i) + (0.5 * s_kn.acc * math.pow(i, 2) * ad)
+        float kp = s_pf.a_px + (ap * i) + (0.5 * s_kn.acceleration * math.pow(i, 2) * ad)
         float mp = en_mr ? (ta.ema(close, 200) - close) * (i / fc_hz) * 0.15 : 0.0
-        float bp = (s_by.e_cl - close) * (i / fc_hz) * 0.1
+        float bp = (s_by.expectedClose - close) * (i / fc_hz) * 0.1
         float fp = (kp * k_wt) + (mp * m_wt) + (bp * b_wt)
-        float cb = s_kn.err * s_uz.a_cf * math.sqrt(i)
+        float cb = s_kn.errorTerm * s_uz.adaptiveCoeff * math.sqrt(i)
         
         array.push(s_pf.t_pt, fp), array.push(s_pf.c_up, fp + cb), array.push(s_pf.c_dn, fp - cb)
         array.push(s_pf.t_op, s_op), array.push(s_pf.t_cl, fp), s_op := fp
@@ -2416,8 +2335,8 @@ if s_tr and barstate.isconfirmed
 // 12. TRADE EXECUTION & RISK
 // ============================================================================
 
-bool g_lg = al_bl and (not rq_syn or m_bl) and s_by.p_bl > 50 and grs.p_it > 0.4
-bool g_sh = not al_bl and (not rq_syn or m_br) and s_by.p_br > 50 and (1.0 - grs.p_it) > 0.4
+bool g_lg = al_bl and (not rq_syn or m_bl) and s_by.probBull > 50 and grs.p_it > 0.4
+bool g_sh = not al_bl and (not rq_syn or m_br) and s_by.probBear > 50 and (1.0 - grs.p_it) > 0.4
 
 if g_lg and strategy.opentrades < mx_tr
     float sl = low - (at_v * rk_bf), float tp = close + ((close - sl) * rw_ml)
@@ -2457,12 +2376,12 @@ if barstate.islast and s_pf.i_ac
 
         if sh_gb
             float go = array.get(s_pf.t_op, i), float gc = array.get(s_pf.t_cl, i)
-            float gh = math.max(go, gc) + (s_kn.err * 0.5), float gl = math.min(go, gc) - (s_kn.err * 0.5)
+            float gh = math.max(go, gc) + (s_kn.errorTerm * 0.5), float gl = math.min(go, gc) - (s_kn.errorTerm * 0.5)
             color g_cl = gc >= go ? color.new(#00FF00, 50) : color.new(#FF0055, 50)
             array.push(g_wk, line.new(tt, gh, tt, gl, xloc=xloc.bar_time, color=color.new(g_cl, 70), width=1))
             array.push(g_bd, box.new(tt - (timeframe.multiplier * 20000), math.max(go, gc), tt + (timeframe.multiplier * 20000), math.min(go, gc), xloc=xloc.bar_time, border_color=g_cl, bgcolor=g_cl))
 
-    color pt_c = s_by.p_bl > 60 ? color.new(#00FFAA, 0) : s_by.p_br > 60 ? color.new(#FF0055, 0) : color.new(#FFCC00, 0)
+    color pt_c = s_by.probBull > 60 ? color.new(#00FFAA, 0) : s_by.probBear > 60 ? color.new(#FF0055, 0) : color.new(#FFCC00, 0)
     polyline.new(p_mn, curved=true, line_color=pt_c, line_width=3, line_style=line.style_dashed, xloc=xloc.bar_time)
     polyline.new(p_up, curved=true, line_color=color.new(#A9A9A9, 50), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time)
     polyline.new(p_dn, curved=true, line_color=color.new(#A9A9A9, 50), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time)
@@ -2486,14 +2405,14 @@ if barstate.islast and show_table
     table.cell(m_hd, 3, 1, "ANALYSIS", bgcolor=color.new(#2a2a2a, 0), text_color=color.white)
 
     table.cell(m_hd, 0, 2, "KIN VEL", text_color=color.gray)
-    table.cell(m_hd, 1, 2, str.tostring(s_kn.vel, "#.##"), text_color=color.yellow)
+    table.cell(m_hd, 1, 2, str.tostring(s_kn.velocity, "#.##"), text_color=color.yellow)
     table.cell(m_hd, 2, 2, "KIN ACC", text_color=color.gray)
-    table.cell(m_hd, 3, 2, str.tostring(s_kn.acc, "#.####"), text_color=s_kn.acc > 0 ? color.lime : color.red)
+    table.cell(m_hd, 3, 2, str.tostring(s_kn.acceleration, "#.####"), text_color=s_kn.acceleration > 0 ? color.lime : color.red)
 
     table.cell(m_hd, 0, 3, "BYS BUL", text_color=color.gray)
-    table.cell(m_hd, 1, 3, str.tostring(s_by.p_bl, "#.#") + "%", text_color=color.lime)
+    table.cell(m_hd, 1, 3, str.tostring(s_by.probBull, "#.#") + "%", text_color=color.lime)
     table.cell(m_hd, 2, 3, "BYS BER", text_color=color.gray)
-    table.cell(m_hd, 3, 3, str.tostring(s_by.p_br, "#.#") + "%", text_color=color.red)
+    table.cell(m_hd, 3, 3, str.tostring(s_by.probBear, "#.#") + "%", text_color=color.red)
 
     table.cell(m_hd, 0, 4, "OPT DLT", text_color=color.gray)
     table.cell(m_hd, 1, 4, str.tostring(grs.dlt, "#.###"), text_color=color.white)
@@ -2510,10 +2429,10 @@ if barstate.islast and show_table
     table.cell(m_hd, 2, 6, "MCR PAT", text_color=color.gray)
     table.cell(m_hd, 3, 6, s_pe.a_mp, text_color=m_sc > 0 ? color.lime : m_sc < 0 ? color.red : color.white)
 
-plot(s_kn.vel, "KIN VEL", display=display.data_window)
-plot(s_kn.acc, "KIN ACC", display=display.data_window)
-plot(s_by.p_bl, "BYS BUL %", display=display.data_window)
-plot(s_by.p_br, "BYS BER %", display=display.data_window)
+plot(s_kn.velocity, "KIN VEL", display=display.data_window)
+plot(s_kn.acceleration, "KIN ACC", display=display.data_window)
+plot(s_by.probBull, "BYS BUL %", display=display.data_window)
+plot(s_by.probBear, "BYS BER %", display=display.data_window)
 plot(grs.dlt, "OPT DLT", display=display.data_window)
 plot(grs.gma, "OPT GMA", display=display.data_window)
 // For strings/states in data window, we use plotchar with a value

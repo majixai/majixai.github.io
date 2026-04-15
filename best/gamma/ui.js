@@ -78,12 +78,10 @@ class UIManager {
         }
 
         userElement.innerHTML = `
-            <div class="user-image-container">
-                <img src="${LAZY_PLACEHOLDER}" data-src="${user.image_url}" alt="${user.username} thumbnail" class="w3-image">
-                <!-- div class="iframe-preview-container">
-                    <iframe src="https://chaturbate.com/embed/${user.username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black" allow="autoplay; encrypted-media; picture-in-picture" sandbox="allow-scripts allow-same-origin allow-presentation" title="${user.username} preview"></iframe>
-                </div>
-                <button class="toggle-view-btn">Show Preview</button -->
+            <div class="user-image-container slideshow-carousel" data-images='[]'>
+                <img src="${LAZY_PLACEHOLDER}" data-src="${user.image_url}" alt="${user.username} thumbnail" class="w3-image slide-img" style="cursor:zoom-in;">
+                <div class="slide-progress"></div>
+                <span class="slide-counter" style="display:none;">1/1</span>
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -95,6 +93,9 @@ class UIManager {
                 ${birthdayBanner}
             </div>
         `;
+
+        // Initialize slideshow for this card
+        this._initCardSlideshow(userElement, user);
 
         userElement.addEventListener("click", function(event) {
             if (event.target.closest('.remove-user-btn')) {
@@ -229,6 +230,84 @@ class UIManager {
             reportStatusDisplay.textContent = '';
             reportStatusDisplay.className = 'report-status';
         }
+    }
+
+    /**
+     * Initialize slideshow for a performer card if multiple images are available.
+     * @param {HTMLElement} cardElement
+     * @param {Object} user
+     */
+    _initCardSlideshow(cardElement, user) {
+        const carousel = cardElement.querySelector('.slideshow-carousel');
+        const imgEl = carousel?.querySelector('.slide-img');
+        if (!carousel || !imgEl) return;
+
+        // Use IntersectionObserver to lazy-load slideshow data only when visible
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                obs.disconnect();
+                const datPath = `../history/${encodeURIComponent(user.username)}.dat`;
+                fetch(datPath)
+                    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
+                    .then(buffer => {
+                        const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+                        const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
+                        if (urls.length < 2) return;
+                        carousel.dataset.images = JSON.stringify(urls);
+                        const counter = carousel.querySelector('.slide-counter');
+                        if (counter) { counter.textContent = `1/${urls.length}`; counter.style.display = 'block'; }
+                        this._startCardSlideshow(carousel, imgEl, urls, carousel.querySelector('.slide-progress'), counter);
+                    })
+                    .catch(() => {
+                        // No dat file; leave as single image
+                    });
+            });
+        }, { rootMargin: '200px' });
+
+        observer.observe(cardElement);
+    }
+
+    /**
+     * Start cycling images on a performer card.
+     */
+    _startCardSlideshow(carousel, imgEl, urls, progressBar, counterEl) {
+        if (carousel._slideshowTimer) clearInterval(carousel._slideshowTimer);
+        let idx = 0;
+        const duration = 3500;
+        const step = () => {
+            idx = (idx + 1) % urls.length;
+            if (progressBar) {
+                progressBar.style.transition = 'none'; progressBar.style.width = '0%';
+                void progressBar.offsetWidth;
+                progressBar.style.transition = `width ${duration}ms linear`; progressBar.style.width = '100%';
+            }
+            imgEl.style.opacity = '0.4';
+            setTimeout(() => {
+                imgEl.src = urls[idx];
+                imgEl.style.opacity = '1';
+                if (counterEl) counterEl.textContent = `${idx + 1}/${urls.length}`;
+            }, 280);
+        };
+        if (progressBar) {
+            progressBar.style.transition = `width ${duration}ms linear`; progressBar.style.width = '100%';
+        }
+        carousel._slideshowTimer = setInterval(step, duration);
+    }
+
+    /**
+     * Restart all active slideshows (called on periodic fetch).
+     */
+    refreshSlideshows() {
+        document.querySelectorAll('.slideshow-carousel[data-images]').forEach(carousel => {
+            let urls;
+            try { urls = JSON.parse(carousel.dataset.images); } catch(e) { return; }
+            if (!Array.isArray(urls) || urls.length < 2) return;
+            const imgEl = carousel.querySelector('.slide-img');
+            const progressBar = carousel.querySelector('.slide-progress');
+            const counterEl = carousel.querySelector('.slide-counter');
+            if (imgEl) this._startCardSlideshow(carousel, imgEl, urls, progressBar, counterEl);
+        });
     }
 
     /**

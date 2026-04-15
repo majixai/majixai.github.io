@@ -1,7 +1,7 @@
+import asyncio
 import sqlite3
 import time
-import datetime # Added for ISO 8601 timestamp
-# requests library needs to be installed. You can install it using: pip install requests
+import datetime
 import requests
 
 # --- Configuration ---
@@ -11,6 +11,15 @@ DB_NAME = "stock_fetcher/index.db" # Store DB in the same directory
 TABLE_NAME = "stock_data"
 
 # --- Functions ---
+
+async def fetch_data_async(url, fallback_url):
+    """
+    Asynchronously fetches data from the given URL using a thread pool.
+    If the primary URL fails, it attempts to fetch from the fallback URL.
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, fetch_data, url, fallback_url)
+
 
 def fetch_data(url, fallback_url):
     """
@@ -61,41 +70,41 @@ def init_db(db_name):
         if conn:
             conn.close()
 
-# --- Main Script ---
-if __name__ == "__main__":
+def _store_data(current_timestamp, fetched_content):
+    """Write one record to the SQLite database (runs in thread pool)."""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute(f"INSERT INTO {TABLE_NAME} (timestamp, data) VALUES (?, ?)",
+                       (current_timestamp, fetched_content))
+        conn.commit()
+        print(f"Timestamp: {current_timestamp} - Data: '{fetched_content[:100]}...' - Stored in database.")
+    except sqlite3.Error as e:
+        print(f"Database error during data insertion: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+async def run_loop():
+    """Main async loop: fetch data and store it every second."""
     init_db(DB_NAME)
-    conn = None # Initialize conn to None
+    loop = asyncio.get_running_loop()
 
     try:
         while True:
-            # 1. Fetch data
-            fetched_content = fetch_data(PRIMARY_URL, FALLBACK_URL)
-
-            # 2. Get current timestamp
+            fetched_content = await fetch_data_async(PRIMARY_URL, FALLBACK_URL)
             current_timestamp = datetime.datetime.now().isoformat()
-
-            # 3. Connect to database and insert data
-            try:
-                conn = sqlite3.connect(DB_NAME)
-                cursor = conn.cursor()
-                cursor.execute(f"INSERT INTO {TABLE_NAME} (timestamp, data) VALUES (?, ?)",
-                               (current_timestamp, fetched_content))
-                conn.commit()
-                print(f"Timestamp: {current_timestamp} - Data: '{fetched_content[:100]}...' - Stored in database.") # Log snippet
-            except sqlite3.Error as e:
-                print(f"Database error during data insertion: {e}")
-            finally:
-                if conn:
-                    conn.close()
-
-            # 4. Wait for 1 second
-            time.sleep(1)
-
+            await loop.run_in_executor(None, _store_data, current_timestamp, fetched_content)
+            await asyncio.sleep(1)
     except KeyboardInterrupt:
         print("\nScript interrupted by user. Exiting gracefully...")
-    except Exception as e: # Catch any other unexpected errors in the main loop
+    except Exception as e:
         print(f"An unexpected error occurred in the main loop: {e}")
-    finally:
-        if conn: # Ensure connection is closed if loop breaks unexpectedly
-            conn.close()
-        print("Script finished.")
+
+
+# --- Main Script ---
+if __name__ == "__main__":
+    asyncio.run(run_loop())
+    print("Script finished.")

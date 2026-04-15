@@ -9,6 +9,23 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+        window.LOGGER_CONFIG = {
+            appName: 'link-manager',
+            level:   'debug',
+            targets: ['console', 'memory', 'localStorage'],
+            localStorageLimit: 100,
+        };
+        window.ACTIONS_CONFIG = {
+            namespace:      'links',
+            logToConsole:   false,
+            persistHistory: true,
+            storageKey:     'linkManagerActions',
+            historyLimit:   100,
+        };
+    </script>
+    <script src="/logging/logging-core.js"></script>
+    <script src="/actions/actions-core.js"></script>
 </head>
 <body>
     <div class="container">
@@ -167,5 +184,28 @@
     </div>
 
     <script type="module" src="js/App.js"></script>
+    <script>
+        // Initialize shared infrastructure (runs after IIFE scripts are ready)
+        MajixLogger.init();
+        MajixActions.init();
+        MajixLogger.info('Link Manager loaded');
+
+        // Register action handlers for observability
+        MajixActions.on('link/add',    function (p) { MajixLogger.info('Link added',    p, 'links'); });
+        MajixActions.on('link/edit',   function (p) { MajixLogger.info('Link edited',   p, 'links'); });
+        MajixActions.on('link/delete', function (p) { MajixLogger.info('Link deleted',  p, 'links'); });
+        MajixActions.on('contact/add', function (p) { MajixLogger.info('Contact added', p, 'contacts'); });
+        MajixActions.on('download',    function (p) { MajixLogger.info('Data download', p, 'io'); });
+        MajixActions.on('upload',      function (p) { MajixLogger.info('Data upload',   p, 'io'); });
+        MajixActions.on('error',       function (p) { MajixLogger.error('App error',    p, 'app'); });
+
+        // Observe download / upload buttons
+        document.getElementById('download-btn').addEventListener('click', function () {
+            MajixActions.dispatch('download', { trigger: 'button' });
+        });
+        document.getElementById('upload-btn').addEventListener('click', function () {
+            MajixActions.dispatch('upload', { trigger: 'button' });
+        });
+    </script>
 </body>
 </html>
