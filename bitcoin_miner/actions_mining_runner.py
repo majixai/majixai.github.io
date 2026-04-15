@@ -36,7 +36,7 @@ def _load_integrations() -> dict:
     np = None
     try:
         import numpy as np  # noqa: PLC0415
-    except Exception as exc:  # pragma: no cover - best-effort import path
+    except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - best-effort import path
         status["details"]["numpy_error"] = str(exc)
 
     try:
@@ -52,7 +52,13 @@ def _load_integrations() -> dict:
             "feature_shape": tuple(features.shape),
             "var_95": var.get("var"),
         }
-    except Exception as exc:  # pragma: no cover - best-effort import path
+    except (
+        ImportError,
+        ModuleNotFoundError,
+        RuntimeError,
+        ValueError,
+        AttributeError,
+    ) as exc:  # pragma: no cover - best-effort import path
         status["details"]["tensor_financial_error"] = str(exc)
 
     try:
@@ -74,7 +80,13 @@ def _load_integrations() -> dict:
         status["details"]["neural_forecaster"] = {
             "feature_shape": tuple(extracted.shape),
         }
-    except Exception as exc:  # pragma: no cover - best-effort import path
+    except (
+        ImportError,
+        ModuleNotFoundError,
+        RuntimeError,
+        ValueError,
+        AttributeError,
+    ) as exc:  # pragma: no cover - best-effort import path
         status["details"]["neural_forecaster_error"] = str(exc)
 
     return status
