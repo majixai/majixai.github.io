@@ -364,3 +364,141 @@ registerRouletteCommand('rannounce', handleRouletteAnnounce, 'Send game announce
         console.error("Stack:", error.stack);
     }
 })();
+
+// ─── New commands appended below ─────────────────────────────────────────────
+
+// Ensure these use the same registerRouletteCommand and ROULETTE_COMMANDS pattern
+
+// !rjackpot — Show jackpot pool
+registerRouletteCommand('rjackpot', async (args, user) => {
+    const jackpot   = Number($kv.get('roulette_jackpot_pool') || 0);
+    const lastWin   = $kv.get('roulette_last_jackpot');
+    const cfgRaw    = $kv.get('roulette_config') || '{}';
+    const config    = JSON.parse(cfgRaw);
+    let msg = `💰 ROULETTE JACKPOT: ${jackpot} tokens! Tip ${config.spinCost || 50}+ to spin and WIN IT ALL!`;
+    if (lastWin) {
+        try {
+            const w = typeof lastWin === 'string' ? JSON.parse(lastWin) : lastWin;
+            msg += `\nLast winner: ${w.tokens} tokens`;
+        } catch (_) {}
+    } else {
+        msg += '\nNo jackpot winner yet — be the FIRST! 🏆';
+    }
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'Show current jackpot pool');
+
+// !rstreak — Show win streak
+registerRouletteCommand('rstreak', async (args, user) => {
+    const target  = (args[0] || user.username).toLowerCase();
+    const streak  = typeof getRouletteStreak === 'function' ? getRouletteStreak(target, $kv) : 0;
+    const emoji   = streak >= 10 ? '👑' : streak >= 5 ? '💥' : streak >= 3 ? '⚡' : '🔥';
+    if (streak === 0) {
+        await sendRouletteNotice(`🎡 ${target} has no active win streak. Spin to start one! 🎰`, { toUsername: user.username });
+    } else {
+        await sendRouletteNotice(`${emoji} ${target}'s win streak: ${streak}!`, { toUsername: user.username });
+    }
+}, 'Show win streak [username]');
+
+// !rhot — Show hot segments
+registerRouletteCommand('rhot', async (args, user) => {
+    const hot  = typeof getHotRouletteSegments  === 'function' ? getHotRouletteSegments($kv, 5)  : [];
+    const cold = typeof getColdRouletteSegments === 'function' ? getColdRouletteSegments($kv, 3) : [];
+    let msg = '🔥 HOT SEGMENTS:\n';
+    if (hot.length > 0)  msg += hot.map((s, i) => `${i + 1}. ${s.label} (${s.count} hits)`).join('\n');
+    else msg += 'No data yet!';
+    if (cold.length > 0) msg += '\n\n🧊 COLD SEGMENTS:\n' + cold.map((s, i) => `${i + 1}. ${s.label} (${s.count} hits)`).join('\n');
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'Show hot/cold segments');
+
+// !rfortune — Lucky fortune reading
+registerRouletteCommand('rfortune', async (args, user) => {
+    const fortune = typeof generateRouletteFortune === 'function'
+        ? generateRouletteFortune(user.username)
+        : `🔮 ${user.username}: The wheel turns in your favor tonight! ✨`;
+    await sendRouletteNotice(fortune, { toUsername: user.username });
+}, 'Get your roulette fortune reading');
+
+// !rdaily — Daily challenge status
+registerRouletteCommand('rdaily', async (args, user) => {
+    const msg = typeof formatDailyChallenge === 'function'
+        ? formatDailyChallenge($kv)
+        : '🏆 Daily challenge data not available.';
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'View today\'s daily challenge');
+
+// !rtop — Roulette leaderboard
+registerRouletteCommand('rtop', async (args, user) => {
+    const msg = typeof formatRouletteLeaderboard === 'function'
+        ? formatRouletteLeaderboard($kv, 10)
+        : '🏆 Leaderboard not available.';
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'View roulette leaderboard');
+
+// !rmystats — Personal stats
+registerRouletteCommand('rmystats', async (args, user) => {
+    const msg = typeof getUserSpinSummary === 'function'
+        ? getUserSpinSummary(user.username, $kv)
+        : '🎡 Personal stats not available.';
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'View your personal roulette stats');
+
+// !rgift — Gift a spin (admin only)
+registerRouletteCommand('rgift', async (args, user) => {
+    if (!isRouletteAdmin(user)) {
+        await sendRouletteNotice('❌ Admin only!', { toUsername: user.username });
+        return;
+    }
+    if (!args[0]) {
+        await sendRouletteNotice('Usage: !rgift [username]', { toUsername: user.username });
+        return;
+    }
+    const target = args[0].toLowerCase();
+    if (typeof giftFreeSpin === 'function') {
+        giftFreeSpin(target, user.username, $kv);
+        await sendRouletteNotice(`🎁 ${user.username} gifted a FREE SPIN to ${target}! 🎡`);
+    } else {
+        await sendRouletteNotice('❌ Gift spin function not available.', { toUsername: user.username });
+    }
+}, 'Gift a free spin to a user (admin)', true);
+
+// !rsession — Session summary (admin only)
+registerRouletteCommand('rsession', async (args, user) => {
+    if (!isRouletteAdmin(user)) {
+        await sendRouletteNotice('❌ Admin only!', { toUsername: user.username });
+        return;
+    }
+    const msg = typeof formatSessionSummary === 'function'
+        ? formatSessionSummary($kv)
+        : '📊 Session summary not available.';
+    await sendRouletteNotice(msg, { toUsername: user.username });
+}, 'View session stats summary (admin)', true);
+
+// !rsetjackpot — Manually set jackpot (admin only)
+registerRouletteCommand('rsetjackpot', async (args, user) => {
+    if (!isRouletteAdmin(user)) {
+        await sendRouletteNotice('❌ Admin only!', { toUsername: user.username });
+        return;
+    }
+    if (!args[0] || isNaN(args[0])) {
+        await sendRouletteNotice('Usage: !rsetjackpot [amount]', { toUsername: user.username });
+        return;
+    }
+    const amount = parseInt(args[0], 10);
+    $kv.set('roulette_jackpot_pool', amount);
+    await sendRouletteNotice(`✅ Roulette jackpot set to ${amount} tokens!`);
+}, 'Set jackpot pool (admin)', true);
+
+// !rachievements — Check user achievements
+registerRouletteCommand('rachievements', async (args, user) => {
+    const target = (args[0] || user.username).toLowerCase();
+    const jackpotWins = Number($kv.get(`roulette_jackpot_wins_${target}`) || 0);
+    const streak      = typeof getRouletteStreak === 'function' ? getRouletteStreak(target, $kv) : 0;
+    const bigTips     = Number($kv.get(`roulette_big_tips_${target}`) || 0);
+    const lines = [
+        `🏅 ${target}'s ROULETTE ACHIEVEMENTS 🏅`,
+        `💰 Jackpot Wins: ${jackpotWins}`,
+        `🔥 Best Streak: (session) ${streak}`,
+        `💸 Big Tips (500+): ${bigTips}`,
+    ];
+    await sendRouletteNotice(lines.join('\n'), { toUsername: user.username });
+}, 'View roulette achievements [username]');

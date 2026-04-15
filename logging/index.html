@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixLogger — Logging Core Demo</title>
+  <style>
+    :root {
+      --bg:     #0d1117;
+      --card:   #161b22;
+      --accent: #58a6ff;
+      --green:  #3fb950;
+      --yellow: #d29922;
+      --red:    #f85149;
+      --text:   #e6edf3;
+      --muted:  #8b949e;
+      --border: #30363d;
+      --debug:  #9E9E9E;
+      --info:   #29B6F6;
+      --warn:   #FFA726;
+      --error:  #EF5350;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+    header { background: #0f3460; padding: 1.5rem 2rem; border-bottom: 2px solid var(--accent); }
+    header h1 { color: var(--accent); font-size: 1.8rem; }
+    header p  { color: var(--muted); margin-top: .25rem; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .card h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .3rem; }
+    input, select, textarea {
+      width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: .4rem .7rem; font-size: .9rem; font-family: inherit;
+    }
+    textarea { resize: vertical; }
+    .row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+    .btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn:hover { opacity: .85; }
+    .btn.green  { background: var(--green);  color: #000; }
+    .btn.yellow { background: var(--yellow); color: #000; }
+    .btn.red    { background: var(--red);    color: #fff; }
+    .log-wrap { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: .75rem; max-height: 380px; overflow-y: auto; font-size: .8rem; font-family: 'Courier New', monospace; }
+    .le { padding: .2rem 0; border-bottom: 1px solid #1c2128; display: flex; gap: .5rem; align-items: baseline; }
+    .le:last-child { border-bottom: none; }
+    .le .lvl { font-weight: bold; width: 42px; flex-shrink: 0; }
+    .le.debug .lvl { color: var(--debug); }
+    .le.info  .lvl { color: var(--info); }
+    .le.warn  .lvl { color: var(--warn); }
+    .le.error .lvl { color: var(--error); }
+    .le .msg  { color: var(--text); flex: 1; }
+    .le .ts   { color: #484f58; font-size: .72rem; flex-shrink: 0; }
+    .le .ctx  { color: var(--accent); font-size: .72rem; }
+    .badge { display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 10px; background: #21262d; color: var(--muted); margin-left: .3rem; }
+    .status { padding: .5rem .75rem; border-radius: 6px; font-size: .85rem; margin-top: .75rem; background: #161b22; border: 1px solid var(--border); }
+    code { background: #21262d; color: var(--green); padding: .15rem .4rem; border-radius: 4px; font-size: .82rem; }
+    pre  { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .82rem; color: var(--text); margin-top: .5rem; }
+    .full-width { grid-column: 1 / -1; }
+    .level-pill { display: inline-block; padding: .1rem .5rem; border-radius: 10px; font-size: .78rem; font-weight: bold; cursor: pointer; border: 1px solid transparent; }
+    .level-pill.active { border-color: var(--accent); }
+    .filter-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .75rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📋 MajixLogger</h1>
+  <p>Shared Logging Core — live demo &amp; documentation</p>
+</header>
+
+<div class="layout">
+
+  <!-- Write a Log Entry -->
+  <div class="card">
+    <h2>Write a Log Entry</h2>
+    <div>
+      <label>Level</label>
+      <select id="log-level">
+        <option value="debug">debug</option>
+        <option value="info" selected>info</option>
+        <option value="warn">warn</option>
+        <option value="error">error</option>
+      </select>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Message</label>
+      <input id="log-message" type="text" value="Sample log entry">
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Data (JSON, optional)</label>
+      <input id="log-data" type="text" placeholder='{"key":"value"}'>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Context tag (optional)</label>
+      <input id="log-context" type="text" placeholder="network, auth, ui …">
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doLog()">Write Entry</button>
+      <button class="btn yellow" onclick="doPerf()">⏱ Perf Sample</button>
+      <button class="btn yellow" onclick="doTimer()">⏱ Start Timer (2 s)</button>
+    </div>
+    <div id="write-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Quick Fire Buttons -->
+  <div class="card">
+    <h2>Quick Scenarios</h2>
+    <div class="row" style="margin-top:0">
+      <button class="btn" onclick="scenario('app-start')">🚀 App Start</button>
+      <button class="btn green" onclick="scenario('data-fetch')">📡 Data Fetch</button>
+      <button class="btn yellow" onclick="scenario('auth-warn')">⚠ Auth Warning</button>
+      <button class="btn red" onclick="scenario('network-error')">💥 Network Error</button>
+      <button class="btn" onclick="scenario('stress')">🌊 Stress (×20)</button>
+    </div>
+    <div style="margin-top:1rem">
+      <label>Export / Filter</label>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doExport()">⬇ Download JSON</button>
+      <button class="btn red" onclick="doClear()">🗑 Clear Log</button>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Buffer size: <span id="buf-size">0</span> entries</label>
+    </div>
+  </div>
+
+  <!-- Live Log Viewer -->
+  <div class="card full-width">
+    <h2>Live Log Viewer <span id="entry-count" class="badge">0</span></h2>
+    <div class="filter-row">
+      <span class="level-pill active" style="color:var(--muted);background:#21262d" data-filter="all" onclick="setFilter('all')">ALL</span>
+      <span class="level-pill" style="color:var(--debug);background:#1c2128" data-filter="debug" onclick="setFilter('debug')">DEBUG</span>
+      <span class="level-pill" style="color:var(--info);background:#1c2128"  data-filter="info"  onclick="setFilter('info')">INFO</span>
+      <span class="level-pill" style="color:var(--warn);background:#1c2128"  data-filter="warn"  onclick="setFilter('warn')">WARN</span>
+      <span class="level-pill" style="color:var(--error);background:#1c2128" data-filter="error" onclick="setFilter('error')">ERROR</span>
+    </div>
+    <div class="log-wrap" id="live-log">
+      <div class="le" style="color:#484f58">No entries yet.</div>
+    </div>
+  </div>
+
+  <!-- Config Viewer -->
+  <div class="card">
+    <h2>Current Configuration</h2>
+    <pre id="config-view">Loading…</pre>
+  </div>
+
+  <!-- Quick Reference -->
+  <div class="card">
+    <h2>Quick Reference</h2>
+    <pre style="font-size:.78rem">// 1. Configure (before script load)
+window.LOGGER_CONFIG = {
+  appName: 'myapp',
+  level:   'info',
+  targets: ['console','memory','localStorage'],
+};
+
+// 2. Initialize
+MajixLogger.init();
+
+// 3. Write entries
+MajixLogger.debug('verbose detail', { val: 42 });
+MajixLogger.info('User logged in', { userId: 1 }, 'auth');
+MajixLogger.warn('Slow response', { ms: 2400 }, 'network');
+MajixLogger.error('Fetch failed', { status: 500 });
+
+// 4. Performance timers
+var stop = MajixLogger.time('data-fetch');
+fetch('/api/data').then(stop);
+
+// 5. Inspect / export
+MajixLogger.getEntries({ level: 'warn' });
+MajixLogger.exportJSON();
+MajixLogger.queryDB({ level: 'error', limit: 50 })
+           .then(console.table);
+
+// 6. Flush remote queue
+window.addEventListener('beforeunload', MajixLogger.flush);</pre>
+  </div>
+
+</div>
+
+<script>
+  window.LOGGER_CONFIG = {
+    appName:          'logging-demo',
+    level:            'debug',
+    targets:          ['console', 'memory', 'localStorage'],
+    memoryLimit:      500,
+    localStorageLimit: 100,
+    consoleTimestamp: true,
+    consoleColorize:  true,
+    onLog: function (entry) {
+      renderEntry(entry);
+      document.getElementById('buf-size').textContent = MajixLogger.size;
+    },
+  };
+</script>
+<script src="/logging/logging-core.js"></script>
+<script>
+  var _filterLevel = 'all';
+
+  function setFilter(lvl) {
+    _filterLevel = lvl;
+    document.querySelectorAll('.level-pill').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.filter === lvl);
+    });
+    rebuildLog();
+  }
+
+  var LEVEL_COLOR = { debug: 'var(--debug)', info: 'var(--info)', warn: 'var(--warn)', error: 'var(--error)' };
+  var LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+  function _buildLogRow(entry) {
+    var ts = new Date(entry.timestamp).toLocaleTimeString() + '.' + String(new Date(entry.timestamp).getMilliseconds()).padStart(3,'0');
+    var row = document.createElement('div');
+    row.className = 'le ' + entry.level;
+
+    var lvlSpan = document.createElement('span');
+    lvlSpan.className = 'lvl';
+    lvlSpan.textContent = entry.level;
+
+    var msgSpan = document.createElement('span');
+    msgSpan.className = 'msg';
+
+    if (entry.context) {
+      var ctxSpan = document.createElement('span');
+      ctxSpan.className = 'ctx';
+      ctxSpan.textContent = '[' + entry.context + ']';
+      msgSpan.appendChild(ctxSpan);
+      msgSpan.appendChild(document.createTextNode(' '));
+    }
+
+    msgSpan.appendChild(document.createTextNode(entry.message));
+
+    if (entry.data) {
+      var dataSpan = document.createElement('span');
+      dataSpan.style.color = '#484f58';
+      dataSpan.textContent = ' ' + JSON.stringify(entry.data).slice(0, 60);
+      msgSpan.appendChild(dataSpan);
+    }
+
+    var tsSpan = document.createElement('span');
+    tsSpan.className = 'ts';
+    tsSpan.textContent = ts;
+
+    row.appendChild(lvlSpan);
+    row.appendChild(msgSpan);
+    row.appendChild(tsSpan);
+    return row;
+  }
+
+  function renderEntry(entry) {
+    if (_filterLevel !== 'all' && (LEVELS[entry.level] || 0) < (LEVELS[_filterLevel] || 0)) return;
+    var log = document.getElementById('live-log');
+    if (log.querySelector('[data-placeholder]')) log.innerHTML = '';
+    var row = _buildLogRow(entry);
+    log.insertBefore(row, log.firstChild);
+    document.getElementById('entry-count').textContent = MajixLogger.size;
+    // keep at most 200 visible rows
+    while (log.children.length > 200) log.removeChild(log.lastChild);
+  }
+
+  function rebuildLog() {
+    var filter = _filterLevel === 'all' ? {} : { level: _filterLevel };
+    var entries = MajixLogger.getEntries(filter).slice().reverse();
+    var log = document.getElementById('live-log');
+    if (!entries.length) {
+      log.innerHTML = '<div class="le" data-placeholder style="color:#484f58">No entries at this level.</div>';
+      return;
+    }
+    log.innerHTML = '';
+    entries.slice(0, 200).forEach(function (entry) {
+      log.appendChild(_buildLogRow(entry));
+    });
+  }
+
+  function showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    el.style.display = 'block';
+    el.style.color   = ok ? '#3fb950' : '#f85149';
+    el.textContent   = msg;
+    setTimeout(function () { el.style.display = 'none'; }, 2500);
+  }
+
+  function doLog() {
+    var level   = document.getElementById('log-level').value;
+    var message = document.getElementById('log-message').value.trim();
+    var dataStr = document.getElementById('log-data').value.trim();
+    var context = document.getElementById('log-context').value.trim() || undefined;
+    if (!message) { showStatus('write-status', 'Message is required', false); return; }
+    var data;
+    try { data = dataStr ? JSON.parse(dataStr) : undefined; } catch (e) { showStatus('write-status', 'Invalid data JSON', false); return; }
+    MajixLogger.log(level, message, data, context);
+    showStatus('write-status', 'Entry written at [' + level + ']', true);
+  }
+
+  function doPerf() {
+    MajixLogger.perf('demo-render', Math.round(Math.random() * 200 + 50), { component: 'chart' });
+    showStatus('write-status', 'Perf entry written', true);
+  }
+
+  function doTimer() {
+    var stop = MajixLogger.time('2-second-demo-timer');
+    setTimeout(function () {
+      var ms = stop();
+      showStatus('write-status', 'Timer stopped: ' + ms + ' ms', true);
+    }, 2000);
+    showStatus('write-status', 'Timer started — fires in 2 s', true);
+  }
+
+  var _scenarios = {
+    'app-start': function () {
+      MajixLogger.info('Application initializing', { version: '1.0.0' }, 'app');
+      MajixLogger.debug('Config loaded', { theme: 'dark', locale: 'en-US' }, 'app');
+      MajixLogger.info('App ready', null, 'app');
+    },
+    'data-fetch': function () {
+      MajixLogger.debug('Fetch started', { url: '/api/tickers', method: 'GET' }, 'network');
+      MajixLogger.info('Fetch complete', { status: 200, rows: 42, ms: 312 }, 'network');
+    },
+    'auth-warn': function () {
+      MajixLogger.warn('Session expiring soon', { expiresIn: '5m' }, 'auth');
+      MajixLogger.warn('Rate limit approaching', { remaining: 5, limit: 100 }, 'network');
+    },
+    'network-error': function () {
+      MajixLogger.error('Fetch failed', { status: 503, url: '/api/data' }, 'network');
+      MajixLogger.error('Retry 1 failed', { attempt: 1 }, 'network');
+    },
+    'stress': function () {
+      var levels = ['debug','info','info','warn','error'];
+      for (var i = 0; i < 20; i++) {
+        var lvl = levels[Math.floor(Math.random() * levels.length)];
+        MajixLogger.log(lvl, 'Stress entry #' + i, { i: i }, 'stress');
+      }
+    },
+  };
+
+  function scenario(name) {
+    if (_scenarios[name]) _scenarios[name]();
+  }
+
+  function doExport() {
+    var json = MajixLogger.exportJSON(_filterLevel !== 'all' ? { level: _filterLevel } : undefined);
+    var blob = new Blob([json], { type: 'application/json' });
+    var a    = document.createElement('a');
+    a.href   = URL.createObjectURL(blob);
+    a.download = 'majix-logs.json';
+    a.click();
+  }
+
+  function doClear() {
+    MajixLogger.clear();
+    document.getElementById('live-log').innerHTML = '<div class="le" data-placeholder style="color:#484f58">Log cleared.</div>';
+    document.getElementById('entry-count').textContent = '0';
+    document.getElementById('buf-size').textContent = '0';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    MajixLogger.init();
+    document.getElementById('config-view').textContent = JSON.stringify(MajixLogger.config, null, 2);
+    MajixLogger.info('Logging demo loaded', { page: 'logging/index.html' }, 'app');
+    MajixLogger.debug('Config applied', MajixLogger.config, 'app');
+  });
+</script>
+</body>
+</html>

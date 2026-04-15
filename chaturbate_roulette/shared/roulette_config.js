@@ -124,3 +124,86 @@ if (typeof module !== 'undefined' && module.exports) {
         removeSegment
     };
 }
+
+// ─── VIP Tiers for Roulette ───────────────────────────────────────────────────
+
+/**
+ * VIP tiers for roulette — determines bonus spin count and token multiplier.
+ */
+const ROULETTE_VIP_TIERS = [
+    { name: 'Bronze',   minTokens: 0,     spinsBonus: 0, multiplier: 1.0, emoji: '🥉' },
+    { name: 'Silver',   minTokens: 500,   spinsBonus: 0, multiplier: 1.1, emoji: '🥈' },
+    { name: 'Gold',     minTokens: 2000,  spinsBonus: 1, multiplier: 1.25, emoji: '🥇' },
+    { name: 'Platinum', minTokens: 5000,  spinsBonus: 1, multiplier: 1.5,  emoji: '💎' },
+    { name: 'Diamond',  minTokens: 15000, spinsBonus: 2, multiplier: 1.75, emoji: '💍' },
+    { name: 'Legend',   minTokens: 50000, spinsBonus: 3, multiplier: 2.0,  emoji: '👑' },
+];
+
+/**
+ * Get the roulette VIP tier for a user by lifetime tokens.
+ * @param {number} lifetimeTokens
+ * @returns {Object} Tier object
+ */
+function getRouletteVipTier(lifetimeTokens) {
+    const tokens = Number(lifetimeTokens) || 0;
+    let tier = ROULETTE_VIP_TIERS[0];
+    for (const t of ROULETTE_VIP_TIERS) {
+        if (tokens >= t.minTokens) tier = t;
+    }
+    return tier;
+}
+
+// ─── Jackpot Configuration ────────────────────────────────────────────────────
+
+/**
+ * Default jackpot configuration for the roulette.
+ */
+function getDefaultJackpotConfig() {
+    return {
+        seed: 200,               // Starting jackpot when claimed or initialized
+        contributionRate: 0.05,  // 5% of each tip goes to jackpot
+        minJackpot: 200,         // Jackpot never goes below this
+        jackpotSegmentLabel: 'JACKPOT!', // Label of the jackpot segment in wheel
+    };
+}
+
+// ─── Daily Challenge Configuration ───────────────────────────────────────────
+
+/**
+ * Pool of possible daily challenges.
+ */
+function getDailyChallengePool() {
+    return [
+        { type: 'hit_segment',     description: 'Hit the JACKPOT segment',         target: 1,   reward: 200 },
+        { type: 'spin_count',      description: 'Complete 15 spins this session',   target: 15,  reward: 100 },
+        { type: 'win_streak',      description: 'Achieve a 4-spin win streak',      target: 4,   reward: 150 },
+        { type: 'total_tips',      description: 'Tip 1000+ tokens today',           target: 1000, reward: 200 },
+        { type: 'unique_spinners', description: 'Have 8 unique spinners today',     target: 8,   reward: 100 },
+        { type: 'combo_spins',     description: 'Earn a 3-tip combo by one user',   target: 3,   reward: 75  },
+        { type: 'bonus_segment',   description: 'Land on any Bonus segment 3 times', target: 3,  reward: 50  },
+        { type: 'token_payout',    description: 'Award 200+ total bonus tokens',    target: 200, reward: 150 },
+    ];
+}
+
+// ─── Announcement Templates ───────────────────────────────────────────────────
+
+/**
+ * Announcement rotation messages for the roulette app.
+ * @param {number} spinCost - Minimum tip to earn a spin
+ * @param {number} jackpot  - Current jackpot pool
+ * @returns {string[]}
+ */
+function getRouletteAnnouncements(spinCost, jackpot) {
+    return [
+        `🎡 ROULETTE TIME! Tip ${spinCost}+ tokens to spin the wheel and win amazing prizes! 🎡`,
+        `💰 The jackpot pool is currently ${jackpot} tokens — spin to WIN IT ALL! 🏆`,
+        `🔥 Type !rjackpot to check the jackpot, !rstreak for your streak, !rfortune for your fortune!`,
+        `🎯 Daily Challenge is active! Type !rdaily to see today's goal and earn bonus tokens!`,
+        `🏆 Type !rtop to see the roulette leaderboard!`,
+        `�� Mods can gift spins! Type !rgift [username] to give a free spin to someone!`,
+        `🌟 VIP spinners earn bonus spins! Tip more to level up your tier and get multipliers!`,
+        `🎡 Hot segments are where the wins cluster! Type !rhot to see what's hot tonight!`,
+        `🎊 Spin combos are REAL — tip multiple times in a minute for a bonus multiplier!`,
+        `💃 Follow the room to never miss a special show announcement!`,
+    ];
+}

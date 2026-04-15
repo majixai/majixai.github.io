@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  /java/pom.xml  —  Parent Maven POM for MajixAI Java Processing
+  ================================================================
+
+  This is the single-source-of-truth build descriptor for all Java
+  sub-projects in the MajixAI repository.
+
+  Sub-project usage
+  -----------------
+  1. Copy /java/template/pom.xml into your sub-directory.
+  2. Set <artifactId> and <description> for your project.
+  3. Add any extra <dependencies> you need.
+  4. Build from your sub-directory:
+       mvn -f pom.xml package
+     Or from the repo root:
+       mvn -pl java/<your-subproject> -am package
+
+  Parent dependency
+  -----------------
+  The parent POM ships JavaCore as a local dependency so sub-projects
+  can import ai.majix.JavaCore without extra configuration:
+
+      import ai.majix.JavaCore;
+
+  Build requirements
+  ------------------
+  Java 17+ (uses pattern-matching switch expressions)
+  Maven 3.8+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ─────────────────────────── Coordinates ─────────────────────────── -->
+  <groupId>ai.majix</groupId>
+  <artifactId>java-core</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>MajixAI Java Core</name>
+  <description>
+    Shared Java processing infrastructure for the MajixAI GitHub Pages
+    repository.  Provides JavaCore — a retry-capable, configurable pipeline
+    that any sub-directory can use as a base for Java-based processing tasks.
+  </description>
+  <url>https://majixai.github.io</url>
+
+  <!-- ─────────────────────────── Properties ───────────────────────────── -->
+  <properties>
+    <java.version>17</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!-- Dependency versions — bump here to update everywhere -->
+    <junit.version>5.10.2</junit.version>
+    <mockito.version>5.11.0</mockito.version>
+    <jackson.version>2.17.0</jackson.version>
+  </properties>
+
+  <!-- ──────────────────────────── Dependencies ────────────────────────── -->
+  <dependencies>
+
+    <!-- ── Test scope ─────────────────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ── Optional runtime (add to sub-project POMs as needed) ─────── -->
+    <!--
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    -->
+
+  </dependencies>
+
+  <!-- ────────────────────────────── Build ─────────────────────────────── -->
+  <build>
+    <plugins>
+
+      <!-- Compiler: enforce Java 17, enable all warnings -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${java.version}</release>
+          <compilerArgs>
+            <arg>-Xlint:all</arg>
+            <arg>-Xlint:-processing</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
+      <!-- Surefire: run JUnit 5 tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+
+      <!-- Shade: produce a fat/executable JAR in target/ -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <finalName>java-core</finalName>
+              <transformers>
+                <transformer implementation=
+                  "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>ai.majix.JavaCore</mainClass>
+                </transformer>
+              </transformers>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>

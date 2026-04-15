@@ -357,3 +357,117 @@ if (typeof module !== 'undefined' && module.exports) {
         setLastSpinTime
     };
 }
+
+// ─── Enhanced Tracking Functions ─────────────────────────────────────────────
+
+/**
+ * Get the roulette leaderboard sorted by tokens tipped.
+ * @param {Object} kv
+ * @param {number} [limit=10]
+ * @returns {Array<{ username: string, score: number, spins: number }>}
+ */
+function getRouletteLeaderboard(kv, limit = 10) {
+    const data = getTrackingData(kv);
+    return Object.entries(data.userStats || {})
+        .map(([username, u]) => ({ username, score: u.tokensSpent || 0, spins: u.spins || 0, won: u.tokensAwarded || 0 }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+}
+
+/**
+ * Format the leaderboard for chat display.
+ * @param {Object} kv
+ * @param {number} [limit=5]
+ * @returns {string}
+ */
+function formatRouletteLeaderboard(kv, limit = 5) {
+    const entries = getRouletteLeaderboard(kv, limit);
+    if (entries.length === 0) return '🏆 No roulette data yet! Be the first to spin!';
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const lines  = entries.map((e, i) =>
+        `${medals[i] || `${i + 1}.`} ${e.username}: ${e.score} tokens (${e.spins} spins)`
+    );
+    return `🎡 ROULETTE LEADERBOARD 🎡\n${lines.join('\n')}\nTip to claim the top spot!`;
+}
+
+/**
+ * Format a session summary for the broadcaster.
+ * @param {Object} kv
+ * @returns {string}
+ */
+function formatSessionSummary(kv) {
+    const data = getTrackingData(kv);
+    const now  = Date.now();
+    const durationMs  = now - (data.sessionStartTime || now);
+    const durationMin = Math.floor(durationMs / 60000);
+    const spinners    = Object.keys(data.userStats || {}).length;
+    const netTokens   = (data.totalTokensSpent || 0) - (data.totalTokensAwarded || 0);
+
+    return [
+        `🎡 SESSION SUMMARY ��`,
+        `Duration: ${durationMin} minutes`,
+        `Total Spins: ${data.totalSpins || 0}`,
+        `Unique Spinners: ${spinners}`,
+        `Tokens In: ${data.totalTokensSpent || 0}`,
+        `Tokens Awarded: ${data.totalTokensAwarded || 0}`,
+        `Net: ${netTokens}`,
+    ].join('\n');
+}
+
+/**
+ * Get personal spin stats for a user.
+ * @param {string} username
+ * @param {Object} kv
+ * @returns {string}
+ */
+function getUserSpinSummary(username, kv) {
+    const data    = getTrackingData(kv);
+    const u       = (data.userStats || {})[username];
+    const streak  = Number(kv.get(`roulette_streak_${username}`) || 0);
+    const gifts   = Number(kv.get(`roulette_gifted_spins_${username}`) || 0);
+
+    if (!u) {
+        return `🎡 ${username} hasn't spun yet! Tip to play the roulette!`;
+    }
+
+    const winRate = u.spins > 0 ? Math.round((u.wins || 0) / u.spins * 100) : 0;
+    return [
+        `🎡 ${username}'s ROULETTE STATS 🎡`,
+        `Spins: ${u.spins || 0} | Wins: ${u.wins || 0} (${winRate}%)`,
+        `Tokens Tipped: ${u.tokensSpent || 0}`,
+        `Tokens Won: ${u.tokensAwarded || 0}`,
+        `Net: ${(u.tokensAwarded || 0) - (u.tokensSpent || 0)}`,
+        `Win Streak: ${streak}${streak >= 3 ? ' 🔥' : ''}`,
+        `Gifted Spins: ${gifts}`,
+    ].join('\n');
+}
+
+/**
+ * Record that a specific user won tokens (for win tracking separate from tokensAwarded).
+ * @param {string} username
+ * @param {boolean} isWin
+ * @param {Object} kv
+ */
+function recordUserWin(username, isWin, kv) {
+    const data = getTrackingData(kv);
+    if (!data.userStats[username]) {
+        data.userStats[username] = { spins: 0, wins: 0, tokensSpent: 0, tokensAwarded: 0 };
+    }
+    if (isWin) {
+        data.userStats[username].wins = (data.userStats[username].wins || 0) + 1;
+        saveTrackingData(kv, data);
+    }
+}
+
+/**
+ * Get a snapshot of hot/cold statistics for overlay display.
+ * @param {Object} kv
+ * @returns {{ hot: Array, cold: Array }}
+ */
+function getHotColdSnapshot(kv) {
+    return {
+        hot:  typeof getHotRouletteSegments  === 'function' ? getHotRouletteSegments(kv, 3)  : [],
+        cold: typeof getColdRouletteSegments === 'function' ? getColdRouletteSegments(kv, 3) : [],
+    };
+}

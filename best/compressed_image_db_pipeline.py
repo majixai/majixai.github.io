@@ -49,7 +49,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-dir", default="best", help="Base directory for best artifacts")
     parser.add_argument("--runtime-seconds", type=int, default=180, help="Maximum runtime per invocation")
     parser.add_argument("--api-page-limit", type=int, default=500, help="API page size")
-    parser.add_argument("--api-max-pages", type=int, default=6, help="Max pages fetched per run")
+    parser.add_argument("--api-max-pages", type=int, default=100, help="Max pages fetched per run (safety cap; actual pages determined by API count)")
     parser.add_argument("--api-concurrency", type=int, default=6, help="Concurrent API page fetches")
     parser.add_argument("--image-concurrency", type=int, default=12, help="Concurrent image downloads")
     parser.add_argument("--request-timeout", type=int, default=20, help="HTTP timeout seconds")
@@ -73,7 +73,7 @@ def _blocking_fetch_bytes(url: str, timeout: int, max_image_bytes: int) -> tuple
         return data, content_type
 
 
-async def fetch_page(offset: int, page_limit: int, timeout: int, sem: asyncio.Semaphore) -> tuple[int, list[dict[str, Any]]]:
+async def fetch_page(offset: int, page_limit: int, timeout: int, sem: asyncio.Semaphore) -> tuple[int, list[dict[str, Any]], int]:
     url = f"{API_BASE}&limit={page_limit}&offset={offset}"
     async with sem:
         try:
@@ -81,29 +81,44 @@ async def fetch_page(offset: int, page_limit: int, timeout: int, sem: asyncio.Se
             rows = payload.get("results") or []
             if not isinstance(rows, list):
                 rows = []
-            return offset, rows
+            total_count = int(payload.get("count") or 0)
+            return offset, rows, total_count
         except Exception:
-            return offset, []
+            return offset, [], 0
 
 
 async def fetch_performers(args: argparse.Namespace, deadline: float) -> list[dict[str, Any]]:
     sem = asyncio.Semaphore(max(1, args.api_concurrency))
-    offsets = [idx * args.api_page_limit for idx in range(max(1, args.api_max_pages))]
-    tasks = [fetch_page(offset, args.api_page_limit, args.request_timeout, sem) for offset in offsets]
-    results = await asyncio.gather(*tasks)
-    results.sort(key=lambda item: item[0])
+
+    # Probe first page to discover total available performers from the API
+    _, first_rows, total_count = await fetch_page(0, args.api_page_limit, args.request_timeout, sem)
+    if not first_rows:
+        return []
+
+    # Dynamically compute pages needed based on total_count; fall back to api_max_pages
+    if total_count > 0:
+        pages_needed = min(
+            (total_count + args.api_page_limit - 1) // args.api_page_limit,
+            max(1, args.api_max_pages),
+        )
+    else:
+        pages_needed = max(1, args.api_max_pages)
+
+    # Fetch all remaining pages concurrently (page 1 onwards)
+    remaining_offsets = [idx * args.api_page_limit for idx in range(1, pages_needed)]
+    tasks = [fetch_page(offset, args.api_page_limit, args.request_timeout, sem) for offset in remaining_offsets]
+    remaining_results: list[tuple[int, list[dict[str, Any]], int]] = await asyncio.gather(*tasks) if tasks else []
+
+    # Merge and process all pages in offset order
+    all_results: list[tuple[int, list[dict[str, Any]]]] = [(0, first_rows)] + [(o, r) for o, r, _ in remaining_results]
+    all_results.sort(key=lambda item: item[0])
 
     performers: list[dict[str, Any]] = []
     seen_users: set[str] = set()
 
-    for _, rows in results:
+    for _, rows in all_results:
         if time.time() >= deadline:
             break
-        if len(rows) < args.api_page_limit:
-            stop_after_this = True
-        else:
-            stop_after_this = False
-
         for row in rows:
             if row.get("current_show") != "public":
                 continue
@@ -124,9 +139,6 @@ async def fetch_performers(args: argparse.Namespace, deadline: float) -> list[di
                     "tags": row.get("tags") or [],
                 }
             )
-
-        if stop_after_this:
-            break
 
     return performers
 

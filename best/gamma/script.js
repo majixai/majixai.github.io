@@ -307,6 +307,8 @@
                 this.uiManager.showOnlineErrorDisplay(`Failed to fetch data: ${error.message}. Check console.`);
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
+                // Refresh slideshows for currently-loaded cards
+                this.uiManager.refreshSlideshows();
                 console.log("App: fetchDataAndUpdateUI execution finished.");
             }
         }

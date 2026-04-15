@@ -28,6 +28,7 @@ Usage:
                                           [--elec-cost N]
 """
 
+import asyncio
 import json
 import time
 import sys
@@ -79,6 +80,9 @@ _UA = "majixai-bitcoin-miner/2.0 (+https://majixai.github.io)"
 
 def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
     """Single-attempt HTTP GET returning parsed JSON or None."""
+# ── HTTP helper ────────────────────────────────────────────────────────────────
+def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
+    """Blocking HTTP fetch used as the thread-pool target."""
     try:
         req = urllib.request.Request(url, headers={"User-Agent": _UA})
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -810,6 +814,18 @@ def fetch_supply_stats(height: int = 0) -> dict:
         "blocks_to_next_halving": blocks_to,
         "estimated_final_btc":    round(max_supply, 4),
     }
+async def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
+    """Async HTTP fetch — runs the blocking urllib call in a thread pool."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _fetch_sync, url, timeout)
+
+
+# ── Pure-Python 2-layer neural network ────────────────────────────────────────
+#
+#  Architecture: NN_INPUTS → NN_HIDDEN (ReLU) → 1 output
+#  Weights are deterministic (seeded RNG) — trained by one pass of
+#  gradient descent on synthetic fee-vs-mempool pairs generated from
+#  the live data so the model "learns" the current fee environment.
 
 
 # ==============================================================================
@@ -1304,6 +1320,20 @@ def compute_profitability(
 # ==============================================================================
 # SECTION 19 - Anomaly detector
 # ==============================================================================
+# ── Data collection ────────────────────────────────────────────────────────────
+async def collect(prev_samples):
+    blocks, fees_rec, mempool, recent, hashrate = await asyncio.gather(
+        fetch(f"{API_BASE}/v1/blocks"),
+        fetch(f"{API_BASE}/v1/fees/recommended"),
+        fetch(f"{API_BASE}/mempool"),
+        fetch(f"{API_BASE}/mempool/recent"),
+        fetch(f"{API_BASE}/v1/mining/hashrate/1w"),
+    )
+    blocks   = blocks   or []
+    fees_rec = fees_rec or {}
+    mempool  = mempool  or {}
+    recent   = recent   or []
+    hashrate = hashrate or {}
 
 def detect_anomalies(current_fees: dict, fee_history: list) -> dict:
     """
@@ -2040,6 +2070,9 @@ def main():
 
     os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_FILE)),  exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(HISTORY_FILE)), exist_ok=True)
+# ── Main loop ──────────────────────────────────────────────────────────────────
+async def _run(args):
+    os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_FILE)), exist_ok=True)
 
     history_buf = None
     if not args.no_history:
@@ -2083,6 +2116,7 @@ def main():
                 power_watts    = args.power_w,
                 elec_cost      = args.elec_cost,
             )
+            data = await collect(prev_samples[-5:])
             last_data = data
             all_samples.append(data)
 
@@ -2128,6 +2162,7 @@ def main():
 
     summary = compute_run_summary(all_samples)
     print_run_summary(summary, all_samples)
+        await asyncio.sleep(min(SAMPLE_INTERVAL, remaining))
 
     if last_data:
         net    = last_data.get("network",        {})
@@ -2142,9 +2177,12 @@ def main():
         sys.exit(1)
 
 
-# ==============================================================================
-# Entry point
-# ==============================================================================
+def main():
+    parser = ArgumentParser(description="Bitcoin real data fetcher + ML analyser")
+    parser.add_argument("--runtime", type=int, default=RUNTIME,
+                        help="How many seconds to run (default 180)")
+    args = parser.parse_args()
+    asyncio.run(_run(args))
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

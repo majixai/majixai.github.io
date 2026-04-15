@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "description": "GPU processing configuration for majixai.github.io",
+  "backends": {
+    "priority": ["cuda", "mps", "tensorflow", "cpu"],
+    "cuda": {
+      "enabled": true,
+      "device_id": 0,
+      "memory_fraction": 0.85,
+      "allow_growth": true
+    },
+    "mps": {
+      "enabled": true,
+      "comment": "Apple Metal Performance Shaders (macOS)"
+    },
+    "tensorflow": {
+      "enabled": true,
+      "memory_fraction": 0.85,
+      "allow_growth": true,
+      "xla_jit": false
+    },
+    "cpu": {
+      "enabled": true,
+      "num_threads": 0,
+      "comment": "0 means auto-detect physical cores"
+    }
+  },
+  "task_queue": {
+    "max_workers": 4,
+    "timeout_seconds": 300,
+    "retry_on_oom": true,
+    "retry_delay_seconds": 2
+  },
+  "logging": {
+    "level": "INFO",
+    "log_memory_usage": true,
+    "log_timing": true
+  },
+  "kernels": {
+    "tensor_ops": {
+      "hosvd_rank": 3,
+      "monte_carlo_paths": 400,
+      "kalman_batch_size": 256
+    },
+    "matrix_ops": {
+      "svd_driver": "auto",
+      "matmul_precision": "float32"
+    }
+  }
+}

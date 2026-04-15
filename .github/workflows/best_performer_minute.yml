@@ -49,12 +49,12 @@ on:
       runtime_seconds:
         description: 'Maximum runtime for the DB pipeline in seconds'
         required: true
-        default: '180'
+        default: '300'
         type: string
       api_max_pages:
-        description: 'Maximum API pages to fetch'
+        description: 'Maximum API pages to fetch (safety cap; actual pages determined by API count)'
         required: true
-        default: '6'
+        default: '100'
         type: string
       api_concurrency:
         description: 'Number of concurrent API requests'
@@ -240,8 +240,8 @@ jobs:
       - name: Execute Compressed Image DB Pipeline
         id: db_pipeline
         env:
-          RUNTIME_SECONDS: ${{ github.event.inputs.runtime_seconds || '180' }}
-          API_MAX_PAGES: ${{ github.event.inputs.api_max_pages || '6' }}
+          RUNTIME_SECONDS: ${{ github.event.inputs.runtime_seconds || '300' }}
+          API_MAX_PAGES: ${{ github.event.inputs.api_max_pages || '100' }}
           API_CONCURRENCY: ${{ github.event.inputs.api_concurrency || '6' }}
           IMAGE_CONCURRENCY: ${{ github.event.inputs.image_concurrency || '12' }}
         run: |
