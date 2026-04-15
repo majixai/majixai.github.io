@@ -563,59 +563,165 @@ bool ls3StrkBl   = isBear[3] and isBear[2] and isBear[1] and isBull and open < c
 bool rising3     = isBull[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4] and high[3] < high[4]
 bool falling3    = isBear[4] and isBull[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4] and low[3] > low[4]
 
+// Declare variables with default values
+int candleScore = 0
+string candleName = "NONE"
+
 // Pattern score computation
-int candleScore = 0, string candleName = "NONE"
-if rising3          candleScore:=10,  candleName:="Rising 3"
-else if falling3    candleScore:=-10, candleName:="Falling 3"
-else if ls3StrkBl   candleScore:=8,   candleName:="3L Strike Bull"
-else if ls3Strike   candleScore:=-8,  candleName:="3L Strike Bear"
-else if abanBabyBl  candleScore:=7,   candleName:="Aband Baby Bull"
-else if abanBabyBr  candleScore:=-7,  candleName:="Aband Baby Bear"
-else if mornDojiSt  candleScore:=7,   candleName:="Morning Doji Star"
-else if eveDojiSt   candleScore:=-7,  candleName:="Evening Doji Star"
-else if triStarBull candleScore:=7,   candleName:="Tri-Star Bull"
-else if triStarBear candleScore:=-7,  candleName:="Tri-Star Bear"
-else if bullKicker  candleScore:=7,   candleName:="Bull Kicker"
-else if bearKicker  candleScore:=-7,  candleName:="Bear Kicker"
-else if threeWhSld  candleScore:=6,   candleName:="3 White Soldiers"
-else if threeBkCrw  candleScore:=-6,  candleName:="3 Black Crows"
-else if threeInsUp  candleScore:=6,   candleName:="3 Inside Up"
-else if threeInsDn  candleScore:=-6,  candleName:="3 Inside Down"
-else if threeOutUp  candleScore:=6,   candleName:="3 Outside Up"
-else if threeOutDn  candleScore:=-6,  candleName:="3 Outside Down"
-else if mornStar    candleScore:=5,   candleName:="Morning Star"
-else if eveStar     candleScore:=-5,  candleName:="Evening Star"
-else if tasukiUp    candleScore:=4,   candleName:="Upside Tasuki"
-else if tasukiDn    candleScore:=-4,  candleName:="Downside Tasuki"
-else if bullEngulf  candleScore:=4,   candleName:="Bullish Engulfing"
-else if bearEngulf  candleScore:=-4,  candleName:="Bearish Engulfing"
-else if piercing    candleScore:=4,   candleName:="Piercing Line"
-else if darkCloud   candleScore:=-4,  candleName:="Dark Cloud Cover"
-else if tweezBot    candleScore:=4,   candleName:="Tweezer Bottom"
-else if tweezTop    candleScore:=-4,  candleName:="Tweezer Top"
-else if bullHaramiX candleScore:=3,   candleName:="Bull Harami Cross"
-else if bearHaramiX candleScore:=-3,  candleName:="Bear Harami Cross"
-else if bullMeetLn  candleScore:=3,   candleName:="Bull Meeting Lines"
-else if bearMeetLn  candleScore:=-3,  candleName:="Bear Meeting Lines"
-else if thrustBull  candleScore:=3,   candleName:="Bullish Thrust"
-else if thrustBear  candleScore:=-3,  candleName:="Bearish Thrust"
-else if bullHarami  candleScore:=2,   candleName:="Bullish Harami"
-else if bearHarami  candleScore:=-2,  candleName:="Bearish Harami"
-else if isBullMaru  candleScore:=2,   candleName:="Bull Marubozu"
-else if isBearMaru  candleScore:=-2,  candleName:="Bear Marubozu"
-else if isBullBelt  candleScore:=2,   candleName:="Bull Belt Hold"
-else if isBearBelt  candleScore:=-2,  candleName:="Bear Belt Hold"
-else if onNeckBull  candleScore:=1,   candleName:="On Neck Bull"
-else if onNeckBear  candleScore:=-1,  candleName:="On Neck Bear"
-else if isHammer    candleScore:=1,   candleName:="Hammer"
-else if isShootStar candleScore:=-1,  candleName:="Shooting Star"
-else if isHangMan   candleScore:=-1,  candleName:="Hanging Man"
-else if isInvHam    candleScore:=1,   candleName:="Inverted Hammer"
-else if isShavenH   candleScore:=1,   candleName:="Shaven Head"
-else if isShavenB   candleScore:=-1,  candleName:="Shaven Bottom"
-else if isDragon    candleScore:=1,   candleName:="Dragonfly Doji"
-else if isGrave     candleScore:=-1,  candleName:="Gravestone Doji"
-else if isDoji      candleScore:=0,   candleName:="Doji"
+if rising3
+    candleScore := 10
+    candleName := "Rising 3"
+else if falling3
+    candleScore := -10
+    candleName := "Falling 3"
+else if ls3StrkBl
+    candleScore := 8
+    candleName := "3L Strike Bull"
+else if ls3Strike
+    candleScore := -8
+    candleName := "3L Strike Bear"
+else if abanBabyBl
+    candleScore := 7
+    candleName := "Aband Baby Bull"
+else if abanBabyBr
+    candleScore := -7
+    candleName := "Aband Baby Bear"
+else if mornDojiSt
+    candleScore := 7
+    candleName := "Morning Doji Star"
+else if eveDojiSt
+    candleScore := -7
+    candleName := "Evening Doji Star"
+else if triStarBull
+    candleScore := 7
+    candleName := "Tri-Star Bull"
+else if triStarBear
+    candleScore := -7
+    candleName := "Tri-Star Bear"
+else if bullKicker
+    candleScore := 7
+    candleName := "Bull Kicker"
+else if bearKicker
+    candleScore := -7
+    candleName := "Bear Kicker"
+else if threeWhSld
+    candleScore := 6
+    candleName := "3 White Soldiers"
+else if threeBkCrw
+    candleScore := -6
+    candleName := "3 Black Crows"
+else if threeInsUp
+    candleScore := 6
+    candleName := "3 Inside Up"
+else if threeInsDn
+    candleScore := -6
+    candleName := "3 Inside Down"
+else if threeOutUp
+    candleScore := 6
+    candleName := "3 Outside Up"
+else if threeOutDn
+    candleScore := -6
+    candleName := "3 Outside Down"
+else if mornStar
+    candleScore := 5
+    candleName := "Morning Star"
+else if eveStar
+    candleScore := -5
+    candleName := "Evening Star"
+else if tasukiUp
+    candleScore := 4
+    candleName := "Upside Tasuki"
+else if tasukiDn
+    candleScore := -4
+    candleName := "Downside Tasuki"
+else if bullEngulf
+    candleScore := 4
+    candleName := "Bullish Engulfing"
+else if bearEngulf
+    candleScore := -4
+    candleName := "Bearish Engulfing"
+else if piercing
+    candleScore := 4
+    candleName := "Piercing Line"
+else if darkCloud
+    candleScore := -4
+    candleName := "Dark Cloud Cover"
+else if tweezBot
+    candleScore := 4
+    candleName := "Tweezer Bottom"
+else if tweezTop
+    candleScore := -4
+    candleName := "Tweezer Top"
+else if bullHaramiX
+    candleScore := 3
+    candleName := "Bull Harami Cross"
+else if bearHaramiX
+    candleScore := -3
+    candleName := "Bear Harami Cross"
+else if bullMeetLn
+    candleScore := 3
+    candleName := "Bull Meeting Lines"
+else if bearMeetLn
+    candleScore := -3
+    candleName := "Bear Meeting Lines"
+else if thrustBull
+    candleScore := 3
+    candleName := "Bullish Thrust"
+else if thrustBear
+    candleScore := -3
+    candleName := "Bearish Thrust"
+else if bullHarami
+    candleScore := 2
+    candleName := "Bullish Harami"
+else if bearHarami
+    candleScore := -2
+    candleName := "Bearish Harami"
+else if isBullMaru
+    candleScore := 2
+    candleName := "Bull Marubozu"
+else if isBearMaru
+    candleScore := -2
+    candleName := "Bear Marubozu"
+else if isBullBelt
+    candleScore := 2
+    candleName := "Bull Belt Hold"
+else if isBearBelt
+    candleScore := -2
+    candleName := "Bear Belt Hold"
+else if onNeckBull
+    candleScore := 1
+    candleName := "On Neck Bull"
+else if onNeckBear
+    candleScore := -1
+    candleName := "On Neck Bear"
+else if isHammer
+    candleScore := 1
+    candleName := "Hammer"
+else if isShootStar
+    candleScore := -1
+    candleName := "Shooting Star"
+else if isHangMan
+    candleScore := -1
+    candleName := "Hanging Man"
+else if isInvHam
+    candleScore := 1
+    candleName := "Inverted Hammer"
+else if isShavenH
+    candleScore := 1
+    candleName := "Shaven Head"
+else if isShavenB
+    candleScore := -1
+    candleName := "Shaven Bottom"
+else if isDragon
+    candleScore := 1
+    candleName := "Dragonfly Doji"
+else if isGrave
+    candleScore := -1
+    candleName := "Gravestone Doji"
+else if isDoji
+    candleScore := 0
+    candleName := "Doji"
+
 
 pe.activeCandlePat := candleName
 if sh_cp and candleName != "NONE"
@@ -962,14 +1068,11 @@ if macroScore != 0 and macroScore != macroScore[1] and sh_pz
     color cBord = isBullPat ? color.lime : color.red
     color cTarg = isBullPat ? color.new(#00BFFF, 85) : color.new(#FF8C00, 85)
 
-    box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05),
-            border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97))
-    box.new(bar_index-28, hi30, bar_index, lo30,
-            border_color=cBord, border_width=2, bgcolor=cCore)
+    box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97))
+    box.new(bar_index-28, hi30, bar_index, lo30, border_color=cBord, border_width=2, bgcolor=cCore)
 
     if not na(macroTarget)
-        box.new(bar_index, isBullPat?macroTarget:close, bar_index+15, isBullPat?close:macroTarget,
-                border_color=color.new(cTarg,50), border_style=line.style_dashed, bgcolor=cTarg)
+        box.new(bar_index, isBullPat?macroTarget:close, bar_index+15, isBullPat?close:macroTarget, border_color=color.new(cTarg,50), border_style=line.style_dashed, bgcolor=cTarg)
         line.new(bar_index, macroTarget, bar_index+15, macroTarget, color=cBord, width=2)
 
 // ============================================================================
@@ -1045,14 +1148,26 @@ Bayes.probBull   := math.max(0, math.min(100, probBRaw  + (feedbackBias*5) + (pe
 Bayes.probBear   := math.max(0, math.min(100, probBearR - (feedbackBias*5) - (pe.patternScore*2)))
 Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
 
+// Ensure PM object fields and atrVal/lr_rt are defined before this block
+
 if not na(PM.lastTarget) and bar_index == PM.targetBar
-    feedbackBias += ((close - PM.lastTarget) / nz(atrVal,1) * lr_rt)
-    bool hit = (PM.lastTarget > close[fc_hz] and high >= PM.lastTarget) or
-               (PM.lastTarget < close[fc_hz] and low  <= PM.lastTarget)
-    if hit  PM.hits   += 1
-    else    PM.misses += 1
-    PM.totalProjections += 1
-    PM.accuracy := PM.totalProjections > 0 ? (PM.hits / PM.totalProjections) * 100 : 0
+    // Use := for reassignment; nz() handles potential division by zero for atrVal
+    feedbackBias := feedbackBias + ((close - PM.lastTarget) / nz(atrVal, 1) * lr_rt)
+
+    // Boolean check: Ensure line continuation is handled or kept on one line
+    bool hit = (PM.lastTarget > close[fc_hz] and high >= PM.lastTarget) or (PM.lastTarget < close[fc_hz] and low <= PM.lastTarget)
+
+    if hit
+        PM.hits := PM.hits + 1
+    else
+        PM.misses := PM.misses + 1
+
+    PM.totalProjections := PM.totalProjections + 1
+    
+    // Calculate accuracy - cast to float for precision if necessary
+    PM.accuracy := PM.totalProjections > 0 ? (float(PM.hits) / PM.totalProjections) * 100 : 0
+    
+    // Reset lastTarget to na to prevent re-processing the same target
     PM.lastTarget := na
 
 // ============================================================================
@@ -1243,11 +1358,16 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
 
 // Cleanup and re-render on last bar
 if barstate.islast
-    while array.size(mc_lines)   > 0  polyline.delete(array.pop(mc_lines))
-    while array.size(densBoxes)  > 0  box.delete(array.pop(densBoxes))
-    while array.size(fcstShapes) > 0  polyline.delete(array.pop(fcstShapes))
-    while array.size(fcstLabels) > 0  label.delete(array.pop(fcstLabels))
-    while array.size(mainPoly)   > 0  polyline.delete(array.pop(mainPoly))
+    while array.size(mc_lines)   > 0
+        polyline.delete(array.pop(mc_lines))
+    while array.size(densBoxes)  > 0
+        box.delete(array.pop(densBoxes))
+    while array.size(fcstShapes) > 0
+        polyline.delete(array.pop(fcstShapes))
+    while array.size(fcstLabels) > 0
+        label.delete(array.pop(fcstLabels))
+    while array.size(mainPoly)   > 0
+        polyline.delete(array.pop(mainPoly))
 
     color pathBase = acc.probBull > 0.65 ? color.new(#00FFAA,0) : acc.probBull < 0.35 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
 
@@ -1273,8 +1393,10 @@ if barstate.islast
     // Ghost forecast bars
     if pf.isActive
         if array.size(ghostBoxes) > 0
-            for b in ghostBoxes  box.delete(b)
-            for w in ghostWicks  line.delete(w)
+            for b in ghostBoxes
+                box.delete(b)
+            for w in ghostWicks
+                line.delete(w)
             array.clear(ghostBoxes), array.clear(ghostWicks)
 
         var array<chart.point> pgMean  = array.new<chart.point>()
@@ -1422,16 +1544,11 @@ type HTFCandle
 
 // Helper — request a single HTF bar struct
 getHTFCandle(string tf) =>
-    request.security(syminfo.tickerid, tf,
-        HTFCandle.new(open, high, low, close, time,
-                      close >= open ? color.new(color.teal,90) : color.new(color.maroon,90)),
-        gaps=barmerge.gaps_on)
+    request.security(syminfo.tickerid, tf, HTFCandle.new(open, high, low, close, time, close >= open ? color.new(color.teal,90) : color.new(color.maroon,90)), gaps=barmerge.gaps_on)
 
 // Draw a closed historical HTF candle box
 drawHTFBox(HTFCandle b, int rightTime) =>
-    box.new(b.t, b.h, rightTime, b.l,
-            border_color=b.col, xloc=xloc.bar_time,
-            bgcolor=b.col, border_style=line.style_dotted)
+    box.new(b.t, b.h, rightTime, b.l, border_color=b.col, xloc=xloc.bar_time, bgcolor=b.col, border_style=line.style_dotted)
 
 // Update an existing live HTF candle box
 updateHTFBox(box bx, HTFCandle b) =>
@@ -1454,23 +1571,32 @@ var box htf3mBox  = na, var box htf15mBox = na
 var box htf1hBox  = na, var box htf4hBox  = na
 var box htf1dBox  = na, var box htf1wBox  = na
 
-// Per-TF box update logic (historical + live)
-updateTFBoxes(string tf, HTFCandle cd, box liveBox) =>
+// Define the function with proper indentation and return logic
+updateTFBoxes(simple string tf, HTFCandle cd, box currentBox) =>
     bool newCandle = timeframe.change(tf)
+    box updatedBox = currentBox
+
+    // Historical logic: Close previous box and start new one
     if newCandle and not barstate.islast
         drawHTFBox(cd, time)
-    if newCandle or na(liveBox)
-        liveBox := drawHTFBox(cd, time)
-    else
-        updateHTFBox(liveBox, cd)
-    liveBox
 
-htf3mBox  := updateTFBoxes("3",   htf3m,  htf3mBox)
+    // Live logic: Create or update the current active box
+    if newCandle or na(currentBox)
+        updatedBox := drawHTFBox(cd, time)
+    else
+        updateHTFBox(currentBox, cd)
+        updatedBox := currentBox
+    
+    updatedBox // Return the box reference
+
+// Global reassignment using the := operator
+htf3mBox := updateTFBoxes("3",   htf3m, htf3mBox)
 htf15mBox := updateTFBoxes("15",  htf15m, htf15mBox)
 htf1hBox  := updateTFBoxes("60",  htf1h,  htf1hBox)
-htf4hBox  := updateTFBoxes("240", htf4h,  htf4hBox)
+htf4hBox  := updateTFBoxes("240", htf4h, htf4hBox)
 htf1dBox  := updateTFBoxes("D",   htf1d,  htf1dBox)
 htf1wBox  := updateTFBoxes("W",   htf1w,  htf1wBox)
+
 
 // ============================================================================
 // 19. MARKOV CHAIN PATTERN SEQUENCING
@@ -1941,31 +2067,38 @@ float posSize       = math.min(kellyFrac, volNormSize * 0.1) * riskScalar * gexA
 // ============================================================================
 // 35. PATTERN COMPLETION PROBABILITY REFINEMENT
 // ============================================================================
-
 // Integrate all engines into a final weighted signal probability
 float signalProb = 50.0
-signalProb += candleScore * 1.5
-signalProb += macroScore  * 2.0
-signalProb += (atBull  ? 5.0 : -5.0)
-signalProb += (macd_bull ? 4.0 : macd_bear ? -4.0 : 0.0)
-signalProb += (momBull ? 3.0 : momBear ? -3.0 : 0.0)
-signalProb += (obvBull ? 2.0 : obvBear ? -2.0 : 0.0)
-signalProb += (avwapBull ? 2.0 : avwapBear ? -2.0 : 0.0)
-signalProb += vwapBias * 10.0
-signalProb += fibScoreBoost * 2.0
-signalProb += (hurstExp > 0.6 and atBull  ? 3.0 : 0.0)
-signalProb += (hurstExp > 0.6 and not atBull ? -3.0 : 0.0)
-signalProb -= (kin.errorTerm / close * 200)     // Penalise high uncertainty
-signalProb  = math.max(5.0, math.min(95.0, signalProb))
 
+// Use := for all reassignments
+signalProb := signalProb + (candleScore * 1.5)
+signalProb := signalProb + (macroScore * 2.0)
+signalProb := signalProb + (atBull ? 5.0 : -5.0)
+signalProb := signalProb + (macd_bull ? 4.0 : macd_bear ? -4.0 : 0.0)
+signalProb := signalProb + (momBull ? 3.0 : momBear ? -3.0 : 0.0)
+signalProb := signalProb + (obvBull ? 2.0 : obvBear ? -2.0 : 0.0)
+signalProb := signalProb + (avwapBull ? 2.0 : avwapBear ? -2.0 : 0.0)
+signalProb := signalProb + (vwapBias * 10.0)
+signalProb := signalProb + (fibScoreBoost * 2.0)
+
+// Conditional logic with Hurst Exponent
+signalProb := signalProb + (hurstExp > 0.6 and atBull ? 3.0 : 0.0)
+signalProb := signalProb + (hurstExp > 0.6 and not atBull ? -3.0 : 0.0)
+
+// Penalize high uncertainty (Kinetic Error Term)
+signalProb := signalProb - (kin.errorTerm / close * 200)
+
+// Clamp the probability between 5% and 95%
+signalProb := math.max(5.0, math.min(95.0, signalProb))
+
+// Boolean for high confidence thresholds
 bool highConf = signalProb > 72 or signalProb < 28
-color sigCol  = signalProb > 65 ? color.new(#00FF00, 0) :
-                signalProb < 35 ? color.new(#FF0000, 0) :
-                                  color.new(#FFCC00, 0)
+
+// Color logic using HEX or built-in colors
+color sigCol = signalProb > 65 ? color.new(#00FF00, 0) : signalProb < 35 ? color.new(#FF0000, 0) : color.new(#FFCC00, 0)
 
 // Plot signal probability as a background highlight on extreme readings
-bgcolor(highConf and signalProb > 72 ? color.new(color.teal,  94) :
-        highConf and signalProb < 28 ? color.new(color.maroon,94) : na, title="High Conf BG")
+bgcolor(highConf and signalProb > 72 ? color.new(color.teal, 94) : highConf and signalProb < 28 ? color.new(color.maroon, 94) : na, title="High Conf BG")
 
 // ============================================================================
 // 36. THIRD HUD TABLE: MULTI-ENGINE SIGNAL COMPOSITE
@@ -2034,16 +2167,22 @@ bool  chochBear    = atBull[1] and not atBull and bosDown
 var bool mssActive  = false
 var string mssDir   = "NONE"
 var int    mssBrBar = 0
-if chochBull  mssActive:=true, mssDir:="BULL", mssBrBar:=bar_index
-if chochBear  mssActive:=true, mssDir:="BEAR", mssBrBar:=bar_index
+if chochBull
+    mssActive:=true, mssDir:="BULL", mssBrBar:=bar_index
+if chochBear
+    mssActive:=true, mssDir:="BEAR", mssBrBar:=bar_index
 if mssActive and (bar_index - mssBrBar) > 20
     mssActive := false
 
 // Plot BOS and CHoCH markers
-if bosUp   and sh_mp  label.new(bar_index, low  - atrVal*0.5, "BOS ↑", color=#00000000, textcolor=color.lime,    size=size.tiny, style=label.style_label_up)
-if bosDown and sh_mp  label.new(bar_index, high + atrVal*0.5, "BOS ↓", color=#00000000, textcolor=color.red,     size=size.tiny, style=label.style_label_down)
-if chochBull          label.new(bar_index, low  - atrVal*1.0, "CHoCH↑",color=#00000000, textcolor=color.yellow,  size=size.small,style=label.style_label_up)
-if chochBear          label.new(bar_index, high + atrVal*1.0, "CHoCH↓",color=#00000000, textcolor=color.orange,  size=size.small,style=label.style_label_down)
+if bosUp   and sh_mp
+    label.new(bar_index, low  - atrVal*0.5, "BOS ↑", color=#00000000, textcolor=color.lime,    size=size.tiny, style=label.style_label_up)
+if bosDown and sh_mp
+    label.new(bar_index, high + atrVal*0.5, "BOS ↓", color=#00000000, textcolor=color.red,     size=size.tiny, style=label.style_label_down)
+if chochBull
+    label.new(bar_index, low  - atrVal*1.0, "CHoCH↑",color=#00000000, textcolor=color.yellow,  size=size.small,style=label.style_label_up)
+if chochBear
+    label.new(bar_index, high + atrVal*1.0, "CHoCH↓",color=#00000000, textcolor=color.orange,  size=size.small,style=label.style_label_down)
 
 // ============================================================================
 // 38. ORDER BLOCK DETECTION
