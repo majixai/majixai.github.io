@@ -313,6 +313,3 @@ if barstate.islast
     table.cell(GM.dashboard, 3, 4, htf_bullish ? "BULL" : "BEAR", text_color=htf_bullish ? bull_c : bear_c)
     table.cell(GM.dashboard, 4, 4, "H&S", text_color=color.white)
     table.cell(GM.dashboard, 5, 4, hs_detected ? "DETECTED" : "IDLE", text_color=hs_detected ? bear_c : color.gray)
-
-// Supplemental unit-consistency reference:
-// price_change_per_bar = math.tan(math.toradians(45))
