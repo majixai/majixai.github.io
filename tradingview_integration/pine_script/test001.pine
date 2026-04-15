@@ -1,0 +1,1001 @@
+//@version=5
+strategy('JAT+BSM Pro v13', shorttitle='JAT+BSM v13', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false)
+
+// ============================================================================
+// 1. TYPES
+// ============================================================================
+
+type kin_m
+    float vel
+    float acc
+    float inc
+    float err
+    int   len
+
+type unc_z
+    float u_bn
+    float d_bn
+    float s_er
+    float a_cf
+
+type bys_i
+    float p_bl
+    float p_br
+    float e_hi
+    float e_lo
+    float e_cl
+
+type pin_f
+    int    a_br
+    int    a_tm
+    float  a_px
+    float[] t_pt
+    float[] t_op
+    float[] t_cl
+    float[] c_up
+    float[] c_dn
+    bool   i_ac
+    string t_sr
+
+type acc_e
+    int   h_ct
+    int   m_ct
+    float p_bl
+    float p_br
+    float h_rt
+
+type prj_m
+    int   t_pj
+    int   ht
+    int   ms
+    float l_tg
+    int   t_br
+    float ac
+
+type con_z
+    int    id
+    bool   i_ac
+    int    s_br
+    int    dur
+    float  u_bn
+    float  d_bn
+    float  poc
+    float  t_vl
+    box    b_id
+    line   p_ln
+    label  t_lb
+    map<string, float> v_mp
+
+type brk_s
+    bool   i_vl
+    string dir
+    float  b_vl
+    float  e_tg
+    float  v_ml
+    float  a_pc
+
+type pat_e
+    string a_cp
+    string a_mp
+    int    p_sc
+    float  s_tg
+    bool   i_rv
+    bool   i_cn
+
+type pvt_n
+    int   b_ix
+    float px
+    bool  i_hi
+
+type trd_e
+    float e_px
+    float sl
+    float tp
+    float rr
+    int   a_st
+    bool  i_be
+
+type opt_g
+    float dlt
+    float gma
+    float tht
+    float vga
+    float rho
+    float p_it
+
+type pt_ar
+    array<chart.point> pts
+
+// ============================================================================
+// 2. INPUTS
+// ============================================================================
+
+g_alp  = "AlphaTrend"
+b_cf   = input.float(1.5,  'Vol Coeff',    step=0.1,             group=g_alp)
+al_pr  = input.int(14,     'Period',                             group=g_alp)
+al_sr  = input.source(close,'Source',                            group=g_alp)
+
+g_htf  = "HTF"
+hf_in  = input.timeframe("15", "HTF TF",                        group=g_htf)
+
+g_con  = "Consolidation"
+c_l1   = input.int(20,    "L1 Len",  minval=5,                  group=g_con)
+c_l2   = input.int(40,    "L2 Len",  minval=10,                 group=g_con)
+c_l3   = input.int(80,    "L3 Len",  minval=20,                 group=g_con)
+vp_bk  = input.int(10,    "VP Buckets", minval=5, maxval=30,    group=g_con)
+bk_ml  = input.float(1.618,"Brk Mult",                          group=g_con)
+
+g_pat  = "Patterns"
+sh_cp  = input.bool(true,  "Show Candle Labels",                 group=g_pat)
+sh_mp  = input.bool(true,  "Draw Macro Lines",                   group=g_pat)
+pv_lb  = input.int(10,     "Pivot Lookback", minval=3,           group=g_pat)
+st_tl  = input.float(0.02, "Tolerance",    step=0.01,           group=g_pat)
+p_clB  = input.color(color.new(color.lime,0), "Bull Color",     group=g_pat)
+p_clR  = input.color(color.new(color.red,0),  "Bear Color",     group=g_pat)
+
+g_kn   = "Kinematics"
+fc_hz  = input.int(20,    'Fcast Horizon', minval=2,             group=g_kn)
+lr_rt  = input.float(0.1, 'Learn Rate', minval=0.01, maxval=0.5, group=g_kn)
+by_lb  = input.int(500,   'Bayes LB',                           group=g_kn)
+en_mr  = input.bool(true, "Mean Rev",                           group=g_kn)
+
+g_mtx  = "Matrix"
+wt_in  = input.text_area("1.0 0.5 0.2\n0.2 1.0 0.5\n0.5 0.2 1.0", "Weight Matrix", group=g_mtx)
+
+g_syn  = "Synergy"
+rq_syn = input.bool(true, "Require Synergy",                    group=g_syn)
+rl_md  = input.bool(true, "Relaxed MACD",                       group=g_syn)
+f_ln   = input.int(12,    "Fast Len",                           group=g_syn)
+s_ln   = input.int(26,    "Slow Len",                           group=g_syn)
+sg_ln  = input.int(9,     "Sig Len",                            group=g_syn)
+
+g_sym  = "Securities"
+s_1    = input.symbol("NASDAQ:AAPL", "Sec 1",                   group=g_sym)
+s_2    = input.symbol("NASDAQ:MSFT", "Sec 2",                   group=g_sym)
+s_3    = input.symbol("NASDAQ:GOOG", "Sec 3",                   group=g_sym)
+
+g_rsk  = "Risk"
+mx_tr  = input.int(3,     "Max Trades",                         group=g_rsk)
+rk_bf  = input.float(1.1, "CI Mult SL",  step=0.1,             group=g_rsk)
+rw_ml  = input.float(2.0, "Target RR",   step=0.1,             group=g_rsk)
+
+g_bsm  = "BSM"
+rf_rt  = input.float(0.05, "Risk-Free Rate", step=0.01,         group=g_bsm)
+t_ex   = input.float(30.0, "Days to Exp",                       group=g_bsm)
+st_ml  = input.float(1.0,  "Strike Mult",    step=0.01,         group=g_bsm)
+
+g_vis  = "Visuals"
+sh_tb  = input.bool(true,  "Show HUD",                          group=g_vis)
+curvP  = input.bool(true,  "Smooth Curves",                     group=g_vis)
+sh_mc  = input.bool(true,  "Show MC Paths",                     group=g_vis)
+sh_co  = input.bool(true,  "Show Consolidations",               group=g_vis)
+sh_gb  = input.bool(true,  "Show Ghost Bars",                   group=g_vis)
+
+g_ltf  = "MTF"
+ltf_s  = input.timeframe("1", "LTF Noise TF",                   group=g_ltf)
+
+// ============================================================================
+// 3. GLOBAL INIT
+// ============================================================================
+
+var s_kn  = kin_m.new(0.0, 0.0, 0.0, 0.0, 20)
+var s_uz  = unc_z.new(0.0, 0.0, 0.0, b_cf)
+var s_pf  = pin_f.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), false, "NONE")
+var s_ac  = acc_e.new(0, 0, 0.5, 0.5, 1.0)
+var s_bk  = brk_s.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
+var s_pe  = pat_e.new("NONE", "NONE", 0, na, false, false)
+var s_pm  = prj_m.new(0, 0, 0, na, 0, 0.0)
+var s_by  = bys_i.new(0, 0, 0, 0, 0)
+var fb_b  = 0.0
+var z_1   = con_z.new(1, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var z_2   = con_z.new(2, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var z_3   = con_z.new(3, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, map.new<string, float>())
+var p_hi  = array.new<pvt_n>()
+var p_lo  = array.new<pvt_n>()
+var a_tr  = trd_e.new(0.0, 0.0, 0.0, 0.0, 0, false)
+var g_bd  = array.new_box()
+var g_wk  = array.new_line()
+var m_mat = matrix.new<float>(3, fc_hz, 0.0)
+var mc_ln = array.new<polyline>()
+var d_bx  = array.new<box>()
+var fc_sh = array.new<polyline>()
+var fc_lb = array.new<label>()
+var mn_pl = array.new<polyline>()
+var line  b_ray = na
+var label b_lbl = na
+
+max_bars_back(close, 4000)
+max_bars_back(time,  4000)
+
+// ============================================================================
+// 4. UTILITY FUNCTIONS
+// ============================================================================
+
+c_cnd(float x) =>
+    float a1=0.254829592, float a2=-0.284496736, float a3=1.421413741, float a4=-1.453152027, float a5=1.061405429
+    float p=0.3275911
+    int sn = x < 0 ? -1 : 1
+    float ax = math.abs(x) / math.sqrt(2.0)
+    float t  = 1.0 / (1.0 + p * ax)
+    float y  = 1.0 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*math.exp(-ax*ax)
+    sn == 1 ? 0.5*(1.0+y) : 0.5*(1.0-y)
+
+g_grk(float s, float k, float r, float t, float vl) =>
+    if vl > 0 and t > 0
+        float d1 = (math.log(s/k) + (r + 0.5*math.pow(vl,2))*t) / (vl*math.sqrt(t))
+        float d2 = d1 - vl*math.sqrt(t)
+        float pd = (1.0/math.sqrt(2.0*math.pi)) * math.exp(-0.5*math.pow(d1,2))
+        opt_g.new(c_cnd(d1), pd/(s*vl*math.sqrt(t)), -(s*pd*vl)/(2.0*math.sqrt(t))-r*k*math.exp(-r*t)*c_cnd(d2), s*pd*math.sqrt(t), k*t*math.exp(-r*t)*c_cnd(d2), c_cnd(d2))
+    else
+        opt_g.new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+g_mcd(float src, int f, int s, int sg) =>
+    float mc = ta.ema(src,f) - ta.ema(src,s)
+    float sl = ta.ema(mc,sg)
+    [mc, sl, mc - sl]
+
+m_str(string st) =>
+    var r_ar = str.split(st, "\n")
+    var rw = array.size(r_ar)
+    var cl = array.size(str.split(array.get(r_ar,0), " "))
+    var mt = matrix.new<float>(rw, cl, na)
+    int r = 0
+    for rs in r_ar
+        int c = 0
+        v_ar = str.split(rs, " ")
+        for vl in v_ar
+            matrix.set(mt, r, c, str.tonumber(vl))
+            c += 1
+        r += 1
+    mt
+
+m_rnd(int r, int c) =>
+    mt = matrix.new<float>(r, c)
+    for i = 0 to r - 1
+        for j = 0 to c - 1
+            matrix.set(mt, i, j, (math.random()*2) - 1.0)
+    mt
+
+b_tc(float ep, float pp, float er, int si, float ac) =>
+    float bd = ep - pp
+    float sp = math.max(-1.047, math.min(1.047, (bd/(er+1e-8)) % 3.14159))
+    ep + (bd * math.tan(sp) * math.cos(si/(ac+1e-5))) * math.exp(-si/(10.0*ac))
+
+// ============================================================================
+// 5. DATA INGESTION
+// ============================================================================
+
+var e_wt = m_str(wt_in)
+float k_wt = matrix.get(e_wt, 0, 0)
+float b_wt = matrix.get(e_wt, 0, 1)
+float m_wt = matrix.get(e_wt, 0, 2)
+
+[ht_o, ht_h, ht_l, ht_c] = request.security(syminfo.tickerid, hf_in, [open, high, low, close], gaps=barmerge.gaps_off)
+[m_mn, s_mn, h_mn]        = g_mcd(close, f_ln, s_ln, sg_ln)
+[m_s1, s_s1, h_s1]        = request.security(s_1, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
+[m_s2, s_s2, h_s2]        = request.security(s_2, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
+[m_s3, s_s3, h_s3]        = request.security(s_3, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
+
+bool m_bl = h_mn > 0 and (rl_md ? (h_s1>0 or h_s2>0) : (h_s1>0 and h_s2>0 and h_s3>0))
+bool m_br = h_mn < 0 and (rl_md ? (h_s1<0 or h_s2<0) : (h_s1<0 and h_s2<0 and h_s3<0))
+
+array<float> ltf_cls = request.security_lower_tf(syminfo.tickerid, ltf_s, close)
+float ltf_n  = not na(ltf_cls) and array.size(ltf_cls)>1 ? array.stdev(ltf_cls) : 0.0
+float mvi    = ltf_n > 0 ? ltf_n/close : ta.atr(14)/close
+
+opt_g grs = g_grk(close, close*st_ml, rf_rt, t_ex/365.0, ta.stdev(close,20)/close*math.sqrt(252))
+
+// ============================================================================
+// 6. KINEMATIC & ALPHATREND ENGINE
+// ============================================================================
+
+c_kn(float[] s_ar, int ln) =>
+    float sx=0.0, float sy=0.0, float sxy=0.0, float sx2=0.0
+    for i = 0 to ln - 1
+        float v = array.get(s_ar, ln-1-i)
+        sx += i, sy += v, sxy += i*v, sx2 += i*i
+    float n  = ln
+    float vl = (n*sxy - sx*sy) / (n*sx2 - sx*sx)
+    float ic = (sy - vl*sx) / n
+    float ss = 0.0
+    for i = 0 to ln - 1
+        float v = array.get(s_ar, ln-1-i)
+        ss += math.pow(v - (ic + vl*i), 2)
+    kin_m.new(vl, (vl - nz(vl[2],vl)) / 2.0, ic, math.sqrt(ss/n), ln)
+
+var float[] h_cl = array.new_float(50, close)
+if barstate.isrealtime or barstate.ishistory
+    array.push(h_cl, close)
+    if array.size(h_cl) > 50
+        array.shift(h_cl)
+
+if array.size(h_cl) >= 20
+    s_kn      := c_kn(h_cl, 20)
+    s_uz.s_er := s_kn.err
+
+float at_v = ta.sma(ta.tr, al_pr)
+float rs_v = ta.rsi(al_sr, al_pr)
+float mf_v = ta.mfi(hlc3, al_pr)
+bool  mo_en = (mf_v + rs_v) / 2 >= 50
+
+s_uz.a_cf := math.max(1.0, math.min(3.5, b_cf + (s_kn.err/close*100) + math.cos(((bar_index%360)*math.pi/180) + math.acos(math.max(-1.0,math.min(1.0,(rs_v-50)/50.0)))) * 0.1))
+
+float up_t = low  - at_v * s_uz.a_cf
+float dn_t = high + at_v * s_uz.a_cf
+
+var float al_tr = 0.0
+al_tr := mo_en ? (up_t < nz(al_tr[1]) ? nz(al_tr[1]) : up_t) : (dn_t > nz(al_tr[1]) ? nz(al_tr[1]) : dn_t)
+
+bool al_bl = al_tr > al_tr[2]
+bool al_fl = ta.change(al_bl) != 0
+
+// ============================================================================
+// 7. CONSOLIDATION ENGINE
+// ============================================================================
+
+g_sqz(simple int len) =>
+    [ta.stdev(close,len)*2.0 < ta.sma(ta.tr,len)*1.5, ta.highest(high,len), ta.lowest(low,len), ta.sma(volume,len)]
+
+method proc(con_z z, bool isS, float hi, float lo, float av, bool show, int vpB, float bM) =>
+    bool bBl=false, bool bBr=false, float eT=0.0, float bP=0.0, float vM=1.0
+    if isS
+        if not z.i_ac
+            z.i_ac:=true, z.s_br:=bar_index, z.dur:=1
+            z.u_bn:=hi, z.d_bn:=lo, z.t_vl:=volume
+            map.clear(z.v_mp)
+            if show
+                z.b_id := box.new(z.s_br, z.u_bn, bar_index, z.d_bn, border_color=color.new(color.yellow,50), bgcolor=color.new(color.yellow,90))
+                z.p_ln := line.new(z.s_br, close, bar_index, close, color=color.new(color.orange,50), width=1)
+                z.t_lb := label.new(bar_index, close, "ⓘ", color=color.new(color.black,100), style=label.style_none, textcolor=color.orange, size=size.tiny)
+        else
+            z.dur+=1, z.u_bn:=math.max(z.u_bn,high), z.d_bn:=math.min(z.d_bn,low), z.t_vl+=volume
+            float bS = (z.u_bn - z.d_bn) / math.max(1, vpB)
+            if bS > 0
+                float bP2 = math.round(hlc3/bS)*bS
+                string bK = str.tostring(bP2)
+                map.put(z.v_mp, bK, (map.contains(z.v_mp,bK) ? map.get(z.v_mp,bK) : 0.0) + volume)
+                float mxV = 0.0
+                for k in map.keys(z.v_mp)
+                    float v = map.get(z.v_mp, k)
+                    if v > mxV
+                        mxV:=v, z.poc:=str.tonumber(k)
+            if show
+                box.set_top(z.b_id,z.u_bn), box.set_bottom(z.b_id,z.d_bn), box.set_right(z.b_id,bar_index)
+                line.set_xy1(z.p_ln,z.s_br,z.poc), line.set_xy2(z.p_ln,bar_index,z.poc)
+                label.set_xy(z.t_lb,bar_index,z.poc)
+                label.set_tooltip(z.t_lb, "L"+str.tostring(z.id)+" Squeeze\nDur:"+str.tostring(z.dur)+"\nVol:"+str.tostring(z.t_vl,format.volume))
+    else
+        if z.i_ac
+            bBl := close > z.u_bn and volume > av*1.5
+            bBr := close < z.d_bn and volume > av*1.5
+            if bBl or bBr
+                float bH = z.u_bn - z.d_bn
+                eT := bBl ? (z.u_bn+(bH*bM)) : (z.d_bn-(bH*bM))
+                vM := 1.0+(z.dur/50.0), bP:=z.poc, z.i_ac:=false
+                if not na(z.t_lb)
+                    label.delete(z.t_lb)
+    [bBl, bBr, eT, vM, bP]
+
+[sq1,h1,l1,v1] = g_sqz(c_l1)
+[bBl1,bBr1,tg1,vm1,pc1] = z_1.proc(sq1,h1,l1,v1,sh_co,vp_bk,bk_ml)
+[sq2,h2,l2,v2] = g_sqz(c_l2)
+[bBl2,bBr2,tg2,vm2,pc2] = z_2.proc(sq2,h2,l2,v2,sh_co,vp_bk,bk_ml)
+[sq3,h3,l3,v3] = g_sqz(c_l3)
+[bBl3,bBr3,tg3,vm3,pc3] = z_3.proc(sq3,h3,l3,v3,sh_co,vp_bk,bk_ml)
+
+bool ab_bl = bBl1 or bBl2 or bBl3
+bool ab_br = bBr1 or bBr2 or bBr3
+
+s_bk.i_vl := false
+if ab_bl or ab_br
+    s_bk.i_vl:=true, s_bk.dir:=ab_bl?"BULL":"BEAR"
+    if ab_bl
+        s_bk.e_tg := math.max(tg1, math.max(tg2, tg3))
+    else
+        float t1=tg1==0?999999:tg1, float t2=tg2==0?999999:tg2, float t3=tg3==0?999999:tg3
+        s_bk.e_tg := math.min(t1, math.min(t2, t3))
+        if s_bk.e_tg == 999999
+            s_bk.e_tg := close
+    s_bk.v_ml := math.max(vm1, math.max(vm2, vm3))
+    s_bk.a_pc := pc3!=0 ? pc3 : (pc2!=0 ? pc2 : (pc1!=0 ? pc1 : close))
+
+// ============================================================================
+// 8. CANDLESTICK LEXICON
+// ============================================================================
+
+float b_sz = math.abs(close - open)
+float u_wk = high - math.max(open, close)
+float l_wk = math.min(open, close) - low
+float t_sz = high - low
+float a_sz = ta.sma(t_sz, 10)
+float a_bd = ta.sma(b_sz, 10)
+bool i_bl = close > open, bool i_br = close < open
+
+bool i_dj  = b_sz<=(t_sz*0.1) and t_sz>a_sz*0.5
+bool i_df  = i_dj and l_wk>t_sz*0.7 and u_wk<t_sz*0.1
+bool i_gs  = i_dj and u_wk>t_sz*0.7 and l_wk<t_sz*0.1
+bool i_mzb = i_bl and u_wk<(t_sz*0.05) and l_wk<(t_sz*0.05) and b_sz>a_bd
+bool i_mzr = i_br and u_wk<(t_sz*0.05) and l_wk<(t_sz*0.05) and b_sz>a_bd
+bool i_hm  = i_br[1] and l_wk>b_sz*2 and u_wk<b_sz*0.5 and t_sz>a_sz*0.8
+bool i_hg  = i_bl[1] and l_wk>b_sz*2 and u_wk<b_sz*0.5 and t_sz>a_sz*0.8
+bool i_ss  = i_bl[1] and u_wk>b_sz*2 and l_wk<b_sz*0.5 and t_sz>a_sz*0.8
+bool i_ih  = i_br[1] and u_wk>b_sz*2 and l_wk<b_sz*0.5 and t_sz>a_sz*0.8
+bool i_bbl = i_bl and l_wk<t_sz*0.05 and b_sz>a_bd and u_wk>0
+bool i_bbr = i_br and u_wk<t_sz*0.05 and b_sz>a_bd and l_wk>0
+bool i_shh = i_bl and u_wk==0 and b_sz>a_bd
+bool i_shb = i_br and l_wk==0 and b_sz>a_bd
+bool b_eg  = i_bl and i_br[1] and close>=open[1] and open<=close[1] and b_sz>b_sz[1]
+bool r_eg  = i_br and i_bl[1] and close<=open[1] and open>=close[1] and b_sz>b_sz[1]
+bool b_hr  = i_bl and i_br[1] and close<open[1] and open>close[1]
+bool r_hr  = i_br and i_bl[1] and close>open[1] and open<close[1]
+bool b_hc  = i_br[1] and i_dj and high<open[1] and low>close[1]
+bool r_hc  = i_bl[1] and i_dj and high<close[1] and low>open[1]
+bool i_pc  = i_br[1] and i_bl and open<low[1] and close>(open[1]+close[1])/2 and close<open[1]
+bool i_dc  = i_bl[1] and i_br and open>high[1] and close<(open[1]+close[1])/2 and close>open[1]
+bool i_twb = math.abs(low-low[1])<a_sz*0.05 and i_br[1] and i_bl
+bool i_twt = math.abs(high-high[1])<a_sz*0.05 and i_bl[1] and i_br
+bool i_bkb = i_br[1] and i_bl and open>=high[1] and close>open
+bool i_bkr = i_bl[1] and i_br and open<=low[1] and close<open
+bool i_bml = i_br[1] and i_bl and math.abs(close-close[1])<a_sz*0.05 and open<close[1]
+bool i_bmr = i_bl[1] and i_br and math.abs(close-close[1])<a_sz*0.05 and open>close[1]
+bool i_ms  = i_br[2] and i_bl and b_sz[1]<t_sz[1]*0.3 and close>close[2]+(open[2]-close[2])/2
+bool i_es  = i_bl[2] and i_br and b_sz[1]<t_sz[1]*0.3 and close<close[2]-(close[2]-open[2])/2
+bool i_mds = i_br[2] and i_dj[1] and i_bl and close>close[2]+(open[2]-close[2])/2
+bool i_eds = i_bl[2] and i_dj[1] and i_br and close<close[2]-(close[2]-open[2])/2
+bool i_abb = i_br[2] and i_dj[1] and i_bl and high[1]<low[2] and low>high[1]
+bool i_abr = i_bl[2] and i_dj[1] and i_br and low[1]>high[2] and high<low[1]
+bool i_3ws = i_bl and i_bl[1] and i_bl[2] and close>close[1] and close[1]>close[2] and open>open[1] and open[1]>open[2]
+bool i_3bc = i_br and i_br[1] and i_br[2] and close<close[1] and close[1]<close[2] and open<open[1] and open[1]<open[2]
+bool i_3iu = b_hr[1] and i_bl and close>close[1]
+bool i_3id = r_hr[1] and i_br and close<close[1]
+bool i_3ou = b_eg[1] and i_bl and close>close[1]
+bool i_3od = r_eg[1] and i_br and close<close[1]
+bool i_tsb = i_dj[2] and i_dj[1] and i_dj and low[1]<low[2] and low[1]<low
+bool i_tsr = i_dj[2] and i_dj[1] and i_dj and high[1]>high[2] and high[1]>high
+bool i_ls3 = i_bl[3] and i_bl[2] and i_bl[1] and i_br and open>close[1] and close<open[3]
+bool i_ls3b= i_br[3] and i_br[2] and i_br[1] and i_bl and open<close[1] and close>open[3]
+bool i_r3  = i_bl[4] and i_br[3] and i_br[2] and i_br[1] and i_bl and close>high[4] and low[1]>low[4] and high[3]<high[4]
+bool i_f3  = i_br[4] and i_bl[3] and i_bl[2] and i_bl[1] and i_br and close<low[4] and high[1]<high[4] and low[3]>low[4]
+
+int c_sc = 0, string c_nm = "NONE"
+if i_r3         c_sc:=10,  c_nm:="Rising 3"
+else if i_f3    c_sc:=-10, c_nm:="Falling 3"
+else if i_ls3b  c_sc:=8,   c_nm:="3L Strike Bull"
+else if i_ls3   c_sc:=-8,  c_nm:="3L Strike Bear"
+else if i_abb   c_sc:=7,   c_nm:="Aband Baby Bull"
+else if i_abr   c_sc:=-7,  c_nm:="Aband Baby Bear"
+else if i_mds   c_sc:=7,   c_nm:="Morn Doji Star"
+else if i_eds   c_sc:=-7,  c_nm:="Eve Doji Star"
+else if i_tsb   c_sc:=7,   c_nm:="Tri-Star Bull"
+else if i_tsr   c_sc:=-7,  c_nm:="Tri-Star Bear"
+else if i_bkb   c_sc:=7,   c_nm:="Bull Kicker"
+else if i_bkr   c_sc:=-7,  c_nm:="Bear Kicker"
+else if i_3ws   c_sc:=6,   c_nm:="3 White Slds"
+else if i_3bc   c_sc:=-6,  c_nm:="3 Black Crows"
+else if i_3iu   c_sc:=6,   c_nm:="3 Inside Up"
+else if i_3id   c_sc:=-6,  c_nm:="3 Inside Dn"
+else if i_3ou   c_sc:=6,   c_nm:="3 Outside Up"
+else if i_3od   c_sc:=-6,  c_nm:="3 Outside Dn"
+else if i_ms    c_sc:=5,   c_nm:="Morning Star"
+else if i_es    c_sc:=-5,  c_nm:="Evening Star"
+else if b_eg    c_sc:=4,   c_nm:="Bull Engulf"
+else if r_eg    c_sc:=-4,  c_nm:="Bear Engulf"
+else if i_pc    c_sc:=4,   c_nm:="Piercing"
+else if i_dc    c_sc:=-4,  c_nm:="Dark Cloud"
+else if i_twb   c_sc:=4,   c_nm:="Tweezer Bot"
+else if i_twt   c_sc:=-4,  c_nm:="Tweezer Top"
+else if b_hc    c_sc:=3,   c_nm:="Bull HaramiX"
+else if r_hc    c_sc:=-3,  c_nm:="Bear HaramiX"
+else if i_bml   c_sc:=3,   c_nm:="Bull Meeting"
+else if i_bmr   c_sc:=-3,  c_nm:="Bear Meeting"
+else if b_hr    c_sc:=2,   c_nm:="Bull Harami"
+else if r_hr    c_sc:=-2,  c_nm:="Bear Harami"
+else if i_mzb   c_sc:=2,   c_nm:="Bull Marubozu"
+else if i_mzr   c_sc:=-2,  c_nm:="Bear Marubozu"
+else if i_bbl   c_sc:=2,   c_nm:="Bull Belt Hold"
+else if i_bbr   c_sc:=-2,  c_nm:="Bear Belt Hold"
+else if i_hm    c_sc:=1,   c_nm:="Hammer"
+else if i_ss    c_sc:=-1,  c_nm:="Shooting Star"
+else if i_hg    c_sc:=-1,  c_nm:="Hanging Man"
+else if i_ih    c_sc:=1,   c_nm:="Inv Hammer"
+else if i_shh   c_sc:=1,   c_nm:="Shaven Head"
+else if i_shb   c_sc:=-1,  c_nm:="Shaven Bot"
+else if i_df    c_sc:=1,   c_nm:="Dragonfly Doji"
+else if i_gs    c_sc:=-1,  c_nm:="Gravestone Doji"
+else if i_dj    c_sc:=0,   c_nm:="Doji"
+
+s_pe.a_cp := c_nm
+if sh_cp and c_nm != "NONE"
+    color pc = c_sc>0 ? p_clB : (c_sc<0 ? p_clR : color.gray)
+    label.new(bar_index, c_sc>0?low-ta.tr:high+ta.tr, c_nm, color=#00000000, textcolor=pc, style=c_sc>=0?label.style_label_up:label.style_label_down, size=size.tiny)
+
+// ============================================================================
+// 9. GEOMETRIC PATTERN ENGINE
+// ============================================================================
+
+float p_ph = ta.pivothigh(high, pv_lb, 2)
+float p_pl = ta.pivotlow(low,  pv_lb, 2)
+if not na(p_ph)
+    array.unshift(p_hi, pvt_n.new(bar_index-2, p_ph, true))
+    if array.size(p_hi) > 25
+        array.pop(p_hi)
+if not na(p_pl)
+    array.unshift(p_lo, pvt_n.new(bar_index-2, p_pl, false))
+    if array.size(p_lo) > 25
+        array.pop(p_lo)
+
+ph(int i)  => array.size(p_hi)>i ? array.get(p_hi,i).px    : na
+phb(int i) => array.size(p_hi)>i ? array.get(p_hi,i).b_ix  : na
+pl(int i)  => array.size(p_lo)>i ? array.get(p_lo,i).px    : na
+plb(int i) => array.size(p_lo)>i ? array.get(p_lo,i).b_ix  : na
+d_st(float a, float b) => math.abs(a-b) / a
+f_rt(float m1, float m2) => m1==0 ? 0 : math.abs(m2/m1)
+d_ln(int x1, float y1, int x2, float y2, color c, int w=2, string s=line.style_solid) =>
+    if sh_mp
+        line.new(x1, y1, x2, y2, color=c, width=w, style=s)
+
+int m_sc=0, string m_nm="NONE", float m_tg=na
+
+// L0: 6+ Pivot Mega-Structures
+if array.size(p_hi)>=4 and array.size(p_lo)>=4
+    if ph(2)<ph(1) and ph(1)<ph(0) and pl(1)<pl(0) and pl(0)>ph(2) and (ph(1)-pl(1))>(ph(2)-pl(2))
+        m_sc:=25, m_nm:="Elliott Impulse Bull", m_tg:=ph(0)+(ph(0)-pl(0))
+        d_ln(plb(2),pl(2),phb(0),ph(0),p_clB,2,line.style_dotted)
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(1)>ph(0) and ph(0)<pl(2) and (pl(2)-ph(2))>(pl(1)-ph(1))
+        m_sc:=-25, m_nm:="Elliott Impulse Bear", m_tg:=pl(0)-(ph(0)-pl(0))
+        d_ln(phb(2),ph(2),plb(0),pl(0),p_clR,2,line.style_dotted)
+    if m_sc==0
+        if ph(3)<ph(2) and ph(2)<ph(1) and ph(1)<ph(0) and pl(2)>pl(1) and pl(1)>pl(0)
+            m_sc:=-22, m_nm:="6Pt Broad Top", m_tg:=pl(0)-(ph(0)-pl(0))
+        else if pl(3)>pl(2) and pl(2)>pl(1) and pl(1)>pl(0) and ph(2)<ph(1) and ph(1)<ph(0)
+            m_sc:=22, m_nm:="6Pt Broad Bot", m_tg:=ph(0)+(ph(0)-pl(0))
+    if m_sc==0
+        if pl(3)<pl(2) and pl(2)<pl(1) and (pl(1)-pl(2))>(pl(2)-pl(3))*2 and ph(0)<ph(1)
+            m_sc:=-20, m_nm:="Bump&Run Top", m_tg:=pl(3)
+        else if ph(3)>ph(2) and ph(2)>ph(1) and (ph(2)-ph(1))>(ph(3)-ph(2))*2 and pl(0)>pl(1)
+            m_sc:=20, m_nm:="Bump&Run Bot", m_tg:=ph(3)
+
+// L1: 5-Pivot XABCD
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=3
+    if pl(2)>pl(1) and pl(1)<pl(0) and ph(2)>ph(1) and ph(0)>ph(1) and d_st(pl(2),pl(0))<0.2
+        m_sc:=24, m_nm:="Rounding Bot", m_tg:=ph(0)+(ph(0)-pl(1))
+    else if ph(2)<ph(1) and ph(1)>ph(0) and pl(2)<pl(1) and pl(0)<pl(1) and d_st(ph(2),ph(0))<0.2
+        m_sc:=-24, m_nm:="Rounding Top", m_tg:=pl(0)-(ph(1)-pl(0))
+    if m_sc==0
+        if ph(2)>ph(3) and ph(2)>ph(1) and d_st(ph(3),ph(1))<st_tl
+            m_sc:=-21, m_nm:="Complex H&S", m_tg:=pl(0)-(ph(2)-pl(0))
+        else if pl(2)<pl(3) and pl(2)<pl(1) and d_st(pl(3),pl(1))<st_tl
+            m_sc:=21, m_nm:="Complex Inv H&S", m_tg:=ph(0)+(ph(0)-pl(2))
+    if m_sc==0
+        float xab=ph(1)-pl(2), float adb=ph(1)-pl(0), float rb=f_rt(xab,adb)
+        if ph(1)>ph(0) and pl(1)>pl(2) and pl(0)<pl(1)
+            m_sc:= rb>=0.618 and rb<=0.886 ? 19 : rb>1.0 and rb<=1.382 ? 20 : rb>1.382 and rb<=1.618 ? 21 : 0
+            m_nm:= rb>=0.618 and rb<=0.886 ? "Bull Gartley/Bat" : rb>1.0 and rb<=1.382 ? "Bull Butterfly" : rb>1.382 and rb<=1.618 ? "Bull Crab" : m_nm
+            m_tg:= rb>1.0 ? ph(1) : ph(0)
+        float xar=ph(2)-pl(1), float adr=ph(0)-pl(1), float rr=f_rt(xar,adr)
+        if pl(1)<pl(0) and ph(1)<ph(2) and ph(0)>ph(1)
+            m_sc:= rr>=0.618 and rr<=0.886 ? -19 : rr>1.0 and rr<=1.382 ? -20 : rr>1.382 and rr<=1.618 ? -21 : m_sc
+            m_nm:= rr>=0.618 and rr<=0.886 ? "Bear Gartley/Bat" : rr>1.0 and rr<=1.382 ? "Bear Butterfly" : rr>1.382 and rr<=1.618 ? "Bear Crab" : m_nm
+            m_tg:= rr>1.0 ? pl(1) : pl(0)
+    if m_sc==0
+        if ph(0)>ph(1) and pl(0)<pl(2) and pl(1)>pl(2)
+            m_sc:=22, m_nm:="Bull Shark", m_tg:=ph(0)
+        else if pl(0)<pl(1) and ph(0)>ph(2) and ph(1)<ph(2)
+            m_sc:=-22, m_nm:="Bear Shark", m_tg:=pl(0)
+    if m_sc==0
+        if ph(0)>ph(1) and pl(0)>pl(2) and pl(0)<pl(1)
+            m_sc:=18, m_nm:="Bull Cypher", m_tg:=ph(0)
+        else if pl(0)<pl(1) and ph(0)<ph(2) and ph(0)>ph(1)
+            m_sc:=-18, m_nm:="Bear Cypher", m_tg:=pl(0)
+
+// L2: 4-Pivot
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=3
+    if ph(1)<ph(0) and pl(1)>pl(0) and ph(2)<ph(1)
+        m_sc:=-18, m_nm:="Diamond Top", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1)
+        m_sc:=18, m_nm:="Diamond Bot", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(2)<ph(1) and ph(1)<ph(0) and pl(2)<pl(1) and pl(1)<pl(0) and d_st(ph(1)-ph(2),ph(0)-ph(1))<0.3
+        m_sc:=-17, m_nm:="3 Drives Bear", m_tg:=pl(0)
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(2)>ph(1) and ph(1)>ph(0) and d_st(pl(2)-pl(1),pl(1)-pl(0))<0.3
+        m_sc:=17, m_nm:="3 Drives Bull", m_tg:=ph(0)
+    else if ph(2)<ph(1) and ph(1)<ph(0) and pl(1)<pl(0) and pl(0)>ph(2)
+        m_sc:=-16, m_nm:="Wolfe Bear", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(1)>ph(0) and ph(0)<pl(2)
+        m_sc:=16, m_nm:="Wolfe Bull", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if pl(1)<ph(2) and pl(0)<ph(2) and d_st(pl(1),pl(0))<st_tl and ph(0)>ph(1)
+        m_sc:=16, m_nm:="Bull Dragon", m_tg:=ph(2)
+    else if ph(1)>pl(2) and ph(0)>pl(2) and d_st(ph(1),ph(0))<st_tl and pl(0)<pl(1)
+        m_sc:=-16, m_nm:="Bear Dragon", m_tg:=pl(2)
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(0)>pl(1)+((ph(1)-pl(1))*0.3)
+        m_sc:=15, m_nm:="1234 Bull", m_tg:=ph(1)+(ph(1)-pl(0))
+    else if pl(1)<pl(0) and ph(1)>ph(0) and ph(0)<ph(1)-((ph(1)-pl(1))*0.3)
+        m_sc:=-15, m_nm:="1234 Bear", m_tg:=pl(1)-(ph(0)-pl(1))
+
+// L3: 3-Pivot
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=2
+    if d_st(ph(0),ph(1))<st_tl and d_st(ph(1),ph(2))<st_tl
+        m_sc:=-14, m_nm:="Triple Top", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if d_st(pl(0),pl(1))<st_tl and d_st(pl(1),pl(2))<st_tl
+        m_sc:=14, m_nm:="Triple Bot", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(1)>ph(2) and ph(1)>ph(0) and d_st(ph(2),ph(0))<st_tl*1.5
+        m_sc:=-13, m_nm:="H&S", m_tg:=pl(0)-(ph(1)-pl(0))
+    else if pl(1)<pl(2) and pl(1)<pl(0) and d_st(pl(2),pl(0))<st_tl*1.5
+        m_sc:=13, m_nm:="Inv H&S", m_tg:=ph(0)+(ph(0)-pl(1))
+    else if ph(2)<ph(1) and pl(1)<pl(2) and d_st(ph(2),ph(0))<st_tl
+        m_sc:=-12, m_nm:="Quasimodo Bear", m_tg:=pl(1)
+    else if pl(2)>pl(1) and ph(1)>ph(2) and d_st(pl(2),pl(0))<st_tl
+        m_sc:=12, m_nm:="Quasimodo Bull", m_tg:=ph(1)
+
+if m_sc==0 and array.size(p_hi)>=2 and array.size(p_lo)>=2
+    if d_st(ph(1),ph(0))<st_tl*1.5 and pl(0)>pl(1) and pl(0)<ph(0)
+        m_sc:=12, m_nm:="Cup&Handle", m_tg:=ph(0)+(ph(0)-pl(1))
+    else if d_st(pl(1),pl(0))<st_tl*1.5 and ph(0)<ph(1) and ph(0)>pl(0)
+        m_sc:=-12, m_nm:="Inv Cup&Handle", m_tg:=pl(0)-(ph(1)-pl(0))
+    else if d_st(pl(1),pl(0))<st_tl and ph(0)>pl(0)+((ph(1)-pl(1))*0.6)
+        m_sc:=11, m_nm:="W-Bottom", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if d_st(ph(1),ph(0))<st_tl and pl(0)<ph(0)-((ph(1)-pl(1))*0.6)
+        m_sc:=-11, m_nm:="M-Top", m_tg:=pl(0)-(ph(0)-pl(0))
+
+// L4: 2-Pivot Core Geometry
+if m_sc==0 and array.size(p_hi)>=2 and array.size(p_lo)>=2
+    bool ftp=d_st(ph(0),ph(1))<st_tl, bool fbt=d_st(pl(0),pl(1))<st_tl
+    bool rtp=ph(0)>ph(1) and not ftp, bool dtp=ph(0)<ph(1) and not ftp
+    bool rbt=pl(0)>pl(1) and not fbt, bool dbt=pl(0)<pl(1) and not fbt
+    float tdf=math.abs(ph(0)-ph(1)), float bdf=math.abs(pl(0)-pl(1))
+    bool ipar=math.abs(tdf-bdf)<(math.max(tdf,bdf)*0.3)
+    if ftp and not fbt      m_sc:=-9,  m_nm:="Double Top",   m_tg:=pl(0)-(ph(0)-pl(0))
+    else if fbt and not ftp m_sc:=9,   m_nm:="Double Bot",   m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ftp and fbt     m_sc:=0,   m_nm:="Rectangle",    m_tg:=ph(0)
+    else if ftp and rbt     m_sc:=8,   m_nm:="Asc Triangle", m_tg:=ph(0)+(ph(0)-pl(1))
+    else if fbt and dtp     m_sc:=-8,  m_nm:="Desc Triangle",m_tg:=pl(0)-(ph(1)-pl(0))
+    else if dtp and rbt     m_sc:=(close>ta.ema(close,50))?5:-5, m_nm:="Sym Triangle", m_tg:=ph(0)
+    else if rtp and dbt     m_sc:=0,   m_nm:="Broadening",   m_tg:=na
+    else if rtp and rbt and tdf<bdf and not ipar  m_sc:=-8, m_nm:="Rising Wedge",  m_tg:=pl(1)
+    else if dtp and dbt and tdf>bdf and not ipar  m_sc:=8,  m_nm:="Falling Wedge", m_tg:=ph(1)
+    else if dtp and dbt and ipar and math.abs(phb(1)-plb(0))<15  m_sc:=7,  m_nm:="Bull Flag", m_tg:=ph(1)+(ph(1)-pl(1))
+    else if rtp and rbt and ipar and math.abs(plb(1)-phb(0))<15  m_sc:=-7, m_nm:="Bear Flag", m_tg:=pl(1)-(ph(1)-pl(1))
+    else if dtp and dbt and ipar  m_sc:=6,  m_nm:="Channel Dn", m_tg:=ph(1)
+    else if rtp and rbt and ipar  m_sc:=-6, m_nm:="Channel Up", m_tg:=pl(1)
+    else if dtp and dbt and d_st(tdf,bdf)<0.15  m_sc:=10,  m_nm:="AB=CD Bull", m_tg:=ph(0)
+    else if rtp and rbt and d_st(tdf,bdf)<0.15  m_sc:=-10, m_nm:="AB=CD Bear", m_tg:=pl(0)
+    else if ftp and math.abs(phb(1)-phb(0))<=3  m_sc:=-11, m_nm:="Horn Top",   m_tg:=pl(0)
+    else if fbt and math.abs(plb(1)-plb(0))<=3  m_sc:=11,  m_nm:="Horn Bot",   m_tg:=ph(0)
+
+// L5: Extended Harmonics
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=3
+    float xabr=pl(2)-ph(2), float abbr=ph(1)-pl(2)
+    float xabl=ph(2)-pl(2), float abbl=pl(1)-ph(2)
+    if ph(2)>ph(1) and ph(0)<ph(1) and pl(2)<pl(1) and pl(0)>pl(1) and d_st(math.abs(abbr/math.max(xabr,0.001)),0.618)<0.15
+        m_sc:=-14, m_nm:="Gartley Bear", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if pl(2)<pl(1) and pl(0)>pl(1) and ph(2)>ph(1) and ph(0)<ph(1) and d_st(math.abs(abbl/math.max(xabl,0.001)),0.618)<0.15
+        m_sc:=14, m_nm:="Gartley Bull", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(2)<ph(0) and pl(2)<pl(1) and pl(1)<pl(0) and d_st(math.abs(abbr/math.max(xabr,0.001)),0.786)<0.15
+        m_sc:=-15, m_nm:="Butterfly Bear", m_tg:=pl(1)
+    else if pl(2)>pl(0) and ph(2)>ph(1) and ph(1)>ph(0) and d_st(math.abs(abbl/math.max(xabl,0.001)),0.786)<0.15
+        m_sc:=15, m_nm:="Butterfly Bull", m_tg:=ph(1)
+
+// L6: Trend Exhaustion
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=3
+    if pl(0)<pl(1) and pl(1)<pl(2) and math.abs((pl(0)-pl(1))/math.max(1,(plb(0)-plb(1))))>math.abs((pl(1)-pl(2))/math.max(1,(plb(1)-plb(2))))*1.5
+        m_sc:=13, m_nm:="Bump&Run Bot", m_tg:=ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and math.abs((ph(0)-ph(1))/math.max(1,(phb(0)-phb(1))))>math.abs((ph(1)-ph(2))/math.max(1,(phb(1)-phb(2))))*1.5
+        m_sc:=-13, m_nm:="Bump&Run Top", m_tg:=pl(1)
+    else if ph(0)>ph(1) and close<ph(1) and math.abs(phb(0)-bar_index)<=3
+        m_sc:=-15, m_nm:="2B Rev Top", m_tg:=pl(1)
+    else if pl(0)<pl(1) and close>pl(1) and math.abs(plb(0)-bar_index)<=3
+        m_sc:=15, m_nm:="2B Rev Bot", m_tg:=ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and (ph(0)-pl(0))>(ph(1)-pl(1))*2.5
+        m_sc:=-12, m_nm:="Parab Blowoff Top", m_tg:=pl(0)-((ph(0)-pl(0))*0.5)
+    else if pl(0)<pl(1) and pl(1)<pl(2) and (ph(0)-pl(0))>(ph(1)-pl(1))*2.5
+        m_sc:=12, m_nm:="Parab Blowoff Bot", m_tg:=ph(0)+((ph(0)-pl(0))*0.5)
+
+// L7: Liquidity Traps & Wyckoff
+if m_sc==0 and array.size(p_hi)>=3 and array.size(p_lo)>=3
+    if pl(0)<pl(1) and pl(1)>pl(2) and d_st(pl(1),pl(2))<st_tl*1.5 and close>pl(1)
+        m_sc:=16, m_nm:="Wyckoff Spring", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(0)>ph(1) and ph(1)<ph(2) and d_st(ph(1),ph(2))<st_tl*1.5 and close<ph(1)
+        m_sc:=-16, m_nm:="Wyckoff UTAD", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if ph(0)==ta.highest(high,20) and close<ph(1) and math.abs(phb(0)-bar_index)<=2
+        m_sc:=-14, m_nm:="Turtle Soup Short", m_tg:=pl(0)
+    else if pl(0)==ta.lowest(low,20) and close>pl(1) and math.abs(plb(0)-bar_index)<=2
+        m_sc:=14, m_nm:="Turtle Soup Long", m_tg:=ph(0)
+    else if ph(1)>ph(2) and ph(1)>ph(0) and close>ph(1)
+        m_sc:=15, m_nm:="Failed H&S Trap", m_tg:=ph(1)+(ph(1)-pl(0))
+    else if pl(1)<pl(2) and pl(1)<pl(0) and close<pl(1)
+        m_sc:=-15, m_nm:="Failed InvH&S Trap", m_tg:=pl(1)-(ph(0)-pl(1))
+    else if ph(2)<ph(1) and pl(1)<pl(2) and close>ph(1)
+        m_sc:=13, m_nm:="QM Fail Bull", m_tg:=ph(1)+(ph(1)-pl(1))
+    else if pl(2)>pl(1) and ph(1)>ph(2) and close<pl(1)
+        m_sc:=-13, m_nm:="QM Fail Bear", m_tg:=pl(1)-(ph(1)-pl(1))
+
+// L8: Deep Harmonics
+if m_sc==0 and array.size(p_hi)>=4 and array.size(p_lo)>=4
+    float xabd=pl(2)-ph(3), float cdbd=ph(0)-pl(1)
+    float xabl2=ph(2)-pl(3), float cdbl2=pl(0)-ph(1)
+    if ph(3)>ph(2) and ph(0)>ph(3) and pl(1)>pl(2) and d_st(math.abs(cdbd/math.max(xabd,0.001)),1.618)<0.2
+        m_sc:=-17, m_nm:="Deep Crab Bear", m_tg:=pl(1)
+    else if pl(3)<pl(2) and pl(0)<pl(3) and ph(1)<ph(2) and d_st(math.abs(cdbl2/math.max(xabl2,0.001)),1.618)<0.2
+        m_sc:=17, m_nm:="Deep Crab Bull", m_tg:=ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and d_st(math.abs((ph(0)-pl(0))/math.max(ph(1)-pl(1),0.001)),1.272)<0.2
+        m_sc:=-13, m_nm:="1.272 Drive Top", m_tg:=pl(0)
+    else if pl(0)<pl(1) and pl(1)<pl(2) and d_st(math.abs((ph(0)-pl(0))/math.max(ph(1)-pl(1),0.001)),1.272)<0.2
+        m_sc:=13, m_nm:="1.272 Drive Bot", m_tg:=ph(0)
+
+// L9: Complex Multi-Leg
+if m_sc==0 and array.size(p_hi)>=4 and array.size(p_lo)>=4
+    if pl(1)<pl(2) and ph(0)>ph(1) and close<ph(0)
+        m_sc:=-12, m_nm:="Exp Flat Bear", m_tg:=pl(1)-(ph(0)-pl(1))
+    else if ph(1)>ph(2) and pl(0)<pl(1) and close>pl(0)
+        m_sc:=12, m_nm:="Exp Flat Bull", m_tg:=ph(1)+(ph(1)-pl(0))
+    else if ph(0)>ph(1) and ph(1)>ph(2) and pl(0)<pl(1) and pl(1)<pl(2) and close<pl(0)
+        m_sc:=-16, m_nm:="Broad Exhaust Top", m_tg:=pl(0)-(ph(0)-pl(0))
+    else if pl(0)<pl(1) and pl(1)<pl(2) and ph(0)>ph(1) and ph(1)>ph(2) and close>ph(0)
+        m_sc:=16, m_nm:="Broad Exhaust Bot", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(1)<ph(0) and pl(1)>pl(0) and ph(2)<ph(1) and close>ph(0)
+        m_sc:=14, m_nm:="Diamond Top Fail", m_tg:=ph(0)+(ph(0)-pl(0))
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1) and close<pl(0)
+        m_sc:=-14, m_nm:="Diamond Bot Fail", m_tg:=pl(0)-(ph(0)-pl(0))
+
+// ============================================================================
+// 10. PATTERN APPLICATION
+// ============================================================================
+
+s_pe.a_mp := m_nm
+s_pe.p_sc := c_sc + m_sc
+s_pe.s_tg := m_tg
+s_pe.i_rv := math.abs(s_pe.p_sc) >= 12
+
+if m_sc != 0 and m_sc != m_sc[1]
+    float hi30=ta.highest(high,30), float lo30=ta.lowest(low,30)
+    float rng = hi30 - lo30
+    bool ib   = m_sc > 0
+    color cc  = ib ? color.new(#00FF00,85) : color.new(#FF0000,85)
+    color cb  = ib ? color.lime : color.red
+    color ct  = ib ? color.new(#00BFFF,85) : color.new(#FF8C00,85)
+    box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cb,70), border_style=line.style_dotted, bgcolor=color.new(cb,97))
+    box.new(bar_index-28, hi30, bar_index, lo30, border_color=cb, border_width=2, bgcolor=cc)
+    if not na(m_tg)
+        box.new(bar_index, ib?m_tg:close, bar_index+15, ib?close:m_tg, border_color=color.new(ct,50), border_style=line.style_dashed, bgcolor=ct)
+        line.new(bar_index, m_tg, bar_index+15, m_tg, color=cb, width=2)
+
+// ============================================================================
+// 11. BAYESIAN INFERENCE
+// ============================================================================
+
+float t_up = close + (at_v*b_cf*1.8), float t_dn = close - (at_v*b_cf*1.8)
+float pb_r = math.sum(al_tr>al_tr[2] and high>nz(t_up[fc_hz])?1:0, by_lb) / by_lb * 100
+float pr_r = math.sum(al_tr<=al_tr[2] and low<nz(t_dn[fc_hz])?1:0, by_lb) / by_lb * 100
+
+s_by.p_bl := math.max(0, math.min(100, pb_r + (fb_b*5) + (s_pe.p_sc*2)))
+s_by.p_br := math.max(0, math.min(100, pr_r - (fb_b*5) - (s_pe.p_sc*2)))
+s_by.e_cl := s_by.p_bl > s_by.p_br ? t_up : t_dn
+
+if not na(s_pm.l_tg) and bar_index == s_pm.t_br
+    fb_b += ((close - s_pm.l_tg) / nz(at_v,1) * lr_rt)
+    if (s_pm.l_tg>close[fc_hz] and high>=s_pm.l_tg) or (s_pm.l_tg<close[fc_hz] and low<=s_pm.l_tg)
+        s_pm.ht += 1
+    else
+        s_pm.ms += 1
+    s_pm.t_pj+=1, s_pm.ac:=s_pm.t_pj>0?(s_pm.ht/s_pm.t_pj)*100:0, s_pm.l_tg:=na
+
+// ============================================================================
+// 12. FORECAST PINNING
+// ============================================================================
+
+bool s_tr = al_fl or s_bk.i_vl or s_pe.i_rv
+
+if s_tr and barstate.isconfirmed
+    s_pm.l_tg:=s_by.e_cl, s_pm.t_br:=bar_index+fc_hz
+    s_pf.i_ac:=true, s_pf.a_br:=bar_index, s_pf.a_tm:=time, s_pf.a_px:=close
+    s_pf.t_sr:=s_pe.i_rv?"GEO REV":(s_bk.i_vl?"BRK SYN":"ALP FLP")
+    array.clear(s_pf.t_pt), array.clear(s_pf.t_op), array.clear(s_pf.t_cl)
+    array.clear(s_pf.c_up), array.clear(s_pf.c_dn)
+    m_mat := m_rnd(3, fc_hz)
+    float s_op = close
+    for i = 1 to fc_hz
+        float ad = math.exp(-i/(fc_hz*0.5))
+        float ap = s_bk.i_vl ? (s_kn.vel*s_bk.v_ml) : s_kn.vel
+        if s_pe.i_rv and not na(s_pe.s_tg)
+            ap += ((s_pe.s_tg - close) / fc_hz * 0.5)
+        float kp = s_pf.a_px + (ap*i) + (0.5*s_kn.acc*math.pow(i,2)*ad)
+        float mp = en_mr ? (ta.ema(close,200)-close)*(i/fc_hz)*0.15 : 0.0
+        float bp = (s_by.e_cl-close)*(i/fc_hz)*0.1
+        float fp = (kp*k_wt) + (mp*m_wt) + (bp*b_wt)
+        float cb = s_kn.err * s_uz.a_cf * math.sqrt(i)
+        array.push(s_pf.t_pt,fp), array.push(s_pf.c_up,fp+cb), array.push(s_pf.c_dn,fp-cb)
+        array.push(s_pf.t_op,s_op), array.push(s_pf.t_cl,fp), s_op:=fp
+
+if s_pf.i_ac
+    int el = bar_index - s_pf.a_br
+    if el>0 and el<=array.size(s_pf.t_pt)
+        float tu=array.get(s_pf.c_up,el-1), float tl=array.get(s_pf.c_dn,el-1)
+        if close<=tu and close>=tl
+            s_ac.h_ct+=1, s_ac.p_bl:=math.min(0.99,s_ac.p_bl+0.02)
+        else
+            s_ac.m_ct+=1, s_ac.p_bl:=math.max(0.01,s_ac.p_bl-0.04)
+        s_ac.p_br := 1.0 - s_ac.p_bl
+        s_ac.h_rt := (s_ac.h_ct+s_ac.m_ct)>0 ? s_ac.h_ct/(s_ac.h_ct+s_ac.m_ct) : 1.0
+
+// ============================================================================
+// 13. TRADE EXECUTION
+// ============================================================================
+
+bool g_lg = al_bl and (not rq_syn or m_bl) and s_by.p_bl>50 and grs.p_it>0.4
+bool g_sh = not al_bl and (not rq_syn or m_br) and s_by.p_br>50 and (1.0-grs.p_it)>0.4
+
+if g_lg and strategy.opentrades < mx_tr
+    float sl=low-(at_v*rk_bf), float tp=close+((close-sl)*rw_ml)
+    strategy.entry("J_LG", strategy.long), strategy.exit("X_LG","J_LG",stop=sl,limit=tp)
+    a_tr := trd_e.new(close,sl,tp,rw_ml,1,false)
+
+if g_sh and strategy.opentrades < mx_tr
+    float sl=high+(at_v*rk_bf), float tp=close-((sl-close)*rw_ml)
+    strategy.entry("J_SH", strategy.short), strategy.exit("X_SH","J_SH",stop=sl,limit=tp)
+    a_tr := trd_e.new(close,sl,tp,rw_ml,1,false)
+
+// ============================================================================
+// 14. VISUAL RENDERING
+// ============================================================================
+
+color c_af = color.new(#00FF00,15), color c_as = color.new(#FF0055,15)
+p_af = plot(al_tr,    color=c_af, linewidth=2, title="AT Fast")
+p_as = plot(al_tr[2], color=c_as, linewidth=2, title="AT Slow")
+fill(p_af, p_as, color=al_tr>al_tr[2]?color.new(#00FF00,85):color.new(#FF0055,85), title="AT Fill")
+
+f_rdr(pin_f pf, kin_m kn, unc_z uz, acc_e ac, matrix<float> mm, float tm, color tc, float mv) =>
+    if pf.i_ac
+        array<chart.point> pm=array.new<chart.point>()
+        array<chart.point> pu=array.new<chart.point>()
+        array<chart.point> pd=array.new<chart.point>()
+        array<chart.point> pc=array.new<chart.point>()
+        int mc=math.min(matrix.rows(mm),10)
+        array<pt_ar> mpm=array.new<pt_ar>()
+        for r=0 to mc-1
+            array.push(mpm, pt_ar.new(array.new<chart.point>()))
+        chart.point apt=chart.point.new(pf.a_tm, pf.a_br, pf.a_px)
+        array.push(pm,apt), array.push(pu,apt), array.push(pd,apt), array.push(pc,apt)
+        for r=0 to mc-1
+            array.push(array.get(mpm,r).pts, apt)
+        float ptp=pf.a_px, int hs=array.size(pf.t_pt)
+        int dt=int(timeframe.multiplier*tm*60*1000), int bs=math.max(1,int(tm))
+        float vs=math.sqrt(tm)*(1.0+(mv*50)), float nm=kn.err*uz.a_cf*0.5*vs
+        for i=0 to hs-1
+            int tb=pf.a_br+int(i*bs)+1, int tt=time+((tb-bar_index)*dt)
+            float rtp=array.get(pf.t_pt,i)
+            float ru=rtp+((array.get(pf.c_up,i)-rtp)*vs)
+            float rd=rtp-((rtp-array.get(pf.c_dn,i))*vs)
+            float wtp=b_tc(rtp,ptp,kn.err,i,uz.a_cf), float bd=math.abs(wtp-rtp)
+            ptp:=wtp
+            array.push(pm,chart.point.new(tt,tb,wtp))
+            array.push(pu,chart.point.new(tt,tb,ru+bd))
+            array.push(pd,chart.point.new(tt,tb,rd-bd))
+            float ct2=i/hs
+            array.push(pc,chart.point.new(tt,tb,pf.a_px+(wtp-pf.a_px)*ct2+(kn.err*10*vs*ct2*(1-ct2))))
+            for r=0 to mc-1
+                array.push(array.get(mpm,r).pts, chart.point.new(tt,tb,wtp+(matrix.get(mm,r,i)*nm)))
+            if tb<=bar_index
+                int off=math.max(0,math.min(bar_index-tb,3999))
+                bool ih2=close[off]<=ru+bd and close[off]>=rd-bd
+                label ndl=label.new(tb,wtp,"",color=ih2?color.new(#00FFAA,20):color.new(#FF0055,20),style=label.style_circle,size=size.tiny,tooltip="W-Mean:"+str.tostring(wtp,"#.##")+"\nBnds:["+str.tostring(rd-bd,"#.##")+"-"+str.tostring(ru+bd,"#.##")+"]\n"+(ih2?"HIT":"MISS"))
+                array.push(fc_lb, ndl)
+        array<chart.point> pp=array.new<chart.point>()
+        for p in pu
+            array.push(pp,p)
+        for i=array.size(pd)-1 to 0
+            array.push(pp,array.get(pd,i))
+        array.push(fc_sh,polyline.new(pp,closed=true,fill_color=color.new(tc,85),line_color=na,xloc=xloc.bar_time))
+        array.push(mn_pl,polyline.new(pm,curved=curvP,line_color=tc,line_width=2,line_style=line.style_dashed,xloc=xloc.bar_time))
+        array.push(mn_pl,polyline.new(pu,curved=curvP,line_color=color.new(tc,40),line_width=1,line_style=line.style_dotted,xloc=xloc.bar_time))
+        array.push(mn_pl,polyline.new(pd,curved=curvP,line_color=color.new(tc,40),line_width=1,line_style=line.style_dotted,xloc=xloc.bar_time))
+        array.push(mc_ln,polyline.new(pc,curved=true,line_color=color.new(#B200FF,50),line_width=2,xloc=xloc.bar_time))
+        if sh_mc
+            for r=0 to mc-1
+                array.push(mc_ln,polyline.new(array.get(mpm,r).pts,curved=curvP,line_color=color.new(#FFFFFF,90-math.round(40*(r/math.max(1,mc-1)))),line_width=1,xloc=xloc.bar_time))
+        int eb=pf.a_br+int(hs*bs), int et=time+((eb-bar_index)*dt)
+        float fu=array.get(pf.t_pt,hs-1)+((array.get(pf.c_up,hs-1)-array.get(pf.t_pt,hs-1))*vs)
+        float fd=array.get(pf.t_pt,hs-1)-((array.get(pf.t_pt,hs-1)-array.get(pf.c_dn,hs-1))*vs)
+        float fm=array.get(pm,array.size(pm)-1).price, float os=(fu-fd)*0.382
+        array.push(d_bx,box.new(eb-1,fu,eb+3,fd,border_color=color.new(tc,70),border_style=line.style_dotted,bgcolor=color.new(tc,92),text="95%CI",text_size=size.tiny,text_color=color.new(color.white,50),text_halign=text.align_center))
+        array.push(d_bx,box.new(eb,fm+os,eb+2,fm-os,border_color=color.new(tc,20),border_width=2,bgcolor=color.new(tc,80),text="CORE",text_size=size.tiny,text_color=color.white,text_halign=text.align_center))
+        float rw=1.5*dt, float rh=os*0.5
+        array<chart.point> rp=array.new<chart.point>()
+        array.push(rp,chart.point.new(et,eb,fm+rh)), array.push(rp,chart.point.new(int(et+rw),eb,fm))
+        array.push(rp,chart.point.new(et,eb,fm-rh)), array.push(rp,chart.point.new(int(et-rw),eb,fm))
+        array.push(fc_sh,polyline.new(rp,closed=true,fill_color=color.new(tc,10),line_color=tc,line_width=2,xloc=xloc.bar_time))
+
+if barstate.islast
+    while array.size(mc_ln)>0   polyline.delete(array.pop(mc_ln))
+    while array.size(d_bx)>0    box.delete(array.pop(d_bx))
+    while array.size(fc_sh)>0   polyline.delete(array.pop(fc_sh))
+    while array.size(fc_lb)>0   label.delete(array.pop(fc_lb))
+    while array.size(mn_pl)>0   polyline.delete(array.pop(mn_pl))
+
+    color pbc = s_ac.p_bl>0.65 ? color.new(#00FFAA,0) : s_ac.p_bl<0.35 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
+    f_rdr(s_pf,s_kn,s_uz,s_ac,m_mat,0.5,color.new(#00BFFF,0),mvi)
+    f_rdr(s_pf,s_kn,s_uz,s_ac,m_mat,1.0,pbc,mvi)
+    f_rdr(s_pf,s_kn,s_uz,s_ac,m_mat,4.0,color.new(#FF8C00,0),mvi)
+
+    float cb2 = (open+high+low+close)/4
+    if not na(b_ray)
+        line.delete(b_ray)
+    b_ray := line.new(bar_index-5,cb2,bar_index,cb2,color=color.new(#FFD700,30),style=line.style_dashed,width=2)
+    line.set_extend(b_ray, extend.right)
+    if not na(b_lbl)
+        label.delete(b_lbl)
+    b_lbl := label.new(line.get_x1(b_ray),cb2,"MR Baseline\nDrift:"+str.tostring((cb2-cb2[1])/cb2[1]*100,"#.###")+"%",color=color.new(color.black,40),textcolor=color.new(#FFD700,0),style=label.style_label_down,size=size.small)
+
+    if s_pf.i_ac
+        if array.size(g_bd)>0
+            for b in g_bd  box.delete(b)
+            for w in g_wk  line.delete(w)
+            array.clear(g_bd), array.clear(g_wk)
+        var p_mn=array.new<chart.point>(), var p_up=array.new<chart.point>(), var p_dn=array.new<chart.point>()
+        array.clear(p_mn), array.clear(p_up), array.clear(p_dn)
+        chart.point apt2=chart.point.new(s_pf.a_tm,s_pf.a_br,s_pf.a_px)
+        array.push(p_mn,apt2), array.push(p_up,apt2), array.push(p_dn,apt2)
+        for i=0 to array.size(s_pf.t_pt)-1
+            int tb=s_pf.a_br+i+1, int tt=time+((tb-bar_index)*timeframe.multiplier*60*1000)
+            float tp=array.get(s_pf.t_pt,i), float up=array.get(s_pf.c_up,i), float dn=array.get(s_pf.c_dn,i)
+            array.push(p_mn,chart.point.new(tt,tb,tp)), array.push(p_up,chart.point.new(tt,tb,up)), array.push(p_dn,chart.point.new(tt,tb,dn))
+            if sh_gb
+                float go=array.get(s_pf.t_op,i), float gc=array.get(s_pf.t_cl,i)
+                float gh=math.max(go,gc)+(s_kn.err*0.5), float gl=math.min(go,gc)-(s_kn.err*0.5)
+                color gcl=gc>=go?color.new(#00FF00,50):color.new(#FF0055,50)
+                array.push(g_wk,line.new(tt,gh,tt,gl,xloc=xloc.bar_time,color=color.new(gcl,70),width=1))
+                array.push(g_bd,box.new(tt-(timeframe.multiplier*20000),math.max(go,gc),tt+(timeframe.multiplier*20000),math.min(go,gc),xloc=xloc.bar_time,border_color=gcl,bgcolor=gcl))
+        color ptc=s_by.p_bl>60?color.new(#00FFAA,0):(s_by.p_br>60?color.new(#FF0055,0):color.new(#FFCC00,0))
+        polyline.new(p_mn,curved=true,line_color=ptc,line_width=3,line_style=line.style_dashed,xloc=xloc.bar_time)
+        polyline.new(p_up,curved=true,line_color=color.new(#A9A9A9,50),line_width=1,line_style=line.style_dotted,xloc=xloc.bar_time)
+        polyline.new(p_dn,curved=true,line_color=color.new(#A9A9A9,50),line_width=1,line_style=line.style_dotted,xloc=xloc.bar_time)
+
+// ============================================================================
+// 15. HUD TABLE
+// ============================================================================
+
+var table m_hd = table.new(position.bottom_right,4,8,border_width=1,border_color=color.new(color.gray,80),bgcolor=color.new(#0a0a0a,5))
+
+if barstate.islast and sh_tb
+    table.cell(m_hd,0,0,"JAT+BSM HUD",bgcolor=color.new(#1a1a1a,0),text_color=color.white)
+    table.merge_cells(m_hd,0,0,3,0)
+    table.cell(m_hd,0,1,"METRIC",bgcolor=color.new(#2a2a2a,0),text_color=color.white)
+    table.cell(m_hd,1,1,"VAL",bgcolor=color.new(#2a2a2a,0),text_color=color.white)
+    table.cell(m_hd,2,1,"STATE",bgcolor=color.new(#2a2a2a,0),text_color=color.white)
+    table.cell(m_hd,3,1,"ANALYSIS",bgcolor=color.new(#2a2a2a,0),text_color=color.white)
+    table.cell(m_hd,0,2,"KIN VEL",text_color=color.gray)
+    table.cell(m_hd,1,2,str.tostring(s_kn.vel,"#.##"),text_color=color.yellow)
+    table.cell(m_hd,2,2,"KIN ACC",text_color=color.gray)
+    table.cell(m_hd,3,2,str.tostring(s_kn.acc,"#.####"),text_color=s_kn.acc>0?color.lime:color.red)
+    table.cell(m_hd,0,3,"BYS BUL",text_color=color.gray)
+    table.cell(m_hd,1,3,str.tostring(s_by.p_bl,"#.#")+"%",text_color=color.lime)
+    table.cell(m_hd,2,3,"BYS BER",text_color=color.gray)
+    table.cell(m_hd,3,3,str.tostring(s_by.p_br,"#.#")+"%",text_color=color.red)
+    table.cell(m_hd,0,4,"OPT DLT",text_color=color.gray)
+    table.cell(m_hd,1,4,str.tostring(grs.dlt,"#.###"),text_color=color.white)
+    table.cell(m_hd,2,4,"OPT GMA",text_color=color.gray)
+    table.cell(m_hd,3,4,str.tostring(grs.gma,"#.###"),text_color=color.white)
+    table.cell(m_hd,0,5,"MCD SYN",text_color=color.gray)
+    table.cell(m_hd,1,5,m_bl?"BULL":m_br?"BEAR":"MIX",text_color=m_bl?color.lime:(m_br?color.red:color.yellow))
+    table.cell(m_hd,2,5,"HTF TRD",text_color=color.gray)
+    table.cell(m_hd,3,5,ht_c>ht_o?"BULL":"BEAR",text_color=ht_c>ht_o?color.lime:color.red)
+    table.cell(m_hd,0,6,"CND PAT",text_color=color.gray)
+    table.cell(m_hd,1,6,s_pe.a_cp,text_color=c_sc>0?color.lime:(c_sc<0?color.red:color.white))
+    table.cell(m_hd,2,6,"MCR PAT",text_color=color.gray)
+    table.cell(m_hd,3,6,s_pe.a_mp,text_color=m_sc>0?color.lime:(m_sc<0?color.red:color.white))
+    table.cell(m_hd,0,7,"HIT RT",text_color=color.gray)
+    table.cell(m_hd,1,7,str.tostring(s_ac.h_rt*100,"#.#")+"%",text_color=s_ac.h_rt>0.7?color.lime:color.red)
+    table.cell(m_hd,2,7,"TRG SRC",text_color=color.gray)
+    table.cell(m_hd,3,7,s_pf.t_sr,text_color=color.white)
+
+// ============================================================================
+// 16. DATA WINDOW
+// ============================================================================
+
+plot(s_kn.vel,      "KIN VEL",    display=display.data_window)
+plot(s_kn.acc,      "KIN ACC",    display=display.data_window)
+plot(s_by.p_bl,     "BYS BUL %",  display=display.data_window)
+plot(s_by.p_br,     "BYS BER %",  display=display.data_window)
+plot(grs.dlt,       "OPT DLT",    display=display.data_window)
+plot(grs.gma,       "OPT GMA",    display=display.data_window)
+plot(m_bl?1:m_br?-1:0, "MCD SYN", display=display.data_window)
+plot(s_ac.h_rt*100, "HIT RT %",   display=display.data_window)
+plot(s_pe.p_sc,     "PAT SCORE",  display=display.data_window)

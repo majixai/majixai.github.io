@@ -87,18 +87,28 @@ export class QuoteService {
     }
 
     /**
-     * Poll quotes for all subscribed symbols.
+     * Poll quotes for all subscribed symbols in parallel.
      */
     async pollQuotes() {
         const symbols = Array.from(this.subscribers.keys());
-        
-        for (const symbol of symbols) {
-            try {
-                const quote = await this.fetchQuote(symbol);
+
+        const results = await Promise.all(
+            symbols.map(async (symbol) => {
+                try {
+                    const quote = await this.fetchQuote(symbol);
+                    return { symbol, quote, error: null };
+                } catch (error) {
+                    return { symbol, quote: null, error };
+                }
+            })
+        );
+
+        for (const { symbol, quote, error } of results) {
+            if (error) {
+                console.error(`Failed to fetch quote for ${symbol}:`, error);
+            } else {
                 this.quotes.set(symbol, quote);
                 this.notifySubscribers(symbol, quote);
-            } catch (error) {
-                console.error(`Failed to fetch quote for ${symbol}:`, error);
             }
         }
     }

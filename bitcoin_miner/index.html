@@ -108,6 +108,20 @@
     </div>
   </div>
 
+  <!-- Rewards & BTC Price -->
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-trophy me-1"></i> Mining Rewards &amp; BTC Price <span class="data-age ms-2" id="price-age"></span></div>
+    <div class="row g-2 mb-2">
+      <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value" id="rew-price" style="font-size:1.2rem;color:var(--btc-green)">&mdash;</div><div class="stat-label">BTC / USD</div></div></div>
+      <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value" id="rew-subsidy" style="font-size:1.1rem">&mdash;</div><div class="stat-label">Block Subsidy</div></div></div>
+      <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value" id="rew-total" style="font-size:1.1rem">&mdash;</div><div class="stat-label">Block Reward (BTC)</div></div></div>
+      <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value" id="rew-usd" style="font-size:1.1rem;color:var(--btc-green)">&mdash;</div><div class="stat-label">Block Reward (USD)</div></div></div>
+      <div class="col-6 col-md-2"><div class="stat-card"><div class="stat-value" id="rew-halving" style="font-size:1.1rem">&mdash;</div><div class="stat-label">Blocks to Halving</div></div></div>
+      <div class="col-6 col-md-2"><div class="stat-card" style="background:rgba(247,147,26,.12)"><div class="stat-value" id="rew-session" style="font-size:1.1rem;color:var(--btc-orange)">0.00000000</div><div class="stat-label">Session Earned (&#x20BF;)</div></div></div>
+    </div>
+    <div id="rew-session-usd" style="font-size:.78rem;color:var(--btc-green);text-align:center;min-height:1.2em"></div>
+  </div>
+
   <!-- ML / Neural Analysis -->
   <div class="panel">
     <div class="panel-title"><i class="fa fa-brain me-1"></i> TensorFlow.js Neural Fee Engine <small class="text-secondary ms-2">(GPU via WebGL/WebGPU)</small></div>
@@ -328,12 +342,13 @@ async function fetchLiveData() {
   } catch(_) {}
 
   try {
-    const [fR, mR, bR] = await Promise.allSettled([
+    const [fR, mR, bR, pR] = await Promise.allSettled([
       fetch('https://mempool.space/api/v1/fees/recommended').then(r => r.json()),
       fetch('https://mempool.space/api/mempool').then(r => r.json()),
       fetch('https://mempool.space/api/v1/blocks').then(r => r.json()),
+      fetch('https://mempool.space/api/v1/prices').then(r => r.json()),
     ]);
-    if (!liveData) liveData = {network:{},latest_block:{},fees_recommended:{},mempool_sample_txs:[],ml_analysis:{}};
+    if (!liveData) liveData = {network:{},latest_block:{},fees_recommended:{},mempool_sample_txs:[],ml_analysis:{},price:{},rewards:{}};
     if (fR.status === 'fulfilled') liveData.fees_recommended = fR.value;
     if (mR.status === 'fulfilled') {
       const m = mR.value;
@@ -344,10 +359,31 @@ async function fetchLiveData() {
       liveData.network     = {...liveData.network, height: b.height, difficulty: b.difficulty};
       liveData.latest_block = {...liveData.latest_block, ...b};
       lastApiAge = new Date();
+      // Recompute rewards from fresh block data
+      const h = b.height || 0;
+      const fees_sat = (b.extras && b.extras.totalFees) || 0;
+      const subsidy  = calcBlockSubsidy(h);
+      const halvings = Math.floor(h / 210000);
+      liveData.rewards = {
+        halvings,
+        block_subsidy_btc:      subsidy,
+        total_block_reward_btc: subsidy + fees_sat / 1e8,
+        total_block_reward_usd: btcPrice ? (subsidy + fees_sat / 1e8) * btcPrice : 0,
+        next_halving_block:     (halvings + 1) * 210000,
+        blocks_to_halving:      (halvings + 1) * 210000 - h,
+      };
+    }
+    if (pR.status === 'fulfilled' && pR.value && pR.value.USD) {
+      btcPrice = pR.value.USD;
+      priceLastFetched = new Date();
+      liveData.price = {usd: btcPrice};
+      // refresh reward USD values now we have a price
+      if (liveData.rewards) liveData.rewards.total_block_reward_usd =
+        liveData.rewards.total_block_reward_btc * btcPrice;
     }
   } catch(_) {}
 
-  if (liveData) { updateNetworkPanel(); updateBlockData(); await updateMLPanel(); }
+  if (liveData) { updateNetworkPanel(); updateBlockData(); updateRewardsPanel(); await updateMLPanel(); }
 }
 
 function updateNetworkPanel() {
@@ -407,6 +443,66 @@ let workerHashes = new Array(N_WORKERS).fill(0);
 let workerRates  = new Array(N_WORKERS).fill(0);
 let totalAttempts = 0;
 
+/* ── Reward & price state ────────────────────────────────────────────────── */
+let btcPrice         = 0;
+let blockSubsidyBtc  = 3.125;  // updated from live data
+let sessionEarnings  = 0;
+let priceLastFetched = null;
+
+function calcBlockSubsidy(height) {
+  const halvings = Math.floor(height / 210000);
+  return halvings >= 64 ? 0 : 50 / Math.pow(2, halvings);
+}
+
+function updateRewardsPanel() {
+  if (!liveData) return;
+  const n   = liveData.network        || {};
+  const b   = liveData.latest_block   || {};
+  const rew = liveData.rewards        || {};
+  const height = n.height || 0;
+
+  // Prefer server-computed reward data; fall back to client calculation
+  blockSubsidyBtc = rew.block_subsidy_btc  || calcBlockSubsidy(height) || 3.125;
+  const rewardBtc = rew.total_block_reward_btc || blockSubsidyBtc;
+  const halvBlock = rew.next_halving_block  || ((Math.floor(height / 210000) + 1) * 210000);
+  const toHalv    = rew.blocks_to_halving   || Math.max(0, halvBlock - height);
+  const rewardUsd = btcPrice ? rewardBtc * btcPrice : (rew.total_block_reward_usd || 0);
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('rew-price',   btcPrice ? '$' + Math.round(btcPrice).toLocaleString() : '—');
+  set('rew-subsidy', blockSubsidyBtc.toFixed(8) + ' ₿');
+  set('rew-total',   rewardBtc.toFixed(8) + ' ₿');
+  set('rew-usd',     rewardUsd ? '$' + Math.round(rewardUsd).toLocaleString() : '—');
+  set('rew-halving', toHalv.toLocaleString());
+  if (priceLastFetched) {
+    const s = Math.floor((Date.now() - priceLastFetched) / 1000);
+    set('price-age', 'price ' + (s < 60 ? s+'s' : Math.floor(s/60)+'m') + ' ago');
+  }
+  updateSessionEarnings();
+}
+
+function updateSessionEarnings() {
+  const el    = document.getElementById('rew-session');
+  const usdEl = document.getElementById('rew-session-usd');
+  if (el)    el.textContent = sessionEarnings.toFixed(8) + ' ₿';
+  if (usdEl) {
+    const blocksLabel = blocksMined + ' block' + (blocksMined !== 1 ? 's' : '') + ' mined this session';
+    if (btcPrice && sessionEarnings > 0) {
+      usdEl.textContent = '≈ $' + (sessionEarnings * btcPrice).toFixed(2)
+        + ' USD at current price · ' + blocksLabel;
+    } else if (sessionEarnings > 0) {
+      usdEl.textContent = blocksLabel;
+    } else {
+      usdEl.textContent = '';
+    }
+  }
+}
+
+function formatRewardStr(subsidyBtc) {
+  return subsidyBtc.toFixed(4) + ' ₿'
+    + (btcPrice ? ' ≈ $' + Math.round(subsidyBtc * btcPrice).toLocaleString() : '');
+}
+
 /* Genesis */
 (async () => {
   const h = await sha256('Genesis Block — majixai bitcoin mining demo');
@@ -443,6 +539,7 @@ function addBlockToChain(num, data, nonce, hash) {
   a.innerHTML = '<i class="fa fa-arrow-right"></i>';
   c.appendChild(a);
   const txCount = data.split(';').length;
+  const rewardStr = formatRewardStr(blockSubsidyBtc);
   const card = document.createElement('div');
   card.className = 'block-card';
   card.innerHTML =
@@ -452,7 +549,9 @@ function addBlockToChain(num, data, nonce, hash) {
     + '<div class="blk-field mt-1">Nonce</div>'
     + '<div class="blk-val">' + esc(Number(nonce).toLocaleString()) + '</div>'
     + '<div class="blk-field mt-1">Hash</div>'
-    + '<div class="blk-val">' + esc(hash.slice(0,20)) + '…</div>';
+    + '<div class="blk-val">' + esc(hash.slice(0,20)) + '…</div>'
+    + '<div class="blk-field mt-1" style="color:var(--btc-green)">Reward</div>'
+    + '<div class="blk-val" style="color:var(--btc-green)">' + esc(rewardStr) + '</div>';
   c.appendChild(card);
   c.scrollLeft = c.scrollWidth;
 }
@@ -515,13 +614,17 @@ function mineNextBlock() {
         document.getElementById('stat-workers').textContent  = '0/' + N_WORKERS;
         updateProbBar(totalAttempts, difficulty);
         blocksMined++;
+        sessionEarnings += blockSubsidyBtc;
         document.getElementById('stat-blocks').textContent = blocksMined;
+        const rewardUsdStr = ' &middot; reward &#x20BF;' + formatRewardStr(blockSubsidyBtc);
         appendLog('<span class="log-found">&#x2705; Block #' + blockNum
           + ' found! Worker ' + i
           + ' &middot; Nonce: ' + Number(msg.nonce).toLocaleString()
           + ' &middot; Hash: ' + esc(msg.hash.slice(0,16)) + '…'
           + ' &middot; ' + totalAttempts.toLocaleString() + ' attempts'
-          + ' &middot; ' + Math.round(totalR).toLocaleString() + ' H/s</span>');
+          + ' &middot; ' + Math.round(totalR).toLocaleString() + ' H/s'
+          + rewardUsdStr + '</span>');
+        updateSessionEarnings();
         addBlockToChain(blockNum, blockData, msg.nonce, msg.hash);
         prevHash = msg.hash;
         document.getElementById('prev-hash-display').textContent = prevHash.slice(0,24) + '…';

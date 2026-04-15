@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixActions — Action Dispatcher Demo</title>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --card:    #161b22;
+      --accent:  #58a6ff;
+      --green:   #3fb950;
+      --yellow:  #d29922;
+      --red:     #f85149;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --border:  #30363d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+    header { background: #0f3460; padding: 1.5rem 2rem; border-bottom: 2px solid var(--accent); }
+    header h1 { color: var(--accent); font-size: 1.8rem; }
+    header p  { color: var(--muted); margin-top: .25rem; }
+    .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+    @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .card h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: .75rem; border-bottom: 1px solid var(--border); padding-bottom: .5rem; }
+    label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .3rem; }
+    input, select, textarea {
+      width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; padding: .4rem .7rem; font-size: .9rem; font-family: inherit;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    .row { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+    .btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; font-weight: 600; font-size: .9rem; }
+    .btn:hover { opacity: .85; }
+    .btn.green  { background: var(--green);  color: #000; }
+    .btn.yellow { background: var(--yellow); color: #000; }
+    .btn.red    { background: var(--red);    color: #fff; }
+    .log-wrap { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: .75rem; max-height: 320px; overflow-y: auto; font-size: .8rem; font-family: 'Courier New', monospace; }
+    .log-entry { padding: .2rem 0; border-bottom: 1px solid #1c2128; color: var(--muted); }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .type  { color: var(--accent);  font-weight: bold; }
+    .log-entry .ts    { color: #484f58; font-size: .72rem; }
+    .badge { display: inline-block; font-size: .72rem; padding: .1rem .45rem; border-radius: 10px; background: #21262d; color: var(--muted); margin-left: .3rem; }
+    .status { padding: .5rem .75rem; border-radius: 6px; font-size: .85rem; margin-top: .75rem; background: #161b22; border: 1px solid var(--border); }
+    code { background: #21262d; color: var(--green); padding: .15rem .4rem; border-radius: 4px; font-size: .82rem; }
+    pre  { background: #0a0d12; border: 1px solid var(--border); border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: .82rem; color: var(--text); margin-top: .5rem; }
+    .full-width { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ MajixActions</h1>
+  <p>Shared Action Dispatcher Core — live demo &amp; documentation</p>
+</header>
+
+<div class="layout">
+
+  <!-- Dispatch Panel -->
+  <div class="card">
+    <h2>Dispatch an Action</h2>
+    <div>
+      <label>Action Type</label>
+      <input id="action-type" type="text" value="data/fetch" placeholder="e.g. data/fetch">
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Payload (JSON)</label>
+      <textarea id="action-payload">{"ticker":"SPY","interval":"1d"}</textarea>
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Meta (JSON, optional)</label>
+      <input id="action-meta" type="text" placeholder='{"source":"demo"}'>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doDispatch()">Dispatch</button>
+      <button class="btn green" onclick="doDispatchAsync()">Dispatch Async</button>
+      <button class="btn yellow" onclick="doDispatchPreset('ui/refresh', {})">↻ UI Refresh</button>
+      <button class="btn yellow" onclick="doDispatchPreset('user/login', {userId: 1, name: 'Demo'})">🔑 Login</button>
+      <button class="btn red" onclick="doDispatchPreset('error/test', {msg: 'intentional error'})">⚠ Error</button>
+    </div>
+    <div id="dispatch-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Handler Registration -->
+  <div class="card">
+    <h2>Register / Remove Handlers</h2>
+    <div>
+      <label>Action Type to Listen</label>
+      <input id="handler-type" type="text" value="data/fetch" placeholder="use * for wildcard">
+    </div>
+    <div style="margin-top:.75rem">
+      <label>Handler Body — receives <code>(payload, action)</code></label>
+      <textarea id="handler-body" style="min-height:100px">// This runs when the action fires
+console.log('Handler fired!', payload);
+updateResult(JSON.stringify({type: action.type, payload: payload}, null, 2));</textarea>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doRegister()">Register Handler</button>
+      <button class="btn red" onclick="doUnregisterAll()">Remove All Handlers</button>
+    </div>
+    <div id="handler-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Action History -->
+  <div class="card">
+    <h2>Action History <span id="history-count" class="badge">0</span></h2>
+    <div class="log-wrap" id="history-log">
+      <div class="log-entry" style="color:#484f58">No actions dispatched yet.</div>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="refreshHistory()">Refresh</button>
+      <button class="btn red" onclick="doClearHistory()">Clear History</button>
+    </div>
+  </div>
+
+  <!-- Handler Result -->
+  <div class="card">
+    <h2>Handler Output</h2>
+    <pre id="handler-result" style="min-height:100px; color:var(--muted)">Waiting for first dispatch…</pre>
+    <div class="row">
+      <button class="btn red" onclick="document.getElementById('handler-result').textContent='Cleared.'">Clear</button>
+    </div>
+  </div>
+
+  <!-- Middleware Demo -->
+  <div class="card">
+    <h2>Add Middleware</h2>
+    <div>
+      <label>Middleware Function — receives <code>(action, next)</code></label>
+      <textarea id="mw-body" style="min-height:100px">// Timestamp enrichment example
+action.meta.enrichedAt = new Date().toISOString();
+console.log('[middleware] processing', action.type);
+next(action);</textarea>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="doAddMiddleware()">Add Middleware</button>
+    </div>
+    <div id="mw-status" class="status" style="display:none"></div>
+  </div>
+
+  <!-- Config Viewer -->
+  <div class="card">
+    <h2>Current Configuration</h2>
+    <pre id="config-view" style="min-height:100px">Loading…</pre>
+    <div class="row">
+      <button class="btn" onclick="refreshConfig()">Refresh</button>
+    </div>
+  </div>
+
+  <!-- Quick Reference -->
+  <div class="card full-width">
+    <h2>Quick Reference</h2>
+    <pre>// 1. Configure (before script load)
+window.ACTIONS_CONFIG = {
+  namespace:    'myapp',
+  logToConsole: true,
+  persistHistory: false,
+};
+
+// 2. Initialize
+MajixActions.init();
+
+// 3. Register handlers
+var off = MajixActions.on('data/fetch', function (payload) {
+  return fetch('/api?ticker=' + payload.ticker).then(r => r.json());
+});
+MajixActions.once('app/ready', function () { console.log('ready once'); });
+
+// 4. Dispatch
+MajixActions.dispatch('data/fetch', { ticker: 'AAPL' });
+await MajixActions.dispatchAsync('data/save', { rows: [...] });
+
+// 5. Middleware
+MajixActions.use(function (action, next) {
+  console.time(action.type);
+  next(action);
+  console.timeEnd(action.type);
+});
+
+// 6. Inspect
+MajixActions.history(10);     // last 10 actions (most recent first)
+MajixActions.hasHandler('*'); // true / false
+off();                        // unsubscribe</pre>
+  </div>
+
+</div>
+
+<script>
+  window.ACTIONS_CONFIG = {
+    namespace:      'demo',
+    logToConsole:   true,
+    logLevel:       'debug',
+    persistHistory: false,
+    historyLimit:   100,
+  };
+</script>
+<script src="/actions/actions-core.js"></script>
+<script>
+  function updateResult(text) {
+    document.getElementById('handler-result').textContent = text;
+  }
+
+  function showStatus(id, msg, ok) {
+    var el = document.getElementById(id);
+    el.style.display = 'block';
+    el.style.color   = ok ? '#3fb950' : '#f85149';
+    el.textContent   = msg;
+    setTimeout(function () { el.style.display = 'none'; }, 3000);
+  }
+
+  function refreshHistory() {
+    var hist = MajixActions.history();
+    var log  = document.getElementById('history-log');
+    document.getElementById('history-count').textContent = hist.length;
+    if (!hist.length) {
+      log.innerHTML = '<div class="log-entry" style="color:#484f58">No actions dispatched yet.</div>';
+      return;
+    }
+    log.innerHTML = '';
+    hist.slice(0, 50).forEach(function (a) {
+      var d = new Date(a.meta.timestamp);
+      var ts = d.toLocaleTimeString() + '.' + String(d.getMilliseconds()).padStart(3, '0');
+      var payload = a.payload ? JSON.stringify(a.payload).slice(0, 60) : 'null';
+
+      var row  = document.createElement('div');
+      row.className = 'log-entry';
+
+      var typeSpan = document.createElement('span');
+      typeSpan.className = 'type';
+      typeSpan.textContent = a.type;
+
+      var paySpan = document.createElement('span');
+      paySpan.style.color = 'var(--text)';
+      paySpan.textContent = payload;
+
+      var tsSpan = document.createElement('span');
+      tsSpan.className = 'ts';
+      tsSpan.textContent = ts;
+
+      row.appendChild(typeSpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(paySpan);
+      row.appendChild(document.createTextNode(' '));
+      row.appendChild(tsSpan);
+      log.appendChild(row);
+    });
+  }
+
+  function refreshConfig() {
+    document.getElementById('config-view').textContent = JSON.stringify(MajixActions.config, null, 2);
+  }
+
+  function doDispatch() {
+    var type    = document.getElementById('action-type').value.trim();
+    var payText = document.getElementById('action-payload').value.trim();
+    var metaText = document.getElementById('action-meta').value.trim();
+    if (!type) { showStatus('dispatch-status', 'Action type is required', false); return; }
+    var payload, meta;
+    try { payload = payText ? JSON.parse(payText) : null; } catch (e) { showStatus('dispatch-status', 'Invalid payload JSON', false); return; }
+    try { meta = metaText ? JSON.parse(metaText) : {}; } catch (e) { meta = {}; }
+    MajixActions.dispatch(type, payload, meta);
+    showStatus('dispatch-status', 'Dispatched: ' + type, true);
+    refreshHistory();
+  }
+
+  function doDispatchAsync() {
+    var type    = document.getElementById('action-type').value.trim();
+    var payText = document.getElementById('action-payload').value.trim();
+    if (!type) { showStatus('dispatch-status', 'Action type is required', false); return; }
+    var payload;
+    try { payload = payText ? JSON.parse(payText) : null; } catch (e) { showStatus('dispatch-status', 'Invalid payload JSON', false); return; }
+    MajixActions.dispatchAsync(type, payload).then(function () {
+      showStatus('dispatch-status', 'Async dispatch complete: ' + type, true);
+      refreshHistory();
+    }).catch(function (e) {
+      showStatus('dispatch-status', 'Error: ' + e.message, false);
+    });
+  }
+
+  function doDispatchPreset(type, payload) {
+    MajixActions.dispatch(type, payload);
+    showStatus('dispatch-status', 'Dispatched: ' + type, true);
+    refreshHistory();
+  }
+
+  var _registeredHandlers = [];
+  function doRegister() {
+    var type = document.getElementById('handler-type').value.trim();
+    var body = document.getElementById('handler-body').value.trim();
+    if (!type || !body) { showStatus('handler-status', 'Type and body required', false); return; }
+    try {
+      var fn = new Function('payload', 'action', 'updateResult', body);
+      var off = MajixActions.on(type, function (payload, action) { fn(payload, action, updateResult); });
+      _registeredHandlers.push(off);
+      showStatus('handler-status', 'Handler registered for: ' + type, true);
+    } catch (e) {
+      showStatus('handler-status', 'JS error: ' + e.message, false);
+    }
+  }
+
+  function doUnregisterAll() {
+    _registeredHandlers.forEach(function (off) { off(); });
+    _registeredHandlers = [];
+    MajixActions.off();
+    showStatus('handler-status', 'All handlers removed', true);
+  }
+
+  function doAddMiddleware() {
+    var body = document.getElementById('mw-body').value.trim();
+    if (!body) { showStatus('mw-status', 'Middleware body required', false); return; }
+    try {
+      var fn = new Function('action', 'next', body);
+      MajixActions.use(function (action, next) { fn(action, next); });
+      showStatus('mw-status', 'Middleware added', true);
+    } catch (e) {
+      showStatus('mw-status', 'JS error: ' + e.message, false);
+    }
+  }
+
+  function doClearHistory() {
+    MajixActions.clearHistory();
+    refreshHistory();
+  }
+
+  // Init
+  document.addEventListener('DOMContentLoaded', function () {
+    MajixActions.init();
+    refreshConfig();
+    // Default wildcard logger
+    MajixActions.on('*', function (payload, action) {
+      updateResult('Last action:\n' + JSON.stringify(action, null, 2));
+      refreshHistory();
+    });
+    MajixActions.dispatch('app/ready', { source: 'demo-page' });
+  });
+</script>
+</body>
+</html>

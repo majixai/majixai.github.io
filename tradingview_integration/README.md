@@ -5,6 +5,7 @@ This project demonstrates how to integrate TradingView's Pine Script with Google
 ## Project Structure
 
 - **`pine_ml_indicator.pine`** — Neural Network ML indicator (Pine Script v5) with RSI, MACD, Bollinger Bands, and volume scoring.
+- **`omni_architect_pro_unified.pine`** — Extended Omni-Architect PRO indicator with unified nested UDT hierarchy, Bayesian confidence fan rendering, slope-intensity filtering, and integrated H&S detection.
 - **`/pine_script`** — Additional Pine Script files:
   - `advanced_indicator.pine` — Multi-indicator strategy combining RSI, MACD, Bollinger Bands, ATR, Stochastic, ADX, VWAP, candlestick patterns, S/R, and MTF signals.
   - `data_reader.pine` — Reads compressed Pine Seeds external data via `request.seed()`.

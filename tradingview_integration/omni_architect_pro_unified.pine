@@ -1,0 +1,713 @@
+//@version=5
+indicator("Omni-Architect: Unified Bayesian Engine [PRO+]", shorttitle="Omni-Arch v2+", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
+
+// ==========================================
+// --- REFINED TYPE ARCHITECTURE: OMNI-HIERARCHY ---
+// ==========================================
+
+// @type Base coordinate system for precise price-time mapping.
+// @field y     The vertical price coordinate.
+// @field x     The horizontal bar index coordinate.
+// @field lbl   Diagnostic metadata label reference.
+type Node
+    float y
+    int x
+    label lbl
+
+// @type Statistical sub-container for volatility and trend skew.
+// @field atr_val         Normalized volatility for distance-based offsets.
+// @field skew_deg        Calculated geometric angle of the trend vector (degrees).
+// @field skew_rad        Calculated geometric angle of the trend vector (radians).
+// @field slope_intensity ATR-normalised absolute slope magnitude.
+type MetricSet
+    float atr_val
+    float skew_deg
+    float skew_rad
+    float slope_intensity
+
+// @type Geometric point for pattern recognition.
+type Point
+    int x
+    float y
+
+// @type Defines a directional trend path.
+// @field origin   Starting anchor Node.
+// @field terminal Recent pivot Node.
+// @field slope    Mathematical gradient of the vector.
+// @field ln_ref   Reference to the drawn line object.
+type VectorPath
+    Node origin
+    Node terminal
+    float slope
+    line ln_ref
+
+// @type Predictive projection container for Bayesian uncertainty fans.
+// @field paths    Array of divergent probability paths.
+// @field density  Number of fan lines.
+// @field spread   Spread sensitivity.
+// @field fan_col  Rendering colour for the fan.
+type ProjectionFan
+    VectorPath[] paths
+    int density
+    float spread
+    color fan_col
+
+// @type The Bayesian inference core.
+// @field posterior     P(A|B): Updated probability after recent market data.
+// @field success_count Number of trend-aligned outcomes.
+// @field total_events  Total sample size.
+// @field is_validated  True when posterior meets minimum confidence level.
+type BayesianEngine
+    float posterior
+    int success_count
+    int total_events
+    bool is_validated
+
+// @type Risk and Money Management parameters.
+type RiskProfile
+    float stop_price
+    float target_price
+    float rr_ratio
+
+// @type Comprehensive wrapper for a specific timeframe lookback.
+type IntervalData
+    VectorPath main_v
+    ProjectionFan p_fan
+    BayesianEngine engine
+    RiskProfile risk
+    MetricSet metrics
+    int start_lk
+    int end_lk
+    color theme_col
+
+// @type Complex pattern container for Head & Shoulders (and inverse).
+// @field pts        Rolling pivot-high/low buffer.
+// @field lines      Segment lines for L-shoulder, head, R-shoulder.
+// @field neckline   Horizontal neckline reference.
+// @field top_chan   Top channel reference.
+// @field alert_lbl  Annotation label.
+type HS_Pattern
+    Point[] pts
+    line[] lines
+    line neckline
+    line top_chan
+    label alert_lbl
+
+// @type Double Top / Double Bottom container.
+// @field peaks     Two-element peak/trough buffer.
+// @field confirmed Whether pattern geometry is satisfied.
+// @field target    Measured-move price target.
+// @field ln_left   Left peak/trough line.
+// @field ln_right  Right peak/trough line.
+// @field ln_neck   Neckline between the two formations.
+// @field lbl       Annotation label.
+type DoublePat
+    Point[] peaks
+    bool confirmed
+    float target
+    line ln_left
+    line ln_right
+    line ln_neck
+    label lbl
+
+// @type ADX-based regime state container.
+// @field adx_val     Current ADX value.
+// @field is_trending True when ADX exceeds threshold.
+// @field bias        +1 = bullish trend, -1 = bearish trend, 0 = range.
+// @field htf_ema     HTF EMA value fetched via request.security.
+type RegimeState
+    float adx_val
+    bool is_trending
+    int bias
+    float htf_ema
+
+// @type RSI divergence tracking container.
+// @field rsi_val      Most recent RSI reading.
+// @field bull_div     Bullish divergence detected (price LL, RSI HL).
+// @field bear_div     Bearish divergence detected (price HH, RSI LH).
+// @field pivot_price  Price level of last pivot used in divergence check.
+// @field pivot_rsi    RSI level of last pivot used in divergence check.
+type DivergenceSet
+    float rsi_val
+    bool bull_div
+    bool bear_div
+    float pivot_price
+    float pivot_rsi
+
+// @type The Master Controller for centralized access.
+// @field slots        Array of all interval-specific data containers.
+// @field hs_pat       Head & Shoulders pattern engine.
+// @field ihs_pat      Inverse Head & Shoulders pattern engine.
+// @field dt_pat       Double Top pattern engine.
+// @field db_pat       Double Bottom pattern engine.
+// @field global_m     Shared global metrics (ATR, etc).
+// @field regime       ADX regime state for the primary chart.
+// @field div_set      RSI divergence tracking state.
+// @field dashboard    HUD table reference.
+// @field active_slots Number of validated fan slots on the last bar.
+type GlobalManager
+    IntervalData[] slots
+    HS_Pattern hs_pat
+    HS_Pattern ihs_pat
+    DoublePat dt_pat
+    DoublePat db_pat
+    MetricSet global_m
+    RegimeState regime
+    DivergenceSet div_set
+    table dashboard
+    int active_slots
+
+// ==========================================
+// --- PURE UTILITY FUNCTIONS ---
+// ==========================================
+
+// @function Safe float division. Returns fallback when denominator is zero.
+f_safe_div(float n, float d, float fallback) =>
+    d == 0.0 ? fallback : n / d
+
+// @function Clamp v to the closed interval [lo, hi].
+f_clamp(float v, float lo, float hi) =>
+    math.max(lo, math.min(hi, v))
+
+// @function Push a Point into a rolling buffer, dropping oldest when full.
+f_push_point(points_arr, int x, float y, int max_size) =>
+    points_arr.push(Point.new(x, y))
+    while points_arr.size() > max_size
+        points_arr.shift()
+
+// ==========================================
+// --- PATTERN DETECTION FUNCTIONS ---
+// ==========================================
+
+// @function Detect bearish Head & Shoulders using the last three pivot highs.
+// Updates neckline and alert label on the provided HS_Pattern when found.
+// @returns true on the bar when a valid H&S geometry is confirmed.
+f_detect_hs(var HS_Pattern hs_pat, int pivot_left, int pivot_right, float tolerance_pct) =>
+    float ph = ta.pivothigh(high, pivot_left, pivot_right)
+    if not na(ph)
+        f_push_point(hs_pat.pts, bar_index - pivot_right, ph, 7)
+    has_hs = false
+    if hs_pat.pts.size() >= 3
+        p_l = hs_pat.pts.get(hs_pat.pts.size() - 3)
+        p_h = hs_pat.pts.get(hs_pat.pts.size() - 2)
+        p_r = hs_pat.pts.get(hs_pat.pts.size() - 1)
+        ls_ok = p_h.y > p_l.y
+        rs_ok = p_h.y > p_r.y
+        shoulder_diff = math.abs(p_l.y - p_r.y)
+        shoulder_ok = shoulder_diff <= (p_h.y * tolerance_pct * 0.01)
+        has_hs := ls_ok and rs_ok and shoulder_ok
+        if has_hs
+            neck_y = (p_l.y + p_r.y) * 0.5
+            line.set_xy1(hs_pat.neckline, p_l.x, neck_y)
+            line.set_xy2(hs_pat.neckline, p_r.x, neck_y)
+            label.set_x(hs_pat.alert_lbl, p_h.x)
+            label.set_y(hs_pat.alert_lbl, p_h.y)
+            label.set_text(hs_pat.alert_lbl, "H&S")
+            label.set_style(hs_pat.alert_lbl, label.style_label_down)
+    has_hs
+
+// @function Detect bullish Inverse Head & Shoulders using the last three pivot lows.
+// Mirrors f_detect_hs geometry on the low side.
+// @returns true on the bar when a valid iH&S geometry is confirmed.
+f_detect_ihs(var HS_Pattern ihs_pat, int pivot_left, int pivot_right, float tolerance_pct) =>
+    float pl = ta.pivotlow(low, pivot_left, pivot_right)
+    if not na(pl)
+        f_push_point(ihs_pat.pts, bar_index - pivot_right, pl, 7)
+    has_ihs = false
+    if ihs_pat.pts.size() >= 3
+        p_l = ihs_pat.pts.get(ihs_pat.pts.size() - 3)
+        p_h = ihs_pat.pts.get(ihs_pat.pts.size() - 2)
+        p_r = ihs_pat.pts.get(ihs_pat.pts.size() - 1)
+        ls_ok = p_h.y < p_l.y
+        rs_ok = p_h.y < p_r.y
+        shoulder_diff = math.abs(p_l.y - p_r.y)
+        shoulder_ok = shoulder_diff <= (math.abs(p_h.y) * tolerance_pct * 0.01)
+        has_ihs := ls_ok and rs_ok and shoulder_ok
+        if has_ihs
+            neck_y = (p_l.y + p_r.y) * 0.5
+            line.set_xy1(ihs_pat.neckline, p_l.x, neck_y)
+            line.set_xy2(ihs_pat.neckline, p_r.x, neck_y)
+            label.set_x(ihs_pat.alert_lbl, p_h.x)
+            label.set_y(ihs_pat.alert_lbl, p_h.y)
+            label.set_text(ihs_pat.alert_lbl, "iH&S")
+            label.set_style(ihs_pat.alert_lbl, label.style_label_up)
+    has_ihs
+
+// @function Detect Double Top using the last two pivot highs.
+// Peaks within tolerance_pct of each other and a valley >= min_depth_pct below.
+// @returns true when a valid double-top geometry is satisfied.
+f_detect_double_top(var DoublePat dt_pat, int pivot_left, int pivot_right, float tolerance_pct, float min_depth_pct) =>
+    float ph = ta.pivothigh(high, pivot_left, pivot_right)
+    if not na(ph)
+        f_push_point(dt_pat.peaks, bar_index - pivot_right, ph, 4)
+    confirmed = false
+    if dt_pat.peaks.size() >= 2
+        pk1 = dt_pat.peaks.get(dt_pat.peaks.size() - 2)
+        pk2 = dt_pat.peaks.get(dt_pat.peaks.size() - 1)
+        price_diff_pct = math.abs(pk1.y - pk2.y) / math.max(pk1.y, syminfo.mintick) * 100.0
+        valley_low = ta.lowest(low, math.max(1, pk2.x - pk1.x))
+        depth_pct = (math.min(pk1.y, pk2.y) - valley_low) / math.max(math.min(pk1.y, pk2.y), syminfo.mintick) * 100.0
+        confirmed := price_diff_pct <= tolerance_pct and depth_pct >= min_depth_pct
+        if confirmed
+            dt_pat.confirmed := true
+            dt_pat.target := math.min(pk1.y, pk2.y) - (math.min(pk1.y, pk2.y) - valley_low)
+            line.set_xy1(dt_pat.ln_left, pk1.x, pk1.y)
+            line.set_xy2(dt_pat.ln_left, pk1.x, valley_low)
+            line.set_xy1(dt_pat.ln_right, pk2.x, pk2.y)
+            line.set_xy2(dt_pat.ln_right, pk2.x, valley_low)
+            line.set_xy1(dt_pat.ln_neck, pk1.x, valley_low)
+            line.set_xy2(dt_pat.ln_neck, pk2.x, valley_low)
+            label.set_x(dt_pat.lbl, (pk1.x + pk2.x) / 2)
+            label.set_y(dt_pat.lbl, math.max(pk1.y, pk2.y))
+            label.set_text(dt_pat.lbl, "DT")
+            label.set_style(dt_pat.lbl, label.style_label_down)
+    confirmed
+
+// @function Detect Double Bottom using the last two pivot lows.
+// Troughs within tolerance_pct of each other and a peak >= min_depth_pct above.
+// @returns true when a valid double-bottom geometry is satisfied.
+f_detect_double_bottom(var DoublePat db_pat, int pivot_left, int pivot_right, float tolerance_pct, float min_depth_pct) =>
+    float pl = ta.pivotlow(low, pivot_left, pivot_right)
+    if not na(pl)
+        f_push_point(db_pat.peaks, bar_index - pivot_right, pl, 4)
+    confirmed = false
+    if db_pat.peaks.size() >= 2
+        tr1 = db_pat.peaks.get(db_pat.peaks.size() - 2)
+        tr2 = db_pat.peaks.get(db_pat.peaks.size() - 1)
+        price_diff_pct = math.abs(tr1.y - tr2.y) / math.max(tr1.y, syminfo.mintick) * 100.0
+        peak_high = ta.highest(high, math.max(1, tr2.x - tr1.x))
+        depth_pct = (peak_high - math.max(tr1.y, tr2.y)) / math.max(math.max(tr1.y, tr2.y), syminfo.mintick) * 100.0
+        confirmed := price_diff_pct <= tolerance_pct and depth_pct >= min_depth_pct
+        if confirmed
+            db_pat.confirmed := true
+            db_pat.target := math.max(tr1.y, tr2.y) + (peak_high - math.max(tr1.y, tr2.y))
+            line.set_xy1(db_pat.ln_left, tr1.x, tr1.y)
+            line.set_xy2(db_pat.ln_left, tr1.x, peak_high)
+            line.set_xy1(db_pat.ln_right, tr2.x, tr2.y)
+            line.set_xy2(db_pat.ln_right, tr2.x, peak_high)
+            line.set_xy1(db_pat.ln_neck, tr1.x, peak_high)
+            line.set_xy2(db_pat.ln_neck, tr2.x, peak_high)
+            label.set_x(db_pat.lbl, (tr1.x + tr2.x) / 2)
+            label.set_y(db_pat.lbl, math.min(tr1.y, tr2.y))
+            label.set_text(db_pat.lbl, "DB")
+            label.set_style(db_pat.lbl, label.style_label_up)
+    confirmed
+
+// ==========================================
+// --- USER INPUTS ---
+// ==========================================
+
+PROJECTION_BARS = 40
+
+grp_pat = "Multi-Interval Structural Anchors"
+s_lk_l = input.int(120, "Long Start", minval=50, group=grp_pat)
+e_lk_l = input.int(15, "Long End", minval=5, group=grp_pat)
+s_lk_m = input.int(60, "Mid Start", minval=20, group=grp_pat)
+e_lk_m = input.int(5, "Mid End", minval=2, group=grp_pat)
+s_lk_s = input.int(15, "Short Start", minval=5, group=grp_pat)
+e_lk_s = input.int(2, "Short End", minval=0, group=grp_pat)
+
+grp_bay = "Bayesian Fan Configuration"
+l_dens = input.int(12, "Fan Line Density", minval=3, maxval=20, group=grp_bay)
+v_spread = input.float(0.85, "Vector Spread Sensitivity", minval=0.1, group=grp_bay)
+conf_lvl = input.int(60, "Min Confidence %", minval=1, maxval=100, group=grp_bay)
+htf_tf = input.timeframe("D", "HTF Trend Context", group=grp_bay)
+slope_intensity_min = input.float(0.0005, "Slope Intensity Min", minval=0.0, step=0.0001, group=grp_bay)
+
+grp_1bar = "1-Bar Bayesian Forecast"
+stdev_length = input.int(20, "StDev Length", minval=5, group=grp_1bar)
+stdev_mult = input.float(1.5, "StDev Multiplier", minval=0.1, group=grp_1bar)
+show_forecast_label = input.bool(true, "Show Forecast Label", group=grp_1bar)
+
+grp_hs = "Head & Shoulders Engine"
+hs_pivot_left = input.int(3, "Pivot Left", minval=1, maxval=10, group=grp_hs)
+hs_pivot_right = input.int(3, "Pivot Right", minval=1, maxval=10, group=grp_hs)
+hs_tolerance = input.float(2.0, "Shoulder Tolerance %", minval=0.1, step=0.1, group=grp_hs)
+
+grp_dpat = "Double Top / Bottom Engine"
+dp_pivot_left = input.int(3, "DT/DB Pivot Left", minval=1, maxval=10, group=grp_dpat)
+dp_pivot_right = input.int(3, "DT/DB Pivot Right", minval=1, maxval=10, group=grp_dpat)
+dp_tolerance = input.float(1.0, "Peak Tolerance %", minval=0.1, step=0.1, group=grp_dpat)
+dp_depth = input.float(2.0, "Min Valley Depth %", minval=0.5, step=0.5, group=grp_dpat)
+
+grp_reg = "Regime Filter (ADX)"
+use_regime = input.bool(true, "Enable Regime Gate", group=grp_reg)
+adx_length = input.int(14, "ADX Length", minval=5, group=grp_reg)
+adx_threshold = input.float(20.0, "ADX Trending Threshold", minval=5.0, group=grp_reg)
+htf_ema_len = input.int(200, "HTF EMA Length", minval=20, group=grp_reg)
+
+grp_vwap = "VWAP Overlay"
+show_vwap = input.bool(true, "Show Session VWAP", group=grp_vwap)
+vwap_dev_mult = input.float(2.0, "Deviation Band Multiplier", minval=0.5, step=0.5, group=grp_vwap)
+
+grp_rsi = "RSI Divergence Engine"
+rsi_length = input.int(14, "RSI Length", minval=3, group=grp_rsi)
+div_pivot_lk = input.int(5, "Divergence Pivot Lookback", minval=3, group=grp_rsi)
+show_div_labels = input.bool(true, "Show Divergence Labels", group=grp_rsi)
+
+grp_draw = "Drawing Engine Style"
+c_l = input.color(#00ffcc, "Color Macro", group=grp_draw)
+c_m = input.color(#00e6ff, "Color Meso", group=grp_draw)
+c_s = input.color(#0099ff, "Color Micro", group=grp_draw)
+bull_c = input.color(#00ffcc, "Bullish Pattern", group=grp_draw)
+bear_c = input.color(#ff3366, "Breakout/Target", group=grp_draw)
+
+grp_alert = "Alert Configuration"
+alert_hs = input.bool(true, "Alert: H&S Detected", group=grp_alert)
+alert_ihs = input.bool(true, "Alert: iH&S Detected", group=grp_alert)
+alert_dt = input.bool(true, "Alert: Double Top Detected", group=grp_alert)
+alert_db = input.bool(true, "Alert: Double Bottom Detected", group=grp_alert)
+alert_bull_div = input.bool(true, "Alert: Bullish RSI Divergence", group=grp_alert)
+alert_bear_div = input.bool(true, "Alert: Bearish RSI Divergence", group=grp_alert)
+
+// ==========================================
+// --- INITIALIZATION ---
+// ==========================================
+
+var GlobalManager GM = GlobalManager.new(
+     array.new<IntervalData>(),
+     HS_Pattern.new(array.new<Point>(), array.new<line>(), na, na, na),
+     HS_Pattern.new(array.new<Point>(), array.new<line>(), na, na, na),
+     DoublePat.new(array.new<Point>(), false, na, na, na, na, na),
+     DoublePat.new(array.new<Point>(), false, na, na, na, na, na),
+     MetricSet.new(na, na, na, na),
+     RegimeState.new(na, false, 0, na),
+     DivergenceSet.new(na, false, false, na, na),
+     na,
+     0)
+
+var label forecast_lbl = na
+var line vwap_line = na
+var line vwap_upper = na
+var line vwap_lower = na
+
+if barstate.isfirst
+    s_arr = array.from(s_lk_l, s_lk_m, s_lk_s)
+    e_arr = array.from(e_lk_l, e_lk_m, e_lk_s)
+    c_arr = array.from(c_l, c_m, c_s)
+
+    for i = 0 to 2
+        IntervalData slot = IntervalData.new(
+             main_v = VectorPath.new(Node.new(na, na, na), Node.new(na, na, na), 0.0, line.new(na, na, na, na, width=3)),
+             p_fan = ProjectionFan.new(array.new<VectorPath>(), l_dens, v_spread, c_arr.get(i)),
+             engine = BayesianEngine.new(0.0, 0, 0, false),
+             risk = RiskProfile.new(na, na, 0.0),
+             metrics = MetricSet.new(na, na, na, na),
+             start_lk = s_arr.get(i),
+             end_lk = e_arr.get(i),
+             theme_col = c_arr.get(i)
+             )
+        for j = 0 to l_dens - 1
+            slot.p_fan.paths.push(VectorPath.new(Node.new(na, na, na), Node.new(na, na, na), 0.0, line.new(na, na, na, na, style=line.style_dashed)))
+        GM.slots.push(slot)
+
+    for k = 0 to 5
+        GM.hs_pat.lines.push(line.new(na, na, na, na, color=bear_c, width=2))
+        GM.ihs_pat.lines.push(line.new(na, na, na, na, color=bull_c, width=2))
+    GM.hs_pat.neckline := line.new(na, na, na, na, color=bear_c, style=line.style_dashed)
+    GM.hs_pat.top_chan := line.new(na, na, na, na, color=color.new(color.gray, 75), style=line.style_dotted)
+    GM.hs_pat.alert_lbl := label.new(na, na, "", textcolor=color.white, style=label.style_none)
+    GM.ihs_pat.neckline := line.new(na, na, na, na, color=bull_c, style=line.style_dashed)
+    GM.ihs_pat.top_chan := line.new(na, na, na, na, color=color.new(color.gray, 75), style=line.style_dotted)
+    GM.ihs_pat.alert_lbl := label.new(na, na, "", textcolor=color.white, style=label.style_none)
+
+    GM.dt_pat.ln_left := line.new(na, na, na, na, color=bear_c, style=line.style_dotted)
+    GM.dt_pat.ln_right := line.new(na, na, na, na, color=bear_c, style=line.style_dotted)
+    GM.dt_pat.ln_neck := line.new(na, na, na, na, color=bear_c, style=line.style_dashed)
+    GM.dt_pat.lbl := label.new(na, na, "", textcolor=bear_c, style=label.style_none)
+
+    GM.db_pat.ln_left := line.new(na, na, na, na, color=bull_c, style=line.style_dotted)
+    GM.db_pat.ln_right := line.new(na, na, na, na, color=bull_c, style=line.style_dotted)
+    GM.db_pat.ln_neck := line.new(na, na, na, na, color=bull_c, style=line.style_dashed)
+    GM.db_pat.lbl := label.new(na, na, "", textcolor=bull_c, style=label.style_none)
+
+    if show_vwap
+        vwap_line := line.new(na, na, na, na, color=color.new(color.yellow, 0), width=1)
+        vwap_upper := line.new(na, na, na, na, color=color.new(color.yellow, 65), style=line.style_dashed)
+        vwap_lower := line.new(na, na, na, na, color=color.new(color.yellow, 65), style=line.style_dashed)
+
+// ==========================================
+// --- 1-BAR PREDICTIVE CORE (BAYESIAN) ---
+// ==========================================
+
+// Logic: P(Price_Up | Evidence)
+// Evidence B = Previous bar polarity + Reversal formation
+is_up = close > open
+is_down = not is_up
+
+count_up = ta.cum(is_up ? 1 : 0)
+count_down = ta.cum(is_down ? 1 : 0)
+total_bars = bar_index + 1
+prior_up = f_safe_div(count_up, total_bars, 0.5)
+
+green_after_green = ta.cum((is_up[1] and is_up) ? 1 : 0)
+green_after_red = ta.cum((is_down[1] and is_up) ? 1 : 0)
+cond_bull_if_up = f_safe_div(green_after_green, math.max(count_up, 1), 0.5)
+cond_bull_if_down = f_safe_div(green_after_red, math.max(count_down, 1), 0.5)
+cond_bull = is_up ? cond_bull_if_up : cond_bull_if_down
+prob_bullish = cond_bull * prior_up
+prob_bullish := f_clamp(prob_bullish, 0.0, 1.0)
+prob_bearish = 1.0 - prob_bullish
+confidence = math.max(prob_bullish, prob_bearish)
+weighted_magnitude = ta.stdev(close, stdev_length) * stdev_mult * (confidence + 0.5)
+
+if show_forecast_label and barstate.islast
+    if na(forecast_lbl)
+        forecast_lbl := label.new(bar_index, close, "", style=label.style_label_left, textcolor=color.white, color=color.new(color.black, 20))
+    dir_txt = prob_bullish >= prob_bearish ? "Bullish" : "Bearish"
+    label.set_x(forecast_lbl, bar_index)
+    label.set_y(forecast_lbl, close)
+    label.set_text(forecast_lbl, "1B " + dir_txt + " • " + str.tostring(confidence * 100.0, "#.#") + "% • Δ " + str.tostring(weighted_magnitude, "#.####"))
+
+// ==========================================
+// --- REGIME FILTER (ADX) ---
+// ==========================================
+
+[diplus, diminus, adx_raw] = ta.dmi(adx_length, adx_length)
+GM.regime.adx_val := adx_raw
+GM.regime.is_trending := adx_raw >= adx_threshold
+GM.regime.bias := diplus > diminus ? 1 : diplus < diminus ? -1 : 0
+GM.regime.htf_ema := request.security(syminfo.tickerid, htf_tf, ta.ema(close, htf_ema_len))
+
+// ==========================================
+// --- VWAP SESSION CALCULATION ---
+// ==========================================
+
+is_session_start = ta.change(time("D")) != 0
+var float cum_vol_price = na
+var float cum_vol = na
+var float cum_vol_price_sq = na
+
+if is_session_start or na(cum_vol_price)
+    cum_vol_price := close * volume
+    cum_vol := volume
+    cum_vol_price_sq := math.pow(close, 2) * volume
+else
+    cum_vol_price += (close * volume)
+    cum_vol += volume
+    cum_vol_price_sq += (math.pow(close, 2) * volume)
+
+vwap_val = f_safe_div(cum_vol_price, math.max(cum_vol, 1), close)
+vwap_variance = f_safe_div(cum_vol_price_sq, math.max(cum_vol, 1), 0.0) - math.pow(vwap_val, 2)
+vwap_stdev = math.sqrt(math.max(vwap_variance, 0.0))
+vwap_upper_val = vwap_val + vwap_dev_mult * vwap_stdev
+vwap_lower_val = vwap_val - vwap_dev_mult * vwap_stdev
+
+// ==========================================
+// --- RSI DIVERGENCE ENGINE ---
+// ==========================================
+
+rsi_val = ta.rsi(close, rsi_length)
+GM.div_set.rsi_val := rsi_val
+
+float pivot_high_price = ta.pivothigh(high, div_pivot_lk, div_pivot_lk)
+float pivot_high_rsi = ta.pivothigh(rsi_val, div_pivot_lk, div_pivot_lk)
+float pivot_low_price = ta.pivotlow(low, div_pivot_lk, div_pivot_lk)
+float pivot_low_rsi = ta.pivotlow(rsi_val, div_pivot_lk, div_pivot_lk)
+
+// Bearish divergence: price makes HH but RSI makes LH
+bear_div_signal = not na(pivot_high_price) and not na(pivot_high_rsi) and pivot_high_price > nz(GM.div_set.pivot_price) and pivot_high_rsi < nz(GM.div_set.pivot_rsi)
+// Bullish divergence: price makes LL but RSI makes HL
+bull_div_signal = not na(pivot_low_price) and not na(pivot_low_rsi) and pivot_low_price < nz(GM.div_set.pivot_price) and pivot_low_rsi > nz(GM.div_set.pivot_rsi)
+
+if not na(pivot_high_price)
+    GM.div_set.pivot_price := pivot_high_price
+    GM.div_set.pivot_rsi := pivot_high_rsi
+if not na(pivot_low_price)
+    GM.div_set.pivot_price := pivot_low_price
+    GM.div_set.pivot_rsi := pivot_low_rsi
+
+GM.div_set.bear_div := bear_div_signal
+GM.div_set.bull_div := bull_div_signal
+
+if show_div_labels and bear_div_signal
+    label.new(bar_index - div_pivot_lk, high[div_pivot_lk], "Bear Div", style=label.style_label_down, color=color.new(bear_c, 0), textcolor=color.white, size=size.tiny)
+if show_div_labels and bull_div_signal
+    label.new(bar_index - div_pivot_lk, low[div_pivot_lk], "Bull Div", style=label.style_label_up, color=color.new(bull_c, 0), textcolor=color.white, size=size.tiny)
+
+// ==========================================
+// --- MULTI-INTERVAL STRUCTURAL CALCULATIONS ---
+// ==========================================
+
+GM.global_m.atr_val := ta.atr(14)
+htf_bullish = request.security(syminfo.tickerid, htf_tf, close > ta.ema(close, 200))
+
+hs_detected = f_detect_hs(GM.hs_pat, hs_pivot_left, hs_pivot_right, hs_tolerance)
+ihs_detected = f_detect_ihs(GM.ihs_pat, hs_pivot_left, hs_pivot_right, hs_tolerance)
+dt_detected = f_detect_double_top(GM.dt_pat, dp_pivot_left, dp_pivot_right, dp_tolerance, dp_depth)
+db_detected = f_detect_double_bottom(GM.db_pat, dp_pivot_left, dp_pivot_right, dp_tolerance, dp_depth)
+
+for i = 0 to GM.slots.size() - 1
+    IntervalData slot = GM.slots.get(i)
+    if bar_index > slot.start_lk
+        slot.main_v.origin.y := low[slot.start_lk]
+        slot.main_v.origin.x := bar_index - slot.start_lk
+        slot.main_v.terminal.y := high[slot.end_lk]
+        slot.main_v.terminal.x := bar_index - slot.end_lk
+
+        slope_denominator = slot.main_v.terminal.x - slot.main_v.origin.x
+        slot.main_v.slope := f_safe_div(slot.main_v.terminal.y - slot.main_v.origin.y, slope_denominator, 0.0)
+        slot.metrics.skew_rad := math.atan(slot.main_v.slope)
+        slot.metrics.skew_deg := math.todegrees(slot.metrics.skew_rad)
+        slot.metrics.atr_val := GM.global_m.atr_val
+        slot.metrics.slope_intensity := math.abs(slot.main_v.slope) / math.max(slot.metrics.atr_val, syminfo.mintick)
+
+        local_bullish = slot.main_v.slope > 0
+        is_aligned = (htf_bullish and local_bullish) or (not htf_bullish and not local_bullish)
+        intense_enough = slot.metrics.slope_intensity >= slope_intensity_min
+        regime_ok = not use_regime or GM.regime.is_trending
+
+        if intense_enough and regime_ok
+            slot.engine.total_events += 1
+            if is_aligned
+                slot.engine.success_count += 1
+            slot.engine.posterior := f_safe_div(slot.engine.success_count, math.max(slot.engine.total_events, 1), 0.0) * 100.0
+            slot.engine.is_validated := slot.engine.posterior >= conf_lvl
+
+        risk_span = slot.metrics.atr_val * (0.8 + i * 0.3)
+        slot.risk.stop_price := close - risk_span
+        slot.risk.target_price := close + (risk_span * (1.5 + confidence))
+        slot.risk.rr_ratio := f_safe_div(slot.risk.target_price - close, close - slot.risk.stop_price, 0.0)
+
+// ==========================================
+// --- RENDER ENGINE ---
+// ==========================================
+
+if barstate.islast
+    GM.active_slots := 0
+
+    // --- Structural Vector Lines + Bayesian Fans ---
+    for i = 0 to GM.slots.size() - 1
+        id = GM.slots.get(i)
+        p1_y = low[id.start_lk]
+        p1_x = bar_index - id.start_lk
+        p2_y = high[id.end_lk]
+        p2_x = bar_index - id.end_lk
+
+        line.set_xy1(id.main_v.ln_ref, p1_x, p1_y)
+        line.set_xy2(id.main_v.ln_ref, p2_x, p2_y)
+        line.set_color(id.main_v.ln_ref, id.theme_col)
+        line.set_width(id.main_v.ln_ref, id.engine.is_validated ? 3 : 1)
+
+        if id.engine.is_validated
+            GM.active_slots += 1
+            for j = 0 to id.p_fan.density - 1
+                vp = id.p_fan.paths.get(j)
+                variance = (j - (id.p_fan.density - 1) / 2.0) * id.p_fan.spread
+                f_slope = id.main_v.slope + (variance * syminfo.mintick * PROJECTION_BARS)
+                line.set_xy1(vp.ln_ref, p2_x, p2_y)
+                line.set_xy2(vp.ln_ref, p2_x + PROJECTION_BARS, p2_y + (f_slope * PROJECTION_BARS))
+                line.set_color(vp.ln_ref, color.new(id.theme_col, 70))
+        else
+            for j = 0 to id.p_fan.density - 1
+                vp = id.p_fan.paths.get(j)
+                line.set_xy1(vp.ln_ref, na, na)
+                line.set_xy2(vp.ln_ref, na, na)
+
+    // --- H&S Pattern Render ---
+    if GM.hs_pat.pts.size() >= 3
+        p_l = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 3)
+        p_h = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 2)
+        p_r = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 1)
+        line.set_xy1(GM.hs_pat.lines.get(0), p_l.x, p_l.y)
+        line.set_xy2(GM.hs_pat.lines.get(0), p_h.x, p_h.y)
+        line.set_xy1(GM.hs_pat.lines.get(1), p_h.x, p_h.y)
+        line.set_xy2(GM.hs_pat.lines.get(1), p_r.x, p_r.y)
+        line.set_color(GM.hs_pat.lines.get(0), hs_detected ? bear_c : color.new(bear_c, 60))
+        line.set_color(GM.hs_pat.lines.get(1), hs_detected ? bear_c : color.new(bear_c, 60))
+        line.set_xy1(GM.hs_pat.top_chan, p_l.x, math.max(p_l.y, p_r.y))
+        line.set_xy2(GM.hs_pat.top_chan, p_r.x, math.max(p_l.y, p_r.y))
+
+    // --- iH&S Pattern Render ---
+    if GM.ihs_pat.pts.size() >= 3
+        p_l = GM.ihs_pat.pts.get(GM.ihs_pat.pts.size() - 3)
+        p_h = GM.ihs_pat.pts.get(GM.ihs_pat.pts.size() - 2)
+        p_r = GM.ihs_pat.pts.get(GM.ihs_pat.pts.size() - 1)
+        line.set_xy1(GM.ihs_pat.lines.get(0), p_l.x, p_l.y)
+        line.set_xy2(GM.ihs_pat.lines.get(0), p_h.x, p_h.y)
+        line.set_xy1(GM.ihs_pat.lines.get(1), p_h.x, p_h.y)
+        line.set_xy2(GM.ihs_pat.lines.get(1), p_r.x, p_r.y)
+        line.set_color(GM.ihs_pat.lines.get(0), ihs_detected ? bull_c : color.new(bull_c, 60))
+        line.set_color(GM.ihs_pat.lines.get(1), ihs_detected ? bull_c : color.new(bull_c, 60))
+
+    // --- VWAP Render ---
+    if show_vwap
+        line.set_xy1(vwap_line, bar_index - 1, vwap_val[1])
+        line.set_xy2(vwap_line, bar_index, vwap_val)
+        line.set_xy1(vwap_upper, bar_index - 1, vwap_upper_val[1])
+        line.set_xy2(vwap_upper, bar_index, vwap_upper_val)
+        line.set_xy1(vwap_lower, bar_index - 1, vwap_lower_val[1])
+        line.set_xy2(vwap_lower, bar_index, vwap_lower_val)
+
+    // --- HUD Dashboard ---
+    if na(GM.dashboard)
+        GM.dashboard := table.new(position.bottom_right, 7, 8, bgcolor=color.new(color.black, 70), border_width=1)
+
+    // Header row
+    table.cell(GM.dashboard, 0, 0, "ENGINE", text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 1, 0, "CONF",   text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 2, 0, "SKEW°",  text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 3, 0, "INT",    text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 4, 0, "R/R",    text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 5, 0, "VALID",  text_color=color.white, bgcolor=color.new(color.navy, 50))
+    table.cell(GM.dashboard, 6, 0, "BIAS",   text_color=color.white, bgcolor=color.new(color.navy, 50))
+
+    // Slot rows
+    for i = 0 to 2
+        s = GM.slots.get(i)
+        bias_col = s.main_v.slope > 0 ? bull_c : bear_c
+        table.cell(GM.dashboard, 0, i + 1, i == 0 ? "MACRO" : i == 1 ? "MESO" : "MICRO", text_color=s.theme_col)
+        table.cell(GM.dashboard, 1, i + 1, str.tostring(s.engine.posterior, "#.#") + "%", text_color=color.white)
+        table.cell(GM.dashboard, 2, i + 1, str.tostring(s.metrics.skew_deg, "#.##"), text_color=color.white)
+        table.cell(GM.dashboard, 3, i + 1, str.tostring(s.metrics.slope_intensity, "#.####"), text_color=color.white)
+        table.cell(GM.dashboard, 4, i + 1, str.tostring(s.risk.rr_ratio, "#.##"), text_color=color.white)
+        table.cell(GM.dashboard, 5, i + 1, s.engine.is_validated ? "YES" : "NO", text_color=s.engine.is_validated ? bull_c : color.gray)
+        table.cell(GM.dashboard, 6, i + 1, s.main_v.slope > 0 ? "▲" : "▼", text_color=bias_col)
+
+    // Regime row
+    regime_col = GM.regime.is_trending ? color.white : color.gray
+    table.cell(GM.dashboard, 0, 4, "REGIME", text_color=color.white)
+    table.cell(GM.dashboard, 1, 4, str.tostring(GM.regime.adx_val, "#.#"), text_color=regime_col)
+    table.cell(GM.dashboard, 2, 4, GM.regime.is_trending ? "TREND" : "RANGE", text_color=regime_col)
+    table.cell(GM.dashboard, 3, 4, GM.regime.bias == 1 ? "BULL" : GM.regime.bias == -1 ? "BEAR" : "NEUT", text_color=GM.regime.bias == 1 ? bull_c : GM.regime.bias == -1 ? bear_c : color.gray)
+    table.cell(GM.dashboard, 4, 4, "HTF", text_color=color.white)
+    table.cell(GM.dashboard, 5, 4, htf_bullish ? "BULL" : "BEAR", text_color=htf_bullish ? bull_c : bear_c)
+    table.cell(GM.dashboard, 6, 4, "ACTIVE", text_color=color.white)
+
+    // Pattern row
+    table.cell(GM.dashboard, 0, 5, "PATTERN", text_color=color.white)
+    table.cell(GM.dashboard, 1, 5, "H&S",   text_color=color.white)
+    table.cell(GM.dashboard, 2, 5, hs_detected  ? "✓" : "—", text_color=hs_detected  ? bear_c : color.gray)
+    table.cell(GM.dashboard, 3, 5, "iH&S",  text_color=color.white)
+    table.cell(GM.dashboard, 4, 5, ihs_detected ? "✓" : "—", text_color=ihs_detected ? bull_c : color.gray)
+    table.cell(GM.dashboard, 5, 5, str.tostring(GM.active_slots), text_color=color.white)
+    table.cell(GM.dashboard, 6, 5, "FANS",  text_color=color.white)
+
+    // Double pattern row
+    table.cell(GM.dashboard, 0, 6, "DT/DB",  text_color=color.white)
+    table.cell(GM.dashboard, 1, 6, "DT",     text_color=color.white)
+    table.cell(GM.dashboard, 2, 6, dt_detected ? "✓" : "—", text_color=dt_detected ? bear_c : color.gray)
+    table.cell(GM.dashboard, 3, 6, "DB",     text_color=color.white)
+    table.cell(GM.dashboard, 4, 6, db_detected ? "✓" : "—", text_color=db_detected ? bull_c : color.gray)
+    table.cell(GM.dashboard, 5, 6, na(GM.dt_pat.target) ? "—" : str.tostring(GM.dt_pat.target, "#.##"), text_color=bear_c)
+    table.cell(GM.dashboard, 6, 6, na(GM.db_pat.target) ? "—" : str.tostring(GM.db_pat.target, "#.##"), text_color=bull_c)
+
+    // Divergence / VWAP row
+    table.cell(GM.dashboard, 0, 7, "DIV/VWAP", text_color=color.white)
+    table.cell(GM.dashboard, 1, 7, "BULL DIV", text_color=color.white)
+    table.cell(GM.dashboard, 2, 7, GM.div_set.bull_div ? "✓" : "—", text_color=GM.div_set.bull_div ? bull_c : color.gray)
+    table.cell(GM.dashboard, 3, 7, "BEAR DIV", text_color=color.white)
+    table.cell(GM.dashboard, 4, 7, GM.div_set.bear_div ? "✓" : "—", text_color=GM.div_set.bear_div ? bear_c : color.gray)
+    table.cell(GM.dashboard, 5, 7, "VWAP",     text_color=color.white)
+    table.cell(GM.dashboard, 6, 7, str.tostring(vwap_val, "#.##"), text_color=color.new(color.yellow, 0))
+
+// ==========================================
+// --- ALERT CONDITIONS ---
+// ==========================================
+
+alertcondition(alert_hs and hs_detected, "H&S Detected", "Omni-Arch: Bearish Head & Shoulders pattern confirmed.")
+alertcondition(alert_ihs and ihs_detected, "iH&S Detected", "Omni-Arch: Bullish Inverse Head & Shoulders pattern confirmed.")
+alertcondition(alert_dt and dt_detected, "Double Top Detected", "Omni-Arch: Double Top pattern confirmed. Target: {{plot_0}}")
+alertcondition(alert_db and db_detected, "Double Bottom Detected", "Omni-Arch: Double Bottom pattern confirmed. Target: {{plot_0}}")
+alertcondition(alert_bull_div and GM.div_set.bull_div, "Bullish RSI Divergence", "Omni-Arch: Bullish RSI divergence detected at pivot low.")
+alertcondition(alert_bear_div and GM.div_set.bear_div, "Bearish RSI Divergence", "Omni-Arch: Bearish RSI divergence detected at pivot high.")

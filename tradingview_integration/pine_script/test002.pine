@@ -1,0 +1,48 @@
+//@version=5
+indicator("My Script", overlay=true)
+
+// Define constants
+var int MaxPlots = 64
+var float[] boxes = na
+var float[] lines = na
+var float[] labels = na
+var float[] polylines = na
+var int currentPlotCount = 0
+
+// Function to add plots with budget control
+plotWithBudget(condition, series, color, title) =>
+    if (condition and currentPlotCount < MaxPlots)
+        plot(series, color=color, title=title)
+        currentPlotCount := currentPlotCount + 1
+
+// Example plot calls wrapped in conditionals
+plotWithBudget(true, close, color.blue, "Close Price")
+plotWithBudget(high > open, high, color.green, "High Price")
+plotWithBudget(low < open, low, color.red, "Low Price")
+
+// Garbage Collection for runtime-drawn objects
+var int maxObjects = 100
+if (array.size(boxes) >= maxObjects)
+    array.shift(boxes)
+
+// Function to manage boxes
+drawBox(float price) =>
+    box newBox = box.new(bar_index - 1, price, bar_index, price + 1, color=color.new(color.red, 90))
+    array.push(boxes, newBox)
+
+// Function to manage lines
+drawLine(float price1, float price2) =>
+    line newLine = line.new(bar_index - 1, price1, bar_index, price2, color=color.red)
+    array.push(lines, newLine)
+
+// Clear old objects on state transition
+if (bar_index % 10 == 0) // Example condition for state transition
+    for i = 0 to array.size(boxes) - 1
+        box.delete(array.get(boxes, i))
+    array.clear(boxes)
+
+// Example cleanup for candlestick labels
+if (array.size(labels) > 5) // Keep only the most recent N
+    label.delete(array.shift(labels))
+
+// Continue with the remaining script logic

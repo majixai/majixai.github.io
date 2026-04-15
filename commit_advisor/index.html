@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1f36">
+  <meta name="description" content="Commit Advisor – real-time commit analysis, future recommendations, and feedback for the MajixAI repository.">
+  <title>Commit Advisor – MajixAI</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+
+  <style>
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --border:     #30363d;
+      --accent:     #58a6ff;
+      --accent2:    #06d6a0;
+      --warn:       #ffd166;
+      --danger:     #ff6b6b;
+      --text:       #c9d1d9;
+      --text-muted: #8b949e;
+      --card-radius: 10px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #1a1f36 0%, #0d1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 1rem 2rem;
+      text-align: center;
+    }
+    .hero h1 { font-size: 2rem; font-weight: 700; color: #fff; }
+    .hero h1 span { color: var(--accent); }
+    .hero p  { color: var(--text-muted); max-width: 560px; margin: .5rem auto 0; }
+    .badge-meta {
+      display: inline-block;
+      background: rgba(88,166,255,.15);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,.3);
+      border-radius: 20px;
+      padding: .2rem .8rem;
+      font-size: .75rem;
+      margin: .3rem .2rem;
+    }
+
+    /* ── Cards ── */
+    .card-dark {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 1.25rem;
+      margin-bottom: 1.2rem;
+    }
+    .card-dark h5 { color: #fff; margin-bottom: .75rem; }
+    .section-title {
+      color: var(--text-muted);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: .6rem;
+    }
+
+    /* ── Stat pills ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: .75rem;
+      margin-bottom: 1.2rem;
+    }
+    .stat-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: .9rem .75rem;
+      text-align: center;
+    }
+    .stat-pill .num  { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+    .stat-pill .lbl  { font-size: .7rem; color: var(--text-muted); margin-top: .1rem; }
+
+    /* ── Commit list ── */
+    .commit-item {
+      display: flex;
+      gap: .75rem;
+      padding: .75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .commit-item:last-child { border-bottom: none; }
+    .commit-sha {
+      font-family: monospace;
+      font-size: .8rem;
+      background: rgba(88,166,255,.1);
+      color: var(--accent);
+      border-radius: 4px;
+      padding: .15rem .4rem;
+      white-space: nowrap;
+      align-self: flex-start;
+      margin-top: .15rem;
+    }
+    .commit-msg  { font-size: .9rem; color: var(--text); line-height: 1.4; }
+    .commit-meta { font-size: .75rem; color: var(--text-muted); margin-top: .2rem; }
+    .commit-files {
+      display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem;
+    }
+    .file-chip {
+      font-size: .68rem;
+      background: rgba(6,214,160,.08);
+      color: var(--accent2);
+      border: 1px solid rgba(6,214,160,.2);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+    }
+
+    /* ── Recommendation cards ── */
+    .rec-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: .9rem;
+      transition: border-color .2s;
+    }
+    .rec-card:hover { border-color: var(--accent); }
+    .rec-card .rec-cat   { font-size: .7rem; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; }
+    .rec-card .rec-title { font-size: 1rem; font-weight: 600; color: #fff; margin: .2rem 0 .4rem; }
+    .rec-card .rec-detail { font-size: .85rem; color: var(--text); line-height: 1.5; }
+    .rec-card .rec-tags  { margin-top: .5rem; }
+    .rec-tag {
+      display: inline-block;
+      font-size: .68rem;
+      background: rgba(88,166,255,.1);
+      color: var(--accent);
+      border-radius: 3px;
+      padding: .1rem .35rem;
+      margin-right: .3rem;
+    }
+    .priority-high   { border-left: 3px solid var(--danger); }
+    .priority-medium { border-left: 3px solid var(--warn); }
+    .priority-low    { border-left: 3px solid var(--accent2); }
+
+    /* ── Feedback toolbar ── */
+    .feedback-bar {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .75rem;
+      padding-top: .65rem;
+      border-top: 1px solid var(--border);
+    }
+    .feedback-bar .fb-label { font-size: .75rem; color: var(--text-muted); }
+    .fb-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: .2rem .55rem;
+      font-size: .8rem;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .fb-btn:hover            { background: rgba(255,255,255,.06); color: var(--text); }
+    .fb-btn.active-up        { background: rgba(6,214,160,.15); color: var(--accent2); border-color: var(--accent2); }
+    .fb-btn.active-down      { background: rgba(255,107,107,.15); color: var(--danger);  border-color: var(--danger); }
+    .fb-btn.active-bookmark  { background: rgba(88,166,255,.15); color: var(--accent);   border-color: var(--accent); }
+
+    .fb-note-area {
+      display: none;
+      margin-top: .6rem;
+    }
+    .fb-note-area textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .82rem;
+      padding: .5rem .75rem;
+      resize: vertical;
+      min-height: 70px;
+    }
+    .fb-note-area textarea:focus { outline: none; border-color: var(--accent); }
+    .fb-save-btn {
+      margin-top: .4rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: .3rem .9rem;
+      font-size: .8rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .fb-save-btn:hover { opacity: .85; }
+    .fb-saved-note {
+      font-size: .78rem;
+      color: var(--text-muted);
+      margin-top: .35rem;
+      font-style: italic;
+    }
+
+    /* ── Bar chart ── */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .45rem;
+    }
+    .bar-label { font-size: .78rem; color: var(--text-muted); width: 90px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar-track { flex: 1; height: 12px; background: rgba(255,255,255,.05); border-radius: 6px; overflow: hidden; }
+    .bar-fill  { height: 100%; background: var(--accent); border-radius: 6px; transition: width .5s ease; }
+    .bar-count { font-size: .72rem; color: var(--text-muted); width: 28px; }
+
+    /* ── Loader / empty ── */
+    .spinner-box { text-align: center; padding: 3rem 0; }
+    .spinner-box .fa-spinner { font-size: 2rem; color: var(--accent); animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); }
+    .empty-state i { font-size: 2.5rem; margin-bottom: .75rem; display: block; }
+
+    /* ── Filter bar ── */
+    .filter-row {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .filter-row input, .filter-row select {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: .35rem .75rem;
+      font-size: .85rem;
+      flex: 1;
+      min-width: 160px;
+    }
+    .filter-row input:focus, .filter-row select:focus { outline: none; border-color: var(--accent); }
+    .filter-row select option { background: var(--surface); }
+
+    /* ── Toast ── */
+    .toast-container-custom {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+    }
+    .toast-msg {
+      background: var(--surface);
+      border: 1px solid var(--accent2);
+      color: var(--text);
+      border-radius: 8px;
+      padding: .65rem 1.1rem;
+      font-size: .85rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      animation: slideIn .3s ease;
+      margin-top: .5rem;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Keyword pills ── */
+    .kw-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      padding: .25rem 0;
+    }
+    .kw-pill {
+      font-size: .78rem;
+      background: rgba(88,166,255,.1);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,.25);
+      border-radius: 20px;
+      padding: .2rem .65rem;
+      cursor: default;
+      transition: background .15s;
+    }
+    .kw-pill:hover { background: rgba(88,166,255,.22); }
+
+    /* ── Hour chart: compact grid ── */
+    .hour-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 3px;
+      margin-top: .25rem;
+    }
+    .hour-cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      background: rgba(255,255,255,.05);
+      position: relative;
+    }
+    .hour-cell[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1c2130;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .15rem .4rem;
+      font-size: .65rem;
+      color: var(--text);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hour-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: .3rem;
+      font-size: .62rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 576px) {
+      .hero h1 { font-size: 1.4rem; }
+      .stat-pill .num { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<div class="hero">
+  <h1><i class="fa-solid fa-code-branch me-2"></i><span>Commit</span> Advisor</h1>
+  <p>Analyse commit history, surface patterns, and receive AI-powered recommendations for MajixAI.</p>
+  <div id="meta-badges">
+    <span class="badge-meta"><i class="fa-solid fa-circle-notch fa-spin me-1"></i>Loading…</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+<div class="container py-4" style="max-width:960px;">
+
+  <!-- Stats row -->
+  <div class="stat-grid" id="stat-grid">
+    <div class="stat-pill"><div class="num" id="s-commits">–</div><div class="lbl">Commits</div></div>
+    <div class="stat-pill"><div class="num" id="s-dirs">–</div><div class="lbl">Directories</div></div>
+    <div class="stat-pill"><div class="num" id="s-filetypes">–</div><div class="lbl">File Types</div></div>
+    <div class="stat-pill"><div class="num" id="s-authors">–</div><div class="lbl">Authors</div></div>
+    <div class="stat-pill"><div class="num" id="s-recs">–</div><div class="lbl">Recommendations</div></div>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ── LEFT column ── -->
+    <div class="col-lg-5">
+
+      <!-- Top directories chart -->
+      <div class="card-dark">
+        <div class="section-title">📁 Top Directories</div>
+        <h5>Most Active Areas</h5>
+        <div id="dir-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- File types chart -->
+      <div class="card-dark">
+        <div class="section-title">📄 File Types</div>
+        <h5>Changed Extensions</h5>
+        <div id="ext-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Weekday chart -->
+      <div class="card-dark">
+        <div class="section-title">📅 Activity Pattern</div>
+        <h5>Commits by Weekday</h5>
+        <div id="day-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Top authors chart -->
+      <div class="card-dark">
+        <div class="section-title">👤 Contributors</div>
+        <h5>Top Authors</h5>
+        <div id="author-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Commits by hour -->
+      <div class="card-dark">
+        <div class="section-title">🕐 Time-of-Day</div>
+        <h5>Commits by Hour <span style="font-size:.72rem;color:var(--text-muted);">(UTC)</span></h5>
+        <div id="hour-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT column ── -->
+    <div class="col-lg-7">
+
+      <!-- Recommendations -->
+      <div class="card-dark" id="rec-section">
+        <div class="section-title">💡 AI Recommendations</div>
+        <h5>Future Suggestions <span id="rec-count" style="font-size:.8rem;color:var(--text-muted);"></span></h5>
+        <div id="rec-filter-row" class="filter-row" style="display:none!important;">
+          <select id="rec-priority-filter" title="Filter by priority">
+            <option value="">All priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div id="rec-list"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Recent commits -->
+      <div class="card-dark">
+        <div class="section-title">🕒 Recent Commits</div>
+        <h5>Commit History</h5>
+        <div class="filter-row">
+          <input id="commit-search" type="text" placeholder="Search message or author…">
+        </div>
+        <div id="commit-list"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+        <div id="commit-show-more" style="display:none; text-align:center; margin-top:.75rem;">
+          <button id="show-more-btn" class="fb-btn" style="padding:.35rem 1rem;">Show more</button>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /row -->
+
+  <!-- Top keywords – full width -->
+  <div class="card-dark mt-2" id="kw-section" style="display:none;">
+    <div class="section-title">🔤 Commit Language</div>
+    <h5>Top Keywords</h5>
+    <div id="kw-cloud" class="kw-cloud"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════ TOAST ═══════════════════════════════ -->
+<div class="toast-container-custom" id="toast-container"></div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   Commit Advisor – frontend logic
+   Data source: /commit_advisor/data/insights.json (generated by GH Action)
+   Feedback:    localStorage  key  "ca_feedback"
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const DATA_URL       = '/commit_advisor/data/insights.json';
+const FEEDBACK_KEY   = 'ca_feedback';
+const COMMITS_PAGE   = 10;
+
+let allCommits       = [];
+let shownCommits     = COMMITS_PAGE;
+let allRecs          = [];
+
+// ── Feedback helpers ──────────────────────────────────────────────────
+function loadFeedback() {
+  try { return JSON.parse(localStorage.getItem(FEEDBACK_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveFeedback(data) {
+  localStorage.setItem(FEEDBACK_KEY, JSON.stringify(data));
+}
+function getFb(id)         { return loadFeedback()[id] || {}; }
+function setFb(id, patch)  {
+  const all = loadFeedback();
+  all[id]   = Object.assign(all[id] || {}, patch);
+  saveFeedback(all);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+function showToast(msg, ms = 2500) {
+  const el = document.createElement('div');
+  el.className = 'toast-msg';
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+// ── Bar chart renderer ────────────────────────────────────────────────
+function renderBarChart(containerId, items, labelKey, countKey, color = 'var(--accent)') {
+  const el  = document.getElementById(containerId);
+  const max = Math.max(...items.map(i => i[countKey]), 1);
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-chart-bar"></i>No data yet</div>';
+    return;
+  }
+  el.innerHTML = items.map(item => `
+    <div class="bar-row">
+      <div class="bar-label" title="${item[labelKey]}">${item[labelKey]}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.round(item[countKey]/max*100)}%; background:${color};"></div>
+      </div>
+      <div class="bar-count">${item[countKey]}</div>
+    </div>
+  `).join('');
+}
+
+// ── Commit renderer ───────────────────────────────────────────────────
+function renderCommits(commits) {
+  const el = document.getElementById('commit-list');
+  if (!commits.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-code-commit"></i>No commits match.</div>';
+    return;
+  }
+  el.innerHTML = commits.slice(0, shownCommits).map(c => {
+    const date  = c.date ? new Date(c.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '';
+    const files = (c.files || []).slice(0, 5);
+    const more  = (c.files || []).length - 5;
+    return `
+      <div class="commit-item">
+        <div>
+          <a href="https://github.com/majixai/majixai.github.io/commit/${c.sha}"
+             class="commit-sha" target="_blank" rel="noopener">${c.shortSha || c.sha.slice(0,7)}</a>
+        </div>
+        <div style="min-width:0;">
+          <div class="commit-msg">${escHtml(c.message)}</div>
+          <div class="commit-meta">${escHtml(c.author || '')} &bull; ${date}</div>
+          ${files.length ? `<div class="commit-files">
+            ${files.map(f => `<span class="file-chip">${escHtml(f)}</span>`).join('')}
+            ${more > 0 ? `<span class="file-chip">+${more} more</span>` : ''}
+          </div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  const btn = document.getElementById('commit-show-more');
+  if (commits.length > shownCommits) {
+    btn.style.display = 'block';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// ── Recommendation renderer ───────────────────────────────────────────
+function renderRecs(recs) {
+  const el = document.getElementById('rec-list');
+  document.getElementById('rec-count').textContent = `(${recs.length})`;
+
+  if (!recs.length) {
+    el.innerHTML = `<div class="empty-state">
+      <i class="fa-solid fa-lightbulb"></i>
+      No recommendations yet — push some commits and the workflow will analyse them.
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = recs.map(rec => {
+    const fb   = getFb(rec.id);
+    const tags = (rec.tags || []).map(t => `<span class="rec-tag">#${escHtml(t)}</span>`).join('');
+    const pCls = `priority-${rec.priority || 'medium'}`;
+    const upCls   = fb.vote === 'up'       ? 'active-up'       : '';
+    const downCls = fb.vote === 'down'     ? 'active-down'     : '';
+    const bmCls   = fb.bookmarked          ? 'active-bookmark' : '';
+    const note    = fb.note ? `<div class="fb-saved-note"><i class="fa-solid fa-note-sticky me-1"></i>${escHtml(fb.note)}</div>` : '';
+    return `
+      <div class="rec-card ${pCls}" id="rec-${rec.id}">
+        <div class="rec-cat">${escHtml(rec.category || '')}</div>
+        <div class="rec-title">${escHtml(rec.title)}</div>
+        <div class="rec-detail">${markdownLite(rec.detail)}</div>
+        <div class="rec-tags">${tags}</div>
+        <div class="feedback-bar">
+          <span class="fb-label">Was this useful?</span>
+          <button class="fb-btn ${upCls}"   onclick="vote('${rec.id}','up')"   title="Helpful"><i class="fa-solid fa-thumbs-up"></i></button>
+          <button class="fb-btn ${downCls}" onclick="vote('${rec.id}','down')" title="Not helpful"><i class="fa-solid fa-thumbs-down"></i></button>
+          <button class="fb-btn ${bmCls}"   onclick="toggleBookmark('${rec.id}')" title="Bookmark"><i class="fa-solid fa-bookmark"></i></button>
+          <button class="fb-btn"            onclick="toggleNote('${rec.id}')"  title="Add note"><i class="fa-solid fa-pen-to-square"></i></button>
+        </div>
+        <div class="fb-note-area" id="note-area-${rec.id}">
+          <textarea id="note-input-${rec.id}" placeholder="Add a private note…">${escHtml(fb.note || '')}</textarea>
+          <button class="fb-save-btn" onclick="saveNote('${rec.id}')">Save note</button>
+        </div>
+        ${note}
+      </div>`;
+  }).join('');
+}
+
+// ── Feedback actions ──────────────────────────────────────────────────
+function vote(id, direction) {
+  const fb  = getFb(id);
+  const next = fb.vote === direction ? null : direction;
+  setFb(id, { vote: next });
+  renderRecs(filteredRecs());
+  showToast(next ? (next === 'up' ? '👍 Marked as helpful' : '👎 Marked as not helpful') : 'Vote removed');
+}
+
+function toggleBookmark(id) {
+  const fb = getFb(id);
+  setFb(id, { bookmarked: !fb.bookmarked });
+  renderRecs(filteredRecs());
+  showToast(getFb(id).bookmarked ? '🔖 Bookmarked' : 'Bookmark removed');
+}
+
+function toggleNote(id) {
+  const area = document.getElementById(`note-area-${id}`);
+  if (!area) return;
+  area.style.display = area.style.display === 'block' ? 'none' : 'block';
+  if (area.style.display === 'block') {
+    area.querySelector('textarea').focus();
+  }
+}
+
+function saveNote(id) {
+  const input = document.getElementById(`note-input-${id}`);
+  if (!input) return;
+  setFb(id, { note: input.value.trim() });
+  renderRecs(filteredRecs());
+  showToast('📝 Note saved');
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────
+function filteredRecs() {
+  const pri = document.getElementById('rec-priority-filter').value;
+  return allRecs.filter(r => !pri || r.priority === pri);
+}
+
+function filteredCommits() {
+  const q = (document.getElementById('commit-search').value || '').toLowerCase();
+  if (!q) return allCommits;
+  return allCommits.filter(c =>
+    (c.message || '').toLowerCase().includes(q) ||
+    (c.author  || '').toLowerCase().includes(q)
+  );
+}
+
+// ── Keyword cloud renderer ────────────────────────────────────────────
+function renderKeywords(keywords) {
+  const el = document.getElementById('kw-cloud');
+  if (!keywords || !keywords.length) return;
+  document.getElementById('kw-section').style.display = '';
+  el.innerHTML = keywords.map(w => `<span class="kw-pill">${escHtml(w)}</span>`).join('');
+}
+
+// ── Hour heatmap renderer ─────────────────────────────────────────────
+function renderHourChart(hourMap) {
+  const el = document.getElementById('hour-chart');
+  if (!hourMap || !Object.keys(hourMap).length) {
+    el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-clock"></i>No data yet</div>';
+    return;
+  }
+  const counts = Array.from({length: 24}, (_, h) => Number(hourMap[String(h)] || 0));
+  const max = Math.max(...counts, 1);
+  const cells = counts.map((n, h) => {
+    const intensity = n / max;
+    const bg = n === 0
+      ? 'rgba(255,255,255,.04)'
+      : `rgba(88,166,255,${(0.15 + intensity * 0.75).toFixed(2)})`;
+    const label = `${String(h).padStart(2,'0')}:00 — ${n} commit${n !== 1 ? 's' : ''}`;
+    return `<div class="hour-cell" style="background:${bg};" title="${label}"></div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="hour-grid">${cells}</div>
+    <div class="hour-legend">
+      <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+    </div>`;
+}
+
+// ── Utility ───────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function markdownLite(text) {
+  // Bold **text**, inline code `text`
+  return escHtml(text)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,.08);padding:.1em .3em;border-radius:3px;">$1</code>');
+}
+
+// ── Main load ─────────────────────────────────────────────────────────
+async function loadInsights() {
+  try {
+    const resp = await fetch(`${DATA_URL}?_=${Date.now()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    // Meta badges
+    const gen  = data.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'unknown';
+    document.getElementById('meta-badges').innerHTML = `
+      <span class="badge-meta"><i class="fa-solid fa-clock me-1"></i>${gen}</span>
+      <span class="badge-meta"><i class="fa-solid fa-filter me-1"></i>${escHtml(data.authorFilter || 'all')}</span>
+    `;
+
+    // Stats
+    document.getElementById('s-commits').textContent   = data.commitCount  || 0;
+    document.getElementById('s-dirs').textContent      = (data.topDirectories  || []).length;
+    document.getElementById('s-filetypes').textContent = (data.topFileTypes    || []).length;
+    document.getElementById('s-authors').textContent   = (data.topAuthors     || []).length;
+    document.getElementById('s-recs').textContent      = (data.recommendations || []).length;
+
+    // Charts
+    renderBarChart('dir-chart', (data.topDirectories || []).slice(0,8), 'name', 'count');
+    renderBarChart('ext-chart', (data.topFileTypes   || []).slice(0,8), 'ext',  'count', 'var(--accent2)');
+    renderBarChart('author-chart', (data.topAuthors  || []).slice(0,8), 'name', 'count', 'var(--warn)');
+
+    const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const dayItems  = DAY_ORDER
+      .filter(d => data.commitsByWeekday && data.commitsByWeekday[d])
+      .map(d => ({ day: d.slice(0,3), count: data.commitsByWeekday[d] }));
+    renderBarChart('day-chart', dayItems, 'day', 'count', 'var(--warn)');
+
+    renderHourChart(data.commitsByHour || {});
+    renderKeywords(data.topKeywords || []);
+
+    // Commits
+    allCommits   = data.recentCommits || [];
+    shownCommits = COMMITS_PAGE;
+    renderCommits(filteredCommits());
+
+    // Recommendations
+    allRecs = data.recommendations || [];
+    if (allRecs.length) {
+      document.getElementById('rec-filter-row').style.setProperty('display','flex','important');
+    }
+    renderRecs(allRecs);
+
+  } catch (err) {
+    console.error('Failed to load insights:', err);
+    ['dir-chart','ext-chart','author-chart','day-chart','hour-chart','rec-list','commit-list'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i>Could not load data.<br><small>${escHtml(err.message)}</small></div>`;
+    });
+    document.getElementById('meta-badges').innerHTML = `<span class="badge-meta" style="border-color:var(--danger);color:var(--danger);">Data unavailable</span>`;
+  }
+}
+
+// ── Event wiring ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadInsights();
+
+  document.getElementById('commit-search').addEventListener('input', () => {
+    shownCommits = COMMITS_PAGE;
+    renderCommits(filteredCommits());
+  });
+
+  document.getElementById('rec-priority-filter').addEventListener('change', () => {
+    renderRecs(filteredRecs());
+  });
+
+  document.getElementById('show-more-btn').addEventListener('click', () => {
+    shownCommits += COMMITS_PAGE;
+    renderCommits(filteredCommits());
+  });
+});
+</script>
+</body>
+</html>
