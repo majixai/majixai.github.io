@@ -85,10 +85,11 @@
             console.error('fintst: shared logging/actions modules failed to load');
         }
 
-        async function loadDashboard(trigger) {
+        async function loadDashboard(trigger = 'unknown') {
             try {
+                const normalizedTrigger = ['initial', 'manual', 'unknown'].includes(trigger) ? trigger : 'unknown';
                 if (hasMajixModules) {
-                    MajixActions.dispatch('dashboard/load', { trigger: trigger || 'unknown' });
+                    MajixActions.dispatch('dashboard/load', { trigger: normalizedTrigger });
                 }
                 const statusBadge = document.getElementById('last-update');
                 statusBadge.innerText = "Running Matrix Inferences...";
