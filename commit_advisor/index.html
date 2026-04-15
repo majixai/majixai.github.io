@@ -266,6 +266,62 @@
     }
     @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* ── Keyword pills ── */
+    .kw-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      padding: .25rem 0;
+    }
+    .kw-pill {
+      font-size: .78rem;
+      background: rgba(88,166,255,.1);
+      color: var(--accent);
+      border: 1px solid rgba(88,166,255,.25);
+      border-radius: 20px;
+      padding: .2rem .65rem;
+      cursor: default;
+      transition: background .15s;
+    }
+    .kw-pill:hover { background: rgba(88,166,255,.22); }
+
+    /* ── Hour chart: compact grid ── */
+    .hour-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 3px;
+      margin-top: .25rem;
+    }
+    .hour-cell {
+      aspect-ratio: 1;
+      border-radius: 3px;
+      background: rgba(255,255,255,.05);
+      position: relative;
+    }
+    .hour-cell[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1c2130;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .15rem .4rem;
+      font-size: .65rem;
+      color: var(--text);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hour-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: .3rem;
+      font-size: .62rem;
+      color: var(--text-muted);
+    }
+
     /* ── Responsive ── */
     @media (max-width: 576px) {
       .hero h1 { font-size: 1.4rem; }
@@ -291,6 +347,7 @@
   <div class="stat-grid" id="stat-grid">
     <div class="stat-pill"><div class="num" id="s-commits">–</div><div class="lbl">Commits</div></div>
     <div class="stat-pill"><div class="num" id="s-dirs">–</div><div class="lbl">Directories</div></div>
+    <div class="stat-pill"><div class="num" id="s-filetypes">–</div><div class="lbl">File Types</div></div>
     <div class="stat-pill"><div class="num" id="s-authors">–</div><div class="lbl">Authors</div></div>
     <div class="stat-pill"><div class="num" id="s-recs">–</div><div class="lbl">Recommendations</div></div>
   </div>
@@ -319,6 +376,20 @@
         <div class="section-title">📅 Activity Pattern</div>
         <h5>Commits by Weekday</h5>
         <div id="day-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Top authors chart -->
+      <div class="card-dark">
+        <div class="section-title">👤 Contributors</div>
+        <h5>Top Authors</h5>
+        <div id="author-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
+      </div>
+
+      <!-- Commits by hour -->
+      <div class="card-dark">
+        <div class="section-title">🕐 Time-of-Day</div>
+        <h5>Commits by Hour <span style="font-size:.72rem;color:var(--text-muted);">(UTC)</span></h5>
+        <div id="hour-chart"><div class="spinner-box"><i class="fa-solid fa-spinner"></i></div></div>
       </div>
 
     </div>
@@ -356,6 +427,14 @@
 
     </div>
   </div><!-- /row -->
+
+  <!-- Top keywords – full width -->
+  <div class="card-dark mt-2" id="kw-section" style="display:none;">
+    <div class="section-title">🔤 Commit Language</div>
+    <h5>Top Keywords</h5>
+    <div id="kw-cloud" class="kw-cloud"></div>
+  </div>
+
 </div>
 
 <!-- ═══════════════════════════════ TOAST ═══════════════════════════════ -->
@@ -549,6 +628,38 @@ function filteredCommits() {
   );
 }
 
+// ── Keyword cloud renderer ────────────────────────────────────────────
+function renderKeywords(keywords) {
+  const el = document.getElementById('kw-cloud');
+  if (!keywords || !keywords.length) return;
+  document.getElementById('kw-section').style.display = '';
+  el.innerHTML = keywords.map(w => `<span class="kw-pill">${escHtml(w)}</span>`).join('');
+}
+
+// ── Hour heatmap renderer ─────────────────────────────────────────────
+function renderHourChart(hourMap) {
+  const el = document.getElementById('hour-chart');
+  if (!hourMap || !Object.keys(hourMap).length) {
+    el.innerHTML = '<div class="empty-state"><i class="fa-solid fa-clock"></i>No data yet</div>';
+    return;
+  }
+  const counts = Array.from({length: 24}, (_, h) => Number(hourMap[String(h)] || 0));
+  const max = Math.max(...counts, 1);
+  const cells = counts.map((n, h) => {
+    const intensity = n / max;
+    const bg = n === 0
+      ? 'rgba(255,255,255,.04)'
+      : `rgba(88,166,255,${(0.15 + intensity * 0.75).toFixed(2)})`;
+    const label = `${String(h).padStart(2,'0')}:00 — ${n} commit${n !== 1 ? 's' : ''}`;
+    return `<div class="hour-cell" style="background:${bg};" title="${label}"></div>`;
+  }).join('');
+  el.innerHTML = `
+    <div class="hour-grid">${cells}</div>
+    <div class="hour-legend">
+      <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+    </div>`;
+}
+
 // ── Utility ───────────────────────────────────────────────────────────
 function escHtml(str) {
   return String(str)
@@ -578,20 +689,25 @@ async function loadInsights() {
     `;
 
     // Stats
-    document.getElementById('s-commits').textContent  = data.commitCount  || 0;
-    document.getElementById('s-dirs').textContent     = (data.topDirectories  || []).length;
-    document.getElementById('s-authors').textContent  = (data.topAuthors     || []).length;
-    document.getElementById('s-recs').textContent     = (data.recommendations || []).length;
+    document.getElementById('s-commits').textContent   = data.commitCount  || 0;
+    document.getElementById('s-dirs').textContent      = (data.topDirectories  || []).length;
+    document.getElementById('s-filetypes').textContent = (data.topFileTypes    || []).length;
+    document.getElementById('s-authors').textContent   = (data.topAuthors     || []).length;
+    document.getElementById('s-recs').textContent      = (data.recommendations || []).length;
 
     // Charts
     renderBarChart('dir-chart', (data.topDirectories || []).slice(0,8), 'name', 'count');
     renderBarChart('ext-chart', (data.topFileTypes   || []).slice(0,8), 'ext',  'count', 'var(--accent2)');
+    renderBarChart('author-chart', (data.topAuthors  || []).slice(0,8), 'name', 'count', 'var(--warn)');
 
     const DAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
     const dayItems  = DAY_ORDER
       .filter(d => data.commitsByWeekday && data.commitsByWeekday[d])
       .map(d => ({ day: d.slice(0,3), count: data.commitsByWeekday[d] }));
     renderBarChart('day-chart', dayItems, 'day', 'count', 'var(--warn)');
+
+    renderHourChart(data.commitsByHour || {});
+    renderKeywords(data.topKeywords || []);
 
     // Commits
     allCommits   = data.recentCommits || [];
@@ -607,7 +723,7 @@ async function loadInsights() {
 
   } catch (err) {
     console.error('Failed to load insights:', err);
-    ['dir-chart','ext-chart','day-chart','rec-list','commit-list'].forEach(id => {
+    ['dir-chart','ext-chart','author-chart','day-chart','hour-chart','rec-list','commit-list'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i>Could not load data.<br><small>${escHtml(err.message)}</small></div>`;
     });
