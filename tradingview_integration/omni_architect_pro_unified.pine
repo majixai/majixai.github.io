@@ -220,7 +220,8 @@ for i = 0 to GM.slots.size() - 1
         slot.main_v.terminal.y := high[slot.end_lk]
         slot.main_v.terminal.x := bar_index - slot.end_lk
 
-        slot.main_v.slope := f_safe_div(slot.main_v.terminal.y - slot.main_v.origin.y, math.max(1, slot.main_v.terminal.x - slot.main_v.origin.x), 0.0)
+        slope_denominator = slot.main_v.terminal.x - slot.main_v.origin.x
+        slot.main_v.slope := f_safe_div(slot.main_v.terminal.y - slot.main_v.origin.y, slope_denominator, 0.0)
         slot.metrics.skew_rad := math.atan(slot.main_v.slope)
         slot.metrics.skew_deg := math.todegrees(slot.metrics.skew_rad)
         slot.metrics.atr_val := GM.global_m.atr_val
@@ -313,5 +314,5 @@ if barstate.islast
     table.cell(GM.dashboard, 4, 4, "H&S", text_color=color.white)
     table.cell(GM.dashboard, 5, 4, hs_detected ? "DETECTED" : "IDLE", text_color=hs_detected ? bear_c : color.gray)
 
-// Supplemental unit-consistency example:
-// price_change_per_bar = math.tan(math.toradians(slot.metrics.skew_deg))
+// Supplemental unit-consistency reference:
+// price_change_per_bar = math.tan(math.toradians(45))
