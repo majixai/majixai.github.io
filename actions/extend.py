@@ -42,8 +42,7 @@ def _patch_index_html(index_path: Path, namespace: str, force: bool) -> bool:
     has_init = "MajixActions.init()" in content
     has_cfg = "ACTIONS_CONFIG" in content
 
-    if force and has_script and has_init and has_cfg:
-        # keep existing custom config/snippets if already complete
+    if not force and has_script and has_init and has_cfg:
         print(f"  KEEP  {index_path} (already wired)")
         return False
 
