@@ -1,22 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scraped Financial Data</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scraped Financial Data</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <h1>Scraped Financial Data</h1>
-    <div id="loader">Loading and decompressing data...</div>
-    <div id="data-container"></div>
-    <div id="chart-container">
-        <canvas id="price-chart"></canvas>
+  <header class="app-header">
+    <div class="header-row">
+      <h1>Scraped Financial Data</h1>
+      <div class="header-actions">
+        <button id="theme-toggle" class="btn" type="button" title="Toggle theme">Theme</button>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+    <div class="toolbar">
+      <div class="field">
+        <label for="search">Search</label>
+        <input id="search" type="search" placeholder="Ticker or name…" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label for="sort">Sort</label>
+        <select id="sort">
+          <option value="ticker">Ticker</option>
+          <option value="name">Name</option>
+          <option value="price_desc">Price (desc)</option>
+          <option value="price_asc">Price (asc)</option>
+          <option value="scraped_desc">Scraped at (newest)</option>
+          <option value="scraped_asc">Scraped at (oldest)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="limit">Rows</label>
+        <select id="limit">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+          <option value="0">All</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="y-field">Y-axis</label>
+        <select id="y-field">
+          <option value="price" selected>price</option>
+          <option value="change">change</option>
+          <option value="change_percent">change_percent</option>
+          <option value="volume">volume</option>
+          <option value="market_cap">market_cap</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="chart-type">Chart</label>
+        <select id="chart-type">
+          <option value="line" selected>Line</option>
+          <option value="bar">Bar</option>
+          <option value="scatter">Scatter</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="range">Range</label>
+        <select id="range">
+          <option value="all" selected>All</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="1y">Last 1 year</option>
+        </select>
+      </div>
+
+      <div class="field checkbox">
+        <label>
+          <input id="show-points" type="checkbox" />
+          Points
+        </label>
+      </div>
+
+      <div class="field checkbox">
+        <label>
+          <input id="normalize" type="checkbox" />
+          Normalize (start=100)
+        </label>
+      </div>
+
+      <div class="field checkbox">
+        <label>
+          <input id="log-scale" type="checkbox" />
+          Log scale
+        </label>
+      </div>
+
+      <div class="field buttons">
+        <button id="export-csv" class="btn" type="button">Export CSV</button>
+        <button id="reset-zoom" class="btn" type="button">Reset zoom</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="panel">
+      <div id="loader" class="loader">Loading and decompressing data…</div>
+      <div id="status" class="status" hidden></div>
+      <div id="data-container"></div>
+    </section>
+
+    <section class="panel">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title" id="chart-title">Click a ticker to chart its history</div>
+          <div class="chart-subtitle" id="chart-subtitle">Loads all available rows for the selected ticker from the SQLite DB.</div>
+        </div>
+        <div class="selected">
+          <span class="pill">Selected:</span>
+          <span class="pill" id="selected-ticker">None</span>
+        </div>
+      </div>
+
+      <div id="chart-container" class="chart-container">
+        <canvas id="price-chart"></canvas>
+      </div>
+
+      <details class="details" open>
+        <summary>Selected ticker raw DB rows</summary>
+        <div id="ticker-rows" class="ticker-rows"></div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div>Tip: Click a row (or the ticker cell) to load its full DB history into the chart.</div>
+    <div class="muted">Data source: <code>scrape/finance.db.gz</code> (loaded client-side via sql.js + pako).</div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+  <script src="script.js"></script>
 </body>
 </html>
