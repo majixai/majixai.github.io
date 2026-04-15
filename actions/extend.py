@@ -35,7 +35,7 @@ def _patch_index_html(index_path: Path, namespace: str, force: bool) -> bool:
         print(f"  SKIP  {index_path} (missing index.html)")
         return False
 
-    content = index_path.read_text(encoding="utf-8", errors="ignore")
+    content = index_path.read_text(encoding="utf-8", errors="replace")
     original = content
 
     has_script = "/actions/actions-core.js" in content
