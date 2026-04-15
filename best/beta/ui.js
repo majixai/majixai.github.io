@@ -45,6 +45,7 @@ class UIManager {
         const newBadge = user.is_new ? '<span class="badge new-badge w3-tag w3-small w3-red w3-round">New</span>' : '';
         const birthdayBanner = isBirthdayCallback(user.birthday) ? `<p class="birthday w3-text-amber w3-center">🎂 Happy Birthday! 🎂</p>` : '';
         const removeButtonHTML = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
+        const openIframeButtonHTML = window.IframeOpenControls?.buildOpenButtonHTML({ title: 'Open in iframe' }) || '<button type="button" class="open-iframe-btn" title="Open in iframe" aria-label="Open in iframe">📺</button>';
         const clickCount = getUserClickCountCallback(user.username);
 
         let birthdayProximityHTMLString = '';
@@ -82,6 +83,7 @@ class UIManager {
                 <img src="${LAZY_PLACEHOLDER}" data-src="${user.image_url}" alt="${user.username} thumbnail" class="w3-image slide-img" style="cursor:zoom-in;">
                 <div class="slide-progress"></div>
                 <span class="slide-counter" style="display:none;">1/1</span>
+                ${openIframeButtonHTML}
                 ${removeButtonHTML}
             </div>
             <div class="user-details w3-container w3-padding-small">
@@ -132,12 +134,21 @@ class UIManager {
         }
 
         userElement.addEventListener("click", function(event) {
-            if (event.target.closest('.remove-user-btn')) {
+            if (event.target.closest('.remove-user-btn') || event.target.closest('.open-iframe-btn')) {
                 return;
             }
             event.preventDefault();
             handleUserClickCallback(user);
         });
+
+        const openIframeBtn = userElement.querySelector('.open-iframe-btn');
+        if (openIframeBtn) {
+            openIframeBtn.addEventListener("click", function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                handleUserClickCallback(user);
+            });
+        }
 
         // const toggleBtn = userElement.querySelector('.toggle-view-btn');
         // if (toggleBtn) {

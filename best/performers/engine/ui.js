@@ -424,6 +424,22 @@ class UIManager {
 
         // Performer grid click (event delegation)
         this.#_gridContainer?.addEventListener('click', (e) => {
+            const openIframeButton = e.target.closest('.open-iframe-btn');
+            if (openIframeButton) {
+                e.preventDefault();
+                e.stopPropagation();
+                const buttonCard = openIframeButton.closest('.performer-card');
+                if (buttonCard && this.#_onPerformerSelectCallback) {
+                    try {
+                        const performerData = JSON.parse(buttonCard.dataset.performer);
+                        this.#_onPerformerSelectCallback(performerData);
+                    } catch (error) {
+                        console.error("Error parsing performer data from iframe open button:", error);
+                    }
+                }
+                return;
+            }
+
             const card = e.target.closest('.performer-card');
             if (card && this.#_onPerformerSelectCallback) {
                 try {
@@ -676,6 +692,7 @@ class UIManager {
         card.innerHTML = `
             <div class="card-image-container">
                 <img src="${LAZY_PLACEHOLDER}" data-src="${imageUrl}" data-img-url="${imageUrl}" alt="${this.#_escapeHtml(name)}" data-role="performer-image">
+                ${window.IframeOpenControls?.buildOpenButtonHTML({ title: 'Open performer in viewer' }) || '<button type="button" class="open-iframe-btn" title="Open performer in viewer" aria-label="Open performer in viewer">📺</button>'}
                 <div class="card-badges">
                     ${performer.is_new ? '<span class="badge badge-new">NEW</span>' : ''}
                     ${rank <= 10 ? `<span class="badge badge-rank">#${rank}</span>` : ''}
