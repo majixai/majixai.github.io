@@ -29,6 +29,7 @@ import math
 import gzip
 import sqlite3
 import re
+import tempfile
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
@@ -45,6 +46,7 @@ RISK_FREE_RATE = 0.0525  # 5.25% annual risk-free rate
 DEFAULT_TICKER = "SPY"
 DEFAULT_SIMULATIONS = 1000
 DEFAULT_VOLATILITY = 0.18  # 18% annualized volatility
+ACTION_HIGH_VOL_THRESHOLD = 0.015  # 1.5% expected move std-dev ratio
 
 
 class MarketDataLoader:
@@ -127,8 +129,11 @@ class MarketDataLoader:
         if not dat_file.exists():
             return np.array([], dtype=float)
 
-        tmp_db = self.repo_root / "yfinance_data" / "temp_market_prediction_yf.db"
+        tmp_db: Optional[Path] = None
         try:
+            with tempfile.NamedTemporaryFile(suffix=".db", prefix="market_prediction_yf_", delete=False) as tf:
+                tmp_db = Path(tf.name)
+
             with gzip.open(dat_file, "rb") as f_in, open(tmp_db, "wb") as f_out:
                 f_out.write(f_in.read())
 
@@ -149,7 +154,7 @@ class MarketDataLoader:
             return np.array([], dtype=float)
         finally:
             try:
-                if tmp_db.exists():
+                if tmp_db and tmp_db.exists():
                     tmp_db.unlink()
             except OSError:
                 pass
@@ -159,8 +164,11 @@ class MarketDataLoader:
         if not db_file.exists():
             return np.array([], dtype=float)
 
-        tmp_db = self.repo_root / "scrape" / "temp_market_prediction_scrape.db"
+        tmp_db: Optional[Path] = None
         try:
+            with tempfile.NamedTemporaryFile(suffix=".db", prefix="market_prediction_scrape_", delete=False) as tf:
+                tmp_db = Path(tf.name)
+
             with gzip.open(db_file, "rb") as f_in, open(tmp_db, "wb") as f_out:
                 f_out.write(f_in.read())
 
@@ -185,7 +193,7 @@ class MarketDataLoader:
             return np.array([], dtype=float)
         finally:
             try:
-                if tmp_db.exists():
+                if tmp_db and tmp_db.exists():
                     tmp_db.unlink()
             except OSError:
                 pass
@@ -195,12 +203,15 @@ class MarketDataLoader:
         if value is None:
             return None
         if isinstance(value, (int, float)):
-            return float(value)
-        cleaned = re.sub(r"[^0-9.\-]", "", str(value))
-        if cleaned in {"", ".", "-", "-.", ".-"}:
+            numeric = float(value)
+            return numeric if numeric >= 0 else None
+
+        normalized = str(value).strip().replace("$", "").replace(",", "")
+        if not re.fullmatch(r"\d+(\.\d+)?", normalized):
             return None
         try:
-            return float(cleaned)
+            numeric = float(normalized)
+            return numeric if numeric >= 0 else None
         except ValueError:
             return None
 
@@ -680,7 +691,7 @@ class MarketPredictor:
         else:
             actions.append("RSI is neutral; align entries with volatility bands and trend context.")
 
-        if stats["std"] / max(self.current_price, 1e-9) > 0.015:
+        if stats["std"] / max(self.current_price, 1e-9) > ACTION_HIGH_VOL_THRESHOLD:
             actions.append("Volatility is elevated; use smaller position sizing and wider stop placement.")
         else:
             actions.append("Volatility is moderate; standard risk sizing is appropriate.")
