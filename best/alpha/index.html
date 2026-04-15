@@ -17,6 +17,12 @@
     <div class="app-container">
         <div class="header-controls">
             <h1>Room Viewer</h1>
+            <div class="enhancement-status-bar">
+                <span id="scoreStatusIndicator" class="enhancement-pill">Score: base</span>
+                <span id="gpuStatusIndicator" class="enhancement-pill">GPU: checking</span>
+                <button id="recordToggleButton" class="enhancement-pill enhancement-record-btn" type="button">⏺ Record</button>
+                <span id="recordingStatusIndicator" class="enhancement-pill">REC idle</span>
+            </div>
             <div class="control-buttons">
                 <button id="settingsButton">Settings</button>
                 <button id="storageButton">Chat Storage</button>
@@ -250,6 +256,7 @@
     <script src="model.js"></script>
     <script src="../performers/engine/shapes.js"></script>
     <script src="/iframe-picker/iframe-open-controls.js"></script>
+    <script src="../../screen_recorder/shared-recorder.js"></script>
     <script src="ui.js"></script>
     <script src="script.js"></script>
     <script>

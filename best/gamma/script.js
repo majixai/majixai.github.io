@@ -54,6 +54,8 @@
         #fetchInterval = null;
         #initialIframesSet = false;
         #tensorEngine = new TensorSimilarityEngine();
+        #relevanceScorer = null;
+        #recordingController = null;
 
         #currentOnlineUsersOffset = 0;
         #isLoadingOnlineUsers = false;
@@ -107,6 +109,10 @@
 
             this.copyJsErrorsButton = document.getElementById('copyJsErrorsButton');
             this.filterBirthdayBannerButton = document.getElementById('filterBirthdayBanner');
+            this.scoreStatusIndicator = document.getElementById('scoreStatusIndicator');
+            this.gpuStatusIndicator = document.getElementById('gpuStatusIndicator');
+            this.recordToggleButton = document.getElementById('recordToggleButton');
+            this.recordingStatusIndicator = document.getElementById('recordingStatusIndicator');
 
             this.settingsButton = document.getElementById('settingsButton');
             this.storageButton = document.getElementById('storageButton');
@@ -118,6 +124,13 @@
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
             window.storageType = this.#storageType; 
+
+            if (typeof window.RelevanceScorer === 'function') {
+                this.#relevanceScorer = new window.RelevanceScorer({
+                    getClickCount: (user) => this.storageManager.getUserClickCount(user?.username, this.#previousUsers),
+                    getGpuFeatureScore: (user) => window.visionScorer?.getCachedFeatureScore?.(user?.image_url) || 0
+                });
+            }
         }
 
         #isBirthday(birthday) {
@@ -512,7 +525,51 @@
                 return;
             }
 
-            this.#renderNextOnlineBatch(usersToDisplay);
+            let rankedUsers = usersToDisplay;
+            if (this.#relevanceScorer && Array.isArray(usersToDisplay)) {
+                rankedUsers = this.#relevanceScorer.rankUsers(usersToDisplay, {
+                    selectedTags: Array.from(this.filterTagsSelect?.selectedOptions || [])
+                        .map(o => String(o.value || '').toLowerCase())
+                        .filter(Boolean)
+                });
+                if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: relevance';
+            } else {
+                rankedUsers = [...usersToDisplay].sort((a, b) => (Number(b.num_viewers || 0) - Number(a.num_viewers || 0)));
+                rankedUsers.forEach(user => {
+                    user.relevanceScore = Number(user.num_viewers || 0);
+                    user.gpuScore = 0;
+                });
+                if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: viewers';
+            }
+
+            this.#renderNextOnlineBatch(rankedUsers);
+        }
+
+        #initEnhancementControls() {
+            const updateGpuStatus = () => {
+                if (!this.gpuStatusIndicator) return;
+                const backend = window.tf?.getBackend?.() || 'cpu';
+                this.gpuStatusIndicator.textContent = `GPU: ${backend}`;
+            };
+            updateGpuStatus();
+            setInterval(updateGpuStatus, 5000);
+
+            if (!window.SharedScreenRecorder?.isSupported?.()) {
+                if (this.recordingStatusIndicator) this.recordingStatusIndicator.textContent = 'REC unsupported';
+                return;
+            }
+            this.#recordingController = window.SharedScreenRecorder.createController({
+                button: this.recordToggleButton,
+                statusEl: this.recordingStatusIndicator,
+                fileNamePrefix: 'gamma-room',
+                getTarget: () => {
+                    const targetId = document.getElementById('targetSlot')?.value || 'mainIframe';
+                    return document.getElementById(targetId);
+                },
+                onStateChange: (state) => {
+                    this.recordToggleButton?.classList.toggle('is-recording', !!state.recording);
+                }
+            });
         }
 
         #renderNextOnlineBatch(usersToDisplay) {
@@ -1127,6 +1184,7 @@
             this.#storageType = window.storageType; 
 
             this.#setupEventListeners(); 
+            this.#initEnhancementControls();
             
             if (this.currentSnippetDisplay) {
                 this.storageManager.loadAllTextSnippets()

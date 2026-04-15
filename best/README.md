@@ -18,6 +18,13 @@ See [`best/beta/README.md`](beta/README.md) and [`best/gamma/README.md`](gamma/R
 - **Gamma `index.html`:** Slideshow integration wired to the new `SlideshowManager` class.
 - **Beta `ui.js`:** Slideshow lifecycle methods called consistently on card create/destroy.
 
+### Recent Enhancements (2026-04-15)
+
+- **Shared recorder module:** Added root-level reusable recorder at `screen_recorder/shared-recorder.js` (IIFE/global style) for reuse by `best/alpha`, `best/beta`, and `best/gamma`.
+- **Alpha/Beta/Gamma integration:** Each edition now imports the shared recorder and exposes lightweight header controls for score/GPU/recording status.
+- **Gamma relevance scoring:** Replaced placeholder `best/gamma/relevance-scorer.js` with browser-safe weighted ranking logic (viewers, clicks, freshness, tags, GPU signal).
+- **UI polish:** Performer cards now show compact score/GPU values when available, without changing existing layout structure.
+
 **NOTE:** This application is a client-side implementation. Features like report sending are handled directly from the browser, which is **not secure** for sensitive data or in production environments. A robust backend is highly recommended for such features.
 
 ## Features
@@ -161,4 +168,3 @@ This directory now includes an automated compressed image datastore pipeline:
 - `best/index.html` reads `best/dbs/performer_images_manifest.dat`.
 - Manifest is zlib-compressed JSON and rendered client-side using `pako`.
 - The UI supports quick filtering and shows cache metadata from the compressed datastore.
-

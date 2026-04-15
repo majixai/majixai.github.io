@@ -57,6 +57,7 @@
         #iframeCount = defaultIframeCount;
         #iframes = []; // Array of iframe DOM elements
         #layoutMode = 'split'; // 'performers' | 'split' | 'iframes'
+        #recordingController = null;
 
         // Infinite-scroll state for online users list (local filtered batch rendering)
         #onlineBatchSize = 50;
@@ -123,6 +124,10 @@
             this.storageModal = document.getElementById('storageModal');
             this.closeSettingsModal = document.getElementById('closeSettingsModal');
             this.closeStorageModal = document.getElementById('closeStorageModal');
+            this.scoreStatusIndicator = document.getElementById('scoreStatusIndicator');
+            this.gpuStatusIndicator = document.getElementById('gpuStatusIndicator');
+            this.recordToggleButton = document.getElementById('recordToggleButton');
+            this.recordingStatusIndicator = document.getElementById('recordingStatusIndicator');
             
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
@@ -642,12 +647,50 @@
                 usersToDisplay = [...usersToDisplay].sort((a, b) => {
                     const sA = window.visionScorer.getCachedFeatureScore(a.image_url);
                     const sB = window.visionScorer.getCachedFeatureScore(b.image_url);
+                    a.gpuScore = sA;
+                    b.gpuScore = sB;
+                    a.relevanceScore = (Number(a.num_viewers || 0) * 0.5) + (sA * 10);
+                    b.relevanceScore = (Number(b.num_viewers || 0) * 0.5) + (sB * 10);
                     return sB - sA;
                 });
+                if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: gpu+viewers';
+            } else if (usersToDisplay?.length > 0) {
+                usersToDisplay.forEach((user) => {
+                    user.relevanceScore = Number(user.num_viewers || 0);
+                    user.gpuScore = 0;
+                });
+                if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: viewers';
             }
 
             this.#onlinePagedUsers = usersToDisplay || [];
             this.#renderOnlinePage(this.#onlinePagedUsers, 0);
+        }
+
+        #initEnhancementControls() {
+            const refreshGpuStatus = () => {
+                if (!this.gpuStatusIndicator) return;
+                const active = !!window.visionScorer?.isActive;
+                this.gpuStatusIndicator.textContent = `GPU: ${active ? 'vision on' : 'vision idle'}`;
+            };
+            refreshGpuStatus();
+            setInterval(refreshGpuStatus, 5000);
+
+            if (!window.SharedScreenRecorder?.isSupported?.()) {
+                if (this.recordingStatusIndicator) this.recordingStatusIndicator.textContent = 'REC unsupported';
+                return;
+            }
+            this.#recordingController = window.SharedScreenRecorder.createController({
+                button: this.recordToggleButton,
+                statusEl: this.recordingStatusIndicator,
+                fileNamePrefix: 'beta-room',
+                getTarget: () => {
+                    const slotIdx = parseInt(document.getElementById('targetSlot')?.value || '0', 10);
+                    return this.#iframes[slotIdx] || this.#iframes[0] || null;
+                },
+                onStateChange: (state) => {
+                    this.recordToggleButton?.classList.toggle('is-recording', !!state.recording);
+                }
+            });
         }
 
         /**
@@ -1291,6 +1334,7 @@
             // Build dynamic iframe grid and set initial layout BEFORE fetching data
             // (so #iframes is populated before #setDefaultIframes is called)
             this.#buildIframeGrid(this.#iframeCount);
+            this.#initEnhancementControls();
             this.#setLayoutMode('split');
             
             if (this.currentSnippetDisplay) {

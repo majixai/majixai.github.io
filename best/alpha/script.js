@@ -55,6 +55,7 @@
 
         // Shape engine for overlay shapes on iframes and images
         #shapeEngine = null;
+        #recordingController = null;
         
         constructor() {
             // Instantiate services and managers
@@ -109,6 +110,10 @@
             this.slotsModal = document.getElementById('slotsModal');
             this.closeSlotsModal = document.getElementById('closeSlotsModal');
             this.spinButton = document.getElementById('spinButton');
+            this.scoreStatusIndicator = document.getElementById('scoreStatusIndicator');
+            this.gpuStatusIndicator = document.getElementById('gpuStatusIndicator');
+            this.recordToggleButton = document.getElementById('recordToggleButton');
+            this.recordingStatusIndicator = document.getElementById('recordingStatusIndicator');
             
             // Shape engine controls
             this.alphaShapesEnabled = document.getElementById('alphaShapesEnabled');
@@ -598,7 +603,45 @@
                 return;
             }
 
+            usersToDisplay.forEach(user => {
+                if (!user) return;
+                const viewers = Number(user.num_viewers || 0);
+                const clicks = Number(this.storageManager.getUserClickCount(user.username, this.#previousUsers) || 0);
+                user.relevanceScore = (viewers * 0.7) + (clicks * 1.5);
+            });
+            if (this.scoreStatusIndicator) {
+                this.scoreStatusIndicator.textContent = 'Score: viewers+clicks';
+            }
+
             this.#renderNextOnlineBatch(usersToDisplay);
+        }
+
+        #initEnhancementControls() {
+            const updateGpuStatus = () => {
+                if (!this.gpuStatusIndicator) return;
+                const mlEnabled = !!this.alphaMlShapes?.checked;
+                this.gpuStatusIndicator.textContent = `GPU: ${mlEnabled ? 'shape-ml on' : 'shape-ml off'}`;
+            };
+            updateGpuStatus();
+            this.alphaMlShapes?.addEventListener('change', updateGpuStatus);
+
+            if (!window.SharedScreenRecorder?.isSupported?.()) {
+                if (this.recordingStatusIndicator) this.recordingStatusIndicator.textContent = 'REC unsupported';
+                return;
+            }
+
+            this.#recordingController = window.SharedScreenRecorder.createController({
+                button: this.recordToggleButton,
+                statusEl: this.recordingStatusIndicator,
+                fileNamePrefix: 'alpha-room',
+                getTarget: () => {
+                    const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
+                    return (iframeChoiceRadio?.value === 'mainIframe2') ? this.mainIframe2 : this.mainIframe;
+                },
+                onStateChange: (state) => {
+                    this.recordToggleButton?.classList.toggle('is-recording', !!state.recording);
+                }
+            });
         }
 
         #renderNextOnlineBatch(usersToDisplay) {
@@ -1329,6 +1372,7 @@
             this.#storageType = window.storageType;
 
             this.#setupEventListeners();
+            this.#initEnhancementControls();
 
             if (this.currentSnippetDisplay) {
                 this.storageManager.loadAllTextSnippets()
@@ -1637,5 +1681,3 @@
     });
 
 })();
-
-[end of best/alpha/script.js]
