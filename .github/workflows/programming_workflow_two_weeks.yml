@@ -164,6 +164,7 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import json
+          import os
           from collections import Counter
 
           with open("/tmp/programming_results.json", "r", encoding="utf-8") as f:
@@ -173,10 +174,13 @@ jobs:
           failed = sum(1 for r in results if r["status"] == "fail")
           passed = total - failed
           paradigms = Counter(r["paradigm"] for r in results)
+          summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+          window_start = os.environ["WINDOW_START"]
+          window_end = os.environ["WINDOW_END"]
 
-          with open("${GITHUB_STEP_SUMMARY}", "a", encoding="utf-8") as s:
+          with open(summary_path, "a", encoding="utf-8") as s:
             s.write("\n## Programming CI/CD Summary\n")
-            s.write(f"- Window: ${WINDOW_START} → ${WINDOW_END}\n")
+            s.write(f"- Window: {window_start} → {window_end}\n")
             s.write(f"- Total directories checked: {total}\n")
             s.write(f"- Passed: {passed}\n")
             s.write(f"- Failed: {failed}\n")
