@@ -106,6 +106,8 @@ f_detect_hs(var HS_Pattern hs_pat, int pivot_left, int pivot_right, float tolera
 // --- USER INPUTS ---
 // ==========================================
 
+PROJECTION_BARS = 40
+
 grp_pat = "Multi-Interval Structural Anchors"
 s_lk_l = input.int(120, "Long Start", minval=50, group=grp_pat)
 e_lk_l = input.int(15, "Long End", minval=5, group=grp_pat)
@@ -176,7 +178,7 @@ if barstate.isfirst
 // ==========================================
 
 is_up = close > open
-is_down = close <= open
+is_down = not is_up
 
 count_up = ta.cum(is_up ? 1 : 0)
 count_down = ta.cum(is_down ? 1 : 0)
@@ -185,7 +187,10 @@ prior_up = f_safe_div(count_up, total_bars, 0.5)
 
 green_after_green = ta.cum((is_up[1] and is_up) ? 1 : 0)
 green_after_red = ta.cum((is_down[1] and is_up) ? 1 : 0)
-prob_bullish = is_up ? f_safe_div(green_after_green, math.max(count_up, 1), 0.5) * prior_up : f_safe_div(green_after_red, math.max(count_down, 1), 0.5) * prior_up
+cond_bull_if_up = f_safe_div(green_after_green, math.max(count_up, 1), 0.5)
+cond_bull_if_down = f_safe_div(green_after_red, math.max(count_down, 1), 0.5)
+cond_bull = is_up ? cond_bull_if_up : cond_bull_if_down
+prob_bullish = cond_bull * prior_up
 prob_bullish := f_clamp(prob_bullish, 0.0, 1.0)
 prob_bearish = 1.0 - prob_bullish
 confidence = math.max(prob_bullish, prob_bearish)
@@ -259,9 +264,9 @@ if barstate.islast
             for j = 0 to id.p_fan.density - 1
                 vp = id.p_fan.paths.get(j)
                 variance = (j - (id.p_fan.density - 1) / 2.0) * id.p_fan.spread
-                f_slope = id.main_v.slope + (variance * syminfo.mintick * 40)
+                f_slope = id.main_v.slope + (variance * syminfo.mintick * PROJECTION_BARS)
                 line.set_xy1(vp.ln_ref, p2_x, p2_y)
-                line.set_xy2(vp.ln_ref, p2_x + 40, p2_y + (f_slope * 40))
+                line.set_xy2(vp.ln_ref, p2_x + PROJECTION_BARS, p2_y + (f_slope * PROJECTION_BARS))
                 line.set_color(vp.ln_ref, color.new(id.theme_col, 70))
         else
             for j = 0 to id.p_fan.density - 1
