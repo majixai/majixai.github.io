@@ -1,0 +1,50 @@
+name: Bitcoin Miner — In-Memory Action Mining
+
+on:
+  schedule:
+    - cron: '*/1 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mine-window:
+    name: Miner slot ${{ matrix.slot }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        slot: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    concurrency:
+      group: bitcoin-miner-action-slot-${{ matrix.slot }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install lightweight runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy
+
+      - name: Build miner binary
+        run: make -C bitcoin_miner
+
+      - name: Run in-memory mining window (up to 5 minutes)
+        env:
+          MINER_SLOT: ${{ matrix.slot }}
+        run: |
+          python3 bitcoin_miner/actions_mining_runner.py \
+            --slot "${MINER_SLOT}" \
+            --duration-seconds 300 \
+            --threads 1 \
+            --bits 0x1d00ffff
