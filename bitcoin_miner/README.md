@@ -40,6 +40,8 @@ This directory is wired to GitHub Actions:
 
 - Workflow: `.github/workflows/bitcoin_miner_data.yml`
 - Behavior: runs the fetcher and commits refreshed `bitcoin_miner/data/live_data.json` back to the repository when changed.
+- Workflow: `.github/workflows/bitcoin_miner_actions.yml`
+- Behavior: runs every minute and launches a 10-slot matrix; each slot executes up to a 5-minute in-memory mining subprocess window with optional tensor/neural integration imports.
 
 ## Local usage
 
