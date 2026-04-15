@@ -479,9 +479,9 @@ var float cum_vol = na
 var float cum_vol_price_sq = na
 
 if is_session_start or na(cum_vol_price)
-    cum_vol_price := high * volume
+    cum_vol_price := close * volume
     cum_vol := volume
-    cum_vol_price_sq := math.pow(high, 2) * volume
+    cum_vol_price_sq := math.pow(close, 2) * volume
 else
     cum_vol_price += (close * volume)
     cum_vol += volume
