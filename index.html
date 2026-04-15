@@ -810,8 +810,13 @@
   function sanitizeRelativePath(path) {
     const raw = String(path || '').trim().replace(/^\/+/, '');
     if (!raw) return '/';
-    if (!/^[a-zA-Z0-9._\-/]+$/.test(raw)) return '/';
-    return `/${raw}`;
+    const segments = raw.split('/').filter(Boolean);
+    if (!segments.length) return '/';
+    for (const segment of segments) {
+      if (segment === '.' || segment === '..') return '/';
+      if (!/^[a-zA-Z0-9._-]+$/.test(segment)) return '/';
+    }
+    return `/${segments.join('/')}/`;
   }
 
   function relativeTime(isoDate) {
@@ -881,8 +886,8 @@
     const actions = getMajixActions();
     if (!actions || recentDirsActionsReady) return;
     actions.init();
-    actions.on('recent-dirs/reload', async (payload) => loadRecentDirs(payload?.reason || 'action'));
-    actions.on('recent-dirs/auto-refresh', async () => loadRecentDirs('auto'));
+    actions.on('recent-dirs/reload', async (payload) => safeLoadRecentDirs(payload?.reason || 'action'));
+    actions.on('recent-dirs/auto-refresh', async () => safeLoadRecentDirs('auto'));
     recentDirsActionsReady = true;
   }
 
@@ -896,6 +901,14 @@
   window.addEventListener('beforeunload', () => {
     if (recentDirsAutoTimer) clearInterval(recentDirsAutoTimer);
   });
+
+  async function safeLoadRecentDirs(reason) {
+    try {
+      await loadRecentDirs(reason);
+    } catch (error) {
+      console.warn('Recent directories refresh failed:', error);
+    }
+  }
 
   // ---- Stage helpers ----
 
@@ -1099,8 +1112,8 @@
       try {
       // Stage 1: Parallel fetch of recent_dirs.json + projects.json
       const [recentResp, projResp] = await Promise.allSettled([
-        fetch('./recent_dirs.json', { cache: 'reload' }),
-        fetch('./projects.json', { cache: 'reload' })
+        fetch('./recent_dirs.json', { cache: 'no-cache' }),
+        fetch('./projects.json', { cache: 'no-cache' })
       ]);
 
       if (recentResp.status === 'rejected' || !recentResp.value.ok) {
@@ -1228,7 +1241,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     initRecentDirsActions();
     setRecentDirsLastRefresh('Last refresh: pending');
-    loadRecentDirs('startup');
+    safeLoadRecentDirs('startup');
     startRecentDirsAutoRefresh();
   });
 
