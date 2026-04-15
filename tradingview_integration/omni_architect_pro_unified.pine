@@ -1,0 +1,312 @@
+//@version=5
+indicator("Omni-Architect: Unified Bayesian Engine [PRO+]", shorttitle="Omni-Arch v2+", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
+
+// ==========================================
+// --- REFINED TYPE ARCHITECTURE: OMNI-HIERARCHY ---
+// ==========================================
+
+type Node
+    float y
+    int x
+    label lbl
+
+type MetricSet
+    float atr_val
+    float skew_deg
+    float skew_rad
+    float slope_intensity
+
+type Point
+    int x
+    float y
+
+type VectorPath
+    Node origin
+    Node terminal
+    float slope
+    line ln_ref
+
+type ProjectionFan
+    VectorPath[] paths
+    int density
+    float spread
+    color fan_col
+
+type BayesianEngine
+    float posterior
+    int success_count
+    int total_events
+    bool is_validated
+
+type RiskProfile
+    float stop_price
+    float target_price
+    float rr_ratio
+
+type IntervalData
+    VectorPath main_v
+    ProjectionFan p_fan
+    BayesianEngine engine
+    RiskProfile risk
+    MetricSet metrics
+    int start_lk
+    int end_lk
+    color theme_col
+
+type HS_Pattern
+    Point[] pts
+    line[] lines
+    line neckline
+    line top_chan
+    label alert_lbl
+
+type GlobalManager
+    IntervalData[] slots
+    HS_Pattern hs_pat
+    MetricSet global_m
+    table dashboard
+    int active_slots
+
+f_safe_div(n, d, fallback) =>
+    d == 0 ? fallback : n / d
+
+f_clamp(v, lo, hi) =>
+    math.max(lo, math.min(hi, v))
+
+f_push_point(points_arr, x, y, max_size) =>
+    points_arr.push(Point.new(x, y))
+    while points_arr.size() > max_size
+        points_arr.shift()
+
+f_detect_hs(var HS_Pattern hs_pat, int pivot_left, int pivot_right, float tolerance_pct) =>
+    float ph = ta.pivothigh(high, pivot_left, pivot_right)
+    if not na(ph)
+        f_push_point(hs_pat.pts, bar_index - pivot_right, ph, 7)
+    has_hs = false
+    if hs_pat.pts.size() >= 3
+        p_l = hs_pat.pts.get(hs_pat.pts.size() - 3)
+        p_h = hs_pat.pts.get(hs_pat.pts.size() - 2)
+        p_r = hs_pat.pts.get(hs_pat.pts.size() - 1)
+        ls_ok = p_h.y > p_l.y
+        rs_ok = p_h.y > p_r.y
+        shoulder_diff = math.abs(p_l.y - p_r.y)
+        shoulder_ok = shoulder_diff <= (p_h.y * tolerance_pct * 0.01)
+        has_hs := ls_ok and rs_ok and shoulder_ok
+        if has_hs
+            neck_y = (p_l.y + p_r.y) * 0.5
+            line.set_xy1(hs_pat.neckline, p_l.x, neck_y)
+            line.set_xy2(hs_pat.neckline, p_r.x, neck_y)
+            label.set_x(hs_pat.alert_lbl, p_h.x)
+            label.set_y(hs_pat.alert_lbl, p_h.y)
+            label.set_text(hs_pat.alert_lbl, "H&S")
+            label.set_style(hs_pat.alert_lbl, label.style_label_down)
+    has_hs
+
+// ==========================================
+// --- USER INPUTS ---
+// ==========================================
+
+grp_pat = "Multi-Interval Structural Anchors"
+s_lk_l = input.int(120, "Long Start", minval=50, group=grp_pat)
+e_lk_l = input.int(15, "Long End", minval=5, group=grp_pat)
+s_lk_m = input.int(60, "Mid Start", minval=20, group=grp_pat)
+e_lk_m = input.int(5, "Mid End", minval=2, group=grp_pat)
+s_lk_s = input.int(15, "Short Start", minval=5, group=grp_pat)
+e_lk_s = input.int(2, "Short End", minval=0, group=grp_pat)
+
+grp_bay = "Bayesian Fan Configuration"
+l_dens = input.int(12, "Fan Line Density", minval=3, maxval=20, group=grp_bay)
+v_spread = input.float(0.85, "Vector Spread Sensitivity", minval=0.1, group=grp_bay)
+conf_lvl = input.int(60, "Min Confidence %", minval=1, maxval=100, group=grp_bay)
+htf_tf = input.timeframe("D", "HTF Trend Context", group=grp_bay)
+slope_intensity_min = input.float(0.0005, "Slope Intensity Min", minval=0.0, step=0.0001, group=grp_bay)
+
+grp_1bar = "1-Bar Bayesian Forecast"
+stdev_length = input.int(20, "StDev Length", minval=5, group=grp_1bar)
+stdev_mult = input.float(1.5, "StDev Multiplier", minval=0.1, group=grp_1bar)
+show_forecast_label = input.bool(true, "Show Forecast Label", group=grp_1bar)
+
+grp_hs = "Head & Shoulders Engine"
+hs_pivot_left = input.int(3, "Pivot Left", minval=1, maxval=10, group=grp_hs)
+hs_pivot_right = input.int(3, "Pivot Right", minval=1, maxval=10, group=grp_hs)
+hs_tolerance = input.float(2.0, "Shoulder Tolerance %", minval=0.1, step=0.1, group=grp_hs)
+
+grp_draw = "Drawing Engine Style"
+c_l = input.color(#00ffcc, "Color Macro", group=grp_draw)
+c_m = input.color(#00e6ff, "Color Meso", group=grp_draw)
+c_s = input.color(#0099ff, "Color Micro", group=grp_draw)
+bull_c = input.color(#00ffcc, "Bullish Pattern", group=grp_draw)
+bear_c = input.color(#ff3366, "Breakout/Target", group=grp_draw)
+
+// ==========================================
+// --- INITIALIZATION ---
+// ==========================================
+
+var GlobalManager GM = GlobalManager.new(array.new<IntervalData>(), HS_Pattern.new(array.new<Point>(), array.new<line>(), na, na, na), MetricSet.new(na, na, na, na), na, 0)
+var label forecast_lbl = na
+
+if barstate.isfirst
+    s_arr = array.from(s_lk_l, s_lk_m, s_lk_s)
+    e_arr = array.from(e_lk_l, e_lk_m, e_lk_s)
+    c_arr = array.from(c_l, c_m, c_s)
+
+    for i = 0 to 2
+        IntervalData slot = IntervalData.new(
+             main_v = VectorPath.new(Node.new(na, na, na), Node.new(na, na, na), 0.0, line.new(na, na, na, na, width=3)),
+             p_fan = ProjectionFan.new(array.new<VectorPath>(), l_dens, v_spread, c_arr.get(i)),
+             engine = BayesianEngine.new(0.0, 0, 0, false),
+             risk = RiskProfile.new(na, na, 0.0),
+             metrics = MetricSet.new(na, na, na, na),
+             start_lk = s_arr.get(i),
+             end_lk = e_arr.get(i),
+             theme_col = c_arr.get(i)
+             )
+        for j = 0 to l_dens - 1
+            slot.p_fan.paths.push(VectorPath.new(Node.new(na, na, na), Node.new(na, na, na), 0.0, line.new(na, na, na, na, style=line.style_dashed)))
+        GM.slots.push(slot)
+
+    for k = 0 to 5
+        GM.hs_pat.lines.push(line.new(na, na, na, na, color=bull_c, width=2))
+    GM.hs_pat.neckline := line.new(na, na, na, na, color=color.new(color.gray, 0), style=line.style_dashed)
+    GM.hs_pat.top_chan := line.new(na, na, na, na, color=color.new(color.gray, 75), style=line.style_dotted)
+    GM.hs_pat.alert_lbl := label.new(na, na, "", textcolor=color.white, style=label.style_none)
+
+// ==========================================
+// --- 1-BAR PREDICTIVE CORE (BAYESIAN) ---
+// ==========================================
+
+is_up = close > open
+is_down = close <= open
+
+count_up = ta.cum(is_up ? 1 : 0)
+count_down = ta.cum(is_down ? 1 : 0)
+total_bars = bar_index + 1
+prior_up = f_safe_div(count_up, total_bars, 0.5)
+
+green_after_green = ta.cum((is_up[1] and is_up) ? 1 : 0)
+green_after_red = ta.cum((is_down[1] and is_up) ? 1 : 0)
+prob_bullish = is_up ? f_safe_div(green_after_green, math.max(count_up, 1), 0.5) * prior_up : f_safe_div(green_after_red, math.max(count_down, 1), 0.5) * prior_up
+prob_bullish := f_clamp(prob_bullish, 0.0, 1.0)
+prob_bearish = 1.0 - prob_bullish
+confidence = math.max(prob_bullish, prob_bearish)
+weighted_magnitude = ta.stdev(close, stdev_length) * stdev_mult * (confidence + 0.5)
+
+if show_forecast_label and barstate.islast
+    if na(forecast_lbl)
+        forecast_lbl := label.new(bar_index, close, "", style=label.style_label_left, textcolor=color.white, color=color.new(color.black, 20))
+    dir_txt = prob_bullish >= prob_bearish ? "Bullish" : "Bearish"
+    label.set_x(forecast_lbl, bar_index)
+    label.set_y(forecast_lbl, close)
+    label.set_text(forecast_lbl, "1B " + dir_txt + " • " + str.tostring(confidence * 100.0, "#.#") + "% • Δ " + str.tostring(weighted_magnitude, "#.####"))
+
+// ==========================================
+// --- MULTI-INTERVAL STRUCTURAL CALCULATIONS ---
+// ==========================================
+
+GM.global_m.atr_val := ta.atr(14)
+htf_bullish = request.security(syminfo.tickerid, htf_tf, close > ta.ema(close, 200))
+hs_detected = f_detect_hs(GM.hs_pat, hs_pivot_left, hs_pivot_right, hs_tolerance)
+
+for i = 0 to GM.slots.size() - 1
+    IntervalData slot = GM.slots.get(i)
+    if bar_index > slot.start_lk
+        slot.main_v.origin.y := low[slot.start_lk]
+        slot.main_v.origin.x := bar_index - slot.start_lk
+        slot.main_v.terminal.y := high[slot.end_lk]
+        slot.main_v.terminal.x := bar_index - slot.end_lk
+
+        slot.main_v.slope := f_safe_div(slot.main_v.terminal.y - slot.main_v.origin.y, math.max(1, slot.main_v.terminal.x - slot.main_v.origin.x), 0.0)
+        slot.metrics.skew_rad := math.atan(slot.main_v.slope)
+        slot.metrics.skew_deg := math.todegrees(slot.metrics.skew_rad)
+        slot.metrics.atr_val := GM.global_m.atr_val
+        slot.metrics.slope_intensity := math.abs(slot.main_v.slope) / math.max(slot.metrics.atr_val, syminfo.mintick)
+
+        local_bullish = slot.main_v.slope > 0
+        is_aligned = (htf_bullish and local_bullish) or (not htf_bullish and not local_bullish)
+        intense_enough = slot.metrics.slope_intensity >= slope_intensity_min
+
+        if intense_enough
+            slot.engine.total_events += 1
+            if is_aligned
+                slot.engine.success_count += 1
+            slot.engine.posterior := f_safe_div(slot.engine.success_count, math.max(slot.engine.total_events, 1), 0.0) * 100.0
+            slot.engine.is_validated := slot.engine.posterior >= conf_lvl
+
+        risk_span = slot.metrics.atr_val * (0.8 + i * 0.3)
+        slot.risk.stop_price := close - risk_span
+        slot.risk.target_price := close + (risk_span * (1.5 + confidence))
+        slot.risk.rr_ratio := f_safe_div(slot.risk.target_price - close, close - slot.risk.stop_price, 0.0)
+
+// ==========================================
+// --- RENDER ENGINE ---
+// ==========================================
+
+if barstate.islast
+    GM.active_slots := 0
+    for i = 0 to GM.slots.size() - 1
+        id = GM.slots.get(i)
+        p1_y = low[id.start_lk]
+        p1_x = bar_index - id.start_lk
+        p2_y = high[id.end_lk]
+        p2_x = bar_index - id.end_lk
+
+        line.set_xy1(id.main_v.ln_ref, p1_x, p1_y)
+        line.set_xy2(id.main_v.ln_ref, p2_x, p2_y)
+        line.set_color(id.main_v.ln_ref, id.theme_col)
+
+        if id.engine.is_validated
+            GM.active_slots += 1
+            for j = 0 to id.p_fan.density - 1
+                vp = id.p_fan.paths.get(j)
+                variance = (j - (id.p_fan.density - 1) / 2.0) * id.p_fan.spread
+                f_slope = id.main_v.slope + (variance * syminfo.mintick * 40)
+                line.set_xy1(vp.ln_ref, p2_x, p2_y)
+                line.set_xy2(vp.ln_ref, p2_x + 40, p2_y + (f_slope * 40))
+                line.set_color(vp.ln_ref, color.new(id.theme_col, 70))
+        else
+            for j = 0 to id.p_fan.density - 1
+                vp = id.p_fan.paths.get(j)
+                line.set_xy1(vp.ln_ref, na, na)
+                line.set_xy2(vp.ln_ref, na, na)
+
+    if GM.hs_pat.pts.size() >= 3
+        p_l = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 3)
+        p_h = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 2)
+        p_r = GM.hs_pat.pts.get(GM.hs_pat.pts.size() - 1)
+        line.set_xy1(GM.hs_pat.lines.get(0), p_l.x, p_l.y)
+        line.set_xy2(GM.hs_pat.lines.get(0), p_h.x, p_h.y)
+        line.set_xy1(GM.hs_pat.lines.get(1), p_h.x, p_h.y)
+        line.set_xy2(GM.hs_pat.lines.get(1), p_r.x, p_r.y)
+        line.set_color(GM.hs_pat.lines.get(0), hs_detected ? bear_c : bull_c)
+        line.set_color(GM.hs_pat.lines.get(1), hs_detected ? bear_c : bull_c)
+        line.set_xy1(GM.hs_pat.top_chan, p_l.x, math.max(p_l.y, p_r.y))
+        line.set_xy2(GM.hs_pat.top_chan, p_r.x, math.max(p_l.y, p_r.y))
+
+    if na(GM.dashboard)
+        GM.dashboard := table.new(position.bottom_right, 6, 5, bgcolor=color.new(color.black, 70), border_width=1)
+
+    table.cell(GM.dashboard, 0, 0, "ENGINE", text_color=color.white)
+    table.cell(GM.dashboard, 1, 0, "CONF", text_color=color.white)
+    table.cell(GM.dashboard, 2, 0, "SKEW°", text_color=color.white)
+    table.cell(GM.dashboard, 3, 0, "INT", text_color=color.white)
+    table.cell(GM.dashboard, 4, 0, "R/R", text_color=color.white)
+    table.cell(GM.dashboard, 5, 0, "VALID", text_color=color.white)
+
+    for i = 0 to 2
+        s = GM.slots.get(i)
+        table.cell(GM.dashboard, 0, i + 1, i == 0 ? "MACRO" : i == 1 ? "MESO" : "MICRO", text_color=s.theme_col)
+        table.cell(GM.dashboard, 1, i + 1, str.tostring(s.engine.posterior, "#.#") + "%", text_color=color.white)
+        table.cell(GM.dashboard, 2, i + 1, str.tostring(s.metrics.skew_deg, "#.##"), text_color=color.white)
+        table.cell(GM.dashboard, 3, i + 1, str.tostring(s.metrics.slope_intensity, "#.####"), text_color=color.white)
+        table.cell(GM.dashboard, 4, i + 1, str.tostring(s.risk.rr_ratio, "#.##"), text_color=color.white)
+        table.cell(GM.dashboard, 5, i + 1, s.engine.is_validated ? "YES" : "NO", text_color=s.engine.is_validated ? bull_c : color.gray)
+
+    table.cell(GM.dashboard, 0, 4, "ACTIVE", text_color=color.white)
+    table.cell(GM.dashboard, 1, 4, str.tostring(GM.active_slots), text_color=color.white)
+    table.cell(GM.dashboard, 2, 4, "HTF", text_color=color.white)
+    table.cell(GM.dashboard, 3, 4, htf_bullish ? "BULL" : "BEAR", text_color=htf_bullish ? bull_c : bear_c)
+    table.cell(GM.dashboard, 4, 4, "H&S", text_color=color.white)
+    table.cell(GM.dashboard, 5, 4, hs_detected ? "DETECTED" : "IDLE", text_color=hs_detected ? bear_c : color.gray)
+
+// Supplemental unit-consistency example:
+// price_change_per_bar = math.tan(math.toradians(slot.metrics.skew_deg))
