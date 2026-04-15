@@ -12,6 +12,11 @@ import math
 import os
 import sys
 import unittest
+import tempfile
+import json
+import gzip
+import sqlite3
+from pathlib import Path
 
 import numpy as np
 
@@ -27,6 +32,7 @@ from market_predictor import (
     TechnicalIndicators,
     BlackScholesModel,
     MonteCarloEngine,
+    MarketDataLoader,
 )
 
 
@@ -227,6 +233,68 @@ class TestMonteCarloEngine(unittest.TestCase):
         paths1 = self._engine().simulate_paths(30)
         paths2 = self._engine().simulate_paths(30)
         np.testing.assert_array_equal(paths1, paths2)
+
+
+class TestMarketDataLoader(unittest.TestCase):
+
+    def test_parse_price_from_scrape_text(self):
+        self.assertAlmostEqual(MarketDataLoader._parse_price("$1,234.56"), 1234.56)
+        self.assertAlmostEqual(MarketDataLoader._parse_price(" 987.65 "), 987.65)
+        self.assertIsNone(MarketDataLoader._parse_price("N/A"))
+
+    def test_load_market_series_merges_yf_and_scrape(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "data" / "indices").mkdir(parents=True, exist_ok=True)
+            (root / "scrape").mkdir(parents=True, exist_ok=True)
+
+            # yfinance JSON .dat artifact
+            yf_payload = {
+                "ticker": "SPY",
+                "ohlcv": [
+                    {"date": "2026-01-01", "close": 600.0},
+                    {"date": "2026-01-02", "close": 602.0},
+                    {"date": "2026-01-03", "close": 604.0},
+                ],
+            }
+            (root / "data" / "indices" / "spy.dat").write_text(json.dumps(yf_payload), encoding="utf-8")
+
+            # scrape finance.db.gz artifact
+            db_path = root / "scrape" / "finance.db"
+            with sqlite3.connect(db_path) as conn:
+                conn.execute(
+                    """
+                    CREATE TABLE prices (
+                        id INTEGER PRIMARY KEY,
+                        ticker TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        price TEXT NOT NULL,
+                        scraped_at TIMESTAMP NOT NULL
+                    )
+                    """
+                )
+                conn.execute(
+                    "INSERT INTO prices (ticker, name, price, scraped_at) VALUES (?, ?, ?, ?)",
+                    ("SPY", "SPDR S&P 500 ETF Trust", "$605.10", "2026-01-03 10:00:00"),
+                )
+                conn.execute(
+                    "INSERT INTO prices (ticker, name, price, scraped_at) VALUES (?, ?, ?, ?)",
+                    ("SPY", "SPDR S&P 500 ETF Trust", "$606.20", "2026-01-03 10:15:00"),
+                )
+                conn.commit()
+
+            with open(db_path, "rb") as f_in, gzip.open(root / "scrape" / "finance.db.gz", "wb") as f_out:
+                f_out.write(f_in.read())
+
+            loader = MarketDataLoader(root)
+            series, metadata = loader.load_market_series("SPY")
+
+            self.assertGreaterEqual(len(series), 5)
+            self.assertAlmostEqual(series[-1], 606.20, places=2)
+            self.assertIn("data/*/*.dat", metadata["source_chain"])
+            self.assertIn("scrape/finance.db.gz", metadata["source_chain"])
+            self.assertEqual(metadata["yfinance_points"], 3)
+            self.assertEqual(metadata["scrape_points"], 2)
 
 
 if __name__ == "__main__":

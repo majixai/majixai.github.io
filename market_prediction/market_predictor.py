@@ -26,8 +26,12 @@ import os
 import json
 import requests
 import math
+import gzip
+import sqlite3
+import re
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
+from pathlib import Path
 
 # ============================================================================
 # CONFIGURATION & CONSTANTS
@@ -41,6 +45,168 @@ RISK_FREE_RATE = 0.0525  # 5.25% annual risk-free rate
 DEFAULT_TICKER = "SPY"
 DEFAULT_SIMULATIONS = 1000
 DEFAULT_VOLATILITY = 0.18  # 18% annualized volatility
+
+
+class MarketDataLoader:
+    """Loads and merges real market data from yfinance artifacts and scrape database."""
+
+    def __init__(self, repo_root: Path):
+        self.repo_root = repo_root
+
+    def load_market_series(self, ticker: str) -> Tuple[np.ndarray, Dict[str, object]]:
+        """
+        Load market price series for a ticker.
+
+        Priority:
+        1) yfinance JSON `.dat` artifacts under `data/`
+        2) yfinance compressed SQLite `yfinance_data/yfinance.dat`
+        3) scrape compressed SQLite `scrape/finance.db.gz` (for latest/recent prices)
+        """
+        symbol = ticker.upper()
+        metadata: Dict[str, object] = {
+            "ticker": symbol,
+            "source_chain": [],
+            "yfinance_points": 0,
+            "scrape_points": 0,
+            "used_fallback": False,
+        }
+
+        yf_series = self._load_yfinance_json_series(symbol)
+        if len(yf_series) == 0:
+            yf_series = self._load_yfinance_sqlite_series(symbol)
+            if len(yf_series):
+                metadata["source_chain"].append("yfinance_data/yfinance.dat")
+        else:
+            metadata["source_chain"].append("data/*/*.dat")
+        metadata["yfinance_points"] = int(len(yf_series))
+
+        scrape_series = self._load_scrape_series(symbol)
+        if len(scrape_series):
+            metadata["source_chain"].append("scrape/finance.db.gz")
+        metadata["scrape_points"] = int(len(scrape_series))
+
+        merged = yf_series.copy()
+        if len(scrape_series):
+            if len(merged):
+                merged = np.concatenate([merged, scrape_series])
+            else:
+                merged = scrape_series
+
+        if len(merged) > 390:
+            merged = merged[-390:]
+
+        return merged.astype(float), metadata
+
+    def _load_yfinance_json_series(self, ticker: str) -> np.ndarray:
+        candidates = [
+            self.repo_root / "data" / "indices" / f"{self._normalize_symbol(ticker)}.dat",
+            self.repo_root / "data" / "fortune500" / f"{self._normalize_symbol(ticker)}.dat",
+            self.repo_root / "data" / "crypto" / f"{self._normalize_symbol(ticker)}.dat",
+        ]
+
+        for file_path in candidates:
+            if not file_path.exists():
+                continue
+            try:
+                payload = json.loads(file_path.read_text(encoding="utf-8"))
+                ohlcv = payload.get("ohlcv", [])
+                closes = [
+                    float(row.get("close"))
+                    for row in ohlcv
+                    if isinstance(row, dict) and row.get("close") is not None
+                ]
+                if closes:
+                    return np.array(closes, dtype=float)
+            except (OSError, json.JSONDecodeError, TypeError, ValueError):
+                continue
+
+        return np.array([], dtype=float)
+
+    def _load_yfinance_sqlite_series(self, ticker: str) -> np.ndarray:
+        dat_file = self.repo_root / "yfinance_data" / "yfinance.dat"
+        if not dat_file.exists():
+            return np.array([], dtype=float)
+
+        tmp_db = self.repo_root / "yfinance_data" / "temp_market_prediction_yf.db"
+        try:
+            with gzip.open(dat_file, "rb") as f_in, open(tmp_db, "wb") as f_out:
+                f_out.write(f_in.read())
+
+            with sqlite3.connect(str(tmp_db)) as conn:
+                rows = conn.execute(
+                    """
+                    SELECT Close
+                    FROM prices
+                    WHERE UPPER(Ticker) = UPPER(?)
+                      AND Close IS NOT NULL
+                    ORDER BY Date
+                    """,
+                    (ticker,),
+                ).fetchall()
+            closes = [float(r[0]) for r in rows if r[0] is not None]
+            return np.array(closes, dtype=float)
+        except (OSError, sqlite3.DatabaseError, ValueError, TypeError):
+            return np.array([], dtype=float)
+        finally:
+            try:
+                if tmp_db.exists():
+                    tmp_db.unlink()
+            except OSError:
+                pass
+
+    def _load_scrape_series(self, ticker: str) -> np.ndarray:
+        db_file = self.repo_root / "scrape" / "finance.db.gz"
+        if not db_file.exists():
+            return np.array([], dtype=float)
+
+        tmp_db = self.repo_root / "scrape" / "temp_market_prediction_scrape.db"
+        try:
+            with gzip.open(db_file, "rb") as f_in, open(tmp_db, "wb") as f_out:
+                f_out.write(f_in.read())
+
+            with sqlite3.connect(str(tmp_db)) as conn:
+                rows = conn.execute(
+                    """
+                    SELECT price
+                    FROM prices
+                    WHERE UPPER(ticker) = UPPER(?)
+                    ORDER BY scraped_at
+                    """,
+                    (ticker,),
+                ).fetchall()
+
+            parsed = []
+            for row in rows:
+                value = self._parse_price(row[0] if row else None)
+                if value is not None:
+                    parsed.append(value)
+            return np.array(parsed, dtype=float)
+        except (OSError, sqlite3.DatabaseError):
+            return np.array([], dtype=float)
+        finally:
+            try:
+                if tmp_db.exists():
+                    tmp_db.unlink()
+            except OSError:
+                pass
+
+    @staticmethod
+    def _parse_price(value: Optional[object]) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        cleaned = re.sub(r"[^0-9.\-]", "", str(value))
+        if cleaned in {"", ".", "-", "-.", ".-"}:
+            return None
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        return symbol.strip().lower().replace("^", "").replace("-", "_")
 
 
 class TechnicalIndicators:
@@ -283,17 +449,43 @@ class MarketPredictor:
     def __init__(self, ticker: str = DEFAULT_TICKER, current_price: Optional[float] = None,
                  simulations: int = DEFAULT_SIMULATIONS):
         self.ticker = ticker
-        self.current_price = current_price or self._get_simulated_price()
         self.simulations = simulations
         self.sigma = DEFAULT_VOLATILITY
         self.timestamp = datetime.now()
+        self.repo_root = Path(__file__).resolve().parents[1]
+        self.data_loader = MarketDataLoader(self.repo_root)
         
         # Initialize components
         self.indicators = TechnicalIndicators()
         self.bsm = BlackScholesModel()
-        
-        # Generate synthetic historical prices for indicator calculations
-        self.historical_prices = self._generate_synthetic_history()
+
+        # Load real data (yfinance + scrape), with synthetic fallback
+        self.historical_prices, self.data_sources = self.data_loader.load_market_series(self.ticker)
+
+        if current_price is not None:
+            self.current_price = float(current_price)
+            self.data_sources["current_price_source"] = "environment_override"
+        elif len(self.historical_prices):
+            self.current_price = float(self.historical_prices[-1])
+            self.data_sources["current_price_source"] = (
+                "scrape" if self.data_sources.get("scrape_points", 0) else "yfinance"
+            )
+        else:
+            self.current_price = self._get_simulated_price()
+            self.historical_prices = self._generate_synthetic_history()
+            self.data_sources["used_fallback"] = True
+            self.data_sources["source_chain"] = ["synthetic_fallback"]
+            self.data_sources["current_price_source"] = "synthetic_fallback"
+
+        # Ensure we always have a usable series for indicators
+        if len(self.historical_prices) < 15:
+            self.historical_prices = self._generate_synthetic_history()
+            self.historical_prices[-1] = self.current_price
+            self.data_sources["used_fallback"] = True
+            if "synthetic_fallback" not in self.data_sources.get("source_chain", []):
+                self.data_sources.setdefault("source_chain", []).append("synthetic_fallback")
+        else:
+            self.historical_prices[-1] = self.current_price
     
     def _get_simulated_price(self) -> float:
         """Get a simulated current price for the ticker."""
@@ -406,6 +598,7 @@ class MarketPredictor:
             "timestamp": self.timestamp.isoformat(),
             "current_price": round(self.current_price, 2),
             "forecast_minutes": forecast_minutes,
+            "data_sources": self.data_sources,
             "simulation": {
                 "paths": paths.tolist(),  # For chart generation
                 "statistics": stats,
@@ -471,12 +664,33 @@ class MarketPredictor:
             signal = "BEARISH"
         else:
             signal = "NEUTRAL"
+
+        actions: List[str] = []
+        if signal == "BULLISH":
+            actions.append("Bias long entries near support and scale out toward resistance.")
+        elif signal == "BEARISH":
+            actions.append("Bias defensive or short setups near resistance and reduce downside exposure.")
+        else:
+            actions.append("Stay range-aware and prioritize mean-reversion until directional confirmation.")
+
+        if rsi < 30:
+            actions.append("RSI is oversold; monitor for reversal confirmation before increasing risk.")
+        elif rsi > 70:
+            actions.append("RSI is overbought; tighten risk controls and watch for momentum exhaustion.")
+        else:
+            actions.append("RSI is neutral; align entries with volatility bands and trend context.")
+
+        if stats["std"] / max(self.current_price, 1e-9) > 0.015:
+            actions.append("Volatility is elevated; use smaller position sizing and wider stop placement.")
+        else:
+            actions.append("Volatility is moderate; standard risk sizing is appropriate.")
         
         return {
             "signal": signal,
             "score": score,
             "confidence": min(abs(score) / 4 * 100, 95),
             "reasons": reasons,
+            "actions": actions,
             "target_price": round(stats["mean"], 2),
             "support": round(stats["p25"], 2),
             "resistance": round(stats["p75"], 2)
@@ -702,6 +916,12 @@ def main():
     print(f"Support:         ${prediction_data['prediction']['support']:.2f}")
     print(f"Resistance:      ${prediction_data['prediction']['resistance']:.2f}")
     print(f"Volatility (σ):  {prediction_data['simulation']['volatility']*100:.2f}%")
+    print(f"Data Sources:    {', '.join(prediction_data.get('data_sources', {}).get('source_chain', [])) or 'N/A'}")
+    print(f"Current Source:  {prediction_data.get('data_sources', {}).get('current_price_source', 'N/A')}")
+    if prediction_data["prediction"].get("actions"):
+        print("Actions:")
+        for idx, action in enumerate(prediction_data["prediction"]["actions"], 1):
+            print(f"  {idx}. {action}")
     print("=" * 60)
     
     # Send webhook notification if configured

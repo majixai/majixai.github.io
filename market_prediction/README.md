@@ -7,6 +7,7 @@ A sophisticated market prediction system utilizing advanced quantitative finance
 ## 🚀 Features
 
 - **Real-time Predictions**: Automated predictions every minute via GitHub Actions webhook
+- **Real Data Inputs**: Uses pre-fetched yfinance artifacts (`data/*/*.dat` and `yfinance_data/yfinance.dat`) plus `scrape/finance.db.gz` for latest scraped prices
 - **Monte Carlo Simulation**: 1000+ price path simulations using Geometric Brownian Motion (GBM)
 - **Black-Scholes-Merton Model**: Options-implied volatility and Greek calculations
 - **Technical Indicators**: RSI, MACD, Bollinger Bands analysis
@@ -99,6 +100,8 @@ The GitHub Action runs:
 The prediction generates:
 - PNG chart with 3 visualizations
 - JSON file with detailed metrics
+- Data source metadata (which yfinance/scrape sources were used)
+- Actionable signal guidance in `prediction.actions`
 - Optional webhook notification
 
 ## 📜 License
