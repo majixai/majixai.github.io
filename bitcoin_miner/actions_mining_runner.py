@@ -33,10 +33,17 @@ def _load_integrations() -> dict:
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
 
+    np = None
     try:
         import numpy as np  # noqa: PLC0415
+    except Exception as exc:  # pragma: no cover - best-effort import path
+        status["details"]["numpy_error"] = str(exc)
+
+    try:
         from tensor.financial import build_feature_matrix, compute_var  # noqa: PLC0415
 
+        if np is None:
+            raise RuntimeError("numpy unavailable for tensor.financial")
         prices = np.linspace(65000.0, 66500.0, num=80, dtype=np.float64)
         features = build_feature_matrix(prices)
         var = compute_var(prices, confidence=0.95)
@@ -49,7 +56,8 @@ def _load_integrations() -> dict:
         status["details"]["tensor_financial_error"] = str(exc)
 
     try:
-        import numpy as np  # noqa: PLC0415
+        if np is None:
+            raise RuntimeError("numpy unavailable for neural forecaster")
 
         module_path = REPO_ROOT / "yfinance_data" / "models" / "neural_forecaster.py"
         spec = importlib.util.spec_from_file_location("actions_neural_forecaster", module_path)
