@@ -807,6 +807,13 @@
       .replace(/'/g, '&#39;');
   }
 
+  function sanitizeRelativePath(path) {
+    const raw = String(path || '').trim().replace(/^\/+/, '');
+    if (!raw) return '/';
+    if (!/^[a-zA-Z0-9._\-/]+$/.test(raw)) return '/';
+    return `/${raw}`;
+  }
+
   function relativeTime(isoDate) {
     if (!isoDate) return '';
     const diff = Date.now() - new Date(isoDate).getTime();
@@ -1010,7 +1017,7 @@
     const repoDirLink = repoPath
       ? `https://github.com/majixai/majixai.github.io/tree/main/${repoPath}`
       : 'https://github.com/majixai/majixai.github.io';
-    const liveSiteLink = relativePath || '/';
+    const liveSiteLink = sanitizeRelativePath(relativePath);
     const links = `<div class="recent-dir-links">
       <a class="recent-dir-link" href="${escHtml(repoDirLink)}" target="_blank" rel="noopener"><i class="fab fa-github me-1"></i>Dir</a>
       <a class="recent-dir-link" href="${escHtml(liveSiteLink)}" target="_blank" rel="noopener"><i class="fas fa-globe me-1"></i>Site</a>
@@ -1043,7 +1050,7 @@
 
     return `<li class="recent-dir-item" data-name="${escHtml(d.name.toLowerCase())}" data-cat="${escHtml(cat.toLowerCase())}" data-date="${escHtml(d.lastCommitDate || '')}">
       <div class="recent-dir-header">
-        <a class="recent-dir-name" href="${escHtml(d.path)}">
+        <a class="recent-dir-name" href="${escHtml(sanitizeRelativePath(d.path))}">
           <i class="fas fa-folder me-1"></i>${escHtml(d.name)}
         </a>
         ${newBadge}${catBadge}
@@ -1092,8 +1099,8 @@
       try {
       // Stage 1: Parallel fetch of recent_dirs.json + projects.json
       const [recentResp, projResp] = await Promise.allSettled([
-        fetch('./recent_dirs.json', { cache: 'no-cache' }),
-        fetch('./projects.json', { cache: 'no-cache' })
+        fetch('./recent_dirs.json', { cache: 'reload' }),
+        fetch('./projects.json', { cache: 'reload' })
       ]);
 
       if (recentResp.status === 'rejected' || !recentResp.value.ok) {
