@@ -36,6 +36,12 @@
     <div class="app-container">
         <div class="header-controls">
             <h1>Room Viewer</h1>
+            <div class="enhancement-status-bar">
+                <span id="scoreStatusIndicator" class="enhancement-pill">Score: viewers</span>
+                <span id="gpuStatusIndicator" class="enhancement-pill">GPU: checking</span>
+                <button id="recordToggleButton" class="enhancement-pill enhancement-record-btn" type="button">⏺ Record</button>
+                <span id="recordingStatusIndicator" class="enhancement-pill">REC idle</span>
+            </div>
             <div class="layout-toggle-group">
                 <button class="layout-btn" id="layoutPerformers" title="Performers only">👥</button>
                 <button class="layout-btn active" id="layoutSplit" title="Split view">⊞</button>
@@ -231,6 +237,7 @@
     <script src="storage.js"></script>
     <script src="model.js"></script>
     <script src="/iframe-picker/iframe-open-controls.js"></script>
+    <script src="../../screen_recorder/shared-recorder.js"></script>
     <script src="ui.js"></script>
     <script src="/tensor/vision/tensor-similarity.js"></script>
     <script src="vision.js"></script>

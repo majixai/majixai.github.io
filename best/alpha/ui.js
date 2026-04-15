@@ -48,6 +48,8 @@ class UIManager {
         const removeButtonHTML = listType === 'previous' ? '<button class="remove-user-btn w3-button w3-tiny w3-red w3-hover-dark-grey w3-circle" title="Remove from history">×</button>' : '';
         const openIframeButtonHTML = window.IframeOpenControls?.buildOpenButtonHTML({ title: 'Open in iframe' }) || '<button type="button" class="open-iframe-btn" title="Open in iframe" aria-label="Open in iframe">📺</button>';
         const clickCount = getUserClickCountCallback(user.username);
+        const scoreInfo = Number.isFinite(user.relevanceScore) ? ` | Score: ${Number(user.relevanceScore).toFixed(2)}` : '';
+        const gpuInfo = Number.isFinite(user.gpuScore) ? ` | GPU: ${Number(user.gpuScore).toFixed(1)}` : '';
 
         let birthdayProximityHTMLString = '';
         if (typeof getDaysSinceOrUntil18thBirthdayCallback === 'function') {
@@ -96,7 +98,7 @@ class UIManager {
             </div>
             <div class="user-details w3-container w3-padding-small">
                 <p class="username w3-large">${user.username} ${newBadge}</p>
-                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}</small></p>
+                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
                 ${birthdayProximityHTMLString}
                 ${socialMediaHTML}
                 <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
