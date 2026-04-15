@@ -397,6 +397,17 @@
       gap: 0.3rem;
       flex-wrap: wrap;
     }
+    .recent-dir-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      font-size: 0.78rem;
+    }
+    .recent-dir-link {
+      color: var(--secondary-color);
+      text-decoration: none;
+    }
+    .recent-dir-link:hover { text-decoration: underline; }
     .recent-dir-sha-link {
       color: #888;
       text-decoration: none;
@@ -452,6 +463,15 @@
       color: #aaa;
       font-style: italic;
       font-size: 0.9rem;
+    }
+    .recent-dirs-refresh-meta {
+      font-size: 0.78rem;
+      color: #6c7b91;
+      margin-bottom: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
     }
     /* Loading progress bar */
     .recent-dirs-progress {
@@ -718,6 +738,10 @@
   <!-- Recently Edited Directories -->
   <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
     <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
+    <div class="recent-dirs-refresh-meta">
+      <span><i class="fas fa-arrows-rotate me-1"></i>Auto-refresh every minute</span>
+      <span id="recentDirsLastRefresh">Last refresh: --</span>
+    </div>
     <div class="recent-dirs-progress" id="recentDirsProgress" aria-live="polite" aria-label="Loading progress">
       <div class="recent-dirs-progress-label">
         <span id="recentDirsProgressLabel">Initializing&hellip;</span>
@@ -752,6 +776,16 @@
     <p><small>Version: <span id="appVersion">2.0.0</span> | <a href="https://github.com/majixai" target="_blank" rel="noopener noreferrer">GitHub</a></small></p>
   </footer>
 
+  <script>
+    window.ACTIONS_CONFIG = {
+      namespace: 'majix-index',
+      persistHistory: true,
+      storageKey: 'majix-index-actions',
+      historyLimit: 150,
+      logToConsole: false
+    };
+  </script>
+  <script src="/actions/actions-core.js"></script>
   <script>
   /**
    * MajixAI Project Directory - Enhanced Index Page
@@ -808,6 +842,48 @@
     // Progress bar: render-stage range (start% to start%+range%)
     RENDER_STAGE_START: 66,
     RENDER_STAGE_RANGE: 24
+  });
+  const RECENT_DIRS_REFRESH_MS = 60 * 1000;
+  let recentDirsAutoTimer = null;
+  let recentDirsLoadInFlight = null;
+  let recentDirsActionsReady = false;
+
+  function getMajixActions() {
+    return (typeof window !== 'undefined' && window.MajixActions) ? window.MajixActions : null;
+  }
+
+  function dispatchRecentDirsAction(type, payload = {}, meta = {}) {
+    const actions = getMajixActions();
+    if (!actions) return;
+    try { actions.dispatch(type, payload, meta); } catch (_) {}
+  }
+
+  function setRecentDirsLastRefresh(label) {
+    const el = document.getElementById('recentDirsLastRefresh');
+    if (!el) return;
+    const text = label || `Last refresh: ${new Date().toLocaleTimeString()}`;
+    el.textContent = text;
+  }
+
+  function initRecentDirsActions() {
+    const actions = getMajixActions();
+    if (!actions || recentDirsActionsReady) return;
+    actions.init();
+    actions.on('recent-dirs/reload', async (payload) => loadRecentDirs(payload?.reason || 'action'));
+    actions.on('recent-dirs/auto-refresh', async () => loadRecentDirs('auto'));
+    recentDirsActionsReady = true;
+  }
+
+  function startRecentDirsAutoRefresh() {
+    if (recentDirsAutoTimer) clearInterval(recentDirsAutoTimer);
+    recentDirsAutoTimer = setInterval(() => {
+      dispatchRecentDirsAction('recent-dirs/auto-refresh', { intervalMs: RECENT_DIRS_REFRESH_MS });
+      loadRecentDirs('auto');
+    }, RECENT_DIRS_REFRESH_MS);
+  }
+
+  window.addEventListener('beforeunload', () => {
+    if (recentDirsAutoTimer) clearInterval(recentDirsAutoTimer);
   });
 
   // ---- Stage helpers ----
@@ -925,6 +1001,16 @@
     const desc = proj && proj.desc && proj.desc !== 'No description'
       ? `<div class="recent-dir-desc" title="${escHtml(proj.desc)}">${escHtml(proj.desc)}</div>`
       : '';
+    const relativePath = String(d.path || '').replace(/^\/+/, '');
+    const repoPath = relativePath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+    const repoDirLink = repoPath
+      ? `https://github.com/majixai/majixai.github.io/tree/main/${repoPath}`
+      : 'https://github.com/majixai/majixai.github.io';
+    const liveSiteLink = relativePath || '/';
+    const links = `<div class="recent-dir-links">
+      <a class="recent-dir-link" href="${escHtml(repoDirLink)}" target="_blank" rel="noopener"><i class="fab fa-github me-1"></i>Dir</a>
+      <a class="recent-dir-link" href="${escHtml(liveSiteLink)}" target="_blank" rel="noopener"><i class="fas fa-globe me-1"></i>Site</a>
+    </div>`;
 
     // Recommended Upgrades section (always visible, inline pills)
     const projRecs = proj && Array.isArray(proj.recommendations) ? proj.recommendations : [];
@@ -937,7 +1023,7 @@
     const detailsId  = `rdDetails-${idx}`;
     const expandBtn  = hasDetails
       ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" aria-label="Show recommendations and enhancements for ${escHtml(d.name)}" onclick="toggleRecentDirDetails('${detailsId}', this)">
-           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Recommendations &amp; Enhancements
+           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Future Recs &amp; Enhancements
          </button>`
       : '';
     let detailsHtml = '';
@@ -962,6 +1048,7 @@
         <span title="${absDate}"><i class="fas fa-clock me-1" style="opacity:0.55"></i>${escHtml(rel || absDate)}</span>
         ${shaLink ? `<span>&bull;</span>${shaLink}` : ''}
       </div>
+      ${links}
       ${desc}
       ${msg}
       ${upgradesSection}
@@ -991,15 +1078,18 @@
 
   // ---- Main loader (5-stage async pipeline) ----
 
-  async function loadRecentDirs() {
-    const list = document.getElementById('recentDirsList');
-    if (!list) return;
-    setRecentDirsProgress('Fetching directory data…', 10);
-    try {
+  async function loadRecentDirs(reason = 'manual') {
+    if (recentDirsLoadInFlight) return recentDirsLoadInFlight;
+    recentDirsLoadInFlight = (async () => {
+      const list = document.getElementById('recentDirsList');
+      if (!list) return;
+      dispatchRecentDirsAction('recent-dirs/load-started', { reason });
+      setRecentDirsProgress('Fetching directory data…', 10);
+      try {
       // Stage 1: Parallel fetch of recent_dirs.json + projects.json
       const [recentResp, projResp] = await Promise.allSettled([
-        fetch('./recent_dirs.json'),
-        fetch('./projects.json')
+        fetch(`./recent_dirs.json?_=${Date.now()}`, { cache: 'no-store' }),
+        fetch(`./projects.json?_=${Date.now()}`, { cache: 'no-store' })
       ]);
 
       if (recentResp.status === 'rejected' || !recentResp.value.ok) {
@@ -1011,6 +1101,8 @@
       const dirs = await recentResp.value.json();
       if (!Array.isArray(dirs) || dirs.length === 0) {
         list.innerHTML = '<li class="recent-dirs-empty">No recently edited directories found.</li>';
+        setRecentDirsLastRefresh();
+        dispatchRecentDirsAction('recent-dirs/load-empty', { reason });
         setRecentDirsProgress('Done', 100);
         return;
       }
@@ -1060,14 +1152,24 @@
       }
 
       const searchInput = document.getElementById('recentDirsSearch');
-      if (searchInput) searchInput.addEventListener('input', applyRecentDirsFilters);
+      if (searchInput) searchInput.oninput = applyRecentDirsFilters;
       const sortSelect = document.getElementById('recentDirsSort');
-      if (sortSelect) sortSelect.addEventListener('change', applyRecentDirsFilters);
+      if (sortSelect) sortSelect.onchange = applyRecentDirsFilters;
 
+      setRecentDirsLastRefresh();
+      dispatchRecentDirsAction('recent-dirs/load-success', { reason, total: dirs.length });
       setRecentDirsProgress('Done', 100);
     } catch (e) {
       list.innerHTML = '<li class="recent-dirs-empty">Could not load recently edited directories.</li>';
+      setRecentDirsLastRefresh('Last refresh: failed');
+      dispatchRecentDirsAction('recent-dirs/load-failed', { reason, error: String(e?.message || e) });
       setRecentDirsProgress('Error', 100);
+    }
+    })();
+    try {
+      return await recentDirsLoadInFlight;
+    } finally {
+      recentDirsLoadInFlight = null;
     }
   }
 
@@ -1111,7 +1213,12 @@
     visible.forEach(li => list.appendChild(li));
   }
 
-  document.addEventListener('DOMContentLoaded', loadRecentDirs);
+  document.addEventListener('DOMContentLoaded', () => {
+    initRecentDirsActions();
+    setRecentDirsLastRefresh('Last refresh: pending');
+    loadRecentDirs('startup');
+    startRecentDirsAutoRefresh();
+  });
 
   // ============================================================================
   // IIFE Module: Configuration & Constants
@@ -1887,6 +1994,9 @@
 
       // Refresh data
       document.getElementById('refreshData')?.addEventListener('click', async () => {
+        dispatchRecentDirsAction('projects/refresh-requested', { source: 'refresh-button' });
+        dispatchRecentDirsAction('recent-dirs/reload', { reason: 'refresh-button' });
+        await loadRecentDirs('refresh-button');
         await this.#storage.delete(MajixConfig.cacheKey);
         location.reload();
       });
