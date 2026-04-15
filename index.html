@@ -739,7 +739,7 @@
   <section class="recent-dirs-section" id="recentDirsSection" aria-label="Recently edited directories">
     <h2><i class="fas fa-history me-2"></i>Recently Edited Directories</h2>
     <div class="recent-dirs-refresh-meta">
-      <span><i class="fas fa-arrows-rotate me-1"></i>Auto-check every minute (data updates every 5 min or on push)</span>
+      <span><i class="fas fa-arrows-rotate me-1"></i>Auto-check every minute (data updates on schedule or push)</span>
       <span id="recentDirsLastRefresh">Last refresh: --</span>
     </div>
     <div class="recent-dirs-progress" id="recentDirsProgress" aria-live="polite" aria-label="Loading progress">
@@ -859,7 +859,7 @@
     try {
       actions.dispatch(type, payload, meta);
     } catch (error) {
-      console.debug('Recent dirs action dispatch skipped:', type, error);
+      console.debug('Failed to dispatch recent dirs action:', type, error);
     }
   }
 
