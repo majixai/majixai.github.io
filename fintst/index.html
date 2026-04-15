@@ -68,7 +68,10 @@
 
         MajixLogger.init();
         MajixActions.init();
-        MajixLogger.info('fintst dashboard loaded');
+        MajixLogger.info('fintst dashboard initialized');
+        MajixActions.on('dashboard/load', function (payload) {
+            MajixLogger.info('fintst dashboard load requested', payload, 'dashboard');
+        });
         MajixActions.on('dashboard/error', function (payload) {
             MajixLogger.error('fintst dashboard error', payload, 'dashboard');
         });
