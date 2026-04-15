@@ -66,22 +66,30 @@
     <script>
         let btcChart = null;
 
-        MajixLogger.init();
-        MajixActions.init();
-        MajixLogger.info('fintst dashboard initialized');
-        MajixActions.on('dashboard/load', function (payload) {
-            MajixLogger.info('fintst dashboard load requested', payload, 'dashboard');
-        });
-        MajixActions.on('dashboard/error', function (payload) {
-            MajixLogger.error('fintst dashboard error', payload, 'dashboard');
-        });
-        MajixActions.on('dashboard/loaded', function (payload) {
-            MajixLogger.info('fintst dashboard loaded data', payload, 'dashboard');
-        });
+        const hasMajixModules = typeof MajixLogger !== 'undefined' && typeof MajixActions !== 'undefined';
 
-        async function loadDashboard() {
+        if (hasMajixModules) {
+            MajixLogger.init();
+            MajixActions.init();
+            MajixLogger.info('fintst dashboard initialized');
+            MajixActions.on('dashboard/load', function (payload) {
+                MajixLogger.info('fintst dashboard load requested', payload, 'dashboard');
+            });
+            MajixActions.on('dashboard/error', function (payload) {
+                MajixLogger.error('fintst dashboard error', payload, 'dashboard');
+            });
+            MajixActions.on('dashboard/loaded', function (payload) {
+                MajixLogger.info('fintst dashboard loaded data', payload, 'dashboard');
+            });
+        } else {
+            console.error('fintst: shared logging/actions modules failed to load');
+        }
+
+        async function loadDashboard(trigger) {
             try {
-                MajixActions.dispatch('dashboard/load', { trigger: 'manual-or-initial' });
+                if (hasMajixModules) {
+                    MajixActions.dispatch('dashboard/load', { trigger: trigger || 'load-requested' });
+                }
                 const statusBadge = document.getElementById('last-update');
                 statusBadge.innerText = "Running Matrix Inferences...";
                 statusBadge.className = "badge bg-info text-dark me-2";
@@ -94,7 +102,9 @@
                 const data = jsyaml.load(yamlText) || [];
 
                 if (data.length === 0) {
-                    MajixActions.dispatch('dashboard/loaded', { rows: 0, actuals: 0, forecasts: 0 });
+                    if (hasMajixModules) {
+                        MajixActions.dispatch('dashboard/loaded', { rows: 0, actuals: 0, forecasts: 0 });
+                    }
                     return;
                 }
 
@@ -161,25 +171,31 @@
                         </tr>`;
                 });
 
-                MajixActions.dispatch('dashboard/loaded', {
-                    rows: data.length,
-                    actuals: actuals.length,
-                    forecasts: data.length - actuals.length
-                });
+                if (hasMajixModules) {
+                    MajixActions.dispatch('dashboard/loaded', {
+                        rows: data.length,
+                        actuals: actuals.length,
+                        forecasts: data.length - actuals.length
+                    });
+                }
 
             } catch (err) {
                 const statusBadge = document.getElementById('last-update');
                 statusBadge.innerText = err.message;
                 statusBadge.className = "badge bg-danger me-2";
-                MajixActions.dispatch('dashboard/error', { error: err.message });
+                if (hasMajixModules) {
+                    MajixActions.dispatch('dashboard/error', { error: err.message });
+                }
             }
         }
 
         document.getElementById('refresh-btn').addEventListener('click', function () {
-            MajixActions.dispatch('dashboard/refresh-click', { source: 'button' });
-            loadDashboard();
+            if (hasMajixModules) {
+                MajixActions.dispatch('dashboard/refresh-click', { source: 'button' });
+            }
+            loadDashboard('manual');
         });
-        loadDashboard();
+        loadDashboard('initial');
     </script>
 </body>
 </html>
