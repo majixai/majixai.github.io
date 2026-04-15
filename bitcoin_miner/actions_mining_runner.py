@@ -6,6 +6,7 @@ GitHub Actions runner for short-lived in-memory bitcoin miner sessions.
 from __future__ import annotations
 
 import json
+import importlib.util
 import os
 import re
 import signal
@@ -13,6 +14,7 @@ import subprocess
 import sys
 import threading
 import time
+from hashlib import sha256
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -35,7 +37,7 @@ def _load_integrations() -> dict:
         import numpy as np  # noqa: PLC0415
         from tensor.financial import build_feature_matrix, compute_var  # noqa: PLC0415
 
-        prices = np.array([66000.0, 66100.0, 65950.0, 66200.0, 66310.0], dtype=np.float64)
+        prices = np.linspace(65000.0, 66500.0, num=80, dtype=np.float64)
         features = build_feature_matrix(prices)
         var = compute_var(prices, confidence=0.95)
         status["tensor_financial"] = True
@@ -48,8 +50,14 @@ def _load_integrations() -> dict:
 
     try:
         import numpy as np  # noqa: PLC0415
-        from yfinance_data.models.neural_forecaster import NeuralForecaster  # noqa: PLC0415
 
+        module_path = REPO_ROOT / "yfinance_data" / "models" / "neural_forecaster.py"
+        spec = importlib.util.spec_from_file_location("actions_neural_forecaster", module_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"Unable to load neural forecaster module: {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        NeuralForecaster = module.NeuralForecaster
         forecaster = NeuralForecaster(seq_len=5, n_features=7)
         close = np.array([1.0, 1.1, 1.2, 1.15, 1.22], dtype=np.float64)
         volume = np.array([10, 12, 11, 13, 12], dtype=np.float64)
@@ -83,13 +91,39 @@ def _terminate(proc: subprocess.Popen) -> None:
         proc.wait(timeout=5)
 
 
+def _in_memory_mine(seconds: int) -> dict:
+    deadline = time.time() + max(1, seconds)
+    base = os.urandom(76)
+    nonce = 0
+    total_hashes = 0
+    best_prefix_zeros = 0
+
+    while time.time() < deadline:
+        block = base + nonce.to_bytes(4, "little", signed=False)
+        digest = sha256(sha256(block).digest()).hexdigest()
+        leading = len(digest) - len(digest.lstrip("0"))
+        if leading > best_prefix_zeros:
+            best_prefix_zeros = leading
+        total_hashes += 1
+        nonce = (nonce + 1) & 0xFFFFFFFF
+
+    elapsed = max(0.001, seconds)
+    return {
+        "hashes": total_hashes,
+        "hashrate_hs": round(total_hashes / elapsed, 2),
+        "best_prefix_zeros": best_prefix_zeros,
+    }
+
+
 def run_mining_session(duration_seconds: int, threads: int, bits: str) -> dict:
     deadline = time.time() + duration_seconds
     output_lines: list[str] = []
     attempts = 0
+    fallback = None
 
     while time.time() < deadline:
         attempts += 1
+        start_idx = len(output_lines)
         proc = subprocess.Popen(
             [
                 str(MINER_BIN),
@@ -123,6 +157,12 @@ def run_mining_session(duration_seconds: int, threads: int, bits: str) -> dict:
             stop_event.set()
             reader.join(timeout=2)
 
+        recent_lines = output_lines[start_idx:]
+        if any("sha-256 self-test failed" in ln.lower() for ln in recent_lines):
+            remaining = int(max(1, deadline - time.time()))
+            fallback = _in_memory_mine(remaining)
+            break
+
         if time.time() < deadline:
             time.sleep(0.25)
 
@@ -139,6 +179,7 @@ def run_mining_session(duration_seconds: int, threads: int, bits: str) -> dict:
         "attempts": attempts,
         "line_count": len(output_lines),
         "max_hashrate_hs": max(hash_rates) if hash_rates else None,
+        "fallback_in_memory": fallback,
         "last_lines": output_lines[-10:],
     }
 
