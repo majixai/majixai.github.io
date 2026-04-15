@@ -3,44 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SlideshowManager — Demo & Docs</title>
+    <title>SlideshowManager v2 — Demo &amp; Docs</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
           crossorigin="anonymous">
     <link rel="stylesheet" href="slideshow.css">
     <style>
-        pre { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; padding: 1rem; font-size: 0.82rem; overflow-x: auto; }
-        code { font-family: 'Courier New', Courier, monospace; }
-        .demo-carousel { width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; }
-        .demo-carousel .slide-img { height: 100%; }
-        section { padding-top: 2rem; }
-        .badge-pill { font-size: 0.7rem; }
+        pre  { background:#1e1e2e; color:#cdd6f4; border-radius:6px; padding:1rem; font-size:0.82rem; overflow-x:auto; }
+        code { font-family:'Courier New',Courier,monospace; }
+        .demo-carousel { width:100%; aspect-ratio:16/9; border-radius:6px; overflow:hidden; }
+        .demo-carousel .slide-img { height:100%; }
+        section { padding-top:2.25rem; }
+        .state-box { font-size:0.78rem; background:#1a1a2e; color:#a6e3a1; border-radius:6px;
+                     padding:0.6rem 0.8rem; font-family:monospace; white-space:pre; }
+        .badge-v2 { font-size:0.65rem; vertical-align:middle; }
     </style>
 </head>
 <body>
 
 <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1">🎞 SlideshowManager</span>
-        <span class="text-muted small">Shared slideshow library — <code>/slideshow/</code></span>
+        <span class="navbar-brand mb-0 h1">&#127902; SlideshowManager
+            <span class="badge bg-primary badge-v2">v2</span></span>
+        <span class="text-muted small">Shared slideshow library &mdash; <code>/slideshow/</code></span>
     </div>
 </nav>
 
 <div class="container py-4">
 
-    <!-- ── Hero demo ───────────────────────────────────────────── -->
-    <section id="demo">
-        <h2 class="h4 mb-3">Live Demo</h2>
+    <ul class="nav nav-pills mb-4 flex-wrap gap-1" id="demoTabs">
+        <li class="nav-item"><a class="nav-link active" href="#demo-fade"    >Fade</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#demo-slide"   >Slide</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#demo-zoom"    >Zoom</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#demo-captions">Captions</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#demo-dots"    >Dots</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#demo-dynamic" >Dynamic</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#quickstart"   >Quick Start</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#api"          >API</a></li>
+        <li class="nav-item"><a class="nav-link"        href="#css"          >CSS</a></li>
+    </ul>
 
+    <!-- Demo 1: Fade -->
+    <section id="demo-fade">
+        <h2 class="h4 mb-1">Demo &mdash; Fade transition</h2>
+        <p class="text-muted small mb-3">Default transition. Keyboard &#8592;/&#8594;, touch swipe, hover pause, progress bar, counter.</p>
         <div class="row g-3 align-items-start">
             <div class="col-md-7">
-                <div id="demoCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
-                    <img id="demoImg" class="slide-img"
-                         src="https://picsum.photos/seed/slide1/800/450" alt="Slide">
-                    <button class="slide-btn slide-btn-prev" id="demoPrev">&#8249;</button>
-                    <button class="slide-btn slide-btn-next" id="demoNext">&#8250;</button>
-                    <div class="slide-progress" id="demoProgress"></div>
-                    <div class="slide-counter"  id="demoCounter"></div>
+                <div id="fadeCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="fadeImg" class="slide-img" src="https://picsum.photos/seed/slide1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="fadePrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="fadeNext">&#8250;</button>
+                    <div class="slide-progress" id="fadeProgress"></div>
+                    <div class="slide-counter"  id="fadeCounter"></div>
                 </div>
             </div>
             <div class="col-md-5">
@@ -48,20 +62,16 @@
                     <div class="card-body">
                         <h6 class="card-title">Controls</h6>
                         <div class="d-flex gap-2 flex-wrap mb-3">
-                            <button class="btn btn-sm btn-success" id="btnStart">▶ Start</button>
-                            <button class="btn btn-sm btn-warning" id="btnStop">⏹ Stop</button>
-                            <button class="btn btn-sm btn-secondary" id="btnPrev">⟵ Prev</button>
-                            <button class="btn btn-sm btn-secondary" id="btnNext">Next ⟶</button>
+                            <button class="btn btn-sm btn-success"   id="fadeStart">&#9654; Start</button>
+                            <button class="btn btn-sm btn-warning"   id="fadeStop">&#9209; Stop</button>
+                            <button class="btn btn-sm btn-secondary" id="fadePrevBtn">&#8592; Prev</button>
+                            <button class="btn btn-sm btn-secondary" id="fadeNextBtn">Next &#8594;</button>
                         </div>
-                        <p class="small text-muted mb-1">Features enabled in this demo:</p>
                         <ul class="small text-muted mb-0">
-                            <li>Auto-rotation (2 – 6 s random)</li>
-                            <li>Progress bar animation</li>
-                            <li>Slide counter</li>
-                            <li>Hover overlay prev/next buttons</li>
-                            <li>Keyboard ← / → (click carousel first)</li>
-                            <li>Touch / swipe</li>
-                            <li>Pause on hover</li>
+                            <li>transition: <code>'fade'</code></li>
+                            <li>minDelay: 2000 / maxDelay: 6000</li>
+                            <li>keyboard, touch, pauseOnHover</li>
+                            <li>progress bar + counter</li>
                         </ul>
                     </div>
                 </div>
@@ -69,33 +79,204 @@
         </div>
     </section>
 
-    <!-- ── Quick start ─────────────────────────────────────────── -->
+    <!-- Demo 2: Slide -->
+    <section id="demo-slide">
+        <h2 class="h4 mb-1">Demo &mdash; Slide transition <span class="badge bg-primary badge-v2">new</span></h2>
+        <p class="text-muted small mb-3">Images slide in from the side. Direction is aware of next vs prev.</p>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="slideCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="slideImg" class="slide-img" src="https://picsum.photos/seed/sl1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="slidePrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="slideNext">&#8250;</button>
+                    <div class="slide-counter" id="slideCounter"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">Controls</h6>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="btn btn-sm btn-success"   id="slideStart">&#9654; Start</button>
+                            <button class="btn btn-sm btn-warning"   id="slideStop">&#9209; Stop</button>
+                            <button class="btn btn-sm btn-secondary" id="slidePrevBtn">&#8592; Prev</button>
+                            <button class="btn btn-sm btn-secondary" id="slideNextBtn">Next &#8594;</button>
+                        </div>
+                        <ul class="small text-muted mb-0">
+                            <li>transition: <code>'slide'</code></li>
+                            <li>transitionDuration: 400</li>
+                            <li>fixedDelay: 3000</li>
+                            <li>keyboard, touch</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo 3: Zoom -->
+    <section id="demo-zoom">
+        <h2 class="h4 mb-1">Demo &mdash; Zoom transition <span class="badge bg-primary badge-v2">new</span></h2>
+        <p class="text-muted small mb-3">Current image fades out while scaling up; new image fades in. Manual nav auto-resumes after 4&nbsp;s (<code>autoResumeDelay: 4000</code>).</p>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="zoomCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="zoomImg" class="slide-img" src="https://picsum.photos/seed/zm1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="zoomPrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="zoomNext">&#8250;</button>
+                    <div class="slide-counter" id="zoomCounter"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">Controls</h6>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="btn btn-sm btn-success"   id="zoomStart">&#9654; Start</button>
+                            <button class="btn btn-sm btn-warning"   id="zoomStop">&#9209; Stop</button>
+                            <button class="btn btn-sm btn-secondary" id="zoomPrevBtn">&#8592; Prev</button>
+                            <button class="btn btn-sm btn-secondary" id="zoomNextBtn">Next &#8594;</button>
+                        </div>
+                        <ul class="small text-muted mb-0">
+                            <li>transition: <code>'zoom'</code></li>
+                            <li>transitionDuration: 500</li>
+                            <li>autoResumeDelay: 4000</li>
+                            <li>keyboard, touch</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo 4: Captions -->
+    <section id="demo-captions">
+        <h2 class="h4 mb-1">Demo &mdash; Captions <span class="badge bg-primary badge-v2">new</span></h2>
+        <p class="text-muted small mb-3">Pass a <code>captions[]</code> array and a <code>captionEl</code> element. Slide&nbsp;3 has an empty caption &mdash; the overlay hides automatically.</p>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="captionCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="captionImg" class="slide-img" src="https://picsum.photos/seed/cap1/800/450" alt="Mountain">
+                    <button class="slide-btn slide-btn-prev" id="captionPrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="captionNext">&#8250;</button>
+                    <div class="slide-counter" id="captionCounter"></div>
+                    <div class="slide-caption" id="captionOverlay"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">getState() live readout</h6>
+                        <div class="state-box" id="captionState">&mdash;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo 5: Dots -->
+    <section id="demo-dots">
+        <h2 class="h4 mb-1">Demo &mdash; Dot indicators <span class="badge bg-primary badge-v2">new</span></h2>
+        <p class="text-muted small mb-3">Pass a <code>dotsContainer</code> element. Dot buttons are auto-generated and stay in sync. Here the dots container is placed <em>inside</em> the carousel for an overlay effect.</p>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="dotsCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="dotsImg" class="slide-img" src="https://picsum.photos/seed/dot1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="dotsPrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="dotsNext">&#8250;</button>
+                    <div class="slide-progress" id="dotsProgress"></div>
+                    <div class="slide-counter"  id="dotsCounter"></div>
+                    <div class="slide-dots"     id="dotsContainer"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">Controls</h6>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="btn btn-sm btn-success" id="dotsStart">&#9654; Start</button>
+                            <button class="btn btn-sm btn-warning" id="dotsStop">&#9209; Stop</button>
+                        </div>
+                        <p class="small text-muted mb-0">Click any dot to jump to that slide.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo 6: Dynamic -->
+    <section id="demo-dynamic">
+        <h2 class="h4 mb-1">Demo &mdash; Dynamic images <span class="badge bg-primary badge-v2">new</span></h2>
+        <p class="text-muted small mb-3">Demonstrates <code>addImages()</code>, <code>removeImage()</code>, <code>setImages()</code>, and <code>getState()</code>.</p>
+        <div class="row g-3 align-items-start">
+            <div class="col-md-7">
+                <div id="dynCarousel" class="slideshow-carousel demo-carousel" tabindex="0">
+                    <img id="dynImg" class="slide-img" src="https://picsum.photos/seed/dyn1/800/450" alt="Slide">
+                    <button class="slide-btn slide-btn-prev" id="dynPrev">&#8249;</button>
+                    <button class="slide-btn slide-btn-next" id="dynNext">&#8250;</button>
+                    <div class="slide-counter" id="dynCounter"></div>
+                    <div class="slide-dots"    id="dynDots"></div>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card bg-dark text-light border-secondary">
+                    <div class="card-body">
+                        <h6 class="card-title">Mutation controls</h6>
+                        <div class="d-flex gap-2 flex-wrap mb-2">
+                            <button class="btn btn-sm btn-success" id="dynStart">&#9654; Start</button>
+                            <button class="btn btn-sm btn-warning" id="dynStop">&#9209; Stop</button>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="btn btn-sm btn-outline-info"    id="dynAdd">+ Add 2</button>
+                            <button class="btn btn-sm btn-outline-danger"  id="dynRemove">&#8722; Remove current</button>
+                            <button class="btn btn-sm btn-outline-warning" id="dynSet">&#8635; Set new list</button>
+                        </div>
+                        <h6 class="card-title">getState()</h6>
+                        <div class="state-box" id="dynState">&mdash;</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick start -->
     <section id="quickstart">
         <h2 class="h4 mb-3">Quick Start</h2>
-
-        <h6>1 — Include the CSS and JS in your page</h6>
-        <pre><code>&lt;!-- In &lt;head&gt; --&gt;
+        <h6>1 &mdash; Include the CSS and JS</h6>
+        <pre><code>&lt;!-- in &lt;head&gt; --&gt;
 &lt;link rel="stylesheet" href="/slideshow/slideshow.css"&gt;
 
-&lt;!-- Before &lt;/body&gt; --&gt;
+&lt;!-- before &lt;/body&gt; --&gt;
 &lt;script src="/slideshow/slideshow-core.js"&gt;&lt;/script&gt;</code></pre>
 
-        <h6 class="mt-3">2 — Add the markup</h6>
+        <h6 class="mt-3">2 &mdash; Add the markup</h6>
         <pre><code>&lt;div class="slideshow-carousel" id="myCarousel"&gt;
     &lt;img class="slide-img" id="myImg" src="first.jpg" alt="Slide"&gt;
     &lt;button class="slide-btn slide-btn-prev" id="myPrev"&gt;&amp;#8249;&lt;/button&gt;
     &lt;button class="slide-btn slide-btn-next" id="myNext"&gt;&amp;#8250;&lt;/button&gt;
     &lt;div class="slide-progress" id="myProgress"&gt;&lt;/div&gt;
     &lt;div class="slide-counter"  id="myCounter"&gt;&lt;/div&gt;
+    &lt;div class="slide-caption"  id="myCaption"&gt;&lt;/div&gt;
+    &lt;div class="slide-dots"     id="myDots"&gt;&lt;/div&gt;
 &lt;/div&gt;</code></pre>
 
-        <h6 class="mt-3">3 — Initialise</h6>
+        <h6 class="mt-3">3 &mdash; Initialise</h6>
         <pre><code>const mgr = new SlideshowManager(
     document.getElementById('myImg'),
     ['one.jpg', 'two.jpg', 'three.jpg'],
     {
-        minDelay:     2000,
-        maxDelay:     6000,
+        // Timing
+        minDelay:         2000,
+        maxDelay:         6000,
+        fixedDelay:       0,           // overrides min/max when &gt; 0
+        autoResumeDelay:  4000,        // resume auto-rotation 4 s after manual nav
+        loop:             true,
+
+        // Transition
+        transition:         'slide',   // 'fade' | 'slide' | 'zoom' | 'none'
+        transitionDuration: 350,
+
+        // Controls
         progressBar:  document.getElementById('myProgress'),
         counter:      document.getElementById('myCounter'),
         prevBtn:      document.getElementById('myPrev'),
@@ -104,63 +285,129 @@
         keyboard:     true,
         touch:        true,
         pauseOnHover: true,
+
+        // Captions
+        captions:  ['First slide', 'Second slide', ''],
+        captionEl: document.getElementById('myCaption'),
+        alts:      ['Alt text 1', 'Alt text 2', 'Alt text 3'],
+
+        // Dots
+        dotsContainer: document.getElementById('myDots'),
+
+        // Callbacks
+        onChange: (index, url, caption) =&gt; console.log('changed to', index),
+        onStart:  () =&gt; console.log('started'),
+        onStop:   () =&gt; console.log('stopped'),
     }
 );
 mgr.start();</code></pre>
     </section>
 
-    <!-- ── Load from .dat ──────────────────────────────────────── -->
+    <!-- Load from .dat -->
     <section id="dat-loader">
         <h2 class="h4 mb-3">Loading from a .dat File (gzip compressed)</h2>
-        <p class="text-muted small">Requires <a href="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" target="_blank">pako</a> to be loaded before <code>slideshow-core.js</code>.</p>
+        <p class="text-muted small">Requires <a href="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" target="_blank">pako</a> loaded before <code>slideshow-core.js</code>.</p>
         <pre><code>&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"
-        integrity="sha512-F0nSK98Snn1dTBjRbFJTBnYdmdSWxFNcXfhb8rPXxIBqDFIJBvDdX89xmwrZJlZVePl8Fl8Jv/JSVK1+Kzlg=="
+        integrity="sha512-..."
         crossorigin="anonymous"&gt;&lt;/script&gt;
 &lt;script src="/slideshow/slideshow-core.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-    SlideshowManager.fromDatFile(
-        document.getElementById('myImg'),
-        '/data/images.dat',
-        { progressBar: ..., counter: ..., keyboard: true, touch: true }
-    ).then(mgr =&gt; mgr.start());
+SlideshowManager.fromDatFile(
+    document.getElementById('myImg'),
+    '/data/images.dat',
+    { transition: 'slide', progressBar: ..., counter: ..., keyboard: true, touch: true }
+).then(mgr =&gt; mgr.start());
 &lt;/script&gt;</code></pre>
     </section>
 
-    <!-- ── Load from JSON ─────────────────────────────────────── -->
+    <!-- Load from JSON -->
     <section id="json-loader">
         <h2 class="h4 mb-3">Loading from a JSON File</h2>
-        <p class="text-muted small">No extra dependencies. JSON must be an array of URL strings, or an object with an <code>images</code> array.</p>
-        <pre><code>// images.json
-["https://example.com/a.jpg", "https://example.com/b.jpg"]
+        <p class="text-muted small">JSON may be a plain URL array, or an object with <code>images</code>, optional <code>captions</code>, and optional <code>alts</code>.</p>
+        <pre><code>// Plain array
+['https://example.com/a.jpg', 'https://example.com/b.jpg']
 
-// or
-{ "images": ["https://example.com/a.jpg", "https://example.com/b.jpg"] }</code></pre>
+// Rich object
+{
+  "images":   ["https://example.com/a.jpg", "https://example.com/b.jpg"],
+  "captions": ["A scenic mountain", "A calm lake"],
+  "alts":     ["Mountain at sunrise", "Lake at dusk"]
+}</code></pre>
         <pre><code>SlideshowManager.fromJsonUrl(
     document.getElementById('myImg'),
     '/data/images.json',
-    { minDelay: 3000, maxDelay: 8000 }
+    { transition: 'zoom', captionEl: document.getElementById('myCaption') }
 ).then(mgr =&gt; mgr.start());</code></pre>
     </section>
 
-    <!-- ── API Reference ──────────────────────────────────────── -->
+    <!-- API -->
     <section id="api">
         <h2 class="h4 mb-3">API Reference</h2>
 
-        <h6>Constructor</h6>
+        <h6>Constructor options &mdash; Timing</h6>
         <div class="table-responsive">
         <table class="table table-sm table-bordered small">
             <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
             <tbody>
-                <tr><td><code>minDelay</code></td><td>number</td><td>2000</td><td>Minimum ms per slide</td></tr>
-                <tr><td><code>maxDelay</code></td><td>number</td><td>6000</td><td>Maximum ms per slide</td></tr>
-                <tr><td><code>progressBar</code></td><td>HTMLElement</td><td>null</td><td>Element animated 0 → 100% width per slide</td></tr>
-                <tr><td><code>counter</code></td><td>HTMLElement</td><td>null</td><td>Element showing "N/M"</td></tr>
-                <tr><td><code>prevBtn</code></td><td>HTMLElement</td><td>null</td><td>Previous button — stops auto-rotation on click</td></tr>
-                <tr><td><code>nextBtn</code></td><td>HTMLElement</td><td>null</td><td>Next button — stops auto-rotation on click</td></tr>
+                <tr><td><code>minDelay</code></td><td>number</td><td>2000</td><td>Minimum ms per slide (ignored when fixedDelay &gt; 0)</td></tr>
+                <tr><td><code>maxDelay</code></td><td>number</td><td>6000</td><td>Maximum ms per slide (ignored when fixedDelay &gt; 0)</td></tr>
+                <tr><td><code>fixedDelay</code></td><td>number</td><td>0</td><td>Fixed ms per slide &mdash; overrides min/max when &gt; 0</td></tr>
+                <tr><td><code>autoResumeDelay</code></td><td>number</td><td>0</td><td>Resume auto-rotation N ms after a manual navigation (0&nbsp;=&nbsp;never)</td></tr>
+                <tr><td><code>loop</code></td><td>boolean</td><td>true</td><td>Loop back to the first slide after the last</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Constructor options &mdash; Transition <span class="badge bg-primary badge-v2">new</span></h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>transition</code></td><td>string</td><td>'fade'</td><td><code>'fade'</code> | <code>'slide'</code> | <code>'zoom'</code> | <code>'none'</code></td></tr>
+                <tr><td><code>transitionDuration</code></td><td>number</td><td>300</td><td>Transition animation duration in ms</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Constructor options &mdash; Controls</h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>progressBar</code></td><td>HTMLElement</td><td>null</td><td>Element animated 0&nbsp;&rarr;&nbsp;100% width per slide</td></tr>
+                <tr><td><code>counter</code></td><td>HTMLElement</td><td>null</td><td>Element showing current index as "N/M"</td></tr>
+                <tr><td><code>prevBtn</code></td><td>HTMLElement</td><td>null</td><td>Previous button</td></tr>
+                <tr><td><code>nextBtn</code></td><td>HTMLElement</td><td>null</td><td>Next button</td></tr>
                 <tr><td><code>container</code></td><td>HTMLElement</td><td>null</td><td>Element receiving keyboard/touch events (falls back to imgElement)</td></tr>
-                <tr><td><code>keyboard</code></td><td>boolean</td><td>false</td><td>Enable ←/→ key navigation</td></tr>
-                <tr><td><code>touch</code></td><td>boolean</td><td>false</td><td>Enable touch swipe navigation</td></tr>
-                <tr><td><code>pauseOnHover</code></td><td>boolean</td><td>false</td><td>Pause while mouse is over container</td></tr>
+                <tr><td><code>keyboard</code></td><td>boolean</td><td>false</td><td>Enable &larr;/&rarr; key navigation</td></tr>
+                <tr><td><code>touch</code></td><td>boolean</td><td>false</td><td>Enable horizontal touch-swipe navigation</td></tr>
+                <tr><td><code>pauseOnHover</code></td><td>boolean</td><td>false</td><td>Silently pause while mouse is over container; resume on mouse-leave</td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Constructor options &mdash; Captions &amp; alt text <span class="badge bg-primary badge-v2">new</span></h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>captions</code></td><td>string[]</td><td>[]</td><td>Caption strings aligned with <code>images[]</code>. Empty string &rarr; overlay hidden.</td></tr>
+                <tr><td><code>captionEl</code></td><td>HTMLElement</td><td>null</td><td>Element that receives caption text (auto-shown/hidden)</td></tr>
+                <tr><td><code>alts</code></td><td>string[]</td><td>[]</td><td>Alt text strings aligned with <code>images[]</code></td></tr>
+            </tbody>
+        </table>
+        </div>
+
+        <h6 class="mt-3">Constructor options &mdash; Dots, preload &amp; callbacks <span class="badge bg-primary badge-v2">new</span></h6>
+        <div class="table-responsive">
+        <table class="table table-sm table-bordered small">
+            <thead class="table-dark"><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>dotsContainer</code></td><td>HTMLElement</td><td>null</td><td>Container element; one clickable dot button per slide is auto-generated and kept in sync</td></tr>
+                <tr><td><code>preload</code></td><td>boolean</td><td>true</td><td>Preload the next image in background</td></tr>
+                <tr><td><code>onChange</code></td><td>Function</td><td>null</td><td>Called on every slide change: <code>(index, url, caption)</code></td></tr>
+                <tr><td><code>onStart</code></td><td>Function</td><td>null</td><td>Called when <code>start()</code> begins auto-rotation</td></tr>
+                <tr><td><code>onStop</code></td><td>Function</td><td>null</td><td>Called when <code>stop()</code> ends auto-rotation</td></tr>
             </tbody>
         </table>
         </div>
@@ -170,12 +417,16 @@ mgr.start();</code></pre>
         <table class="table table-sm table-bordered small">
             <thead class="table-dark"><tr><th>Method</th><th>Description</th></tr></thead>
             <tbody>
-                <tr><td><code>start()</code></td><td>Begin auto-rotation (no-op if &lt;2 images)</td></tr>
-                <tr><td><code>stop()</code></td><td>Stop auto-rotation and reset progress bar</td></tr>
+                <tr><td><code>start()</code></td><td>Begin auto-rotation (no-op if &lt;2 images or already running)</td></tr>
+                <tr><td><code>stop()</code></td><td>Stop auto-rotation and reset the progress bar</td></tr>
                 <tr><td><code>next()</code></td><td>Advance one slide</td></tr>
                 <tr><td><code>prev()</code></td><td>Go back one slide</td></tr>
-                <tr><td><code>goTo(index)</code></td><td>Jump to a specific index (wraps)</td></tr>
-                <tr><td><code>destroy()</code></td><td>Remove all listeners and clear timer</td></tr>
+                <tr><td><code>goTo(index)</code></td><td>Jump to a specific index (direction-aware for slide transitions)</td></tr>
+                <tr><td><code>addImages(urls, captions?, alts?)</code></td><td><span class="badge bg-primary badge-v2">new</span> Append images; rebuilds dots</td></tr>
+                <tr><td><code>setImages(urls, captions?, alts?)</code></td><td><span class="badge bg-primary badge-v2">new</span> Replace all images and reset to index&nbsp;0</td></tr>
+                <tr><td><code>removeImage(index)</code></td><td><span class="badge bg-primary badge-v2">new</span> Remove image at index; rebuilds dots</td></tr>
+                <tr><td><code>getState()</code></td><td><span class="badge bg-primary badge-v2">new</span> Returns <code>{ index, total, url, caption, alt, isRunning }</code></td></tr>
+                <tr><td><code>destroy()</code></td><td>Remove all event listeners and clear the timer</td></tr>
             </tbody>
         </table>
         </div>
@@ -186,13 +437,13 @@ mgr.start();</code></pre>
             <thead class="table-dark"><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
             <tbody>
                 <tr><td><code>SlideshowManager.fromDatFile(imgEl, url, opts)</code></td><td><code>Promise&lt;SlideshowManager&gt;</code></td><td>Load from gzip-compressed .dat file (requires pako)</td></tr>
-                <tr><td><code>SlideshowManager.fromJsonUrl(imgEl, url, opts)</code></td><td><code>Promise&lt;SlideshowManager&gt;</code></td><td>Load from plain JSON array file</td></tr>
+                <tr><td><code>SlideshowManager.fromJsonUrl(imgEl, url, opts)</code></td><td><code>Promise&lt;SlideshowManager&gt;</code></td><td>Load from JSON &mdash; plain array or <code>{ images, captions, alts }</code> object</td></tr>
             </tbody>
         </table>
         </div>
     </section>
 
-    <!-- ── CSS classes ───────────────────────────────────────── -->
+    <!-- CSS -->
     <section id="css">
         <h2 class="h4 mb-3">CSS Classes (slideshow.css)</h2>
         <div class="table-responsive">
@@ -200,12 +451,15 @@ mgr.start();</code></pre>
             <thead class="table-dark"><tr><th>Class</th><th>Element</th><th>Description</th></tr></thead>
             <tbody>
                 <tr><td><code>.slideshow-carousel</code></td><td>wrapper div</td><td>Relative container; clips overflowing content</td></tr>
-                <tr><td><code>.slide-img</code></td><td>img</td><td>100% width/height, object-fit: cover, opacity transition</td></tr>
-                <tr><td><code>.slide-progress</code></td><td>div</td><td>Absolute bottom bar, animated by JS</td></tr>
+                <tr><td><code>.slide-img</code></td><td>img</td><td>100% width/height, object-fit:&nbsp;cover, opacity/transform transition</td></tr>
+                <tr><td><code>.slide-progress</code></td><td>div</td><td>Absolute bottom bar (3&nbsp;px), animated by JS</td></tr>
                 <tr><td><code>.slide-counter</code></td><td>div</td><td>Absolute top-right badge showing "N/M"</td></tr>
-                <tr><td><code>.slide-btn</code></td><td>button</td><td>Arrow overlay button (appears on hover)</td></tr>
-                <tr><td><code>.slide-btn-prev</code></td><td>button</td><td>Left arrow position modifier</td></tr>
-                <tr><td><code>.slide-btn-next</code></td><td>button</td><td>Right arrow position modifier</td></tr>
+                <tr><td><code>.slide-caption</code></td><td>div</td><td><span class="badge bg-primary badge-v2">new</span> Absolute bottom gradient overlay for caption text</td></tr>
+                <tr><td><code>.slide-btn</code></td><td>button</td><td>Arrow overlay button (appears on hover/focus-within)</td></tr>
+                <tr><td><code>.slide-btn-prev</code></td><td>button</td><td>Positions the button on the left side</td></tr>
+                <tr><td><code>.slide-btn-next</code></td><td>button</td><td>Positions the button on the right side</td></tr>
+                <tr><td><code>.slide-dots</code></td><td>div</td><td><span class="badge bg-primary badge-v2">new</span> Dot container. Inside <code>.slideshow-carousel</code>: absolute overlay at bottom-centre.</td></tr>
+                <tr><td><code>.slide-dot</code></td><td>button</td><td><span class="badge bg-primary badge-v2">new</span> Individual dot; gains <code>.active</code> class for current slide</td></tr>
             </tbody>
         </table>
         </div>
@@ -216,43 +470,171 @@ mgr.start();</code></pre>
         <a href="/slideshow/slideshow.css"><code>/slideshow/slideshow.css</code></a>
     </footer>
 
-</div><!-- /container -->
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
         crossorigin="anonymous"></script>
 <script src="slideshow-core.js"></script>
 <script>
-    const DEMO_IMAGES = [
-        'https://picsum.photos/seed/slide1/800/450',
-        'https://picsum.photos/seed/slide2/800/450',
-        'https://picsum.photos/seed/slide3/800/450',
-        'https://picsum.photos/seed/slide4/800/450',
-        'https://picsum.photos/seed/slide5/800/450',
-    ];
+const IA = [
+    'https://picsum.photos/seed/slide1/800/450',
+    'https://picsum.photos/seed/slide2/800/450',
+    'https://picsum.photos/seed/slide3/800/450',
+    'https://picsum.photos/seed/slide4/800/450',
+    'https://picsum.photos/seed/slide5/800/450',
+];
+const IB = [
+    'https://picsum.photos/seed/sl1/800/450',
+    'https://picsum.photos/seed/sl2/800/450',
+    'https://picsum.photos/seed/sl3/800/450',
+    'https://picsum.photos/seed/sl4/800/450',
+];
+const IC = [
+    'https://picsum.photos/seed/zm1/800/450',
+    'https://picsum.photos/seed/zm2/800/450',
+    'https://picsum.photos/seed/zm3/800/450',
+    'https://picsum.photos/seed/zm4/800/450',
+];
+const ID = [
+    'https://picsum.photos/seed/cap1/800/450',
+    'https://picsum.photos/seed/cap2/800/450',
+    'https://picsum.photos/seed/cap3/800/450',
+    'https://picsum.photos/seed/cap4/800/450',
+];
 
-    const mgr = new SlideshowManager(
-        document.getElementById('demoImg'),
-        DEMO_IMAGES,
-        {
-            minDelay:     2000,
-            maxDelay:     6000,
-            progressBar:  document.getElementById('demoProgress'),
-            counter:      document.getElementById('demoCounter'),
-            prevBtn:      document.getElementById('demoPrev'),
-            nextBtn:      document.getElementById('demoNext'),
-            container:    document.getElementById('demoCarousel'),
-            keyboard:     true,
-            touch:        true,
-            pauseOnHover: true,
-        }
+// Demo 1 – Fade
+const fadeMgr = new SlideshowManager(document.getElementById('fadeImg'), IA, {
+    transition: 'fade', minDelay: 2000, maxDelay: 6000,
+    progressBar: document.getElementById('fadeProgress'),
+    counter:     document.getElementById('fadeCounter'),
+    prevBtn:     document.getElementById('fadePrev'),
+    nextBtn:     document.getElementById('fadeNext'),
+    container:   document.getElementById('fadeCarousel'),
+    keyboard: true, touch: true, pauseOnHover: true,
+});
+fadeMgr.start();
+document.getElementById('fadeStart')  .addEventListener('click', () => fadeMgr.start());
+document.getElementById('fadeStop')   .addEventListener('click', () => fadeMgr.stop());
+document.getElementById('fadePrevBtn').addEventListener('click', () => { fadeMgr.stop(); fadeMgr.prev(); });
+document.getElementById('fadeNextBtn').addEventListener('click', () => { fadeMgr.stop(); fadeMgr.next(); });
+
+// Demo 2 – Slide
+const slideMgr = new SlideshowManager(document.getElementById('slideImg'), IB, {
+    transition: 'slide', transitionDuration: 400, fixedDelay: 3000,
+    counter:   document.getElementById('slideCounter'),
+    prevBtn:   document.getElementById('slidePrev'),
+    nextBtn:   document.getElementById('slideNext'),
+    container: document.getElementById('slideCarousel'),
+    keyboard: true, touch: true,
+});
+slideMgr.start();
+document.getElementById('slideStart')  .addEventListener('click', () => slideMgr.start());
+document.getElementById('slideStop')   .addEventListener('click', () => slideMgr.stop());
+document.getElementById('slidePrevBtn').addEventListener('click', () => { slideMgr.stop(); slideMgr.prev(); });
+document.getElementById('slideNextBtn').addEventListener('click', () => { slideMgr.stop(); slideMgr.next(); });
+
+// Demo 3 – Zoom
+const zoomMgr = new SlideshowManager(document.getElementById('zoomImg'), IC, {
+    transition: 'zoom', transitionDuration: 500, fixedDelay: 3500,
+    autoResumeDelay: 4000,
+    counter:   document.getElementById('zoomCounter'),
+    prevBtn:   document.getElementById('zoomPrev'),
+    nextBtn:   document.getElementById('zoomNext'),
+    container: document.getElementById('zoomCarousel'),
+    keyboard: true, touch: true,
+});
+zoomMgr.start();
+document.getElementById('zoomStart')  .addEventListener('click', () => zoomMgr.start());
+document.getElementById('zoomStop')   .addEventListener('click', () => zoomMgr.stop());
+document.getElementById('zoomPrevBtn').addEventListener('click', () => { zoomMgr.stop(); zoomMgr.prev(); });
+document.getElementById('zoomNextBtn').addEventListener('click', () => { zoomMgr.stop(); zoomMgr.next(); });
+
+// Demo 4 – Captions
+const capStateEl = document.getElementById('captionState');
+const captionMgr = new SlideshowManager(document.getElementById('captionImg'), ID, {
+    transition: 'fade', fixedDelay: 3200,
+    captions:  ['Mountain peaks at dawn', 'Coastal cliffs at sunset', '', 'Ancient forest trail'],
+    alts:      ['Mountain peaks', 'Coastal cliffs', 'Abstract scene', 'Forest trail'],
+    captionEl: document.getElementById('captionOverlay'),
+    counter:   document.getElementById('captionCounter'),
+    prevBtn:   document.getElementById('captionPrev'),
+    nextBtn:   document.getElementById('captionNext'),
+    container: document.getElementById('captionCarousel'),
+    keyboard: true, touch: true, pauseOnHover: true,
+    onChange:  () => { capStateEl.textContent = JSON.stringify(captionMgr.getState(), null, 2); },
+});
+captionMgr.start();
+capStateEl.textContent = JSON.stringify(captionMgr.getState(), null, 2);
+
+// Demo 5 – Dots
+const dotsMgr = new SlideshowManager(document.getElementById('dotsImg'), IA, {
+    transition: 'slide', fixedDelay: 3000,
+    progressBar:   document.getElementById('dotsProgress'),
+    counter:       document.getElementById('dotsCounter'),
+    prevBtn:       document.getElementById('dotsPrev'),
+    nextBtn:       document.getElementById('dotsNext'),
+    container:     document.getElementById('dotsCarousel'),
+    dotsContainer: document.getElementById('dotsContainer'),
+    keyboard: true, touch: true,
+});
+dotsMgr.start();
+document.getElementById('dotsStart').addEventListener('click', () => dotsMgr.start());
+document.getElementById('dotsStop') .addEventListener('click', () => dotsMgr.stop());
+
+// Demo 6 – Dynamic
+let extraCount = 0;
+const dynStateEl = document.getElementById('dynState');
+const upd = () => { dynStateEl.textContent = JSON.stringify(dynMgr.getState(), null, 2); };
+const dynMgr = new SlideshowManager(document.getElementById('dynImg'),
+    ['https://picsum.photos/seed/dyn1/800/450',
+     'https://picsum.photos/seed/dyn2/800/450',
+     'https://picsum.photos/seed/dyn3/800/450'], {
+    transition: 'zoom', fixedDelay: 3000,
+    counter:       document.getElementById('dynCounter'),
+    prevBtn:       document.getElementById('dynPrev'),
+    nextBtn:       document.getElementById('dynNext'),
+    container:     document.getElementById('dynCarousel'),
+    dotsContainer: document.getElementById('dynDots'),
+    keyboard: true, touch: true,
+    onChange: upd,
+});
+dynMgr.start(); upd();
+document.getElementById('dynStart').addEventListener('click', () => { dynMgr.start(); upd(); });
+document.getElementById('dynStop') .addEventListener('click', () => { dynMgr.stop();  upd(); });
+document.getElementById('dynAdd').addEventListener('click', () => {
+    extraCount++;
+    dynMgr.addImages(
+        ['https://picsum.photos/seed/xA' + extraCount + '/800/450',
+         'https://picsum.photos/seed/xB' + extraCount + '/800/450'],
+        ['Added A-' + extraCount, 'Added B-' + extraCount]
     );
-    mgr.start();
+    upd();
+});
+document.getElementById('dynRemove').addEventListener('click', () => {
+    if (dynMgr.images.length > 1) dynMgr.removeImage(dynMgr.currentIndex);
+    upd();
+});
+document.getElementById('dynSet').addEventListener('click', () => {
+    dynMgr.setImages(
+        ['https://picsum.photos/seed/set1/800/450',
+         'https://picsum.photos/seed/set2/800/450',
+         'https://picsum.photos/seed/set3/800/450'],
+        ['New set \u2014 slide 1', 'New set \u2014 slide 2', 'New set \u2014 slide 3']
+    );
+    dynMgr.start(); upd();
+});
 
-    document.getElementById('btnStart').addEventListener('click', () => mgr.start());
-    document.getElementById('btnStop').addEventListener('click',  () => mgr.stop());
-    document.getElementById('btnPrev').addEventListener('click',  () => { mgr.stop(); mgr.prev(); });
-    document.getElementById('btnNext').addEventListener('click',  () => { mgr.stop(); mgr.next(); });
+// Nav-pill smooth scroll
+document.querySelectorAll('#demoTabs .nav-link').forEach(link => {
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        const t = document.querySelector(link.getAttribute('href'));
+        if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        document.querySelectorAll('#demoTabs .nav-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+    });
+});
 </script>
 </body>
 </html>
