@@ -88,7 +88,7 @@
         async function loadDashboard(trigger) {
             try {
                 if (hasMajixModules) {
-                    MajixActions.dispatch('dashboard/load', { trigger: trigger || 'load-requested' });
+                    MajixActions.dispatch('dashboard/load', { trigger: trigger || 'unknown' });
                 }
                 const statusBadge = document.getElementById('last-update');
                 statusBadge.innerText = "Running Matrix Inferences...";
