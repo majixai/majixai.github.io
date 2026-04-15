@@ -9,6 +9,7 @@ Any page can plug straight in with two lines of configuration and get a namespac
 |------|---------|
 | `actions-core.js` | Unified action dispatcher: namespacing, middleware pipeline, handler registration, action history, async dispatch, localStorage persistence |
 | `index.html` | Live demo and full documentation page |
+| `extend.py` | Script used by GitHub Actions to wire new directories to `/actions/actions-core.js` and create starter README files |
 | `README.md` | This file |
 
 ---
@@ -220,3 +221,22 @@ MajixActions.history().reverse().forEach(function (a) {
   console.log('Previous action:', a.type, a.meta.timestamp);
 });
 ```
+
+---
+
+## Automatic extension for new directories
+
+This repository includes `.github/workflows/extend_actions.yml`.
+
+On push to `main`, it detects newly added top-level directories and runs:
+
+```bash
+python3 actions/extend.py <target_dir>
+```
+
+The extender:
+
+1. Patches `<target_dir>/index.html` to ensure `MajixActions` is available and initialized.
+2. Writes `<target_dir>/README.md` (when missing) with action-workflow guidance that points back to this `/actions/README.md`.
+
+Manual trigger is also available from **Actions → Extend Actions to New Sibling Directories** with optional `target_dir` and `force` inputs.
