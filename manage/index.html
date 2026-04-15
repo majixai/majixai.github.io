@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MajixManage — README Processing Library</title>
+  <link rel="stylesheet" href="manage.css">
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; }
+
+    /* fixed top bar */
+    .mgr-topbar { position: sticky; top: 0; z-index: 100; }
+
+    /* stretch layout to fill viewport */
+    .mgr-layout { flex: 1; overflow: hidden; height: calc(100vh - 50px); }
+    .mgr-sidebar { height: 100%; overflow-y: auto; }
+    .mgr-main    { height: 100%; overflow: hidden; display: flex; flex-direction: column; }
+    .mgr-panel   { flex: 1; overflow-y: auto; }
+
+    /* Source URL input */
+    #urlBar { flex: 1; min-width: 180px; max-width: 400px; }
+
+    /* About panel */
+    #panelAbout { padding: 28px; }
+    .about-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; margin-top: 20px; }
+    .feature-card {
+      background: var(--mgr-surface);
+      border: 1px solid var(--mgr-border);
+      border-radius: var(--mgr-radius-lg);
+      padding: 16px;
+    }
+    .feature-card h3 { font-size: .95rem; margin-bottom: 6px; color: var(--mgr-accent); }
+    .feature-card p  { font-size: .85rem; color: var(--mgr-text-muted); line-height: 1.6; }
+
+    /* split view  */
+    .mgr-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; height: 100%; overflow: hidden; }
+    .mgr-split-pane { display: flex; flex-direction: column; overflow: hidden; }
+    .mgr-split-pane label { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--mgr-text-muted); margin-bottom: 4px; }
+    .mgr-split-pane .mgr-editor { flex: 1; resize: none; }
+    .mgr-split-pane .mgr-doc    { flex: 1; overflow-y: auto; border: 1px solid var(--mgr-border); border-radius: var(--mgr-radius); padding: 14px; }
+
+    @media (max-width: 640px) {
+      .mgr-split { grid-template-columns: 1fr; }
+      #urlBar { width: 100%; max-width: 100%; }
+    }
+  </style>
+</head>
+<body class="mgr-app" id="app">
+
+<!-- ── Top bar ────────────────────────────────────────────────────────────── -->
+<header class="mgr-topbar">
+  <h1>📄 MajixManage</h1>
+  <input id="urlBar" class="mgr-input" type="url" placeholder="Load README URL…">
+  <button class="mgr-btn mgr-btn-primary" id="btnLoad">Load</button>
+  <span class="mgr-spacer"></span>
+  <button class="mgr-btn" id="btnUndo" disabled title="Undo">↩ Undo</button>
+  <button class="mgr-btn" id="btnRedo" disabled title="Redo">↪ Redo</button>
+  <button class="mgr-btn" id="btnSave">💾 Save</button>
+  <button class="mgr-btn" id="btnExport">⬇ Export JSON</button>
+  <button class="mgr-btn" id="btnTheme">🌙</button>
+</header>
+
+<!-- ── Layout ─────────────────────────────────────────────────────────────── -->
+<div class="mgr-layout">
+
+  <!-- Sidebar: section list -->
+  <aside class="mgr-sidebar" id="sidebar">
+    <div class="mgr-sidebar-head">Sections</div>
+    <ul class="mgr-section-list" id="sectionList"></ul>
+    <div style="padding: 10px;">
+      <button class="mgr-btn mgr-btn-primary" style="width:100%" id="btnAddSection">＋ Add Section</button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <main class="mgr-main">
+
+    <!-- Tab bar -->
+    <div class="mgr-tabs" id="tabs">
+      <div class="mgr-tab is-active" data-tab="preview">Preview</div>
+      <div class="mgr-tab" data-tab="editor">Editor</div>
+      <div class="mgr-tab" data-tab="split">Split</div>
+      <div class="mgr-tab" data-tab="sections">Sections</div>
+      <div class="mgr-tab" data-tab="history">History</div>
+      <div class="mgr-tab" data-tab="about">About</div>
+    </div>
+
+    <!-- Preview -->
+    <div class="mgr-panel is-visible" id="panelPreview">
+      <div id="preview" class="mgr-doc"></div>
+    </div>
+
+    <!-- Raw editor -->
+    <div class="mgr-panel" id="panelEditor" style="display:none">
+      <textarea class="mgr-editor" id="rawEditor" spellcheck="false" placeholder="Paste or load a README.md here…"></textarea>
+    </div>
+
+    <!-- Split view -->
+    <div class="mgr-panel" id="panelSplit" style="display:none; padding:12px">
+      <div class="mgr-split">
+        <div class="mgr-split-pane">
+          <label>Source</label>
+          <textarea class="mgr-editor" id="splitEditor" spellcheck="false"></textarea>
+        </div>
+        <div class="mgr-split-pane">
+          <label>Preview</label>
+          <div class="mgr-doc" id="splitPreview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section cards -->
+    <div class="mgr-panel" id="panelSections" style="display:none">
+      <div id="sectionCards" class="mgr-section-cards"></div>
+    </div>
+
+    <!-- History -->
+    <div class="mgr-panel" id="panelHistory" style="display:none">
+      <ul class="mgr-history-list" id="historyList"></ul>
+    </div>
+
+    <!-- About -->
+    <div class="mgr-panel" id="panelAbout" style="display:none">
+      <div class="mgr-doc">
+        <h1>MajixManage</h1>
+        <p>A shared README processing library for <strong>majixai.github.io</strong>. Parse, render, edit, and update marker-delimited sections in any Markdown document — all in the browser or from the command line.</p>
+        <h2>Marker convention</h2>
+        <pre><code>&lt;!-- START_SECTION_NAME --&gt;
+…content…
+&lt;!-- END_SECTION_NAME --&gt;</code></pre>
+        <h2>Installation</h2>
+        <pre><code>&lt;link  rel="stylesheet" href="/manage/manage.css"&gt;
+&lt;script src="/manage/manage-core.js"&gt;&lt;/script&gt;</code></pre>
+      </div>
+      <div class="about-grid">
+        <div class="feature-card">
+          <h3>🔍 Parse</h3>
+          <p>Extracts all marker sections from any Markdown string, preserving positions and raw content.</p>
+        </div>
+        <div class="feature-card">
+          <h3>✏️ Edit</h3>
+          <p>Set, add, or remove any section by name. All mutations are reversible via undo/redo.</p>
+        </div>
+        <div class="feature-card">
+          <h3>🖥️ Render</h3>
+          <p>Converts Markdown to HTML with headings, tables, code blocks, lists, images, and links.</p>
+        </div>
+        <div class="feature-card">
+          <h3>📡 Load / Save</h3>
+          <p>Fetch a remote README via URL and trigger browser downloads of the edited document.</p>
+        </div>
+        <div class="feature-card">
+          <h3>⏮️ History</h3>
+          <p>Ring-buffer undo/redo with configurable limit and full audit trail.</p>
+        </div>
+        <div class="feature-card">
+          <h3>💾 Persist</h3>
+          <p>Auto-saves the current document to <code>localStorage</code> across page refreshes.</p>
+        </div>
+        <div class="feature-card">
+          <h3>⬇️ Export</h3>
+          <p>Export the document as Markdown, HTML, or a JSON snapshot of all sections.</p>
+        </div>
+        <div class="feature-card">
+          <h3>🖥️ CLI</h3>
+          <p>Node.js CLI (<code>manage-cli.js</code>) for batch README processing, scanning, and stats.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Add-section modal ───────────────────────────────────────────────────── -->
+<div id="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center;">
+  <div style="background:var(--mgr-bg); border-radius:var(--mgr-radius-lg); padding:24px; min-width:320px; max-width:520px; width:90%; box-shadow:var(--mgr-shadow-lg);">
+    <h2 style="font-size:1rem; margin-bottom:16px; color:var(--mgr-accent)">Add / Update Section</h2>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <input class="mgr-input" id="modalName" placeholder="SECTION_NAME (uppercase)">
+      <textarea class="mgr-editor" id="modalContent" rows="6" placeholder="Section content (Markdown)"></textarea>
+      <select class="mgr-input" id="modalPosition">
+        <option value="end">Append (end)</option>
+        <option value="start">Prepend (start)</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:16px; justify-content:flex-end">
+      <button class="mgr-btn" id="modalCancel">Cancel</button>
+      <button class="mgr-btn mgr-btn-primary" id="modalConfirm">Add / Update</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ───────────────────────────────────────────────────────────────── -->
+<div class="mgr-toast" id="toast"></div>
+
+<script src="manage-core.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  const SAMPLE_README = `# My Project
+<!-- START_LAST_UPDATED -->
+_Last updated: 2026-01-01_
+<!-- END_LAST_UPDATED -->
+
+## Introduction
+
+Welcome to **My Project**.  This README demonstrates MajixManage.
+
+## Features
+
+<!-- START_FEATURES -->
+- Zero dependencies
+- Marker-based section editing
+- Undo / redo support
+- Fetch remote READMEs
+<!-- END_FEATURES -->
+
+## Getting Started
+
+<!-- START_QUICKSTART -->
+\`\`\`bash
+git clone https://github.com/majixai/majixai.github.io
+\`\`\`
+<!-- END_QUICKSTART -->
+
+## Stats
+
+<!-- START_REPO_STATS -->
+| Metric | Value |
+|--------|-------|
+| Stars  | 42    |
+| Forks  | 7     |
+<!-- END_REPO_STATS -->
+`;
+
+  window.MANAGE_CONFIG = {
+    namespace:    'demo',
+    storageKey:   'mgr-demo-doc',
+    historyLimit: 50,
+  };
+
+  MajixManage.init();
+
+  // Load stored doc or sample
+  const stored = localStorage.getItem('mgr-demo-doc');
+  MajixManage.parse(stored || SAMPLE_README);
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  const preview      = document.getElementById('preview');
+  const rawEditor    = document.getElementById('rawEditor');
+  const splitEditor  = document.getElementById('splitEditor');
+  const splitPreview = document.getElementById('splitPreview');
+  const sectionList  = document.getElementById('sectionList');
+  const sectionCards = document.getElementById('sectionCards');
+  const historyList  = document.getElementById('historyList');
+  const btnUndo      = document.getElementById('btnUndo');
+  const btnRedo      = document.getElementById('btnRedo');
+  const toast        = document.getElementById('toast');
+
+  // ── Refresh UI ────────────────────────────────────────────────────────────
+
+  function refresh() {
+    const { sections, source } = MajixManage.parse(MajixManage.export('markdown'));
+
+    // Preview
+    MajixManage.render(source, preview);
+
+    // Raw editor
+    rawEditor.value = source;
+
+    // Split
+    splitEditor.value = source;
+    splitPreview.innerHTML = MajixManage._mdToHtml(source);
+
+    // Sidebar section list
+    sectionList.innerHTML = '';
+    for (const name of MajixManage.listSections()) {
+      const li = document.createElement('li');
+      li.className = 'mgr-section-item';
+      li.innerHTML = `<span class="mgr-section-name">${name}</span><span class="mgr-section-del" title="Delete">✕</span>`;
+      li.querySelector('.mgr-section-del').addEventListener('click', e => {
+        e.stopPropagation();
+        if (confirm(`Remove section "${name}"?`)) { MajixManage.removeSection(name); refresh(); showToast(`Section "${name}" removed`, 'warn'); }
+      });
+      li.addEventListener('click', () => {
+        document.querySelectorAll('.mgr-section-item').forEach(x => x.classList.remove('is-active'));
+        li.classList.add('is-active');
+        showSectionCard(name);
+      });
+      sectionList.appendChild(li);
+    }
+
+    // Section cards
+    renderCards();
+
+    // History
+    renderHistory();
+
+    // Undo/redo buttons
+    const hist = MajixManage.history();
+    btnUndo.disabled = hist.length === 0;
+  }
+
+  function renderCards() {
+    sectionCards.innerHTML = '';
+    for (const name of MajixManage.listSections()) {
+      const content = MajixManage.getSection(name) || '';
+      const card = document.createElement('div');
+      card.className = 'mgr-card';
+      card.innerHTML = `<div class="mgr-card-title">${name}</div><div class="mgr-card-preview">${escHtml(content.slice(0, 120))}</div>`;
+      card.addEventListener('click', () => showSectionCard(name));
+      sectionCards.appendChild(card);
+    }
+    if (!sectionCards.children.length) {
+      sectionCards.innerHTML = '<div class="mgr-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg><span>No sections found. Add markers like<br><code>&lt;!-- START_MY_SECTION --&gt; … &lt;!-- END_MY_SECTION --&gt;</code></span></div>';
+    }
+  }
+
+  function renderHistory() {
+    historyList.innerHTML = '';
+    const hist = MajixManage.history().slice().reverse();
+    if (!hist.length) {
+      historyList.innerHTML = '<li style="padding:16px;color:var(--mgr-text-muted)">No history yet.</li>';
+      return;
+    }
+    for (const entry of hist) {
+      const li = document.createElement('li');
+      const action = entry.old === null ? 'Added' : entry.new === null ? 'Removed' : 'Updated';
+      li.innerHTML = `<span class="mgr-history-section">${entry.section}</span><span>${action}</span><span class="mgr-history-time">${new Date(entry.timestamp).toLocaleTimeString()}</span>`;
+      historyList.appendChild(li);
+    }
+  }
+
+  function showSectionCard(name) {
+    // Switch to sections tab and scroll to card, or show in preview
+    switchTab('sections');
+    document.querySelectorAll('.mgr-card').forEach(c => {
+      if (c.querySelector('.mgr-card-title').textContent === name) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
+
+  // ── Toast helper ──────────────────────────────────────────────────────────
+
+  let _toastTimer;
+  function showToast(msg, type) {
+    clearTimeout(_toastTimer);
+    toast.textContent = msg;
+    toast.className = 'mgr-toast is-visible' + (type ? ' is-' + type : '');
+    _toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2800);
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+
+  const panels = {
+    preview:  document.getElementById('panelPreview'),
+    editor:   document.getElementById('panelEditor'),
+    split:    document.getElementById('panelSplit'),
+    sections: document.getElementById('panelSections'),
+    history:  document.getElementById('panelHistory'),
+    about:    document.getElementById('panelAbout'),
+  };
+
+  function switchTab(name) {
+    document.querySelectorAll('.mgr-tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+    Object.entries(panels).forEach(([k, el]) => {
+      el.classList.toggle('is-visible', k === name);
+      el.style.display = k === name ? '' : 'none';
+    });
+  }
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    if (e.target.dataset.tab) switchTab(e.target.dataset.tab);
+  });
+
+  // ── Toolbar actions ───────────────────────────────────────────────────────
+
+  // Load URL
+  document.getElementById('btnLoad').addEventListener('click', () => {
+    const url = document.getElementById('urlBar').value.trim();
+    if (!url) { showToast('Enter a URL first', 'warn'); return; }
+    showToast('Loading…');
+    MajixManage.load(url).then(() => { refresh(); showToast('Loaded ✓'); }).catch(err => showToast(err.message, 'error'));
+  });
+
+  // Undo / Redo
+  btnUndo.addEventListener('click', () => { if (MajixManage.undo()) { refresh(); showToast('Undone'); } });
+  btnRedo.addEventListener('click', () => { if (MajixManage.redo()) { refresh(); showToast('Redone'); } });
+
+  // Save
+  document.getElementById('btnSave').addEventListener('click', () => { MajixManage.save(); showToast('Download started'); });
+
+  // Export JSON
+  document.getElementById('btnExport').addEventListener('click', () => {
+    const json = MajixManage.export('json');
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'readme-sections.json' });
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Exported JSON');
+  });
+
+  // Theme toggle
+  document.getElementById('btnTheme').addEventListener('click', () => {
+    document.getElementById('app').classList.toggle('mgr-dark');
+  });
+
+  // ── Raw editor → sync ─────────────────────────────────────────────────────
+  rawEditor.addEventListener('input', () => {
+    MajixManage.parse(rawEditor.value);
+    MajixManage.render(rawEditor.value, preview);
+    splitEditor.value = rawEditor.value;
+    splitPreview.innerHTML = MajixManage._mdToHtml(rawEditor.value);
+    renderCards();
+    renderHistory();
+  });
+
+  splitEditor.addEventListener('input', () => {
+    MajixManage.parse(splitEditor.value);
+    splitPreview.innerHTML = MajixManage._mdToHtml(splitEditor.value);
+    rawEditor.value = splitEditor.value;
+    MajixManage.render(splitEditor.value, preview);
+    renderCards();
+  });
+
+  // ── Add-section modal ─────────────────────────────────────────────────────
+  const modal = document.getElementById('modal');
+
+  document.getElementById('btnAddSection').addEventListener('click', () => {
+    document.getElementById('modalName').value    = '';
+    document.getElementById('modalContent').value = '';
+    modal.style.display = 'flex';
+    document.getElementById('modalName').focus();
+  });
+
+  document.getElementById('modalCancel').addEventListener('click', () => { modal.style.display = 'none'; });
+
+  document.getElementById('modalConfirm').addEventListener('click', () => {
+    const name    = document.getElementById('modalName').value.trim().toUpperCase().replace(/\s+/g, '_');
+    const content = document.getElementById('modalContent').value;
+    const pos     = document.getElementById('modalPosition').value;
+    if (!name) { showToast('Section name is required', 'error'); return; }
+    MajixManage.addSection(name, content, pos);
+    refresh();
+    modal.style.display = 'none';
+    showToast(`Section "${name}" saved ✓`);
+  });
+
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); if (MajixManage.undo()) { refresh(); showToast('Undone'); } }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); if (MajixManage.redo()) { refresh(); showToast('Redone'); } }
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // ── Initial render ────────────────────────────────────────────────────────
+  refresh();
+  switchTab('preview');
+}());
+</script>
+</body>
+</html>
