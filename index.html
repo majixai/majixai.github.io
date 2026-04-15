@@ -847,6 +847,7 @@
   let recentDirsAutoTimer = null;
   let recentDirsLoadInFlight = null;
   let recentDirsActionsReady = false;
+  let recentDirsControlsBound = false;
 
   function getMajixActions() {
     return (typeof window !== 'undefined' && window.MajixActions) ? window.MajixActions : null;
@@ -855,7 +856,11 @@
   function dispatchRecentDirsAction(type, payload = {}, meta = {}) {
     const actions = getMajixActions();
     if (!actions) return;
-    try { actions.dispatch(type, payload, meta); } catch (_) {}
+    try {
+      actions.dispatch(type, payload, meta);
+    } catch (error) {
+      console.debug('Recent dirs action dispatch skipped:', type, error);
+    }
   }
 
   function setRecentDirsLastRefresh(label) {
@@ -878,7 +883,6 @@
     if (recentDirsAutoTimer) clearInterval(recentDirsAutoTimer);
     recentDirsAutoTimer = setInterval(() => {
       dispatchRecentDirsAction('recent-dirs/auto-refresh', { intervalMs: RECENT_DIRS_REFRESH_MS });
-      loadRecentDirs('auto');
     }, RECENT_DIRS_REFRESH_MS);
   }
 
@@ -1023,7 +1027,7 @@
     const detailsId  = `rdDetails-${idx}`;
     const expandBtn  = hasDetails
       ? `<button class="recent-dir-expand-btn" aria-expanded="false" aria-controls="${detailsId}" aria-label="Show recommendations and enhancements for ${escHtml(d.name)}" onclick="toggleRecentDirDetails('${detailsId}', this)">
-           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Future Recs &amp; Enhancements
+           <i class="fas fa-chevron-right" style="font-size:0.65rem;transition:transform 0.2s"></i> All Future Recommendations &amp; Enhancements
          </button>`
       : '';
     let detailsHtml = '';
@@ -1152,9 +1156,10 @@
       }
 
       const searchInput = document.getElementById('recentDirsSearch');
-      if (searchInput) searchInput.oninput = applyRecentDirsFilters;
+      if (!recentDirsControlsBound && searchInput) searchInput.addEventListener('input', applyRecentDirsFilters);
       const sortSelect = document.getElementById('recentDirsSort');
-      if (sortSelect) sortSelect.onchange = applyRecentDirsFilters;
+      if (!recentDirsControlsBound && sortSelect) sortSelect.addEventListener('change', applyRecentDirsFilters);
+      recentDirsControlsBound = true;
 
       setRecentDirsLastRefresh();
       dispatchRecentDirsAction('recent-dirs/load-success', { reason, total: dirs.length });
@@ -1996,7 +2001,6 @@
       document.getElementById('refreshData')?.addEventListener('click', async () => {
         dispatchRecentDirsAction('projects/refresh-requested', { source: 'refresh-button' });
         dispatchRecentDirsAction('recent-dirs/reload', { reason: 'refresh-button' });
-        await loadRecentDirs('refresh-button');
         await this.#storage.delete(MajixConfig.cacheKey);
         location.reload();
       });
