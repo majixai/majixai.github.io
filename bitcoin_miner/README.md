@@ -41,8 +41,6 @@ This directory is wired to GitHub Actions:
 - Workflow: `.github/workflows/bitcoin_miner_data.yml`
 - Behavior: runs the fetcher and commits refreshed `bitcoin_miner/data/live_data.json` back to the repository when changed.
 
-This README is written to remain compatible with automated README-generation workflows that infer context from ML/GPU/neural-related project areas and extensive commit history analysis.
-
 ## Local usage
 
 ### 1) Build the C miner
