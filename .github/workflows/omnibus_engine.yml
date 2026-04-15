@@ -1,0 +1,466 @@
+################################################################################
+# OMNIBUS ENGINE — All-Directory Continuous Update
+# ------------------------------------------------------------------------------
+# Triggers every minute. Launches parallel engine jobs, each capped at
+# 5 minutes, so multiple scripts run concurrently from the start of every run.
+#
+# Jobs
+#   1. directory-metadata  — recent_dirs.json + projects.json
+#   2. tensor-forecast     — tradingview_integration/tensor_engine.py
+#   3. market-prediction   — market_prediction/market_predictor.py
+#   4. sp-projection       — sp_closing_projection/sp_closing_projection.py
+#   5. neural-finance      — yfinance multi-ticker ingest + neural prep
+#   6. yfinance-engine     — lightweight per-minute yfinance snapshot
+################################################################################
+
+name: Omnibus Engine — All-Directory Continuous Update
+
+on:
+  schedule:
+    - cron: '* * * * *'   # every minute
+  workflow_dispatch:
+
+concurrency:
+  group: omnibus-engine-${{ github.run_id }}
+  cancel-in-progress: false  # let every triggered run complete
+
+permissions:
+  contents: write
+
+# ---------------------------------------------------------------------------
+# Shared push helper — each job sources this as an inline script
+# ---------------------------------------------------------------------------
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  # ── 1. Directory Metadata ──────────────────────────────────────────────────
+  directory-metadata:
+    name: Directory Metadata Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Generate recent_dirs.json
+        env:
+          AUTHOR: majixai
+        run: |
+          python3 << 'PYEOF'
+          import subprocess, json, os
+
+          AUTHOR = os.environ.get('AUTHOR', 'majixai')
+          TOP_N  = 20
+          EXCLUDE = {'.git', '.github', '__pycache__', 'node_modules', 'icons', '.vscode'}
+
+          result = subprocess.run(
+              ['git', 'log', '--author=' + AUTHOR, '--name-only',
+               '--format=%H|%aI|%s|%aN', '--diff-filter=ACDMR'],
+              capture_output=True, text=True)
+
+          seen_dirs = {}
+          current_meta = None
+          for line in result.stdout.splitlines():
+              line = line.rstrip()
+              if not line:
+                  continue
+              if '|' in line and line.count('|') >= 3:
+                  parts = line.split('|', 3)
+                  current_meta = {'sha': parts[0], 'date': parts[1],
+                                  'message': parts[2], 'author': parts[3]}
+              elif current_meta:
+                  top_dir = line.split('/')[0]
+                  if (top_dir and not top_dir.startswith('.')
+                          and top_dir not in EXCLUDE
+                          and os.path.isdir(top_dir)
+                          and top_dir not in seen_dirs):
+                      seen_dirs[top_dir] = {
+                          'name': top_dir, 'path': top_dir + '/',
+                          'lastCommitDate':    current_meta['date'],
+                          'lastCommitMessage': current_meta['message'],
+                          'lastCommitAuthor':  current_meta['author'],
+                          'lastCommitSha':     current_meta['sha'][:7]}
+                      if len(seen_dirs) >= TOP_N:
+                          break
+
+          with open('recent_dirs.json', 'w') as f:
+              json.dump(list(seen_dirs.values()), f, indent=2)
+          print(f"recent_dirs.json: {len(seen_dirs)} entries")
+          PYEOF
+
+      - name: Generate projects.json
+        run: |
+          python3 << 'PYEOF'
+          import os, json, re
+          from datetime import datetime
+
+          CATEGORY_KEYWORDS = {
+              'finance': ['stock','trade','ticker','option','market','etrade','yfinance',
+                          'quantix','jinx_strategy','jump','sp_','bitcoin','tensor'],
+              'gaming':  ['nfl','gridiron','playbook','holdem','casino','golf','touchdown'],
+              'data':    ['csv','dbs','data','index','fetcher','latest_commit','scrape'],
+              'web':     ['hotel','reservation','booking','stays','referral','showcase',
+                          'whatsapp','contact','link_manager','jinxco','boxstore'],
+              'ai':      ['neural','ai','ml','predict','forecast','model','brain'],
+          }
+          EXCLUDE = {'.git','.github','__pycache__','node_modules','icons','.vscode'}
+
+          def get_category(name):
+              n = name.lower()
+              for cat, kws in CATEGORY_KEYWORDS.items():
+                  if any(k in n for k in kws):
+                      return cat
+              return 'tools'
+
+          def get_last_modified(path):
+              latest = datetime.min
+              for root, dirs, files in os.walk(path):
+                  dirs[:] = [d for d in dirs if not d.startswith('.')]
+                  for f in files:
+                      if not f.startswith('.'):
+                          try:
+                              mtime = datetime.fromtimestamp(
+                                  os.path.getmtime(os.path.join(root, f)))
+                              if mtime > latest:
+                                  latest = mtime
+                          except Exception:
+                              pass
+              return latest if latest != datetime.min else datetime.now()
+
+          def get_description(path, name):
+              readme = os.path.join(path, 'README.md')
+              index  = os.path.join(path, 'index.html')
+              desc   = f'{name} project'
+              if os.path.exists(readme):
+                  try:
+                      lines = open(readme, encoding='utf-8').readlines()
+                      for l in lines[1:10]:
+                          l = l.strip()
+                          if l and not l.startswith('#') and not l.startswith('!'):
+                              desc = l[:120]; break
+                  except Exception:
+                      pass
+              elif os.path.exists(index):
+                  try:
+                      content = open(index, encoding='utf-8').read()
+                      m = re.search(r'<title>([^<]+)</title>', content, re.I)
+                      if m:
+                          desc = m.group(1).strip()[:120]
+                  except Exception:
+                      pass
+              return desc
+
+          projects = []
+          for item in sorted(os.listdir('.')):
+              p = os.path.join('.', item)
+              if not os.path.isdir(p) or item.startswith('.') or item in EXCLUDE:
+                  continue
+              projects.append({
+                  'name': item, 'path': item + '/',
+                  'desc': get_description(p, item),
+                  'category': get_category(item),
+                  'lastUpdated': get_last_modified(p).isoformat(),
+              })
+
+          with open('projects.json', 'w') as f:
+              json.dump(projects, f, indent=2)
+          print(f"projects.json: {len(projects)} entries")
+          PYEOF
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit and push (with rebase retry)
+        run: |
+          git add recent_dirs.json projects.json
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — directory metadata $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
+
+  # ── 2. Tensor Forecast Engine ─────────────────────────────────────────────
+  tensor-forecast:
+    name: Tensor Forecast Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet yfinance numpy pandas scipy
+
+      - name: Run tensor engine
+        run: python tradingview_integration/tensor_engine.py || true
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit tensor forecast
+        run: |
+          git add tradingview_integration/data/ data/ || true
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — tensor forecast $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
+
+  # ── 3. Market Prediction Engine ───────────────────────────────────────────
+  market-prediction:
+    name: Market Prediction Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet yfinance numpy pandas scipy matplotlib requests || true
+
+      - name: Run market predictor
+        env:
+          TICKER: SPY
+          SIMULATIONS: '500'
+        run: python market_prediction/market_predictor.py || true
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit prediction output
+        run: |
+          git add market_prediction/ data/ || true
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — market prediction $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
+
+  # ── 4. S&P Closing Projection Engine ──────────────────────────────────────
+  sp-projection:
+    name: S&P Closing Projection Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet -r sp_closing_projection/requirements.txt || pip install --quiet yfinance numpy pandas scipy matplotlib
+
+      - name: Run S&P projection
+        run: python sp_closing_projection/sp_closing_projection.py || true
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit projection output
+        run: |
+          git add sp_closing_projection/ || true
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — sp projection $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
+
+  # ── 5. Neural Finance Engine ──────────────────────────────────────────────
+  neural-finance:
+    name: Neural Finance Data Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet yfinance pandas numpy torch
+
+      - name: Fetch and prepare neural finance data
+        run: |
+          python3 << 'PYEOF'
+          import yfinance as yf, pandas as pd, json, os
+          from datetime import datetime, timezone
+
+          TICKERS = ['SPY','QQQ','DIA','IWM','AAPL','MSFT','NVDA','TSLA','BTC-USD','ETH-USD']
+          os.makedirs('data/neural', exist_ok=True)
+
+          records = {}
+          for t in TICKERS:
+              try:
+                  df = yf.Ticker(t).history(period='5d', interval='1m')
+                  if not df.empty:
+                      last = df.iloc[-1]
+                      records[t] = {
+                          'close':  round(float(last['Close']), 4),
+                          'volume': int(last['Volume']),
+                          'high':   round(float(last['High']), 4),
+                          'low':    round(float(last['Low']),  4),
+                          'ts':     str(df.index[-1]),
+                      }
+              except Exception as e:
+                  print(f"Warning: {t}: {e}")
+
+          out = {
+              'updated': datetime.now(timezone.utc).isoformat(),
+              'tickers': records,
+          }
+          with open('data/neural/snapshot.json', 'w') as f:
+              json.dump(out, f, indent=2)
+          print(f"Neural snapshot: {len(records)} tickers")
+          PYEOF
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit neural data snapshot
+        run: |
+          git add data/neural/ || true
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — neural snapshot $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
+
+  # ── 6. YFinance Snapshot Engine ───────────────────────────────────────────
+  yfinance-engine:
+    name: YFinance Snapshot Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install --quiet yfinance pandas numpy
+
+      - name: Fetch per-minute yfinance snapshots
+        run: |
+          python3 << 'PYEOF'
+          import yfinance as yf, json, os
+          from datetime import datetime, timezone
+
+          CATEGORIES = {
+              'indices':    ['SPY','QQQ','DIA','IWM','GLD','TLT'],
+              'crypto':     ['BTC-USD','ETH-USD','SOL-USD','BNB-USD'],
+              'tech':       ['AAPL','MSFT','NVDA','GOOGL','META','AMZN','TSLA'],
+              'financials': ['JPM','GS','BAC','WFC','MS'],
+          }
+
+          ts = datetime.now(timezone.utc).isoformat()
+          for cat, tickers in CATEGORIES.items():
+              out_dir = f'data/{cat}'
+              os.makedirs(out_dir, exist_ok=True)
+              snapshot = {'updated': ts, 'tickers': {}}
+              for t in tickers:
+                  try:
+                      info = yf.Ticker(t).fast_info
+                      snapshot['tickers'][t] = {
+                          'price':  round(float(getattr(info, 'last_price', 0) or 0), 4),
+                          'volume': int(getattr(info, 'three_month_average_volume', 0) or 0),
+                          'high52': round(float(getattr(info, 'year_high', 0) or 0), 4),
+                          'low52':  round(float(getattr(info, 'year_low',  0) or 0), 4),
+                      }
+                  except Exception as e:
+                      print(f"Warning: {t}: {e}")
+              out_path = f'{out_dir}/snapshot.json'
+              with open(out_path, 'w') as f:
+                  json.dump(snapshot, f, indent=2)
+              print(f"{cat}: {len(snapshot['tickers'])} tickers → {out_path}")
+          PYEOF
+
+      - name: Configure git
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit yfinance snapshots
+        run: |
+          git add data/indices/ data/crypto/ data/tech/ data/financials/ || true
+          if git diff --staged --quiet; then
+            echo "No changes"; exit 0
+          fi
+          TS=$(date +'%Y-%m-%d %H:%M:%S UTC')
+          git commit -m "data: omnibus — yfinance snapshot $TS"
+          for i in 1 2 3; do
+            git pull --rebase origin "${{ github.ref_name }}" 2>/dev/null || true
+            git push && break
+            sleep $((i * 5))
+          done
