@@ -13,6 +13,26 @@
 
         isOpenButtonTarget(target) {
             return Boolean(target && target.closest && target.closest('.open-iframe-btn'));
+        },
+
+        shouldIgnoreCardClick(target, extraIgnoreSelectors = []) {
+            if (this.isOpenButtonTarget(target)) return true;
+            if (!target || !target.closest || !Array.isArray(extraIgnoreSelectors)) return false;
+            return extraIgnoreSelectors.some((selector) => Boolean(selector && target.closest(selector)));
+        },
+
+        bindOpenButton(container, onOpen) {
+            const openBtn = container?.querySelector?.('.open-iframe-btn');
+            if (!openBtn || typeof onOpen !== 'function') return false;
+            if (openBtn.dataset.iframeOpenBound === '1') return true;
+
+            openBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                onOpen(event);
+            });
+            openBtn.dataset.iframeOpenBound = '1';
+            return true;
         }
     };
 

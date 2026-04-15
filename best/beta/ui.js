@@ -134,20 +134,28 @@ class UIManager {
         }
 
         userElement.addEventListener("click", function(event) {
-            if (event.target.closest('.remove-user-btn') || event.target.closest('.open-iframe-btn')) {
+            const shouldIgnoreClick = window.IframeOpenControls?.shouldIgnoreCardClick
+                ? window.IframeOpenControls.shouldIgnoreCardClick(event.target, ['.remove-user-btn'])
+                : (event.target.closest('.remove-user-btn') || event.target.closest('.open-iframe-btn'));
+            if (shouldIgnoreClick) {
                 return;
             }
             event.preventDefault();
             handleUserClickCallback(user);
         });
 
-        const openIframeBtn = userElement.querySelector('.open-iframe-btn');
-        if (openIframeBtn) {
-            openIframeBtn.addEventListener("click", function(event) {
-                event.stopPropagation();
-                event.preventDefault();
-                handleUserClickCallback(user);
-            });
+        const boundBySharedHelper = window.IframeOpenControls?.bindOpenButton?.(userElement, () => {
+            handleUserClickCallback(user);
+        });
+        if (!boundBySharedHelper) {
+            const openIframeBtn = userElement.querySelector('.open-iframe-btn');
+            if (openIframeBtn) {
+                openIframeBtn.addEventListener("click", function(event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    handleUserClickCallback(user);
+                });
+            }
         }
 
         // const toggleBtn = userElement.querySelector('.toggle-view-btn');
