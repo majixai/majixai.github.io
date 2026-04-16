@@ -35,7 +35,7 @@
       .replace(/^-+|-+$/g, '') || ('wiki-' + Date.now());
   }
 
-  function id() {
+  function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
@@ -46,14 +46,22 @@
   function emit(eventName, payload) {
     var handlers = _events[eventName] || [];
     handlers.slice().forEach(function (fn) {
-      try { fn(payload); } catch (e) { /* noop */ }
+      try {
+        fn(payload);
+      } catch (e) {
+        try { console.warn('[MajixWiki] event handler error:', eventName, e); } catch (_) { /* noop */ }
+      }
     });
   }
 
   function dispatch(actionType, payload) {
     if (!_cfg.autoDispatch) return;
     if (typeof root.MajixActions === 'undefined') return;
-    try { root.MajixActions.dispatch(actionType, payload || {}); } catch (e) { /* noop */ }
+    try {
+      root.MajixActions.dispatch(actionType, payload || {});
+    } catch (e) {
+      emit('error', { message: 'Action dispatch failed', actionType: actionType, error: e });
+    }
   }
 
   function persist() {
@@ -83,7 +91,10 @@
 
   function ensureCapacity() {
     if (_pages.length <= _cfg.maxPages) return;
+    var removed = _pages.slice(0, _pages.length - _cfg.maxPages);
     _pages = _pages.slice(_pages.length - _cfg.maxPages);
+    emit('pages_truncated', { removed: clone(removed), kept: _pages.length, maxPages: _cfg.maxPages });
+    dispatch('page/truncated', { removed: removed.length, kept: _pages.length, maxPages: _cfg.maxPages });
   }
 
   function uniqueSlug(base, selfId) {
@@ -136,7 +147,7 @@
       if (!title) throw new Error('[MajixWiki] create: title is required');
       var createdAt = nowIso();
       var page = {
-        id: id(),
+        id: generateId(),
         title: title,
         slug: uniqueSlug((input && input.slug) || title),
         content: String((input && input.content) || ''),
@@ -207,7 +218,7 @@
       pages.forEach(function (p) {
         if (!p || !p.title) return;
         _pages.push({
-          id: String(p.id || id()),
+          id: String(p.id || generateId()),
           title: String(p.title),
           slug: uniqueSlug(p.slug || p.title, p.id),
           content: String(p.content || ''),

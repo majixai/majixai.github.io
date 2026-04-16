@@ -61,6 +61,8 @@
     window.WIKI_CONFIG = {
       namespace: 'wiki',
       storageKey: 'majixWikiPages',
+      // Prevent duplicate action dispatch loops because this demo routes
+      // all mutations through MajixActions handlers below.
       autoDispatch: false
     };
   </script>
