@@ -1,0 +1,192 @@
+name: Programming Workflow CI/CD (This Week + Next Week)
+
+on:
+  workflow_dispatch:
+    inputs:
+      window_start:
+        description: 'Run window start date (YYYY-MM-DD)'
+        required: false
+        default: '2026-04-15'
+      window_end:
+        description: 'Run window end date (YYYY-MM-DD)'
+        required: false
+        default: '2026-04-29'
+  schedule:
+    - cron: '0 14 * * 1-5'
+
+permissions:
+  contents: read
+
+jobs:
+  programming-cicd:
+    runs-on: ubuntu-latest
+    env:
+      WINDOW_START: ${{ github.event.inputs.window_start || '2026-04-15' }}
+      WINDOW_END: ${{ github.event.inputs.window_end || '2026-04-29' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify active two-week window
+        id: window
+        run: |
+          TODAY="$(date -u +%F)"
+          if [[ "$TODAY" < "$WINDOW_START" || "$TODAY" > "$WINDOW_END" ]]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Outside run window ($WINDOW_START to $WINDOW_END); skipping." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+            echo "Within run window ($WINDOW_START to $WINDOW_END)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Build directory CI plan from recent_dirs.json
+        if: steps.window.outputs.active == 'true'
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+
+          with open("recent_dirs.json", "r", encoding="utf-8") as f:
+            recent = json.load(f)
+
+          targets = []
+          for item in recent:
+            name = item.get("name")
+            if not name or not os.path.isdir(name):
+              continue
+
+            if os.path.exists(os.path.join(name, "package.json")):
+              paradigm = "node"
+            elif os.path.exists(os.path.join(name, "requirements.txt")) or os.path.exists(os.path.join(name, "pyproject.toml")):
+              paradigm = "python"
+            elif os.path.exists(os.path.join(name, "Makefile")):
+              paradigm = "make"
+            else:
+              paradigm = "static"
+
+            targets.append({"name": name, "path": name, "paradigm": paradigm})
+
+          targets = targets[:20]
+
+          with open("/tmp/programming_targets.json", "w", encoding="utf-8") as f:
+            json.dump(targets, f)
+
+          print(f"Prepared {len(targets)} targets")
+          PYEOF
+
+      - name: Run directory-driven CI checks
+        if: steps.window.outputs.active == 'true'
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          with open("/tmp/programming_targets.json", "r", encoding="utf-8") as f:
+            targets = json.load(f)
+
+          results = []
+          failed = 0
+
+          def run(cmd, cwd=None):
+            return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True)
+
+          for target in targets:
+            name = target["name"]
+            path = target["path"]
+            paradigm = target["paradigm"]
+            status = "pass"
+            detail = "ok"
+
+            try:
+              if paradigm == "node":
+                pkg = Path(path) / "package.json"
+                data = json.loads(pkg.read_text(encoding="utf-8"))
+                scripts = data.get("scripts", {})
+                detail = f"package.json parsed; scripts={','.join(sorted(scripts.keys())) or 'none'}"
+              elif paradigm == "python":
+                py_files = [str(p) for p in Path(path).rglob("*.py")]
+                if py_files:
+                  out = run([sys.executable, "-m", "py_compile", *py_files[:200]])
+                  if out.returncode != 0:
+                    status = "fail"
+                    detail = (out.stderr or out.stdout).strip()[:400]
+                  else:
+                    detail = f"compiled {min(len(py_files), 200)} python files"
+                else:
+                  detail = "no python files found"
+              elif paradigm == "make":
+                out = run(["make", "-C", path, "-n"])
+                if out.returncode != 0:
+                  status = "fail"
+                  detail = (out.stderr or out.stdout).strip()[:400]
+                else:
+                  detail = "make dry-run succeeded"
+              else:
+                exists = (Path(path) / "index.html").exists() or (Path(path) / "README.md").exists()
+                if exists:
+                  detail = "static directory contains index/readme"
+                else:
+                  status = "fail"
+                  detail = "missing index.html and README.md"
+            except Exception as exc:
+              status = "fail"
+              detail = str(exc)[:400]
+
+            if status == "fail":
+              failed += 1
+
+            results.append({"name": name, "paradigm": paradigm, "status": status, "detail": detail})
+
+          with open("/tmp/programming_results.json", "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=2)
+
+          print(f"Checks complete: {len(results)} directories, failures={failed}")
+          if failed:
+            sys.exit(1)
+          PYEOF
+
+      - name: CD readiness summary
+        if: always() && steps.window.outputs.active == 'true'
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+          from collections import Counter
+
+          with open("/tmp/programming_results.json", "r", encoding="utf-8") as f:
+            results = json.load(f)
+
+          total = len(results)
+          failed = sum(1 for r in results if r["status"] == "fail")
+          passed = total - failed
+          paradigms = Counter(r["paradigm"] for r in results)
+          summary_path = os.environ["GITHUB_STEP_SUMMARY"]
+          window_start = os.environ["WINDOW_START"]
+          window_end = os.environ["WINDOW_END"]
+
+          with open(summary_path, "a", encoding="utf-8") as s:
+            s.write("\n## Programming CI/CD Summary\n")
+            s.write(f"- Window: {window_start} → {window_end}\n")
+            s.write(f"- Total directories checked: {total}\n")
+            s.write(f"- Passed: {passed}\n")
+            s.write(f"- Failed: {failed}\n")
+            s.write(f"- Paradigms: {dict(paradigms)}\n\n")
+            s.write("### Directory Results\n")
+            for r in results:
+              icon = "✅" if r["status"] == "pass" else "❌"
+              s.write(f"- {icon} `{r['name']}` ({r['paradigm']}): {r['detail']}\n")
+          PYEOF
