@@ -9063,5 +9063,10 @@ function filterScripts(btn, category) {
   });
 }
 </script>
+<script>
+  window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'tradingview-integration' };
+  if (typeof MajixActions !== 'undefined') MajixActions.init();
+</script>
+<script src="/actions/actions-core.js"></script>
 </body>
 </html>
