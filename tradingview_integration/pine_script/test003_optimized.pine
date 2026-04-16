@@ -38,6 +38,7 @@ type PinnedForecast
     float[] targetClose   // Ghost-bar close prices
     float[] confUpper     // Upper confidence envelope
     float[] confLower     // Lower confidence envelope
+    int    horizonBars    // Cached horizon at trigger time (guards input changes)
     bool   isActive       // Whether a forecast is currently running
     string triggerSource  // Source label: GEO REV / BRK SYN / ALP FLP
 
@@ -216,7 +217,7 @@ ltf_s  = input.timeframe("1", "LTF for Intra-Bar Noise",                      gr
 
 var KinematicModel  kin  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
 var UncertaintyZone uz   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
-var PinnedForecast  pf   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), false, "NONE")
+var PinnedForecast  pf   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
 var AccuracyEngine  acc  = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
 var BreakoutSynergy brk  = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
 var PatternEngine   pe   = PatternEngine.new("NONE","NONE",0,na,false,false,50.0,"None",33.3,33.3,33.3,0.0,0.0)
@@ -425,6 +426,7 @@ clear_zone_drawings(ConsolidationZone z) =>
 
 reset_forecast_state(PinnedForecast pfIn, ProjectionMetrics pmIn) =>
     pfIn.isActive := false
+    pfIn.horizonBars := 0
     pmIn.lastTarget := na
     pmIn.targetBar := na
 
@@ -1315,11 +1317,11 @@ Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
 
 // Ensure PM object fields and atrVal/lr_rt are defined before this block
 
-bool targetBarSane = pf.isActive and not na(PM.targetBar) and PM.targetBar == (pf.anchorBar + fc_hz)
-if pf.isActive and not na(PM.lastTarget) and bar_index == PM.targetBar and targetBarSane
+bool isForecastResolutionValid = pf.isActive and not na(PM.targetBar) and PM.targetBar == (pf.anchorBar + pf.horizonBars)
+if pf.isActive and not na(PM.lastTarget) and bar_index == PM.targetBar and isForecastResolutionValid
     // Resolve forecast exactly once at target bar; prevents repeated feedback updates.
     feedbackBias := feedbackBias + ((close - PM.lastTarget) / nz(atrVal, 1) * lr_rt)
-    bool hit = (PM.lastTarget > close[fc_hz] and high >= PM.lastTarget) or (PM.lastTarget < close[fc_hz] and low <= PM.lastTarget)
+    bool hit = (PM.lastTarget > close[pf.horizonBars] and high >= PM.lastTarget) or (PM.lastTarget < close[pf.horizonBars] and low <= PM.lastTarget)
     if hit
         PM.hits := PM.hits + 1
     else
@@ -1327,7 +1329,7 @@ if pf.isActive and not na(PM.lastTarget) and bar_index == PM.targetBar and targe
     PM.totalProjections := PM.totalProjections + 1
     PM.accuracy := PM.totalProjections > 0 ? (float(PM.hits) / PM.totalProjections) * 100 : 0
     reset_forecast_state(pf, PM)
-else if pf.isActive and not targetBarSane
+else if pf.isActive and not isForecastResolutionValid
     // Defensive reset for mismatched lifecycle state.
     reset_forecast_state(pf, PM)
 
@@ -1348,25 +1350,26 @@ if signalTrigger and barstate.isconfirmed and not pf.isActive
     pf.anchorBar   := bar_index
     pf.anchorTime  := time
     pf.anchorPrice := close
+    pf.horizonBars := fc_hz
     pf.isActive    := true
     pf.triggerSource := pe.isReversal ? "GEOMETRIC REVERSAL" : (brk.isValidBreakout ? "BREAKOUT SYNERGY" : "ALPHATREND FLIP")
     PM.lastTarget  := Bayes.expectedClose
-    PM.targetBar   := pf.anchorBar + fc_hz
+    PM.targetBar   := pf.anchorBar + pf.horizonBars
 
     array.clear(pf.targetPoints), array.clear(pf.targetOpen)
     array.clear(pf.targetClose),  array.clear(pf.confUpper), array.clear(pf.confLower)
     mcMatrix := m_rnd(3, fc_hz)
     float ghostOpen = close
 
-    for i = 1 to fc_hz
-        float accDecay   = math.exp(-i / (fc_hz * 0.5))
+    for i = 1 to pf.horizonBars
+        float accDecay   = math.exp(-i / (pf.horizonBars * 0.5))
         float appliedVel = brk.isValidBreakout ? (kin.velocity * brk.velocityMult) : kin.velocity
         if pe.isReversal and not na(pe.structureTarget)
-            appliedVel += ((pe.structureTarget - close) / fc_hz * 0.5)
+            appliedVel += ((pe.structureTarget - close) / pf.horizonBars * 0.5)
 
         float kinProj  = pf.anchorPrice + (appliedVel*i) + (0.5*kin.acceleration*math.pow(i,2)*accDecay)
-        float mrPull   = en_mr ? (ta.ema(close,200) - close) * (i/fc_hz) * 0.15 : 0.0
-        float bayPull  = (Bayes.expectedClose - close) * (i/fc_hz) * 0.1
+        float mrPull   = en_mr ? (ta.ema(close,200) - close) * (i/pf.horizonBars) * 0.15 : 0.0
+        float bayPull  = (Bayes.expectedClose - close) * (i/pf.horizonBars) * 0.1
         float finalPrj = (kinProj*kinWeight) + (mrPull*mrWeight) + (bayPull*bayesWeight)
         float confBand = kin.errorTerm * uz.adaptiveCoeff * math.sqrt(i)
 
@@ -1921,27 +1924,6 @@ float regimeVel = mkv.current == 1 ? blendedVel * 1.2  :
                   mkv.current == 3 ? blendedVel * 0.3  :
                   mkv.current == 4 ? blendedVel * 1.5  : blendedVel
 
-// // ============================================================================
-// // 24. EXTENDED DATA WINDOW & AUXILIARY PLOTS
-// // ============================================================================
-// 
-// // Auxiliary non-overlay plots (pane 1: MACD)
-// hline(0, "Zero Line", color=color.new(color.gray, 50), linestyle=hline.style_solid)
-// plot(hist_mn,  "MACD Histogram",  color=hist_mn>0?color.new(color.lime,30):color.new(color.red,30), style=plot.style_histogram, display=display.pane)
-// plot(macd_mn,  "MACD Line",       color=color.new(color.blue,0),   linewidth=1, display=display.pane)
-// plot(sig_mn,   "Signal Line",     color=color.new(color.orange,0), linewidth=1, display=display.pane)
-// 
-// // Overlay: VWAP bands
-// plot(vwapDaily,  "VWAP",           color=color.new(#FFD700,50), linewidth=1, style=plot.style_line)
-// plot(vwapBand1U, "VWAP +1σ",       color=color.new(#00BFFF,80), linewidth=1, style=plot.style_line)
-// plot(vwapBand1L, "VWAP -1σ",       color=color.new(#00BFFF,80), linewidth=1, style=plot.style_line)
-// plot(vwapBand2U, "VWAP +2σ",       color=color.new(#FF8C00,80), linewidth=1, style=plot.style_line, display=display.all)
-// plot(vwapBand2L, "VWAP -2σ",       color=color.new(#FF8C00,80), linewidth=1, style=plot.style_line, display=display.all)
-// 
-// // Overlay: Sensitivity bounds
-// plot(bnd_hi,     "Param Bound Hi", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
-// plot(bnd_lo,     "Param Bound Lo", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
-
 // ============================================================================
 // 25. VOLATILITY REGIME CLASSIFIER
 // ============================================================================
@@ -2338,9 +2320,9 @@ var bool mssActive  = false
 var string mssDir   = "NONE"
 var int    mssBrBar = 0
 if chochBull
-    mssActive:=true, mssDir:="BULL", mssBrBar:=bar_index
+    mssActive := true, mssDir := "BULL", mssBrBar := bar_index
 if chochBear
-    mssActive:=true, mssDir:="BEAR", mssBrBar:=bar_index
+    mssActive := true, mssDir := "BEAR", mssBrBar := bar_index
 if mssActive and (bar_index - mssBrBar) > 20
     mssActive := false
 
@@ -2554,11 +2536,6 @@ plot(vwapBand2L, "VWAP -2σ", color=color.new(#FF8C00,80), linewidth=1, style=pl
 
 plot(bnd_hi, "Param Bound Hi", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
 plot(bnd_lo, "Param Bound Lo", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
-
-// [Insert your 3 mandatory plots here]
-// plot(mandatory1, "Mandatory 1")
-// plot(mandatory2, "Mandatory 2")
-// plot(mandatory3, "Mandatory 3")
 
 // --- DATA WINDOW: KINEMATICS & BAYES (Core Logic) ---
 plot(kin.velocity, "Velocity", display=display.data_window)
