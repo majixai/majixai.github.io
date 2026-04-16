@@ -7,7 +7,7 @@ nonlocal dynamical systems.
 
 ## Core Topics
 
-- Riemann-Liouville and Caputo derivatives
+- Riemann–Liouville and Caputo derivatives
 - Grünwald-Letnikov discretization viewpoint
 - Fractional Laplacian and nonlocal operators
 - Mittag-Leffler functions and fractional ODE solutions

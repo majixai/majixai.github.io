@@ -7,7 +7,7 @@ analysis, mechanics, PDEs, and control.
 
 ## Core Topics
 
-- First variation and Euler-Lagrange equations
+- First variation and Euler–Lagrange equations
 - Natural boundary/transversality conditions
 - Isoperimetric and constrained variational problems
 - Second variation, Legendre condition, Jacobi fields
@@ -16,7 +16,7 @@ analysis, mechanics, PDEs, and control.
 
 ## Canonical Results
 
-- Euler-Lagrange theorem
+- Euler–Lagrange theorem
 - Noether theorem
 - Weierstrass-Erdmann corner conditions
 - Existence via coercivity + lower semicontinuity (direct method)
