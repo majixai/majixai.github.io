@@ -35,8 +35,13 @@
       .replace(/^-+|-+$/g, '') || ('wiki-' + Date.now());
   }
 
+  var _idCounter = 0;
   function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    if (root.crypto && typeof root.crypto.randomUUID === 'function') {
+      return root.crypto.randomUUID();
+    }
+    _idCounter = (_idCounter + 1) % 1000000;
+    return Date.now().toString(36) + '-' + _idCounter.toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   }
 
   var _cfg = clone(DEFAULTS);
@@ -91,7 +96,10 @@
 
   function ensureCapacity() {
     if (_pages.length <= _cfg.maxPages) return;
-    var removed = _pages.slice(0, _pages.length - _cfg.maxPages);
+    _pages.sort(function (a, b) {
+      return String(a.updatedAt || '').localeCompare(String(b.updatedAt || ''));
+    });
+    var removed = _pages.slice(0, Math.max(0, _pages.length - _cfg.maxPages));
     _pages = _pages.slice(_pages.length - _cfg.maxPages);
     emit('pages_truncated', { removed: clone(removed), kept: _pages.length, maxPages: _cfg.maxPages });
     dispatch('page/truncated', { removed: removed.length, kept: _pages.length, maxPages: _cfg.maxPages });
@@ -216,11 +224,12 @@
       if (!Array.isArray(pages)) throw new Error('[MajixWiki] importPages: array required');
       if (opts.replace) _pages = [];
       pages.forEach(function (p) {
-        if (!p || !p.title) return;
-        _pages.push({
-          id: String(p.id || generateId()),
+      if (!p || !p.title) return;
+      var importedId = String(p.id || generateId());
+      _pages.push({
+          id: importedId,
           title: String(p.title),
-          slug: uniqueSlug(p.slug || p.title, p.id),
+          slug: uniqueSlug(p.slug || p.title, importedId),
           content: String(p.content || ''),
           tags: Array.isArray(p.tags) ? p.tags.map(String) : [],
           createdAt: String(p.createdAt || nowIso()),
