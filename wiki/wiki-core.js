@@ -224,9 +224,9 @@
       if (!Array.isArray(pages)) throw new Error('[MajixWiki] importPages: array required');
       if (opts.replace) _pages = [];
       pages.forEach(function (p) {
-      if (!p || !p.title) return;
-      var importedId = String(p.id || generateId());
-      _pages.push({
+        if (!p || !p.title) return;
+        var importedId = String(p.id || generateId());
+        _pages.push({
           id: importedId,
           title: String(p.title),
           slug: uniqueSlug(p.slug || p.title, importedId),
