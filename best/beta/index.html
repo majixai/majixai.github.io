@@ -222,6 +222,11 @@
                         <input type="text" id="archiveSearch" placeholder="Search performers..." autocomplete="off">
                         <span id="archiveCount" class="archive-count"></span>
                     </div>
+                    <div class="archive-pagination-controls">
+                        <button id="archivePrevPage" type="button" class="archive-page-btn" aria-label="Previous archive page">←</button>
+                        <span id="archivePageInfo" class="archive-page-info">Page 1 / 1</span>
+                        <button id="archiveNextPage" type="button" class="archive-page-btn" aria-label="Next archive page">→</button>
+                    </div>
                     <button class="close-button" id="closeArchiveModal">&times;</button>
                 </div>
                 <div id="archiveGrid" class="archive-grid">
@@ -295,9 +300,12 @@
 
     // ==================== Archive ====================
     (function() {
+        const archivePageSize = 48;
         let allArchiveNames = [];
+        let filteredArchiveNames = [];
         let archiveLoaded = false;
         let activeSlideshows = [];
+        let archivePage = 1;
 
         const archiveBtn = document.getElementById('archiveButton');
         const archiveModal = document.getElementById('archiveModal');
@@ -305,6 +313,9 @@
         const archiveSearch = document.getElementById('archiveSearch');
         const archiveGrid = document.getElementById('archiveGrid');
         const archiveCount = document.getElementById('archiveCount');
+        const archivePrevPage = document.getElementById('archivePrevPage');
+        const archiveNextPage = document.getElementById('archiveNextPage');
+        const archivePageInfo = document.getElementById('archivePageInfo');
 
         function stopAllArchiveSlideshows() {
             activeSlideshows.forEach(t => clearInterval(t));
@@ -413,18 +424,49 @@
             return card;
         }
 
-        function renderArchive(names) {
-            stopAllArchiveSlideshows();
-            archiveGrid.innerHTML = '';
-            if (names.length === 0) {
-                archiveGrid.innerHTML = '<p class="text-muted archive-loading">No performers found.</p>';
-                archiveCount.textContent = '';
+        function getArchiveTotalPages() {
+            return Math.max(1, Math.ceil(filteredArchiveNames.length / archivePageSize));
+        }
+
+        function updateArchivePagination(totalPages, totalItems) {
+            if (totalItems <= 0) {
+                archivePageInfo.textContent = 'Page 0 / 0';
+                archivePrevPage.disabled = true;
+                archiveNextPage.disabled = true;
                 return;
             }
-            archiveCount.textContent = `${names.length} performer${names.length !== 1 ? 's' : ''}`;
+            archivePageInfo.textContent = `Page ${archivePage} / ${totalPages}`;
+            archivePrevPage.disabled = archivePage <= 1;
+            archiveNextPage.disabled = archivePage >= totalPages;
+        }
+
+        function renderArchive() {
+            stopAllArchiveSlideshows();
+            archiveGrid.innerHTML = '';
+            if (filteredArchiveNames.length === 0) {
+                archiveGrid.innerHTML = '<p class="text-muted archive-loading">No performers found.</p>';
+                archiveCount.textContent = '';
+                updateArchivePagination(0, 0);
+                return;
+            }
+
+            const totalPages = getArchiveTotalPages();
+            archivePage = Math.min(Math.max(1, archivePage), totalPages);
+            const start = (archivePage - 1) * archivePageSize;
+            const pageItems = filteredArchiveNames.slice(start, start + archivePageSize);
+
+            archiveCount.textContent = `${filteredArchiveNames.length} performer${filteredArchiveNames.length !== 1 ? 's' : ''}`;
+            updateArchivePagination(totalPages, filteredArchiveNames.length);
+
             const frag = document.createDocumentFragment();
-            names.forEach(name => frag.appendChild(createArchiveCard(name)));
+            pageItems.forEach(name => frag.appendChild(createArchiveCard(name)));
             archiveGrid.appendChild(frag);
+        }
+
+        function setArchiveResults(names, resetPage = true) {
+            filteredArchiveNames = names;
+            if (resetPage) archivePage = 1;
+            renderArchive();
         }
 
         async function loadArchive() {
@@ -435,7 +477,7 @@
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 allArchiveNames = await resp.json();
                 archiveLoaded = true;
-                renderArchive(allArchiveNames);
+                setArchiveResults(allArchiveNames, true);
             } catch (e) {
                 archiveGrid.innerHTML = `<p class="text-muted archive-loading">Failed to load archive: ${e.message}</p>`;
             }
@@ -464,8 +506,21 @@
             searchDebounce = setTimeout(() => {
                 const q = archiveSearch.value.trim().toLowerCase();
                 const filtered = q ? allArchiveNames.filter(n => n.toLowerCase().includes(q)) : allArchiveNames;
-                renderArchive(filtered);
+                setArchiveResults(filtered, true);
             }, 250);
+        });
+
+        archivePrevPage?.addEventListener('click', () => {
+            if (archivePage <= 1) return;
+            archivePage -= 1;
+            renderArchive();
+        });
+
+        archiveNextPage?.addEventListener('click', () => {
+            const totalPages = getArchiveTotalPages();
+            if (archivePage >= totalPages) return;
+            archivePage += 1;
+            renderArchive();
         });
     })();
     </script>
