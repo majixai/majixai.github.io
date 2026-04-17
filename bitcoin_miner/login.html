@@ -57,6 +57,27 @@
         </label>
       </div>
 
+      <div class="api-credentials">
+        <div class="api-title">NiceHash API (optional)</div>
+        <div class="form-group">
+          <label for="nh-api-key">Key</label>
+          <input type="text" id="nh-api-key" name="nh-api-key" autocomplete="off" placeholder="NiceHash API Key">
+        </div>
+        <div class="form-group">
+          <label for="nh-api-secret">Secret</label>
+          <input type="password" id="nh-api-secret" name="nh-api-secret" autocomplete="off" placeholder="NiceHash API Secret">
+          <div class="api-note">For safety, secret is not stored persistently.</div>
+        </div>
+        <div class="form-group">
+          <label for="nh-org-id">Org ID</label>
+          <input type="text" id="nh-org-id" name="nh-org-id" autocomplete="off" placeholder="NiceHash Organization ID">
+        </div>
+        <div class="form-group">
+          <label for="nh-balance-currency">Balance currency</label>
+          <input type="text" id="nh-balance-currency" name="nh-balance-currency" value="BTC" autocomplete="off" placeholder="BTC">
+        </div>
+      </div>
+
       <button type="submit" class="btn-login" id="login-btn">Sign In</button>
     </form>
 

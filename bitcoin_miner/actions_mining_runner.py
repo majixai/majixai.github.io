@@ -135,7 +135,14 @@ def _in_memory_mine(seconds: int) -> dict:
     }
 
 
-def run_mining_session(duration_seconds: int, threads: int, bits: str) -> dict:
+def run_mining_session(
+    duration_seconds: int,
+    threads: int,
+    bits: str,
+    use_nicehash: bool = False,
+    nicehash_user: str | None = None,
+    nicehash_pass: str | None = None,
+) -> dict:
     deadline = time.time() + duration_seconds
     output_lines: list[str] = []
     attempts = 0
@@ -144,15 +151,22 @@ def run_mining_session(duration_seconds: int, threads: int, bits: str) -> dict:
     while time.time() < deadline:
         attempts += 1
         start_idx = len(output_lines)
+        cmd = [
+            str(MINER_BIN),
+            "--threads",
+            str(threads),
+            "--bits",
+            bits,
+            "--no-color",
+        ]
+        if use_nicehash:
+            cmd.append("--nicehash")
+            if nicehash_user:
+                cmd.extend(["--user", nicehash_user])
+            if nicehash_pass:
+                cmd.extend(["--pass", nicehash_pass])
         proc = subprocess.Popen(
-            [
-                str(MINER_BIN),
-                "--threads",
-                str(threads),
-                "--bits",
-                bits,
-                "--no-color",
-            ],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -210,6 +224,9 @@ def main() -> None:
     parser.add_argument("--slot", type=int, default=1)
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument("--bits", type=str, default="0x1d00ffff")
+    parser.add_argument("--nicehash", action="store_true", help="Use NiceHash stratum preset")
+    parser.add_argument("--nicehash-user", type=str, default=os.getenv("NICEHASH_MINER_USER", ""))
+    parser.add_argument("--nicehash-pass", type=str, default=os.getenv("NICEHASH_MINER_PASS", "x"))
     args = parser.parse_args()
 
     if not MINER_BIN.exists():
@@ -221,6 +238,9 @@ def main() -> None:
         duration_seconds=max(1, args.duration_seconds),
         threads=max(1, args.threads),
         bits=args.bits,
+        use_nicehash=args.nicehash,
+        nicehash_user=args.nicehash_user.strip() or None,
+        nicehash_pass=args.nicehash_pass.strip() or None,
     )
     elapsed = round(time.time() - start, 2)
 

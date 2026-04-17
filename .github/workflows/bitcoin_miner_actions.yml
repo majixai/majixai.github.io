@@ -42,9 +42,19 @@ jobs:
       - name: Run in-memory mining window (up to 5 minutes)
         env:
           MINER_SLOT: ${{ matrix.slot }}
+          NICEHASH_MINER_USER: ${{ secrets.NICEHASH_MINER_USER }}
+          NICEHASH_MINER_PASS: ${{ secrets.NICEHASH_MINER_PASS }}
         run: |
+          NICEHASH_ARGS=""
+          if [ -n "${NICEHASH_MINER_USER}" ]; then
+            NICEHASH_ARGS="--nicehash --nicehash-user ${NICEHASH_MINER_USER}"
+            if [ -n "${NICEHASH_MINER_PASS}" ]; then
+              NICEHASH_ARGS="${NICEHASH_ARGS} --nicehash-pass ${NICEHASH_MINER_PASS}"
+            fi
+          fi
           python3 bitcoin_miner/actions_mining_runner.py \
             --slot "${MINER_SLOT}" \
             --duration-seconds 300 \
             --threads 1 \
-            --bits 0x1d00ffff
+            --bits 0x1d00ffff \
+            ${NICEHASH_ARGS}
