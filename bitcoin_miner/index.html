@@ -120,6 +120,7 @@
       <div class="col-6 col-md-2"><div class="stat-card" style="background:rgba(247,147,26,.12)"><div class="stat-value" id="rew-session" style="font-size:1.1rem;color:var(--btc-orange)">0.00000000</div><div class="stat-label">Session Earned (&#x20BF;)</div></div></div>
     </div>
     <div id="rew-session-usd" style="font-size:.78rem;color:var(--btc-green);text-align:center;min-height:1.2em"></div>
+    <div id="nh-balance" style="font-size:.78rem;color:#9fb3c8;text-align:center;min-height:1.2em"></div>
   </div>
 
   <!-- ML / Neural Analysis -->
@@ -384,6 +385,7 @@ async function fetchLiveData() {
   } catch(_) {}
 
   if (liveData) { updateNetworkPanel(); updateBlockData(); updateRewardsPanel(); await updateMLPanel(); }
+  await fetchNiceHashBalance();
 }
 
 function updateNetworkPanel() {
@@ -448,6 +450,91 @@ let btcPrice         = 0;
 let blockSubsidyBtc  = 3.125;  // updated from live data
 let sessionEarnings  = 0;
 let priceLastFetched = null;
+let niceHashBalanceInfo = null;
+
+function loadNiceHashCreds() {
+  try {
+    const raw = localStorage.getItem('majixai_session_bitcoin_miner_nicehash_api');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const key = String(parsed.key || '').trim();
+    const secret = String(parsed.secret || '').trim();
+    const orgId = String(parsed.orgId || '').trim();
+    const balanceCurrency = String(parsed.balanceCurrency || 'BTC').trim().toUpperCase() || 'BTC';
+    if (!key || !secret || !orgId) return null;
+    return { key, secret, orgId, balanceCurrency };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function hmacSha256Hex(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function fetchNiceHashBalance() {
+  const el = document.getElementById('nh-balance');
+  if (!el) return;
+  const creds = loadNiceHashCreds();
+  if (!creds) {
+    el.textContent = 'NiceHash BALANCE: add Key/Secret/Org ID in login to enable';
+    return;
+  }
+  const method = 'GET';
+  const path = '/main/api/v2/accounting/account2/' + encodeURIComponent(creds.balanceCurrency || 'BTC');
+  const query = 'extendedResponse=true';
+  const url = 'https://api2.nicehash.com' + path + '?' + query;
+  const xTime = String(Date.now());
+  const xNonce = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
+  const xRequestId = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
+  const message = [
+    creds.key, '\0',
+    xTime, '\0',
+    xNonce, '\0',
+    '\0',
+    creds.orgId, '\0',
+    '\0',
+    method, '\0',
+    path, '\0',
+    query
+  ].join('');
+  try {
+    const sig = await hmacSha256Hex(creds.secret, message);
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'X-Time': xTime,
+        'X-Nonce': xNonce,
+        'X-Organization-Id': creds.orgId,
+        'X-Request-Id': xRequestId,
+        'X-Auth': creds.key + ':' + sig,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!res.ok) {
+      el.textContent = 'NiceHash BALANCE: unavailable (' + res.status + ')';
+      return;
+    }
+    const data = await res.json();
+    const cur = data.currency || creds.balanceCurrency || 'BTC';
+    const total = Number(data.totalBalance || 0);
+    const available = Number(data.available || 0);
+    niceHashBalanceInfo = { currency: cur, totalBalance: total, available };
+    el.textContent = 'NiceHash BALANCE ' + cur + ': total ' + total.toFixed(8) + ' · available ' + available.toFixed(8);
+  } catch (_) {
+    el.textContent = 'NiceHash BALANCE: request failed';
+  }
+}
 
 function calcBlockSubsidy(height) {
   const halvings = Math.floor(height / 210000);

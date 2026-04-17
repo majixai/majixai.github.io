@@ -99,6 +99,34 @@
     localStorage.removeItem(config.sessionKey);
   }
 
+  function getNiceHashCredsStorageKey(config) {
+    return `${config.sessionKey || 'majixai_session'}_nicehash_api`;
+  }
+
+  function loadNiceHashCreds(config) {
+    try {
+      const raw = localStorage.getItem(getNiceHashCredsStorageKey(config));
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveNiceHashCreds(config, creds) {
+    try {
+      localStorage.setItem(getNiceHashCredsStorageKey(config), JSON.stringify({
+        key: String(creds.key || '').trim(),
+        secret: String(creds.secret || '').trim(),
+        orgId: String(creds.orgId || '').trim(),
+        balanceCurrency: String(creds.balanceCurrency || 'BTC').trim().toUpperCase() || 'BTC'
+      }));
+    } catch {
+      /* best effort */
+    }
+  }
+
   function showAlert(el, type, msg) {
     el.textContent = msg;
     el.className = 'alert ' + type + ' show';
@@ -182,6 +210,15 @@
     if (header) header.textContent = config.appName;
     if (icon)   icon.textContent   = config.appIcon || '🔐';
     document.title = config.appName;
+    const savedCreds = loadNiceHashCreds(config);
+    const keyEl = document.getElementById('nh-api-key');
+    const secEl = document.getElementById('nh-api-secret');
+    const orgEl = document.getElementById('nh-org-id');
+    const curEl = document.getElementById('nh-balance-currency');
+    if (keyEl) keyEl.value = savedCreds.key || '';
+    if (secEl) secEl.value = savedCreds.secret || '';
+    if (orgEl) orgEl.value = savedCreds.orgId || '';
+    if (curEl) curEl.value = savedCreds.balanceCurrency || 'BTC';
 
     wireShowPasswordToggle();
 
@@ -199,6 +236,12 @@
       const rememberMe = document.getElementById('remember-me')
                            ? document.getElementById('remember-me').checked
                            : false;
+      const niceHashCreds = {
+        key: document.getElementById('nh-api-key')?.value || '',
+        secret: document.getElementById('nh-api-secret')?.value || '',
+        orgId: document.getElementById('nh-org-id')?.value || '',
+        balanceCurrency: document.getElementById('nh-balance-currency')?.value || 'BTC'
+      };
 
       if (!username || !password) {
         showAlert(alert, 'error', 'Please enter both username and password.');
@@ -209,7 +252,7 @@
       btn.innerHTML = '<span class="spinner"></span>Signing in…';
 
       try {
-        await onSubmit(username, password, rememberMe);
+        await onSubmit(username, password, rememberMe, niceHashCreds);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -228,7 +271,7 @@
       return;
     }
 
-    renderLoginForm(config, async (username, password, rememberMe) => {
+    renderLoginForm(config, async (username, password, rememberMe, niceHashCreds) => {
       const hash  = await sha256(password);
       const alert = document.getElementById('login-alert');
 
@@ -242,6 +285,7 @@
       }
 
       createSession(config, user, rememberMe);
+      saveNiceHashCreds(config, niceHashCreds || {});
 
       /* Hide the form and show an explicit "Go to App" button — no auto-redirect */
       const form = document.getElementById('login-form');
@@ -290,4 +334,3 @@
     init();
   }
 })();
-

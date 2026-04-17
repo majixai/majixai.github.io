@@ -32,7 +32,7 @@
  *   gcc -O3 -Wall -Wextra -std=c11 -D_GNU_SOURCE -mavx512f -pthread miner.c -o miner -lm
  *
  * Usage:
- *   ./miner [--threads N] [--bits 0xHEX] [--stratum HOST:PORT]
+ *   ./miner [--threads N] [--bits 0xHEX] [--stratum HOST:PORT] [--nicehash]
  *           [--user WORKER] [--pass X] [--job-notify N] [--no-color]
  */
 
@@ -81,6 +81,8 @@
 #define MAX_THREADS         256
 #define MERKLE_BRANCHES_MAX  32
 #define NUM_MERKLE_LANES     16   /* AVX-512 Merkle vectorisation width */
+#define NICEHASH_STRATUM_HOST "sha256asicboost.auto.nicehash.com"
+#define NICEHASH_STRATUM_PORT 9200
 
 static int use_color = 1;
 #define CLR(c)   (use_color ? (c) : "")
@@ -1191,10 +1193,11 @@ static void usage(const char*p){
 "  --threads N        Workers (default %d)\n"
 "  --bits 0xHEX       Compact target (0x207fffff=trivial, 0x1e0fffff=medium)\n"
 "  --stratum HOST:PORT Stratum V1 pool\n"
+"  --nicehash         Use NiceHash SHA256 stratum (%s:%d)\n"
 "  --user / --pass    Pool credentials\n"
 "  --job-notify N     Simulate new-job interrupt after N seconds\n"
 "  --no-color\n"
-"  --help\n",p,DEFAULT_THREADS);}
+"  --help\n",p,DEFAULT_THREADS,NICEHASH_STRATUM_HOST,NICEHASH_STRATUM_PORT);}
 
 int main(int argc,char*argv[])
 {
@@ -1216,6 +1219,10 @@ int main(int argc,char*argv[])
         else if(!strcmp(argv[i],"--stratum")&&i+1<argc){
             char*c=strchr(argv[++i],':');
             if(c){*c='\0';pool_port=atoi(c+1);} pool_host=argv[i];}
+        else if(!strcmp(argv[i],"--nicehash")){
+            pool_host=NICEHASH_STRATUM_HOST;
+            pool_port=NICEHASH_STRATUM_PORT;
+        }
         else if(!strcmp(argv[i],"--user")&&i+1<argc) pool_user=argv[++i];
         else if(!strcmp(argv[i],"--pass")&&i+1<argc) pool_pass=argv[++i];
         else if(!strcmp(argv[i],"--job-notify")&&i+1<argc) job_notify=atoi(argv[++i]);

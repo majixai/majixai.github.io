@@ -70,6 +70,24 @@ Serve the repo root with any static web server and open:
 
 `/bitcoin_miner/index.html`
 
+### NiceHash integration
+
+- C miner supports `--nicehash` to auto-configure:
+  - host: `sha256asicboost.auto.nicehash.com`
+  - port: `9200`
+- Example:
+
+```bash
+./bitcoin_miner/miner --nicehash --user YOUR_BTC_ADDRESS.worker --pass x --threads 1
+```
+
+- Web dashboard supports NiceHash BALANCE (`GET /main/api/v2/accounting/account2/{currency}`):
+  - open `/bitcoin_miner/login.html`
+  - sign in and enter NiceHash **Key**, **Secret**, **Org ID**, and balance currency
+  - credentials are saved locally for autofill and read by `index.html` to query balance
+- Reference release:
+  - NiceHash QuickMiner `v0.6.13.0`: https://github.com/nicehash/NiceHashQuickMiner/releases/tag/v0.6.13.0
+
 ## Notes
 
 - This module is educational/research-oriented and not intended as production mining infrastructure.
