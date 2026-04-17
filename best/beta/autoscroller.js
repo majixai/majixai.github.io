@@ -7,6 +7,7 @@ class Autoscroller {
         this.interval = null;
         this.direction = 1;
         this.currentIndex = 0;
+        this.lastUsersSignature = '';
     }
 
     getUsers() {
@@ -18,12 +19,21 @@ class Autoscroller {
     getNextUser() {
         const allUsers = this.getUsers();
         if (allUsers.length === 0) return null;
+        const signature = allUsers.map((el) => el?.dataset?.username || '').join('|');
+        if (signature !== this.lastUsersSignature) {
+            this.currentIndex = 0;
+            this.lastUsersSignature = signature;
+        }
         if (this.currentIndex >= allUsers.length || this.currentIndex < 0) {
             this.currentIndex = 0;
         }
         const user = allUsers[this.currentIndex];
-        this.currentIndex = ((this.currentIndex + this.direction) % allUsers.length + allUsers.length) % allUsers.length;
+        this.currentIndex = this.wrapIndex(this.currentIndex + this.direction, allUsers.length);
         return user;
+    }
+
+    wrapIndex(index, length) {
+        return ((index % length) + length) % length;
     }
 
     start() {
