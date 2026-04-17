@@ -63,5 +63,10 @@
             new Calendar('calendar-container');
         });
     </script>
+<script>
+  window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'menu' };
+  if (typeof MajixActions !== 'undefined') MajixActions.init();
+</script>
+<script src="/actions/actions-core.js"></script>
 </body>
 </html>
