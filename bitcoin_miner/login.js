@@ -118,9 +118,8 @@
     try {
       localStorage.setItem(getNiceHashCredsStorageKey(config), JSON.stringify({
         key: String(creds.key || '').trim(),
-        secret: String(creds.secret || '').trim(),
         orgId: String(creds.orgId || '').trim(),
-        balanceCurrency: String(creds.balanceCurrency || 'BTC').trim().toUpperCase() || 'BTC'
+        balanceCurrency: (String(creds.balanceCurrency || '').trim().toUpperCase() || 'BTC')
       }));
     } catch {
       /* best effort */

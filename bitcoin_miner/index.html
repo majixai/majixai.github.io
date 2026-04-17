@@ -451,6 +451,7 @@ let blockSubsidyBtc  = 3.125;  // updated from live data
 let sessionEarnings  = 0;
 let priceLastFetched = null;
 let niceHashBalanceInfo = null;
+let niceHashSecretEphemeral = null;
 
 function loadNiceHashCreds() {
   try {
@@ -459,11 +460,10 @@ function loadNiceHashCreds() {
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
     const key = String(parsed.key || '').trim();
-    const secret = String(parsed.secret || '').trim();
     const orgId = String(parsed.orgId || '').trim();
-    const balanceCurrency = String(parsed.balanceCurrency || 'BTC').trim().toUpperCase() || 'BTC';
-    if (!key || !secret || !orgId) return null;
-    return { key, secret, orgId, balanceCurrency };
+    const balanceCurrency = (String(parsed.balanceCurrency || '').trim().toUpperCase() || 'BTC');
+    if (!key || !orgId) return null;
+    return { key, orgId, balanceCurrency };
   } catch (_) {
     return null;
   }
@@ -487,16 +487,24 @@ async function fetchNiceHashBalance() {
   if (!el) return;
   const creds = loadNiceHashCreds();
   if (!creds) {
-    el.textContent = 'NiceHash BALANCE: add Key/Secret/Org ID in login to enable';
+    el.textContent = 'NiceHash balance: add Key and Org ID in login to enable';
     return;
+  }
+  if (!niceHashSecretEphemeral) {
+    const entered = window.prompt('Enter NiceHash API Secret (used only for this tab session):');
+    if (!entered) {
+      el.textContent = 'NiceHash balance: secret required for balance request';
+      return;
+    }
+    niceHashSecretEphemeral = entered;
   }
   const method = 'GET';
   const path = '/main/api/v2/accounting/account2/' + encodeURIComponent(creds.balanceCurrency || 'BTC');
   const query = 'extendedResponse=true';
   const url = 'https://api2.nicehash.com' + path + '?' + query;
   const xTime = String(Date.now());
-  const xNonce = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
-  const xRequestId = (crypto.randomUUID && crypto.randomUUID()) || String(Math.random()).slice(2);
+  const xNonce = (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2));
+  const xRequestId = (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2));
   const message = [
     creds.key, '\0',
     xTime, '\0',
@@ -509,7 +517,7 @@ async function fetchNiceHashBalance() {
     query
   ].join('');
   try {
-    const sig = await hmacSha256Hex(creds.secret, message);
+    const sig = await hmacSha256Hex(niceHashSecretEphemeral, message);
     const res = await fetch(url, {
       method,
       headers: {
@@ -522,7 +530,7 @@ async function fetchNiceHashBalance() {
       }
     });
     if (!res.ok) {
-      el.textContent = 'NiceHash BALANCE: unavailable (' + res.status + ')';
+      el.textContent = 'NiceHash balance: unavailable (' + res.status + ')';
       return;
     }
     const data = await res.json();
@@ -530,9 +538,9 @@ async function fetchNiceHashBalance() {
     const total = Number(data.totalBalance || 0);
     const available = Number(data.available || 0);
     niceHashBalanceInfo = { currency: cur, totalBalance: total, available };
-    el.textContent = 'NiceHash BALANCE ' + cur + ': total ' + total.toFixed(8) + ' · available ' + available.toFixed(8);
+    el.textContent = 'NiceHash balance ' + cur + ': total ' + total.toFixed(8) + ' · available ' + available.toFixed(8);
   } catch (_) {
-    el.textContent = 'NiceHash BALANCE: request failed';
+    el.textContent = 'NiceHash balance: request failed';
   }
 }
 

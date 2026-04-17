@@ -84,9 +84,15 @@ Serve the repo root with any static web server and open:
 - Web dashboard supports NiceHash BALANCE (`GET /main/api/v2/accounting/account2/{currency}`):
   - open `/bitcoin_miner/login.html`
   - sign in and enter NiceHash **Key**, **Secret**, **Org ID**, and balance currency
-  - credentials are saved locally for autofill and read by `index.html` to query balance
+  - key/org/currency are saved locally for autofill; secret is requested per tab session
+  - `index.html` queries NiceHash BALANCE and displays total/available balance
 - Reference release:
   - NiceHash QuickMiner `v0.6.13.0`: https://github.com/nicehash/NiceHashQuickMiner/releases/tag/v0.6.13.0
+  - Notable release notes: NVIDIA 5000 series support added; PyrinHash removed
+  - Release note requirement: NVIDIA driver `527.41+`
+  - Published asset checksums:
+    - `NHQM_v0.6.13.0.zip`: `c27457c70767252783f77e9fde10e385727e826cacad6cb8a14778b0b7c7bde7`
+    - `NiceHashQuickMinerInstaller.exe`: `0d2b7dc88ed7f71e8ac0d09a3b7a2bc02f10997a2c95b7f491e3a23b75e4feff`
 
 ## Notes
 
