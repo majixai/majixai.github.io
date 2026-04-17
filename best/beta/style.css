@@ -745,6 +745,38 @@ html, body {
 
 .archive-header .close-button:hover { color: #fff; }
 
+.archive-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.archive-page-btn {
+    border: 1px solid #3c4f6b;
+    background: #16213e;
+    color: #e0e0e0;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
+.archive-page-btn:hover:not(:disabled) {
+    border-color: #4CAF50;
+    color: #fff;
+}
+
+.archive-page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.archive-page-info {
+    font-size: 0.8em;
+    color: #b7c2d0;
+    white-space: nowrap;
+}
+
 .archive-grid {
     flex: 1;
     overflow-y: auto;
