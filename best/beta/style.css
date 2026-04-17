@@ -733,14 +733,21 @@ html, body {
     transition: opacity 0.35s ease;
 }
 
-.archive-label {
-    padding: 4px 6px;
-    font-size: 0.7em;
-    color: #ccc;
+.archive-overlay-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 6px 8px;
+    font-size: 0.72em;
+    color: #f1f5f9;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    background: #0d1b2e;
+    background: linear-gradient(to top, rgba(13, 27, 46, 0.92), rgba(13, 27, 46, 0.2));
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+    z-index: 4;
 }
 
 .enhancement-status-bar {
