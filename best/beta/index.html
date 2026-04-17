@@ -463,9 +463,9 @@
             archiveGrid.appendChild(frag);
         }
 
-        function setArchiveResults(names, resetPage = true) {
+        function setArchiveResults(names) {
             filteredArchiveNames = names;
-            if (resetPage) archivePage = 1;
+            archivePage = 1;
             renderArchive();
         }
 
@@ -477,7 +477,7 @@
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 allArchiveNames = await resp.json();
                 archiveLoaded = true;
-                setArchiveResults(allArchiveNames, true);
+                setArchiveResults(allArchiveNames);
             } catch (e) {
                 archiveGrid.innerHTML = `<p class="text-muted archive-loading">Failed to load archive: ${e.message}</p>`;
             }
@@ -506,7 +506,7 @@
             searchDebounce = setTimeout(() => {
                 const q = archiveSearch.value.trim().toLowerCase();
                 const filtered = q ? allArchiveNames.filter(n => n.toLowerCase().includes(q)) : allArchiveNames;
-                setArchiveResults(filtered, true);
+                setArchiveResults(filtered);
             }, 250);
         });
 
