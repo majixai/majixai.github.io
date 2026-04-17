@@ -1,0 +1,34 @@
+//@version=5
+indicator("Omni-Resolution Matrix Machine v4.0", overlay=true)
+
+// Parameters
+predBarCount = input.int(15, "Number of Bars for Prediction", minval=1, maxval=15)
+
+// Initialize Matrix
+var float[][] matrix = na
+
+// Initialize Bar Predictors
+predBar = array.new_float(predBarCount)
+
+// Function to fill predictors
+f_fillPredictors() => 
+    for i = 0 to predBarCount - 1
+        array.set(predBar, i, close[i])
+
+// Call the predictor function on each bar
+if bar_index > predBarCount
+    f_fillPredictors()
+
+// Heuristic Logic on Matrix (Placeholder for Matrix-based Heuristics)
+if matrix == na
+    matrix := array.new_float(15)  // Adjust matrix size 
+
+// Simulate some algorithm
+for i = 0 to array.size(predBar) - 1
+    matrixValue = array.get(predBar, i) * 1.01 // Placeholder for actual logic
+    array.set(matrix, i, matrixValue)
+
+// Multi-Timeframe Analysis
+securityData = request.security_lower_tf(syminfo.tickerid, "5", close)
+
+plot(securityData, title="5 Min Security Data", color=color.red)
