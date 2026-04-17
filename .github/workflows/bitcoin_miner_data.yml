@@ -33,7 +33,11 @@ jobs:
         with:
           python-version: '3.11'
 
-      # ── 3. Run fetcher (loops for 3 minutes) ───────────────────────────
+      # ── 3. Wire MajixActions into bitcoin_miner ────────────────────────
+      - name: Wire MajixActions into bitcoin_miner
+        run: python3 actions/extend.py bitcoin_miner
+
+      # ── 4. Run fetcher (loops for 3 minutes) ───────────────────────────
       - name: Run Bitcoin Data Fetcher (3-minute collection loop)
         run: |
           echo "Starting data collection at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -46,7 +50,7 @@ jobs:
           git config user.name  "bitcoin-miner-bot[bot]"
           git config user.email "bitcoin-miner-bot[bot]@users.noreply.github.com"
 
-          git add bitcoin_miner/data/live_data.json
+          git add bitcoin_miner/
 
           # Only commit if the file actually changed
           if git diff --staged --quiet; then

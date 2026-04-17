@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,3 +43,18 @@ jobs:
         run: |
           sleep 5
           curl -f http://127.0.0.1:5000/health
+
+      - name: Wire MajixActions into flask_app
+        run: python3 actions/extend.py flask_app
+
+      - name: Commit MajixActions wiring
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add flask_app/
+          if git diff --staged --quiet; then
+            echo "No actions wiring changes to commit."
+          else
+            git commit -m "feat: wire MajixActions into flask_app"
+            git push
+          fi
