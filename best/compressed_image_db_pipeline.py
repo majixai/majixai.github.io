@@ -24,6 +24,7 @@ import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -54,6 +55,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image-concurrency", type=int, default=12, help="Concurrent image downloads")
     parser.add_argument("--request-timeout", type=int, default=20, help="HTTP timeout seconds")
     parser.add_argument("--max-image-bytes", type=int, default=5_000_000, help="Skip images bigger than this")
+    parser.add_argument("--max-history-images", type=int, default=24, help="Max slideshow images kept per performer")
     return parser.parse_args()
 
 
@@ -189,6 +191,20 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_performer_images_last_seen ON performer_images(last_seen DESC)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_images_last_seen ON images(last_seen DESC)")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS performer_image_history (
+            username TEXT NOT NULL,
+            image_url TEXT NOT NULL,
+            first_seen INTEGER NOT NULL,
+            last_seen INTEGER NOT NULL,
+            seen_count INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (username, image_url),
+            FOREIGN KEY(image_url) REFERENCES images(image_url)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_perf_history_user_last_seen ON performer_image_history(username, last_seen DESC)")
     conn.commit()
 
 
@@ -288,6 +304,52 @@ def write_manifest(base_dir: Path, conn: sqlite3.Connection, generated_at: int) 
     manifest_path.write_bytes(compressed)
 
 
+def write_history_artifacts(base_dir: Path, conn: sqlite3.Connection, touched_usernames: set[str], max_history_images: int) -> None:
+    if not touched_usernames:
+        return
+
+    history_dir = base_dir / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    history_index_path = base_dir / "history_index.json"
+
+    existing_index: list[str] = []
+    if history_index_path.exists():
+        try:
+            raw = json.loads(history_index_path.read_text(encoding="utf-8"))
+            if isinstance(raw, list):
+                existing_index = [str(item) for item in raw if isinstance(item, str) and item]
+        except json.JSONDecodeError:
+            existing_index = []
+
+    usernames_for_index = set(existing_index)
+    usernames_for_index.update(touched_usernames)
+    history_index_path.write_text(
+        json.dumps(sorted(usernames_for_index), separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    per_username_limit = max(1, int(max_history_images))
+    for username in touched_usernames:
+        rows = conn.execute(
+            """
+            SELECT image_url
+            FROM performer_image_history
+            WHERE username = ?
+            ORDER BY last_seen DESC, first_seen DESC
+            LIMIT ?
+            """,
+            (username, per_username_limit),
+        ).fetchall()
+
+        urls = [row[0] for row in rows if row and row[0]]
+        if not urls:
+            continue
+
+        compressed = zlib.compress(json.dumps(urls, separators=(",", ":")).encode("utf-8"), level=9)
+        safe_name = quote(username, safe="")
+        (history_dir / f"{safe_name}.dat").write_bytes(compressed)
+
+
 def acquire_lock(lock_path: Path):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_file = lock_path.open("w")
@@ -312,6 +374,7 @@ async def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     deadline = time.time() + max(1, args.runtime_seconds)
     run_id = f"best_{started_at}"
     stats = Stats()
+    touched_usernames: set[str] = set()
 
     try:
         performers = await fetch_performers(args, deadline)
@@ -364,6 +427,8 @@ async def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                         )
 
                 for p in performers:
+                    username = p["username"]
+                    image_url = p["image_url"]
                     conn.execute(
                         """
                         INSERT INTO performer_images (username, image_url, display_name, age, num_viewers, tags_json, last_seen)
@@ -377,15 +442,26 @@ async def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                             last_seen=excluded.last_seen
                         """,
                         (
-                            p["username"],
-                            p["image_url"],
-                            p.get("display_name") or p["username"],
+                            username,
+                            image_url,
+                            p.get("display_name") or username,
                             p.get("age"),
                             p.get("num_viewers") or 0,
                             json.dumps(p.get("tags") or [], separators=(",", ":")),
                             now_ts,
                         ),
                     )
+                    conn.execute(
+                        """
+                        INSERT INTO performer_image_history (username, image_url, first_seen, last_seen, seen_count)
+                        VALUES (?, ?, ?, ?, 1)
+                        ON CONFLICT(username, image_url) DO UPDATE SET
+                            last_seen=excluded.last_seen,
+                            seen_count=performer_image_history.seen_count + 1
+                        """,
+                        (username, image_url, now_ts, now_ts),
+                    )
+                    touched_usernames.add(username)
 
                 stats.mappings_updated = len(performers)
 
@@ -414,6 +490,7 @@ async def run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
                 conn.commit()
 
                 write_manifest(base_dir, conn, finished_at)
+                write_history_artifacts(base_dir, conn, touched_usernames, args.max_history_images)
             finally:
                 conn.close()
 
