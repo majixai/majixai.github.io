@@ -12,6 +12,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/face-api.js"></script>
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" integrity="sha512-g2TeAWw5GPnX7z0Kn8nFbYfeHcvAu/tx6d6mrLe/90mkCxO+RcptyYpksUz35EO337F83bZwcmUyHiHamspkfg==" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="app-container">
@@ -27,6 +28,7 @@
                 <button id="settingsButton">Settings</button>
                 <button id="storageButton">Chat Storage</button>
                 <button id="toggleControlsButton">Toggle Controls</button>
+                <button id="archiveButton">📁 Archive</button>
             </div>
         </div>
 
@@ -247,6 +249,28 @@
                 <button id="spinButton">Spin</button>
             </div>
         </div>
+
+        <!-- Archive Modal -->
+        <div id="archiveModal" class="modal archive-modal" style="display:none;">
+            <div class="archive-modal-content">
+                <div class="archive-header">
+                    <h2>📁 Archive — Performer Slideshows</h2>
+                    <div class="archive-search-bar">
+                        <input type="text" id="archiveSearch" placeholder="Search performers..." autocomplete="off">
+                        <span id="archiveCount" class="archive-count"></span>
+                    </div>
+                    <div class="archive-pagination-controls">
+                        <button id="archivePrevPage" type="button" class="archive-page-btn" aria-label="Previous archive page">←</button>
+                        <span id="archivePageInfo" class="archive-page-info">Page 1 / 1</span>
+                        <button id="archiveNextPage" type="button" class="archive-page-btn" aria-label="Next archive page">→</button>
+                    </div>
+                    <button class="close-button" id="closeArchiveModal">&times;</button>
+                </div>
+                <div id="archiveGrid" class="archive-grid">
+                    <p class="text-muted archive-loading">Loading archive...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="../shared/lazy-loader.js"></script>
@@ -266,6 +290,219 @@
         .then(registration => console.log('SW registered:', registration.scope))
         .catch(error => console.error('SW registration failed:', error));
     }
+
+    // ==================== Archive ====================
+    (function() {
+        const archivePageSize = 48;
+        let allArchiveNames = [];
+        let filteredArchiveNames = [];
+        let archiveLoaded = false;
+        let activeSlideshows = [];
+        let archivePage = 1;
+
+        const archiveBtn = document.getElementById('archiveButton');
+        const archiveModal = document.getElementById('archiveModal');
+        const closeArchiveBtn = document.getElementById('closeArchiveModal');
+        const archiveSearch = document.getElementById('archiveSearch');
+        const archiveGrid = document.getElementById('archiveGrid');
+        const archiveCount = document.getElementById('archiveCount');
+        const archivePrevPage = document.getElementById('archivePrevPage');
+        const archiveNextPage = document.getElementById('archiveNextPage');
+        const archivePageInfo = document.getElementById('archivePageInfo');
+
+        function stopAllArchiveSlideshows() {
+            activeSlideshows.forEach(t => clearInterval(t));
+            activeSlideshows = [];
+        }
+
+        function startArchiveSlideshow(carousel, imgEl, urls) {
+            if (carousel._archiveTimer) clearInterval(carousel._archiveTimer);
+            let idx = 0;
+            const dur = 3500;
+            const progressBar = carousel.querySelector('.slide-progress');
+            const counterEl = carousel.querySelector('.slide-counter');
+            if (progressBar) {
+                progressBar.style.transition = `width ${dur}ms linear`;
+                progressBar.style.width = '100%';
+            }
+            const timer = setInterval(() => {
+                idx = (idx + 1) % urls.length;
+                if (progressBar) {
+                    progressBar.style.transition = 'none'; progressBar.style.width = '0%';
+                    void progressBar.offsetWidth;
+                    progressBar.style.transition = `width ${dur}ms linear`; progressBar.style.width = '100%';
+                }
+                imgEl.style.opacity = '0.4';
+                setTimeout(() => {
+                    imgEl.src = urls[idx];
+                    imgEl.style.opacity = '1';
+                    if (counterEl) counterEl.textContent = `${idx + 1}/${urls.length}`;
+                }, 280);
+            }, dur);
+            carousel._archiveTimer = timer;
+            activeSlideshows.push(timer);
+        }
+
+        function createArchiveCard(username) {
+            const card = document.createElement('div');
+            card.className = 'archive-card';
+            card.dataset.username = username;
+
+            const carousel = document.createElement('div');
+            carousel.className = 'archive-carousel slideshow-carousel';
+
+            const img = document.createElement('img');
+            img.alt = username;
+            img.loading = 'lazy';
+            img.className = 'slide-img archive-img';
+            img.src = `https://cdn3.imlive.com/pics/${username}/preview.jpg`;
+            img.onerror = function() { this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="120" height="90" fill="%23333"/><text x="50%" y="50%" font-size="11" fill="%23aaa" text-anchor="middle" dominant-baseline="middle">No image</text></svg>'; };
+
+            const progressBar = document.createElement('div');
+            progressBar.className = 'slide-progress';
+
+            const counter = document.createElement('span');
+            counter.className = 'slide-counter';
+            counter.style.display = 'none';
+
+            const overlayLabel = document.createElement('div');
+            overlayLabel.className = 'archive-overlay-label';
+            overlayLabel.textContent = username;
+
+            carousel.appendChild(img);
+            carousel.appendChild(progressBar);
+            carousel.appendChild(counter);
+            carousel.appendChild(overlayLabel);
+            card.appendChild(carousel);
+
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    obs.disconnect();
+                    fetch(`../history/${encodeURIComponent(username)}.dat`)
+                        .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+                        .then(buffer => {
+                            const urls = [...new Set(JSON.parse(pako.inflate(new Uint8Array(buffer), { to: 'string' })).filter(Boolean))];
+                            if (urls.length > 0) img.src = urls[0];
+                            if (urls.length > 1) {
+                                counter.textContent = `1/${urls.length}`;
+                                counter.style.display = 'block';
+                                startArchiveSlideshow(carousel, img, urls);
+                            }
+                        })
+                        .catch(() => {});
+                });
+            }, { rootMargin: '300px' });
+            observer.observe(card);
+
+            card.addEventListener('click', () => {
+                const iframeChoiceRadio = document.querySelector('input[name="iframeChoice"]:checked');
+                const iframeId = iframeChoiceRadio?.value || 'mainIframe';
+                const targetIframe = document.getElementById(iframeId) || document.getElementById('mainIframe');
+                if (targetIframe) {
+                    targetIframe.src = `https://chaturbate.com/embed/${username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
+                }
+                archiveModal.style.display = 'none';
+                stopAllArchiveSlideshows();
+            });
+
+            return card;
+        }
+
+        function getArchiveTotalPages() {
+            return Math.max(1, Math.ceil(filteredArchiveNames.length / archivePageSize));
+        }
+
+        function updateArchivePagination(totalPages, totalItems) {
+            if (totalItems <= 0) {
+                archivePageInfo.textContent = 'Page 0 / 0';
+                archivePrevPage.disabled = true;
+                archiveNextPage.disabled = true;
+                return;
+            }
+            archivePageInfo.textContent = `Page ${archivePage} / ${totalPages}`;
+            archivePrevPage.disabled = archivePage <= 1;
+            archiveNextPage.disabled = archivePage >= totalPages;
+        }
+
+        function renderArchive() {
+            stopAllArchiveSlideshows();
+            archiveGrid.innerHTML = '';
+            if (filteredArchiveNames.length === 0) {
+                archiveGrid.innerHTML = '<p class="text-muted archive-loading">No performers found.</p>';
+                archiveCount.textContent = '';
+                updateArchivePagination(0, 0);
+                return;
+            }
+            const totalPages = getArchiveTotalPages();
+            archivePage = Math.min(Math.max(1, archivePage), totalPages);
+            const start = (archivePage - 1) * archivePageSize;
+            const pageItems = filteredArchiveNames.slice(start, start + archivePageSize);
+            archiveCount.textContent = `${filteredArchiveNames.length} performer${filteredArchiveNames.length !== 1 ? 's' : ''}`;
+            updateArchivePagination(totalPages, filteredArchiveNames.length);
+            const frag = document.createDocumentFragment();
+            pageItems.forEach(name => frag.appendChild(createArchiveCard(name)));
+            archiveGrid.appendChild(frag);
+        }
+
+        function setArchiveResults(names) {
+            filteredArchiveNames = names;
+            archivePage = 1;
+            renderArchive();
+        }
+
+        async function loadArchive() {
+            if (archiveLoaded) return;
+            archiveGrid.innerHTML = '<p class="text-muted archive-loading">Loading archive index...</p>';
+            try {
+                const resp = await fetch('../history_index.json');
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                allArchiveNames = await resp.json();
+                archiveLoaded = true;
+                setArchiveResults(allArchiveNames);
+            } catch (e) {
+                archiveGrid.innerHTML = `<p class="text-muted archive-loading">Failed to load archive: ${e.message}</p>`;
+            }
+        }
+
+        archiveBtn?.addEventListener('click', () => {
+            archiveModal.style.display = 'flex';
+            loadArchive();
+        });
+
+        closeArchiveBtn?.addEventListener('click', () => {
+            archiveModal.style.display = 'none';
+            stopAllArchiveSlideshows();
+        });
+
+        archiveModal?.addEventListener('click', e => {
+            if (e.target === archiveModal) {
+                archiveModal.style.display = 'none';
+                stopAllArchiveSlideshows();
+            }
+        });
+
+        let searchDebounce;
+        archiveSearch?.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                const q = archiveSearch.value.trim().toLowerCase();
+                setArchiveResults(q ? allArchiveNames.filter(n => n.toLowerCase().includes(q)) : allArchiveNames);
+            }, 250);
+        });
+
+        archivePrevPage?.addEventListener('click', () => {
+            if (archivePage <= 1) return;
+            archivePage -= 1;
+            renderArchive();
+        });
+
+        archiveNextPage?.addEventListener('click', () => {
+            if (archivePage >= getArchiveTotalPages()) return;
+            archivePage += 1;
+            renderArchive();
+        });
+    })();
     </script>
 </body>
 </html>
