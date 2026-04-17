@@ -341,20 +341,14 @@ manage_draw_resources(float stress01, int pruneBatch) =>
     float s = math.max(0.0, math.min(1.0, stress01))
     int extraOps = int(math.round(pruneBatch * s))
     int ops      = pruneBatch + extraOps
-    liveCapGhostBoxes := calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
-    liveCapGhostWicks := calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
-    liveCapMcLines    := calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
-    liveCapDensBoxes  := calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
-    liveCapFcstShapes := calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
-    liveCapFcstLabels := calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
-    liveCapMainPoly   := calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
-    trim_boxes(ghostBoxes, liveCapGhostBoxes, ops)
-    trim_lines(ghostWicks, liveCapGhostWicks, ops)
-    trim_polylines(mc_lines, liveCapMcLines, ops)
-    trim_boxes(densBoxes, liveCapDensBoxes, ops)
-    trim_polylines(fcstShapes, liveCapFcstShapes, ops)
-    trim_labels(fcstLabels, liveCapFcstLabels, ops)
-    trim_polylines(mainPoly, liveCapMainPoly, ops)
+    int capGb = calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
+    int capGw = calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
+    int capMc = calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
+    int capDb = calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
+    int capFs = calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
+    int capFl = calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
+    int capMp = calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
+    [capGb, capGw, capMc, capDb, capFs, capFl, capMp, ops]
 var matrix<float> ensembleWeights = m_str(wt_in)
 float kinWeight   = matrix.get(ensembleWeights, 0, 0)
 float bayesWeight = matrix.get(ensembleWeights, 0, 1)
@@ -1090,9 +1084,8 @@ Bayes.probBull   := math.max(0, math.min(100, probBRaw  + (feedbackBias*5) + (pe
 Bayes.probBear   := math.max(0, math.min(100, probBearR - (feedbackBias*5) - (pe.patternScore*2)))
 Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
 resolve_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, float learnRate) =>
-    bool resolved = false
     bool ok = pfIn.isActive and not na(pmIn.targetBar) and pmIn.targetBar == (pfIn.anchorBar + pfIn.horizonBars)
-    if pfIn.isActive and not na(pmIn.lastTarget) and bar_index >= pmIn.targetBar and ok
+    if pfIn.isActive and not na(pmIn.lastTarget) and bar_index == pmIn.targetBar and ok
         feedbackBias := feedbackBias + ((close - pmIn.lastTarget) / nz(atrVal, 1) * learnRate)
         bool hit = pmIn.lastTarget >= pfIn.anchorPrice ? high >= pmIn.lastTarget : low <= pmIn.lastTarget
         if hit
@@ -1102,11 +1095,8 @@ resolve_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, float learnRate) =
         pmIn.totalProjections := pmIn.totalProjections + 1
         pmIn.accuracy := pmIn.totalProjections > 0 ? (float(pmIn.hits) / pmIn.totalProjections) * 100 : 0
         reset_forecast_state(pfIn, pmIn)
-        resolved := true
     else if pfIn.isActive and not ok
         reset_forecast_state(pfIn, pmIn)
-        resolved := true
-    resolved
 seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, int hz, string src, float tgt, float velMul, float mrMul, float bayMul, float accMul, float confMul) =>
     pfIn.anchorBar := bar_index
     pfIn.anchorTime := time
@@ -1285,7 +1275,15 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         push_polyline_capped(fcstShapes, polyline.new(rhombPts, closed=true, fill_color=color.new(tfColor,10), line_color=tfColor, line_width=2, xloc=xloc.bar_time), liveCapFcstShapes)
 float drawStress = math.max(0.0, math.min(1.0, ((uz.adaptiveCoeff - b_cf) / math.max(0.01, 3.5 - b_cf)) + (microVolIndex * 25)))
 int MY_PRUNE_BATCH = 5
-manage_draw_resources(drawStress, MY_PRUNE_BATCH)
+int livePruneOps = MY_PRUNE_BATCH
+[liveCapGhostBoxes, liveCapGhostWicks, liveCapMcLines, liveCapDensBoxes, liveCapFcstShapes, liveCapFcstLabels, liveCapMainPoly, livePruneOps] = manage_draw_resources(drawStress, MY_PRUNE_BATCH)
+trim_boxes(ghostBoxes, liveCapGhostBoxes, livePruneOps)
+trim_lines(ghostWicks, liveCapGhostWicks, livePruneOps)
+trim_polylines(mc_lines, liveCapMcLines, livePruneOps)
+trim_boxes(densBoxes, liveCapDensBoxes, livePruneOps)
+trim_polylines(fcstShapes, liveCapFcstShapes, livePruneOps)
+trim_labels(fcstLabels, liveCapFcstLabels, livePruneOps)
+trim_polylines(mainPoly, liveCapMainPoly, livePruneOps)
 if barstate.islast
     trim_polylines(mc_lines, 0, liveCapMcLines)
     trim_boxes(densBoxes, 0, liveCapDensBoxes)
