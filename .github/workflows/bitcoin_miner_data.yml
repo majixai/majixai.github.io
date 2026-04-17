@@ -52,14 +52,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No new data — skipping commit."
           else
-            HEIGHT=$(python3 -c "
-import json, sys
-try:
-  d = json.load(open('bitcoin_miner/data/live_data.json'))
-  print(d['network']['height'])
-except:
-  print('?')
-")
+            HEIGHT=$(python3 -c "import json; d=json.load(open('bitcoin_miner/data/live_data.json')); print(d.get('network', {}).get('height', '?'))" 2>/dev/null || echo "?")
             git commit -m "⛏ Bitcoin live data height=${HEIGHT} $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
             # Fetch latest remote state and rebase to avoid push conflicts
