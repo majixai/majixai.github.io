@@ -29,6 +29,7 @@ Usage:
 """
 
 import asyncio
+import atexit
 import json
 import time
 import sys
@@ -92,6 +93,7 @@ _HTTP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
     max_workers=HTTP_POOL_WORKERS,
     thread_name_prefix="btc-rest-http",
 )
+atexit.register(lambda: _HTTP_EXECUTOR.shutdown(wait=False))
 
 
 def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
