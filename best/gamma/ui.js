@@ -87,14 +87,14 @@ class UIManager {
                 <span class="slide-counter" style="display:none;">1/1</span>
                 ${openIframeButtonHTML}
                 ${removeButtonHTML}
-            </div>
-            <div class="user-details w3-container w3-padding-small">
-                <p class="username w3-large">${user.username} ${newBadge}</p>
-                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
-                ${birthdayProximityHTMLString}
-                ${socialMediaHTML}
-                <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
-                ${birthdayBanner}
+                <div class="user-details w3-container w3-padding-small">
+                    <p class="username w3-large">${user.username} ${newBadge}</p>
+                    <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
+                    ${birthdayProximityHTMLString}
+                    ${socialMediaHTML}
+                    <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
+                    ${birthdayBanner}
+                </div>
             </div>
         `;
 
