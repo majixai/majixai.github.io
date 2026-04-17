@@ -58,7 +58,7 @@ DEFAULT_HTTP_POOL_BASE_WORKERS = 8
 try:
     PARALLEL_FACTOR = max(
         1,
-        int(os.environ.get("BTC_REST_PARALLEL_FACTOR", str(DEFAULT_PARALLEL_FACTOR))),
+        int(os.environ.get("BTC_REST_PARALLEL_FACTOR", DEFAULT_PARALLEL_FACTOR)),
     )
 except ValueError:
     PARALLEL_FACTOR = DEFAULT_PARALLEL_FACTOR
@@ -1346,6 +1346,7 @@ def compute_profitability(
 # SECTION 19 - Anomaly detector
 # ==============================================================================
 async def _run_blocking(func, *args):
+    """Run a blocking function in the shared HTTP executor and await the result."""
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_HTTP_EXECUTOR, func, *args)
 
