@@ -95,15 +95,15 @@ class UIManager {
                 ${slideshowControls}
                 ${openIframeButtonHTML}
                 ${removeButtonHTML}
-            </div>
-            <div class="user-details w3-container w3-padding-small">
-                <p class="username w3-large">${user.username} ${newBadge}</p>
-                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
-                ${birthdayProximityHTMLString}
-                ${socialMediaHTML}
-                <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
-                <button class="scan-user-btn w3-button w3-tiny w3-blue w3-hover-dark-grey" title="Scan user image">Scan</button>
-                ${birthdayBanner}
+                <div class="user-details w3-container w3-padding-small">
+                    <p class="username w3-large">${user.username} ${newBadge}</p>
+                    <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
+                    ${birthdayProximityHTMLString}
+                    ${socialMediaHTML}
+                    <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
+                    <button class="scan-user-btn w3-button w3-tiny w3-blue w3-hover-dark-grey" title="Scan user image">Scan</button>
+                    ${birthdayBanner}
+                </div>
             </div>
         `;
 

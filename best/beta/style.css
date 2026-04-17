@@ -87,7 +87,7 @@ html, body {
 }
 
 .user-info {
-    display: flex;
+    display: block;
     margin-bottom: 4px;
     padding: 3px;
     background-color: #f9f9f9;
@@ -96,22 +96,45 @@ html, body {
 }
 
 .user-image-container {
-    width: 100px;
-    margin-right: 10px;
+    width: 100%;
+    margin-right: 0;
     flex-shrink: 0;
     aspect-ratio: 16/9;
+    position: relative;
+    overflow: visible;
+    border-radius: 3px;
 }
 .user-image-container img {
     width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 3px;
 }
 
 .user-details {
-    flex-grow: 1;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 7;
+    margin: 0;
+    overflow: hidden;
+    color: #fff;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.94), rgba(0, 0, 0, 0.58) 60%, rgba(0, 0, 0, 0.08));
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.user-image-container:hover .user-details,
+.user-image-container:focus-within .user-details {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .user-details .username {
     font-weight: bold;
+    color: #fff;
 }
 
 .modal {
@@ -269,12 +292,6 @@ html, body {
     transform: scale(1.1);
 }
 
-/* Image zoom in scroll lists */
-.user-image-container {
-    position: relative;
-    overflow: visible;
-}
-
 .user-image-container img {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: zoom-in;
@@ -313,7 +330,7 @@ html, body {
 /* ==================== Slideshow Carousel ==================== */
 .slideshow-carousel {
     position: relative;
-    width: 100px;
+    width: 100%;
     overflow: hidden;
     border-radius: 3px;
     aspect-ratio: 3 / 4;

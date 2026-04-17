@@ -84,17 +84,16 @@ class UIManager {
                 <img src="${LAZY_PLACEHOLDER}" data-src="${user.image_url}" alt="${user.username} thumbnail" class="w3-image slide-img" style="cursor:zoom-in;">
                 <div class="slide-progress"></div>
                 <span class="slide-counter" style="display:none;">1/1</span>
-                <span class="slide-overlay-label">${user.username}</span>
                 ${removeButtonHTML}
-            </div>
-            <div class="user-details w3-container w3-padding-small">
-                <p class="username w3-large">${user.username} ${newBadge} <button class="fav-btn" title="Favorite" data-username="${user.username}">★</button></p>
-                <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
-                ${birthdayProximityHTMLString}
-                ${socialMediaHTML}
-                <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
-                ${birthdayBanner}
-                <div class="card-vision" style="display:none;"></div>
+                <div class="user-details w3-container w3-padding-small">
+                    <p class="username w3-large">${user.username} ${newBadge} <button class="fav-btn" title="Favorite" data-username="${user.username}">★</button></p>
+                    <p><small>Age: ${ageDisplay} | Viewers: ${user.num_viewers || 'N/A'} | Clicks: ${clickCount}${scoreInfo}${gpuInfo}</small></p>
+                    ${birthdayProximityHTMLString}
+                    ${socialMediaHTML}
+                    <p class="tags"><small>Tags: ${tagsDisplay}</small></p>
+                    ${birthdayBanner}
+                    <div class="card-vision" style="display:none;"></div>
+                </div>
             </div>
         `;
 
