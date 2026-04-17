@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-04-17 17:43 UTC_
+_Last updated: 2026-04-17 19:02 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,16 +13,16 @@ _Last updated: 2026-04-17 17:43 UTC_
 |--------|-------|
 | 📁 Project Directories | 154 |
 | ⚙️ GitHub Actions Workflows | 61 |
-| 📝 Total Commits | 118302 |
+| 📝 Total Commits | 118322 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`1a5d304aae`](https://github.com/majixai/majixai.github.io/commit/1a5d304aaeae8c50bec5031e9a658d76ccd395dc) -- 2026-04-17 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
-- [`6d54019f98`](https://github.com/majixai/majixai.github.io/commit/6d54019f98f60ed23000f95ba51e53c2b009721d) -- 2026-04-17 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
-- [`6c09c22409`](https://github.com/majixai/majixai.github.io/commit/6c09c224091ac7d8ff5827e3554227845927fac4) -- 2026-04-17 -- github-actions[bot] -- docs: auto-update README stats [skip ci] -- [Open page](https://majixai.github.io/router/)
-- [`5a89bd86a2`](https://github.com/majixai/majixai.github.io/commit/5a89bd86a2bf45f985c8da8987de3fef1f8d58fe) -- 2026-04-17 -- github-actions[bot] -- data: omnibus — directory metadata 2026-04-17 17:13:02 UTC -- [Open page](https://majixai.github.io/router/)
-- [`aecf2ce983`](https://github.com/majixai/majixai.github.io/commit/aecf2ce98322ff07410e7eb6a33ff29009e2ef30) -- 2026-04-17 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-04-17 17:10:48 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`8a6e901ed0`](https://github.com/majixai/majixai.github.io/commit/8a6e901ed018292407b025abd1bd76dad6e66cad) -- 2026-04-17 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
+- [`28eac04030`](https://github.com/majixai/majixai.github.io/commit/28eac040307df98876b65fc2f966eb1c5686c8e6) -- 2026-04-17 -- github-actions[bot] -- docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy) -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`a3bb584fc8`](https://github.com/majixai/majixai.github.io/commit/a3bb584fc87be3ad91b3c1b985ea6850f972af4c) -- 2026-04-17 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
+- [`04bc34bde8`](https://github.com/majixai/majixai.github.io/commit/04bc34bde8fa6cbdaf4d58408b4b0d751d38de59) -- 2026-04-17 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`8d263fc451`](https://github.com/majixai/majixai.github.io/commit/8d263fc451735163d85b6db5bdc9fc2191b3a324) -- 2026-04-17 -- majixai -- Merge pull request #415 from majixai/copilot/update-deterministic-conic-forecasts -- [Open page](https://majixai.github.io/router/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
