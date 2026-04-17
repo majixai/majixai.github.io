@@ -1,5 +1,5 @@
 //@version=5
-strategy('JAT+BSM Pro v13 Extended', shorttitle='JAT+BSM v13 Ext', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=true)
+strategy('JAT+BSM Pro v13 Extended', shorttitle='JAT+BSM v13 Ext', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false)
 type KinematicModel
     float velocity
     float acceleration
@@ -1419,11 +1419,6 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         float driftPct  = pfIn.anchorPrice != 0 ? (horizonTP - pfIn.anchorPrice) / pfIn.anchorPrice * 100 : 0.0
         int   tipBar    = pfIn.anchorBar + int(horizSize * barStep)
         push_label_capped(fcstLabels, label.new(tipBar, horizonTP, str.tostring(driftPct, "#.##") + "%", color=color.new(tfColor,80), textcolor=tfColor, style=label.style_label_up, size=size.tiny), liveCapFcstLabels)
-        float horizonTP  = array.get(pfIn.targetPoints, horizSize - 1)
-        float driftPct   = pfIn.anchorPrice != 0 ? (horizonTP - pfIn.anchorPrice) / pfIn.anchorPrice * 100 : 0.0
-        int   tipBar     = pfIn.anchorBar + int(horizSize * barStep)
-        int   tipTime    = time + ((tipBar - bar_index) * dtStep)
-        push_label_capped(fcstLabels, label.new(tipBar, horizonTP, str.tostring(driftPct, "#.##") + "%", color=color.new(tfColor,80), textcolor=tfColor, style=label.style_label_up, size=size.tiny), liveCapFcstLabels)
         if sh_mc
             for r = 0 to mcCount - 1
                 int transp = 90 - math.round(40 * (r / math.max(1, mcCount-1)))
@@ -1643,10 +1638,6 @@ if barstate.islast and sh_t2
     table.cell(hudPat, 1, 7, str.tostring(uz.adaptiveCoeff,"#.##"),     text_color=color.yellow)
     table.cell(hudPat, 2, 7, "ERR TERM",   text_color=color.gray)
     table.cell(hudPat, 3, 7, str.tostring(kin.errorTerm,"#.####"),      text_color=color.white)
-    table.cell(hudPat, 0, 8, "MTF AGREE",  text_color=color.gray)
-    table.cell(hudPat, 1, 8, mtfAgree,     text_color=mtfColor)
-    table.cell(hudPat, 2, 8, "DAY POS",    text_color=color.gray)
-    table.cell(hudPat, 3, 8, dayPosStr,    text_color=dayPosColor)
     table.cell(hudPat, 0, 8, "MTF AGREE",  text_color=color.gray)
     table.cell(hudPat, 1, 8, mtfAgree,     text_color=mtfColor)
     table.cell(hudPat, 2, 8, "DAY POS",    text_color=color.gray)
@@ -2102,10 +2093,6 @@ bool avwapBear = close < avwap and close < ahVwap
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION: GEX, KELLY FRACTION & POSITION SIZING
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION: GEX, KELLY FRACTION & POSITION SIZING
 // ─────────────────────────────────────────────────────────────────────────────
 
 float atm_gamma   = greeks.gamma
@@ -2126,10 +2113,6 @@ float atrPctOfClose = atrVal / close * 100
 float volNormSize   = atrPctOfClose > 0 ? 1.0 / atrPctOfClose : 1.0
 float posSize       = math.min(kellyFrac, volNormSize * 0.1) * riskScalar * gexAdjFactor
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SECTION: SIGNAL PROBABILITY COMPOSITE
-
-// ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // SECTION: SIGNAL PROBABILITY COMPOSITE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2212,8 +2195,7 @@ if barstate.islast and sh_t2
 float lastSwingHi  = nz(ph(1), close)
 float lastSwingLo  = nz(pl(1), close)
 if barstate.isconfirmed and brk.isValidBreakout and sh_mp
-    string brkTxt = brk.direction + " BRK
-Str:" + str.tostring(trendStrength, "#.#")
+    string brkTxt = brk.direction + " BRK Str:" + str.tostring(trendStrength, "#.#")
     color  brkCol = brk.direction == "BULL" ? color.new(color.lime,5) : color.new(color.red,5)
     label.new(bar_index,
               brk.direction == "BULL" ? low - atrVal * 0.5 : high + atrVal * 0.5,
@@ -2537,13 +2519,3 @@ plot(mkvStayProb * 100, "Markov Stay Prob %",    display=display.data_window)
 plot(dayPosPct,    "Intraday Position %",         display=display.data_window)
 plot(skewAdj,      "Skewness Adjusted",           display=display.data_window)
 plot(entryQualLong ? 1 : entryQualShort ? -1 : 0, "Entry Quality",         display=display.data_window)
-plot(mtfBullCnt, "MTF Bull TFs", display=display.data_window)
-plot(corrBullAlign ? 1 : corrBearAlign ? -1 : 0, "Corr Alignment", display=display.data_window)
-plot(trendStrength, "Trend Strength [0-100]", display=display.data_window)
-plot(velDivBull ? 1 : velDivBear ? -1 : 0, "Velocity Divergence", display=display.data_window)
-plot(cumuDivBull ? 1 : cumuDivBear ? -1 : 0, "Cum Delta Divergence", display=display.data_window)
-plot(rvIvRatio, "RV/IV Ratio", display=display.data_window)
-plot(gcm.boxDels + gcm.lineDels + gcm.labelDels + gcm.polyDels, "GC Total Deletions", display=display.data_window)
-plot(array.size(ghostBoxes) + array.size(densBoxes) + array.size(obBullBoxes) + array.size(obBearBoxes) + array.size(sdSupplyBoxes) + array.size(sdDemandBoxes) + array.size(patGeoBoxes), "GC Live Box Count", display=display.data_window)
-plot(PMS.accuracy, "Short Hz Accuracy %", display=display.data_window)
-plot(PML.accuracy, "Long  Hz Accuracy %", display=display.data_window)
