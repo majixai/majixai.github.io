@@ -230,6 +230,31 @@ class Router extends EventTarget {
   }
 
   /**
+   * Return a canonical GitHub Pages URL for a route path/name/input.
+   *
+   * @param {string} input
+   * @returns {string}
+   */
+  toSiteUrl(input) {
+    const route = this.resolve(input);
+    const value = route?.path || input || '/';
+    return new URL(value, 'https://majixai.github.io').href;
+  }
+
+  /**
+   * Return a router deep-link URL for a route path/name/input.
+   * Useful for cross-directory links that should enter through the router hub.
+   *
+   * @param {string} input
+   * @returns {string}
+   */
+  toRouterUrl(input) {
+    const route = this.resolve(input);
+    const value = route?.path || input || '/';
+    return `https://majixai.github.io/router/?go=${encodeURIComponent(value)}`;
+  }
+
+  /**
    * Register a navigation guard.  The callback receives a context object:
    *   { to: route|null, url: string, replace: boolean, cancel: () => void }
    * Calling `cancel()` aborts the navigation.
@@ -255,9 +280,7 @@ class Router extends EventTarget {
    */
   navigate(path, replace = false) {
     const route = this.resolve(path);
-    const target = route
-      ? new URL(route.path, 'https://majixai.github.io').href
-      : path;
+    const target = route ? this.toSiteUrl(route.path) : path;
 
     // Run guards
     let cancelled = false;
@@ -306,9 +329,7 @@ class Router extends EventTarget {
   preload(path) {
     if (typeof document === 'undefined') return;
     const route = this.resolve(path);
-    const href = route
-      ? new URL(route.path, 'https://majixai.github.io').href
-      : path;
+    const href = route ? this.toSiteUrl(route.path) : path;
 
     // Check for an existing prefetch link by iterating (avoids selector-injection risk)
     const existing = document.head.querySelectorAll('link[rel="prefetch"]');
