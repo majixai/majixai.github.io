@@ -482,6 +482,41 @@ async function hmacSha256Hex(secret, message) {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function secureRandomId() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function requestNiceHashSecretMasked() {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:99999;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#1b2b3a;color:#fff;padding:16px;border-radius:10px;min-width:320px;max-width:90vw;';
+    box.innerHTML =
+      '<div style="font-weight:700;margin-bottom:8px">NiceHash API Secret</div>' +
+      '<div style="font-size:.82rem;color:#9fb3c8;margin-bottom:10px">Used only for this tab session.</div>' +
+      '<input id="nh-secret-modal-input" type="password" style="width:100%;padding:10px;border-radius:6px;border:1px solid #35516e;background:#0f1f2d;color:#fff;margin-bottom:10px" />' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button id="nh-secret-cancel" style="padding:8px 12px;border-radius:6px;border:1px solid #54708c;background:#1b2b3a;color:#fff">Cancel</button>' +
+      '<button id="nh-secret-ok" style="padding:8px 12px;border-radius:6px;border:none;background:#f7931a;color:#fff;font-weight:700">Use Secret</button>' +
+      '</div>';
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const input = document.getElementById('nh-secret-modal-input');
+    const cleanup = (value) => {
+      document.body.removeChild(overlay);
+      resolve(value || '');
+    };
+    document.getElementById('nh-secret-cancel').onclick = () => cleanup('');
+    document.getElementById('nh-secret-ok').onclick = () => cleanup(input.value);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(''); });
+    input.focus();
+  });
+}
+
 async function fetchNiceHashBalance() {
   const el = document.getElementById('nh-balance');
   if (!el) return;
@@ -491,7 +526,7 @@ async function fetchNiceHashBalance() {
     return;
   }
   if (!niceHashSecretEphemeral) {
-    const entered = window.prompt('Enter NiceHash API Secret (used only for this tab session):');
+    const entered = await requestNiceHashSecretMasked();
     if (!entered) {
       el.textContent = 'NiceHash balance: secret required for balance request';
       return;
@@ -503,8 +538,8 @@ async function fetchNiceHashBalance() {
   const query = 'extendedResponse=true';
   const url = 'https://api2.nicehash.com' + path + '?' + query;
   const xTime = String(Date.now());
-  const xNonce = (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2));
-  const xRequestId = (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : String(Math.random()).slice(2));
+  const xNonce = secureRandomId();
+  const xRequestId = secureRandomId();
   const message = [
     creds.key, '\0',
     xTime, '\0',

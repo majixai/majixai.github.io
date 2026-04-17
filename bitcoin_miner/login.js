@@ -115,11 +115,12 @@
   }
 
   function saveNiceHashCreds(config, creds) {
+    const currencyRaw = String(creds.balanceCurrency || '').trim().toUpperCase();
     try {
       localStorage.setItem(getNiceHashCredsStorageKey(config), JSON.stringify({
         key: String(creds.key || '').trim(),
         orgId: String(creds.orgId || '').trim(),
-        balanceCurrency: (String(creds.balanceCurrency || '').trim().toUpperCase() || 'BTC')
+        balanceCurrency: currencyRaw || 'BTC'
       }));
     } catch {
       /* best effort */
@@ -215,7 +216,7 @@
     const orgEl = document.getElementById('nh-org-id');
     const curEl = document.getElementById('nh-balance-currency');
     if (keyEl) keyEl.value = savedCreds.key || '';
-    if (secEl) secEl.value = savedCreds.secret || '';
+    if (secEl) secEl.value = '';
     if (orgEl) orgEl.value = savedCreds.orgId || '';
     if (curEl) curEl.value = savedCreds.balanceCurrency || 'BTC';
 

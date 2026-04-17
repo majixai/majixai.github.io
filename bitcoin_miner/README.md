@@ -86,6 +86,9 @@ Serve the repo root with any static web server and open:
   - sign in and enter NiceHash **Key**, **Secret**, **Org ID**, and balance currency
   - key/org/currency are saved locally for autofill; secret is requested per tab session
   - `index.html` queries NiceHash BALANCE and displays total/available balance
+- GitHub Actions mining integration:
+  - `.github/workflows/bitcoin_miner_actions.yml` now enables NiceHash mining when secret `NICEHASH_MINER_USER` is set
+  - optional secret `NICEHASH_MINER_PASS` overrides pool password (`x` default)
 - Reference release:
   - NiceHash QuickMiner `v0.6.13.0`: https://github.com/nicehash/NiceHashQuickMiner/releases/tag/v0.6.13.0
   - Notable release notes: NVIDIA 5000 series support added; PyrinHash removed
