@@ -53,11 +53,16 @@ REQUEST_TIMEOUT  = 12
 MAX_RETRIES      = 3
 RETRY_BACKOFF    = 2.0
 HISTORY_MAX_SAMPLES = 288
+DEFAULT_PARALLEL_FACTOR = 10
+DEFAULT_HTTP_POOL_BASE_WORKERS = 8
 try:
-    PARALLEL_FACTOR = max(1, int(os.environ.get("BTC_REST_PARALLEL_FACTOR", "10")))
+    PARALLEL_FACTOR = max(
+        1,
+        int(os.environ.get("BTC_REST_PARALLEL_FACTOR", str(DEFAULT_PARALLEL_FACTOR))),
+    )
 except ValueError:
-    PARALLEL_FACTOR = 10
-HTTP_POOL_BASE_WORKERS = 8
+    PARALLEL_FACTOR = DEFAULT_PARALLEL_FACTOR
+HTTP_POOL_BASE_WORKERS = DEFAULT_HTTP_POOL_BASE_WORKERS
 HTTP_POOL_WORKERS = HTTP_POOL_BASE_WORKERS * PARALLEL_FACTOR
 
 _DIR           = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +102,6 @@ def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
             headers={
                 "User-Agent": _UA,
                 "Accept": "application/json",
-                "Connection": "keep-alive",
             },
         )
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -129,7 +133,6 @@ def fetch_with_retry(
                 headers={
                     "User-Agent": _UA,
                     "Accept": "application/json",
-                    "Connection": "keep-alive",
                 },
             )
             with urllib.request.urlopen(req, timeout=timeout) as r:
