@@ -564,8 +564,8 @@
                     e.preventDefault();
                     if (!dragged || dragged === container) return;
                     const targetRect = container.getBoundingClientRect();
-                    const insertBefore = e.clientY < targetRect.top + targetRect.height / 2;
-                    this.iframeGrid.insertBefore(dragged, insertBefore ? container : container.nextSibling);
+                    const isUpperHalf = e.clientY < targetRect.top + targetRect.height / 2;
+                    this.iframeGrid.insertBefore(dragged, isUpperHalf ? container : container.nextSibling);
                     container.classList.remove('drop-target');
                     this.#reindexIframes();
                 });

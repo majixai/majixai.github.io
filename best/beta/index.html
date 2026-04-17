@@ -462,7 +462,7 @@
             loadArchive();
         });
         window.addEventListener('beta:openArchiveForSlot', (e) => {
-            const slot = Number.parseInt(String(e?.detail?.slot ?? ''), 10);
+            const slot = parseInt(e?.detail?.slot, 10);
             const targetSlot = document.getElementById('targetSlot');
             if (targetSlot && Number.isInteger(slot) && slot >= 0 && slot < targetSlot.options.length) {
                 targetSlot.value = String(slot);
