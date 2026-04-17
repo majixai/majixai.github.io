@@ -16,6 +16,11 @@ import re
 import subprocess
 from datetime import datetime, timezone, timedelta
 
+SITE_BASE_URL = "https://majixai.github.io"
+REPO_COMMIT_BASE_URL = "https://github.com/majixai/majixai.github.io/commit"
+FALLBACK_RECENT_ACTIVITY_URL = f"{SITE_BASE_URL}/router/"
+SKIP_ACTIVITY_TOP_LEVEL_DIRS = {".github"}
+
 
 # ---------------------------------------------------------------------------
 # git helpers
@@ -114,11 +119,56 @@ def fmt_biggest(label, result):
 def build_recent_activity():
     log = run([
         "git", "log", "-5",
-        "--format=%h -- %ad -- %an -- %s",
+        "--format=%H|%h|%ad|%an|%s",
         "--date=short",
     ])
-    lines = [f"- {l}" for l in log.splitlines()] if log else ["- _No commits found_"]
+    if not log:
+        return "- _No commits found_"
+
+    lines = []
+    for raw in log.splitlines():
+        parts = raw.split("|", 4)
+        if len(parts) != 5:
+            continue
+        sha, short_sha, date, author, subject = parts
+        commit_url = f"{REPO_COMMIT_BASE_URL}/{sha}"
+        site_url = commit_site_url(sha)
+        lines.append(
+            f"- [`{short_sha}`]({commit_url}) -- {date} -- {author} -- {subject} -- [Open page]({site_url})"
+        )
+
+    if not lines:
+        return "- _No commits found_"
     return "\n".join(lines)
+
+
+def commit_site_url(sha):
+    """
+    Choose a GitHub Pages URL for a commit by inspecting changed files.
+    Prefers the first top-level project directory touched by the commit.
+    Falls back to /router/ when no project directory can be inferred.
+    """
+    changed_files = run([
+        "git", "show", "--name-only", "--pretty=format:", sha
+    ])
+    if not changed_files:
+        return FALLBACK_RECENT_ACTIVITY_URL
+
+    for rel_path in changed_files.splitlines():
+        rel_path = rel_path.strip()
+        if not rel_path:
+            continue
+        parts = rel_path.split("/", 1)
+        if len(parts) < 2:
+            # Root-level files do not map to a project page.
+            continue
+        top_level = parts[0]
+        if top_level in SKIP_ACTIVITY_TOP_LEVEL_DIRS:
+            continue
+        if os.path.isdir(top_level):
+            return f"{SITE_BASE_URL}/{top_level}/"
+
+    return FALLBACK_RECENT_ACTIVITY_URL
 
 
 def build_biggest_updates():

@@ -18,11 +18,11 @@ _Last updated: 2026-04-17 01:13 UTC_
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- 00f9b64723 -- 2026-04-17 -- github-actions[bot] -- feat: wire MajixActions into jinx
-- 3f35dca48e -- 2026-04-16 -- majixai -- Merge pull request #412 from majixai/copilot/fix-broken-actions
-- 81e17941b0 -- 2026-04-17 -- github-actions[bot] -- docs: auto-update README stats [skip ci]
-- f16e6ed775 -- 2026-04-17 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-04-17T00:52:56Z
-- 5159009d41 -- 2026-04-17 -- copilot-swe-agent[bot] -- feat: enhance workflows with MajixActions wiring via actions/extend.py
+- [`00f9b64723`](https://github.com/majixai/majixai.github.io/commit/00f9b64723) -- 2026-04-17 -- github-actions[bot] -- feat: wire MajixActions into jinx -- [Open page](https://majixai.github.io/jinx/)
+- [`3f35dca48e`](https://github.com/majixai/majixai.github.io/commit/3f35dca48e) -- 2026-04-16 -- majixai -- Merge pull request #412 from majixai/copilot/fix-broken-actions -- [Open page](https://majixai.github.io/actions/)
+- [`81e17941b0`](https://github.com/majixai/majixai.github.io/commit/81e17941b0) -- 2026-04-17 -- github-actions[bot] -- docs: auto-update README stats [skip ci] -- [Open page](https://majixai.github.io/router/)
+- [`f16e6ed775`](https://github.com/majixai/majixai.github.io/commit/f16e6ed775) -- 2026-04-17 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-04-17T00:52:56Z -- [Open page](https://majixai.github.io/integrity/)
+- [`5159009d41`](https://github.com/majixai/majixai.github.io/commit/5159009d41) -- 2026-04-17 -- copilot-swe-agent[bot] -- feat: enhance workflows with MajixActions wiring via actions/extend.py -- [Open page](https://majixai.github.io/actions/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates

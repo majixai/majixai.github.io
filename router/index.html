@@ -257,7 +257,7 @@
 <header style="position:relative">
   <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
   <h1><i class="fa fa-route"></i> MajixAI Router</h1>
-  <p>Central routing hub — navigate to any of the <strong id="total-count">…</strong> projects instantly</p>
+  <p>Central routing hub — navigate to any of the <strong id="total-count">…</strong> projects instantly (supports <code>?go=/path/</code> deep links)</p>
 </header>
 
 <div class="controls">
@@ -336,7 +336,7 @@
     const cat   = (route.category || 'tools').toLowerCase();
     const stripe = CAT_STRIPE[cat] || 'stripe-tools';
     const badge  = CAT_BADGE[cat]  || 'cat-tools';
-    const href   = `https://majixai.github.io${route.path}`;
+    const href   = router.toSiteUrl(route.path);
 
     const a = document.createElement('a');
     a.className = 'route-card';
@@ -476,7 +476,7 @@
 
     const route = router.resolve(goParam);
     if (route) {
-      const href = `https://majixai.github.io${route.path}`;
+      const href = router.toSiteUrl(route.path);
       jumpMsg.textContent = `Routing to: ${route.name} (${route.path})`;
       jumpLink.href = href;
       jumpBar.style.display = 'flex';
