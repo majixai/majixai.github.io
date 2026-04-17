@@ -1,4 +1,4 @@
-/@version=5
+//@version=5
 strategy('JAT+BSM Pro v13 Extended', shorttitle='JAT+BSM v13 Ext', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false)
 
 // ============================================================================
@@ -430,21 +430,35 @@ reset_forecast_state(PinnedForecast pfIn, ProjectionMetrics pmIn) =>
     pmIn.lastTarget := na
     pmIn.targetBar := na
 
-calc_dynamic_cap(int baseCap, int minCap, float stress01) =>
-    float scale = 1.0 - (0.45 * math.max(0.0, math.min(1.0, stress01)))
-    int dynCap = int(math.round(baseCap * scale))
-    math.max(minCap, dynCap)
+// calc_dynamic_cap(int baseCap, int minCap, float stress01) =>
+//     float scale = 1.0 - (0.45 * math.max(0.0, math.min(1.0, stress01)))
+//     int dynCap = int(math.round(baseCap * scale))
+//     math.max(minCap, dynCap)
 
-manage_draw_resources(float stress01) =>
-    int extraOps = int(math.round(PRUNE_BATCH * math.max(0.0, math.min(1.0, stress01))))
-    int ops = PRUNE_BATCH + extraOps
-    liveCapGhostBoxes := calc_dynamic_cap(CAP_GHOST_BOXES, CAP_MIN_GHOST_BOXES, stress01)
-    liveCapGhostWicks := calc_dynamic_cap(CAP_GHOST_WICKS, CAP_MIN_GHOST_WICKS, stress01)
-    liveCapMcLines    := calc_dynamic_cap(CAP_MC_LINES,    CAP_MIN_MC_LINES,    stress01)
-    liveCapDensBoxes  := calc_dynamic_cap(CAP_DENS_BOXES,  CAP_MIN_DENS_BOXES,  stress01)
-    liveCapFcstShapes := calc_dynamic_cap(CAP_FCST_SHAPES, CAP_MIN_FCST_SHAPES, stress01)
-    liveCapFcstLabels := calc_dynamic_cap(CAP_FCST_LABELS, CAP_MIN_FCST_LABELS, stress01)
-    liveCapMainPoly   := calc_dynamic_cap(CAP_MAIN_POLY,   CAP_MIN_MAIN_POLY,   stress01)
+// Helper to calculate dynamic capacity (Linear Interpolation)
+calc_dynamic_cap(int maxCap, int minCap, float stress) =>
+    int(maxCap - (maxCap - minCap) * stress)
+
+
+
+// 1. Define the function with the parameter included
+manage_draw_resources(float stress01, int pruneBatch) =>
+    float s = math.max(0.0, math.min(1.0, stress01))
+    
+    // Calculate how many extra items to prune based on stress
+    int extraOps = int(math.round(pruneBatch * s))
+    int ops      = pruneBatch + extraOps
+
+    // Calculate dynamic caps
+    int liveCapGhostBoxes  = calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
+    int liveCapGhostWicks  = calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
+    int liveCapMcLines     = calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
+    int liveCapDensBoxes   = calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
+    int liveCapFcstShapes  = calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
+    int liveCapFcstLabels  = calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
+    int liveCapMainPoly    = calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
+
+    // Execute trimming (Arrays are passed by reference and modified)
     trim_boxes(ghostBoxes, liveCapGhostBoxes, ops)
     trim_lines(ghostWicks, liveCapGhostWicks, ops)
     trim_polylines(mc_lines, liveCapMcLines, ops)
@@ -452,6 +466,48 @@ manage_draw_resources(float stress01) =>
     trim_polylines(fcstShapes, liveCapFcstShapes, ops)
     trim_labels(fcstLabels, liveCapFcstLabels, ops)
     trim_polylines(mainPoly, liveCapMainPoly, ops)
+
+// // Main Resource Manager
+// manage_draw_resources(float stress01, int PRUNE_BATCH) =>
+//     // 1. Clamp stress between 0.0 and 1.0
+//     float s = math.max(0.0, math.min(1.0, stress01))
+//     
+//     // 2. Calculate how many items to prune this execution
+//     int extraOps = int(math.round(PRUNE_BATCH * s))
+//     int ops      = PRUNE_BATCH + extraOps
+// 
+//     // 3. Calculate current allowed capacity for each resource type
+//     // Assumes constants like CAP_GHOST_BOXES are defined elsewhere
+//     int liveCapGhostBoxes  = calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
+//     int liveCapGhostWicks  = calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
+//     int liveCapMcLines     = calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
+//     int liveCapDensBoxes   = calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
+//     int liveCapFcstShapes  = calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
+//     int liveCapFcstLabels  = calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
+//     int liveCapMainPoly    = calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
+// 
+//     // 4. Return these values as a tuple to the main script
+//     // Since we cannot modify globals, the caller must receive and apply these.
+//     [liveCapGhostBoxes, liveCapGhostWicks, liveCapMcLines, liveCapDensBoxes, liveCapFcstShapes, liveCapFcstLabels, liveCapMainPoly, ops]
+
+
+// manage_draw_resources(float stress01) =>
+//     int extraOps = int(math.round(PRUNE_BATCH * math.max(0.0, math.min(1.0, stress01))))
+//     int ops = PRUNE_BATCH + extraOps
+//     liveCapGhostBoxes := calc_dynamic_cap(CAP_GHOST_BOXES, CAP_MIN_GHOST_BOXES, stress01)
+//     liveCapGhostWicks := calc_dynamic_cap(CAP_GHOST_WICKS, CAP_MIN_GHOST_WICKS, stress01)
+//     liveCapMcLines    := calc_dynamic_cap(CAP_MC_LINES,    CAP_MIN_MC_LINES,    stress01)
+//     liveCapDensBoxes  := calc_dynamic_cap(CAP_DENS_BOXES,  CAP_MIN_DENS_BOXES,  stress01)
+//     liveCapFcstShapes := calc_dynamic_cap(CAP_FCST_SHAPES, CAP_MIN_FCST_SHAPES, stress01)
+//     liveCapFcstLabels := calc_dynamic_cap(CAP_FCST_LABELS, CAP_MIN_FCST_LABELS, stress01)
+//     liveCapMainPoly   := calc_dynamic_cap(CAP_MAIN_POLY,   CAP_MIN_MAIN_POLY,   stress01)
+//     trim_boxes(ghostBoxes, liveCapGhostBoxes, ops)
+//     trim_lines(ghostWicks, liveCapGhostWicks, ops)
+//     trim_polylines(mc_lines, liveCapMcLines, ops)
+//     trim_boxes(densBoxes, liveCapDensBoxes, ops)
+//     trim_polylines(fcstShapes, liveCapFcstShapes, ops)
+//     trim_labels(fcstLabels, liveCapFcstLabels, ops)
+//     trim_polylines(mainPoly, liveCapMainPoly, ops)
 
 // ============================================================================
 // 5. DATA INGESTION & MATRIX ENGINE
@@ -1521,8 +1577,14 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         push_polyline_capped(fcstShapes, polyline.new(rhombPts, closed=true, fill_color=color.new(tfColor,10), line_color=tfColor, line_width=2, xloc=xloc.bar_time), liveCapFcstShapes)
 
 // Central draw-manager pass: allocate/update/prune with dynamic per-feature budgets.
+// 2. Execution logic
 float drawStress = math.max(0.0, math.min(1.0, ((uz.adaptiveCoeff - b_cf) / math.max(0.01, 3.5 - b_cf)) + (microVolIndex * 25)))
-manage_draw_resources(drawStress)
+
+// Define your base batch size (how many to delete per bar minimum)
+int MY_PRUNE_BATCH = 5 
+
+// Call the function with BOTH arguments
+manage_draw_resources(drawStress, MY_PRUNE_BATCH)
 
 // Cleanup and re-render on last bar
 if barstate.islast
@@ -1583,9 +1645,7 @@ if barstate.islast
                 float gl = math.min(go, gc) - (kin.errorTerm * 0.5)
                 color gcol = gc >= go ? color.new(#00FF00,50) : color.new(#FF0055,50)
                 push_line_capped(ghostWicks, line.new(tt, gh, tt, gl, xloc=xloc.bar_time, color=color.new(gcol,70), width=1), liveCapGhostWicks)
-                push_box_capped(ghostBoxes, box.new(tt-(timeframe.multiplier*20000), math.max(go,gc),
-                                                    tt+(timeframe.multiplier*20000), math.min(go,gc),
-                                                    xloc=xloc.bar_time, border_color=gcol, bgcolor=gcol), liveCapGhostBoxes)
+                push_box_capped(ghostBoxes, box.new(tt-(timeframe.multiplier*20000), math.max(go,gc), tt+(timeframe.multiplier*20000), math.min(go,gc), xloc=xloc.bar_time, border_color=gcol, bgcolor=gcol), liveCapGhostBoxes)
 
         color ptCol = Bayes.probBull > 60 ? color.new(#00FFAA,0) : Bayes.probBear > 60 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
         push_polyline_capped(mainPoly, polyline.new(pgMean,  curved=true, line_color=ptCol,                 line_width=3, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
@@ -2247,10 +2307,10 @@ signalProb := math.max(5.0, math.min(95.0, signalProb))
 bool highConf = signalProb > 72 or signalProb < 28
 
 // Color logic using HEX or built-in colors
-color sigCol = signalProb > 65 ? color.new(#00FF00, 0) : signalProb < 35 ? color.new(#FF0000, 0) : color.new(#FFCC00, 0)
+color sigCol = signalProb > 65 ? color.new(#00FF00, 20) : signalProb < 35 ? color.new(#FF0000, 0) : color.new(#FFCC00, 20)
 
 // Plot signal probability as a background highlight on extreme readings
-bgcolor(highConf and signalProb > 72 ? color.new(color.teal, 94) : highConf and signalProb < 28 ? color.new(color.maroon, 94) : na, title="High Conf BG")
+bgcolor(highConf and signalProb > 72 ? color.new(color.teal, 99) : highConf and signalProb < 28 ? color.new(color.maroon, 99) : na, title="High Conf BG")
 
 // ============================================================================
 // 36. THIRD HUD TABLE: MULTI-ENGINE SIGNAL COMPOSITE
@@ -2523,10 +2583,10 @@ float sortinoRatio = math.sqrt(downDev2 / 20) > 0 ?
 // ============================================================================
 
 // --- MANDATORY OVERLAYS & PANES (11 + 3 = 14 Slots) ---
-hline(0, "Zero Line", color=color.new(color.gray, 50), linestyle=hline.style_solid)
-plot(hist_mn, "MACD Histogram", color=hist_mn>0?color.new(color.lime,30):color.new(color.red,30), style=plot.style_histogram, display=display.pane)
-plot(macd_mn, "MACD Line", color=color.new(color.blue,0), linewidth=1, display=display.pane)
-plot(sig_mn, "Signal Line", color=color.new(color.orange,0), linewidth=1, display=display.pane)
+// hline(0, "Zero Line", color=color.new(color.gray, 50), linestyle=hline.style_solid)
+plot(hist_mn, "MACD Histogram", color=hist_mn>0?color.new(color.lime,30):color.new(color.red,30), style=plot.style_histogram, display=display.data_window)
+plot(macd_mn, "MACD Line", color=color.new(color.blue,0), linewidth=1, display=display.data_window)
+plot(sig_mn, "Signal Line", color=color.new(color.orange,0), linewidth=1, display=display.data_window)
 
 plot(vwapDaily, "VWAP", color=color.new(#FFD700,50), linewidth=1, style=plot.style_line)
 plot(vwapBand1U, "VWAP +1σ", color=color.new(#00BFFF,80), linewidth=1, style=plot.style_line)
