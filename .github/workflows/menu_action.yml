@@ -1,6 +1,13 @@
 name: Menu Action
 
 on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -14,3 +21,18 @@ jobs:
         python-version: '3.x'
     - name: Run script
       run: python app/controllers/add_new_link.py
+
+    - name: Wire MajixActions into menu
+      run: python3 actions/extend.py menu
+
+    - name: Commit MajixActions wiring
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add menu/
+        if git diff --staged --quiet; then
+          echo "No actions wiring changes to commit."
+        else
+          git commit -m "feat: wire MajixActions into menu"
+          git push
+        fi

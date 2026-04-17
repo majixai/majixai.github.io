@@ -1,6 +1,10 @@
 name: Payment Processing Workflow
 
 on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   process-payment:
