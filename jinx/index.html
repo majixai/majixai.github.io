@@ -29,5 +29,10 @@
         <p>This is the main landing page for Jinx. More content will be added here.</p>
         <p>Explore our new Jinx AI Autoinvesting service to see how AI can help manage your investments.</p>
     </div>
+<script>
+  window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'jinx' };
+  if (typeof MajixActions !== 'undefined') MajixActions.init();
+</script>
+<script src="/actions/actions-core.js"></script>
 </body>
 </html>
