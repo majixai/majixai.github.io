@@ -1,157 +1,129 @@
 //@version=5
 strategy('JAT+BSM Pro v13 Extended', shorttitle='JAT+BSM v13 Ext', overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500, max_polylines_count=100, margin_long=100, margin_short=100, format=format.price, precision=4, calc_on_every_tick=false)
-
-// ============================================================================
-// 1. TYPE DEFINITIONS
-// ============================================================================
-
-// Kinematic regression model — tracks price velocity, acceleration, intercept
 type KinematicModel
-    float velocity        // Linear regression slope (price per bar)
-    float acceleration    // Second derivative of velocity
-    float intercept       // Regression line y-intercept
-    float errorTerm       // RMSE of regression residuals
-    int   length          // Lookback bars used
-
-// Uncertainty zone bounds and adaptive volatility coefficient
+    float velocity
+    float acceleration
+    float intercept
+    float errorTerm
+    int   length
 type UncertaintyZone
-    float upperBound      // Upper confidence boundary
-    float lowerBound      // Lower confidence boundary
-    float standardError   // Standard error from kinematics
-    float adaptiveCoeff   // Dynamic ATR multiplier, self-adjusting
-
-// Bayesian inference state — forward probability estimates
+    float upperBound
+    float lowerBound
+    float standardError
+    float adaptiveCoeff
 type BayesianInference
-    float probBull        // Estimated probability of bullish outcome (0-100)
-    float probBear        // Estimated probability of bearish outcome (0-100)
-    float expectedHigh    // Projected high target
-    float expectedLow     // Projected low target
-    float expectedClose   // Blended expected close
-
-// Pinned forecast — anchor + projected path arrays
+    float probBull
+    float probBear
+    float expectedHigh
+    float expectedLow
+    float expectedClose
 type PinnedForecast
-    int    anchorBar      // Bar index of forecast trigger
-    int    anchorTime     // Timestamp of forecast anchor (avoids time[] crash)
-    float  anchorPrice    // Price at forecast anchor
-    float[] targetPoints  // Mean projection path
-    float[] targetOpen    // Ghost-bar open prices
-    float[] targetClose   // Ghost-bar close prices
-    float[] confUpper     // Upper confidence envelope
-    float[] confLower     // Lower confidence envelope
-    int    horizonBars    // Cached horizon at trigger time (guards input changes)
-    bool   isActive       // Whether a forecast is currently running
-    string triggerSource  // Source label: GEO REV / BRK SYN / ALP FLP
-
-// Accuracy tracking engine — measures real-time forecast hit rate
+    int    anchorBar
+    int    anchorTime
+    float  anchorPrice
+    float[] targetPoints
+    float[] targetOpen
+    float[] targetClose
+    float[] confUpper
+    float[] confLower
+    int    horizonBars
+    bool   isActive
+    string triggerSource
 type AccuracyEngine
-    int   hitCount        // Number of bars where close was inside cone
-    int   missCount       // Number of bars where close was outside cone
-    float probBull        // Rolling bullish drift probability
-    float probBear        // Rolling bearish drift probability
-    float hitRate         // hitCount / (hitCount + missCount)
-
-// Projection metrics — tracks full forecast lifecycle performance
+    int   hitCount
+    int   missCount
+    float probBull
+    float probBear
+    float hitRate
 type ProjectionMetrics
-    int   totalProjections // Total number of forecasts triggered
-    int   hits             // Forecasts that reached their target
-    int   misses           // Forecasts that failed
-    float lastTarget       // Most recent Bayesian expected close
-    int   targetBar        // Bar index when last target should resolve
-    float accuracy         // hits / totalProjections * 100
-
-// Consolidation zone — squeeze detector with volume profile and POC
+    int   totalProjections
+    int   hits
+    int   misses
+    float lastTarget
+    int   targetBar
+    float accuracy
 type ConsolidationZone
-    int    id              // Zone identifier (1, 2, or 3)
-    bool   isActive        // Whether zone is currently squeezing
-    int    startBar        // Bar index where squeeze began
-    int    duration        // Bars elapsed inside squeeze
-    float  upperBound      // Highest high of the squeeze range
-    float  lowerBound      // Lowest low of the squeeze range
-    float  pointOfControl  // Volume-weighted POC price
-    float  totalVolume     // Cumulative volume during squeeze
-    box    boxId           // Reference to the rendered zone box
-    line   pocLineId       // Reference to the POC horizontal line
-    label  tooltipLabel    // Tooltip label for metadata display
-    string pocKey          // Cached POC bucket key (avoids map-wide scans)
-    float  pocMaxVol       // Cached maximum bucket volume
-    map<string, float> volMap // Volume-by-price bucket map
-
-// Breakout synergy — fires when a volume-confirmed breakout exits a zone
+    int    id
+    bool   isActive
+    int    startBar
+    int    duration
+    float  upperBound
+    float  lowerBound
+    float  pointOfControl
+    float  totalVolume
+    box    boxId
+    line   pocLineId
+    label  tooltipLabel
+    string pocKey
+    float  pocMaxVol
+    map<string, float> volMap
 type BreakoutSynergy
-    bool   isValidBreakout // True on the bar a breakout is confirmed
-    string direction       // "BULL" or "BEAR"
-    float  breakoutVolume  // Volume at breakout bar
-    float  expansionTarget // Fib-projected target beyond the zone
-    float  velocityMult    // Kinematic multiplier based on zone duration
-    float  anchorPOC       // POC of the zone that was broken
-
-// Advanced pattern engine — candle + macro pattern state
+    bool   isValidBreakout
+    string direction
+    float  breakoutVolume
+    float  expansionTarget
+    float  velocityMult
+    float  anchorPOC
 type PatternEngine
-    string activeCandlePat // Name of the current candlestick pattern
-    string activeMacroPat  // Name of the current macro chart pattern
-    int    patternScore    // Combined candle + macro score (-25 to +25)
-    float  structureTarget // Price target from macro pattern geometry
-    bool   isReversal      // True when |patternScore| >= 12
-    bool   isContinuation  // True when patternScore in midrange
-    float  currentProb     // Pattern success probability (5-95%)
-    string nextPredType    // Predicted next pattern type
-    float  probNextCont    // Probability next pattern is Continuation
-    float  probNextRev     // Probability next pattern is Reversal
-    float  probNextCons    // Probability next pattern is Consolidation
-    float  currentSkew     // Price distribution skewness (3rd moment)
-    float  currentStdev    // Rolling standard deviation
-
-// Pivot node — lightweight tagged pivot high/low
+    string activeCandlePat
+    string activeMacroPat
+    int    patternScore
+    float  structureTarget
+    bool   isReversal
+    bool   isContinuation
+    float  currentProb
+    string nextPredType
+    float  probNextCont
+    float  probNextRev
+    float  probNextCons
+    float  currentSkew
+    float  currentStdev
 type PivotNode
-    int   barIndex         // Bar index of the pivot
-    float price            // Price level of the pivot
-    bool  isHigh           // True = pivot high, False = pivot low
-
-// Trade execution state — active trade metadata
+    int   barIndex
+    float price
+    bool  isHigh
 type TradeState
-    float entryPrice       // Entry price at signal bar
-    float stopLoss         // Computed stop loss level
-    float takeProfit       // Computed take profit level
-    float riskReward       // Actual R:R ratio
-    int   ageInBars        // Bars since entry
-    bool  isBreakEven      // Whether stop has been moved to break-even
-
-// BSM Options Greeks
+    float entryPrice
+    float stopLoss
+    float takeProfit
+    float riskReward
+    int   ageInBars
+    bool  isBreakEven
 type OptionsGreeks
-    float delta            // Rate of price change vs underlying
-    float gamma            // Rate of delta change
-    float theta            // Time decay per day
-    float vega             // Sensitivity to implied volatility
-    float rho              // Sensitivity to interest rate
-    float putITM           // Put in-the-money probability
-
-// Wrapper for array-of-chart.point (fixes Pine collection nesting)
+    float delta
+    float gamma
+    float theta
+    float vega
+    float rho
+    float putITM
 type PointArray
     array<chart.point> pts
 
-// ============================================================================
-// 2. INPUT GROUPS & PARAMETERS
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: GC METRICS TYPE
 
-// --- AlphaTrend Engine ---
+// ─────────────────────────────────────────────────────────────────────────────
+type GCMetrics
+    int boxDels
+    int lineDels
+    int labelDels
+    int polyDels
+    int prunePasses
+    int stressPasses
+    int lastPruneBar
+
 g_alp  = "AlphaTrend Core"
 b_cf   = input.float(1.5,  'Base Vol Coefficient',   step=0.1,    minval=0.5, maxval=5.0, group=g_alp, tooltip="ATR multiplier for AlphaTrend bands. Higher = less sensitive.")
 al_pr  = input.int(14,     'Common Period',          minval=5,    maxval=50,  group=g_alp, tooltip="Period for ATR, RSI and MFI calculations.")
 al_sr  = input.source(close,'Source',                                          group=g_alp, tooltip="Price source for RSI and kinematic regression.")
-
-// --- Multi-Timeframe ---
 g_htf  = "Multi-Timeframe"
 hf_in  = input.timeframe("15", "HTF Background TF",                            group=g_htf, tooltip="Higher timeframe for trend context box.")
-
-// --- Layered Consolidation ---
 g_con  = "Consolidation Engine"
 c_l1   = input.int(20,     "Layer 1 Period (Micro)",  minval=5,   maxval=50,  group=g_con)
 c_l2   = input.int(40,     "Layer 2 Period (Macro)",  minval=10,  maxval=100, group=g_con)
 c_l3   = input.int(80,     "Layer 3 Period (Global)", minval=20,  maxval=200, group=g_con)
 vp_bk  = input.int(10,     "Volume Profile Buckets",  minval=5,   maxval=30,  group=g_con, tooltip="Number of price buckets for intra-zone volume profile.")
 bk_ml  = input.float(1.618,"Breakout Fib Multiplier",             step=0.1,   group=g_con, tooltip="Fib ratio applied to zone height for expansion target.")
-
-// --- Geometric Patterns ---
 g_pat  = "Geometric Pattern Engine"
 sh_cp  = input.bool(true,  "Show Candlestick Labels",                          group=g_pat)
 sh_mp  = input.bool(true,  "Draw Macro Pattern Lines",                         group=g_pat)
@@ -159,45 +131,32 @@ pv_lb  = input.int(10,     "Pivot Lookback",          minval=3,   maxval=30,  gr
 st_tl  = input.float(0.02, "Pattern Tolerance (%)",               step=0.005, group=g_pat, tooltip="Relative distance tolerance for pattern matching.")
 p_clB  = input.color(color.new(color.lime, 0), "Bullish Pattern Color",        group=g_pat)
 p_clR  = input.color(color.new(color.red,  0), "Bearish Pattern Color",        group=g_pat)
-
-// --- Kinematic Ensemble ---
 g_kn   = "Kinematic Ensemble"
 fc_hz  = input.int(20,     'Forecast Horizon (Bars)', minval=2,   maxval=100, group=g_kn)
 lr_rt  = input.float(0.1,  'Feedback Learn Rate',     minval=0.01,maxval=0.5, group=g_kn, tooltip="Speed at which Bayesian bias adapts to forecast errors.")
 by_lb  = input.int(500,    'Bayesian Lookback',        minval=50,             group=g_kn)
 en_mr  = input.bool(true,  "Enable Mean Reversion Gravity",                    group=g_kn)
-
-// --- Ensemble Weight Matrix ---
+up_md  = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn)
 g_mtx  = "Ensemble Weight Matrix"
 wt_in  = input.text_area("1.0 0.5 0.2\n0.2 1.0 0.5\n0.5 0.2 1.0", "Model Weights (Kin / Bayes / MR)", group=g_mtx, tooltip="3×3 matrix rows: [Kin, Bayes, MR]. First row weights used for blending.")
-
-// --- MACD Synergy ---
 g_syn  = "MACD Synergy"
 rq_syn = input.bool(true,  "Require Cross-Asset Synergy",                      group=g_syn)
 rl_md  = input.bool(true,  "Relaxed Synergy (any 1 of 3)",                     group=g_syn)
 f_ln   = input.int(12,     "MACD Fast Length",         minval=2,               group=g_syn)
 s_ln   = input.int(26,     "MACD Slow Length",         minval=5,               group=g_syn)
 sg_ln  = input.int(9,      "MACD Signal Length",       minval=2,               group=g_syn)
-
-// --- Securities ---
 g_sym  = "Correlated Securities"
 s_1    = input.symbol("NASDAQ:AAPL", "Primary Symbol",                         group=g_sym)
 s_2    = input.symbol("NASDAQ:MSFT", "Correlation Symbol 2",                   group=g_sym)
 s_3    = input.symbol("NASDAQ:GOOG", "Correlation Symbol 3",                   group=g_sym)
-
-// --- Risk Management ---
 g_rsk  = "Risk & Position Sizing"
 mx_tr  = input.int(3,      "Max Concurrent Trades",   minval=1,   maxval=10,  group=g_rsk)
 rk_bf  = input.float(1.1,  "Stop ATR Multiplier",                 step=0.1,   group=g_rsk)
 rw_ml  = input.float(2.0,  "Target Risk:Reward",                  step=0.1,   group=g_rsk)
-
-// --- Black-Scholes ---
 g_bsm  = "Black-Scholes (BSM)"
 rf_rt  = input.float(0.05, "Risk-Free Rate",           step=0.01,             group=g_bsm)
 t_ex   = input.float(30.0, "Days to Expiration",                              group=g_bsm)
 st_ml  = input.float(1.0,  "Strike as Mult of Close",  step=0.01,             group=g_bsm)
-
-// --- Visual Settings ---
 g_vis  = "Visual Settings"
 sh_tb  = input.bool(true,  "Show HUD Table",                                   group=g_vis)
 sh_t2  = input.bool(true,  "Show Pattern Table",                               group=g_vis)
@@ -206,36 +165,51 @@ sh_mc  = input.bool(true,  "Show Monte Carlo Paths",                           g
 sh_co  = input.bool(true,  "Show Consolidation Zones",                         group=g_vis)
 sh_gb  = input.bool(true,  "Show Ghost Forecast Bars",                         group=g_vis)
 sh_pz  = input.bool(true,  "Show Pattern Geometry Boxes",                      group=g_vis)
-
-// --- MTF Granularity ---
 g_ltf  = "Lower TF Granularity"
 ltf_s  = input.timeframe("1", "LTF for Intra-Bar Noise",                      group=g_ltf, tooltip="Used to compute empirical micro-volatility index (MVI).")
 
-// ============================================================================
-// 3. GLOBAL OBJECT INITIALIZATION
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: DRAWING RESOURCE & GC CONTROLS
+
+// ─────────────────────────────────────────────────────────────────────────────
+g_gc   = "Drawing & GC Controls"
+gc_gb_cap  = input.int(8,   "Ghost Bars (max boxes)",    minval=1, maxval=100, group=g_gc, tooltip="Max ghost forecast bar boxes retained.  1 = only the very latest.  100 = keep up to last 100.")
+gc_gw_cap  = input.int(8,   "Ghost Wicks (max lines)",   minval=1, maxval=100, group=g_gc, tooltip="Max wick lines for ghost forecast bars.")
+gc_mc_cap  = input.int(20,  "Monte Carlo (max polys)",   minval=1, maxval=100, group=g_gc, tooltip="Max Monte Carlo path polylines per render pass.")
+gc_db_cap  = input.int(6,   "Density Boxes (max)",       minval=1, maxval=100, group=g_gc, tooltip="CI/CORE endpoint boxes drawn at the horizon.  Low default keeps charts uncluttered.")
+gc_fs_cap  = input.int(8,   "Fcst Shapes (max polys)",   minval=1, maxval=100, group=g_gc, tooltip="Max forecast ribbon and rhombus polylines retained.")
+gc_fl_cap  = input.int(20,  "Fcst Labels (max)",         minval=1, maxval=100, group=g_gc, tooltip="Max hit/miss node labels on forecast paths.")
+gc_mp_cap  = input.int(30,  "Main Polylines (max)",      minval=1, maxval=100, group=g_gc, tooltip="Max mean/upper/lower path polylines retained.")
+gc_ob_cap  = input.int(4,   "OB Zone Boxes (max)",       minval=1, maxval=100, group=g_gc, tooltip="Order block boxes.  Each persists 60 bars; keep low to control chart memory.")
+gc_pat_cap = input.int(6,   "Pattern Geo Boxes (max)",   minval=1, maxval=100, group=g_gc, tooltip="Geometric macro-pattern bounding boxes.")
+gc_sd_cap  = input.int(4,   "S/D Zone Boxes (max)",      minval=1, maxval=100, group=g_gc, tooltip="Supply/demand zone boxes.  Invalidated boxes are deleted immediately; cap governs retained count.")
+gc_prune   = input.int(3,   "GC Prune Batch/Bar",        minval=1, maxval=20,  group=g_gc, tooltip="Drawing objects deleted per prune sweep per bar.  Higher = faster cleanup at cost of per-bar CPU.")
+sh_gc_hud  = input.bool(false, "Show GC Diagnostics HUD", group=g_gc)
 
 var KinematicModel  kin  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
 var UncertaintyZone uz   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
-var PinnedForecast  pf   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+var PinnedForecast  pfS  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+var PinnedForecast  pfM  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+var PinnedForecast  pfL  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
 var AccuracyEngine  acc  = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
 var BreakoutSynergy brk  = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
 var PatternEngine   pe   = PatternEngine.new("NONE","NONE",0,na,false,false,50.0,"None",33.3,33.3,33.3,0.0,0.0)
-var ProjectionMetrics PM = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+var ProjectionMetrics PMS = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+var ProjectionMetrics PM  = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+var ProjectionMetrics PML = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
 var BayesianInference Bayes = BayesianInference.new(0, 0, 0, 0, 0)
 var float feedbackBias   = 0.0
-
 var ConsolidationZone zone1 = ConsolidationZone.new(1, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, "", 0.0, map.new<string, float>())
 var ConsolidationZone zone2 = ConsolidationZone.new(2, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, "", 0.0, map.new<string, float>())
 var ConsolidationZone zone3 = ConsolidationZone.new(3, false, 0, 0, 0.0, 0.0, 0.0, 0.0, na, na, na, "", 0.0, map.new<string, float>())
-
 var PivotNode[] pivotsHigh = array.new<PivotNode>()
 var PivotNode[] pivotsLow  = array.new<PivotNode>()
 var TradeState  activeTrade = TradeState.new(0.0, 0.0, 0.0, 0.0, 0, false)
-
 var box[]      ghostBoxes  = array.new_box()
 var line[]     ghostWicks  = array.new_line()
-var matrix<float> mcMatrix = matrix.new<float>(3, fc_hz, 0.0)
+var matrix<float> mcMatrixS = matrix.new<float>(3, fc_hz, 0.0)
+var matrix<float> mcMatrixM = matrix.new<float>(3, fc_hz, 0.0)
+var matrix<float> mcMatrixL = matrix.new<float>(3, fc_hz, 0.0)
 var polyline[] mc_lines    = array.new<polyline>()
 var box[]      densBoxes   = array.new<box>()
 var polyline[] fcstShapes  = array.new<polyline>()
@@ -243,10 +217,6 @@ var label[]    fcstLabels  = array.new<label>()
 var polyline[] mainPoly    = array.new<polyline>()
 var line       baselineRay = na
 var label      baselineLbl = na
-
-// Runtime safety caps: keep comfortably below Pine draw limits during volatile history.
-// Note: capped arrays are intentionally used instead of node-based linked lists to minimize
-// per-bar object allocation churn in Pine's runtime.
 const int CAP_GHOST_BOXES   = 120
 const int CAP_GHOST_WICKS   = 120
 const int CAP_MC_LINES      = 80
@@ -262,7 +232,6 @@ const int CAP_MIN_DENS_BOXES  = 16
 const int CAP_MIN_FCST_SHAPES = 16
 const int CAP_MIN_FCST_LABELS = 40
 const int CAP_MIN_MAIN_POLY   = 40
-
 var int liveCapGhostBoxes = CAP_GHOST_BOXES
 var int liveCapGhostWicks = CAP_GHOST_WICKS
 var int liveCapMcLines    = CAP_MC_LINES
@@ -271,14 +240,30 @@ var int liveCapFcstShapes = CAP_FCST_SHAPES
 var int liveCapFcstLabels = CAP_FCST_LABELS
 var int liveCapMainPoly   = CAP_MAIN_POLY
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: GC STATE + TRACKED DRAW ARRAYS
+
+// ─────────────────────────────────────────────────────────────────────────────
+var GCMetrics  gcm            = GCMetrics.new(0, 0, 0, 0, 0, 0, 0)
+var box[]      obBullBoxes    = array.new_box()
+var box[]      obBearBoxes    = array.new_box()
+var box[]      sdSupplyBoxes  = array.new_box()
+var box[]      sdDemandBoxes  = array.new_box()
+var box[]      patGeoBoxes    = array.new_box()
+var line[]     gannFanLines   = array.new_line()
+var line[]     tradeVizLines  = array.new_line()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SERIES LOOKBACK ANCHORS
+
+// ─────────────────────────────────────────────────────────────────────────────
 max_bars_back(close, 4000)
 max_bars_back(time,  4000)
 
-// ============================================================================
-// 4. MATH & UTILITY FUNCTIONS
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: UTILITY / MATH FUNCTIONS
 
-// Cumulative Normal Distribution (Abramowitz & Stegun approximation)
+// ─────────────────────────────────────────────────────────────────────────────
 c_cnd(float x) =>
     float a1 = 0.254829592, float a2 = -0.284496736, float a3 = 1.421413741
     float a4 = -1.453152027, float a5 = 1.061405429, float p = 0.3275911
@@ -287,8 +272,6 @@ c_cnd(float x) =>
     float t    = 1.0 / (1.0 + p * absx)
     float y    = 1.0 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1) * t * math.exp(-absx*absx)
     sign == 1 ? 0.5*(1.0+y) : 0.5*(1.0-y)
-
-// Black-Scholes Greeks (Delta, Gamma, Theta, Vega, Rho, Put-ITM)
 g_grk(float s, float k, float r, float t, float vl) =>
     if vl > 0 and t > 0
         float d1  = (math.log(s/k) + (r + 0.5*math.pow(vl,2))*t) / (vl*math.sqrt(t))
@@ -303,14 +286,10 @@ g_grk(float s, float k, float r, float t, float vl) =>
              c_cnd(d2))
     else
         OptionsGreeks.new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-
-// MACD helper — returns [macd, signal, histogram]
 g_mcd(float src, int f, int s, int sg) =>
     float macdLine = ta.ema(src, f) - ta.ema(src, s)
     float sigLine  = ta.ema(macdLine, sg)
     [macdLine, sigLine, macdLine - sigLine]
-
-// Parse space/newline delimited string into a float matrix
 m_str(string st) =>
     var rowsArr = str.split(st, "\n")
     var numRows = array.size(rowsArr)
@@ -325,16 +304,12 @@ m_str(string st) =>
             c += 1
         r += 1
     mat
-
-// Build a matrix filled with uniform random floats in [-1, 1]
 m_rnd(int rows, int cols) =>
     mat = matrix.new<float>(rows, cols)
     for i = 0 to rows - 1
         for j = 0 to cols - 1
             matrix.set(mat, i, j, (math.random() * 2) - 1.0)
     mat
-
-// Bayesian tangent trig curvature warp for non-linear forecast paths
 b_tc(float expectedPrice, float priorPrice, float errorTerm, int stepIdx, float adaptCoeff) =>
     float bayesDiff = expectedPrice - priorPrice
     float rawPhase  = bayesDiff / (errorTerm + 1e-8)
@@ -342,8 +317,6 @@ b_tc(float expectedPrice, float priorPrice, float errorTerm, int stepIdx, float 
     float curveScalar = math.tan(safePhase) * math.cos(stepIdx / (adaptCoeff + 1e-5))
     float posteriorShift = (bayesDiff * curveScalar) * math.exp(-stepIdx / (10.0 * adaptCoeff))
     expectedPrice + posteriorShift
-
-// Compute price distribution skewness (3rd standardised moment)
 calc_skewness(float[] prices, int lb) =>
     float mn   = ta.sma(close, lb)
     float sd   = ta.stdev(close, lb)
@@ -352,67 +325,83 @@ calc_skewness(float[] prices, int lb) =>
         cubd += math.pow(close[i] - mn, 3)
     sd != 0 ? (cubd / lb) / math.pow(sd, 3) : 0.0
 
-// ---------------------- Draw-object lifecycle helpers ----------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: CAPPED PUSH / TRIM (GC-AWARE)
+
+// ─────────────────────────────────────────────────────────────────────────────
 push_box_capped(box[] arr, box obj, int cap) =>
     array.push(arr, obj)
     if array.size(arr) > cap
         box oldObj = array.shift(arr)
         if not na(oldObj)
             box.delete(oldObj)
-
+            gcm.boxDels += 1
 push_line_capped(line[] arr, line obj, int cap) =>
     array.push(arr, obj)
     if array.size(arr) > cap
         line oldObj = array.shift(arr)
         if not na(oldObj)
             line.delete(oldObj)
-
+            gcm.lineDels += 1
 push_label_capped(label[] arr, label obj, int cap) =>
     array.push(arr, obj)
     if array.size(arr) > cap
         label oldObj = array.shift(arr)
         if not na(oldObj)
             label.delete(oldObj)
-
+            gcm.labelDels += 1
 push_polyline_capped(polyline[] arr, polyline obj, int cap) =>
     array.push(arr, obj)
     if array.size(arr) > cap
         polyline oldObj = array.shift(arr)
         if not na(oldObj)
             polyline.delete(oldObj)
-
+            gcm.polyDels += 1
 trim_boxes(box[] arr, int cap, int maxOps) =>
     int ops = 0
     while array.size(arr) > cap and ops < maxOps
         box oldObj = array.shift(arr)
         if not na(oldObj)
             box.delete(oldObj)
+            gcm.boxDels += 1
         ops += 1
-
+    if ops > 0
+        gcm.prunePasses += 1
 trim_lines(line[] arr, int cap, int maxOps) =>
     int ops = 0
     while array.size(arr) > cap and ops < maxOps
         line oldObj = array.shift(arr)
         if not na(oldObj)
             line.delete(oldObj)
+            gcm.lineDels += 1
         ops += 1
-
+    if ops > 0
+        gcm.prunePasses += 1
 trim_labels(label[] arr, int cap, int maxOps) =>
     int ops = 0
     while array.size(arr) > cap and ops < maxOps
         label oldObj = array.shift(arr)
         if not na(oldObj)
             label.delete(oldObj)
+            gcm.labelDels += 1
         ops += 1
-
+    if ops > 0
+        gcm.prunePasses += 1
 trim_polylines(polyline[] arr, int cap, int maxOps) =>
     int ops = 0
     while array.size(arr) > cap and ops < maxOps
         polyline oldObj = array.shift(arr)
         if not na(oldObj)
             polyline.delete(oldObj)
+            gcm.polyDels += 1
         ops += 1
+    if ops > 0
+        gcm.prunePasses += 1
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: ZONE LIFECYCLE HELPERS
+
+// ─────────────────────────────────────────────────────────────────────────────
 clear_zone_drawings(ConsolidationZone z) =>
     if not na(z.boxId)
         box.delete(z.boxId)
@@ -423,121 +412,53 @@ clear_zone_drawings(ConsolidationZone z) =>
     if not na(z.tooltipLabel)
         label.delete(z.tooltipLabel)
         z.tooltipLabel := na
-
 reset_forecast_state(PinnedForecast pfIn, ProjectionMetrics pmIn) =>
     pfIn.isActive := false
     pfIn.horizonBars := 0
     pmIn.lastTarget := na
     pmIn.targetBar := na
-
-// calc_dynamic_cap(int baseCap, int minCap, float stress01) =>
-//     float scale = 1.0 - (0.45 * math.max(0.0, math.min(1.0, stress01)))
-//     int dynCap = int(math.round(baseCap * scale))
-//     math.max(minCap, dynCap)
-
-// Helper to calculate dynamic capacity (Linear Interpolation)
 calc_dynamic_cap(int maxCap, int minCap, float stress) =>
     int(maxCap - (maxCap - minCap) * stress)
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: DYNAMIC RESOURCE MANAGER
 
-
-// 1. Define the function with the parameter included
+// ─────────────────────────────────────────────────────────────────────────────
 manage_draw_resources(float stress01, int pruneBatch) =>
     float s = math.max(0.0, math.min(1.0, stress01))
-    
-    // Calculate how many extra items to prune based on stress
     int extraOps = int(math.round(pruneBatch * s))
     int ops      = pruneBatch + extraOps
-
-    // Calculate dynamic caps
-    int liveCapGhostBoxes  = calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
-    int liveCapGhostWicks  = calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
-    int liveCapMcLines     = calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
-    int liveCapDensBoxes   = calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
-    int liveCapFcstShapes  = calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
-    int liveCapFcstLabels  = calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
-    int liveCapMainPoly    = calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
-
-    // Execute trimming (Arrays are passed by reference and modified)
-    trim_boxes(ghostBoxes, liveCapGhostBoxes, ops)
-    trim_lines(ghostWicks, liveCapGhostWicks, ops)
-    trim_polylines(mc_lines, liveCapMcLines, ops)
-    trim_boxes(densBoxes, liveCapDensBoxes, ops)
-    trim_polylines(fcstShapes, liveCapFcstShapes, ops)
-    trim_labels(fcstLabels, liveCapFcstLabels, ops)
-    trim_polylines(mainPoly, liveCapMainPoly, ops)
-
-// // Main Resource Manager
-// manage_draw_resources(float stress01, int PRUNE_BATCH) =>
-//     // 1. Clamp stress between 0.0 and 1.0
-//     float s = math.max(0.0, math.min(1.0, stress01))
-//     
-//     // 2. Calculate how many items to prune this execution
-//     int extraOps = int(math.round(PRUNE_BATCH * s))
-//     int ops      = PRUNE_BATCH + extraOps
-// 
-//     // 3. Calculate current allowed capacity for each resource type
-//     // Assumes constants like CAP_GHOST_BOXES are defined elsewhere
-//     int liveCapGhostBoxes  = calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s)
-//     int liveCapGhostWicks  = calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s)
-//     int liveCapMcLines     = calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s)
-//     int liveCapDensBoxes   = calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s)
-//     int liveCapFcstShapes  = calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s)
-//     int liveCapFcstLabels  = calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s)
-//     int liveCapMainPoly    = calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s)
-// 
-//     // 4. Return these values as a tuple to the main script
-//     // Since we cannot modify globals, the caller must receive and apply these.
-//     [liveCapGhostBoxes, liveCapGhostWicks, liveCapMcLines, liveCapDensBoxes, liveCapFcstShapes, liveCapFcstLabels, liveCapMainPoly, ops]
-
-
-// manage_draw_resources(float stress01) =>
-//     int extraOps = int(math.round(PRUNE_BATCH * math.max(0.0, math.min(1.0, stress01))))
-//     int ops = PRUNE_BATCH + extraOps
-//     liveCapGhostBoxes := calc_dynamic_cap(CAP_GHOST_BOXES, CAP_MIN_GHOST_BOXES, stress01)
-//     liveCapGhostWicks := calc_dynamic_cap(CAP_GHOST_WICKS, CAP_MIN_GHOST_WICKS, stress01)
-//     liveCapMcLines    := calc_dynamic_cap(CAP_MC_LINES,    CAP_MIN_MC_LINES,    stress01)
-//     liveCapDensBoxes  := calc_dynamic_cap(CAP_DENS_BOXES,  CAP_MIN_DENS_BOXES,  stress01)
-//     liveCapFcstShapes := calc_dynamic_cap(CAP_FCST_SHAPES, CAP_MIN_FCST_SHAPES, stress01)
-//     liveCapFcstLabels := calc_dynamic_cap(CAP_FCST_LABELS, CAP_MIN_FCST_LABELS, stress01)
-//     liveCapMainPoly   := calc_dynamic_cap(CAP_MAIN_POLY,   CAP_MIN_MAIN_POLY,   stress01)
-//     trim_boxes(ghostBoxes, liveCapGhostBoxes, ops)
-//     trim_lines(ghostWicks, liveCapGhostWicks, ops)
-//     trim_polylines(mc_lines, liveCapMcLines, ops)
-//     trim_boxes(densBoxes, liveCapDensBoxes, ops)
-//     trim_polylines(fcstShapes, liveCapFcstShapes, ops)
-//     trim_labels(fcstLabels, liveCapFcstLabels, ops)
-//     trim_polylines(mainPoly, liveCapMainPoly, ops)
-
-// ============================================================================
-// 5. DATA INGESTION & MATRIX ENGINE
-// ============================================================================
-
+    if s > 0.65
+        gcm.stressPasses += 1
+    gcm.lastPruneBar := bar_index
+    int capGb = math.min(gc_gb_cap,  calc_dynamic_cap(CAP_GHOST_BOXES,  CAP_MIN_GHOST_BOXES,  s))
+    int capGw = math.min(gc_gw_cap,  calc_dynamic_cap(CAP_GHOST_WICKS,  CAP_MIN_GHOST_WICKS,  s))
+    int capMc = math.min(gc_mc_cap,  calc_dynamic_cap(CAP_MC_LINES,     CAP_MIN_MC_LINES,     s))
+    int capDb = math.min(gc_db_cap,  calc_dynamic_cap(CAP_DENS_BOXES,   CAP_MIN_DENS_BOXES,   s))
+    int capFs = math.min(gc_fs_cap,  calc_dynamic_cap(CAP_FCST_SHAPES,  CAP_MIN_FCST_SHAPES,  s))
+    int capFl = math.min(gc_fl_cap,  calc_dynamic_cap(CAP_FCST_LABELS,  CAP_MIN_FCST_LABELS,  s))
+    int capMp = math.min(gc_mp_cap,  calc_dynamic_cap(CAP_MAIN_POLY,    CAP_MIN_MAIN_POLY,    s))
+    [capGb, capGw, capMc, capDb, capFs, capFl, capMp, ops]
 var matrix<float> ensembleWeights = m_str(wt_in)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: ENSEMBLE WEIGHTS & EXTERNAL FEEDS
+
+// ─────────────────────────────────────────────────────────────────────────────
 float kinWeight   = matrix.get(ensembleWeights, 0, 0)
 float bayesWeight = matrix.get(ensembleWeights, 0, 1)
 float mrWeight    = matrix.get(ensembleWeights, 0, 2)
-
 [ht_o, ht_h, ht_l, ht_c] = request.security(syminfo.tickerid, hf_in, [open, high, low, close], gaps=barmerge.gaps_off)
 [macd_mn, sig_mn, hist_mn] = g_mcd(close, f_ln, s_ln, sg_ln)
 [macd_s1, sig_s1, hist_s1] = request.security(s_1, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
 [macd_s2, sig_s2, hist_s2] = request.security(s_2, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
 [macd_s3, sig_s3, hist_s3] = request.security(s_3, timeframe.period, g_mcd(close, f_ln, s_ln, sg_ln))
-
 bool macd_bull = hist_mn > 0 and (rl_md ? (hist_s1>0 or hist_s2>0) : (hist_s1>0 and hist_s2>0 and hist_s3>0))
 bool macd_bear = hist_mn < 0 and (rl_md ? (hist_s1<0 or hist_s2<0) : (hist_s1<0 and hist_s2<0 and hist_s3<0))
-
 array<float> ltf_closes = request.security_lower_tf(syminfo.tickerid, ltf_s, close)
 float ltf_vol  = not na(ltf_closes) and array.size(ltf_closes) > 1 ? array.stdev(ltf_closes) : 0.0
 float microVolIndex = ltf_vol > 0 ? ltf_vol / close : ta.atr(14) / close
-
 OptionsGreeks greeks = g_grk(close, close*st_ml, rf_rt, t_ex/365.0, ta.stdev(close,20)/close*math.sqrt(252))
-
-// ============================================================================
-// 6. KINEMATIC & ALPHATREND ENGINE
-// ============================================================================
-
-// Ordinary Least Squares kinematic regression on a rolling price buffer
 c_kn(float[] priceArr, int lb) =>
     float sumX=0.0, float sumY=0.0, float sumXY=0.0, float sumX2=0.0
     for i = 0 to lb - 1
@@ -553,8 +474,6 @@ c_kn(float[] priceArr, int lb) =>
     float prevVel   = nz(velocity[2], velocity)
     float accel     = (velocity - prevVel) / 2.0
     KinematicModel.new(velocity, accel, intercept, math.sqrt(ssRes / n), lb)
-
-// Ring-buffer kinematic regression (avoids per-bar shift/unshift churn).
 c_kn_ring(float[] ringBuf, int head, int count, int lb) =>
     int ringSize = array.size(ringBuf)
     int nInt = math.min(lb, count)
@@ -575,8 +494,6 @@ c_kn_ring(float[] ringBuf, int head, int count, int lb) =>
     float prevVel   = nz(velocity[2], velocity)
     float accel     = (velocity - prevVel) / 2.0
     KinematicModel.new(velocity, accel, intercept, math.sqrt(ssRes / n), nInt)
-
-// Maintain a rolling 50-bar close ring buffer for regression input
 var float[] closeBuf = array.new_float(50, close)
 var int closeBufHead = 0
 var int closeBufCount = 50
@@ -584,49 +501,32 @@ if barstate.isrealtime or barstate.ishistory
     array.set(closeBuf, closeBufHead, close)
     closeBufHead := (closeBufHead + 1) % array.size(closeBuf)
     closeBufCount := math.min(array.size(closeBuf), closeBufCount + 1)
-
 if closeBufCount >= 20
     kin         := c_kn_ring(closeBuf, closeBufHead, closeBufCount, 20)
     uz.standardError := kin.errorTerm
-
-// AlphaTrend core: ATR + RSI + MFI momentum engine
 float atrVal  = ta.sma(ta.tr, al_pr)
 float rsiVal  = ta.rsi(al_sr, al_pr)
 float mfiVal  = ta.mfi(hlc3, al_pr)
 bool  moEngin = (mfiVal + rsiVal) / 2 >= 50
-
-// Adaptive coefficient blending base volatility with trig phase shift
 float normRsi    = math.max(-1.0, math.min(1.0, (rsiVal - 50) / 50.0))
 float phaseShift = math.acos(normRsi)
 float trigFactor = math.cos(((bar_index % 360) * math.pi / 180) + phaseShift) * 0.1
 uz.adaptiveCoeff := math.max(1.0, math.min(3.5, b_cf + (kin.errorTerm/close*100) + trigFactor))
-
 float upBand   = low  - atrVal * uz.adaptiveCoeff
 float dnBand   = high + atrVal * uz.adaptiveCoeff
-
 var float AlphaTrend = 0.0
 AlphaTrend := moEngin ? (upBand < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : upBand)
                       : (dnBand > nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : dnBand)
-
 bool atBull = AlphaTrend > AlphaTrend[2]
 bool atFlip = ta.change(atBull) != 0
-
-// ============================================================================
-// 7. CONSOLIDATION ENGINE (3-LAYER SQUEEZE)
-// ============================================================================
-
-// Returns squeeze state + range + avg volume for a given period
 getSqueezeMetrics(simple int len) =>
     float bbDev   = ta.stdev(close, len) * 2.0
     float kcDev   = ta.sma(ta.tr, len) * 1.5
     bool  isSqz   = bbDev < kcDev
     [isSqz, ta.highest(high, len), ta.lowest(low, len), ta.sma(volume, len)]
-
-// Consolidation zone processor method
 method processZone(ConsolidationZone z, bool isSqueezing, float hi, float lo, float avgVol, bool show, int vpBuckets, float brkMult) =>
     bool brkBull = false, bool brkBear = false
     float expTarget = 0.0, float pocOut = 0.0, float velMult = 1.0
-
     if isSqueezing
         if not z.isActive
             clear_zone_drawings(z)
@@ -688,17 +588,24 @@ method processZone(ConsolidationZone z, bool isSqueezing, float hi, float lo, fl
             z.pocKey := ""
             z.pocMaxVol := 0.0
     [brkBull, brkBear, expTarget, velMult, pocOut]
-
 [sq1, hi1, lo1, av1] = getSqueezeMetrics(c_l1)
 [bBull1, bBear1, tgt1, vm1, poc1] = zone1.processZone(sq1, hi1, lo1, av1, sh_co, vp_bk, bk_ml)
 [sq2, hi2, lo2, av2] = getSqueezeMetrics(c_l2)
 [bBull2, bBear2, tgt2, vm2, poc2] = zone2.processZone(sq2, hi2, lo2, av2, sh_co, vp_bk, bk_ml)
 [sq3, hi3, lo3, av3] = getSqueezeMetrics(c_l3)
 [bBull3, bBear3, tgt3, vm3, poc3] = zone3.processZone(sq3, hi3, lo3, av3, sh_co, vp_bk, bk_ml)
-
+if barstate.isconfirmed
+    bool z1fresh = zone1.isActive and not zone1.isActive[1]
+    bool z2fresh = zone2.isActive and not zone2.isActive[1]
+    bool z3fresh = zone3.isActive and not zone3.isActive[1]
+    if z1fresh and sh_co
+        label.new(bar_index, high + atrVal * 0.3, "SQZ L1", color=#00000000, textcolor=color.new(color.yellow,20), size=size.tiny, style=label.style_label_down)
+    if z2fresh and sh_co
+        label.new(bar_index, high + atrVal * 0.6, "SQZ L2", color=#00000000, textcolor=color.new(color.orange,20), size=size.tiny, style=label.style_label_down)
+    if z3fresh and sh_co
+        label.new(bar_index, high + atrVal * 0.9, "SQZ L3", color=#00000000, textcolor=color.new(color.red,20),    size=size.tiny, style=label.style_label_down)
 bool anyBull = bBull1 or bBull2 or bBull3
 bool anyBear = bBear1 or bBear2 or bBear3
-
 brk.isValidBreakout := false
 if anyBull or anyBear
     brk.isValidBreakout := true
@@ -713,10 +620,10 @@ if anyBull or anyBear
     brk.velocityMult    := math.max(vm1, math.max(vm2, vm3))
     brk.anchorPOC       := poc3!=0 ? poc3 : (poc2!=0 ? poc2 : (poc1!=0 ? poc1 : close))
 
-// ============================================================================
-// 8. CANDLESTICK LEXICON (FULL 40+ PATTERN SET)
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: CANDLESTICK PATTERN CLASSIFICATION
 
+// ─────────────────────────────────────────────────────────────────────────────
 float bodySize  = math.abs(close - open)
 float upperWick = high - math.max(open, close)
 float lowerWick = math.min(open, close) - low
@@ -725,8 +632,6 @@ float avgSize   = ta.sma(totalSize, 10)
 float avgBody   = ta.sma(bodySize, 10)
 bool  isBull    = close > open
 bool  isBear    = close < open
-
-// Single-bar patterns
 bool isDoji     = bodySize <= (totalSize*0.1) and totalSize > avgSize*0.5
 bool isDragon   = isDoji and lowerWick > totalSize*0.7 and upperWick < totalSize*0.1
 bool isGrave    = isDoji and upperWick > totalSize*0.7 and lowerWick < totalSize*0.1
@@ -740,8 +645,6 @@ bool isBullBelt = isBull and lowerWick < totalSize*0.05 and bodySize > avgBody a
 bool isBearBelt = isBear and upperWick < totalSize*0.05 and bodySize > avgBody and lowerWick > 0
 bool isShavenH  = isBull and upperWick == 0 and bodySize > avgBody
 bool isShavenB  = isBear and lowerWick == 0 and bodySize > avgBody
-
-// Two-bar patterns
 bool bullEngulf  = isBull and isBear[1] and close >= open[1] and open <= close[1] and bodySize > bodySize[1]
 bool bearEngulf  = isBear and isBull[1] and close <= open[1] and open >= close[1] and bodySize > bodySize[1]
 bool bullHarami  = isBull and isBear[1] and close < open[1] and open > close[1]
@@ -760,8 +663,6 @@ bool onNeckBull  = isBear[1] and isBull and math.abs(close - low[1]) < avgSize*0
 bool onNeckBear  = isBull[1] and isBear and math.abs(close - high[1]) < avgSize*0.05
 bool thrustBull  = isBear[1] and isBull and close > (open[1]+close[1])/2 and close < open[1]
 bool thrustBear  = isBull[1] and isBear and close < (open[1]+close[1])/2 and close > open[1]
-
-// Three-bar patterns
 bool mornStar    = isBear[2] and isBull and bodySize[1] < totalSize[1]*0.3 and close > close[2]+(open[2]-close[2])/2
 bool eveStar     = isBull[2] and isBear and bodySize[1] < totalSize[1]*0.3 and close < close[2]-(close[2]-open[2])/2
 bool mornDojiSt  = isBear[2] and isDoji[1] and isBull and close > close[2]+(open[2]-close[2])/2
@@ -778,18 +679,12 @@ bool triStarBull = isDoji[2] and isDoji[1] and isDoji and low[1] < low[2] and lo
 bool triStarBear = isDoji[2] and isDoji[1] and isDoji and high[1] > high[2] and high[1] > high
 bool tasukiUp    = isBull[2] and isBull[1] and isBear and open < close[1] and open > open[1] and close > open[2] and close < close[1]
 bool tasukiDn    = isBear[2] and isBear[1] and isBull and open > close[1] and open < open[1] and close < open[2] and close > close[1]
-
-// Four/Five bar patterns
 bool ls3Strike   = isBull[3] and isBull[2] and isBull[1] and isBear and open > close[1] and close < open[3]
 bool ls3StrkBl   = isBear[3] and isBear[2] and isBear[1] and isBull and open < close[1] and close > open[3]
 bool rising3     = isBull[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4] and high[3] < high[4]
 bool falling3    = isBear[4] and isBull[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4] and low[3] > low[4]
-
-// Declare variables with default values
 int candleScore = 0
 string candleName = "NONE"
-
-// Pattern score computation
 if rising3
     candleScore := 10
     candleName := "Rising 3"
@@ -943,8 +838,6 @@ else if isGrave
 else if isDoji
     candleScore := 0
     candleName := "Doji"
-
-
 pe.activeCandlePat := candleName
 if sh_cp and candleName != "NONE"
     color patCol = candleScore > 0 ? p_clB : (candleScore < 0 ? p_clR : color.gray)
@@ -952,14 +845,12 @@ if sh_cp and candleName != "NONE"
               color=#00000000, textcolor=patCol,
               style=candleScore >= 0 ? label.style_label_up : label.style_label_down, size=size.tiny)
 
-// ============================================================================
-// 9. GEOMETRIC MACRO PATTERN ENGINE (10 LEVELS)
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: PIVOT TRACKING
 
-// Track pivot highs and lows in arrays
+// ─────────────────────────────────────────────────────────────────────────────
 float pivHigh = ta.pivothigh(high, pv_lb, 2)
 float pivLow  = ta.pivotlow(low,  pv_lb, 2)
-
 if not na(pivHigh)
     array.push(pivotsHigh, PivotNode.new(bar_index - 2, pivHigh, true))
     if array.size(pivotsHigh) > 25
@@ -968,27 +859,24 @@ if not na(pivLow)
     array.push(pivotsLow, PivotNode.new(bar_index - 2, pivLow, false))
     if array.size(pivotsLow) > 25
         array.shift(pivotsLow)
-
-// Accessor helpers: ph(i) = i-th most recent pivot high price, etc.
 ph(int i)  => array.size(pivotsHigh) > i ? array.get(pivotsHigh, array.size(pivotsHigh)-1-i).price    : na
 phb(int i) => array.size(pivotsHigh) > i ? array.get(pivotsHigh, array.size(pivotsHigh)-1-i).barIndex : na
 pl(int i)  => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivotsLow)-1-i).price      : na
 plb(int i) => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivotsLow)-1-i).barIndex   : na
-
-// Relative distance helper and line-draw helper
 distPct(float a, float b) => math.abs(a - b) / a
 fibRatio(float leg1, float leg2) => leg1 == 0 ? 0 : math.abs(leg2 / leg1)
 drawPatLine(int x1, float y1, int x2, float y2, color c, int w=2) =>
     if sh_mp
         line.new(x1, y1, x2, y2, color=c, width=w, style=line.style_solid)
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: MACRO CHART PATTERN ENGINE
+
+// ─────────────────────────────────────────────────────────────────────────────
 int   macroScore  = 0
 string macroName  = "NONE"
 float macroTarget = na
-
-// ---- LEVEL 0: 6-Pivot Mega-Structures ----
 if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
-    // Elliott Impulse Wave proxy
     if ph(2)<ph(1) and ph(1)<ph(0) and pl(1)<pl(0) and pl(0)>ph(2) and (ph(1)-pl(1))>(ph(2)-pl(2))
         macroScore := 25, macroName := "Elliott Impulse Bull"
         macroTarget := ph(0) + (ph(0) - pl(0))
@@ -997,7 +885,6 @@ if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
         macroScore := -25, macroName := "Elliott Impulse Bear"
         macroTarget := pl(0) - (ph(0) - pl(0))
         drawPatLine(phb(2), ph(2), plb(0), pl(0), p_clR)
-    // 6-Point Broadening structures
     if macroScore == 0
         if ph(3)<ph(2) and ph(2)<ph(1) and ph(1)<ph(0) and pl(2)>pl(1) and pl(1)>pl(0)
             macroScore := -22, macroName := "6Pt Broadening Top"
@@ -1005,7 +892,6 @@ if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
         else if pl(3)>pl(2) and pl(2)>pl(1) and pl(1)>pl(0) and ph(2)<ph(1) and ph(1)<ph(0)
             macroScore := 22, macroName := "6Pt Broadening Bottom"
             macroTarget := ph(0) + (ph(0) - pl(0))
-    // Bump & Run
     if macroScore == 0
         if pl(3)<pl(2) and pl(2)<pl(1) and (pl(1)-pl(2))>(pl(2)-pl(3))*2 and ph(0)<ph(1)
             macroScore := -20, macroName := "Bump & Run Top"
@@ -1013,17 +899,13 @@ if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
         else if ph(3)>ph(2) and ph(2)>ph(1) and (ph(2)-ph(1))>(ph(3)-ph(2))*2 and pl(0)>pl(1)
             macroScore := 20, macroName := "Bump & Run Bottom"
             macroTarget := ph(3)
-
-// ---- LEVEL 1: 5-Pivot XABCD Structures ----
 if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
-    // Rounding Top/Bottom
     if pl(2)>pl(1) and pl(1)<pl(0) and ph(2)>ph(1) and ph(0)>ph(1) and distPct(pl(2),pl(0))<0.2
         macroScore := 24, macroName := "Rounding Bottom"
         macroTarget := ph(0) + (ph(0) - pl(1))
     else if ph(2)<ph(1) and ph(1)>ph(0) and pl(2)<pl(1) and pl(0)<pl(1) and distPct(ph(2),ph(0))<0.2
         macroScore := -24, macroName := "Rounding Top"
         macroTarget := pl(0) - (ph(1) - pl(0))
-    // Complex Head & Shoulders
     if macroScore == 0
         if ph(2)>ph(3) and ph(2)>ph(1) and distPct(ph(3),ph(1))<st_tl
             macroScore := -21, macroName := "Complex H&S"
@@ -1031,7 +913,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
         else if pl(2)<pl(3) and pl(2)<pl(1) and distPct(pl(3),pl(1))<st_tl
             macroScore := 21, macroName := "Complex Inv H&S"
             macroTarget := ph(0) + (ph(0) - pl(2))
-    // XABCD Gartley / Butterfly / Crab
     if macroScore == 0
         float xaB = ph(1) - pl(2), float adB = ph(1) - pl(0), float ratB = fibRatio(xaB, adB)
         if ph(1)>ph(0) and pl(1)>pl(2) and pl(0)<pl(1)
@@ -1055,7 +936,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
             else if ratR > 1.382 and ratR <= 1.618
                 macroScore := -21, macroName := "Bear Crab"
                 macroTarget := pl(1)
-    // Shark and Cypher
     if macroScore == 0
         if ph(0)>ph(1) and pl(0)<pl(2) and pl(1)>pl(2)
             macroScore := 22, macroName := "Bull Shark"
@@ -1070,8 +950,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
         else if pl(0)<pl(1) and ph(0)<ph(2) and ph(0)>ph(1)
             macroScore := -18, macroName := "Bear Cypher"
             macroTarget := pl(0)
-
-// ---- LEVEL 2: 4-Pivot Structures ----
 if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
     if ph(1)<ph(0) and pl(1)>pl(0) and ph(2)<ph(1)
         macroScore := -18, macroName := "Diamond Top"
@@ -1103,8 +981,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
     else if pl(1)<pl(0) and ph(1)>ph(0) and ph(0)<ph(1)-((ph(1)-pl(1))*0.3)
         macroScore := -15, macroName := "1-2-3-4 Bear"
         macroTarget := pl(1) - (ph(0) - pl(1))
-
-// ---- LEVEL 3: 3-Pivot Classic ----
 if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 2
     if distPct(ph(0),ph(1))<st_tl and distPct(ph(1),ph(2))<st_tl
         macroScore := -14, macroName := "Triple Top"
@@ -1124,8 +1000,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
     else if pl(2)>pl(1) and ph(1)>ph(2) and distPct(pl(2),pl(0))<st_tl
         macroScore := 12, macroName := "Quasimodo Bull"
         macroTarget := ph(1)
-
-// ---- LEVEL 4: Cup & Handle / W / M ----
 if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
     if distPct(ph(1),ph(0))<st_tl*1.5 and pl(0)>pl(1) and pl(0)<ph(0)
         macroScore := 12, macroName := "Cup & Handle"
@@ -1139,8 +1013,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 
     else if distPct(ph(1),ph(0))<st_tl and pl(0)<ph(0)-((ph(1)-pl(1))*0.6)
         macroScore := -11, macroName := "M-Top (Adam & Eve)"
         macroTarget := pl(0) - (ph(0) - pl(0))
-
-// ---- LEVEL 5: 2-Pivot Core Triangles/Flags/Wedges ----
 if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
     bool flatTop  = distPct(ph(0),ph(1)) < st_tl
     bool flatBot  = distPct(pl(0),pl(1)) < st_tl
@@ -1151,7 +1023,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 
     float topDiff = math.abs(ph(0) - ph(1))
     float botDiff = math.abs(pl(0) - pl(1))
     bool  isParallel = math.abs(topDiff - botDiff) < (math.max(topDiff, botDiff) * 0.3)
-
     if flatTop and not flatBot
         macroScore := -9,  macroName := "Double Top",        macroTarget := pl(0) - (ph(0) - pl(0))
     else if flatBot and not flatTop
@@ -1184,8 +1055,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 
         macroScore := -11, macroName := "Horn Top",           macroTarget := pl(0)
     else if flatBot and math.abs(plb(1)-plb(0)) <= 3
         macroScore := 11,  macroName := "Horn Bottom",        macroTarget := ph(0)
-
-// ---- LEVEL 6: Trend Exhaustion ----
 if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
     if pl(0)<pl(1) and pl(1)<pl(2) and math.abs((pl(0)-pl(1))/math.max(1,(plb(0)-plb(1))))>math.abs((pl(1)-pl(2))/math.max(1,(plb(1)-plb(2))))*1.5
         macroScore := 13, macroName := "Accelerating Bottom"
@@ -1205,8 +1074,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
     else if pl(0)<pl(1) and pl(1)<pl(2) and (ph(0)-pl(0))>(ph(1)-pl(1))*2.5
         macroScore := 12, macroName := "Parabolic Blowoff Bottom"
         macroTarget := ph(0) + ((ph(0)-pl(0))*0.5)
-
-// ---- LEVEL 7: Wyckoff & Liquidity Traps ----
 if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
     if pl(0)<pl(1) and pl(1)>pl(2) and distPct(pl(1),pl(2))<st_tl*1.5 and close>pl(1)
         macroScore := 16, macroName := "Wyckoff Spring"
@@ -1232,8 +1099,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 
     else if pl(2)>pl(1) and ph(1)>ph(2) and close<pl(1)
         macroScore := -13, macroName := "QM Failure Bearish"
         macroTarget := pl(1) - (ph(1) - pl(1))
-
-// ---- LEVEL 8: Deep Harmonics ----
 if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
     float xaD  = pl(2) - ph(3), float cdD = ph(0) - pl(1)
     float xaU  = ph(2) - pl(3), float cdU = pl(0) - ph(1)
@@ -1249,8 +1114,6 @@ if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 
     else if pl(0)<pl(1) and pl(1)<pl(2) and distPct(math.abs((ph(0)-pl(0))/math.max(ph(1)-pl(1),0.001)), 1.272)<0.2
         macroScore := 13, macroName := "1.272 Extension Bottom"
         macroTarget := ph(0)
-
-// ---- LEVEL 9: Complex Multi-Leg Elliott Proxies ----
 if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
     if pl(1)<pl(2) and ph(0)>ph(1) and close<ph(0)
         macroScore := -12, macroName := "Expanded Flat Bearish C"
@@ -1270,18 +1133,11 @@ if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 
     else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1) and close<pl(0)
         macroScore := -14, macroName := "Diamond Bottom Failure"
         macroTarget := pl(0) - (ph(0) - pl(0))
-
-// ============================================================================
-// 10. PATTERN SCORING & GEOMETRY VISUALISATION
-// ============================================================================
-
 pe.activeMacroPat  := macroName
 pe.patternScore    := candleScore + macroScore
 pe.structureTarget := macroTarget
 pe.isReversal      := math.abs(pe.patternScore) >= 12
 pe.isContinuation  := math.abs(pe.patternScore) > 0 and math.abs(pe.patternScore) < 12
-
-// Draw geometry boxes when a new macro pattern is detected
 if macroScore != 0 and macroScore != macroScore[1] and sh_pz
     float hi30 = ta.highest(high, 30), float lo30 = ta.lowest(low, 30)
     float rng  = hi30 - lo30
@@ -1289,19 +1145,11 @@ if macroScore != 0 and macroScore != macroScore[1] and sh_pz
     color cCore = isBullPat ? color.new(#00FF00, 85) : color.new(#FF0000, 85)
     color cBord = isBullPat ? color.lime : color.red
     color cTarg = isBullPat ? color.new(#00BFFF, 85) : color.new(#FF8C00, 85)
-
-    box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97))
-    box.new(bar_index-28, hi30, bar_index, lo30, border_color=cBord, border_width=2, bgcolor=cCore)
-
+    push_box_capped(patGeoBoxes, box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97)), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(bar_index-28, hi30, bar_index, lo30, border_color=cBord, border_width=2, bgcolor=cCore), gc_pat_cap)
     if not na(macroTarget)
         box.new(bar_index, isBullPat?macroTarget:close, bar_index+15, isBullPat?close:macroTarget, border_color=color.new(cTarg,50), border_style=line.style_dashed, bgcolor=cTarg)
         line.new(bar_index, macroTarget, bar_index+15, macroTarget, color=cBord, width=2)
-
-// ============================================================================
-// 11. PROBABILITY ENGINE (SKEWNESS + KINEMATIC ALIGNMENT)
-// ============================================================================
-
-// Statistical moments for confidence adjustment
 int   statLB     = 20
 float statMean   = ta.sma(close, statLB)
 float statStdev  = ta.stdev(close, statLB)
@@ -1310,8 +1158,6 @@ for i = 0 to statLB - 1
     float diff = close[i] - statMean
     skewCubed += math.pow(diff, 3)
 float skewness = statStdev != 0 ? (skewCubed / statLB) / math.pow(statStdev, 3) : 0.0
-
-// Base probability adjusted for pattern, kinematics, skewness
 float currentProb = 50.0
 if pe.patternScore > 0
     currentProb += (skewness > 0.5 ? 15 : skewness < -0.5 ? -10 : 0)
@@ -1323,8 +1169,6 @@ else if pe.patternScore < 0
     currentProb += (close < statMean ? 5 : -5)
 currentProb -= (kin.errorTerm / close) * 100
 currentProb  := math.max(5.0, math.min(95.0, currentProb))
-
-// Next-pattern-type probability engine
 float pCont = 33.33, float pRev = 33.33, float pCons = 33.33
 if math.abs(pe.patternScore) >= 12
     pCont += 20, pRev -= 10, pCons -= 10
@@ -1335,20 +1179,16 @@ else if math.abs(pe.patternScore) > 0 and math.abs(pe.patternScore) < 12
         pCont += 15
 else
     pCons += 20
-
 if math.abs(skewness) > 1.8
     pRev += 25, pCont -= 15, pCons -= 10
 if math.abs(kin.acceleration) < 0.001 and statStdev < ta.sma(statStdev, 50)
     pCons += 25, pRev -= 10
-
 float totalP = pCont + pRev + pCons
 pCont := (pCont / totalP) * 100
 pRev  := (pRev  / totalP) * 100
 pCons := (pCons / totalP) * 100
-
 string nextType = pCont > pRev and pCont > pCons ? "Continuation" :
                   pRev  > pCont and pRev  > pCons ? "Reversal"     : "Consolidation"
-
 pe.currentProb    := currentProb
 pe.nextPredType   := nextType
 pe.probNextCont   := pCont
@@ -1357,90 +1197,111 @@ pe.probNextCons   := pCons
 pe.currentSkew    := skewness
 pe.currentStdev   := statStdev
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: BAYESIAN INFERENCE ENGINE
 
-// ============================================================================
-// 12. BAYESIAN INFERENCE
-// ============================================================================
-
+// ─────────────────────────────────────────────────────────────────────────────
 float targetUp  = close + (atrVal * b_cf * 1.8)
 float targetDn  = close - (atrVal * b_cf * 1.8)
 float probBRaw  = math.sum(AlphaTrend>AlphaTrend[2] and high>nz(targetUp[fc_hz])?1:0, by_lb) / by_lb * 100
 float probBearR = math.sum(AlphaTrend<=AlphaTrend[2] and low<nz(targetDn[fc_hz])?1:0, by_lb) / by_lb * 100
-
 Bayes.probBull   := math.max(0, math.min(100, probBRaw  + (feedbackBias*5) + (pe.patternScore*2)))
 Bayes.probBear   := math.max(0, math.min(100, probBearR - (feedbackBias*5) - (pe.patternScore*2)))
 Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
 
-// Ensure PM object fields and atrVal/lr_rt are defined before this block
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: FORECAST LIFECYCLE (RESOLVE / SEED)
 
-bool isForecastResolutionValid = pf.isActive and not na(PM.targetBar) and PM.targetBar == (pf.anchorBar + pf.horizonBars)
-if pf.isActive and not na(PM.lastTarget) and bar_index == PM.targetBar and isForecastResolutionValid
-    // Resolve forecast exactly once at target bar; prevents repeated feedback updates.
-    feedbackBias := feedbackBias + ((close - PM.lastTarget) / nz(atrVal, 1) * lr_rt)
-    bool hit = (PM.lastTarget > close[pf.horizonBars] and high >= PM.lastTarget) or (PM.lastTarget < close[pf.horizonBars] and low <= PM.lastTarget)
-    if hit
-        PM.hits := PM.hits + 1
-    else
-        PM.misses := PM.misses + 1
-    PM.totalProjections := PM.totalProjections + 1
-    PM.accuracy := PM.totalProjections > 0 ? (float(PM.hits) / PM.totalProjections) * 100 : 0
-    reset_forecast_state(pf, PM)
-else if pf.isActive and not isForecastResolutionValid
-    // Defensive reset for mismatched lifecycle state.
-    reset_forecast_state(pf, PM)
+// ─────────────────────────────────────────────────────────────────────────────
+resolve_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, float learnRate) =>
+    bool ok = pfIn.isActive and not na(pmIn.targetBar) and pmIn.targetBar == (pfIn.anchorBar + pfIn.horizonBars)
+    if pfIn.isActive and not na(pmIn.lastTarget) and bar_index == pmIn.targetBar and ok
+        feedbackBias := feedbackBias + ((close - pmIn.lastTarget) / nz(atrVal, 1) * learnRate)
+        bool hit = pmIn.lastTarget >= pfIn.anchorPrice ? high >= pmIn.lastTarget : low <= pmIn.lastTarget
+        if hit
+            pmIn.hits := pmIn.hits + 1
+        else
+            pmIn.misses := pmIn.misses + 1
+        pmIn.totalProjections := pmIn.totalProjections + 1
+        pmIn.accuracy := pmIn.totalProjections > 0 ? (float(pmIn.hits) / pmIn.totalProjections) * 100 : 0
+        reset_forecast_state(pfIn, pmIn)
+    else if pfIn.isActive and not ok
+        reset_forecast_state(pfIn, pmIn)
+seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, int hz, string src, float tgt, float velMul, float mrMul, float bayMul, float accMul, float confMul) =>
+    pfIn.anchorBar := bar_index
+    pfIn.anchorTime := time
+    pfIn.anchorPrice := close
+    pfIn.horizonBars := hz
+    pfIn.isActive := true
+    pfIn.triggerSource := src
+    pmIn.lastTarget := tgt
+    pmIn.targetBar := pfIn.anchorBar + pfIn.horizonBars
+    array.clear(pfIn.targetPoints), array.clear(pfIn.targetOpen)
+    array.clear(pfIn.targetClose), array.clear(pfIn.confUpper), array.clear(pfIn.confLower)
+    float ghostOpen = close
+    float ema200 = ta.ema(close, 200)
+    for i = 1 to pfIn.horizonBars
+        float ph = i / pfIn.horizonBars
+        float dcy = math.exp(-i / math.max(1.0, pfIn.horizonBars * 0.6))
+        float v = (kin.velocity * velMul) + (((tgt - close) / pfIn.horizonBars) * bayMul)
+        float kinProj = pfIn.anchorPrice + (v * i) + (0.5 * kin.acceleration * accMul * math.pow(i, 2) * dcy)
+        float mrPull = en_mr ? (ema200 - close) * ph * mrMul : 0.0
+        float bayPull = (tgt - pfIn.anchorPrice) * ph
+        float finalPrj = (kinProj * kinWeight) + (bayPull * bayesWeight) + (mrPull * mrWeight)
+        float confBand = kin.errorTerm * uz.adaptiveCoeff * confMul * math.sqrt(i)
+        array.push(pfIn.targetPoints, finalPrj)
+        array.push(pfIn.confUpper, finalPrj + confBand)
+        array.push(pfIn.confLower, finalPrj - confBand)
+        array.push(pfIn.targetOpen, ghostOpen)
+        array.push(pfIn.targetClose, finalPrj)
+        ghostOpen := finalPrj
 
-// ============================================================================
-// 13. FORECAST PINNING
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: FORECAST PINNING & DISPATCH
 
+// ─────────────────────────────────────────────────────────────────────────────
 bool signalTrigger = atFlip or brk.isValidBreakout or pe.isReversal
 acc.hitRate := (acc.hitCount + acc.missCount) > 0 ? acc.hitCount / (acc.hitCount + acc.missCount) : 1.0
-
 if barstate.isconfirmed
     if acc.hitRate < 0.65
         uz.adaptiveCoeff := math.min(3.5, uz.adaptiveCoeff + 0.05)
     else if acc.hitRate > 0.85
         uz.adaptiveCoeff := math.max(b_cf, uz.adaptiveCoeff - 0.02)
-
-if signalTrigger and barstate.isconfirmed and not pf.isActive
-    pf.anchorBar   := bar_index
-    pf.anchorTime  := time
-    pf.anchorPrice := close
-    pf.horizonBars := fc_hz
-    pf.isActive    := true
-    pf.triggerSource := pe.isReversal ? "GEOMETRIC REVERSAL" : (brk.isValidBreakout ? "BREAKOUT SYNERGY" : "ALPHATREND FLIP")
-    PM.lastTarget  := Bayes.expectedClose
-    PM.targetBar   := pf.anchorBar + pf.horizonBars
-
-    array.clear(pf.targetPoints), array.clear(pf.targetOpen)
-    array.clear(pf.targetClose),  array.clear(pf.confUpper), array.clear(pf.confLower)
-    mcMatrix := m_rnd(3, fc_hz)
-    float ghostOpen = close
-
-    for i = 1 to pf.horizonBars
-        float accDecay   = math.exp(-i / (pf.horizonBars * 0.5))
-        float appliedVel = brk.isValidBreakout ? (kin.velocity * brk.velocityMult) : kin.velocity
-        if pe.isReversal and not na(pe.structureTarget)
-            appliedVel += ((pe.structureTarget - close) / pf.horizonBars * 0.5)
-
-        float kinProj  = pf.anchorPrice + (appliedVel*i) + (0.5*kin.acceleration*math.pow(i,2)*accDecay)
-        float mrPull   = en_mr ? (ta.ema(close,200) - close) * (i/pf.horizonBars) * 0.15 : 0.0
-        float bayPull  = (Bayes.expectedClose - close) * (i/pf.horizonBars) * 0.1
-        float finalPrj = (kinProj*kinWeight) + (mrPull*mrWeight) + (bayPull*bayesWeight)
-        float confBand = kin.errorTerm * uz.adaptiveCoeff * math.sqrt(i)
-
-        array.push(pf.targetPoints, finalPrj)
-        array.push(pf.confUpper,    finalPrj + confBand)
-        array.push(pf.confLower,    finalPrj - confBand)
-        array.push(pf.targetOpen,   ghostOpen)
-        array.push(pf.targetClose,  finalPrj)
-        ghostOpen := finalPrj
-
-if pf.isActive
-    int elapsed = bar_index - pf.anchorBar
-    if elapsed > 0 and elapsed <= array.size(pf.targetPoints)
-        float tu = array.get(pf.confUpper, elapsed-1)
-        float tl = array.get(pf.confLower, elapsed-1)
+resolve_forecast(pfS, PMS, lr_rt * 0.8)
+resolve_forecast(pfM, PM,  lr_rt)
+resolve_forecast(pfL, PML, lr_rt * 1.2)
+float trBias = (Bayes.probBull - Bayes.probBear) / 100.0
+float sigPow = math.abs(trBias)
+float volN = math.max(0.0, math.min(1.0, microVolIndex * 120.0))
+float velN = math.max(0.0, math.min(1.0, math.abs(kin.velocity) / math.max(atrVal, syminfo.mintick)))
+float revN = pe.isReversal ? 1.0 : 0.0
+int hzS = math.max(1, math.min(5, int(math.round(1 + 4 * ((1 - sigPow) * 0.55 + (1 - volN) * 0.35 + (revN * 0.10))))))
+int hzM = math.max(3, math.min(15, int(math.round(3 + 12 * ((sigPow * 0.50) + ((1 - volN) * 0.30) + (velN * 0.20))))))
+int hzL = math.max(10, math.min(120, int(math.round(10 + 110 * ((sigPow * (1 - volN) * 0.45) + (velN * 0.40) + ((1 - revN) * 0.15))))))
+float shT = close + (kin.velocity * hzS * 0.9) + (kin.acceleration * math.pow(hzS, 2) * 0.15) + (trBias * atrVal * (1.0 + sigPow)) + (pe.patternScore * atrVal * 0.02)
+float mdT = close + (kin.velocity * hzM * 0.8) + (kin.acceleration * math.pow(hzM, 2) * 0.2) + ((Bayes.expectedClose - close) * 0.55) + (trBias * atrVal * 1.6)
+float lgT = close + (kin.velocity * hzL * 0.65) + (kin.acceleration * math.pow(hzL, 2) * 0.08) + ((Bayes.expectedClose - close) * 0.35) + ((ta.ema(close, 200) - close) * (0.45 + (0.25 * (1 - volN))))
+bool mdTick = up_md == "Each tick"
+bool mdBar = up_md == "Each new bar"
+string srcBase = pe.isReversal ? "GEO REV" : (brk.isValidBreakout ? "BRK SYN" : (atFlip ? "ALP FLP" : "STATE FLOW"))
+bool canRefresh = mdTick ? true : (mdBar ? barstate.isnew : (signalTrigger and barstate.isconfirmed))
+bool rS = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfS.isActive)
+bool rM = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfM.isActive)
+bool rL = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfL.isActive)
+if rS
+    mcMatrixS := m_rnd(3, hzS)
+    seed_forecast(pfS, PMS, hzS, "SHORT " + srcBase, shT, 1.2, 0.08, 0.55, 0.65, 0.9)
+if rM
+    mcMatrixM := m_rnd(3, hzM)
+    seed_forecast(pfM, PM, hzM, "MEDIUM " + srcBase, mdT, 1.0, 0.18, 0.45, 0.9, 1.0)
+if rL
+    mcMatrixL := m_rnd(3, hzL)
+    seed_forecast(pfL, PML, hzL, "LONG " + srcBase, lgT, 0.75, 0.32, 0.35, 1.2, 1.15)
+if pfM.isActive
+    int elapsed = bar_index - pfM.anchorBar
+    if elapsed > 0 and elapsed <= array.size(pfM.targetPoints)
+        float tu = array.get(pfM.confUpper, elapsed - 1)
+        float tl = array.get(pfM.confLower, elapsed - 1)
         if close <= tu and close >= tl
             acc.hitCount += 1
             acc.probBull := math.min(0.99, acc.probBull + 0.02)
@@ -1448,21 +1309,31 @@ if pf.isActive
             acc.missCount += 1
             acc.probBull := math.max(0.01, acc.probBull - 0.04)
         acc.probBear := 1.0 - acc.probBull
+if sh_mp and strategy.opentrades > 0
+    float ep = activeTrade.entryPrice
+    float sl = activeTrade.stopLoss
+    float tp = activeTrade.takeProfit
+    if not na(ep) and ep > 0
+        push_line_capped(tradeVizLines, line.new(bar_index - 3, ep, bar_index + 20, ep, color=color.new(color.white,40), style=line.style_dashed, width=1), 6)
+    if not na(sl) and sl > 0
+        push_line_capped(tradeVizLines, line.new(bar_index - 3, sl, bar_index + 20, sl, color=color.new(color.red,40), style=line.style_solid, width=1), 6)
+    if not na(tp) and tp > 0
+        push_line_capped(tradeVizLines, line.new(bar_index - 3, tp, bar_index + 20, tp, color=color.new(color.lime,40), style=line.style_solid, width=1), 6)
+if barstate.isconfirmed
+    trim_lines(tradeVizLines, 6, gc_prune)
 
-// ============================================================================
-// 14. TRADE EXECUTION & RISK MANAGEMENT
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: TRADE VISUALISATION (SL/TP LINES)
 
+// ─────────────────────────────────────────────────────────────────────────────
 bool goLong  = atBull and (not rq_syn or macd_bull) and Bayes.probBull > 50 and greeks.delta > 0.4
 bool goShort = not atBull and (not rq_syn or macd_bear) and Bayes.probBear > 50 and (1.0 - greeks.delta) > 0.4
-
 if goLong and strategy.opentrades < mx_tr
     float slLong = low  - (atrVal * rk_bf)
     float tpLong = close + ((close - slLong) * rw_ml)
     strategy.entry("J_LG", strategy.long)
     strategy.exit("X_LG", "J_LG", stop=slLong, limit=tpLong)
     activeTrade := TradeState.new(close, slLong, tpLong, rw_ml, 1, false)
-
 if goShort and strategy.opentrades < mx_tr
     float slShort = high + (atrVal * rk_bf)
     float tpShort = close - ((slShort - close) * rw_ml)
@@ -1470,17 +1341,19 @@ if goShort and strategy.opentrades < mx_tr
     strategy.exit("X_SH", "J_SH", stop=slShort, limit=tpShort)
     activeTrade := TradeState.new(close, slShort, tpShort, rw_ml, 1, false)
 
-// ============================================================================
-// 15. VISUAL RENDERING
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: ALPHATREND PLOTS & TRADE EXECUTION
 
-// AlphaTrend plots with gradient fill
+// ─────────────────────────────────────────────────────────────────────────────
 color c_fast = color.new(#00FF00, 15), color c_slow = color.new(#FF0055, 15)
 p_fast = plot(AlphaTrend,    color=c_fast, linewidth=2, title="AlphaTrend Fast")
 p_slow = plot(AlphaTrend[2], color=c_slow, linewidth=2, title="AlphaTrend Slow")
 fill(p_fast, p_slow, color=AlphaTrend > AlphaTrend[2] ? color.new(#00FF00,85) : color.new(#FF0055,85), title="AT Gradient Fill")
 
-// Staggered multi-timeframe forecast renderer
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: CONIC FORECAST RENDERER
+
+// ─────────────────────────────────────────────────────────────────────────────
 f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, AccuracyEngine acIn, matrix<float> mm, float tfMult, color tfColor, float mvi) =>
     if pfIn.isActive
         array<chart.point> ptsMean  = array.new<chart.point>()
@@ -1491,7 +1364,6 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         array<PointArray> mcPtsArr = array.new<PointArray>()
         for r = 0 to mcCount - 1
             array.push(mcPtsArr, PointArray.new(array.new<chart.point>()))
-
         chart.point anchorPt = chart.point.new(pfIn.anchorTime, pfIn.anchorBar, pfIn.anchorPrice)
         array.push(ptsMean,  anchorPt)
         array.push(ptsUpper, anchorPt)
@@ -1499,7 +1371,6 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         array.push(ptsConic, anchorPt)
         for r = 0 to mcCount - 1
             array.push(array.get(mcPtsArr, r).pts, anchorPt)
-
         float priorTP    = pfIn.anchorPrice
         int   horizSize  = array.size(pfIn.targetPoints)
         int   dtStep     = int(timeframe.multiplier * tfMult * 60 * 1000)
@@ -1507,7 +1378,6 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         float baseVS     = math.sqrt(tfMult)
         float volScale   = baseVS * (1.0 + (mvi * 50))
         float noiseMult  = knIn.errorTerm * uzIn.adaptiveCoeff * 0.5 * volScale
-
         for i = 0 to horizSize - 1
             int   tBar   = pfIn.anchorBar + int(i * barStep) + 1
             int   tTime  = time + ((tBar - bar_index) * dtStep)
@@ -1517,19 +1387,15 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
             float warpTP = b_tc(rawTP, priorTP, knIn.errorTerm, i, uzIn.adaptiveCoeff)
             float bayDev = math.abs(warpTP - rawTP)
             priorTP := warpTP
-
             array.push(ptsMean,  chart.point.new(tTime, tBar, warpTP))
             array.push(ptsUpper, chart.point.new(tTime, tBar, rawUp + bayDev))
             array.push(ptsLower, chart.point.new(tTime, tBar, rawDn - bayDev))
-
             float ct  = i / horizSize
             float cy  = pfIn.anchorPrice + (warpTP - pfIn.anchorPrice)*ct + (knIn.errorTerm*10*volScale*ct*(1-ct))
             array.push(ptsConic, chart.point.new(tTime, tBar, cy))
-
             for r = 0 to mcCount - 1
                 float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
                 array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
-
             if tBar <= bar_index
                 int off = math.max(0, math.min(bar_index - tBar, 3999))
                 bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
@@ -1539,24 +1405,24 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
                 label nodeLbl = label.new(tBar, warpTP, "", color=isHit?color.new(#00FFAA,20):color.new(#FF0055,20),
                                           style=label.style_circle, size=size.tiny, tooltip=tip)
                 push_label_capped(fcstLabels, nodeLbl, liveCapFcstLabels)
-
         array<chart.point> ribbonPts = array.new<chart.point>()
         for p in ptsUpper
             array.push(ribbonPts, p)
         for i = array.size(ptsLower) - 1 to 0
             array.push(ribbonPts, array.get(ptsLower, i))
-
         push_polyline_capped(fcstShapes, polyline.new(ribbonPts, closed=true, fill_color=color.new(tfColor,85), line_color=na, xloc=xloc.bar_time), liveCapFcstShapes)
         push_polyline_capped(mainPoly, polyline.new(ptsMean,  curved=curvP, line_color=tfColor,                  line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
         push_polyline_capped(mainPoly, polyline.new(ptsUpper, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
         push_polyline_capped(mainPoly, polyline.new(ptsLower, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
         push_polyline_capped(mc_lines, polyline.new(ptsConic, curved=true,  line_color=color.new(#B200FF,50),    line_width=2, xloc=xloc.bar_time), liveCapMcLines)
-
+        float horizonTP = array.get(pfIn.targetPoints, horizSize - 1)
+        float driftPct  = pfIn.anchorPrice != 0 ? (horizonTP - pfIn.anchorPrice) / pfIn.anchorPrice * 100 : 0.0
+        int   tipBar    = pfIn.anchorBar + int(horizSize * barStep)
+        push_label_capped(fcstLabels, label.new(tipBar, horizonTP, str.tostring(driftPct, "#.##") + "%", color=color.new(tfColor,80), textcolor=tfColor, style=label.style_label_up, size=size.tiny), liveCapFcstLabels)
         if sh_mc
             for r = 0 to mcCount - 1
                 int transp = 90 - math.round(40 * (r / math.max(1, mcCount-1)))
                 push_polyline_capped(mc_lines, polyline.new(array.get(mcPtsArr,r).pts, curved=curvP, line_color=color.new(#FFFFFF,transp), line_width=1, xloc=xloc.bar_time), liveCapMcLines)
-
         int   endBar  = pfIn.anchorBar + int(horizSize * barStep)
         int   endTime = time + ((endBar - bar_index) * dtStep)
         float fuTP    = array.get(pfIn.targetPoints, horizSize-1)
@@ -1564,10 +1430,8 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         float fuDn    = fuTP - ((fuTP - array.get(pfIn.confLower, horizSize-1)) * volScale)
         float fMean   = array.get(ptsMean, array.size(ptsMean)-1).price
         float oneSig  = (fuUp - fuDn) * 0.382
-
         push_box_capped(densBoxes, box.new(endBar-1, fuUp, endBar+3, fuDn, border_color=color.new(tfColor,70), border_style=line.style_dotted, bgcolor=color.new(tfColor,92), text="95% CI", text_size=size.tiny, text_color=color.new(color.white,50), text_halign=text.align_center), liveCapDensBoxes)
         push_box_capped(densBoxes, box.new(endBar, fMean+oneSig, endBar+2, fMean-oneSig, border_color=color.new(tfColor,20), border_width=2, bgcolor=color.new(tfColor,80), text="CORE", text_size=size.tiny, text_color=color.white, text_halign=text.align_center), liveCapDensBoxes)
-
         float rW = 1.5 * dtStep, float rH = oneSig * 0.5
         array<chart.point> rhombPts = array.new<chart.point>()
         array.push(rhombPts, chart.point.new(endTime,         endBar, fMean+rH))
@@ -1576,32 +1440,39 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         array.push(rhombPts, chart.point.new(int(endTime-rW), endBar, fMean))
         push_polyline_capped(fcstShapes, polyline.new(rhombPts, closed=true, fill_color=color.new(tfColor,10), line_color=tfColor, line_width=2, xloc=xloc.bar_time), liveCapFcstShapes)
 
-// Central draw-manager pass: allocate/update/prune with dynamic per-feature budgets.
-// 2. Execution logic
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: PER-BAR GC MANAGEMENT
+
+// ─────────────────────────────────────────────────────────────────────────────
 float drawStress = math.max(0.0, math.min(1.0, ((uz.adaptiveCoeff - b_cf) / math.max(0.01, 3.5 - b_cf)) + (microVolIndex * 25)))
-
-// Define your base batch size (how many to delete per bar minimum)
-int MY_PRUNE_BATCH = 5 
-
-// Call the function with BOTH arguments
-manage_draw_resources(drawStress, MY_PRUNE_BATCH)
-
-// Cleanup and re-render on last bar
+int MY_PRUNE_BATCH = gc_prune
+int livePruneOps = MY_PRUNE_BATCH
+[liveCapGhostBoxes, liveCapGhostWicks, liveCapMcLines, liveCapDensBoxes, liveCapFcstShapes, liveCapFcstLabels, liveCapMainPoly, livePruneOps] = manage_draw_resources(drawStress, MY_PRUNE_BATCH)
+trim_boxes(ghostBoxes, liveCapGhostBoxes, livePruneOps)
+trim_lines(ghostWicks, liveCapGhostWicks, livePruneOps)
+trim_polylines(mc_lines, liveCapMcLines, livePruneOps)
+trim_boxes(densBoxes, liveCapDensBoxes, livePruneOps)
+trim_polylines(fcstShapes, liveCapFcstShapes, livePruneOps)
+trim_labels(fcstLabels, liveCapFcstLabels, livePruneOps)
+trim_polylines(mainPoly, liveCapMainPoly, livePruneOps)
 if barstate.islast
     trim_polylines(mc_lines, 0, liveCapMcLines)
     trim_boxes(densBoxes, 0, liveCapDensBoxes)
     trim_polylines(fcstShapes, 0, liveCapFcstShapes)
     trim_labels(fcstLabels, 0, liveCapFcstLabels)
     trim_polylines(mainPoly, 0, liveCapMainPoly)
-
+    trim_boxes(obBullBoxes,   gc_ob_cap,  liveCapGhostBoxes)
+    trim_boxes(obBearBoxes,   gc_ob_cap,  liveCapGhostBoxes)
+    trim_boxes(sdSupplyBoxes, gc_sd_cap,  liveCapGhostBoxes)
+    trim_boxes(sdDemandBoxes, gc_sd_cap,  liveCapGhostBoxes)
+    trim_boxes(patGeoBoxes,   gc_pat_cap, liveCapGhostBoxes)
+    trim_lines(gannFanLines,  18,         liveCapGhostWicks)
+    trim_lines(tradeVizLines, 6,          liveCapGhostWicks)
+    trim_boxes(mssBoxes,      5,          liveCapGhostBoxes)
     color pathBase = acc.probBull > 0.65 ? color.new(#00FFAA,0) : acc.probBull < 0.35 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
-
-    // Three staggered MTF layers
-    f_render(pf, kin, uz, acc, mcMatrix, 0.5, color.new(#00BFFF,0), microVolIndex)
-    f_render(pf, kin, uz, acc, mcMatrix, 1.0, pathBase,             microVolIndex)
-    f_render(pf, kin, uz, acc, mcMatrix, 4.0, color.new(#FF8C00,0), microVolIndex)
-
-    // Composite mean-reversion baseline
+    f_render(pfS, kin, uz, acc, mcMatrixS, 1.0, color.new(#00BFFF,0), microVolIndex)
+    f_render(pfM, kin, uz, acc, mcMatrixM, 1.15, pathBase,            microVolIndex)
+    f_render(pfL, kin, uz, acc, mcMatrixL, 1.35, color.new(#FF8C00,0), microVolIndex)
     float cb = (open + high + low + close) / 4
     if not na(baselineRay)
         line.delete(baselineRay)
@@ -1614,39 +1485,32 @@ if barstate.islast
                              "MR Baseline\nDrift: " + str.tostring(cbDrift, "#.###") + "%",
                              color=color.new(color.black,40), textcolor=color.new(#FFD700,0),
                              style=label.style_label_down, size=size.small)
-
-    // Ghost forecast bars
-    if pf.isActive
+    if pfM.isActive
         trim_boxes(ghostBoxes, 0, liveCapGhostBoxes)
         trim_lines(ghostWicks, 0, liveCapGhostWicks)
-
         var array<chart.point> pgMean  = array.new<chart.point>()
         var array<chart.point> pgUpper = array.new<chart.point>()
         var array<chart.point> pgLower = array.new<chart.point>()
         array.clear(pgMean), array.clear(pgUpper), array.clear(pgLower)
-
-        chart.point ancPt = chart.point.new(pf.anchorTime, pf.anchorBar, pf.anchorPrice)
+        chart.point ancPt = chart.point.new(pfM.anchorTime, pfM.anchorBar, pfM.anchorPrice)
         array.push(pgMean, ancPt), array.push(pgUpper, ancPt), array.push(pgLower, ancPt)
-
-        for i = 0 to array.size(pf.targetPoints) - 1
-            int   tb = pf.anchorBar + i + 1
+        for i = 0 to array.size(pfM.targetPoints) - 1
+            int   tb = pfM.anchorBar + i + 1
             int   tt = time + ((tb - bar_index) * timeframe.multiplier * 60 * 1000)
-            float tp = array.get(pf.targetPoints, i)
-            float up = array.get(pf.confUpper, i)
-            float dn = array.get(pf.confLower, i)
+            float tp = array.get(pfM.targetPoints, i)
+            float up = array.get(pfM.confUpper, i)
+            float dn = array.get(pfM.confLower, i)
             array.push(pgMean,  chart.point.new(tt, tb, tp))
             array.push(pgUpper, chart.point.new(tt, tb, up))
             array.push(pgLower, chart.point.new(tt, tb, dn))
-
             if sh_gb
-                float go = array.get(pf.targetOpen,  i)
-                float gc = array.get(pf.targetClose, i)
+                float go = array.get(pfM.targetOpen,  i)
+                float gc = array.get(pfM.targetClose, i)
                 float gh = math.max(go, gc) + (kin.errorTerm * 0.5)
                 float gl = math.min(go, gc) - (kin.errorTerm * 0.5)
                 color gcol = gc >= go ? color.new(#00FF00,50) : color.new(#FF0055,50)
                 push_line_capped(ghostWicks, line.new(tt, gh, tt, gl, xloc=xloc.bar_time, color=color.new(gcol,70), width=1), liveCapGhostWicks)
                 push_box_capped(ghostBoxes, box.new(tt-(timeframe.multiplier*20000), math.max(go,gc), tt+(timeframe.multiplier*20000), math.min(go,gc), xloc=xloc.bar_time, border_color=gcol, bgcolor=gcol), liveCapGhostBoxes)
-
         color ptCol = Bayes.probBull > 60 ? color.new(#00FFAA,0) : Bayes.probBear > 60 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
         push_polyline_capped(mainPoly, polyline.new(pgMean,  curved=true, line_color=ptCol,                 line_width=3, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
         push_polyline_capped(mainPoly, polyline.new(pgUpper, curved=true, line_color=color.new(#A9A9A9,50), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
@@ -1654,14 +1518,7 @@ if barstate.islast
     else
         trim_boxes(ghostBoxes, 0, liveCapGhostBoxes)
         trim_lines(ghostWicks, 0, liveCapGhostWicks)
-
-// ============================================================================
-// 16. HUD TABLES
-// ============================================================================
-
-// --- Primary HUD: Kinematic + Bayesian metrics ---
-var table hudMain = table.new(position.bottom_right, 4, 10, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#0a0a0a,5))
-
+var table hudMain = table.new(position.bottom_right, 4, 13, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#0a0a0a,5))
 if barstate.islast and sh_tb
     table.cell(hudMain, 0, 0, "JAT+BSM Pro v13 | KINEMATIC ENSEMBLE", bgcolor=color.new(#1a1a1a,0), text_color=color.white)
     table.merge_cells(hudMain, 0, 0, 3, 0)
@@ -1669,50 +1526,87 @@ if barstate.islast and sh_tb
     table.cell(hudMain, 1, 1, "VALUE",    bgcolor=color.new(#2a2a2a,0), text_color=color.white)
     table.cell(hudMain, 2, 1, "STATE",    bgcolor=color.new(#2a2a2a,0), text_color=color.white)
     table.cell(hudMain, 3, 1, "ANALYSIS", bgcolor=color.new(#2a2a2a,0), text_color=color.white)
-
     table.cell(hudMain, 0, 2, "VELOCITY",    text_color=color.gray)
     table.cell(hudMain, 1, 2, str.tostring(kin.velocity,    "#.##"),    text_color=color.yellow)
     table.cell(hudMain, 2, 2, "ACCEL",       text_color=color.gray)
     table.cell(hudMain, 3, 2, str.tostring(kin.acceleration,"#.####"),  text_color=kin.acceleration>0?color.lime:color.red)
-
     table.cell(hudMain, 0, 3, "BAYES BULL",  text_color=color.gray)
     table.cell(hudMain, 1, 3, str.tostring(Bayes.probBull,"#.#")+"%",  text_color=color.lime)
     table.cell(hudMain, 2, 3, "BAYES BEAR",  text_color=color.gray)
     table.cell(hudMain, 3, 3, str.tostring(Bayes.probBear,"#.#")+"%",  text_color=color.red)
-
     table.cell(hudMain, 0, 4, "OPT DELTA",   text_color=color.gray)
     table.cell(hudMain, 1, 4, str.tostring(greeks.delta,"#.###"),       text_color=color.white)
     table.cell(hudMain, 2, 4, "OPT GAMMA",   text_color=color.gray)
     table.cell(hudMain, 3, 4, str.tostring(greeks.gamma,"#.###"),       text_color=color.white)
-
     table.cell(hudMain, 0, 5, "MACD SYN",    text_color=color.gray)
     table.cell(hudMain, 1, 5, macd_bull?"BULL":macd_bear?"BEAR":"MIX",  text_color=macd_bull?color.lime:(macd_bear?color.red:color.yellow))
     table.cell(hudMain, 2, 5, "HTF TREND",   text_color=color.gray)
     table.cell(hudMain, 3, 5, ht_c>ht_o?"BULL":"BEAR",                  text_color=ht_c>ht_o?color.lime:color.red)
-
     table.cell(hudMain, 0, 6, "CONE HIT RT", text_color=color.gray)
     table.cell(hudMain, 1, 6, str.tostring(acc.hitRate*100,"#.#")+"%",  text_color=acc.hitRate>0.7?color.lime:color.red)
     table.cell(hudMain, 2, 6, "HIST ACC",    text_color=color.gray)
     table.cell(hudMain, 3, 6, str.tostring(PM.accuracy,"#.#")+"%",      text_color=color.white)
-
     table.cell(hudMain, 0, 7, "SKEWNESS",    text_color=color.gray)
     table.cell(hudMain, 1, 7, str.tostring(skewness,"#.##"),             text_color=math.abs(skewness)>1.0?color.yellow:color.white)
     table.cell(hudMain, 2, 7, "PAT PROB",    text_color=color.gray)
     table.cell(hudMain, 3, 7, str.tostring(pe.currentProb,"#.#")+"%",   text_color=pe.currentProb>60?color.lime:(pe.currentProb<40?color.red:color.yellow))
-
     table.cell(hudMain, 0, 8, "NEXT TYPE",   text_color=color.gray)
     table.cell(hudMain, 1, 8, pe.nextPredType, text_color=color.aqua)
     table.cell(hudMain, 2, 8, "TRIGGER",     text_color=color.gray)
-    table.cell(hudMain, 3, 8, pf.triggerSource, text_color=color.white)
-
+    table.cell(hudMain, 3, 8, pfM.isActive ? pfM.triggerSource : (pfS.isActive ? pfS.triggerSource : (pfL.isActive ? pfL.triggerSource : "NONE")), text_color=color.white)
     table.cell(hudMain, 0, 9, "NEXT CONT%",  text_color=color.gray)
     table.cell(hudMain, 1, 9, str.tostring(pe.probNextCont,"#.#")+"%",  text_color=color.white)
     table.cell(hudMain, 2, 9, "NEXT REV%",   text_color=color.gray)
     table.cell(hudMain, 3, 9, str.tostring(pe.probNextRev,"#.#")+"%",   text_color=color.white)
-
-// --- Secondary HUD: Pattern Intelligence ---
-var table hudPat = table.new(position.bottom_left, 4, 8, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#0a0a0a,5))
-
+    table.cell(hudMain, 0, 10, "SHORT HZ",   text_color=color.gray)
+    table.cell(hudMain, 1, 10, pfS.isActive ? str.tostring(pfS.horizonBars) + "b" : "IDLE", text_color=pfS.isActive ? color.aqua : color.gray)
+    table.cell(hudMain, 2, 10, "SH TGT",     text_color=color.gray)
+    table.cell(hudMain, 3, 10, pfS.isActive ? str.tostring(PMS.lastTarget, "#.##") : "–",    text_color=color.white)
+    table.cell(hudMain, 0, 11, "MED HZ",     text_color=color.gray)
+    table.cell(hudMain, 1, 11, pfM.isActive ? str.tostring(pfM.horizonBars) + "b" : "IDLE", text_color=pfM.isActive ? color.aqua : color.gray)
+    table.cell(hudMain, 2, 11, "MED TGT",    text_color=color.gray)
+    table.cell(hudMain, 3, 11, pfM.isActive ? str.tostring(PM.lastTarget,  "#.##") : "–",    text_color=color.white)
+    table.cell(hudMain, 0, 12, "LONG HZ",    text_color=color.gray)
+    table.cell(hudMain, 1, 12, pfL.isActive ? str.tostring(pfL.horizonBars) + "b" : "IDLE", text_color=pfL.isActive ? color.aqua : color.gray)
+    table.cell(hudMain, 2, 12, "LONG TGT",   text_color=color.gray)
+    table.cell(hudMain, 3, 12, pfL.isActive ? str.tostring(PML.lastTarget, "#.##") : "–",    text_color=color.white)
+var table hudPerf = table.new(position.middle_left, 4, 9, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#08080f,5))
+if barstate.islast and sh_tb
+    table.cell(hudPerf, 0, 0, "PERFORMANCE ANALYTICS", bgcolor=color.new(#0d0d20,0), text_color=color.new(#7B68EE,0))
+    table.merge_cells(hudPerf, 0, 0, 3, 0)
+    table.cell(hudPerf, 0, 1, "METRIC",     bgcolor=color.new(#15152a,0), text_color=color.white)
+    table.cell(hudPerf, 1, 1, "VALUE",      bgcolor=color.new(#15152a,0), text_color=color.white)
+    table.cell(hudPerf, 2, 1, "METRIC",     bgcolor=color.new(#15152a,0), text_color=color.white)
+    table.cell(hudPerf, 3, 1, "VALUE",      bgcolor=color.new(#15152a,0), text_color=color.white)
+    table.cell(hudPerf, 0, 2, "BETA",       text_color=color.gray)
+    table.cell(hudPerf, 1, 2, str.tostring(betaEst, "#.###"),       text_color=math.abs(betaEst) > 1.2 ? color.orange : color.white)
+    table.cell(hudPerf, 2, 2, "ALPHA (ann)",text_color=color.gray)
+    table.cell(hudPerf, 3, 2, str.tostring(alphaEst * 252 * 100, "#.##") + "%", text_color=alphaEst > 0 ? color.lime : color.red)
+    table.cell(hudPerf, 0, 3, "INFO RATIO", text_color=color.gray)
+    table.cell(hudPerf, 1, 3, str.tostring(infoRatio, "#.##"),      text_color=infoRatio > 0.5 ? color.lime : infoRatio < -0.5 ? color.red : color.white)
+    table.cell(hudPerf, 2, 3, "CALMAR",     text_color=color.gray)
+    table.cell(hudPerf, 3, 3, str.tostring(calmarRatio, "#.##"),    text_color=calmarRatio > 1 ? color.lime : color.white)
+    table.cell(hudPerf, 0, 4, "SORTINO",    text_color=color.gray)
+    table.cell(hudPerf, 1, 4, str.tostring(sortinoRatio, "#.##"),   text_color=sortinoRatio > 1 ? color.lime : color.white)
+    table.cell(hudPerf, 2, 4, "WIN STREAK", text_color=color.gray)
+    table.cell(hudPerf, 3, 4, str.tostring(winStreak),              text_color=winStreak > 3 ? color.lime : color.white)
+    table.cell(hudPerf, 0, 5, "GEX",        text_color=color.gray)
+    table.cell(hudPerf, 1, 5, posGex ? "PINNING" : negGex ? "EXPANDING" : "NEUTRAL", text_color=posGex ? color.aqua : negGex ? color.orange : color.white)
+    table.cell(hudPerf, 2, 5, "RV/IV",      text_color=color.gray)
+    table.cell(hudPerf, 3, 5, rvIvLabel,    text_color=rvIvColor)
+    table.cell(hudPerf, 0, 6, "SH HZ ACC%", text_color=color.gray)
+    table.cell(hudPerf, 1, 6, str.tostring(PMS.accuracy, "#.#") + "%", text_color=PMS.accuracy > 60 ? color.lime : color.white)
+    table.cell(hudPerf, 2, 6, "LG HZ ACC%", text_color=color.gray)
+    table.cell(hudPerf, 3, 6, str.tostring(PML.accuracy, "#.#") + "%", text_color=PML.accuracy > 60 ? color.lime : color.white)
+    table.cell(hudPerf, 0, 7, "STAT ARB",   text_color=color.gray)
+    table.cell(hudPerf, 1, 7, statArbLong ? "LONG" : statArbShort ? "SHORT" : statArbBreak ? "BREAK" : "NEUTRAL", text_color=statArbLong ? color.lime : statArbShort ? color.red : statArbBreak ? color.yellow : color.white)
+    table.cell(hudPerf, 2, 7, "TREND STR",  text_color=color.gray)
+    table.cell(hudPerf, 3, 7, trendClass,   text_color=trendCol)
+    table.cell(hudPerf, 0, 8, "VWAP BIAS",  text_color=color.gray)
+    table.cell(hudPerf, 1, 8, str.tostring(vwapBias, "#.###"),       text_color=vwapBias > 0 ? color.lime : color.red)
+    table.cell(hudPerf, 2, 8, "FINAL SIG",  text_color=color.gray)
+    table.cell(hudPerf, 3, 8, finalSignal,  text_color=finalSigCol)
+var table hudPat = table.new(position.bottom_left, 4, 9, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#0a0a0a,5))
 if barstate.islast and sh_t2
     table.cell(hudPat, 0, 0, "PATTERN INTELLIGENCE ENGINE", bgcolor=color.new(#0d1a0d,0), text_color=color.lime)
     table.merge_cells(hudPat, 0, 0, 3, 0)
@@ -1720,45 +1614,38 @@ if barstate.islast and sh_t2
     table.cell(hudPat, 1, 1, "PATTERN",   bgcolor=color.new(#1a2a1a,0), text_color=color.white)
     table.cell(hudPat, 2, 1, "SCORE",     bgcolor=color.new(#1a2a1a,0), text_color=color.white)
     table.cell(hudPat, 3, 1, "TARGET",    bgcolor=color.new(#1a2a1a,0), text_color=color.white)
-
     table.cell(hudPat, 0, 2, "CANDLE",    text_color=color.gray)
     table.cell(hudPat, 1, 2, pe.activeCandlePat, text_color=candleScore>0?color.lime:(candleScore<0?color.red:color.white))
     table.cell(hudPat, 2, 2, candleScore>0?("+"+str.tostring(candleScore)):str.tostring(candleScore), text_color=candleScore>0?color.lime:(candleScore<0?color.red:color.gray))
     table.cell(hudPat, 3, 2, "–",         text_color=color.gray)
-
     table.cell(hudPat, 0, 3, "MACRO",     text_color=color.gray)
     table.cell(hudPat, 1, 3, pe.activeMacroPat, text_color=macroScore>0?color.lime:(macroScore<0?color.red:color.white))
     table.cell(hudPat, 2, 3, macroScore>0?("+"+str.tostring(macroScore)):str.tostring(macroScore), text_color=macroScore>0?color.lime:(macroScore<0?color.red:color.gray))
     table.cell(hudPat, 3, 3, not na(pe.structureTarget)?str.tostring(pe.structureTarget,"#.##"):"–", text_color=color.white)
-
     table.cell(hudPat, 0, 4, "NET SCORE", bgcolor=color.new(color.teal,80), text_color=color.white)
     table.cell(hudPat, 1, 4, pe.patternScore>0?("+"+str.tostring(pe.patternScore)):str.tostring(pe.patternScore), bgcolor=color.new(color.teal,80), text_color=pe.patternScore>0?color.lime:(pe.patternScore<0?color.red:color.gray))
     table.cell(hudPat, 2, 4, pe.isReversal?"REVERSAL":"CONTINUATION", bgcolor=color.new(color.teal,80), text_color=pe.isReversal?color.yellow:color.aqua)
     table.cell(hudPat, 3, 4, pe.isReversal?"HIGH CONF":"MODERATE",    bgcolor=color.new(color.teal,80), text_color=color.white)
-
     table.cell(hudPat, 0, 5, "ZONE STATE", text_color=color.gray)
     table.cell(hudPat, 1, 5, (zone1.isActive or zone2.isActive or zone3.isActive)?"SQUEEZING":"EXPANDING", text_color=(zone1.isActive or zone2.isActive or zone3.isActive)?color.yellow:color.lime)
     table.cell(hudPat, 2, 5, "BRK DIR",    text_color=color.gray)
     table.cell(hudPat, 3, 5, brk.isValidBreakout ? brk.direction : "NONE", text_color=brk.isValidBreakout?(brk.direction=="BULL"?color.lime:color.red):color.gray)
-
     table.cell(hudPat, 0, 6, "AT STATE",   text_color=color.gray)
     table.cell(hudPat, 1, 6, atBull?"BULLISH":"BEARISH",               text_color=atBull?color.lime:color.red)
     table.cell(hudPat, 2, 6, "AT FLIP",    text_color=color.gray)
     table.cell(hudPat, 3, 6, atFlip?"YES":"NO",                         text_color=atFlip?color.yellow:color.gray)
-
     table.cell(hudPat, 0, 7, "ADAPT COEF", text_color=color.gray)
     table.cell(hudPat, 1, 7, str.tostring(uz.adaptiveCoeff,"#.##"),     text_color=color.yellow)
     table.cell(hudPat, 2, 7, "ERR TERM",   text_color=color.gray)
     table.cell(hudPat, 3, 7, str.tostring(kin.errorTerm,"#.####"),      text_color=color.white)
+    table.cell(hudPat, 0, 8, "MTF AGREE",  text_color=color.gray)
+    table.cell(hudPat, 1, 8, mtfAgree,     text_color=mtfColor)
+    table.cell(hudPat, 2, 8, "DAY POS",    text_color=color.gray)
+    table.cell(hudPat, 3, 8, dayPosStr,    text_color=dayPosColor)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: HTF CANDLE BACKGROUND BOXES
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ============================================================================
-// 18. MULTI-TIMEFRAME HTF BOX ENGINE
-// ============================================================================
-// ============================================================================
-// 18. MULTI-TIMEFRAME HTF BOX ENGINE
-// ============================================================================
-
-// Helper types for HTF rendering
 type HTFCandle
     float o
     float h
@@ -1766,87 +1653,60 @@ type HTFCandle
     float c
     int t
     color col
-
-// Helper — request a single HTF bar struct
 getHTFCandle(string tf) =>
     request.security(syminfo.tickerid, tf, HTFCandle.new(open, high, low, close, time, close >= open ? color.new(color.teal,90) : color.new(color.maroon,90)), gaps=barmerge.gaps_on)
-
-// Draw a closed historical HTF candle box
 drawHTFBox(HTFCandle b, int rightTime) =>
     box newBox = na
-    if not na(b) // Only proceed if the object is defined
+    if not na(b)
         newBox := box.new(b.t, b.h, rightTime, b.l, border_color=b.col, xloc=xloc.bar_time, bgcolor=b.col, border_style=line.style_dotted)
     newBox
-
-// Update an existing live HTF candle box
 updateHTFBox(box bx, HTFCandle b) =>
-    // FIX: Ensure both the candle object and the box exist before updating
-    if not na(b) and not na(bx) 
+    if not na(b) and not na(bx)
         box.set_border_color(bx, b.col)
         box.set_bgcolor(bx, b.col)
         box.set_top(bx, b.h)
         box.set_bottom(bx, b.l)
         box.set_right(bx, time)
-
-// Request six standard timeframes as global (top-level) security calls
 HTFCandle htf3m = getHTFCandle("3")
 HTFCandle htf15m = getHTFCandle("15")
 HTFCandle htf1h = getHTFCandle("60")
 HTFCandle htf4h = getHTFCandle("240")
 HTFCandle htf1d = getHTFCandle("D")
 HTFCandle htf1w = getHTFCandle("W")
-
-// Maintain one live box per TF
 var box htf3mBox = na
 var box htf15mBox = na
 var box htf1hBox = na
 var box htf4hBox = na
 var box htf1dBox = na
 var box htf1wBox = na
-
-// Define the function with proper indentation and return logic
 updateTFBoxes(simple string tf, HTFCandle cd, box currentBox) =>
     bool newCandle = timeframe.change(tf)
     box updatedBox = currentBox
-
-    // Historical logic: Close previous box and start new one
     if newCandle and not barstate.islast
         drawHTFBox(cd, time)
-
-    // Live logic: Create or update the current active box
     if newCandle or na(currentBox)
         updatedBox := drawHTFBox(cd, time)
     else
         updateHTFBox(currentBox, cd)
         updatedBox := currentBox
-
-    updatedBox // Return the box reference
-
-// Global reassignment using the := operator
+    updatedBox
 htf3mBox := updateTFBoxes("3", htf3m, htf3mBox)
 htf15mBox := updateTFBoxes("15", htf15m, htf15mBox)
 htf1hBox := updateTFBoxes("60", htf1h, htf1hBox)
 htf4hBox := updateTFBoxes("240", htf4h, htf4hBox)
 htf1dBox := updateTFBoxes("D", htf1d, htf1dBox)
 htf1wBox := updateTFBoxes("W", htf1w, htf1wBox)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: MARKOV CHAIN REGIME MODEL
+// ─────────────────────────────────────────────────────────────────────────────
 
-
-// ============================================================================
-// 19. MARKOV CHAIN PATTERN SEQUENCING
-// ============================================================================
-
-// States: 0=Neutral, 1=Bull-Trending, 2=Bear-Trending, 3=Squeezing, 4=Breaking
-// Transition matrix: row = current state, col = next state probability weight
 type MarkovState
-    int   current       // Current regime index
-    int   previous      // Previous regime index
-    int   barsSinceChange // Duration in current regime
-    float[] transProbs  // Flattened 5x5 transition weight row for current state
-    string label        // Human-readable regime name
-
+    int   current
+    int   previous
+    int   barsSinceChange
+    float[] transProbs
+    string label
 var MarkovState mkv = MarkovState.new(0, 0, 0, array.new_float(5, 0.2), "Neutral")
-
-// Regime detection
 int newRegime = 0
 if zone1.isActive or zone2.isActive or zone3.isActive
     newRegime := 3
@@ -1856,52 +1716,47 @@ else if atBull and macd_bull
     newRegime := 1
 else if not atBull and macd_bear
     newRegime := 2
-
 if newRegime != mkv.current
     mkv.previous       := mkv.current
     mkv.barsSinceChange := 0
     mkv.current        := newRegime
 else
     mkv.barsSinceChange += 1
-
-// Transition probability update via Laplace smoothing
 float[] newProbs = array.new_float(5, 0.1)
-if mkv.current == 1  // Bull-Trending more likely to stay bull or break out
+if mkv.current == 1
     array.set(newProbs, 0, 0.10), array.set(newProbs, 1, 0.45)
     array.set(newProbs, 2, 0.10), array.set(newProbs, 3, 0.15), array.set(newProbs, 4, 0.20)
-else if mkv.current == 2  // Bear-Trending more likely to stay bear or squeeze
+else if mkv.current == 2
     array.set(newProbs, 0, 0.10), array.set(newProbs, 1, 0.10)
     array.set(newProbs, 2, 0.45), array.set(newProbs, 3, 0.20), array.set(newProbs, 4, 0.15)
-else if mkv.current == 3  // Squeezing almost always resolves to breakout
+else if mkv.current == 3
     array.set(newProbs, 0, 0.05), array.set(newProbs, 1, 0.15)
     array.set(newProbs, 2, 0.15), array.set(newProbs, 3, 0.30), array.set(newProbs, 4, 0.35)
-else if mkv.current == 4  // Breakout resolves to trending most often
+else if mkv.current == 4
     array.set(newProbs, 0, 0.10), array.set(newProbs, 1, 0.35)
     array.set(newProbs, 2, 0.35), array.set(newProbs, 3, 0.10), array.set(newProbs, 4, 0.10)
-else                      // Neutral — uniform prior
+else
     array.set(newProbs, 0, 0.25), array.set(newProbs, 1, 0.20)
     array.set(newProbs, 2, 0.20), array.set(newProbs, 3, 0.20), array.set(newProbs, 4, 0.15)
 mkv.transProbs := newProbs
-
 string[] regimeNames = array.from("Neutral", "Bull Trend", "Bear Trend", "Squeeze", "Breakout")
 mkv.label := array.get(regimeNames, mkv.current)
+float mkvStayProb   = array.get(mkv.transProbs, mkv.current)
+string mkvStability = mkvStayProb > 0.4 ? "STABLE" : mkvStayProb > 0.25 ? "FRAGILE" : "VOLATILE"
+plot(mkvStayProb * 100,    "Markov Stay Prob %",  display=display.data_window)
+plot(mkv.barsSinceChange,  "Regime Age (bars)",   display=display.data_window)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: EQUITY TRACKING & ADAPTIVE RISK SCALING
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ============================================================================
-// 20. EQUITY CURVE & ADAPTIVE STOP ENGINE
-// ============================================================================
-
-// Adaptive stop: tighten stop as equity grows, widen in drawdown
 var float peakEquity   = strategy.equity
 var float drawdownPct  = 0.0
 var int   winStreak    = 0
 var int   loseStreak   = 0
 var float riskScalar   = 1.0
-
 if strategy.equity > peakEquity
     peakEquity := strategy.equity
 drawdownPct := peakEquity > 0 ? ((peakEquity - strategy.equity) / peakEquity) * 100 : 0.0
-
-// Win/loss streak tracking
 bool justClosed = strategy.closedtrades > strategy.closedtrades[1]
 if justClosed
     float lastPnl = strategy.closedtrades.profit(strategy.closedtrades - 1)
@@ -1909,92 +1764,67 @@ if justClosed
         winStreak  += 1, loseStreak := 0
     else
         loseStreak += 1, winStreak  := 0
-
-// Adaptive risk scalar: reduce size during drawdown, increase on win streaks
 riskScalar := drawdownPct > 10 ? 0.5 :
               drawdownPct >  5 ? 0.75 :
               winStreak   >  4 ? 1.25 :
               winStreak   >  7 ? 1.5  : 1.0
-
-// Dynamic ATR stop multiplier influenced by risk scalar
 float adaptedStopMult = rk_bf * riskScalar
-
-// ============================================================================
-// 21. SENSITIVITY ANALYSIS: PARAMETER PERTURBATION BOUNDS
-// ============================================================================
-
-// Compute forecast sensitivity to ±1σ perturbations in b_cf and al_pr
 float sAtr_lo = ta.sma(ta.tr, math.max(2, al_pr - 3))
 float sAtr_hi = ta.sma(ta.tr, math.min(100, al_pr + 3))
 float bnd_lo  = low  - sAtr_lo * math.max(b_cf - 0.3, 0.5)
 float bnd_hi  = high + sAtr_hi * (b_cf + 0.3)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: PARAMETRIC SENSITIVITY BANDS & VWAP
+// ─────────────────────────────────────────────────────────────────────────────
 
 var float[] sensitivity_hi = array.new_float(5, close)
 var float[] sensitivity_lo = array.new_float(5, close)
 for i = 0 to 4
     array.set(sensitivity_hi, i, close + kin.velocity*(i+1) + kin.errorTerm*(i+1))
     array.set(sensitivity_lo, i, close + kin.velocity*(i+1) - kin.errorTerm*(i+1))
-
-// ============================================================================
-// 22. VOLUME-WEIGHTED PROJECTION REFINEMENT
-// ============================================================================
-
-// VWAP-anchored probability adjustment
+if barstate.islast and sh_mp and not na(bnd_hi) and not na(bnd_lo)
+    label.new(bar_index, bnd_hi, "σ HI " + str.tostring(bnd_hi, "#.##"), color=color.new(color.purple,85), textcolor=color.new(color.purple,10), style=label.style_label_down, size=size.tiny)
+    label.new(bar_index, bnd_lo, "σ LO " + str.tostring(bnd_lo, "#.##"), color=color.new(color.purple,85), textcolor=color.new(color.purple,10), style=label.style_label_up,   size=size.tiny)
 float vwapDaily  = ta.vwap(close)
 float vwapDelta  = (close - vwapDaily) / math.max(vwapDaily, 0.0001)
 float vwapBias   = math.max(-0.5, math.min(0.5, vwapDelta * 10.0))
-
-// VWAP standard deviation bands
 float vwapStdev  = ta.stdev(close - vwapDaily, 20)
 float vwapBand1U = vwapDaily + vwapStdev * 1.0
 float vwapBand1L = vwapDaily - vwapStdev * 1.0
 float vwapBand2U = vwapDaily + vwapStdev * 2.0
 float vwapBand2L = vwapDaily - vwapStdev * 2.0
-
-// Refine Bayesian probabilities with VWAP positioning
 float vwapAdjBull = Bayes.probBull + (vwapBias * 15.0)
 float vwapAdjBear = Bayes.probBear - (vwapBias * 15.0)
 vwapAdjBull := math.max(0.0, math.min(100.0, vwapAdjBull))
 vwapAdjBear := math.max(0.0, math.min(100.0, vwapAdjBear))
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: OBV ACCUMULATION & MULTI-TF KINEMATICS
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Volume momentum (OBV proxy)
 var float obvAccum = 0.0
 obvAccum += (close > close[1] ? volume : close < close[1] ? -volume : 0)
 float obvEma = ta.ema(obvAccum, 20)
 bool  obvBull = obvAccum > obvEma
 bool  obvBear = obvAccum < obvEma
-
-// ============================================================================
-// 23. ADDITIONAL KINEMATIC PASSES (MULTI-LAG ENSEMBLE)
-// ============================================================================
-
-// Compute kinematic model on 3 different lookback periods and blend
 KinematicModel kinShort  = array.size(closeBuf) >= 10  ? c_kn(closeBuf, 10)  : kin
 KinematicModel kinMedium = array.size(closeBuf) >= 20  ? c_kn(closeBuf, 20)  : kin
 KinematicModel kinLong   = array.size(closeBuf) >= 40  ? c_kn(closeBuf, math.min(40, array.size(closeBuf)-1)) : kin
-
-// Blended velocity and error (weights: 0.2 short / 0.5 medium / 0.3 long)
 float blendedVel   = kinShort.velocity  * 0.2 + kinMedium.velocity  * 0.5 + kinLong.velocity  * 0.3
 float blendedErr   = kinShort.errorTerm * 0.2 + kinMedium.errorTerm * 0.5 + kinLong.errorTerm * 0.3
 float blendedAccel = kinShort.acceleration * 0.2 + kinMedium.acceleration * 0.5 + kinLong.acceleration * 0.3
-
-// Regime-adjusted blended velocity
 float regimeVel = mkv.current == 1 ? blendedVel * 1.2  :
                   mkv.current == 2 ? blendedVel * 1.2  :
                   mkv.current == 3 ? blendedVel * 0.3  :
                   mkv.current == 4 ? blendedVel * 1.5  : blendedVel
 
-// ============================================================================
-// 25. VOLATILITY REGIME CLASSIFIER
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: VOLATILITY ANALYTICS
 
-// Historical volatility (close-to-close, annualised)
+// ─────────────────────────────────────────────────────────────────────────────
 float hv10  = ta.stdev(math.log(close/close[1]), 10)  * math.sqrt(252) * 100
 float hv20  = ta.stdev(math.log(close/close[1]), 20)  * math.sqrt(252) * 100
 float hv50  = ta.stdev(math.log(close/close[1]), 50)  * math.sqrt(252) * 100
-float hvLtA = ta.sma(hv20, 100)  // Long-term average HV
-
-// Volatility regime: Low / Normal / Elevated / Extreme
+float hvLtA = ta.sma(hv20, 100)
 string volRegime = hv20 < hvLtA * 0.75 ? "LOW"      :
                    hv20 < hvLtA * 1.25 ? "NORMAL"   :
                    hv20 < hvLtA * 1.75 ? "ELEVATED" : "EXTREME"
@@ -2002,11 +1832,7 @@ color  volColor  = hv20 < hvLtA * 0.75 ? color.new(color.teal, 0)   :
                    hv20 < hvLtA * 1.25 ? color.new(color.gray, 0)   :
                    hv20 < hvLtA * 1.75 ? color.new(color.yellow, 0) :
                                           color.new(color.red, 0)
-
-// Parkinson high-low volatility estimator
 float parkVol = math.sqrt((1.0/(4.0*math.log(2.0))) * math.sum(math.pow(math.log(high/low), 2), 20) / 20) * math.sqrt(252) * 100
-
-// Yang-Zhang volatility estimator (requires overnight gap)
 float yzO  = math.log(open / close[1])
 float yzC  = math.log(close / open)
 float yzH  = math.log(high  / open)
@@ -2014,19 +1840,14 @@ float yzL  = math.log(low   / open)
 float yzK  = 0.34 / (1.34 + (21.0 / 19.0))
 float yzVar = ta.sma(math.pow(yzO,2), 20) + yzK * ta.sma(math.pow(yzC,2), 20) + (1-yzK) * ta.sma(math.pow(yzH-yzL,2), 20)
 float yzVol  = math.sqrt(math.max(0, yzVar)) * math.sqrt(252) * 100
-
-// Garman-Klass volatility estimator
 float gkV  = 0.5*math.pow(math.log(high/low),2) - (2*math.log(2)-1)*math.pow(math.log(close/open),2)
 float gkVol = math.sqrt(math.max(0, ta.sma(gkV, 20))) * math.sqrt(252) * 100
-
-// Volatility-adjusted confidence band multiplier
 float volAdjMult = hv20 > 0 ? math.max(0.5, math.min(3.0, hv20 / math.max(1, hvLtA))) : 1.0
 
-// ============================================================================
-// 26. FRACTAL DIMENSION & HURST EXPONENT
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: HURST EXPONENT & FRACTAL DIMENSION
 
-// Approximate Hurst exponent using R/S analysis over multiple lags
+// ─────────────────────────────────────────────────────────────────────────────
 hurst(int lb) =>
     float mn    = ta.sma(close, lb)
     float cumDev = 0.0, float maxDev = -999999.0, float minDev = 999999.0
@@ -2037,75 +1858,47 @@ hurst(int lb) =>
     float rangeRS = maxDev - minDev
     float sdRS    = ta.stdev(close, lb)
     sdRS > 0 ? math.log(rangeRS / sdRS) / math.log(lb) : 0.5
-
 float hurstExp  = hurst(30)
-// H > 0.5 = trending (persistent), H < 0.5 = mean-reverting, H ≈ 0.5 = random walk
 string hurstRegime = hurstExp > 0.65 ? "TRENDING"     :
                      hurstExp < 0.35 ? "MEAN-REV"     : "RANDOM WALK"
 color  hurstColor  = hurstExp > 0.65 ? color.lime      :
                      hurstExp < 0.35 ? color.red        : color.gray
-
-// Fractal dimension (Sevcik method approximation)
 float hiN = ta.highest(high, 20), float loN = ta.lowest(low, 20)
 float rng20 = hiN - loN
 float fd  = rng20 > 0 ? 1.0 + (math.log(20) - math.log(math.abs(close - close[19]) + rng20*0.001)) / math.log(20) : 1.5
-// FD ≈ 1 means trending, FD ≈ 2 means chaotic/noisy
-
-// ============================================================================
-// 27. MICROSTRUCTURE: BID-ASK PROXY & ORDER FLOW IMBALANCE
-// ============================================================================
-
-// Proxy for spread from high-low range (tick-normalised)
-float spreadProxy = (high - low) / close * 10000  // in basis points
+float spreadProxy = (high - low) / close * 10000
 float avgSpread   = ta.sma(spreadProxy, 20)
 bool  widening    = spreadProxy > avgSpread * 1.5
-
-// Order flow imbalance proxy (delta-volume approximation)
 float upVol   = close > open ? volume * ((close - open) / (high - low + 0.0001)) : 0.0
 float dnVol   = close < open ? volume * ((open - close) / (high - low + 0.0001)) : 0.0
 float ofi     = upVol - dnVol
 float ofiEma  = ta.ema(ofi, 14)
 bool  ofiBull = ofi > ofiEma
 bool  ofiBear = ofi < ofiEma
-
-// Cumulative delta (session running total)
 var float cumuDelta  = 0.0
 cumuDelta += ofi
 float cumuDeltaEma = ta.ema(cumuDelta, 20)
 bool  cumuBull = cumuDelta > cumuDeltaEma
 bool  cumuBear = cumuDelta < cumuDeltaEma
 
-// ============================================================================
-// 28. MOMENTUM COMPOSITE INDEX
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: MOMENTUM COMPOSITE ENGINE
 
-// Multi-indicator momentum score: RSI + MFI + Williams %R + CCI + Stochastic
-float wPctR    = ta.wpr(al_pr)              // Williams %R: -100 to 0
-float cciVal   = ta.cci(al_sr, al_pr)       // CCI
+// ─────────────────────────────────────────────────────────────────────────────
+float wPctR    = ta.wpr(al_pr)
+float cciVal   = ta.cci(al_sr, al_pr)
 float stochK   = ta.stoch(close, high, low, 14)
 float stochD   = ta.sma(stochK, 3)
-
-// Normalise each to -1 to +1
 float rsiNorm  = (rsiVal  - 50)  / 50.0
 float mfiNorm  = (mfiVal  - 50)  / 50.0
 float wprNorm  = (wPctR   + 50)  / 50.0
 float cciNorm  = math.max(-1, math.min(1, cciVal / 100.0))
 float stoNorm  = (stochK  - 50)  / 50.0
-
-// Weighted composite momentum score
 float momComposite = (rsiNorm*0.25 + mfiNorm*0.20 + wprNorm*0.20 + cciNorm*0.20 + stoNorm*0.15)
 float momNorm  = math.max(-1, math.min(1, momComposite))
 bool  momBull  = momNorm > 0.1
 bool  momBear  = momNorm < -0.1
-
-// Momentum acceleration (rate of change of momentum composite)
 float momRoC   = momNorm - nz(momNorm[3], momNorm)
-
-// ============================================================================
-// 29. CROSS-ASSET CORRELATION ENGINE
-// ============================================================================
-
-// Compute rolling 20-bar correlation between primary and each security
 f_corr(float[] a, float[] b, int lb) =>
     float ma = ta.sma(array.get(a,0), lb), float mb = ta.sma(array.get(b,0), lb)
     float sa = ta.stdev(array.get(a,0), lb), float sb = ta.stdev(array.get(b,0), lb)
@@ -2113,22 +1906,63 @@ f_corr(float[] a, float[] b, int lb) =>
     for i = 0 to lb - 1
         covar += (array.get(a,0)[i] - ma) * (array.get(b,0)[i] - mb)
     (sa * sb) > 0 ? (covar / lb) / (sa * sb) : 0.0
-
-// Close series from securities (request.security already fetched earlier via MACD calls)
 float corr_s1 = ta.correlation(close, request.security(s_1, timeframe.period, close), 20)
 float corr_s2 = ta.correlation(close, request.security(s_2, timeframe.period, close), 20)
 float corr_s3 = ta.correlation(close, request.security(s_3, timeframe.period, close), 20)
 float corrAvg = (corr_s1 + corr_s2 + corr_s3) / 3
-
-// Correlation divergence signal (asset decorrelating = risk-off)
 bool corrDiverg = corrAvg < 0.3 and corrAvg[5] > 0.6
+bool corrBullAlign = corr_s1 > 0.5 and corr_s2 > 0.5 and corr_s3 > 0.5
+bool corrBearAlign = corr_s1 < -0.3 and corr_s2 < -0.3 and corr_s3 < -0.3
+float corrSpread   = math.max(corr_s1, math.max(corr_s2, corr_s3)) - math.min(corr_s1, math.min(corr_s2, corr_s3))
+string corrState   = corrBullAlign ? "SYNC BULL" : corrBearAlign ? "SYNC BEAR" : corrDiverg ? "DIVERGING" : "MIXED"
+color  corrColor   = corrBullAlign ? color.lime : corrBearAlign ? color.red : corrDiverg ? color.orange : color.gray
+plot(corr_s1, "Corr Asset1", display=display.data_window)
+plot(corr_s2, "Corr Asset2", display=display.data_window)
+plot(corr_s3, "Corr Asset3", display=display.data_window)
+plot(corrSpread, "Corr Spread", display=display.data_window)
 
-// ============================================================================
-// 30. SECONDARY PATTERN TABLE: REGIME & VOLATILITY
-// ============================================================================
 
-var table hudVol = table.new(position.top_right, 4, 8, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#080810,5))
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: HUD TABLES (GC / VOLATILITY / MAIN / PERF / PATTERN / SIGNAL)
 
+// ─────────────────────────────────────────────────────────────────────────────
+var table hudGC = table.new(position.middle_right, 2, 14, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#050510,5))
+if barstate.islast and sh_gc_hud
+    int gcTotalDels  = gcm.boxDels + gcm.lineDels + gcm.labelDels + gcm.polyDels
+    int gcLiveBoxes  = array.size(ghostBoxes) + array.size(obBullBoxes) + array.size(obBearBoxes) + array.size(sdSupplyBoxes) + array.size(sdDemandBoxes) + array.size(densBoxes) + array.size(patGeoBoxes)
+    int gcLiveLines  = array.size(ghostWicks) + array.size(gannFanLines) + array.size(tradeVizLines)
+    int gcLiveLabels = array.size(fcstLabels)
+    int gcLivePoly   = array.size(mc_lines) + array.size(fcstShapes) + array.size(mainPoly)
+    int gcLiveTotal  = gcLiveBoxes + gcLiveLines + gcLiveLabels + gcLivePoly
+    table.cell(hudGC, 0, 0,  "GC DIAGNOSTICS",    bgcolor=color.new(#0a0a1a,0), text_color=color.aqua)
+    table.merge_cells(hudGC, 0, 0, 1, 0)
+    table.cell(hudGC, 0, 1,  "METRIC",             bgcolor=color.new(#0d0d22,0), text_color=color.gray)
+    table.cell(hudGC, 1, 1,  "COUNT",              bgcolor=color.new(#0d0d22,0), text_color=color.gray)
+    table.cell(hudGC, 0, 2,  "Boxes Deleted",      text_color=color.gray)
+    table.cell(hudGC, 1, 2,  str.tostring(gcm.boxDels),     text_color=gcm.boxDels > 500 ? color.orange : color.white)
+    table.cell(hudGC, 0, 3,  "Lines Deleted",      text_color=color.gray)
+    table.cell(hudGC, 1, 3,  str.tostring(gcm.lineDels),    text_color=color.white)
+    table.cell(hudGC, 0, 4,  "Labels Deleted",     text_color=color.gray)
+    table.cell(hudGC, 1, 4,  str.tostring(gcm.labelDels),   text_color=color.white)
+    table.cell(hudGC, 0, 5,  "Polys Deleted",      text_color=color.gray)
+    table.cell(hudGC, 1, 5,  str.tostring(gcm.polyDels),    text_color=color.white)
+    table.cell(hudGC, 0, 6,  "Total Deletions",    bgcolor=color.new(#1a1a0a,0), text_color=color.yellow)
+    table.cell(hudGC, 1, 6,  str.tostring(gcTotalDels),     bgcolor=color.new(#1a1a0a,0), text_color=color.yellow)
+    table.cell(hudGC, 0, 7,  "Live Boxes",         text_color=color.gray)
+    table.cell(hudGC, 1, 7,  str.tostring(gcLiveBoxes),     text_color=gcLiveBoxes > 50 ? color.orange : color.lime)
+    table.cell(hudGC, 0, 8,  "Live Lines",         text_color=color.gray)
+    table.cell(hudGC, 1, 8,  str.tostring(gcLiveLines),     text_color=color.white)
+    table.cell(hudGC, 0, 9,  "Live Labels",        text_color=color.gray)
+    table.cell(hudGC, 1, 9,  str.tostring(gcLiveLabels),    text_color=color.white)
+    table.cell(hudGC, 0, 10, "Live Polylines",     text_color=color.gray)
+    table.cell(hudGC, 1, 10, str.tostring(gcLivePoly),      text_color=color.white)
+    table.cell(hudGC, 0, 11, "Live Total",         bgcolor=color.new(#0a1a0a,0), text_color=color.lime)
+    table.cell(hudGC, 1, 11, str.tostring(gcLiveTotal),     bgcolor=color.new(#0a1a0a,0), text_color=gcLiveTotal > 200 ? color.red : color.lime)
+    table.cell(hudGC, 0, 12, "Prune Passes",       text_color=color.gray)
+    table.cell(hudGC, 1, 12, str.tostring(gcm.prunePasses), text_color=color.white)
+    table.cell(hudGC, 0, 13, "Stress Passes",      text_color=color.gray)
+    table.cell(hudGC, 1, 13, str.tostring(gcm.stressPasses),text_color=gcm.stressPasses > 20 ? color.orange : color.white)
+var table hudVol = table.new(position.top_right, 4, 11, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#080810,5))
 if barstate.islast and sh_t2
     table.cell(hudVol, 0, 0, "VOLATILITY & REGIME ENGINE", bgcolor=color.new(#1a1a2a,0), text_color=color.aqua)
     table.merge_cells(hudVol, 0, 0, 3, 0)
@@ -2136,67 +1970,65 @@ if barstate.islast and sh_t2
     table.cell(hudVol, 1, 1, "VALUE",      bgcolor=color.new(#252535,0), text_color=color.white)
     table.cell(hudVol, 2, 1, "REGIME",     bgcolor=color.new(#252535,0), text_color=color.white)
     table.cell(hudVol, 3, 1, "SIGNAL",     bgcolor=color.new(#252535,0), text_color=color.white)
-
     table.cell(hudVol, 0, 2, "HV20",       text_color=color.gray)
     table.cell(hudVol, 1, 2, str.tostring(hv20, "#.##")+"%",   text_color=volColor)
     table.cell(hudVol, 2, 2, volRegime,                         text_color=volColor)
     table.cell(hudVol, 3, 2, "YZ:"+str.tostring(yzVol,"#.##"), text_color=color.white)
-
     table.cell(hudVol, 0, 3, "HURST",      text_color=color.gray)
     table.cell(hudVol, 1, 3, str.tostring(hurstExp,"#.###"),    text_color=hurstColor)
     table.cell(hudVol, 2, 3, hurstRegime,                       text_color=hurstColor)
     table.cell(hudVol, 3, 3, "FD:"+str.tostring(fd,"#.###"),    text_color=color.white)
-
     table.cell(hudVol, 0, 4, "REGIME",     text_color=color.gray)
     table.cell(hudVol, 1, 4, mkv.label,    text_color=mkv.current==1?color.lime:(mkv.current==2?color.red:(mkv.current==3?color.yellow:color.aqua)))
     table.cell(hudVol, 2, 4, str.tostring(mkv.barsSinceChange)+" bars", text_color=color.white)
     table.cell(hudVol, 3, 4, str.tostring(array.get(mkv.transProbs, mkv.current)*100,"#.#")+"%", text_color=color.white)
-
     table.cell(hudVol, 0, 5, "MOM COMP",   text_color=color.gray)
     table.cell(hudVol, 1, 5, str.tostring(momNorm,"#.###"),      text_color=momBull?color.lime:(momBear?color.red:color.gray))
     table.cell(hudVol, 2, 5, momBull?"BULL MOM":(momBear?"BEAR MOM":"NEUTRAL"),  text_color=momBull?color.lime:(momBear?color.red:color.gray))
     table.cell(hudVol, 3, 5, "RoC:"+str.tostring(momRoC,"#.###"), text_color=color.white)
-
     table.cell(hudVol, 0, 6, "OBV SYN",    text_color=color.gray)
     table.cell(hudVol, 1, 6, obvBull?"ACCUMULATE":"DISTRIBUTE", text_color=obvBull?color.lime:color.red)
     table.cell(hudVol, 2, 6, "CORR AVG",   text_color=color.gray)
     table.cell(hudVol, 3, 6, str.tostring(corrAvg,"#.##")+(corrDiverg?"  DIVG":""), text_color=corrDiverg?color.orange:color.white)
-
     table.cell(hudVol, 0, 7, "DRAWDOWN",   text_color=color.gray)
     table.cell(hudVol, 1, 7, str.tostring(drawdownPct,"#.##")+"%",  text_color=drawdownPct>10?color.red:(drawdownPct>5?color.orange:color.lime))
     table.cell(hudVol, 2, 7, "RISK SCALE", text_color=color.gray)
     table.cell(hudVol, 3, 7, str.tostring(riskScalar,"#.##")+"×",   text_color=riskScalar<1?color.yellow:(riskScalar>1?color.lime:color.white))
+    table.cell(hudVol, 0, 8, "RV/IV",      text_color=color.gray)
+    table.cell(hudVol, 1, 8, str.tostring(rvIvRatio, "#.###"), text_color=rvIvColor)
+    table.cell(hudVol, 2, 8, "IV REGIME",  text_color=color.gray)
+    table.cell(hudVol, 3, 8, rvIvLabel,    text_color=rvIvColor)
+    table.cell(hudVol, 0, 9,  "TREND STR",  text_color=color.gray)
+    table.cell(hudVol, 1, 9,  str.tostring(trendStrength, "#.#"), text_color=trendCol)
+    table.cell(hudVol, 2, 9,  "TREND CLS",  text_color=color.gray)
+    table.cell(hudVol, 3, 9,  trendClass,   text_color=trendCol)
+    table.cell(hudVol, 0, 10, "MKV STAY%",  text_color=color.gray)
+    table.cell(hudVol, 1, 10, str.tostring(mkvStayProb * 100, "#.#") + "%", text_color=mkvStayProb > 0.4 ? color.lime : color.orange)
+    table.cell(hudVol, 2, 10, "STABILITY",  text_color=color.gray)
+    table.cell(hudVol, 3, 10, mkvStability, text_color=mkvStayProb > 0.4 ? color.lime : mkvStayProb > 0.25 ? color.yellow : color.red)
 
-// ============================================================================
-// 31. MULTI-PIVOT FIBONACCI CONFLUENCE ENGINE
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: FIBONACCI RETRACEMENTS
 
-// Compute Fibonacci levels from the most recent significant swing
+// ─────────────────────────────────────────────────────────────────────────────
 float swingHi = ph(0)
 float swingLo = pl(0)
 float swingRng = not na(swingHi) and not na(swingLo) ? swingHi - swingLo : ta.atr(14) * 3
-
-// Fibonacci retracement levels (bearish — from recent high)
 float fib236B = not na(swingHi) ? swingHi - swingRng * 0.236 : na
 float fib382B = not na(swingHi) ? swingHi - swingRng * 0.382 : na
 float fib500B = not na(swingHi) ? swingHi - swingRng * 0.500 : na
 float fib618B = not na(swingHi) ? swingHi - swingRng * 0.618 : na
 float fib786B = not na(swingHi) ? swingHi - swingRng * 0.786 : na
-
-// Fibonacci extension levels (bullish — from recent low)
 float fib1272 = not na(swingLo) ? swingLo + swingRng * 1.272 : na
 float fib1618 = not na(swingLo) ? swingLo + swingRng * 1.618 : na
 float fib2000 = not na(swingLo) ? swingLo + swingRng * 2.000 : na
 float fib2618 = not na(swingLo) ? swingLo + swingRng * 2.618 : na
-
-// Check if close is within 0.5% of any key fib level (confluence zone)
 bool atFib236 = not na(fib236B) and math.abs(close - fib236B) / close < 0.005
 bool atFib382 = not na(fib382B) and math.abs(close - fib382B) / close < 0.005
 bool atFib500 = not na(fib500B) and math.abs(close - fib500B) / close < 0.005
 bool atFib618 = not na(fib618B) and math.abs(close - fib618B) / close < 0.005
 bool atFib786 = not na(fib786B) and math.abs(close - fib786B) / close < 0.005
 bool atFibExt = not na(fib1618) and math.abs(close - fib1618) / close < 0.005
-
 bool fibConfl  = atFib236 or atFib382 or atFib500 or atFib618 or atFib786 or atFibExt
 string fibNote = atFib618 ? "0.618 Retracement" :
                  atFib382 ? "0.382 Retracement" :
@@ -2204,15 +2036,28 @@ string fibNote = atFib618 ? "0.618 Retracement" :
                  atFib786 ? "0.786 Retrace"     :
                  atFibExt ? "1.618 Extension"   :
                  atFib236 ? "0.236 Shallow"     : "None"
-
-// Score boost when at a Fibonacci level
 int fibScoreBoost = fibConfl ? (atBull ? 3 : -3) : 0
 
-// ============================================================================
-// 32. ANCHORED VWAP ENGINE (SESSION / SWING-HIGH / SWING-LOW)
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SESSION & SWING VWAP
 
-// Session-anchored VWAP reset
+// ─────────────────────────────────────────────────────────────────────────────
+var float dayHigh   = high
+var float dayLow    = low
+if newSession
+    dayHigh := high
+    dayLow  := low
+dayHigh := math.max(dayHigh, high)
+dayLow  := math.min(dayLow,  low)
+float dayRange      = dayHigh - dayLow
+float dayRangePct   = dayRange / math.max(close, syminfo.mintick) * 100
+float dayPosPct     = dayRange > 0 ? (close - dayLow) / dayRange * 100 : 50.0
+string dayPosStr    = dayPosPct > 75 ? "NEAR HI" : dayPosPct < 25 ? "NEAR LO" : "MID RANGE"
+color  dayPosColor  = dayPosPct > 75 ? color.red : dayPosPct < 25 ? color.lime : color.gray
+plot(dayHigh, "Intraday High", color=color.new(color.red,80), linewidth=1, style=plot.style_line)
+plot(dayLow,  "Intraday Low",  color=color.new(color.lime,80), linewidth=1, style=plot.style_line)
+plot(dayRangePct, "Day Range %", display=display.data_window)
+plot(dayPosPct,   "Day Pos %",   display=display.data_window)
 var float avwapNumer  = 0.0
 var float avwapDenom  = 0.0
 bool      newSession  = ta.change(time("D")) != 0
@@ -2222,67 +2067,57 @@ if newSession
 avwapNumer += hlc3 * volume
 avwapDenom += volume
 float avwap = avwapDenom > 0 ? avwapNumer / avwapDenom : close
-
-// Swing-high anchored VWAP (anchored at last pivot high)
 var float ahvwapN = 0.0, var float ahvwapD = 0.0, var int ahBarRef = 0
 if not na(pivHigh)
     ahvwapN := 0.0, ahvwapD := 0.0, ahBarRef := bar_index - 2
 if ahBarRef > 0
     ahvwapN += hlc3 * volume, ahvwapD += volume
 float ahVwap = ahvwapD > 0 ? ahvwapN / ahvwapD : close
-
-// Swing-low anchored VWAP (anchored at last pivot low)
 var float alvwapN = 0.0, var float alvwapD = 0.0, var int alBarRef = 0
 if not na(pivLow)
     alvwapN := 0.0, alvwapD := 0.0, alBarRef := bar_index - 2
 if alBarRef > 0
     alvwapN += hlc3 * volume, alvwapD += volume
 float alVwap = alvwapD > 0 ? alvwapN / alvwapD : close
-
-// Determine VWAP structure bias
+bool htf15mBull = htf15m.c > htf15m.o
+bool htf1hBull  = htf1h.c  > htf1h.o
+bool htf4hBull  = htf4h.c  > htf4h.o
+bool htf1dBull  = htf1d.c  > htf1d.o
+int  mtfBullCnt = (htf15mBull ? 1 : 0) + (htf1hBull ? 1 : 0) + (htf4hBull ? 1 : 0) + (htf1dBull ? 1 : 0)
+int  mtfBearCnt = 4 - mtfBullCnt
+string mtfAgree = mtfBullCnt >= 3 ? "MTF BULL" : mtfBearCnt >= 3 ? "MTF BEAR" : "MTF MIX"
+color  mtfColor = mtfBullCnt >= 3 ? color.lime   : mtfBearCnt >= 3 ? color.red   : color.gray
+plot(mtfBullCnt, "MTF Bull Count", display=display.data_window)
 bool avwapBull = close > avwap and close > ahVwap
 bool avwapBear = close < avwap and close < ahVwap
 
-// ============================================================================
-// 33. GAMMA EXPOSURE LEVEL APPROXIMATION
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: GEX, KELLY FRACTION & POSITION SIZING
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Proxy for dealer gamma exposure using ATM options gamma and open interest proxy
 float atm_gamma   = greeks.gamma
-float openIntProxy = volume * 100  // Proxy — actual OI not available in Pine
+float openIntProxy = volume * 100
 float gex         = atm_gamma * openIntProxy
 float gexEma      = ta.ema(gex, 20)
-bool  posGex      = gex > gexEma   // Positive GEX = pin risk (tighter range)
-bool  negGex      = gex < -math.abs(gexEma) // Negative GEX = volatility expansion
-
-// GEX-adjusted forecast amplitude
+bool  posGex      = gex > gexEma
+bool  negGex      = gex < -math.abs(gexEma)
 float gexAdjFactor = posGex ? 0.75 : negGex ? 1.35 : 1.0
-
-// ============================================================================
-// 34. ADAPTIVE POSITION SIZING ENGINE
-// ============================================================================
-
-// Kelly Criterion fraction
 float kellyFrac = 0.0
 if (acc.hitRate > 0 and rw_ml > 0)
     float p    = acc.hitRate
     float q    = 1.0 - p
     float b    = rw_ml
-    kellyFrac  := (p - (q / b))           // Full Kelly
-    kellyFrac  := math.max(0, math.min(0.25, kellyFrac * 0.5))  // Half-Kelly capped at 25%
-
-// Volatility-normalised position size (% of equity)
+    kellyFrac  := (p - (q / b))
+    kellyFrac  := math.max(0, math.min(0.25, kellyFrac * 0.5))
 float atrPctOfClose = atrVal / close * 100
 float volNormSize   = atrPctOfClose > 0 ? 1.0 / atrPctOfClose : 1.0
 float posSize       = math.min(kellyFrac, volNormSize * 0.1) * riskScalar * gexAdjFactor
 
-// ============================================================================
-// 35. PATTERN COMPLETION PROBABILITY REFINEMENT
-// ============================================================================
-// Integrate all engines into a final weighted signal probability
-float signalProb = 50.0
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SIGNAL PROBABILITY COMPOSITE
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Use := for all reassignments
+float signalProb = 50.0
 signalProb := signalProb + (candleScore * 1.5)
 signalProb := signalProb + (macroScore * 2.0)
 signalProb := signalProb + (atBull ? 5.0 : -5.0)
@@ -2292,32 +2127,32 @@ signalProb := signalProb + (obvBull ? 2.0 : obvBear ? -2.0 : 0.0)
 signalProb := signalProb + (avwapBull ? 2.0 : avwapBear ? -2.0 : 0.0)
 signalProb := signalProb + (vwapBias * 10.0)
 signalProb := signalProb + (fibScoreBoost * 2.0)
-
-// Conditional logic with Hurst Exponent
 signalProb := signalProb + (hurstExp > 0.6 and atBull ? 3.0 : 0.0)
 signalProb := signalProb + (hurstExp > 0.6 and not atBull ? -3.0 : 0.0)
-
-// Penalize high uncertainty (Kinetic Error Term)
 signalProb := signalProb - (kin.errorTerm / close * 200)
-
-// Clamp the probability between 5% and 95%
+signalProb := signalProb + (corrBullAlign ? 3.0 : corrBearAlign ? -3.0 : 0.0)
+signalProb := signalProb + (mtfBullCnt >= 3 ? 4.0 : mtfBearCnt >= 3 ? -4.0 : 0.0)
+signalProb := signalProb + (dayPosPct > 75 and not atBull ? -1.5 : dayPosPct < 25 and atBull ? 1.5 : 0.0)
 signalProb := math.max(5.0, math.min(95.0, signalProb))
 
-// Boolean for high confidence thresholds
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SKEWNESS-WEIGHTED ENTRY FILTER
+// ─────────────────────────────────────────────────────────────────────────────
+
+float skewAdj        = math.max(-1.5, math.min(1.5, skewness))
+bool  skewBullFav    = skewAdj >  0.5 and atBull
+bool  skewBearFav    = skewAdj < -0.5 and not atBull
+bool  skewNeutral    = math.abs(skewAdj) <= 0.5
+signalProb          := signalProb + (skewBullFav ? 2.0 : skewBearFav ? -2.0 : 0.0)
+bool  entryQualLong  = goLong  and (skewBullFav or skewNeutral) and not widening
+bool  entryQualShort = goShort and (skewBearFav or skewNeutral) and not widening
+plot(skewAdj,             "Skewness Adjusted",   display=display.data_window)
+plot(entryQualLong  ? 1 : 0, "Entry Qual Long",  display=display.data_window)
+plot(entryQualShort ? 1 : 0, "Entry Qual Short", display=display.data_window)
 bool highConf = signalProb > 72 or signalProb < 28
-
-// Color logic using HEX or built-in colors
 color sigCol = signalProb > 65 ? color.new(#00FF00, 20) : signalProb < 35 ? color.new(#FF0000, 0) : color.new(#FFCC00, 20)
-
-// Plot signal probability as a background highlight on extreme readings
 bgcolor(highConf and signalProb > 72 ? color.new(color.teal, 99) : highConf and signalProb < 28 ? color.new(color.maroon, 99) : na, title="High Conf BG")
-
-// ============================================================================
-// 36. THIRD HUD TABLE: MULTI-ENGINE SIGNAL COMPOSITE
-// ============================================================================
-
 var table hudSig = table.new(position.top_left, 4, 9, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#080808,5))
-
 if barstate.islast and sh_t2
     table.cell(hudSig, 0, 0, "MULTI-ENGINE SIGNAL COMPOSITE", bgcolor=color.new(#1a120a,0), text_color=color.orange)
     table.merge_cells(hudSig, 0, 0, 3, 0)
@@ -2325,57 +2160,51 @@ if barstate.islast and sh_t2
     table.cell(hudSig, 1, 1, "SIGNAL",    bgcolor=color.new(#2a1a0a,0), text_color=color.white)
     table.cell(hudSig, 2, 1, "WEIGHT",    bgcolor=color.new(#2a1a0a,0), text_color=color.white)
     table.cell(hudSig, 3, 1, "CONTRIB",   bgcolor=color.new(#2a1a0a,0), text_color=color.white)
-
     table.cell(hudSig, 0, 2, "ALPHA TREND", text_color=color.gray)
     table.cell(hudSig, 1, 2, atBull?"BULL":"BEAR", text_color=atBull?color.lime:color.red)
     table.cell(hudSig, 2, 2, "25%",         text_color=color.white)
     table.cell(hudSig, 3, 2, atBull?"+5":"-5", text_color=atBull?color.lime:color.red)
-
     table.cell(hudSig, 0, 3, "MACD SYN",   text_color=color.gray)
     table.cell(hudSig, 1, 3, macd_bull?"BULL":macd_bear?"BEAR":"FLAT", text_color=macd_bull?color.lime:(macd_bear?color.red:color.gray))
     table.cell(hudSig, 2, 3, "20%",         text_color=color.white)
     table.cell(hudSig, 3, 3, macd_bull?"+4":macd_bear?"-4":"0", text_color=macd_bull?color.lime:(macd_bear?color.red:color.gray))
-
     table.cell(hudSig, 0, 4, "MOMENTUM",   text_color=color.gray)
     table.cell(hudSig, 1, 4, str.tostring(momNorm,"#.##"), text_color=momBull?color.lime:(momBear?color.red:color.gray))
     table.cell(hudSig, 2, 4, "15%",         text_color=color.white)
     table.cell(hudSig, 3, 4, momBull?"+3":momBear?"-3":"0", text_color=momBull?color.lime:(momBear?color.red:color.gray))
-
     table.cell(hudSig, 0, 5, "FIB ZONE",   text_color=color.gray)
     table.cell(hudSig, 1, 5, fibConfl ? fibNote : "None", text_color=fibConfl?color.yellow:color.gray)
     table.cell(hudSig, 2, 5, "10%",         text_color=color.white)
     table.cell(hudSig, 3, 5, str.tostring(fibScoreBoost*2), text_color=fibConfl?color.yellow:color.gray)
-
     table.cell(hudSig, 0, 6, "VWAP POS",   text_color=color.gray)
     table.cell(hudSig, 1, 6, avwapBull?"ABOVE VWAP":avwapBear?"BELOW VWAP":"AT VWAP", text_color=avwapBull?color.lime:(avwapBear?color.red:color.gray))
     table.cell(hudSig, 2, 6, "15%",         text_color=color.white)
     table.cell(hudSig, 3, 6, avwapBull?"+2":avwapBear?"-2":"0", text_color=avwapBull?color.lime:(avwapBear?color.red:color.gray))
-
     table.cell(hudSig, 0, 7, "KELLY SZ",   text_color=color.gray)
     table.cell(hudSig, 1, 7, str.tostring(kellyFrac*100,"#.##")+"%", text_color=color.white)
     table.cell(hudSig, 2, 7, "POS SIZE",    text_color=color.gray)
     table.cell(hudSig, 3, 7, str.tostring(posSize*100,"#.##")+"%",   text_color=posSize>0.05?color.lime:color.white)
-
     table.cell(hudSig, 0, 8, "SIGNAL PROB", bgcolor=color.new(color.black,30), text_color=color.white)
     table.cell(hudSig, 1, 8, str.tostring(signalProb,"#.##")+"%", bgcolor=color.new(color.black,30), text_color=sigCol)
     table.cell(hudSig, 2, 8, "CONF",        bgcolor=color.new(color.black,30), text_color=color.white)
     table.cell(hudSig, 3, 8, highConf?"HIGH":"MODERATE", bgcolor=color.new(color.black,30), text_color=highConf?color.yellow:color.gray)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SMART MONEY CONCEPTS (BOS / CHoCH / ORDER BLOCKS / MSS)
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ============================================================================
-// 37. SWING STRUCTURE TRACKER (BOS / CHoCH / MSS)
-// ============================================================================
-
-// Break of Structure (BOS): price closes beyond prior swing high/low
 float lastSwingHi  = nz(ph(1), close)
 float lastSwingLo  = nz(pl(1), close)
-bool  bosUp        = close > lastSwingHi and close[1] <= lastSwingHi   // Bullish BOS
-bool  bosDown      = close < lastSwingLo  and close[1] >= lastSwingLo   // Bearish BOS
-
-// Change of Character (CHoCH): trend reversal at key swing
+if barstate.isconfirmed and brk.isValidBreakout and sh_mp
+    string brkTxt = brk.direction + " BRK Str:" + str.tostring(trendStrength, "#.#")
+    color  brkCol = brk.direction == "BULL" ? color.new(color.lime,5) : color.new(color.red,5)
+    label.new(bar_index,
+              brk.direction == "BULL" ? low - atrVal * 0.5 : high + atrVal * 0.5,
+              brkTxt, color=#00000000, textcolor=brkCol, size=size.small,
+              style=brk.direction == "BULL" ? label.style_label_up : label.style_label_down)
+bool  bosUp        = close > lastSwingHi and close[1] <= lastSwingHi
+bool  bosDown      = close < lastSwingLo  and close[1] >= lastSwingLo
 bool  chochBull    = not atBull[1] and atBull and bosUp
 bool  chochBear    = atBull[1] and not atBull and bosDown
-
-// Market Structure Shift (MSS): confirmed when CHoCH followed by new extreme
 var bool mssActive  = false
 var string mssDir   = "NONE"
 var int    mssBrBar = 0
@@ -2385,8 +2214,18 @@ if chochBear
     mssActive := true, mssDir := "BEAR", mssBrBar := bar_index
 if mssActive and (bar_index - mssBrBar) > 20
     mssActive := false
-
-// Plot BOS and CHoCH markers
+var box[] mssBoxes = array.new_box()
+if chochBull and sh_mp
+    push_box_capped(mssBoxes, box.new(bar_index - 1, close + atrVal * 0.5, bar_index + 20, close - atrVal * 0.5, border_color=color.new(color.yellow,60), bgcolor=color.new(color.yellow,95), border_style=line.style_dashed, text="MSS↑", text_size=size.tiny, text_color=color.new(color.yellow,20)), 5)
+if chochBear and sh_mp
+    push_box_capped(mssBoxes, box.new(bar_index - 1, close + atrVal * 0.5, bar_index + 20, close - atrVal * 0.5, border_color=color.new(color.orange,60), bgcolor=color.new(color.orange,95), border_style=line.style_dashed, text="MSS↓", text_size=size.tiny, text_color=color.new(color.orange,20)), 5)
+if barstate.isconfirmed
+    for i = array.size(mssBoxes) - 1 to 0
+        box bxM = array.get(mssBoxes, i)
+        if not na(bxM) and (bar_index - box.get_right(bxM)) > 25
+            box.delete(bxM)
+            array.remove(mssBoxes, i)
+            gcm.boxDels += 1
 if bosUp   and sh_mp
     label.new(bar_index, low  - atrVal*0.5, "BOS ↑", color=#00000000, textcolor=color.lime,    size=size.tiny, style=label.style_label_up)
 if bosDown and sh_mp
@@ -2395,69 +2234,90 @@ if chochBull
     label.new(bar_index, low  - atrVal*1.0, "CHoCH↑",color=#00000000, textcolor=color.yellow,  size=size.small,style=label.style_label_up)
 if chochBear
     label.new(bar_index, high + atrVal*1.0, "CHoCH↓",color=#00000000, textcolor=color.orange,  size=size.small,style=label.style_label_down)
-
-// ============================================================================
-// 38. ORDER BLOCK DETECTION
-// ============================================================================
-
-// Bearish Order Block: last bullish candle before a bearish BOS
 var float obBearHi = na, var float obBearLo = na, var int obBearBar = 0
 var float obBullHi = na, var float obBullLo = na, var int obBullBar = 0
-
 if bosDown
-    // Tag the last bull candle before this bearish break as a demand zone
     for i = 1 to 5
         if isBull[i] and isBear[i-1]
             obBearHi  := high[i], obBearLo := low[i], obBearBar := bar_index - i
             break
-
 if bosUp
-    // Tag the last bear candle before this bullish break as a supply zone
     for i = 1 to 5
         if isBear[i] and isBull[i-1]
             obBullHi  := high[i], obBullLo := low[i], obBullBar := bar_index - i
             break
-
-// Draw order blocks
 if not na(obBearHi) and obBearBar == bar_index - 1 and sh_mp
-    box.new(obBearBar, obBearHi, bar_index+30, obBearLo, border_color=color.new(color.red,70), bgcolor=color.new(color.red,92), border_style=line.style_dashed)
+    push_box_capped(obBearBoxes, box.new(obBearBar, obBearHi, bar_index+30, obBearLo, border_color=color.new(color.red,70), bgcolor=color.new(color.red,92), border_style=line.style_dashed, text="OB↓", text_size=size.tiny, text_color=color.new(color.red,20)), gc_ob_cap)
 if not na(obBullHi) and obBullBar == bar_index - 1 and sh_mp
-    box.new(obBullBar, obBullHi, bar_index+30, obBullLo, border_color=color.new(color.lime,70), bgcolor=color.new(color.lime,92), border_style=line.style_dashed)
+    push_box_capped(obBullBoxes, box.new(obBullBar, obBullHi, bar_index+30, obBullLo, border_color=color.new(color.lime,70), bgcolor=color.new(color.lime,92), border_style=line.style_dashed, text="OB↑", text_size=size.tiny, text_color=color.new(color.lime,20)), gc_ob_cap)
+if barstate.isconfirmed
+    for i = array.size(obBearBoxes) - 1 to 0
+        box bxBr = array.get(obBearBoxes, i)
+        if not na(bxBr) and (bar_index - box.get_right(bxBr)) > 60
+            box.delete(bxBr)
+            array.remove(obBearBoxes, i)
+            gcm.boxDels += 1
+    for i = array.size(obBullBoxes) - 1 to 0
+        box bxBl = array.get(obBullBoxes, i)
+        if not na(bxBl) and (bar_index - box.get_right(bxBl)) > 60
+            box.delete(bxBl)
+            array.remove(obBullBoxes, i)
+            gcm.boxDels += 1
+if barstate.islast and sh_mp and strategy.opentrades > 0
+    label.new(bar_index, low - atrVal * 1.5,
+              "STOP×" + str.tostring(adaptedStopMult, "#.##"),
+              color=color.new(color.red,80), textcolor=color.new(color.red,10),
+              style=label.style_label_up, size=size.tiny)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: STATISTICAL ARBITRAGE & Z-SCORE ANALYSIS
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ============================================================================
-// 39. STATISTICAL ARBITRAGE SIGNAL
-// ============================================================================
-
-// Z-score of close relative to rolling statistics
 float zScoreClose  = statStdev > 0 ? (close - statMean) / statStdev : 0.0
 float zScoreRsi    = ta.stdev(rsiVal, 20) > 0 ? (rsiVal - ta.sma(rsiVal,20)) / ta.stdev(rsiVal,20) : 0.0
 float zScoreMom    = ta.stdev(momNorm, 20) > 0 ? (momNorm - ta.sma(momNorm,20)) / ta.stdev(momNorm,20) : 0.0
-
-// StatArb: composite z-score signal
 float statArbZ     = (zScoreClose * 0.5 + zScoreRsi * 0.3 + zScoreMom * 0.2)
-bool  statArbLong  = statArbZ < -1.5 and hurstExp < 0.45   // Mean reversion long
-bool  statArbShort = statArbZ >  1.5 and hurstExp < 0.45   // Mean reversion short
-bool  statArbBreak = math.abs(statArbZ) > 2.5 and hurstExp > 0.6 // Breakout
+bool  statArbLong  = statArbZ < -1.5 and hurstExp < 0.45
+bool  statArbShort = statArbZ >  1.5 and hurstExp < 0.45
+bool  statArbBreak = math.abs(statArbZ) > 2.5 and hurstExp > 0.6
 
-// ============================================================================
-// 40. FINAL COMPOSITE SIGNAL AGGREGATION
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: TREND STRENGTH, VELOCITY DIVERGENCE & DELTA ANALYSIS
 
-// Aggregate all engines for final signal recommendation
+// ─────────────────────────────────────────────────────────────────────────────
+float trendStrength = math.min(100.0, math.max(0.0, math.abs(kin.velocity) / math.max(atrVal * 0.01, syminfo.mintick) * (hurstExp > 0.6 ? 1.5 : hurstExp < 0.4 ? 0.5 : 1.0)))
+string trendClass   = trendStrength > 70 ? "STRONG" : trendStrength > 40 ? "MODERATE" : "WEAK"
+color  trendCol     = trendStrength > 70 ? color.lime : trendStrength > 40 ? color.yellow : color.red
+bool velDivBull = kin.velocity > 0 and kin.acceleration < -0.0001 and momNorm < -0.1
+bool velDivBear = kin.velocity < 0 and kin.acceleration >  0.0001 and momNorm >  0.1
+if velDivBull and sh_mp
+    label.new(bar_index, low  - atrVal * 0.2, "vD↑", color=#00000000, textcolor=color.new(#00FFCC,30), size=size.tiny, style=label.style_label_up)
+if velDivBear and sh_mp
+    label.new(bar_index, high + atrVal * 0.2, "vD↓", color=#00000000, textcolor=color.new(#FF6688,30), size=size.tiny, style=label.style_label_down)
+bool cumuDivBull = cumuBull and not cumuBull[5] and atBull
+bool cumuDivBear = cumuBear and not cumuBear[5] and not atBull
+if cumuDivBull and sh_mp
+    label.new(bar_index, low  - atrVal * 0.35, "Δ↑", color=#00000000, textcolor=color.new(color.lime,30), size=size.tiny, style=label.style_label_up)
+if cumuDivBear and sh_mp
+    label.new(bar_index, high + atrVal * 0.35, "Δ↓", color=#00000000, textcolor=color.new(color.red,30),  size=size.tiny, style=label.style_label_down)
+float impliedVolProxy = greeks.vega > 0 ? greeks.vega / math.max(close, syminfo.mintick) * 100 : 0.0
+float rvIvRatio       = impliedVolProxy > 0 ? hv20 / impliedVolProxy : 1.0
+bool  rvIvContracted  = rvIvRatio < 0.8
+bool  rvIvExpanded    = rvIvRatio > 1.3
+string rvIvLabel = rvIvContracted ? "IV RICH" : rvIvExpanded ? "HV RICH" : "FAIR VALUE"
+color  rvIvColor = rvIvContracted ? color.new(color.orange,0) : rvIvExpanded ? color.new(color.aqua,0) : color.new(color.gray,0)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: FINAL COMPOSITE SCORE & SIGNAL
+
+// ─────────────────────────────────────────────────────────────────────────────
 int   finalScore = 0
-// Core trend engines (high weight)
 finalScore += atBull   ? 30 : -30
 finalScore += macd_bull? 20 : macd_bear ? -20 : 0
-// Pattern engines (medium weight)
 finalScore += pe.patternScore * 2
-// Momentum (medium weight)
 finalScore += int(momNorm * 15)
-// Statistical (lower weight — mean-rev or breakout context)
 finalScore += statArbLong ? 10 : statArbShort ? -10 : 0
 finalScore += bosUp ? 5 : bosDown ? -5 : 0
-// Vol regime adjustment
 finalScore := volRegime == "EXTREME" ? int(finalScore * 0.5) : finalScore
-
 string finalSignal  = finalScore >  40 ? "STRONG BULL" :
                       finalScore >  15 ? "BULL"        :
                       finalScore < -40 ? "STRONG BEAR" :
@@ -2467,59 +2327,64 @@ color  finalSigCol  = finalScore >  40 ? color.new(#00FF00,0) :
                       finalScore < -40 ? color.new(#FF0000,0) :
                       finalScore < -15 ? color.new(#FF6666,0) : color.new(#FFCC00,0)
 
-// ============================================================================
-// 41. ADDITIONAL OVERLAY PLOTS
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: OVERLAY PLOTS (VWAP, FIB, BOUNDS)
 
-// Anchored VWAP plots
+// ─────────────────────────────────────────────────────────────────────────────
 plot(avwap,   "Session VWAP",       color=color.new(#FFD700,40), linewidth=2, style=plot.style_line)
 plot(ahVwap,  "Swing Hi VWAP",      color=color.new(#FF8C00,60), linewidth=1, style=plot.style_line)
 plot(alVwap,  "Swing Lo VWAP",      color=color.new(#00BFFF,60), linewidth=1, style=plot.style_line)
-
-// Fibonacci level plots
 plot(fib382B, "Fib 0.382",          color=color.new(#9B59B6,70), linewidth=1, style=plot.style_line)
 plot(fib500B, "Fib 0.500",          color=color.new(#E67E22,70), linewidth=1, style=plot.style_line)
 plot(fib618B, "Fib 0.618",          color=color.new(#E74C3C,70), linewidth=1, style=plot.style_line)
 plot(fib1618, "Fib 1.618 Ext",      color=color.new(#1ABC9C,70), linewidth=1, style=plot.style_line)
 
-// ============================================================================
-// 42. SUPPLY & DEMAND ZONE LIBRARY
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: SUPPLY / DEMAND ZONES
 
-// Demand Zone: Prior bearish-to-bullish reversal region (base of thrust up)
+// ─────────────────────────────────────────────────────────────────────────────
 type SDZone
     float top
     float bottom
     int   formBar
     bool  isValid
     string zoneType
-
 var SDZone[] supplyZones  = array.new<SDZone>()
 var SDZone[] demandZones  = array.new<SDZone>()
-
-// Detect new supply zone: thrust down from a tight consolidation
 bool isThrustDown = bodySize > avgBody * 1.5 and isBear and isBear[1] and bodySize[1] > avgBody
 bool isThrustUp   = bodySize > avgBody * 1.5 and isBull and isBull[1] and bodySize[1] > avgBody
-
 if isThrustDown and array.size(supplyZones) < 5
     float zTop = math.max(open, close)
     float zBot = math.min(open, close)
     array.push(supplyZones, SDZone.new(zTop, zBot, bar_index, true, "SUPPLY"))
-
+    if sh_mp
+        push_box_capped(sdSupplyBoxes, box.new(bar_index, zTop, bar_index+80, zBot, border_color=color.new(color.red,60), bgcolor=color.new(color.red,94), border_style=line.style_dashed, text="SUPPLY", text_size=size.tiny, text_color=color.new(color.red,20)), gc_sd_cap)
 if isThrustUp and array.size(demandZones) < 5
     float zTop = math.max(open, close)
     float zBot = math.min(open, close)
     array.push(demandZones, SDZone.new(zTop, zBot, bar_index, true, "DEMAND"))
-
-// Invalidate zones when price closes through them
+    if sh_mp
+        push_box_capped(sdDemandBoxes, box.new(bar_index, zTop, bar_index+80, zBot, border_color=color.new(color.lime,60), bgcolor=color.new(color.lime,94), border_style=line.style_dashed, text="DEMAND", text_size=size.tiny, text_color=color.new(color.lime,20)), gc_sd_cap)
 for z in supplyZones
     if z.isValid and close > z.top
         z.isValid := false
+        for i = array.size(sdSupplyBoxes) - 1 to 0
+            box bxS = array.get(sdSupplyBoxes, i)
+            if not na(bxS) and math.abs(box.get_top(bxS) - z.top) / math.max(z.top, syminfo.mintick) < 0.005
+                box.delete(bxS)
+                array.remove(sdSupplyBoxes, i)
+                gcm.boxDels += 1
+                break
 for z in demandZones
     if z.isValid and close < z.bottom
         z.isValid := false
-
-// Check proximity to nearest valid zone
+        for i = array.size(sdDemandBoxes) - 1 to 0
+            box bxD = array.get(sdDemandBoxes, i)
+            if not na(bxD) and math.abs(box.get_bottom(bxD) - z.bottom) / math.max(z.bottom, syminfo.mintick) < 0.005
+                box.delete(bxD)
+                array.remove(sdDemandBoxes, i)
+                gcm.boxDels += 1
+                break
 bool nearSupply = false, bool nearDemand = false
 float nearestSupplyMid = na, float nearestDemandMid = na
 for z in supplyZones
@@ -2533,26 +2398,38 @@ for z in demandZones
         if math.abs(close - mid) / close < 0.01
             nearDemand := true, nearestDemandMid := mid
 
-// ============================================================================
-// 43. GANN FAN ANGLE ENGINE
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: GANN ANGLES & FAN LINES
 
-// Gann 1x1 (45 degree) and key angle levels from last significant pivot
-float gannUnit   = atrVal / al_pr   // 1 price unit = avg atr/period
+// ─────────────────────────────────────────────────────────────────────────────
+float gannUnit   = atrVal / al_pr
 float gann1x1Hi  = not na(ph(0)) ? ph(0) - gannUnit  * (bar_index - phb(0)) : na
 float gann2x1Hi  = not na(ph(0)) ? ph(0) - gannUnit  * (bar_index - phb(0)) * 2 : na
 float gann1x2Hi  = not na(ph(0)) ? ph(0) - gannUnit  * (bar_index - phb(0)) * 0.5 : na
 float gann1x1Lo  = not na(pl(0)) ? pl(0) + gannUnit  * (bar_index - plb(0)) : na
 float gann2x1Lo  = not na(pl(0)) ? pl(0) + gannUnit  * (bar_index - plb(0)) * 2 : na
-
 bool  atGannAngl = (not na(gann1x1Hi) and math.abs(close - gann1x1Hi) / close < 0.003) or
                    (not na(gann1x1Lo) and math.abs(close - gann1x1Lo) / close < 0.003)
+if sh_mp and barstate.isconfirmed and not na(ph(0)) and not na(phb(0)) and (bar_index - phb(0)) <= 2
+    int   gHB = phb(0)
+    float gHV = ph(0)
+    push_line_capped(gannFanLines, line.new(gHB, gHV, gHB + 60, gHV - gannUnit * 60,       color=color.new(color.purple,50), style=line.style_dotted, width=1), 18)
+    push_line_capped(gannFanLines, line.new(gHB, gHV, gHB + 60, gHV - gannUnit * 60 * 2,   color=color.new(color.purple,65), style=line.style_dotted, width=1), 18)
+    push_line_capped(gannFanLines, line.new(gHB, gHV, gHB + 60, gHV - gannUnit * 60 * 0.5, color=color.new(color.purple,65), style=line.style_dotted, width=1), 18)
+if sh_mp and barstate.isconfirmed and not na(pl(0)) and not na(plb(0)) and (bar_index - plb(0)) <= 2
+    int   gLB = plb(0)
+    float gLV = pl(0)
+    push_line_capped(gannFanLines, line.new(gLB, gLV, gLB + 60, gLV + gannUnit * 60,       color=color.new(color.teal,50), style=line.style_dotted, width=1), 18)
+    push_line_capped(gannFanLines, line.new(gLB, gLV, gLB + 60, gLV + gannUnit * 60 * 2,   color=color.new(color.teal,65), style=line.style_dotted, width=1), 18)
+    push_line_capped(gannFanLines, line.new(gLB, gLV, gLB + 60, gLV + gannUnit * 60 * 0.5, color=color.new(color.teal,65), style=line.style_dotted, width=1), 18)
+if barstate.isconfirmed
+    trim_lines(gannFanLines, 18, gc_prune)
 
-// ============================================================================
-// 44. FINAL DATA WINDOW — EXTENDED METRICS
-// ============================================================================
 
-// Rolling alpha/beta vs S&P 500 proxy (using s_1 as benchmark)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: PERFORMANCE METRICS (BETA, ALPHA, SORTINO, CALMAR)
+
+// ─────────────────────────────────────────────────────────────────────────────
 float benchClose   = request.security(s_1, timeframe.period, close)
 float benchRet     = (benchClose - benchClose[1]) / benchClose[1]
 float assetRet     = (close      - close[1])      / close[1]
@@ -2561,11 +2438,7 @@ float betaEst      = ta.correlation(assetRet, benchRet, 20) *
 float alphaEst     = ta.sma(assetRet, 20) - betaEst * ta.sma(benchRet, 20)
 float infoRatio    = ta.stdev(assetRet - benchRet, 20) > 0 ?
                      ta.sma(assetRet - benchRet, 20) / ta.stdev(assetRet - benchRet, 20) : 0.0
-
-// Calmar ratio approximation
 float calmarRatio  = drawdownPct > 0 ? (strategy.equity / strategy.initial_capital - 1) / (drawdownPct/100) : 0.0
-
-// Sortino ratio (uses downside deviation)
 float rfDaily      = rf_rt / 252
 float excessRet    = assetRet - rfDaily
 float downDev2     = 0.0
@@ -2575,29 +2448,21 @@ for i = 0 to 19
         downDev2 += math.pow(r - rfDaily, 2)
 float sortinoRatio = math.sqrt(downDev2 / 20) > 0 ?
                      ta.sma(excessRet, 20) / math.sqrt(downDev2 / 20) * math.sqrt(252) : 0.0
-// ============================================================================
-// 17. DATA WINDOW PLOTS (OPTIMIZED - 64 PLOT LIMIT COMPLIANT)
-// ============================================================================
-// ============================================================================
-// 17. DATA WINDOW & OVERLAY PLOTS (STRICT 64-LIMIT COMPLIANT)
-// ============================================================================
 
-// --- MANDATORY OVERLAYS & PANES (11 + 3 = 14 Slots) ---
-// hline(0, "Zero Line", color=color.new(color.gray, 50), linestyle=hline.style_solid)
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: DATA WINDOW PLOTS
+
+// ─────────────────────────────────────────────────────────────────────────────
 plot(hist_mn, "MACD Histogram", color=hist_mn>0?color.new(color.lime,30):color.new(color.red,30), style=plot.style_histogram, display=display.data_window)
 plot(macd_mn, "MACD Line", color=color.new(color.blue,0), linewidth=1, display=display.data_window)
 plot(sig_mn, "Signal Line", color=color.new(color.orange,0), linewidth=1, display=display.data_window)
-
 plot(vwapDaily, "VWAP", color=color.new(#FFD700,50), linewidth=1, style=plot.style_line)
 plot(vwapBand1U, "VWAP +1σ", color=color.new(#00BFFF,80), linewidth=1, style=plot.style_line)
 plot(vwapBand1L, "VWAP -1σ", color=color.new(#00BFFF,80), linewidth=1, style=plot.style_line)
 plot(vwapBand2U, "VWAP +2σ", color=color.new(#FF8C00,80), linewidth=1, style=plot.style_line, display=display.all)
 plot(vwapBand2L, "VWAP -2σ", color=color.new(#FF8C00,80), linewidth=1, style=plot.style_line, display=display.all)
-
 plot(bnd_hi, "Param Bound Hi", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
 plot(bnd_lo, "Param Bound Lo", color=color.new(color.purple,85), linewidth=1, style=plot.style_line, display=display.all)
-
-// --- DATA WINDOW: KINEMATICS & BAYES (Core Logic) ---
 plot(kin.velocity, "Velocity", display=display.data_window)
 plot(kin.acceleration, "Acceleration", display=display.data_window)
 plot(blendedVel, "Blended Velocity", display=display.data_window)
@@ -2605,8 +2470,6 @@ plot(blendedErr, "Blended Error", display=display.data_window)
 plot(Bayes.probBull, "Bayes Bull %", display=display.data_window)
 plot(Bayes.probBear, "Bayes Bear %", display=display.data_window)
 plot(vwapAdjBull, "VWAP-Adj Bull %", display=display.data_window)
-
-// --- DATA WINDOW: GREEKS & MOMENTUM ---
 plot(greeks.delta, "Options Delta", display=display.data_window)
 plot(greeks.gamma, "Options Gamma", display=display.data_window)
 plot(greeks.vega, "Options Vega", display=display.data_window)
@@ -2615,8 +2478,6 @@ plot(acc.hitRate * 100, "Cone Hit Rate %", display=display.data_window)
 plot(PM.accuracy, "Historic Acc %", display=display.data_window)
 plot(pe.patternScore, "Net Pattern Score", display=display.data_window)
 plot(pe.currentProb, "Pattern Prob %", display=display.data_window)
-
-// --- DATA WINDOW: MATH & FLOW ---
 plot(hurstExp, "Hurst Exponent", display=display.data_window)
 plot(fd, "Fractal Dimension", display=display.data_window)
 plot(momNorm, "Momentum Composite", display=display.data_window)
@@ -2624,8 +2485,6 @@ plot(zScoreClose, "Z-Score Close", display=display.data_window)
 plot(statArbZ, "StatArb Z-Score", display=display.data_window)
 plot(ofi, "Order Flow Imbalance", display=display.data_window)
 plot(corrAvg, "Corr Avg (3 Assets)", display=display.data_window)
-
-// --- DATA WINDOW: RISK & EXECUTION ---
 plot(finalScore, "Final Composite Score", display=display.data_window)
 plot(signalProb, "Signal Probability %", display=display.data_window)
 plot(kellyFrac * 100, "Kelly Fraction %", display=display.data_window)
@@ -2634,19 +2493,29 @@ plot(drawdownPct, "Drawdown %", display=display.data_window)
 plot(gex, "GEX Proxy", display=display.data_window)
 plot(mkv.current, "Markov Regime", display=display.data_window)
 plot(adaptedStopMult, "Adapted Stop Mult", display=display.data_window)
-
-// --- DATA WINDOW: VOLATILITY SUMMARY (Consolidated 2 slots) ---
 plot(hv20, "HV20 (Ann.)", display=display.data_window)
 plot(yzVol, "Alt Vol (YZ)", display=display.data_window)
 
-// --- WORKAROUND: CONSOLIDATED MAPS (Replaces 10+ individual plots) ---
-// Combined Structure Map: 1=Supply, -1=Demand, 2=Gann, 3=BOS Up, -3=BOS Down
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION: STRUCTURAL & BIAS MAPS
+
+// ─────────────────────────────────────────────────────────────────────────────
 float structMap = nearSupply ? 1 : nearDemand ? -1 : atGannAngl ? 2 : bosUp ? 3 : bosDown ? -3 : 0
 plot(structMap, "Structural Map", display=display.data_window)
-
-// Combined Z-Score Map: Average of RSI/Mom/Skewness
 plot((zScoreRsi + zScoreMom + skewness)/3, "Avg Z-Score/Skew", display=display.data_window)
-
-// Combined Regime/Bias Map: VWAP Bias + MSS
 float biasMap = vwapBias + (mssActive ? 1 : 0)
 plot(biasMap, "Bias/MSS Combo", display=display.data_window)
+plot(trendStrength, "Trend Strength [0-100]",   display=display.data_window)
+plot(velDivBull ? 1 : velDivBear ? -1 : 0,      "Velocity Divergence",     display=display.data_window)
+plot(cumuDivBull ? 1 : cumuDivBear ? -1 : 0,    "Cum Delta Divergence",    display=display.data_window)
+plot(rvIvRatio,                                  "RV/IV Ratio",             display=display.data_window)
+plot(gcm.boxDels + gcm.lineDels + gcm.labelDels + gcm.polyDels, "GC Total Deletions", display=display.data_window)
+plot(array.size(ghostBoxes) + array.size(densBoxes) + array.size(obBullBoxes) + array.size(obBearBoxes) + array.size(sdSupplyBoxes) + array.size(sdDemandBoxes) + array.size(patGeoBoxes), "GC Live Box Count", display=display.data_window)
+plot(PMS.accuracy, "Short Hz Accuracy %",        display=display.data_window)
+plot(PML.accuracy, "Long  Hz Accuracy %",        display=display.data_window)
+plot(mtfBullCnt,   "MTF Bull TFs",               display=display.data_window)
+plot(corrBullAlign ? 1 : corrBearAlign ? -1 : 0, "Corr Alignment",         display=display.data_window)
+plot(mkvStayProb * 100, "Markov Stay Prob %",    display=display.data_window)
+plot(dayPosPct,    "Intraday Position %",         display=display.data_window)
+plot(skewAdj,      "Skewness Adjusted",           display=display.data_window)
+plot(entryQualLong ? 1 : entryQualShort ? -1 : 0, "Entry Quality",         display=display.data_window)
