@@ -36,7 +36,6 @@ import os
 import math
 import random
 import threading
-import socket
 import statistics
 import urllib.request
 import urllib.error
@@ -54,7 +53,10 @@ REQUEST_TIMEOUT  = 12
 MAX_RETRIES      = 3
 RETRY_BACKOFF    = 2.0
 HISTORY_MAX_SAMPLES = 288
-PARALLEL_FACTOR  = 10
+try:
+    PARALLEL_FACTOR = max(1, int(os.environ.get("BTC_REST_PARALLEL_FACTOR", "10")))
+except ValueError:
+    PARALLEL_FACTOR = 10
 HTTP_POOL_BASE_WORKERS = 8
 HTTP_POOL_WORKERS = HTTP_POOL_BASE_WORKERS * PARALLEL_FACTOR
 
@@ -85,13 +87,11 @@ _HTTP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
     max_workers=HTTP_POOL_WORKERS,
     thread_name_prefix="btc-rest-http",
 )
-_SOCKET_DEFAULT_TIMEOUT = REQUEST_TIMEOUT
 
 
 def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
     """Blocking HTTP fetch used as the thread-pool target."""
     try:
-        socket.setdefaulttimeout(_SOCKET_DEFAULT_TIMEOUT)
         req = urllib.request.Request(
             url,
             headers={
