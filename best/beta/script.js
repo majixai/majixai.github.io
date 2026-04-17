@@ -450,6 +450,7 @@
                 header.innerHTML = `
                     <span class="slot-number">#${i + 1}</span>
                     <span class="performer-name" id="iframeName${i}">-</span>
+                    <button class="pick-perf-btn" data-slot="${i}" type="button" title="Pick from performer slideshow">🖼</button>
                     <button class="close-iframe-btn" data-slot="${i}" title="Clear">&times;</button>
                 `;
 
@@ -486,16 +487,24 @@
 
                 // Wire close button
                 header.querySelector('.close-iframe-btn').addEventListener('click', (e) => {
+                    e.preventDefault();
                     e.stopPropagation();
-                    iframe.src = defaultIframeUrl;
-                    const nameEl = document.getElementById(`iframeName${i}`);
+                    const slot = parseInt(e.currentTarget.dataset.slot, 10);
+                    const currentIframe = this.#iframes[slot];
+                    if (currentIframe) currentIframe.src = defaultIframeUrl;
+                    const nameEl = document.getElementById(`iframeName${slot}`);
                     if (nameEl) nameEl.textContent = '-';
+                    const thumbEl = document.getElementById(`dynamicIframeThumb${slot}`);
+                    if (thumbEl) thumbEl.src = '';
                 });
             }
 
+            this.#enableIframeReordering();
+
             // Wire size buttons
             this.iframeGrid.querySelectorAll('.size-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
                     const slot = this.dataset.slot;
                     const size = this.dataset.size;
                     const container = document.getElementById(`dynamicIframe${slot}`)?.closest('.iframe-container');
@@ -509,7 +518,8 @@
 
             // Wire type buttons
             this.iframeGrid.querySelectorAll('.type-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
                     const slot = this.dataset.slot;
                     const type = this.dataset.type;
                     const container = document.getElementById(`dynamicIframe${slot}`)?.closest('.iframe-container');
@@ -527,6 +537,78 @@
 
             // Re-init zoom handlers for new containers
             this.uiManager.initZoomHandlers();
+        }
+
+        #enableIframeReordering() {
+            if (!this.iframeGrid) return;
+            let dragged = null;
+
+            this.iframeGrid.querySelectorAll('.iframe-container').forEach(container => {
+                container.draggable = true;
+                container.addEventListener('dragstart', (e) => {
+                    dragged = container;
+                    container.classList.add('is-dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', 'iframe-reorder');
+                });
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (!dragged || dragged === container) return;
+                    container.classList.add('drop-target');
+                    e.dataTransfer.dropEffect = 'move';
+                });
+                container.addEventListener('dragleave', () => {
+                    container.classList.remove('drop-target');
+                });
+                container.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!dragged || dragged === container) return;
+                    const targetRect = container.getBoundingClientRect();
+                    const insertBefore = e.clientY < targetRect.top + targetRect.height / 2;
+                    this.iframeGrid.insertBefore(dragged, insertBefore ? container : container.nextSibling);
+                    container.classList.remove('drop-target');
+                    this.#reindexIframes();
+                });
+                container.addEventListener('dragend', () => {
+                    this.iframeGrid.querySelectorAll('.iframe-container').forEach(c => c.classList.remove('is-dragging', 'drop-target'));
+                    dragged = null;
+                });
+            });
+
+            this.iframeGrid.querySelectorAll('.pick-perf-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const slot = parseInt(btn.dataset.slot, 10) || 0;
+                    window.dispatchEvent(new CustomEvent('beta:openArchiveForSlot', { detail: { slot } }));
+                });
+            });
+        }
+
+        #reindexIframes() {
+            if (!this.iframeGrid) return;
+            const containers = Array.from(this.iframeGrid.querySelectorAll('.iframe-container'));
+            this.#iframes = containers.map((container, idx) => {
+                container.dataset.slot = String(idx);
+                const slotNumber = container.querySelector('.slot-number');
+                if (slotNumber) slotNumber.textContent = `#${idx + 1}`;
+
+                const nameEl = container.querySelector('.performer-name');
+                if (nameEl) nameEl.id = `iframeName${idx}`;
+
+                const iframe = container.querySelector('iframe');
+                if (iframe) iframe.id = `dynamicIframe${idx}`;
+
+                const thumb = container.querySelector('.iframe-thumbnail');
+                if (thumb) thumb.id = `dynamicIframeThumb${idx}`;
+
+                container.querySelectorAll('[data-slot]').forEach(el => {
+                    el.dataset.slot = String(idx);
+                });
+                return iframe;
+            }).filter(Boolean);
+            this.mainIframe = this.#iframes[0] || null;
+            this.mainIframe2 = this.#iframes[1] || null;
         }
 
         #setLayoutMode(mode) {
@@ -1127,9 +1209,9 @@
 
         #setupEventListeners() {
             // Layout toggle buttons
-            document.getElementById('layoutPerformers')?.addEventListener('click', () => this.#setLayoutMode('performers'));
-            document.getElementById('layoutSplit')?.addEventListener('click', () => this.#setLayoutMode('split'));
-            document.getElementById('layoutIframes')?.addEventListener('click', () => this.#setLayoutMode('iframes'));
+            document.getElementById('layoutPerformers')?.addEventListener('click', (e) => { e.preventDefault(); this.#setLayoutMode('performers'); });
+            document.getElementById('layoutSplit')?.addEventListener('click', (e) => { e.preventDefault(); this.#setLayoutMode('split'); });
+            document.getElementById('layoutIframes')?.addEventListener('click', (e) => { e.preventDefault(); this.#setLayoutMode('iframes'); });
 
             // Iframe count input
             this.iframeCountInput?.addEventListener('change', () => {
@@ -1155,14 +1237,15 @@
 
             this.filterTagsSelect?.addEventListener("change", () => this.#applyFiltersAndDisplay());
             this.filterAgeSelect?.addEventListener("change", () => this.#applyFiltersAndDisplay());
-            document.getElementById("filterAge18")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ age: 18 }));
-            document.getElementById("filterTagAsian")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'asian' }));
-            document.getElementById("filterTagBlonde")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'blonde' }));
-            document.getElementById("filterTagDeepthroat")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'deepthroat' }));
-            document.getElementById("filterTagBigboobs")?.addEventListener("click", () => this.#applyFiltersAndDisplay({ tag: 'bigboobs' }));
+            document.getElementById("filterAge18")?.addEventListener("click", (e) => { e.preventDefault(); this.#applyFiltersAndDisplay({ age: 18 }); });
+            document.getElementById("filterTagAsian")?.addEventListener("click", (e) => { e.preventDefault(); this.#applyFiltersAndDisplay({ tag: 'asian' }); });
+            document.getElementById("filterTagBlonde")?.addEventListener("click", (e) => { e.preventDefault(); this.#applyFiltersAndDisplay({ tag: 'blonde' }); });
+            document.getElementById("filterTagDeepthroat")?.addEventListener("click", (e) => { e.preventDefault(); this.#applyFiltersAndDisplay({ tag: 'deepthroat' }); });
+            document.getElementById("filterTagBigboobs")?.addEventListener("click", (e) => { e.preventDefault(); this.#applyFiltersAndDisplay({ tag: 'bigboobs' }); });
             
             if (this.filterBirthdayBannerButton) {
-                this.filterBirthdayBannerButton.addEventListener('click', () => {
+                this.filterBirthdayBannerButton.addEventListener('click', (e) => {
+                    e.preventDefault();
                     if (this.filterTagsSelect) this.filterTagsSelect.value = "";
                     if (this.filterAgeSelect) this.filterAgeSelect.value = "";
                     this.#applyFiltersAndDisplay({ birthdayBanner: true });

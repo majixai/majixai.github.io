@@ -95,7 +95,9 @@
                 <button id="clearPreviousUsers" class="clear-history-btn">Clear History</button>
                 <div class="autoscroller-bar" id="autoscrollerBar">
                     <label>Auto-scroll:</label>
-                    <button id="autoscrollToggle">▶ Play</button>
+                    <button id="autoscrollToggle" class="autoscroll-btn" type="button">▶ Play</button>
+                    <button id="autoscrollReverse" class="autoscroll-btn" type="button">⇄ Reverse</button>
+                    <button id="autoscrollRestart" class="autoscroll-btn" type="button">↺ Start Over</button>
                     <span>Speed:</span>
                     <input type="range" id="autoscrollSpeed" min="1" max="10" value="5">
                 </div>
@@ -268,20 +270,35 @@
     }
 
     // Autoscroller integration
-    if (typeof Autoscroller !== 'undefined') {
-        const _autoscroller = new Autoscroller(
-            document.getElementById('onlineUsers').querySelector('.user-list'),
-            document.getElementById('previousUsers').querySelector('.user-list'),
-            document.getElementById('autoscrollToggle'),
-            document.getElementById('autoscrollSpeed')
-        );
-        document.getElementById('autoscrollToggle').addEventListener('click', () => _autoscroller.toggle());
-        document.getElementById('autoscrollSpeed').addEventListener('input', () => _autoscroller.onSpeedChange());
-    }
+        if (typeof Autoscroller !== 'undefined') {
+            const _autoscroller = new Autoscroller(
+                document.getElementById('onlineUsers').querySelector('.user-list'),
+                document.getElementById('previousUsers').querySelector('.user-list'),
+                document.getElementById('autoscrollToggle'),
+                document.getElementById('autoscrollSpeed')
+            );
+            document.getElementById('autoscrollToggle')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                _autoscroller.toggle();
+            });
+            document.getElementById('autoscrollReverse')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                _autoscroller.reverse();
+            });
+            document.getElementById('autoscrollRestart')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                _autoscroller.startOver();
+            });
+            document.getElementById('autoscrollSpeed')?.addEventListener('input', (e) => {
+                e.preventDefault();
+                _autoscroller.onSpeedChange();
+            });
+        }
 
     // Column count toggles for performer lists
     document.querySelectorAll('.col-count-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
             const cols = parseInt(this.dataset.cols, 10);
             const columnId = this.dataset.column;
             const userList = document.getElementById(columnId)?.querySelector('.user-list');
@@ -442,6 +459,15 @@
         }
 
         archiveBtn?.addEventListener('click', () => {
+            archiveModal.style.display = 'flex';
+            loadArchive();
+        });
+        window.addEventListener('beta:openArchiveForSlot', (e) => {
+            const slot = Number.parseInt(String(e?.detail?.slot ?? ''), 10);
+            const targetSlot = document.getElementById('targetSlot');
+            if (targetSlot && Number.isInteger(slot) && slot >= 0 && slot < targetSlot.options.length) {
+                targetSlot.value = String(slot);
+            }
             archiveModal.style.display = 'flex';
             loadArchive();
         });

@@ -350,6 +350,28 @@ html, body {
     transition: none;
 }
 
+.slideshow-carousel .slide-overlay-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 4px 6px;
+    font-size: 0.68em;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+    background: linear-gradient(to top, rgba(10, 10, 10, 0.78), rgba(10, 10, 10, 0.12));
+    opacity: 0.3;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.slideshow-carousel:hover .slide-overlay-label {
+    opacity: 1;
+}
+
 /* ==================== Iframe Size & Type Toggles ==================== */
 .iframe-toggle-bar {
     display: flex;
@@ -414,6 +436,17 @@ html, body {
 }
 .autoscroller-bar label { font-weight: bold; }
 .autoscroller-bar input[type=range] { width: 80px; }
+.autoscroll-btn {
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.82em;
+    padding: 2px 7px;
+}
+.autoscroll-btn:hover {
+    background: #f2f2f2;
+}
 
 /* ==================== Favorites Badge ==================== */
 .fav-btn {
@@ -544,6 +577,32 @@ html, body {
     display: grid;
     gap: 4px;
     min-height: 0;
+}
+
+.iframe-container {
+    user-select: none;
+}
+
+.iframe-container.is-dragging {
+    opacity: 0.45;
+}
+
+.iframe-container.drop-target {
+    outline: 2px dashed #4CAF50;
+}
+
+.pick-perf-btn {
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+}
+.pick-perf-btn:hover {
+    color: #fff;
 }
 
 /* Grid layouts by iframe count */
