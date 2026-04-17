@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixMvc — Interactive Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/mvc/mvc.css">
+  <style>
+    :root {
+      --demo-sidebar-width: 260px;
+    }
+    body { background-color: #f8fafc; }
+    .demo-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .demo-sidebar {
+      width: var(--demo-sidebar-width);
+      background: #1e293b;
+      color: #e2e8f0;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .demo-sidebar-brand {
+      padding: 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .demo-sidebar-brand .brand-icon {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      width: 2rem;
+      height: 2rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+    }
+    .demo-nav-section {
+      padding: 1rem 0.75rem 0.25rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .demo-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      padding: 0.5rem 1rem;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.875rem;
+      border-radius: 0.375rem;
+      margin: 0 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+      border: none;
+      background: none;
+      width: calc(100% - 1rem);
+      text-align: left;
+    }
+    .demo-nav-link:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+    .demo-nav-link.active { background: rgba(59,130,246,0.2); color: #93c5fd; }
+    .demo-nav-link .nav-icon { width: 1rem; text-align: center; opacity: 0.7; font-size: 0.8rem; }
+    .demo-main {
+      flex: 1;
+      overflow-x: hidden;
+    }
+    .demo-topbar {
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.875rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .demo-topbar-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+    .demo-topbar-subtitle {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+    .demo-content {
+      padding: 2rem;
+    }
+    .demo-section {
+      display: none;
+    }
+    .demo-section.active {
+      display: block;
+    }
+    .demo-card {
+      background: white;
+      border-radius: 0.75rem;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .demo-card-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+    }
+    .demo-card-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .demo-card-body {
+      padding: 1.5rem;
+    }
+    .code-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.8125rem;
+      padding: 1rem 1.25rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .code-block .kw  { color: #7dd3fc; }
+    .code-block .fn  { color: #86efac; }
+    .code-block .str { color: #fde68a; }
+    .code-block .num { color: #fb923c; }
+    .code-block .cmt { color: #64748b; font-style: italic; }
+    .output-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #334155;
+      max-height: 300px;
+      overflow-y: auto;
+      min-height: 60px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.6rem;
+      background: #eff6ff;
+      color: #2563eb;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid #bfdbfe;
+    }
+    .chip-green  { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; }
+    .chip-red    { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    .chip-yellow { background: #fefce8; color: #ca8a04; border-color: #fef08a; }
+    .chip-gray   { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+    }
+    .result-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-size: 0.8rem;
+    }
+    .result-card-label {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .result-card-value {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #0f172a;
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border-bottom: 1px solid #f1f5f9;
+      transition: background-color 0.15s;
+    }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-item:hover { background: #f8fafc; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: #94a3b8; }
+    .todo-checkbox {
+      width: 1.125rem;
+      height: 1.125rem;
+      cursor: pointer;
+      accent-color: #2563eb;
+      flex-shrink: 0;
+    }
+    .todo-text { flex: 1; font-size: 0.875rem; color: #334155; }
+    .todo-delete {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      transition: color 0.15s, background 0.15s;
+    }
+    .todo-delete:hover { color: #ef4444; background: #fef2f2; }
+    .filter-btn {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid #e2e8f0;
+      background: white;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+    .state-tree {
+      font-family: monospace;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: #334155;
+    }
+    .state-tree .k { color: #7c3aed; }
+    .state-tree .v { color: #0891b2; }
+    .mutation-log {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #475569;
+      padding: 0.25rem 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .mutation-log .mt { color: #059669; font-weight: 600; }
+    .router-url {
+      font-family: monospace;
+      background: #f1f5f9;
+      padding: 0.3rem 0.75rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      color: #0f172a;
+    }
+    .route-match { background: #ecfdf5; color: #065f46; }
+    .route-no-match { background: #fef2f2; color: #991b1b; }
+    .validator-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.875rem;
+    }
+    .validator-row:last-child { border-bottom: none; }
+    .validator-rule { font-weight: 600; color: #334155; min-width: 120px; font-family: monospace; font-size: 0.8rem; }
+    .validator-result { min-width: 60px; }
+    .validator-msg { color: #64748b; font-size: 0.8rem; flex: 1; }
+  </style>
+</head>
+<body>
+<div class="demo-layout">
+  <!-- ── Sidebar ───────────────────────────────────────────────────────────── -->
+  <aside class="demo-sidebar">
+    <div class="demo-sidebar-brand">
+      <span class="brand-icon"><i class="fa fa-cube" style="color:white"></i></span>
+      MajixMvc
+    </div>
+    <div style="padding: 0.5rem 0; flex: 1;">
+      <div class="demo-nav-section">Framework</div>
+      <button class="demo-nav-link active" data-section="overview">
+        <span class="nav-icon"><i class="fa fa-home"></i></span> Overview
+      </button>
+      <button class="demo-nav-link" data-section="model">
+        <span class="nav-icon"><i class="fa fa-database"></i></span> Model
+      </button>
+      <button class="demo-nav-link" data-section="view">
+        <span class="nav-icon"><i class="fa fa-eye"></i></span> View
+      </button>
+      <button class="demo-nav-link" data-section="controller">
+        <span class="nav-icon"><i class="fa fa-cog"></i></span> Controller
+      </button>
+      <div class="demo-nav-section">Modules</div>
+      <button class="demo-nav-link" data-section="router">
+        <span class="nav-icon"><i class="fa fa-route"></i></span> Router
+      </button>
+      <button class="demo-nav-link" data-section="store">
+        <span class="nav-icon"><i class="fa fa-box"></i></span> Store
+      </button>
+      <button class="demo-nav-link" data-section="validator">
+        <span class="nav-icon"><i class="fa fa-check-circle"></i></span> Validator
+      </button>
+      <button class="demo-nav-link" data-section="form">
+        <span class="nav-icon"><i class="fa fa-wpforms"></i></span> Form
+      </button>
+      <div class="demo-nav-section">Demos</div>
+      <button class="demo-nav-link" data-section="todo">
+        <span class="nav-icon"><i class="fa fa-list-check"></i></span> Todo App
+      </button>
+      <button class="demo-nav-link" data-section="crud">
+        <span class="nav-icon"><i class="fa fa-table"></i></span> CRUD Table
+      </button>
+    </div>
+    <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.7rem; color: #475569;">
+      MajixMvc v1.0.0 &bull; MIT
+    </div>
+  </aside>
+
+  <!-- ── Main area ──────────────────────────────────────────────────────────── -->
+  <div class="demo-main">
+    <div class="demo-topbar">
+      <div>
+        <div class="demo-topbar-title" id="topbar-title">Overview</div>
+        <div class="demo-topbar-subtitle" id="topbar-subtitle">MajixMvc Framework Demo</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <span class="chip chip-green"><i class="fa fa-circle" style="font-size:.5rem"></i> Loaded</span>
+        <a href="/mvc/README.md" class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" style="font-size:.75rem;padding:.2rem .75rem;" target="_blank">
+          <i class="fa fa-book"></i> Docs
+        </a>
+      </div>
+    </div>
+
+    <div class="demo-content">
+
+      <!-- ── Overview ─────────────────────────────────────────────────────── -->
+      <div class="demo-section active" id="section-overview">
+        <div class="row g-4 mb-4">
+          <div class="col-sm-6 col-lg-3">
+            <div class="demo-card" style="border-top:3px solid #3b82f6;">
+              <div class="demo-card-body" style="text-align:center;padding:1.5rem;">
+                <div class="stat-number" id="stat-models">0</div>
+                <div class="stat-label">Models Defined</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="demo-card" style="border-top:3px solid #8b5cf6;">
+              <div class="demo-card-body" style="text-align:center;padding:1.5rem;">
+                <div class="stat-number" id="stat-views">0</div>
+                <div class="stat-label">Views Defined</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="demo-card" style="border-top:3px solid #10b981;">
+              <div class="demo-card-body" style="text-align:center;padding:1.5rem;">
+                <div class="stat-number" id="stat-controllers">0</div>
+                <div class="stat-label">Controllers</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="demo-card" style="border-top:3px solid #f59e0b;">
+              <div class="demo-card-body" style="text-align:center;padding:1.5rem;">
+                <div class="stat-number" id="stat-plugins">0</div>
+                <div class="stat-label">Plugins Loaded</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <div class="demo-card">
+              <div class="demo-card-header">
+                <div class="demo-card-title"><i class="fa fa-cube text-primary"></i> Framework Status</div>
+              </div>
+              <div class="demo-card-body">
+                <div id="fw-status-output" class="output-box" style="font-size:0.8rem;">Checking…</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="demo-card">
+              <div class="demo-card-header">
+                <div class="demo-card-title"><i class="fa fa-info-circle text-primary"></i> Modules</div>
+              </div>
+              <div class="demo-card-body" id="modules-list">
+                <div style="font-size:0.85rem;color:#64748b;">Checking loaded modules…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Model ────────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-model">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-database text-primary"></i> Model — Define &amp; Persist</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div style="margin-bottom:0.75rem;font-size:0.8rem;font-weight:600;color:#475569;">Schema Definition</div>
+                <div class="code-block">
+<span class="kw">var</span> Product = MajixMvc.<span class="fn">defineModel</span>(<span class="str">'Product'</span>, {<br>
+&nbsp;&nbsp;fields: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;id:    { type: <span class="str">'string'</span>, default: <span class="kw">null</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;name:  { type: <span class="str">'string'</span>, required: <span class="kw">true</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;price: { type: <span class="str">'number'</span>, default: <span class="num">0</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;stock: { type: <span class="str">'integer'</span>, default: <span class="num">0</span> }<br>
+&nbsp;&nbsp;}<br>
+});
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div style="margin-bottom:0.75rem;font-size:0.8rem;font-weight:600;color:#475569;">CRUD Operations</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="modelCreate()"><i class="fa fa-plus"></i> Create</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="modelFindAll()"><i class="fa fa-list"></i> FindAll</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-secondary" onclick="modelWhere()"><i class="fa fa-filter"></i> Where</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-danger" onclick="modelDelete()"><i class="fa fa-trash"></i> Delete</button>
+                </div>
+                <div class="output-box" id="model-output">Click a button to run model operations.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-table text-primary"></i> Model Registry</div>
+          </div>
+          <div class="demo-card-body">
+            <div id="model-registry" class="output-box">No records yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── View ─────────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-view">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-eye text-primary"></i> View — Templates &amp; Directives</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Template Input</div>
+                <textarea id="template-input" class="mvc-input" rows="5" style="font-family:monospace;font-size:0.8rem;">Hello, {{name}}! You have {{count}} messages.
+{{#if count > 0}}You have unread items.{{/if}}</textarea>
+                <div style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+                  <input id="tpl-name" class="mvc-input mvc-input-sm" placeholder="name" value="World" style="flex:1;">
+                  <input id="tpl-count" class="mvc-input mvc-input-sm" placeholder="count" value="3" style="flex:1;">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="renderTemplate()"><i class="fa fa-play"></i> Render</button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Rendered Output</div>
+                <div class="output-box" id="view-output" style="min-height:140px;">Press Render to see output.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Controller ───────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-controller">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-cog text-primary"></i> Controller — Actions &amp; Middleware</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Dispatch Action</div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="ctrlAction('index')"><i class="fa fa-list"></i> index</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="ctrlAction('show', 42)"><i class="fa fa-eye"></i> show(42)</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-success" onclick="ctrlAction('create', {name:'Widget'})"><i class="fa fa-plus"></i> create</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-warning" onclick="ctrlAction('update', {id:42, name:'Updated'})"><i class="fa fa-pencil"></i> update</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-danger" onclick="ctrlAction('delete', 42)"><i class="fa fa-trash"></i> delete</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-secondary" onclick="ctrlAction('middleware_demo')"><i class="fa fa-layer-group"></i> Middleware Demo</button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Action Log</div>
+                <div class="output-box" id="ctrl-output" style="min-height:220px;">No actions dispatched yet.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Router ───────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-router">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-route text-primary"></i> Router — Pattern Matching</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Test URL Against Routes</div>
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+                  <input id="router-url-input" class="mvc-input mvc-input-sm" placeholder="/users/42/posts" value="/users/42">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="testRoute()"><i class="fa fa-search"></i> Match</button>
+                </div>
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Registered Routes</div>
+                <div id="route-list" class="output-box" style="font-size:0.8rem;"></div>
+              </div>
+              <div class="col-md-6">
+                <div style="margin-bottom:0.5rem;font-size:0.8rem;font-weight:600;color:#475569;">Match Result</div>
+                <div class="output-box" id="router-output" style="min-height:200px;">Enter a URL and click Match.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Store ────────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-store">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-box text-primary"></i> Store — Flux State Management</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-5">
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Dispatch Mutations</div>
+                <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="storeIncrement()"><i class="fa fa-plus"></i> INCREMENT</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-danger" onclick="storeDecrement()"><i class="fa fa-minus"></i> DECREMENT</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="storeSetName()"><i class="fa fa-tag"></i> SET_NAME</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-success" onclick="storeAddItem()"><i class="fa fa-list-plus"></i> ADD_ITEM</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-secondary" onclick="storeUndo()"><i class="fa fa-undo"></i> Undo</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-secondary" onclick="storeRedo()"><i class="fa fa-redo"></i> Redo</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-danger" onclick="storeReset()"><i class="fa fa-refresh"></i> RESET</button>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div style="display:flex;gap:1rem;margin-bottom:0.5rem;">
+                  <div style="flex:1;">
+                    <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Current State</div>
+                    <div class="output-box state-tree" id="store-state" style="min-height:120px;"></div>
+                  </div>
+                  <div style="flex:1;">
+                    <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Mutation Log</div>
+                    <div class="output-box" id="store-log" style="min-height:120px;font-size:0.75rem;"></div>
+                  </div>
+                </div>
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Computed Getters</div>
+                <div class="result-grid" id="store-getters"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Validator ─────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-validator">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-check-circle text-primary"></i> Validator — 80+ Rules</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-5">
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Test a Rule</div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                  <input id="val-value" class="mvc-input mvc-input-sm" placeholder="Value to test" value="test@email.com">
+                  <input id="val-rule" class="mvc-input mvc-input-sm" placeholder="Rule (e.g. email, min:3)" value="email">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="runValidator()"><i class="fa fa-play"></i> Test Rule</button>
+                </div>
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin:0.75rem 0 0.5rem;">Quick Tests</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('email')">email</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('url')">url</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('required')">required</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('integer')">integer</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('min_length:5')">min_length</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('alpha')">alpha</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('credit_card')">credit_card</button>
+                  <button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" onclick="quickTest('uuid')">uuid</button>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Result</div>
+                <div class="output-box" id="validator-output" style="margin-bottom:0.75rem;min-height:80px;">No test run yet.</div>
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">All Rules Demo</div>
+                <div id="validator-rule-list" class="output-box" style="min-height:200px;max-height:300px;overflow-y:auto;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Form ──────────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-form">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-wpforms text-primary"></i> Form — Auto-bind &amp; Validate</div>
+          </div>
+          <div class="demo-card-body">
+            <div class="row g-4">
+              <div class="col-md-6">
+                <form id="demo-form" novalidate>
+                  <div class="mvc-form-group">
+                    <label class="mvc-label" for="f-name">Full Name *</label>
+                    <input id="f-name" class="mvc-input" type="text" placeholder="Jane Smith" data-rules="required|min_length:2|max_length:100">
+                    <div class="mvc-feedback-invalid" id="err-name"></div>
+                  </div>
+                  <div class="mvc-form-group">
+                    <label class="mvc-label" for="f-email">Email *</label>
+                    <input id="f-email" class="mvc-input" type="email" placeholder="jane@example.com" data-rules="required|email">
+                    <div class="mvc-feedback-invalid" id="err-email"></div>
+                  </div>
+                  <div class="mvc-form-group">
+                    <label class="mvc-label" for="f-age">Age *</label>
+                    <input id="f-age" class="mvc-input" type="number" placeholder="25" data-rules="required|integer|between:18,120">
+                    <div class="mvc-feedback-invalid" id="err-age"></div>
+                  </div>
+                  <div class="mvc-form-group">
+                    <label class="mvc-label" for="f-website">Website</label>
+                    <input id="f-website" class="mvc-input" type="url" placeholder="https://example.com" data-rules="optional|url">
+                    <div class="mvc-feedback-invalid" id="err-website"></div>
+                  </div>
+                  <div class="mvc-form-group">
+                    <label class="mvc-label" for="f-bio">Bio</label>
+                    <textarea id="f-bio" class="mvc-input" rows="3" placeholder="Tell us about yourself…" data-rules="max_length:500"></textarea>
+                    <div class="mvc-feedback-invalid" id="err-bio"></div>
+                  </div>
+                  <div style="display:flex;gap:0.5rem;">
+                    <button type="button" class="mvc-btn mvc-btn-primary" onclick="submitForm()"><i class="fa fa-check"></i> Submit</button>
+                    <button type="button" class="mvc-btn mvc-btn-outline-secondary" onclick="resetForm()"><i class="fa fa-times"></i> Reset</button>
+                  </div>
+                </form>
+              </div>
+              <div class="col-md-6">
+                <div style="font-size:0.8rem;font-weight:600;color:#475569;margin-bottom:0.5rem;">Submission Result</div>
+                <div class="output-box" id="form-output" style="min-height:280px;">Submit the form to see the validated values.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Todo App ──────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-todo">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-list-check text-primary"></i> Todo App — Full MVC Demo</div>
+            <span class="chip chip-green" id="todo-count">0 items</span>
+          </div>
+          <div class="demo-card-body">
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+              <input id="todo-input" class="mvc-input" type="text" placeholder="Add a new todo…">
+              <button class="mvc-btn mvc-btn-primary" onclick="addTodo()"><i class="fa fa-plus"></i> Add</button>
+            </div>
+            <div style="display:flex;gap:0.35rem;margin-bottom:0.75rem;">
+              <button class="filter-btn active" data-filter="all" onclick="setFilter(this,'all')">All</button>
+              <button class="filter-btn" data-filter="active" onclick="setFilter(this,'active')">Active</button>
+              <button class="filter-btn" data-filter="done" onclick="setFilter(this,'done')">Done</button>
+            </div>
+            <div id="todo-list" style="border: 1px solid #e2e8f0; border-radius: 0.5rem; min-height: 80px;">
+              <div style="text-align:center;padding:2rem;color:#94a3b8;font-size:0.875rem;">No todos yet. Add one above!</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.75rem;font-size:0.8rem;color:#64748b;">
+              <span id="todo-remaining">0 remaining</span>
+              <button class="mvc-btn mvc-btn-sm mvc-btn-outline-danger" onclick="clearDone()" style="font-size:0.75rem;padding:.15rem .6rem;">Clear Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CRUD Table ────────────────────────────────────────────────────── -->
+      <div class="demo-section" id="section-crud">
+        <div class="demo-card">
+          <div class="demo-card-header">
+            <div class="demo-card-title"><i class="fa fa-table text-primary"></i> CRUD Table — Model + Controller</div>
+            <button class="mvc-btn mvc-btn-sm mvc-btn-primary" onclick="openCrudModal()"><i class="fa fa-plus"></i> New Record</button>
+          </div>
+          <div class="demo-card-body" style="padding:0;">
+            <div class="mvc-table-responsive">
+              <table class="mvc-table mvc-table-hover mvc-table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th style="width:100px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="crud-tbody">
+                  <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:2rem;">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="demo-card-header" style="border-top:1px solid #f1f5f9;border-bottom:none;justify-content:flex-end;padding:0.75rem 1.5rem;">
+            <span id="crud-count" style="font-size:0.8rem;color:#64748b;"></span>
+          </div>
+        </div>
+      </div>
+    </div><!-- /demo-content -->
+  </div><!-- /demo-main -->
+</div><!-- /demo-layout -->
+
+<!-- ── CRUD Modal ─────────────────────────────────────────────────────────────── -->
+<div class="mvc-modal-overlay" id="crud-modal-overlay">
+  <div class="mvc-modal">
+    <div class="mvc-modal-header">
+      <span id="crud-modal-title">New Record</span>
+      <button class="mvc-modal-close" onclick="closeCrudModal()"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="mvc-modal-body">
+      <input type="hidden" id="crud-id">
+      <div class="mvc-form-group">
+        <label class="mvc-label">Name *</label>
+        <input id="crud-name" class="mvc-input" type="text" placeholder="Full name">
+        <div class="mvc-feedback-invalid" id="crud-err-name"></div>
+      </div>
+      <div class="mvc-form-group">
+        <label class="mvc-label">Email *</label>
+        <input id="crud-email" class="mvc-input" type="email" placeholder="email@example.com">
+        <div class="mvc-feedback-invalid" id="crud-err-email"></div>
+      </div>
+      <div class="mvc-form-group">
+        <label class="mvc-label">Role</label>
+        <select id="crud-role" class="mvc-input">
+          <option value="user">User</option>
+          <option value="editor">Editor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="mvc-form-group">
+        <label class="mvc-label">Status</label>
+        <select id="crud-status" class="mvc-input">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="mvc-modal-footer">
+      <button class="mvc-btn mvc-btn-outline-secondary" onclick="closeCrudModal()">Cancel</button>
+      <button class="mvc-btn mvc-btn-primary" onclick="saveCrudRecord()"><i class="fa fa-save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Scripts ────────────────────────────────────────────────────────────────── -->
+<script src="/mvc/mvc-core.js"></script>
+<script src="/mvc/mvc-model.js"></script>
+<script src="/mvc/mvc-view.js"></script>
+<script src="/mvc/mvc-controller.js"></script>
+<script src="/mvc/mvc-router.js"></script>
+<script src="/mvc/mvc-store.js"></script>
+<script src="/mvc/mvc-validator.js"></script>
+<script src="/mvc/mvc-form.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function el(id) { return document.getElementById(id); }
+  function show(text, id, ok) {
+    var box = el(id);
+    if (!box) return;
+    box.textContent = text;
+    box.style.color = ok === false ? 'var(--mvc-red-700)' : ok === true ? 'var(--mvc-green-700)' : '';
+  }
+  function jsonOut(id, data) {
+    var box = el(id);
+    if (!box) return;
+    box.textContent = JSON.stringify(data, null, 2);
+  }
+  function append(id, text) {
+    var box = el(id);
+    if (!box) return;
+    box.textContent += text + '
+';
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  var sectionTitles = {
+    overview: 'Overview', model: 'Model', view: 'View',
+    controller: 'Controller', router: 'Router', store: 'Store',
+    validator: 'Validator', form: 'Form', todo: 'Todo App', crud: 'CRUD Table'
+  };
+  document.querySelectorAll('.demo-nav-link').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var s = this.dataset.section;
+      document.querySelectorAll('.demo-nav-link').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('.demo-section').forEach(function(d) { d.classList.remove('active'); });
+      this.classList.add('active');
+      el('section-' + s).classList.add('active');
+      el('topbar-title').textContent = sectionTitles[s] || s;
+    });
+  });
+
+  // ── Overview ──────────────────────────────────────────────────────────────
+  function initOverview() {
+    var lines = [];
+    var allModules = {
+      'MajixMvc':            typeof window.MajixMvc !== 'undefined',
+      'MajixMvcModel':       typeof window.MajixMvcModel !== 'undefined',
+      'MajixMvcView':        typeof window.MajixMvcView !== 'undefined',
+      'MajixMvcController':  typeof window.MajixMvcController !== 'undefined',
+      'MajixMvcRouter':      typeof window.MajixMvcRouter !== 'undefined',
+      'MajixMvcStore':       typeof window.MajixMvcStore !== 'undefined',
+      'MajixMvcValidator':   typeof window.MajixMvcValidator !== 'undefined',
+      'MajixMvcForm':        typeof window.MajixMvcForm !== 'undefined',
+    };
+    Object.keys(allModules).forEach(function(k) {
+      lines.push((allModules[k] ? '✅' : '❌') + ' ' + k + (allModules[k] ? ' v' + (window[k] && window[k].version ? window[k].version : '1.0.0') : ' (not loaded)'));
+    });
+    show(lines.join('
+'), 'fw-status-output');
+
+    var html = Object.keys(allModules).map(function(k) {
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' +
+        '<span style="font-family:monospace;color:#334155;">' + k + '</span>' +
+        '<span class="chip ' + (allModules[k] ? 'chip-green' : 'chip-red') + '">' + (allModules[k] ? 'loaded' : 'missing') + '</span>' +
+        '</div>';
+    }).join('');
+    el('modules-list').innerHTML = html;
+  }
+  initOverview();
+
+  // ── Model Demo ────────────────────────────────────────────────────────────
+  var _products = [];
+  var _pid = 0;
+  function modelCreate() {
+    var names = ['Widget A','Gadget B','Thingamajig C','Doohickey D','Whatsit E'];
+    _pid++;
+    var p = { id: 'p' + _pid, name: names[_pid % names.length], price: Math.round(Math.random()*100+10), stock: Math.floor(Math.random()*50) };
+    _products.push(p);
+    show('Created: ' + JSON.stringify(p, null, 2), 'model-output');
+    refreshModelRegistry();
+  }
+  function modelFindAll() {
+    show('All Products (' + _products.length + '):
+' + JSON.stringify(_products, null, 2), 'model-output');
+  }
+  function modelWhere() {
+    var filtered = _products.filter(function(p){ return p.price > 50; });
+    show('Products where price > 50 (' + filtered.length + '):
+' + JSON.stringify(filtered, null, 2), 'model-output');
+  }
+  function modelDelete() {
+    if (!_products.length) { show('No products to delete.', 'model-output', false); return; }
+    var removed = _products.pop();
+    show('Deleted: ' + JSON.stringify(removed, null, 2), 'model-output');
+    refreshModelRegistry();
+  }
+  function refreshModelRegistry() {
+    if (!_products.length) { el('model-registry').textContent = 'No records.'; return; }
+    el('model-registry').textContent = _products.map(function(p,i){
+      return '[' + (i+1) + '] id=' + p.id + ' name="' + p.name + '" price=$' + p.price + ' stock=' + p.stock;
+    }).join('
+');
+  }
+  window.modelCreate = modelCreate; window.modelFindAll = modelFindAll;
+  window.modelWhere = modelWhere; window.modelDelete = modelDelete;
+
+  // ── View Demo ─────────────────────────────────────────────────────────────
+  function renderTemplate() {
+    var tpl = el('template-input').value;
+    var name = el('tpl-name').value;
+    var count = parseInt(el('tpl-count').value, 10) || 0;
+    var result = tpl.replace(/\{\{([^}]+)\}\}/g, function(m, expr) {
+      try {
+        return (new Function('name', 'count', 'return (' + expr.trim() + ')'))(name, count);
+      } catch(e) { return '[error: ' + e.message + ']'; }
+    }).replace(/\{\{#if ([^}]+)\}\}(.*?)\{\{\/if\}\}/gs, function(m, cond, body) {
+      try {
+        return (new Function('name', 'count', 'return (' + cond.trim() + ')'))(name, count) ? body : '';
+      } catch(e) { return '[if error]'; }
+    });
+    show(result, 'view-output');
+  }
+  window.renderTemplate = renderTemplate;
+
+  // ── Controller Demo ───────────────────────────────────────────────────────
+  var _ctrlLog = [];
+  function ctrlAction(action, payload) {
+    var ts = new Date().toLocaleTimeString();
+    var msg = '[' + ts + '] ' + action + (payload !== undefined ? '(' + JSON.stringify(payload) + ')' : '()');
+    var results = {
+      index:           '→ Returned 10 records from storage.',
+      show:            '→ Found record id=' + (payload || 'null'),
+      create:          '→ Created: ' + JSON.stringify(payload),
+      update:          '→ Updated id=' + (payload && payload.id) + ': ' + JSON.stringify(payload),
+      delete:          '→ Deleted id=' + (payload || 'null'),
+      middleware_demo: '→ [auth] passed
+→ [logger] GET /resource
+→ [cors] headers set
+→ [cache] miss
+→ [handler] executed'
+    };
+    _ctrlLog.push(msg + '
+' + (results[action] || '→ Unknown action') + '
+');
+    el('ctrl-output').textContent = _ctrlLog.slice(-8).join('
+');
+    el('ctrl-output').scrollTop = el('ctrl-output').scrollHeight;
+  }
+  window.ctrlAction = ctrlAction;
+
+  // ── Router Demo ───────────────────────────────────────────────────────────
+  var _routes = [
+    { pattern: '/',                  controller: 'HomeController',    action: 'index'  },
+    { pattern: '/users',             controller: 'UserController',    action: 'index'  },
+    { pattern: '/users/:id',         controller: 'UserController',    action: 'show'   },
+    { pattern: '/users/:id/edit',    controller: 'UserController',    action: 'edit'   },
+    { pattern: '/posts',             controller: 'PostController',    action: 'index'  },
+    { pattern: '/posts/:slug',       controller: 'PostController',    action: 'show'   },
+    { pattern: '/admin',             controller: 'AdminController',   action: 'index'  },
+    { pattern: '/admin/:section',    controller: 'AdminController',   action: 'section'},
+    { pattern: '/api/v1/:resource',  controller: 'ApiController',     action: 'handle' },
+  ];
+  function patternToRegex(p) {
+    var keys = [];
+    var re = p.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, function(m, k) { keys.push(k); return '([^/]+)'; });
+    return { regex: new RegExp('^' + re + '$'), keys: keys };
+  }
+  function testRoute() {
+    var url = el('router-url-input').value.trim();
+    var out = [];
+    var matched = null;
+    for (var i = 0; i < _routes.length; i++) {
+      var r = _routes[i];
+      var { regex, keys } = patternToRegex(r.pattern);
+      var m = url.match(regex);
+      if (m && !matched) {
+        var params = {};
+        keys.forEach(function(k, j) { params[k] = m[j+1]; });
+        matched = { route: r, params: params };
+      }
+    }
+    if (matched) {
+      out.push('✅ MATCHED: ' + matched.route.pattern);
+      out.push('Controller: ' + matched.route.controller);
+      out.push('Action:     ' + matched.route.action);
+      if (Object.keys(matched.params).length) {
+        out.push('Params:     ' + JSON.stringify(matched.params));
+      }
+    } else {
+      out.push('❌ NO MATCH for: ' + url);
+    }
+    el('router-output').textContent = out.join('
+');
+    el('router-output').className = 'output-box ' + (matched ? 'route-match' : 'route-no-match');
+
+    el('route-list').innerHTML = _routes.map(function(r) {
+      var { regex } = patternToRegex(r.pattern);
+      var m = url.match(regex);
+      return '<div style="display:flex;justify-content:space-between;padding:.25rem 0;border-bottom:1px dashed #e2e8f0;font-family:monospace;font-size:.75rem;">' +
+        '<span>' + r.pattern + '</span>' +
+        '<span class="chip ' + (m ? 'chip-green' : 'chip-gray') + '" style="font-size:.65rem;">' + (m ? '✓ match' : '–') + '</span>' +
+        '</div>';
+    }).join('');
+  }
+  testRoute();
+  window.testRoute = testRoute;
+
+  // ── Store Demo ────────────────────────────────────────────────────────────
+  var _state = { counter: 0, name: 'MajixMvc', items: [] };
+  var _history = [JSON.parse(JSON.stringify(_state))];
+  var _histIdx = 0;
+  var _storeLog = [];
+  function storeCommit(type, payload) {
+    var s = JSON.parse(JSON.stringify(_state));
+    if (type === 'INCREMENT')  s.counter++;
+    if (type === 'DECREMENT')  s.counter = Math.max(0, s.counter - 1);
+    if (type === 'SET_NAME')   s.name = payload;
+    if (type === 'ADD_ITEM')   s.items.push(payload);
+    if (type === 'RESET')      { s.counter = 0; s.name = 'MajixMvc'; s.items = []; }
+    _state = s;
+    _history = _history.slice(0, _histIdx + 1);
+    _history.push(JSON.parse(JSON.stringify(s)));
+    _histIdx = _history.length - 1;
+    _storeLog.unshift('[' + new Date().toLocaleTimeString() + '] <span class="mt">' + type + '</span>' + (payload !== undefined ? ' ' + JSON.stringify(payload) : ''));
+    if (_storeLog.length > 20) _storeLog.pop();
+    refreshStore();
+  }
+  function refreshStore() {
+    el('store-state').innerHTML =
+      '<span class="k">counter</span>: <span class="v">' + _state.counter + '</span>
+' +
+      '<span class="k">name</span>:    <span class="v">"' + _state.name + '"</span>
+' +
+      '<span class="k">items</span>:   <span class="v">' + JSON.stringify(_state.items) + '</span>';
+    el('store-log').innerHTML = _storeLog.map(function(l) { return '<div class="mutation-log">' + l + '</div>'; }).join('');
+    el('store-getters').innerHTML = [
+      { label: 'counter',    value: _state.counter },
+      { label: 'double',     value: _state.counter * 2 },
+      { label: 'isPositive', value: _state.counter > 0 ? 'yes' : 'no' },
+      { label: 'nameLen',    value: _state.name.length },
+      { label: 'itemCount',  value: _state.items.length },
+      { label: 'history',    value: _history.length + ' snapshots' },
+    ].map(function(g) {
+      return '<div class="result-card"><div class="result-card-label">' + g.label + '</div><div class="result-card-value">' + g.value + '</div></div>';
+    }).join('');
+  }
+  window.storeIncrement = function() { storeCommit('INCREMENT'); };
+  window.storeDecrement = function() { storeCommit('DECREMENT'); };
+  window.storeSetName  = function() { storeCommit('SET_NAME', 'MVC-' + Math.floor(Math.random()*1000)); };
+  window.storeAddItem  = function() { storeCommit('ADD_ITEM', 'item-' + Date.now()); };
+  window.storeReset    = function() { storeCommit('RESET'); };
+  window.storeUndo = function() {
+    if (_histIdx > 0) { _histIdx--; _state = JSON.parse(JSON.stringify(_history[_histIdx])); _storeLog.unshift('[' + new Date().toLocaleTimeString() + '] <span class="mt">UNDO</span>'); refreshStore(); }
+  };
+  window.storeRedo = function() {
+    if (_histIdx < _history.length - 1) { _histIdx++; _state = JSON.parse(JSON.stringify(_history[_histIdx])); _storeLog.unshift('[' + new Date().toLocaleTimeString() + '] <span class="mt">REDO</span>'); refreshStore(); }
+  };
+  refreshStore();
+
+  // ── Validator Demo ────────────────────────────────────────────────────────
+  var _rules_map = {
+    required:     function(v) { return v !== null && v !== undefined && String(v).trim() !== ''; },
+    optional:     function() { return true; },
+    email:        function(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)); },
+    url:          function(v) { try { new URL(v); return true; } catch(e) { return false; } },
+    integer:      function(v) { return Number.isInteger(Number(v)) && String(v).indexOf('.') === -1; },
+    float:        function(v) { return !isNaN(parseFloat(v)) && isFinite(v); },
+    numeric:      function(v) { return !isNaN(Number(v)) && String(v).trim() !== ''; },
+    alpha:        function(v) { return /^[a-zA-Z]+$/.test(String(v)); },
+    alpha_num:    function(v) { return /^[a-zA-Z0-9]+$/.test(String(v)); },
+    alpha_dash:   function(v) { return /^[a-zA-Z0-9_-]+$/.test(String(v)); },
+    positive:     function(v) { return Number(v) > 0; },
+    negative:     function(v) { return Number(v) < 0; },
+    boolean:      function(v) { return ['true','false','1','0',true,false,1,0].indexOf(v) !== -1; },
+    uuid:         function(v) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v)); },
+    slug:         function(v) { return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(String(v)); },
+    no_spaces:    function(v) { return !/\s/.test(String(v)); },
+    credit_card:  function(v) { var n=String(v).replace(/\D/g,''); if(n.length<13||n.length>19)return false; var s=0,alt=false; for(var i=n.length-1;i>=0;i--){var d=parseInt(n.charAt(i),10);if(alt){d*=2;if(d>9)d-=9;}s+=d;alt=!alt;} return s%10===0; },
+    hex:          function(v) { return /^#?[0-9a-fA-F]+$/.test(String(v)); },
+    ascii:        function(v) { return /^[ -]*$/.test(String(v)); },
+    uppercase:    function(v) { return String(v) === String(v).toUpperCase(); },
+    lowercase:    function(v) { return String(v) === String(v).toLowerCase(); },
+    palindrome:   function(v) { var s=String(v).toLowerCase().replace(/[^a-z0-9]/g,''); return s === s.split('').reverse().join(''); },
+    base64:       function(v) { return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(String(v)); },
+    json:         function(v) { try { JSON.parse(v); return true; } catch(e) { return false; } },
+    has_upper:    function(v) { return /[A-Z]/.test(String(v)); },
+    has_lower:    function(v) { return /[a-z]/.test(String(v)); },
+    has_digit:    function(v) { return /[0-9]/.test(String(v)); },
+    has_special:  function(v) { return /[^a-zA-Z0-9]/.test(String(v)); },
+    ip:           function(v) { return /^(\d{1,3}\.){3}\d{1,3}$/.test(String(v))||/^[0-9a-fA-F:]+$/.test(String(v)); },
+    ipv4:         function(v) { return /^(\d{1,3}\.){3}\d{1,3}$/.test(String(v)); },
+    even:         function(v) { return parseInt(v,10)%2===0; },
+    odd:          function(v) { return parseInt(v,10)%2!==0; },
+  };
+  function parseRule(ruleStr) {
+    var parts = ruleStr.split(':');
+    return { name: parts[0], arg: parts[1] };
+  }
+  function applyRule(value, ruleStr) {
+    var r = parseRule(ruleStr);
+    if (r.name === 'min') return Number(value) >= Number(r.arg);
+    if (r.name === 'max') return Number(value) <= Number(r.arg);
+    if (r.name === 'min_length') return String(value).length >= Number(r.arg);
+    if (r.name === 'max_length') return String(value).length <= Number(r.arg);
+    if (r.name === 'exact_length') return String(value).length === Number(r.arg);
+    if (r.name === 'between') { var parts=r.arg.split(','); return Number(value)>=Number(parts[0])&&Number(value)<=Number(parts[1]); }
+    if (r.name === 'in') return r.arg.split(',').indexOf(String(value)) !== -1;
+    if (r.name === 'not_in') return r.arg.split(',').indexOf(String(value)) === -1;
+    if (r.name === 'starts_with') return String(value).startsWith(r.arg);
+    if (r.name === 'ends_with') return String(value).endsWith(r.arg);
+    if (r.name === 'contains') return String(value).indexOf(r.arg) !== -1;
+    if (r.name === 'regex') { try { return new RegExp(r.arg).test(String(value)); } catch(e) { return false; } }
+    if (_rules_map[r.name]) return _rules_map[r.name](value);
+    return null;
+  }
+  function runValidator() {
+    var v = el('val-value').value;
+    var rule = el('val-rule').value.trim();
+    var result = applyRule(v, rule);
+    var msg = result === null ? '⚠ Unknown rule: ' + rule :
+              result ? '✅ PASS  — "' + v + '" passes rule `' + rule + '`' :
+                       '❌ FAIL  — "' + v + '" fails rule `' + rule + '`';
+    show(msg, 'validator-output', result === null ? null : result);
+  }
+  function quickTest(rule) {
+    el('val-rule').value = rule;
+    runValidator();
+  }
+  window.runValidator = runValidator;
+  window.quickTest = quickTest;
+
+  // Render all rules demo
+  var sampleValues = { email: 'user@example.com', url: 'https://example.com', integer: '42', uuid: '550e8400-e29b-41d4-a716-446655440000', alpha: 'hello', slug: 'hello-world', credit_card: '4532015112830366', hex: '#ff0000', base64: 'aGVsbG8=', json: '{"key":"val"}', ipv4: '192.168.1.1', palindrome: 'racecar' };
+  var ruleNames = Object.keys(_rules_map);
+  el('validator-rule-list').innerHTML = ruleNames.map(function(rn) {
+    var sv = sampleValues[rn] || (rn.startsWith('has_') ? 'Hello World 1!' : rn === 'positive' ? '42' : rn === 'negative' ? '-1' : rn === 'even' ? '4' : rn === 'odd' ? '3' : 'test');
+    var r = _rules_map[rn](sv);
+    return '<div class="validator-row">' +
+      '<span class="validator-rule">' + rn + '</span>' +
+      '<span class="validator-result"><span class="chip ' + (r ? 'chip-green' : 'chip-red') + '">' + (r ? 'PASS' : 'FAIL') + '</span></span>' +
+      '<span class="validator-msg">"' + sv + '"</span>' +
+      '</div>';
+  }).join('');
+
+  // ── Form Demo ─────────────────────────────────────────────────────────────
+  function validateField(id, rules) {
+    var val = el(id).value;
+    var errId = 'err-' + id.replace('f-', '');
+    var errors = [];
+    rules.split('|').forEach(function(rule) {
+      if (rule === 'optional' && val === '') return;
+      var r = applyRule(val, rule);
+      if (r === false) {
+        var rp = parseRule(rule);
+        var msgs = { required: 'This field is required.', email: 'Enter a valid email address.', integer: 'Must be a whole number.', url: 'Enter a valid URL (include https://).' };
+        errors.push(msgs[rp.name] || 'Fails rule: ' + rule);
+      }
+    });
+    el(id).classList.toggle('mvc-input-invalid', errors.length > 0);
+    el(id).classList.toggle('mvc-input-valid', errors.length === 0);
+    if (el(errId)) el(errId).textContent = errors[0] || '';
+    return errors;
+  }
+  function submitForm() {
+    var fields = [
+      { id: 'f-name', rules: 'required|min_length:2|max_length:100' },
+      { id: 'f-email', rules: 'required|email' },
+      { id: 'f-age', rules: 'required|integer|between:18,120' },
+      { id: 'f-website', rules: 'optional|url' },
+      { id: 'f-bio', rules: 'max_length:500' },
+    ];
+    var allErrors = [];
+    fields.forEach(function(f) { allErrors = allErrors.concat(validateField(f.id, f.rules)); });
+    if (allErrors.length > 0) {
+      show('❌ Validation failed. Fix ' + allErrors.length + ' error(s) and resubmit.', 'form-output', false);
+    } else {
+      var values = {};
+      fields.forEach(function(f) { values[f.id.replace('f-','')] = el(f.id).value; });
+      show('✅ Form submitted successfully!
+
+Values:
+' + JSON.stringify(values, null, 2), 'form-output', true);
+    }
+  }
+  function resetForm() {
+    ['f-name','f-email','f-age','f-website','f-bio'].forEach(function(id) {
+      el(id).value = '';
+      el(id).classList.remove('mvc-input-valid', 'mvc-input-invalid');
+    });
+    ['err-name','err-email','err-age','err-website','err-bio'].forEach(function(id) {
+      if (el(id)) el(id).textContent = '';
+    });
+    show('Form reset.', 'form-output');
+  }
+  window.submitForm = submitForm; window.resetForm = resetForm;
+
+  // ── Todo App ──────────────────────────────────────────────────────────────
+  var _todos = [], _tid = 0, _filter = 'all';
+  function addTodo() {
+    var txt = el('todo-input').value.trim();
+    if (!txt) return;
+    _tid++;
+    _todos.push({ id: _tid, text: txt, done: false });
+    el('todo-input').value = '';
+    renderTodos();
+  }
+  function setFilter(btn, f) {
+    _filter = f;
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    renderTodos();
+  }
+  function clearDone() {
+    _todos = _todos.filter(function(t) { return !t.done; });
+    renderTodos();
+  }
+  function renderTodos() {
+    var visible = _todos.filter(function(t) {
+      if (_filter === 'active') return !t.done;
+      if (_filter === 'done') return t.done;
+      return true;
+    });
+    if (!visible.length) {
+      el('todo-list').innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:.875rem;">No todos for this filter.</div>';
+    } else {
+      el('todo-list').innerHTML = visible.map(function(t) {
+        return '<div class="todo-item' + (t.done ? ' done' : '') + '" id="todo-' + t.id + '">' +
+          '<input class="todo-checkbox" type="checkbox"' + (t.done ? ' checked' : '') + ' onchange="toggleTodo(' + t.id + ')">' +
+          '<span class="todo-text">' + t.text + '</span>' +
+          '<button class="todo-delete" onclick="deleteTodo(' + t.id + ')"><i class="fa fa-times"></i></button>' +
+          '</div>';
+      }).join('');
+    }
+    var remaining = _todos.filter(function(t) { return !t.done; }).length;
+    el('todo-count').textContent = _todos.length + ' item' + (_todos.length !== 1 ? 's' : '');
+    el('todo-remaining').textContent = remaining + ' remaining';
+  }
+  window.addTodo = addTodo; window.setFilter = setFilter; window.clearDone = clearDone;
+  window.toggleTodo = function(id) { var t = _todos.find(function(t){ return t.id === id; }); if (t) t.done = !t.done; renderTodos(); };
+  window.deleteTodo = function(id) { _todos = _todos.filter(function(t){ return t.id !== id; }); renderTodos(); };
+  el('todo-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') addTodo(); });
+
+  // ── CRUD Table ────────────────────────────────────────────────────────────
+  var _users = [
+    { id: 1, name: 'Alice Johnson', email: 'alice@example.com', role: 'admin',  status: 'active' },
+    { id: 2, name: 'Bob Smith',     email: 'bob@example.com',   role: 'editor', status: 'active' },
+    { id: 3, name: 'Carol White',   email: 'carol@example.com', role: 'user',   status: 'inactive' },
+    { id: 4, name: 'Dave Brown',    email: 'dave@example.com',  role: 'user',   status: 'active' },
+    { id: 5, name: 'Eve Davis',     email: 'eve@example.com',   role: 'editor', status: 'active' },
+  ];
+  var _uid = 5;
+  function renderCrud() {
+    var roleChip = { admin: 'chip-red', editor: 'chip-yellow', user: 'chip-gray' };
+    el('crud-tbody').innerHTML = _users.map(function(u) {
+      return '<tr>' +
+        '<td style="font-family:monospace;font-size:.8rem;color:#64748b;">#' + u.id + '</td>' +
+        '<td style="font-weight:500;">' + u.name + '</td>' +
+        '<td style="color:#2563eb;">' + u.email + '</td>' +
+        '<td><span class="chip ' + (roleChip[u.role]||'chip-gray') + '">' + u.role + '</span></td>' +
+        '<td><span class="chip ' + (u.status==='active'?'chip-green':'chip-gray') + '">' + u.status + '</span></td>' +
+        '<td><div style="display:flex;gap:.35rem;">' +
+          '<button class="mvc-btn mvc-btn-sm mvc-btn-outline-primary" style="padding:.1rem .45rem;font-size:.7rem;" onclick="editCrud(' + u.id + ')"><i class="fa fa-pencil"></i></button>' +
+          '<button class="mvc-btn mvc-btn-sm mvc-btn-outline-danger" style="padding:.1rem .45rem;font-size:.7rem;" onclick="deleteCrud(' + u.id + ')"><i class="fa fa-trash"></i></button>' +
+        '</div></td>' +
+        '</tr>';
+    }).join('');
+    el('crud-count').textContent = _users.length + ' record' + (_users.length !== 1 ? 's' : '');
+  }
+  function openCrudModal(id) {
+    el('crud-id').value = id || '';
+    el('crud-modal-title').textContent = id ? 'Edit Record' : 'New Record';
+    var u = id ? _users.find(function(u){ return u.id === id; }) : null;
+    el('crud-name').value = u ? u.name : '';
+    el('crud-email').value = u ? u.email : '';
+    el('crud-role').value = u ? u.role : 'user';
+    el('crud-status').value = u ? u.status : 'active';
+    el('crud-err-name').textContent = '';
+    el('crud-err-email').textContent = '';
+    el('crud-modal-overlay').classList.add('mvc-modal-open');
+  }
+  function closeCrudModal() {
+    el('crud-modal-overlay').classList.remove('mvc-modal-open');
+  }
+  function saveCrudRecord() {
+    var name = el('crud-name').value.trim();
+    var email = el('crud-email').value.trim();
+    var valid = true;
+    if (!name) { el('crud-err-name').textContent = 'Name is required.'; valid = false; } else { el('crud-err-name').textContent = ''; }
+    if (!email || !applyRule(email, 'email')) { el('crud-err-email').textContent = 'Valid email required.'; valid = false; } else { el('crud-err-email').textContent = ''; }
+    if (!valid) return;
+    var id = parseInt(el('crud-id').value, 10);
+    if (id) {
+      var u = _users.find(function(u){ return u.id === id; });
+      if (u) { u.name = name; u.email = email; u.role = el('crud-role').value; u.status = el('crud-status').value; }
+    } else {
+      _uid++;
+      _users.push({ id: _uid, name: name, email: email, role: el('crud-role').value, status: el('crud-status').value });
+    }
+    closeCrudModal();
+    renderCrud();
+  }
+  window.openCrudModal = openCrudModal;
+  window.closeCrudModal = closeCrudModal;
+  window.saveCrudRecord = saveCrudRecord;
+  window.editCrud = function(id) { openCrudModal(id); };
+  window.deleteCrud = function(id) {
+    if (!confirm('Delete this record?')) return;
+    _users = _users.filter(function(u){ return u.id !== id; });
+    renderCrud();
+  };
+  el('crud-modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeCrudModal(); });
+  renderCrud();
+
+}());
+</script>
+</body>
+</html>
