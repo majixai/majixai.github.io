@@ -22,8 +22,8 @@ class Autoscroller {
             this.currentIndex = 0;
         }
         const user = allUsers[this.currentIndex];
-        const nextIndex = (this.currentIndex + this.direction + allUsers.length) % allUsers.length;
-        this.currentIndex = nextIndex;
+        const nextIndex = (this.currentIndex + this.direction) % allUsers.length;
+        this.currentIndex = nextIndex < 0 ? nextIndex + allUsers.length : nextIndex;
         return user;
     }
 

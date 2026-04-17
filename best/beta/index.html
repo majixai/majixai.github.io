@@ -289,8 +289,7 @@
                 e.preventDefault();
                 _autoscroller.startOver();
             });
-            document.getElementById('autoscrollSpeed')?.addEventListener('input', (e) => {
-                e.preventDefault();
+            document.getElementById('autoscrollSpeed')?.addEventListener('input', () => {
                 _autoscroller.onSpeedChange();
             });
         }
