@@ -361,16 +361,16 @@
             counter.className = 'slide-counter';
             counter.style.display = 'none';
 
+            const overlayLabel = document.createElement('div');
+            overlayLabel.className = 'archive-overlay-label';
+            overlayLabel.textContent = username;
+
             carousel.appendChild(img);
             carousel.appendChild(progressBar);
             carousel.appendChild(counter);
-
-            const label = document.createElement('div');
-            label.className = 'archive-label';
-            label.textContent = username;
+            carousel.appendChild(overlayLabel);
 
             card.appendChild(carousel);
-            card.appendChild(label);
 
             // Lazy-load dat file when card enters viewport
             const observer = new IntersectionObserver((entries, obs) => {
