@@ -29,6 +29,7 @@ Usage:
 """
 
 import asyncio
+import atexit
 import json
 import time
 import sys
@@ -39,6 +40,7 @@ import threading
 import statistics
 import urllib.request
 import urllib.error
+import concurrent.futures
 from datetime import datetime, timezone
 from argparse import ArgumentParser
 
@@ -52,6 +54,17 @@ REQUEST_TIMEOUT  = 12
 MAX_RETRIES      = 3
 RETRY_BACKOFF    = 2.0
 HISTORY_MAX_SAMPLES = 288
+DEFAULT_PARALLEL_FACTOR = 10
+DEFAULT_HTTP_POOL_BASE_WORKERS = 8
+try:
+    PARALLEL_FACTOR = max(
+        1,
+        int(os.environ.get("BTC_REST_PARALLEL_FACTOR", DEFAULT_PARALLEL_FACTOR)),
+    )
+except ValueError:
+    PARALLEL_FACTOR = DEFAULT_PARALLEL_FACTOR
+HTTP_POOL_BASE_WORKERS = DEFAULT_HTTP_POOL_BASE_WORKERS
+HTTP_POOL_WORKERS = HTTP_POOL_BASE_WORKERS * PARALLEL_FACTOR
 
 _DIR           = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_FILE    = os.path.join(_DIR, "data", "live_data.json")
@@ -76,15 +89,23 @@ NN_TRAINING_ITERS_V2 = 400
 # ==============================================================================
 
 _UA = "majixai-bitcoin-miner/2.0 (+https://majixai.github.io)"
+_HTTP_EXECUTOR = concurrent.futures.ThreadPoolExecutor(
+    max_workers=HTTP_POOL_WORKERS,
+    thread_name_prefix="btc-rest-http",
+)
+atexit.register(lambda: _HTTP_EXECUTOR.shutdown(wait=False))
 
 
-def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
-    """Single-attempt HTTP GET returning parsed JSON or None."""
-# ── HTTP helper ────────────────────────────────────────────────────────────────
 def _fetch_sync(url: str, timeout: int = REQUEST_TIMEOUT):
     """Blocking HTTP fetch used as the thread-pool target."""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": _UA})
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": _UA,
+                "Accept": "application/json",
+            },
+        )
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
@@ -109,7 +130,13 @@ def fetch_with_retry(
     """
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": _UA})
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": _UA,
+                    "Accept": "application/json",
+                },
+            )
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 data = json.loads(r.read().decode())
                 if attempt > 0:
@@ -817,7 +844,7 @@ def fetch_supply_stats(height: int = 0) -> dict:
 async def fetch(url: str, timeout: int = REQUEST_TIMEOUT):
     """Async HTTP fetch — runs the blocking urllib call in a thread pool."""
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _fetch_sync, url, timeout)
+    return await loop.run_in_executor(_HTTP_EXECUTOR, _fetch_sync, url, timeout)
 
 
 # ── Pure-Python 2-layer neural network ────────────────────────────────────────
@@ -1320,20 +1347,10 @@ def compute_profitability(
 # ==============================================================================
 # SECTION 19 - Anomaly detector
 # ==============================================================================
-# ── Data collection ────────────────────────────────────────────────────────────
-async def collect(prev_samples):
-    blocks, fees_rec, mempool, recent, hashrate = await asyncio.gather(
-        fetch(f"{API_BASE}/v1/blocks"),
-        fetch(f"{API_BASE}/v1/fees/recommended"),
-        fetch(f"{API_BASE}/mempool"),
-        fetch(f"{API_BASE}/mempool/recent"),
-        fetch(f"{API_BASE}/v1/mining/hashrate/1w"),
-    )
-    blocks   = blocks   or []
-    fees_rec = fees_rec or {}
-    mempool  = mempool  or {}
-    recent   = recent   or []
-    hashrate = hashrate or {}
+async def _run_blocking(func, *args):
+    """Run a blocking function in the shared HTTP executor and await the result."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_HTTP_EXECUTOR, func, *args)
 
 def detect_anomalies(current_fees: dict, fee_history: list) -> dict:
     """
@@ -1618,38 +1635,25 @@ def reward_info(height: int, total_fees_sat: int, price_usd: float) -> dict:
 # SECTION 22 - Parallel fetch infrastructure
 # ==============================================================================
 
-def _thread_fetch(results: dict, key: str, func, *args):
-    """Thread worker: call func(*args), store result in shared dict under key."""
-    try:
-        results[key] = func(*args)
-    except Exception as e:
-        print(f"[WARN] thread '{key}': {e}", file=sys.stderr)
-        results[key] = None
-
-
-def _parallel_fetch(**fetch_specs) -> dict:
+async def _parallel_fetch(**fetch_specs) -> dict:
     """
-    Dispatch multiple fetch functions concurrently using daemon threads.
+    Dispatch multiple blocking fetch functions concurrently in the async runtime.
 
     Each kwarg maps a result key to a tuple of (callable, *args).
-    All threads are joined with a timeout of REQUEST_TIMEOUT + 5 seconds.
-
-    Returns a dict mapping each key to its fetched value (or None on failure).
     """
+    keys = list(fetch_specs.keys())
+    coros = [
+        _run_blocking(fetch_specs[key][0], *fetch_specs[key][1:])
+        for key in keys
+    ]
+    raw_results = await asyncio.gather(*coros, return_exceptions=True)
     results = {}
-    threads = []
-    for key, spec in fetch_specs.items():
-        func = spec[0]
-        args = spec[1:]
-        t    = threading.Thread(
-            target=_thread_fetch,
-            args=(results, key, func, *args),
-            daemon=True,
-        )
-        threads.append(t)
-        t.start()
-    for t in threads:
-        t.join(timeout=REQUEST_TIMEOUT + 5)
+    for key, result in zip(keys, raw_results):
+        if isinstance(result, Exception):
+            print(f"[WARN] task '{key}': {result}", file=sys.stderr)
+            results[key] = None
+        else:
+            results[key] = result
     return results
 
 
@@ -1657,7 +1661,7 @@ def _parallel_fetch(**fetch_specs) -> dict:
 # SECTION 23 - Extended collect()
 # ==============================================================================
 
-def collect(
+async def collect(
     prev_samples:   list,
     history_buffer  = None,
     hashrate_ths:   float = 100.0,
@@ -1685,7 +1689,7 @@ def collect(
     Returns the complete enriched data snapshot dict.
     """
     # Phase 1: primary network data
-    primary = _parallel_fetch(
+    primary = await _parallel_fetch(
         blocks         = (fetch_with_retry, f"{API_BASE}/v1/blocks"),
         fees_rec       = (fetch_with_retry, f"{API_BASE}/v1/fees/recommended"),
         mempool        = (fetch_with_retry, f"{API_BASE}/mempool"),
@@ -1702,7 +1706,7 @@ def collect(
     mempool_blocks = primary.get("mempool_blocks") or []
 
     # Phase 2: supplementary data
-    secondary = _parallel_fetch(
+    secondary = await _parallel_fetch(
         price         = (fetch_price_usd,),
         fee_histogram = (fetch_fee_histogram,),
         lightning     = (fetch_lightning_stats,),
@@ -2070,7 +2074,9 @@ def main():
 
     os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_FILE)),  exist_ok=True)
     os.makedirs(os.path.dirname(os.path.abspath(HISTORY_FILE)), exist_ok=True)
-# ── Main loop ──────────────────────────────────────────────────────────────────
+    asyncio.run(_run(args))
+
+
 async def _run(args):
     os.makedirs(os.path.dirname(os.path.abspath(OUTPUT_FILE)), exist_ok=True)
 
@@ -2109,14 +2115,13 @@ async def _run(args):
         print(f"[{ts_str}] Collecting sample #{sample_n} ...", flush=True)
 
         try:
-            data = collect(
+            data = await collect(
                 prev_samples   = prev_samples[-10:],
                 history_buffer = history_buf,
                 hashrate_ths   = args.hashrate_ths,
                 power_watts    = args.power_w,
                 elec_cost      = args.elec_cost,
             )
-            data = await collect(prev_samples[-5:])
             last_data = data
             all_samples.append(data)
 
@@ -2158,11 +2163,10 @@ async def _run(args):
         remaining = deadline - time.time()
         if remaining <= 0:
             break
-        time.sleep(min(interval, remaining))
+        await asyncio.sleep(min(interval, remaining))
 
     summary = compute_run_summary(all_samples)
     print_run_summary(summary, all_samples)
-        await asyncio.sleep(min(SAMPLE_INTERVAL, remaining))
 
     if last_data:
         net    = last_data.get("network",        {})
@@ -2175,14 +2179,6 @@ async def _run(args):
     else:
         print("No data collected - API may be unreachable.", file=sys.stderr)
         sys.exit(1)
-
-
-def main():
-    parser = ArgumentParser(description="Bitcoin real data fetcher + ML analyser")
-    parser.add_argument("--runtime", type=int, default=RUNTIME,
-                        help="How many seconds to run (default 180)")
-    args = parser.parse_args()
-    asyncio.run(_run(args))
 
 if __name__ == '__main__':
     main()
