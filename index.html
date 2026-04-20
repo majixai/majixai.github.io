@@ -1265,7 +1265,7 @@
       version: '2.0.0',
       dbName: 'MajixAIDirectoryDB',
       dbVersion: 3,
-      cacheKey: 'majixai.projects.v2',
+      cacheKey: 'majixai.projects.v4',
       dataUrl: './projects.json',
       firebaseConfig: {
         apiKey: null,
@@ -1906,7 +1906,7 @@
     async #loadProjects() {
       const fetcher = async () => {
         try {
-          const response = await fetch(MajixConfig.dataUrl);
+          const response = await fetch(`${MajixConfig.dataUrl}?t=${Date.now()}`, { cache: 'no-store' });
           if (response.ok) {
             const data = await response.json();
             return data;
