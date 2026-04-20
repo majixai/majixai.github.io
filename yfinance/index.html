@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Top-Heavy Forecast Dashboard</title>
+
+  <!-- Bootstrap 5 -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    crossorigin="anonymous"
+  />
+
+  <style>
+    /* ── Sticky header ───────────────────────────────────────── */
+    #sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 1030;
+      background: #212529;
+      border-bottom: 2px solid #ffc107;
+      padding: 0.6rem 1rem;
+    }
+    #sticky-header h5 { margin: 0; font-size: 1rem; }
+
+    /* ── KPI badges ──────────────────────────────────────────── */
+    .kpi-badge {
+      font-size: 0.78rem;
+      padding: 0.25em 0.55em;
+      border-radius: 0.3rem;
+      margin-right: 0.3rem;
+      white-space: nowrap;
+    }
+
+    /* ── Bulk table ──────────────────────────────────────────── */
+    #bulk-table tbody tr { height: 28px; }
+
+    /* ── Section cards ───────────────────────────────────────── */
+    .section-card { margin-bottom: 1.5rem; }
+
+    /* ── Bull-trigger row highlight ──────────────────────────── */
+    tr.bull { background-color: rgba(255, 193, 7, 0.15); }
+
+    /* ── Skeleton placeholder ────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #2c2f33 25%, #3a3d41 50%, #2c2f33 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 4px;
+      display: inline-block;
+      height: 1em;
+      width: 80%;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+
+<body class="bg-dark text-light" data-bs-theme="dark">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     STICKY HEADER  — always visible while scrolling
+═══════════════════════════════════════════════════════════════════ -->
+<div id="sticky-header" class="shadow">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <h5 class="text-warning me-2">📊 Top-Heavy Forecast</h5>
+    <span id="hdr-ts" class="text-secondary" style="font-size:0.72rem"></span>
+
+    <!-- KPI badges updated by JS -->
+    <span id="kpi-sp"  class="kpi-badge bg-primary text-white">S&amp;P 500 —</span>
+    <span id="kpi-btc" class="kpi-badge bg-warning text-dark">BTC —</span>
+    <span id="kpi-exp" class="kpi-badge bg-danger  text-white">Expansion —</span>
+    <span id="kpi-con" class="kpi-badge bg-info    text-dark">Consolidation —</span>
+    <span id="kpi-bull" class="kpi-badge bg-success text-white">Bull Triggers —</span>
+
+    <button
+      id="btn-refresh"
+      class="btn btn-outline-warning btn-sm ms-auto"
+      onclick="loadData()"
+      title="Refresh report data"
+    >↺ Refresh</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════════════════════════════════ -->
+<div class="container-fluid py-3" style="max-width: 1600px;">
+
+  <!-- ── I. Key Projections ───────────────────────────────────── -->
+  <div class="card bg-secondary section-card">
+    <div class="card-header fw-bold">I. Key Projections <small class="text-warning">(Bayesian)</small></div>
+    <div class="card-body p-2">
+      <div class="table-responsive">
+        <table class="table table-sm table-dark mb-0" id="proj-table">
+          <thead>
+            <tr>
+              <th>Asset</th><th>24h Forecast</th><th>Projected Level</th>
+              <th>95% CI Low</th><th>95% CI High</th><th>Method</th>
+            </tr>
+          </thead>
+          <tbody id="proj-tbody">
+            <tr><td colspan="6"><span class="skeleton">&nbsp;</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── II. Zones ──────────────────────────────────────────────── -->
+  <div class="row g-3 section-card">
+    <!-- Expansion -->
+    <div class="col-12 col-lg-6">
+      <div class="card bg-secondary h-100">
+        <div class="card-header fw-bold text-danger">⚡ Expansion Zones (ATR &gt; 2σ)</div>
+        <div class="card-body p-1">
+          <div class="table-responsive">
+            <table class="table table-sm table-dark table-hover mb-0" id="exp-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th><th>Close</th><th>ATR z</th>
+                  <th>Session Gain</th><th>Bull?</th>
+                </tr>
+              </thead>
+              <tbody id="exp-tbody">
+                <tr><td colspan="5"><span class="skeleton">&nbsp;</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Consolidation -->
+    <div class="col-12 col-lg-6">
+      <div class="card bg-secondary h-100">
+        <div class="card-header fw-bold text-info">🔵 Consolidation Zones (Range &lt; 1%)</div>
+        <div class="card-body p-1">
+          <div class="table-responsive">
+            <table class="table table-sm table-dark table-hover mb-0" id="con-table">
+              <thead>
+                <tr>
+                  <th>Ticker</th><th>Close</th><th>20d Range %</th>
+                  <th>Session Gain</th>
+                </tr>
+              </thead>
+              <tbody id="con-tbody">
+                <tr><td colspan="4"><span class="skeleton">&nbsp;</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── III. Bull Triggers ─────────────────────────────────────── -->
+  <div class="card bg-secondary section-card">
+    <div class="card-header fw-bold text-success">🚀 III. Bull Triggers</div>
+    <div class="card-body p-2">
+      <div id="bull-alert" class="alert alert-success d-none" role="alert"></div>
+      <div class="table-responsive">
+        <table class="table table-sm table-dark table-hover mb-0" id="bull-table">
+          <thead>
+            <tr>
+              <th>Ticker</th><th>Close</th><th>ATR z-score</th><th>Session Gain</th>
+            </tr>
+          </thead>
+          <tbody id="bull-tbody">
+            <tr><td colspan="4"><span class="skeleton">&nbsp;</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── IV. Data Bulk ─────────────────────────────────────────── -->
+  <div class="card bg-secondary section-card">
+    <div class="card-header fw-bold">
+      IV. Data Bulk
+      <span id="bulk-count" class="badge bg-dark text-warning ms-2">—</span>
+      <input
+        id="bulk-search"
+        type="text"
+        class="form-control form-control-sm ms-auto d-inline-block"
+        style="width:180px"
+        placeholder="Filter tickers…"
+        oninput="filterBulk(this.value)"
+      />
+    </div>
+    <div class="card-body p-1">
+      <div class="table-responsive" style="max-height: 55vh; overflow-y: auto;" id="bulk-scroll">
+        <table
+          class="table table-sm table-dark table-hover mb-0"
+          id="bulk-table"
+        >
+          <thead class="sticky-top bg-dark">
+            <tr>
+              <th>Ticker</th><th>Close</th><th>ATR z</th>
+              <th>20d Range %</th><th>Session Gain</th>
+              <th>Exp</th><th>Con</th><th>Bull</th>
+            </tr>
+          </thead>
+          <tbody id="bulk-tbody">
+            <!-- rows injected by IntersectionObserver lazy-loader -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+
+<!-- Bootstrap JS -->
+<script
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+  crossorigin="anonymous"
+></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   Dashboard logic
+   Data source: summary.json written alongside this HTML by
+   fetch_yfinance.py when --json-out is used, or a static
+   summary.json committed to the repo.
+═══════════════════════════════════════════════════════════════ */
+
+const DATA_URL = 'summary.json';   // relative to this page
+const TOP_N    = 5;
+
+let _allRows = [];   // full dataset for lazy-loading
+
+/* ── Helpers ──────────────────────────────────────────────────── */
+const fmtPct = v => (v == null ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%');
+const fmtClose = v => (v == null ? '—' : '$' + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}));
+const fmtZ    = v => (v == null ? '—' : v.toFixed(2));
+const fmtRng  = v => (v == null ? '—' : (v * 100).toFixed(3) + '%');
+
+function dirBadge(pct) {
+  if (pct == null) return '<span class="text-secondary">—</span>';
+  const arrow = pct >= 0 ? '▲' : '▼';
+  const cls   = pct >= 0 ? 'text-success' : 'text-danger';
+  return `<span class="${cls}">${arrow} ${Math.abs(pct * 100).toFixed(2)}%</span>`;
+}
+
+/* ── Fetch & render ───────────────────────────────────────────── */
+async function loadData() {
+  document.getElementById('btn-refresh').disabled = true;
+  try {
+    const resp = await fetch(DATA_URL + '?_=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d = await resp.json();
+    render(d);
+  } catch (e) {
+    console.warn('loadData failed:', e.message);
+    renderNoData();
+  } finally {
+    document.getElementById('btn-refresh').disabled = false;
+  }
+}
+
+function render(d) {
+  const ts = d.generated_at || new Date().toISOString();
+  document.getElementById('hdr-ts').textContent = ts;
+
+  // KPI badges
+  if (d.projections) {
+    const sp  = d.projections.sp500;
+    const btc = d.projections.btc;
+    if (sp)  document.getElementById('kpi-sp').textContent  = `S&P ${fmtPct(sp.change_pct / 100)}`;
+    if (btc) document.getElementById('kpi-btc').textContent = `BTC ${fmtPct(btc.change_pct / 100)}`;
+  }
+  document.getElementById('kpi-exp').textContent  = `Expansion ${d.expansion_count ?? 0}`;
+  document.getElementById('kpi-con').textContent  = `Consolidation ${d.consolidation_count ?? 0}`;
+  document.getElementById('kpi-bull').textContent = `Bull Triggers ${d.bull_trigger_count ?? 0}`;
+
+  // Section I – projections
+  renderProjections(d.projections || {});
+
+  // Section II – zones
+  renderExpansion(d.expansion_zones || []);
+  renderConsolidation(d.consolidation_zones || []);
+
+  // Section III – bull triggers
+  renderBullTriggers(d.bull_triggers || []);
+
+  // Section IV – bulk (lazy)
+  _allRows = d.all_tickers || [];
+  document.getElementById('bulk-count').textContent = _allRows.length.toLocaleString() + ' tickers';
+  initLazyBulk(_allRows);
+}
+
+function renderNoData() {
+  const msg = '<tr><td colspan="8" class="text-secondary text-center">No data — run fetch_yfinance.py to generate summary.json</td></tr>';
+  ['proj-tbody','exp-tbody','con-tbody','bull-tbody','bulk-tbody'].forEach(id => {
+    document.getElementById(id).innerHTML = msg;
+  });
+}
+
+/* ── Section I ───────────────────────────────────────────────── */
+function renderProjections(proj) {
+  const tbody = document.getElementById('proj-tbody');
+  const rows = [
+    { name: 'S&P 500 (^GSPC)', key: 'sp500'   },
+    { name: 'Bitcoin (BTC-USD)', key: 'btc' },
+  ].map(({ name, key }) => {
+    const p = proj[key];
+    if (!p) return `<tr><td>${name}</td><td colspan="4" class="text-secondary">—</td><td>Bayesian</td></tr>`;
+    return `<tr>
+      <td>${name}</td>
+      <td>${dirBadge(p.change_pct / 100)}</td>
+      <td>${fmtClose(p.projected_level)}</td>
+      <td>${fmtClose(p.ci_low)}</td>
+      <td>${fmtClose(p.ci_high)}</td>
+      <td><small class="text-muted">Bayesian</small></td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows.join('');
+}
+
+/* ── Section II: Expansion ───────────────────────────────────── */
+function renderExpansion(zones) {
+  const tbody = document.getElementById('exp-tbody');
+  if (!zones.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-secondary text-center">No expansion zones</td></tr>';
+    return;
+  }
+  tbody.innerHTML = zones.slice(0, TOP_N).map(r => `
+    <tr class="${r.bull_trigger ? 'bull' : ''}">
+      <td><strong>${r.ticker}</strong></td>
+      <td>${fmtClose(r.last_close)}</td>
+      <td>${fmtZ(r.atr_zscore)}</td>
+      <td>${dirBadge(r.session_gain_pct)}</td>
+      <td>${r.bull_trigger ? '🚀' : '—'}</td>
+    </tr>`).join('');
+}
+
+/* ── Section II: Consolidation ───────────────────────────────── */
+function renderConsolidation(zones) {
+  const tbody = document.getElementById('con-tbody');
+  if (!zones.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-secondary text-center">No consolidation zones</td></tr>';
+    return;
+  }
+  tbody.innerHTML = zones.slice(0, TOP_N).map(r => `
+    <tr>
+      <td><strong>${r.ticker}</strong></td>
+      <td>${fmtClose(r.last_close)}</td>
+      <td>${fmtRng(r.range_pct)}</td>
+      <td>${dirBadge(r.session_gain_pct)}</td>
+    </tr>`).join('');
+}
+
+/* ── Section III: Bull Triggers ──────────────────────────────── */
+function renderBullTriggers(triggers) {
+  const tbody  = document.getElementById('bull-tbody');
+  const alert  = document.getElementById('bull-alert');
+  if (!triggers.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-secondary text-center">No bull triggers detected</td></tr>';
+    alert.classList.add('d-none');
+    return;
+  }
+  alert.classList.remove('d-none');
+  alert.innerHTML = `🚀 <strong>${triggers.length} Bull Trigger${triggers.length > 1 ? 's' : ''} detected</strong> — Priority report recommended.`;
+  tbody.innerHTML = [...triggers]
+    .sort((a, b) => (b.session_gain_pct || 0) - (a.session_gain_pct || 0))
+    .map(r => `
+      <tr class="bull">
+        <td><strong>${r.ticker}</strong></td>
+        <td>${fmtClose(r.last_close)}</td>
+        <td>${fmtZ(r.atr_zscore)}</td>
+        <td>${dirBadge(r.session_gain_pct)}</td>
+      </tr>`).join('');
+}
+
+/* ── Section IV: Lazy bulk table ─────────────────────────────── */
+let _lazyIdx  = 0;
+const PAGE_SIZE = 50;
+
+function initLazyBulk(rows) {
+  const tbody = document.getElementById('bulk-tbody');
+  tbody.innerHTML = '';
+  _lazyIdx = 0;
+  _loadNextBulkPage(rows, tbody);
+
+  // Sentinel for IntersectionObserver-based infinite scroll
+  const sentinel = document.createElement('tr');
+  sentinel.id = 'bulk-sentinel';
+  sentinel.innerHTML = '<td colspan="8"></td>';
+  tbody.appendChild(sentinel);
+
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      _loadNextBulkPage(rows, tbody);
+    }
+  }, { root: document.getElementById('bulk-scroll'), rootMargin: '200px' });
+
+  obs.observe(sentinel);
+}
+
+function _loadNextBulkPage(rows, tbody) {
+  if (_lazyIdx >= rows.length) return;
+  const frag = document.createDocumentFragment();
+  const end  = Math.min(_lazyIdx + PAGE_SIZE, rows.length);
+  for (let i = _lazyIdx; i < end; i++) {
+    const r = rows[i];
+    const tr = document.createElement('tr');
+    if (r.bull_trigger) tr.classList.add('bull');
+    tr.innerHTML = `
+      <td><strong>${r.ticker}</strong></td>
+      <td>${fmtClose(r.last_close)}</td>
+      <td>${fmtZ(r.atr_zscore)}</td>
+      <td>${fmtRng(r.range_pct)}</td>
+      <td>${dirBadge(r.session_gain_pct)}</td>
+      <td>${r.expansion     ? '<span class="text-danger">✓</span>' : ''}</td>
+      <td>${r.consolidation ? '<span class="text-info">✓</span>'   : ''}</td>
+      <td>${r.bull_trigger  ? '🚀' : ''}</td>
+    `;
+    frag.appendChild(tr);
+  }
+  // Insert before sentinel
+  const sentinel = document.getElementById('bulk-sentinel');
+  tbody.insertBefore(frag, sentinel);
+  _lazyIdx = end;
+}
+
+function filterBulk(q) {
+  const term = q.trim().toUpperCase();
+  const filtered = term ? _allRows.filter(r => r.ticker.includes(term)) : _allRows;
+  document.getElementById('bulk-count').textContent = filtered.length.toLocaleString() + ' tickers';
+  _lazyIdx = 0;
+  const tbody = document.getElementById('bulk-tbody');
+  tbody.innerHTML = '';
+  initLazyBulk(filtered);
+}
+
+/* ── Bootstrap ───────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
