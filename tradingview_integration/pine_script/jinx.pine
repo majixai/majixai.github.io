@@ -121,6 +121,23 @@ pv_lb  = input.int(10, "Pivot Lookback", minval=3, maxval=30, group=g_pat, toolt
 st_tl  = input.float(0.02, "Pattern Tolerance (%)", step=0.005, group=g_pat, tooltip="Fuzziness of pattern matching. 0.02% is strict. If the engine misses obvious patterns, increase this to allow for slight 'slop' in price action touchpoints.")
 p_clB  = input.color(color.new(color.lime, 0), "Bullish Pattern Color", group=g_pat, tooltip="Color for bullish structures like Falling Wedges, Ascending Triangles, and Bull Flags.")
 p_clR  = input.color(color.new(color.red, 0), "Bearish Pattern Color", group=g_pat, tooltip="Color for bearish structures like Rising Wedges, Descending Triangles, and Bear Flags.")
+g_strt = "Pattern Strategy Selector"
+strat_mode = input.string("All Models", "Primary Engine Mode", options=["All Models", "Harmonics Only", "Classical Patterns", "Candlesticks Only", "Topology Manifolds"], group=g_strt, tooltip="Select which pattern family drives scoring and rendering.")
+use_harmonics = input.bool(true, "Enable Harmonics", group=g_strt)
+use_classical = input.bool(true, "Enable Classical Patterns", group=g_strt)
+use_candles = input.bool(true, "Enable Candlestick Engine", group=g_strt)
+use_topology = input.bool(true, "Enable Topology Manifold Validation", group=g_strt)
+bool modeAll = strat_mode == "All Models"
+bool modeHarmonics = strat_mode == "Harmonics Only"
+bool modeClassical = strat_mode == "Classical Patterns"
+bool modeCandles = strat_mode == "Candlesticks Only"
+bool modeTopology = strat_mode == "Topology Manifolds"
+bool evalHarmonics = modeHarmonics or (modeAll and use_harmonics)
+bool evalClassical = modeClassical or (modeAll and use_classical)
+bool evalCandles = modeCandles or (modeAll and use_candles)
+bool evalTopology = modeTopology or (modeAll and use_topology)
+g_mem  = "Memory & GC Management"
+mem_mode = input.string("Aggressive", "Garbage Collection Mode", options=["Standard", "Aggressive", "Maximum Prune"], group=g_mem, tooltip="Stress-aware pruning profile.")
 
 g_kn   = "Kinematic Ensemble"
 fc_hz  = input.int(20, 'Forecast Horizon (Bars)', minval=2, maxval=100, group=g_kn, tooltip="The number of future bars the Kinematic Engine attempts to project. Longer horizons (40+) are less accurate but show potential cyclical targets.")
@@ -190,6 +207,8 @@ var line[]     ghostWicks  = array.new_line()
 var matrix<float> mcMatrixS = matrix.new<float>(3, fc_hz, 0.0)
 var matrix<float> mcMatrixM = matrix.new<float>(3, fc_hz, 0.0)
 var matrix<float> mcMatrixL = matrix.new<float>(3, fc_hz, 0.0)
+var matrix<float> conicMatrix = matrix.new<float>(6, 400, 0.0)
+var matrix<float> jbMatrix = matrix.new<float>(1, 6, 0.0)
 var polyline[] mc_lines    = array.new<polyline>()
 var box[]      densBoxes   = array.new<box>()
 var polyline[] fcstShapes  = array.new<polyline>()
@@ -219,6 +238,11 @@ var int liveCapDensBoxes  = CAP_DENS_BOXES
 var int liveCapFcstShapes = CAP_FCST_SHAPES
 var int liveCapFcstLabels = CAP_FCST_LABELS
 var int liveCapMainPoly   = CAP_MAIN_POLY
+var int last_gc_bar = 0
+var int titan_events = 0
+var int titan_success = 0
+var float titan_posterior = 0.0
+var int titan_active_slots = 0
 max_bars_back(close, 4000)
 max_bars_back(time,  4000)
 c_cnd(float x) =>
@@ -386,6 +410,44 @@ manage_draw_resources(float stress01, int pruneBatch) =>
     trim_polylines(fcstShapes, liveCapFcstShapes, ops)
     trim_labels(fcstLabels, liveCapFcstLabels, ops)
     trim_polylines(mainPoly, liveCapMainPoly, ops)
+
+calc_system_stress(float currentPrice, float atrNow, int tf_mins, float expectedClose, float drawStressIn) =>
+    float safePrice = math.max(currentPrice, syminfo.mintick)
+    float vol_stress = (atrNow / safePrice) * 80.0
+    float tf_stress  = tf_mins <= 1 ? 1.0 : (tf_mins <= 5 ? 0.7 : (tf_mins <= 15 ? 0.4 : 0.15))
+    float dev_stress = not na(expectedClose) ? math.abs(currentPrice - expectedClose) / safePrice * 40.0 : 0.0
+    float heap_stress = (array.size(ghostBoxes) + array.size(ghostWicks) + array.size(mc_lines) + array.size(densBoxes) + array.size(fcstShapes) + array.size(fcstLabels) + array.size(mainPoly)) / math.max(1, (CAP_GHOST_BOXES + CAP_GHOST_WICKS + CAP_MC_LINES + CAP_DENS_BOXES + CAP_FCST_SHAPES + CAP_FCST_LABELS + CAP_MAIN_POLY))
+    float raw_stress = (vol_stress * 0.2) + (tf_stress * 0.25) + (dev_stress * 0.2) + (heap_stress * 0.25) + (drawStressIn * 0.1)
+    math.max(0.0, math.min(1.0, raw_stress))
+
+update_conic_parameters(matrix<float> mat, float v0, float a, float errTerm, int steps) =>
+    int maxSteps = math.min(steps, matrix.columns(mat))
+    for i = 0 to maxSteps - 1
+        float x = i
+        float sq = math.sqrt(math.max(1.0, x))
+        float y_center = (a * math.pow(x, 2)) + (v0 * x)
+        float y_upper = y_center + (errTerm * sq)
+        float y_lower = y_center - (errTerm * sq)
+        matrix.set(mat, 0, i, a)
+        matrix.set(mat, 1, i, v0)
+        matrix.set(mat, 2, i, y_upper)
+        matrix.set(mat, 3, i, a)
+        matrix.set(mat, 4, i, v0)
+        matrix.set(mat, 5, i, y_lower)
+
+render_parametric_bounds(matrix<float> mat, int start_x, float start_y, int steps, color col, float stress01) =>
+    int render_step = stress01 > 0.7 ? 4 : (stress01 > 0.4 ? 2 : 1)
+    int maxSteps = math.min(steps, matrix.columns(mat))
+    array<chart.point> upper_pts = array.new<chart.point>()
+    array<chart.point> lower_pts = array.new<chart.point>()
+    for i = 0 to maxSteps - 1 by render_step
+        float upper_val = start_y + matrix.get(mat, 2, i)
+        float lower_val = start_y + matrix.get(mat, 5, i)
+        array.push(upper_pts, chart.point.from_index(start_x + i, upper_val))
+        array.push(lower_pts, chart.point.from_index(start_x + i, lower_val))
+    if array.size(upper_pts) > 1
+        push_polyline_capped(fcstShapes, polyline.new(upper_pts, curved=curvP, line_color=col, line_width=2, xloc=xloc.bar_index), liveCapFcstShapes)
+        push_polyline_capped(fcstShapes, polyline.new(lower_pts, curved=curvP, line_color=col, line_width=2, xloc=xloc.bar_index), liveCapFcstShapes)
 
 
 // manage_draw_resources(float stress01, int pruneBatch) =>
@@ -779,6 +841,9 @@ else if isGrave
 else if isDoji
     candleScore := 0
     candleName := "Doji"
+if not evalCandles
+    candleScore := 0
+    candleName := "NONE"
 pe.activeCandlePat := candleName
 if sh_cp and candleName != "NONE"
     color patCol = candleScore > 0 ? p_clB : (candleScore < 0 ? p_clR : color.gray)
@@ -801,6 +866,61 @@ pl(int i)  => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivo
 plb(int i) => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivotsLow)-1-i).barIndex   : na
 distPct(float a, float b) => math.abs(a - b) / a
 fibRatio(float leg1, float leg2) => leg1 == 0 ? 0 : math.abs(leg2 / leg1)
+f_detect_hs_manifold(matrix<float> jb, int pL, int pR, float tol) =>
+    float phPivot = ta.pivothigh(high, pL, pR)
+    float curv = matrix.get(jb, 0, 5)
+    bool confirmed = false
+    float target = na
+    if not na(phPivot) and curv < -0.0001
+        array.push(pivotsHigh, PivotNode.new(bar_index - pR, phPivot, true))
+        if array.size(pivotsHigh) > 25
+            array.shift(pivotsHigh)
+    if array.size(pivotsHigh) >= 3
+        float p1 = ph(2)
+        float p2 = ph(1)
+        float p3 = ph(0)
+        bool is_symmetry = math.abs(p1 - p3) <= (p2 * tol * 0.01)
+        bool is_head_apex = p2 > p1 and p2 > p3
+        confirmed := is_symmetry and is_head_apex
+        if confirmed
+            target := p2 - (p2 - math.min(p1, p3)) * 1.618
+    [confirmed, target]
+
+f_detect_double_manifold(matrix<float> jb, bool is_top, int pL, int pR, float tol) =>
+    float pivot = is_top ? ta.pivothigh(high, pL, pR) : ta.pivotlow(low, pL, pR)
+    float delta_stability = matrix.get(jb, 0, 2)
+    bool confirmed = false
+    float target = na
+    if not na(pivot) and delta_stability > 0.05
+        if is_top
+            array.push(pivotsHigh, PivotNode.new(bar_index - pR, pivot, true))
+            if array.size(pivotsHigh) > 25
+                array.shift(pivotsHigh)
+        else
+            array.push(pivotsLow, PivotNode.new(bar_index - pR, pivot, false))
+            if array.size(pivotsLow) > 25
+                array.shift(pivotsLow)
+    if is_top and array.size(pivotsHigh) >= 2
+        float pk1 = ph(1)
+        float pk2 = ph(0)
+        float price_var = math.abs(pk1 - pk2) / math.max(pk1, syminfo.mintick) * 100.0
+        int span = math.max(1, phb(0) - phb(1))
+        float valley = ta.lowest(low, span)
+        float depth = math.abs(pk1 - valley) / math.max(pk1, syminfo.mintick) * 100.0
+        confirmed := price_var <= tol and depth >= 2.0
+        if confirmed
+            target := valley - (pk1 - valley)
+    if not is_top and array.size(pivotsLow) >= 2
+        float tr1 = pl(1)
+        float tr2 = pl(0)
+        float price_var = math.abs(tr1 - tr2) / math.max(tr1, syminfo.mintick) * 100.0
+        int span = math.max(1, plb(0) - plb(1))
+        float crest = ta.highest(high, span)
+        float depth = math.abs(crest - tr1) / math.max(tr1, syminfo.mintick) * 100.0
+        confirmed := price_var <= tol and depth >= 2.0
+        if confirmed
+            target := crest + (crest - tr1)
+    [confirmed, target]
 drawPatLine(int x1, float y1, int x2, float y2, color c, int w=2) =>
     if sh_mp
         line.new(x1, y1, x2, y2, color=c, width=w, style=line.style_solid)
@@ -1064,6 +1184,43 @@ if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 
     else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1) and close<pl(0)
         macroScore := -14, macroName := "Diamond Bottom Failure"
         macroTarget := pl(0) - (ph(0) - pl(0))
+bool isHarmonicPattern = str.contains(macroName, "Gartley") or str.contains(macroName, "Butterfly") or str.contains(macroName, "Crab") or str.contains(macroName, "Shark") or str.contains(macroName, "Cypher") or str.contains(macroName, "AB=CD")
+bool isTopologyPattern = str.contains(macroName, "MANIFOLD") or str.contains(macroName, "HESSIAN_VALID")
+bool isClassicalPattern = macroName != "NONE" and not isHarmonicPattern and not isTopologyPattern
+if (not evalHarmonics and isHarmonicPattern) or (not evalClassical and isClassicalPattern) or (strat_mode == "Topology Manifolds" and not isTopologyPattern)
+    macroScore := 0
+    macroName := "NONE"
+    macroTarget := na
+matrix.set(jbMatrix, 0, 0, kin.velocity)
+matrix.set(jbMatrix, 0, 1, kin.acceleration)
+matrix.set(jbMatrix, 0, 2, math.abs(kin.velocity) / math.max(atrVal, syminfo.mintick))
+matrix.set(jbMatrix, 0, 3, pe.currentSkew)
+matrix.set(jbMatrix, 0, 4, pe.currentStdev)
+matrix.set(jbMatrix, 0, 5, -math.abs(kin.acceleration))
+bool hs_on = false
+bool dt_on = false
+float hs_target = na
+float dt_target = na
+if evalTopology
+    [hs_on, hs_target] := f_detect_hs_manifold(jbMatrix, pv_lb, 2, st_tl * 100.0)
+    [dt_on, dt_target] := f_detect_double_manifold(jbMatrix, true, pv_lb, 2, st_tl * 100.0)
+    if hs_on
+        macroScore := -23
+        macroName := "H&S: MANIFOLD_SYNC"
+        macroTarget := hs_target
+    else if dt_on
+        macroScore := -19
+        macroName := "DT: HESSIAN_VALID"
+        macroTarget := dt_target
+if barstate.isconfirmed
+    bool htf_bull = ht_c > ht_o
+    bool is_aligned = (kin.velocity > 0 and htf_bull) or (kin.velocity < 0 and not htf_bull)
+    titan_events += 1
+    if is_aligned and matrix.get(jbMatrix, 0, 2) > 0.0005
+        titan_success += 1
+    titan_posterior := f_safe_div(titan_success, titan_events, 0.0) * 100.0
+    titan_active_slots := titan_posterior >= 60 ? 1 : 0
+bool titan_sync_event = hs_on or dt_on or titan_active_slots >= 1
 pe.activeMacroPat  := macroName
 pe.patternScore    := candleScore + macroScore
 pe.structureTarget := macroTarget
@@ -1201,6 +1358,8 @@ seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, int hz, string src, f
 bool signalTrigger = atFlip or brk.isValidBreakout or pe.isReversal
 acc.hitRate := (acc.hitCount + acc.missCount) > 0 ? acc.hitCount / (acc.hitCount + acc.missCount) : 1.0
 if barstate.isconfirmed
+    if titan_sync_event
+        Bayes.expectedClose := nz(macroTarget, Bayes.expectedClose)
     if acc.hitRate < 0.65
         uz.adaptiveCoeff := math.min(3.5, uz.adaptiveCoeff + 0.05)
     else if acc.hitRate > 0.85
@@ -1221,7 +1380,7 @@ float mdT = close + (kin.velocity * hzM * 0.8) + (kin.acceleration * math.pow(hz
 float lgT = close + (kin.velocity * hzL * 0.65) + (kin.acceleration * math.pow(hzL, 2) * 0.08) + ((Bayes.expectedClose - close) * 0.35) + ((ta.ema(close, 200) - close) * (0.45 + (0.25 * (1 - volN))))
 bool mdTick = up_md == "Each tick"
 bool mdBar = up_md == "Each new bar"
-string srcBase = pe.isReversal ? "GEO REV" : (brk.isValidBreakout ? "BRK SYN" : (atFlip ? "ALP FLP" : "STATE FLOW"))
+string srcBase = titan_sync_event ? "TITAN_SYNC_EVENT" : (pe.isReversal ? "GEO REV" : (brk.isValidBreakout ? "BRK SYN" : (atFlip ? "ALP FLP" : "STATE FLOW")))
 bool canRefresh = mdTick ? true : (mdBar ? barstate.isnew : (signalTrigger and barstate.isconfirmed))
 bool rS = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfS.isActive)
 bool rM = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfM.isActive)
@@ -1347,10 +1506,26 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
         array.push(rhombPts, chart.point.new(int(endTime-rW), endBar, fMean))
         push_polyline_capped(fcstShapes, polyline.new(rhombPts, closed=true, fill_color=color.new(tfColor,10), line_color=tfColor, line_width=2, xloc=xloc.bar_time), liveCapFcstShapes)
 float drawStress = math.max(0.0, math.min(1.0, ((uz.adaptiveCoeff - b_cf) / math.max(0.01, 3.5 - b_cf)) + (microVolIndex * 25)))
-int MY_PRUNE_BATCH = 5
-int livePruneOps = MY_PRUNE_BATCH
-// [liveCapGhostBoxes, liveCapGhostWicks, liveCapMcLines, liveCapDensBoxes, liveCapFcstShapes, liveCapFcstLabels, liveCapMainPoly, livePruneOps] := manage_draw_resources(drawStress, MY_PRUNE_BATCH)
-manage_draw_resources(drawStress, MY_PRUNE_BATCH)
+float current_stress = calc_system_stress(close, atrVal, timeframe.multiplier, Bayes.expectedClose, drawStress)
+int dynamic_gc_interval = current_stress > 0.8 ? 1 : (current_stress > 0.5 ? 3 : (current_stress > 0.2 ? 5 : 10))
+int modeMult = mem_mode == "Maximum Prune" ? 3 : (mem_mode == "Aggressive" ? 2 : 1)
+int MY_PRUNE_BATCH = 5 * modeMult
+int livePruneOps = int(math.round(MY_PRUNE_BATCH * (1.0 + current_stress)))
+if bar_index - last_gc_bar >= dynamic_gc_interval
+    manage_draw_resources(current_stress, livePruneOps)
+    last_gc_bar := bar_index
+int ext_fc_hz = math.max(4, math.min(400, fc_hz * 4))
+if bar_index % dynamic_gc_interval == 0
+    update_conic_parameters(conicMatrix, kin.velocity, kin.acceleration, uz.standardError, ext_fc_hz)
+if sh_mc and macroScore != 0
+    color proj_col = macroScore > 0 ? color.new(color.lime, 40) : color.new(color.red, 40)
+    render_parametric_bounds(conicMatrix, bar_index, close, ext_fc_hz, proj_col, current_stress)
+    float rect_top = math.max(close, nz(macroTarget, close))
+    float rect_bot = math.min(close, nz(macroTarget, close))
+    push_box_capped(densBoxes, box.new(bar_index, rect_top, bar_index + ext_fc_hz, rect_bot, border_color=proj_col, bgcolor=color.new(proj_col, 90)), liveCapDensBoxes)
+if current_stress > 0.95 and mem_mode == "Maximum Prune"
+    trim_boxes(ghostBoxes, 0, array.size(ghostBoxes))
+    trim_lines(ghostWicks, 0, array.size(ghostWicks))
 
 trim_boxes(ghostBoxes, liveCapGhostBoxes, livePruneOps)
 trim_lines(ghostWicks, liveCapGhostWicks, livePruneOps)
