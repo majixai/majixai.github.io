@@ -361,7 +361,7 @@
     </div>
 
     <script>
-        // Global variable to store all products loaded from CSV
+        // Global variable to store all products loaded from the API
         let allProductsData = [];
 
         const productListDiv = document.getElementById('product-list');
@@ -390,6 +390,16 @@
 
         // --- Utility Functions ---
         function formatPrice(price) {
+            // Check if price is a string and extract the number
+            if (typeof price === 'string') {
+                const priceMatch = price.match(/[\d\.]+/);
+                if (priceMatch) {
+                    price = parseFloat(priceMatch[0]);
+                }
+            }
+             if (typeof price !== 'number' || isNaN(price)) {
+                return '$0.00';
+            }
             return `$${price.toFixed(2)}`;
         }
 
@@ -400,55 +410,6 @@
 
         function saveCart() {
             localStorage.setItem('cart', JSON.stringify(cart));
-        }
-
-        // Function to parse CSV data into an array of objects
-        function parseCSV(csvString) {
-            const lines = csvString.trim().split('\n');
-            if (lines.length < 2) return []; // Need at least header and one data row
-
-            const headers = lines[0].split(',').map(h => h.trim());
-            const products = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue; // Skip empty lines
-
-                const values = [];
-                let inQuote = false;
-                let currentField = '';
-
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') {
-                        // Handle escaped quotes within a field (e.g., "This is a ""quoted"" field")
-                        if (j + 1 < line.length && line[j+1] === '"' && inQuote) {
-                            currentField += '"';
-                            j++; // Skip the next quote as it's an escaped one
-                        } else {
-                            inQuote = !inQuote; // Toggle quote state
-                        }
-                    } else if (char === ',' && !inQuote) {
-                        values.push(currentField.trim());
-                        currentField = '';
-                    } else {
-                        currentField += char;
-                    }
-                }
-                values.push(currentField.trim()); // Add the last field
-
-                const product = {};
-                headers.forEach((header, index) => {
-                    let value = values[index];
-                    if (header === 'id' || header === 'price') {
-                        product[header] = parseFloat(value);
-                    } else {
-                        product[header] = value;
-                    }
-                });
-                products.push(product);
-            }
-            return products;
         }
 
         // --- Product List Rendering ---
@@ -464,8 +425,8 @@
                 const productCard = document.createElement('div');
                 productCard.classList.add('product-card');
                 productCard.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}">
-                    <h2>${product.name}</h2>
+                    <img src="${product['image link']}" alt="${product.title}">
+                    <h2>${product.title}</h2>
                     <p class="price">${formatPrice(product.price)}</p>
                     <div class="actions">
                         <button class="details" data-id="${product.id}">View Details</button>
@@ -478,7 +439,7 @@
             // Add event listeners for buttons in product cards
             document.querySelectorAll('.product-card .details').forEach(button => {
                 button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     const product = allProductsData.find(p => p.id === productId);
                     if (product) {
                         showProductDetail(product);
@@ -488,7 +449,7 @@
 
             document.querySelectorAll('.product-card .add-to-cart').forEach(button => {
                 button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     addToCart(productId, 1);
                 });
             });
@@ -500,8 +461,8 @@
 
             let filteredProducts = allProductsData.filter(product => {
                 // Search by name and description
-                return product.name.toLowerCase().includes(searchTerm) ||
-                       product.description.toLowerCase().includes(searchTerm);
+                return product.title.toLowerCase().includes(searchTerm) ||
+                       (product.description && product.description.toLowerCase().includes(searchTerm));
             });
             renderProducts(filteredProducts);
         }
@@ -512,9 +473,9 @@
         // --- Product Detail Modal Logic ---
         function showProductDetail(product) { // Accepts product object directly
             if (product) {
-                detailImage.src = product.image;
-                detailImage.alt = product.name;
-                detailName.textContent = product.name;
+                detailImage.src = product['image link'];
+                detailImage.alt = product.title;
+                detailName.textContent = product.title;
                 detailDescription.textContent = product.description;
                 detailPrice.textContent = formatPrice(product.price);
                 addToCartDetailButton.dataset.id = product.id; // Store ID for add to cart
@@ -534,7 +495,7 @@
         });
 
         addToCartDetailButton.addEventListener('click', (event) => {
-            const productId = parseInt(event.target.dataset.id);
+            const productId = event.target.dataset.id;
             addToCart(productId, 1);
             hideProductDetail(); // Optionally close detail view after adding to cart
         });
@@ -551,9 +512,9 @@
             } else {
                 cart.push({
                     id: product.id,
-                    name: product.name,
+                    name: product.title,
                     price: product.price,
-                    image: product.image,
+                    image: product['image link'],
                     quantity: quantity
                 });
             }
@@ -609,7 +570,14 @@
                         </div>
                     `;
                     cartItemsList.appendChild(listItem);
-                    total += item.price * item.quantity;
+                    let price = item.price;
+                    if (typeof price === 'string') {
+                        const priceMatch = price.match(/[\d\.]+/);
+                        if (priceMatch) {
+                            price = parseFloat(priceMatch[0]);
+                        }
+                    }
+                    total += price * item.quantity;
                 });
             }
 
@@ -618,7 +586,7 @@
             // Add event listeners for quantity changes and remove buttons
             document.querySelectorAll('#cart-items input[type="number"]').forEach(input => {
                 input.addEventListener('change', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     const newQuantity = parseInt(event.target.value);
                     updateCartItemQuantity(productId, newQuantity);
                 });
@@ -626,7 +594,7 @@
 
             document.querySelectorAll('#cart-items .cart-item-controls button').forEach(button => {
                 button.addEventListener('click', (event) => {
-                    const productId = parseInt(event.target.dataset.id);
+                    const productId = event.target.dataset.id;
                     removeFromCart(productId);
                 });
             });
@@ -664,20 +632,19 @@
         });
 
 
-        // --- CSV Data Loading ---
+        // --- Data Loading ---
         async function loadProducts() {
             try {
-                const response = await fetch('data/products001.csv');
+                const response = await fetch('http://localhost:5000/api/products');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const csvText = await response.text();
-                allProductsData = parseCSV(csvText); // Store all products
+                allProductsData = await response.json();
                 performSearchAndFilter(); // Render products based on initial search (empty, so all products)
                 updateCartCount(); // Ensure cart count is updated
             } catch (error) {
                 console.error('Error loading products:', error);
-                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: red;">Error loading products. Please ensure "data/products001.csv" exists and is accessible. Details: ' + error.message + '</p>';
+                productListDiv.innerHTML = '<p style="text-align: center; width: 100%; color: red;">Error loading products. Please ensure the backend service is running and accessible. Details: ' + error.message + '</p>';
             }
         }
 
