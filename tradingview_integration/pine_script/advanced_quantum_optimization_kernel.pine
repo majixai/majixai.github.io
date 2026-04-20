@@ -2,6 +2,36 @@
 indicator("Advanced Quantum Optimization Kernel", overlay=true)
 
 // ==========================================
+// USER INPUTS: PATHOLOGY, FORECAST, GC/TELEMETRY RENDERING
+// ==========================================
+grp_pathology = "Pathology Rendering Controls"
+i_show_bullish_forecasts = input.bool(true, "Show Bullish Forecasts", group=grp_pathology)
+i_show_bearish_forecasts = input.bool(true, "Show Bearish Forecasts", group=grp_pathology)
+i_show_neutral_forecasts = input.bool(true, "Show Neutral Forecasts", group=grp_pathology)
+i_min_forecast_confidence = input.float(0.62, "Minimum Forecast Confidence", minval=0.0, maxval=1.0, step=0.01, group=grp_pathology)
+i_strategy_filter = input.string("All", "Strategy Filter", options=["All", "Trend Following", "Mean Reversion", "Momentum Breakout", "Volatility Compression"], group=grp_pathology)
+i_pathology_mode = input.string("Auto", "Pathology Selection Mode", options=["Auto", "Bull Dominance", "Bear Dominance", "Neutral", "Forecast+Bayes"], group=grp_pathology)
+
+grp_gc_telemetry = "GC + Telemetry Visualization"
+i_show_gc_overlay = input.bool(true, "Show GC Overlay", group=grp_gc_telemetry)
+i_show_telemetry_overlay = input.bool(true, "Show Telemetry Overlay", group=grp_gc_telemetry)
+i_show_pattern_overlay = input.bool(true, "Show Pattern Overlay", group=grp_gc_telemetry)
+i_overlay_opacity = input.float(0.78, "Overlay Opacity", minval=0.0, maxval=1.0, step=0.01, group=grp_gc_telemetry)
+
+grp_pattern_forecast = "Pattern Forecast Engine"
+i_enable_next_pattern_forecast = input.bool(true, "Forecast Next Most Probable Pattern", group=grp_pattern_forecast)
+i_enable_bayesian_persistence = input.bool(true, "Persist Pattern State Compactly", group=grp_pattern_forecast)
+i_compact_encoding = input.string("hex", "Compact Encoding", options=["hex", "base64", "raw"], group=grp_pattern_forecast)
+i_pattern_capacity_multiplier = input.float(2.5, "Pattern Capacity Multiplier", minval=1.0, maxval=5.0, step=0.1, group=grp_pattern_forecast)
+i_min_pattern_probability = input.float(0.55, "Minimum Pattern Probability", minval=0.0, maxval=1.0, step=0.01, group=grp_pattern_forecast)
+
+grp_math_seed = "Mathematical Seed Inputs"
+i_math_seed_source = input.string("seed_majixai_math", "Math Seed Source", group=grp_math_seed)
+i_math_seed_symbol = input.string("ALGEBRA_CALCULUS_COS", "Math Seed Symbol", group=grp_math_seed)
+i_use_math_seed = input.bool(false, "Use request.seed() Math Feed", group=grp_math_seed)
+math_seed_signal = i_use_math_seed ? request.seed(i_math_seed_source, i_math_seed_symbol, close) : na
+
+// ==========================================
 // TIER 0: BASE TYPES (No Dependencies)
 // ==========================================
 type VolumeMetrics
@@ -23,6 +53,33 @@ type GC_State
     int swept_objects
     int total_bytes_saved
     int last_sweep_bar
+    float forecast_confidence
+    string forecast_label
+    string next_probable_pattern
+    float next_pattern_entry_price
+    float bullish_probability
+    float bearish_probability
+    float neutral_probability
+    float bull_bear_dominance
+    string strategy_recommendation
+    string pathology_state
+    bool render_bullish_set
+    bool render_bearish_set
+    bool render_neutral_set
+    bool render_gc_set
+    bool render_telemetry_set
+    color bullish_color
+    color bearish_color
+    color neutral_color
+    color gc_overlay_color
+    color telemetry_overlay_color
+    int overlay_opacity_pct
+    bool persist_compact_patterns
+    string persistence_encoding
+    array<string> compact_pattern_store
+    float bayes_pattern_probability
+    int recognized_pattern_count
+    float pattern_capacity_multiplier
 
 type ObjectMetadata
     int creation_bar
@@ -283,6 +340,36 @@ type SystemTelemetry
     int heap_utilization_pct
     int stack_depth_limit
     int total_execution_time_ms
+    string telemetry_pathology_state
+    float aggregate_forecast_confidence
+    string aggregate_forecast_label
+    string dominant_side
+    float dominant_side_score
+    string active_strategy_filter
+    string strategy_recommendation
+    bool show_bullish_forecast
+    bool show_bearish_forecast
+    bool show_neutral_forecast
+    bool show_gc_visualization
+    bool show_telemetry_visualization
+    bool show_pattern_visualization
+    float min_confidence_threshold
+    float min_pattern_probability
+    color bullish_visual_color
+    color bearish_visual_color
+    color neutral_visual_color
+    color telemetry_text_color
+    int telemetry_opacity_pct
+    string next_probable_pattern
+    float next_pattern_entry_price
+    bool use_bayesian_pattern_engine
+    bool persist_pattern_state
+    string compact_store_encoding
+    array<string> compact_pattern_snapshots
+    float pattern_capacity_multiplier
+    float math_seed_signal
+    string math_seed_source
+    string math_seed_symbol
 
 type MatrixManifold
     string coordinate_system
@@ -527,6 +614,39 @@ type GlobalKernelEnvironment
     QuantumOptimizationState math_engine
     PhaseSpaceState price_physics
     TopologicalManifold data_shape
+    SystemTelemetry telemetry_state
+    string render_pathology_mode
+    string strategy_filter
+    bool render_bullish_forecasts
+    bool render_bearish_forecasts
+    bool render_neutral_forecasts
+    float render_confidence_threshold
+    float pattern_probability_threshold
+    string dominant_signal_state
+    float bull_dominance_score
+    float bear_dominance_score
+    string next_probable_pattern
+    float next_pattern_entry_price
+    string strategy_recommendation
+    string pathology_text_state
+    bool use_request_seed
+    string request_seed_source
+    string request_seed_symbol
+    float request_seed_signal
+    bool persist_pattern_bank
+    string persistence_encoding
+    array<string> compact_pattern_bank
+    float bayes_weight
+    int pattern_variation_capacity
+    float pattern_capacity_multiplier
+    color render_bullish_color
+    color render_bearish_color
+    color render_neutral_color
+    color render_background_color
+    int render_opacity_pct
+    bool enable_gc_visualization
+    bool enable_telemetry_visualization
+    bool enable_pattern_visualization
 
 type QuantumState
     RiemannManifold geometry
