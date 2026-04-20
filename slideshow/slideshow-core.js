@@ -72,8 +72,8 @@ class SlideshowManager {
         this._resumeTimerId = null;
 
         // Timing
-        this.minDelay        = options.minDelay        || 2000;
-        this.maxDelay        = options.maxDelay        || 6000;
+        this.minDelay        = options.minDelay        || 100;
+        this.maxDelay        = options.maxDelay        || 200;
         this.fixedDelay      = options.fixedDelay      || 0;
         this.autoResumeDelay = options.autoResumeDelay || 0;
         this.loop            = options.loop !== false;
