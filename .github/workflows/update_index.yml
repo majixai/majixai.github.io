@@ -52,10 +52,14 @@ jobs:
 
           # Category mappings based on directory names
           CATEGORY_KEYWORDS = {
-              'finance': ['stock', 'trade', 'ticker', 'option', 'market', 'etrade', 'yfinance', 'quantix', 'jinx_strategy', 'jump'],
+              'gpu': ['gpu'],
+              'finance': ['finance', 'stock', 'trade', 'ticker', 'option', 'market', 'etrade', 'yfinance', 'quantix', 'jinx_strategy', 'jump', 'bitcoin'],
+              'mathematics': ['algebra', 'calculus', 'category_theory', 'complexity_theory', 'cos', 'differential_equations', 'functional_analysis', 'information_theory', 'manifolds', 'matrix', 'measure_theory', 'numerical_methods', 'optimization', 'probability', 'statistical_mechanics', 'topology', 'transformations'],
+              'ml': ['ml', 'neural', 'tensor', 'regression', 'predict', 'forecast', 'model', 'adam'],
               'gaming': ['nfl', 'gridiron', 'playbook', 'holdem', 'casino', 'golf', 'touchdown', 'dice'],
               'data': ['csv', 'dbs', 'data', 'index', 'fetcher', 'github_data', 'latest_commit'],
-              'web': ['hotel', 'reservation', 'booking', 'stays', 'referral', 'showcase', 'whatsapp', 'contact', 'link_manager', 'jinxco', 'boxstore']
+              'web': ['hotel', 'reservation', 'booking', 'stays', 'referral', 'showcase', 'whatsapp', 'contact', 'link_manager', 'jinxco', 'boxstore'],
+              'ai': ['ai', 'brain']
           }
 
           def get_category(dir_name):

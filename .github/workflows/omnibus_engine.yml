@@ -102,13 +102,19 @@ jobs:
           from datetime import datetime
 
           CATEGORY_KEYWORDS = {
-              'finance': ['stock','trade','ticker','option','market','etrade','yfinance',
-                          'quantix','jinx_strategy','jump','sp_','bitcoin','tensor'],
+              'gpu':     ['gpu'],
+              'finance': ['finance','stock','trade','ticker','option','market','etrade','yfinance',
+                          'quantix','jinx_strategy','jump','sp_','bitcoin'],
+              'mathematics': ['algebra','calculus','category_theory','complexity_theory','cos',
+                              'differential_equations','functional_analysis','information_theory',
+                              'manifolds','matrix','measure_theory','numerical_methods','optimization',
+                              'probability','statistical_mechanics','topology','transformations'],
+              'ml':      ['ml','neural','tensor','regression','predict','forecast','model','adam'],
               'gaming':  ['nfl','gridiron','playbook','holdem','casino','golf','touchdown'],
               'data':    ['csv','dbs','data','index','fetcher','latest_commit','scrape'],
               'web':     ['hotel','reservation','booking','stays','referral','showcase',
                           'whatsapp','contact','link_manager','jinxco','boxstore'],
-              'ai':      ['neural','ai','ml','predict','forecast','model','brain'],
+              'ai':      ['ai','brain'],
           }
           EXCLUDE = {'.git','.github','__pycache__','node_modules','icons','.vscode'}
 

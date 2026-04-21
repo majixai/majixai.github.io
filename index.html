@@ -194,6 +194,10 @@
     .cat-tools { background: #e8f5e9; color: #2e7d32; }
     .cat-data { background: #fff3e0; color: #ef6c00; }
     .cat-web { background: #f3e5f5; color: #7b1fa2; }
+    .cat-ai { background: #fff8e1; color: #e65100; }
+    .cat-mathematics { background: #e8eaf6; color: #283593; }
+    .cat-ml { background: #e0f7fa; color: #006064; }
+    .cat-gpu { background: #fce4ec; color: #ad1457; }
     /* Expandable Details */
     .expandable-section {
       border-top: 1px solid #eee;
@@ -388,6 +392,9 @@
     .cat-tools     { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
     .cat-data      { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
     .cat-ai        { background: #fff8e1; color: #e65100; border: 1px solid #ffcc80; }
+    .cat-mathematics { background: #e8eaf6; color: #283593; border: 1px solid #9fa8da; }
+    .cat-ml        { background: #e0f7fa; color: #006064; border: 1px solid #80deea; }
+    .cat-gpu       { background: #fce4ec; color: #ad1457; border: 1px solid #f48fb1; }
     .cat-default   { background: #f5f5f5; color: #616161; border: 1px solid #bdbdbd; }
     .recent-dir-meta {
       font-size: 0.78rem;
@@ -697,6 +704,10 @@
       <option value="tools">Tools</option>
       <option value="data">Data</option>
       <option value="web">Web</option>
+      <option value="ai">AI</option>
+      <option value="mathematics">Mathematics</option>
+      <option value="ml">ML</option>
+      <option value="gpu">GPU</option>
     </select>
     <button id="toggleAnimations" class="btn btn-outline-primary">
       <i class="fas fa-pause me-1"></i> Animations
@@ -836,7 +847,8 @@
 
   function catBadgeClass(cat) {
     const map = { finance: 'cat-finance', gaming: 'cat-gaming', tools: 'cat-tools',
-                  data: 'cat-data', ai: 'cat-ai' };
+                  data: 'cat-data', web: 'cat-web', ai: 'cat-ai', mathematics: 'cat-mathematics',
+                  ml: 'cat-ml', gpu: 'cat-gpu' };
     return map[(cat || '').toLowerCase()] || 'cat-default';
   }
 
@@ -1253,7 +1265,7 @@
       version: '2.0.0',
       dbName: 'MajixAIDirectoryDB',
       dbVersion: 3,
-      cacheKey: 'majixai.projects.v2',
+      cacheKey: 'majixai.projects.v4',
       dataUrl: './projects.json',
       firebaseConfig: {
         apiKey: null,
@@ -1401,6 +1413,9 @@
     async #openDB() {
       if (this.#db) return this.#db;
       if (IndexedDBStorage.#dbPromise) return IndexedDBStorage.#dbPromise;
+      if (!('indexedDB' in window)) {
+        throw new Error('IndexedDB is not available in this browser context');
+      }
 
       IndexedDBStorage.#dbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(MajixConfig.dbName, MajixConfig.dbVersion);
@@ -1659,7 +1674,11 @@
         gaming: 'cat-gaming',
         tools: 'cat-tools',
         data: 'cat-data',
-        web: 'cat-web'
+        web: 'cat-web',
+        ai: 'cat-ai',
+        mathematics: 'cat-mathematics',
+        ml: 'cat-ml',
+        gpu: 'cat-gpu'
       };
       return catMap[this.#data.category] || 'cat-tools';
     }
@@ -1887,7 +1906,7 @@
     async #loadProjects() {
       const fetcher = async () => {
         try {
-          const response = await fetch(MajixConfig.dataUrl);
+          const response = await fetch(`${MajixConfig.dataUrl}?t=${Date.now()}`, { cache: 'no-store' });
           if (response.ok) {
             const data = await response.json();
             return data;
@@ -1898,7 +1917,14 @@
         return this.#getDefaultProjects();
       };
 
-      const projects = await this.#cacheManager.fetch(MajixConfig.cacheKey, fetcher);
+      let projects;
+      try {
+        projects = await this.#cacheManager.fetch(MajixConfig.cacheKey, fetcher);
+      } catch (e) {
+        console.warn('Cache layer unavailable, falling back to direct fetch:', e);
+        projects = await fetcher();
+      }
+      if (!Array.isArray(projects)) projects = this.#getDefaultProjects();
       this.#collection = new ProjectCollection(projects);
     }
 
