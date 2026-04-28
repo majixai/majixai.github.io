@@ -1,0 +1,656 @@
+//@version=5
+// =============================================================================
+// UK ALGORITHMS — CONFIRMED FIB (BOS + PULLBACK) v5.6
+// Impulse + BOS + Pullback Anchored Fibonacci Engine
+// =============================================================================
+// This indicator detects market structure and draws fib retracements.
+// It does NOT generate buy/sell signals. The dashboard is informational only.
+// =============================================================================
+indicator("Confirmed Fib (BOS + Pullback)", overlay = true, max_lines_count = 100, max_labels_count = 100, max_boxes_count = 20)
+
+// -------------------- INPUTS --------------------
+grpS = "Structure"
+pivotLen        = input.int(8,    "Pivot length (L/R)",        minval = 1, maxval = 30, group = grpS, tooltip = "Bars left & right for STRUCTURAL pivots (prior swing + impulse extreme).\n• 15M → 18\n• 1H → 8\n• 4H → 4\n• Daily → 3")
+pullbackPivotL  = input.int(3,    "Pullback pivot length (L/R)", minval = 1, maxval = 15, group = grpS, tooltip = "Bars left & right for the PULLBACK pivot (the third anchor).\nLower values draw fibs faster but allow weaker pullbacks. Higher values are stricter but slower.\nSuggested: 3 standard, 2 fast, 5 strict.")
+displacementATR = input.float(1.5, "Min displacement (ATR)",   minval = 0.0, maxval = 10.0, step = 0.1, group = grpS, tooltip = "Minimum impulse size in ATR(14) units.\n• 0 → any impulse\n• 1.0 → modest\n• 1.5 → meaningful (default)\n• 2.5+ → major moves only\nHigher values = fewer fibs, higher quality.")
+invalidBufATR   = input.float(0.25, "Invalidation buffer (ATR)", minval = 0.0, maxval = 2.0, step = 0.05, group = grpS, tooltip = "Wick tolerance on close-below-priorLow (above-priorHigh) invalidation, in ATR(14) units.")
+maxLegAgeBars   = input.int(150,  "Max leg age (bars)",        minval = 20, maxval = 2000, group = grpS, tooltip = "Auto-refresh: leg cleared if anchors haven't updated in this many bars.")
+historyDepth    = input.int(15,   "Pivots retained",           minval = 6, maxval = 30, group = grpS, tooltip = "Recent pivots kept in memory for sequence lookback.")
+
+grpB = "HTF Bias"
+useBias    = input.bool(true, "Use HTF bias filter",  group = grpB, tooltip = "Bias auto-resolves to NEXT standard TF up.")
+biasPivotL = input.int(3,     "HTF pivot length (L/R)", minval = 1, maxval = 15, group = grpB)
+
+grpF = "Fib Levels"
+lvl0    = input.bool(true, "0.000", group = grpF, inline = "a")
+lvl236  = input.bool(true, "0.236", group = grpF, inline = "a")
+lvl382  = input.bool(true, "0.382", group = grpF, inline = "b")
+lvl5    = input.bool(true, "0.500", group = grpF, inline = "b")
+lvl618  = input.bool(true, "0.618", group = grpF, inline = "c")
+lvl786  = input.bool(true, "0.786", group = grpF, inline = "c")
+lvl1    = input.bool(true, "1.000", group = grpF, inline = "d")
+
+grpV = "Visual"
+themeStr    = input.string("UK Algorithms", "Colour Theme", options = ["UK Algorithms", "Midnight", "Stealth", "Blood Red", "Matrix", "Arctic", "Neon Orange", "Royal Blue", "Forest", "Monochrome"], group = grpV, tooltip = "Drives dashboard colours and fib line colour. Golden zone, 0.500 mid-line, and impulse line are theme-independent.")
+midColor    = input.color(color.rgb(160, 160, 170),    "0.500 line color",    group = grpV, tooltip = "Always neutral grey/white. Not affected by theme.")
+goldFill    = input.color(color.new(#FFD700, 80),      "Golden zone fill",    group = grpV, tooltip = "Always gold. Not affected by theme.")
+goldEdge    = input.color(color.new(#B8860B, 40),      "Golden zone edge",    group = grpV, tooltip = "Always gold. Not affected by theme.")
+impulseCol  = input.color(color.rgb(140, 140, 160),    "Impulse line color",  group = grpV, tooltip = "Always neutral grey. Not affected by theme.")
+showImpulse = input.bool(true,  "Show impulse line", group = grpV)
+extendRight = input.bool(true,  "Extend right",   group = grpV)
+showLabels  = input.bool(true,  "Price labels",   group = grpV)
+showAnchors = input.bool(true,  "Anchor markers", group = grpV)
+showInfo    = input.bool(true,  "Info panel",     group = grpV)
+
+grpA = "Alerts"
+alertOnNewFib = input.bool(true, "Alert on new fib drawn",      group = grpA, tooltip = "Fires when a new bull or bear structure is detected and a fib is drawn.")
+alertOnZone   = input.bool(true, "Alert on Golden Zone touch",  group = grpA, tooltip = "Fires once per setup, the moment price first touches the 0.618–0.786 zone. Resets on each new fib.")
+
+// -------------------- THEME PALETTES --------------------
+// Each theme defines: bg, panel, header, brand, frame, grid, fib line, bull, bear
+
+// UK Algorithms (purple — default)
+color cBg_P     = color.rgb(8,   0,  15)
+color cPanel_P  = color.rgb(15,  0,  32)
+color cHeader_P = color.rgb(22,  0,  48)
+color cBrand_P  = color.rgb(28,  0,  58)
+color cFrame_P  = color.rgb(204, 0, 255)
+color cGrid_P   = color.rgb(28,  0,  58)
+color cFib_P    = color.rgb(156, 39, 176)
+color cBull_P   = color.rgb(0,   255, 160)
+color cBear_P   = color.rgb(255, 70,  70)
+
+// Midnight (cyan)
+color cBg_M     = color.rgb(5,   5,    8)
+color cPanel_M  = color.rgb(10,  10,  14)
+color cHeader_M = color.rgb(15,  15,  22)
+color cBrand_M  = color.rgb(18,  18,  28)
+color cFrame_M  = color.rgb(0,   210, 255)
+color cGrid_M   = color.rgb(18,  18,  28)
+color cFib_M    = color.rgb(0,   210, 255)
+color cBull_M   = color.rgb(0,   255, 160)
+color cBear_M   = color.rgb(255, 70,  70)
+
+// Stealth (muted gold)
+color cBg_S     = color.rgb(18,  18,  18)
+color cPanel_S  = color.rgb(26,  26,  26)
+color cHeader_S = color.rgb(34,  34,  34)
+color cBrand_S  = color.rgb(40,  40,  40)
+color cFrame_S  = color.rgb(200, 160, 40)
+color cGrid_S   = color.rgb(40,  40,  40)
+color cFib_S    = color.rgb(200, 160, 40)
+color cBull_S   = color.rgb(80,  200, 80)
+color cBear_S   = color.rgb(220, 60,  60)
+
+// Blood Red
+color cBg_R     = color.rgb(10,  0,   0)
+color cPanel_R  = color.rgb(20,  0,   0)
+color cHeader_R = color.rgb(32,  0,   0)
+color cBrand_R  = color.rgb(42,  0,   0)
+color cFrame_R  = color.rgb(220, 0,   0)
+color cGrid_R   = color.rgb(42,  0,   0)
+color cFib_R    = color.rgb(220, 0,   0)
+color cBull_R   = color.rgb(255, 80,  80)
+color cBear_R   = color.rgb(180, 0,   0)
+
+// Matrix (green)
+color cBg_X     = color.rgb(0,   5,   0)
+color cPanel_X  = color.rgb(0,   10,  0)
+color cHeader_X = color.rgb(0,   18,  0)
+color cBrand_X  = color.rgb(0,   24,  0)
+color cFrame_X  = color.rgb(0,   255, 70)
+color cGrid_X   = color.rgb(0,   24,  0)
+color cFib_X    = color.rgb(0,   255, 70)
+color cBull_X   = color.rgb(0,   255, 70)
+color cBear_X   = color.rgb(0,   180, 50)
+
+// Arctic (light blue)
+color cBg_A     = color.rgb(5,   10,  18)
+color cPanel_A  = color.rgb(8,   16,  28)
+color cHeader_A = color.rgb(12,  22,  40)
+color cBrand_A  = color.rgb(15,  28,  50)
+color cFrame_A  = color.rgb(140, 210, 255)
+color cGrid_A   = color.rgb(15,  28,  50)
+color cFib_A    = color.rgb(140, 210, 255)
+color cBull_A   = color.rgb(140, 220, 255)
+color cBear_A   = color.rgb(80,  160, 220)
+
+// Neon Orange
+color cBg_O     = color.rgb(12,  6,   0)
+color cPanel_O  = color.rgb(22,  10,  0)
+color cHeader_O = color.rgb(32,  14,  0)
+color cBrand_O  = color.rgb(40,  18,  0)
+color cFrame_O  = color.rgb(255, 120, 0)
+color cGrid_O   = color.rgb(40,  18,  0)
+color cFib_O    = color.rgb(255, 120, 0)
+color cBull_O   = color.rgb(255, 160, 40)
+color cBear_O   = color.rgb(200, 80,  0)
+
+// Royal Blue
+color cBg_B     = color.rgb(4,   6,   18)
+color cPanel_B  = color.rgb(6,   10,  30)
+color cHeader_B = color.rgb(8,   14,  44)
+color cBrand_B  = color.rgb(10,  18,  56)
+color cFrame_B  = color.rgb(40,  120, 255)
+color cGrid_B   = color.rgb(10,  18,  56)
+color cFib_B    = color.rgb(40,  120, 255)
+color cBull_B   = color.rgb(100, 180, 255)
+color cBear_B   = color.rgb(40,  80,  200)
+
+// Forest (lime green)
+color cBg_F     = color.rgb(4,   12,  4)
+color cPanel_F  = color.rgb(6,   20,  6)
+color cHeader_F = color.rgb(8,   28,  8)
+color cBrand_F  = color.rgb(10,  36,  10)
+color cFrame_F  = color.rgb(100, 255, 50)
+color cGrid_F   = color.rgb(10,  36,  10)
+color cFib_F    = color.rgb(100, 255, 50)
+color cBull_F   = color.rgb(100, 255, 50)
+color cBear_F   = color.rgb(50,  180, 20)
+
+// Monochrome
+color cBg_Mo     = color.rgb(8,   8,   8)
+color cPanel_Mo  = color.rgb(16,  16,  16)
+color cHeader_Mo = color.rgb(26,  26,  26)
+color cBrand_Mo  = color.rgb(34,  34,  34)
+color cFrame_Mo  = color.rgb(220, 220, 220)
+color cGrid_Mo   = color.rgb(34,  34,  34)
+color cFib_Mo    = color.rgb(220, 220, 220)
+color cBull_Mo   = color.rgb(200, 200, 200)
+color cBear_Mo   = color.rgb(120, 120, 120)
+
+// Resolve theme to active variables
+color cBg     = themeStr == "Midnight" ? cBg_M     : themeStr == "Stealth" ? cBg_S     : themeStr == "Blood Red" ? cBg_R     : themeStr == "Matrix" ? cBg_X     : themeStr == "Arctic" ? cBg_A     : themeStr == "Neon Orange" ? cBg_O     : themeStr == "Royal Blue" ? cBg_B     : themeStr == "Forest" ? cBg_F     : themeStr == "Monochrome" ? cBg_Mo     : cBg_P
+color cPanel  = themeStr == "Midnight" ? cPanel_M  : themeStr == "Stealth" ? cPanel_S  : themeStr == "Blood Red" ? cPanel_R  : themeStr == "Matrix" ? cPanel_X  : themeStr == "Arctic" ? cPanel_A  : themeStr == "Neon Orange" ? cPanel_O  : themeStr == "Royal Blue" ? cPanel_B  : themeStr == "Forest" ? cPanel_F  : themeStr == "Monochrome" ? cPanel_Mo  : cPanel_P
+color cHeader = themeStr == "Midnight" ? cHeader_M : themeStr == "Stealth" ? cHeader_S : themeStr == "Blood Red" ? cHeader_R : themeStr == "Matrix" ? cHeader_X : themeStr == "Arctic" ? cHeader_A : themeStr == "Neon Orange" ? cHeader_O : themeStr == "Royal Blue" ? cHeader_B : themeStr == "Forest" ? cHeader_F : themeStr == "Monochrome" ? cHeader_Mo : cHeader_P
+color cBrand  = themeStr == "Midnight" ? cBrand_M  : themeStr == "Stealth" ? cBrand_S  : themeStr == "Blood Red" ? cBrand_R  : themeStr == "Matrix" ? cBrand_X  : themeStr == "Arctic" ? cBrand_A  : themeStr == "Neon Orange" ? cBrand_O  : themeStr == "Royal Blue" ? cBrand_B  : themeStr == "Forest" ? cBrand_F  : themeStr == "Monochrome" ? cBrand_Mo  : cBrand_P
+color cFrame  = themeStr == "Midnight" ? cFrame_M  : themeStr == "Stealth" ? cFrame_S  : themeStr == "Blood Red" ? cFrame_R  : themeStr == "Matrix" ? cFrame_X  : themeStr == "Arctic" ? cFrame_A  : themeStr == "Neon Orange" ? cFrame_O  : themeStr == "Royal Blue" ? cFrame_B  : themeStr == "Forest" ? cFrame_F  : themeStr == "Monochrome" ? cFrame_Mo  : cFrame_P
+color cGrid   = themeStr == "Midnight" ? cGrid_M   : themeStr == "Stealth" ? cGrid_S   : themeStr == "Blood Red" ? cGrid_R   : themeStr == "Matrix" ? cGrid_X   : themeStr == "Arctic" ? cGrid_A   : themeStr == "Neon Orange" ? cGrid_O   : themeStr == "Royal Blue" ? cGrid_B   : themeStr == "Forest" ? cGrid_F   : themeStr == "Monochrome" ? cGrid_Mo   : cGrid_P
+color cFib    = themeStr == "Midnight" ? cFib_M    : themeStr == "Stealth" ? cFib_S    : themeStr == "Blood Red" ? cFib_R    : themeStr == "Matrix" ? cFib_X    : themeStr == "Arctic" ? cFib_A    : themeStr == "Neon Orange" ? cFib_O    : themeStr == "Royal Blue" ? cFib_B    : themeStr == "Forest" ? cFib_F    : themeStr == "Monochrome" ? cFib_Mo    : cFib_P
+color cBull   = themeStr == "Midnight" ? cBull_M   : themeStr == "Stealth" ? cBull_S   : themeStr == "Blood Red" ? cBull_R   : themeStr == "Matrix" ? cBull_X   : themeStr == "Arctic" ? cBull_A   : themeStr == "Neon Orange" ? cBull_O   : themeStr == "Royal Blue" ? cBull_B   : themeStr == "Forest" ? cBull_F   : themeStr == "Monochrome" ? cBull_Mo   : cBull_P
+color cBear   = themeStr == "Midnight" ? cBear_M   : themeStr == "Stealth" ? cBear_S   : themeStr == "Blood Red" ? cBear_R   : themeStr == "Matrix" ? cBear_X   : themeStr == "Arctic" ? cBear_A   : themeStr == "Neon Orange" ? cBear_O   : themeStr == "Royal Blue" ? cBear_B   : themeStr == "Forest" ? cBear_F   : themeStr == "Monochrome" ? cBear_Mo   : cBear_P
+
+color cText   = color.rgb(235, 235, 235)
+color cSub    = color.rgb(150, 150, 160)
+color cDim    = color.rgb(110, 110, 125)
+
+color brandBG  = color.new(cBrand,  0)
+color headerBG = color.new(cHeader, 0)
+color panelBG  = color.new(cPanel,  0)
+color frameCl  = color.new(cFrame,  0)
+color gridCl   = color.new(cGrid,   0)
+
+// -------------------- DYNAMIC HTF BIAS TF --------------------
+int chartSec = timeframe.in_seconds(timeframe.period)
+int sec1H    = timeframe.in_seconds("60")
+int sec4H    = timeframe.in_seconds("240")
+int secD     = timeframe.in_seconds("D")
+int secW     = timeframe.in_seconds("W")
+int secM     = timeframe.in_seconds("M")
+
+string biasTF        = chartSec < sec1H ? "60" : chartSec < sec4H ? "240" : chartSec < secD ? "D" : chartSec < secW ? "W" : chartSec < secM ? "M" : ""
+bool   biasAvailable = biasTF != ""
+bool   effBias       = useBias and biasAvailable
+
+string biasTFname = ""
+if biasTF == "60"
+    biasTFname := "1H"
+else if biasTF == "240"
+    biasTFname := "4H"
+else if biasTF == "D"
+    biasTFname := "Daily"
+else if biasTF == "W"
+    biasTFname := "Weekly"
+else if biasTF == "M"
+    biasTFname := "Monthly"
+
+// -------------------- PIVOTS --------------------
+// Structural pivots (used for prior swing + impulse extreme detection)
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low,   pivotLen, pivotLen)
+
+// Pullback pivots (used only for the third anchor — the pullback itself)
+phPull = ta.pivothigh(high, pullbackPivotL, pullbackPivotL)
+plPull = ta.pivotlow(low,   pullbackPivotL, pullbackPivotL)
+
+var float[] phPrices = array.new_float()
+var int[]   phBars   = array.new_int()
+var float[] plPrices = array.new_float()
+var int[]   plBars   = array.new_int()
+
+// Pullback pivot history (separate, shorter)
+var float[] phPullPrices = array.new_float()
+var int[]   phPullBars   = array.new_int()
+var float[] plPullPrices = array.new_float()
+var int[]   plPullBars   = array.new_int()
+
+if not na(ph)
+    array.push(phPrices, ph)
+    array.push(phBars,   bar_index - pivotLen)
+    if array.size(phPrices) > historyDepth
+        array.shift(phPrices)
+        array.shift(phBars)
+if not na(pl)
+    array.push(plPrices, pl)
+    array.push(plBars,   bar_index - pivotLen)
+    if array.size(plPrices) > historyDepth
+        array.shift(plPrices)
+        array.shift(plBars)
+
+if not na(phPull)
+    array.push(phPullPrices, phPull)
+    array.push(phPullBars,   bar_index - pullbackPivotL)
+    if array.size(phPullPrices) > historyDepth
+        array.shift(phPullPrices)
+        array.shift(phPullBars)
+if not na(plPull)
+    array.push(plPullPrices, plPull)
+    array.push(plPullBars,   bar_index - pullbackPivotL)
+    if array.size(plPullPrices) > historyDepth
+        array.shift(plPullPrices)
+        array.shift(plPullBars)
+
+// -------------------- HTF STRUCTURAL BIAS --------------------
+f_structBias() =>
+    pHi = ta.pivothigh(high, biasPivotL, biasPivotL)
+    pLo = ta.pivotlow(low,   biasPivotL, biasPivotL)
+    lastPH  = ta.valuewhen(not na(pHi), pHi, 0)
+    priorPH = ta.valuewhen(not na(pHi), pHi, 1)
+    lastPL  = ta.valuewhen(not na(pLo), pLo, 0)
+    priorPL = ta.valuewhen(not na(pLo), pLo, 1)
+    bull = not na(lastPH) and not na(priorPH) and not na(lastPL) and not na(priorPL) and lastPH > priorPH and lastPL > priorPL
+    bear = not na(lastPH) and not na(priorPH) and not na(lastPL) and not na(priorPL) and lastPH < priorPH and lastPL < priorPL
+    bull ? 1 : bear ? -1 : 0
+
+string biasTFsafe = biasAvailable ? biasTF : "D"
+structB = request.security(syminfo.tickerid, biasTFsafe, f_structBias(), barmerge.gaps_off, barmerge.lookahead_off)
+
+int htfBias = not effBias ? 0 : structB
+
+atr14 = ta.atr(14)
+
+// -------------------- STATE --------------------
+var int    trend       = 0
+var float  anchorHi    = na
+var int    anchorHiBar = na
+var float  anchorLo    = na
+var int    anchorLoBar = na
+var string stateStr    = "No Active Structure"
+var int    stickyAge   = 0
+
+var float  zoneTop        = na
+var float  zoneBot        = na
+var bool   zoneAlertFired = false
+
+bool newBullFib = false
+bool newBearFib = false
+
+// -------------------- DRAWING --------------------
+var line[]  fibLines    = array.new_line()
+var label[] fibLabels   = array.new_label()
+var box     goldBox     = na
+var label   anchorHiLbl = na
+var label   anchorLoLbl = na
+var line    impulseLine = na
+
+var table info = table.new(position.top_right, 2, 6, bgcolor = color.new(cBg, 0), border_width = 0, border_color = gridCl, frame_color = frameCl, frame_width = 2)
+
+f_clearDrawings() =>
+    if array.size(fibLines) > 0
+        for i = 0 to array.size(fibLines) - 1
+            line.delete(array.get(fibLines, i))
+        array.clear(fibLines)
+    if array.size(fibLabels) > 0
+        for i = 0 to array.size(fibLabels) - 1
+            label.delete(array.get(fibLabels, i))
+        array.clear(fibLabels)
+    if not na(goldBox)
+        box.delete(goldBox)
+    if not na(anchorHiLbl)
+        label.delete(anchorHiLbl)
+    if not na(anchorLoLbl)
+        label.delete(anchorLoLbl)
+    if not na(impulseLine)
+        line.delete(impulseLine)
+
+// -------------------- HTF BIAS CONFLICT RESET --------------------
+if effBias and trend == 1 and htfBias == -1
+    trend       := 0
+    anchorHi    := na
+    anchorHiBar := na
+    anchorLo    := na
+    anchorLoBar := na
+    stateStr    := "Conflict with Higher Timeframe"
+    stickyAge   := 0
+    zoneTop     := na
+    zoneBot     := na
+    zoneAlertFired := false
+    f_clearDrawings()
+else if effBias and trend == -1 and htfBias == 1
+    trend       := 0
+    anchorHi    := na
+    anchorHiBar := na
+    anchorLo    := na
+    anchorLoBar := na
+    stateStr    := "Conflict with Higher Timeframe"
+    stickyAge   := 0
+    zoneTop     := na
+    zoneBot     := na
+    zoneAlertFired := false
+    f_clearDrawings()
+
+// -------------------- BULL SEQUENCE --------------------
+// Now uses pullback pivot history (plPullBars) for the third anchor only
+if not na(plPull) and array.size(plPullBars) >= 1 and array.size(plBars) >= 1 and array.size(phBars) >= 1
+    bool bullAllowed = (not effBias) or htfBias == 1
+    if bullAllowed
+        // Latest pullback pivot low (uses shorter pullback pivot length)
+        int   nPullPL        = array.size(plPullBars)
+        int   candidateHLBar = array.get(plPullBars,   nPullPL - 1)
+        float candidateHL    = array.get(plPullPrices, nPullPL - 1)
+
+        // Prior swing low — most recent STRUCTURAL pivot low BEFORE the candidate
+        float priorLow    = na
+        int   priorLowBar = na
+        for i = array.size(plBars) - 1 to 0
+            int b = array.get(plBars, i)
+            if b < candidateHLBar
+                priorLowBar := b
+                priorLow    := array.get(plPrices, i)
+                break
+
+        // Impulse high — highest STRUCTURAL pivot high between priorLowBar and candidateHLBar
+        float impulseHH    = na
+        int   impulseHHBar = na
+        if not na(priorLowBar)
+            for i = 0 to array.size(phBars) - 1
+                int b = array.get(phBars, i)
+                if b > priorLowBar and b < candidateHLBar
+                    float p = array.get(phPrices, i)
+                    if na(impulseHH) or p > impulseHH
+                        impulseHH    := p
+                        impulseHHBar := b
+
+        // BOS reference — most recent STRUCTURAL pivot high BEFORE priorLowBar
+        float bosRef = na
+        if not na(priorLowBar) and array.size(phBars) > 0
+            for i = array.size(phBars) - 1 to 0
+                int b = array.get(phBars, i)
+                if b < priorLowBar
+                    bosRef := array.get(phPrices, i)
+                    break
+
+        bool seqOk = not na(priorLow) and not na(impulseHH) and not na(bosRef) and candidateHL > priorLow and impulseHH > bosRef and candidateHL < impulseHH and (impulseHH - priorLow) >= displacementATR * atr14
+
+        if seqOk
+            if anchorHi != impulseHH or anchorLo != priorLow or trend != 1
+                trend       := 1
+                anchorHi    := impulseHH
+                anchorHiBar := impulseHHBar
+                anchorLo    := priorLow
+                anchorLoBar := priorLowBar
+                stateStr    := "Bull Structure Detected"
+                stickyAge   := 0
+                zoneAlertFired := false
+                newBullFib  := true
+                f_clearDrawings()
+
+// -------------------- BEAR SEQUENCE --------------------
+// Mirror of bull, using pullback pivot HIGHS for the third anchor
+if not na(phPull) and array.size(phPullBars) >= 1 and array.size(phBars) >= 1 and array.size(plBars) >= 1
+    bool bearAllowed = (not effBias) or htfBias == -1
+    if bearAllowed
+        // Latest pullback pivot high (uses shorter pullback pivot length)
+        int   nPullPH        = array.size(phPullBars)
+        int   candidateLHBar = array.get(phPullBars,   nPullPH - 1)
+        float candidateLH    = array.get(phPullPrices, nPullPH - 1)
+
+        // Prior swing high — most recent STRUCTURAL pivot high BEFORE the candidate
+        float priorHigh    = na
+        int   priorHighBar = na
+        for i = array.size(phBars) - 1 to 0
+            int b = array.get(phBars, i)
+            if b < candidateLHBar
+                priorHighBar := b
+                priorHigh    := array.get(phPrices, i)
+                break
+
+        // Impulse low — lowest STRUCTURAL pivot low between priorHighBar and candidateLHBar
+        float impulseLL    = na
+        int   impulseLLBar = na
+        if not na(priorHighBar)
+            for i = 0 to array.size(plBars) - 1
+                int b = array.get(plBars, i)
+                if b > priorHighBar and b < candidateLHBar
+                    float p = array.get(plPrices, i)
+                    if na(impulseLL) or p < impulseLL
+                        impulseLL    := p
+                        impulseLLBar := b
+
+        // BOS reference — most recent STRUCTURAL pivot low BEFORE priorHighBar
+        float bosRefLow = na
+        if not na(priorHighBar) and array.size(plBars) > 0
+            for i = array.size(plBars) - 1 to 0
+                int b = array.get(plBars, i)
+                if b < priorHighBar
+                    bosRefLow := array.get(plPrices, i)
+                    break
+
+        bool seqOk = not na(priorHigh) and not na(impulseLL) and not na(bosRefLow) and candidateLH < priorHigh and impulseLL < bosRefLow and candidateLH > impulseLL and (priorHigh - impulseLL) >= displacementATR * atr14
+
+        if seqOk
+            if anchorHi != priorHigh or anchorLo != impulseLL or trend != -1
+                trend       := -1
+                anchorHi    := priorHigh
+                anchorHiBar := priorHighBar
+                anchorLo    := impulseLL
+                anchorLoBar := impulseLLBar
+                stateStr    := "Bear Structure Detected"
+                stickyAge   := 0
+                zoneAlertFired := false
+                newBearFib  := true
+                f_clearDrawings()
+
+// -------------------- INVALIDATION --------------------
+if trend == 1 and not na(anchorLo) and close < anchorLo - invalidBufATR * atr14
+    trend       := 0
+    anchorHi    := na
+    anchorHiBar := na
+    anchorLo    := na
+    anchorLoBar := na
+    stateStr    := "Bull Structure Broken"
+    stickyAge   := 0
+    zoneTop     := na
+    zoneBot     := na
+    zoneAlertFired := false
+    f_clearDrawings()
+else if trend == -1 and not na(anchorHi) and close > anchorHi + invalidBufATR * atr14
+    trend       := 0
+    anchorHi    := na
+    anchorHiBar := na
+    anchorLo    := na
+    anchorLoBar := na
+    stateStr    := "Bear Structure Broken"
+    stickyAge   := 0
+    zoneTop     := na
+    zoneBot     := na
+    zoneAlertFired := false
+    f_clearDrawings()
+
+// -------------------- LEG STALENESS --------------------
+if trend != 0 and not na(anchorHiBar) and not na(anchorLoBar)
+    int youngestAnchor = math.max(anchorHiBar, anchorLoBar)
+    int legAge         = bar_index - youngestAnchor
+    if legAge > maxLegAgeBars
+        trend       := 0
+        anchorHi    := na
+        anchorHiBar := na
+        anchorLo    := na
+        anchorLoBar := na
+        stateStr    := "Structure Expired"
+        stickyAge   := 0
+        zoneTop     := na
+        zoneBot     := na
+        zoneAlertFired := false
+        f_clearDrawings()
+
+// -------------------- STATE LABELS --------------------
+bool isSticky = stateStr == "Conflict with Higher Timeframe" or stateStr == "Bull Structure Broken" or stateStr == "Bear Structure Broken" or stateStr == "Structure Expired"
+
+if trend == 1
+    stateStr  := "Active — Bull Structure"
+    stickyAge := 0
+else if trend == -1
+    stateStr  := "Active — Bear Structure"
+    stickyAge := 0
+else if isSticky
+    stickyAge := stickyAge + 1
+    if stickyAge > 5
+        stateStr  := "No Active Structure"
+        stickyAge := 0
+else
+    stateStr  := "No Active Structure"
+    stickyAge := 0
+
+// -------------------- RENDER FIB --------------------
+var float lastDrawnHi = na
+var float lastDrawnLo = na
+var int   lastDrawnT  = 0
+
+needsRedraw = trend != 0 and (anchorHi != lastDrawnHi or anchorLo != lastDrawnLo or trend != lastDrawnT)
+
+f_drawLevel(float p, int x1, int x2, color col, int w, bool dashed, string txt) =>
+    line ln = line.new(x1, p, x2, p, color = col, width = w, style = dashed ? line.style_dashed : line.style_solid)
+    array.push(fibLines, ln)
+    if showLabels
+        label lb = label.new(x2, p, txt + "  (" + str.tostring(p, format.mintick) + ")", textcolor = col, color = color.new(color.black, 100), style = label.style_label_left, size = size.small)
+        array.push(fibLabels, lb)
+
+if needsRedraw
+    f_clearDrawings()
+    float zero     = trend == 1 ? anchorHi : anchorLo
+    float one      = trend == 1 ? anchorLo : anchorHi
+    float rng      = one - zero
+    int   startBar = trend == 1 ? anchorLoBar : anchorHiBar
+    int   endBar   = extendRight ? bar_index + 20 : bar_index
+
+    float p618 = zero + rng * 0.618
+    float p786 = zero + rng * 0.786
+    float gTop = math.max(p618, p786)
+    float gBot = math.min(p618, p786)
+    goldBox := box.new(startBar, gTop, endBar, gBot, border_color = goldEdge, border_width = 1, bgcolor = goldFill)
+
+    zoneTop := gTop
+    zoneBot := gBot
+
+    if lvl0
+        f_drawLevel(zero, startBar, endBar, cFib, 1, false, "0.000")
+    if lvl236
+        f_drawLevel(zero + rng * 0.236, startBar, endBar, cFib, 1, false, "0.236")
+    if lvl382
+        f_drawLevel(zero + rng * 0.382, startBar, endBar, cFib, 1, false, "0.382")
+    if lvl5
+        f_drawLevel(zero + rng * 0.5,   startBar, endBar, midColor, 1, true,  "0.500")
+    if lvl618
+        f_drawLevel(p618, startBar, endBar, goldEdge, 1, false, "0.618")
+    if lvl786
+        f_drawLevel(p786, startBar, endBar, goldEdge, 1, false, "0.786")
+    if lvl1
+        f_drawLevel(one, startBar, endBar, cFib, 1, false, "1.000")
+
+    if showImpulse
+        impulseLine := line.new(anchorLoBar, anchorLo, anchorHiBar, anchorHi, color = impulseCol, width = 1, style = line.style_dashed)
+
+    if showAnchors
+        string hiTag = trend == 1 ? "HH" : "LH"
+        string loTag = trend == 1 ? "HL" : "LL"
+        string hiTxt = hiTag + "  (" + str.tostring(anchorHi, format.mintick) + ")"
+        string loTxt = loTag + "  (" + str.tostring(anchorLo, format.mintick) + ")"
+        anchorHiLbl := label.new(anchorHiBar, anchorHi, hiTxt, style = label.style_label_down, color = cFib, textcolor = color.white, size = size.small)
+        anchorLoLbl := label.new(anchorLoBar, anchorLo, loTxt, style = label.style_label_up,   color = cFib, textcolor = color.white, size = size.small)
+
+    lastDrawnHi := anchorHi
+    lastDrawnLo := anchorLo
+    lastDrawnT  := trend
+
+// -------------------- ALERTS --------------------
+if alertOnNewFib and newBullFib
+    alert("Confirmed Fib — New Bull Fib Drawn", alert.freq_once_per_bar)
+if alertOnNewFib and newBearFib
+    alert("Confirmed Fib — New Bear Fib Drawn", alert.freq_once_per_bar)
+
+if alertOnZone and trend != 0 and not zoneAlertFired and not na(zoneTop) and not na(zoneBot)
+    bool touched = low <= zoneTop and high >= zoneBot
+    if touched
+        zoneAlertFired := true
+        string dir = trend == 1 ? "Bull" : "Bear"
+        alert("Confirmed Fib — Golden Zone Touched (" + dir + ")", alert.freq_once_per_bar)
+
+alertcondition(alertOnNewFib and newBullFib, "New Bull Fib Drawn", "Confirmed Fib — New Bull Fib Drawn")
+alertcondition(alertOnNewFib and newBearFib, "New Bear Fib Drawn", "Confirmed Fib — New Bear Fib Drawn")
+
+// -------------------- INFO PANEL --------------------
+if showInfo and barstate.islast
+
+    // --- Structure state colour: bull = green, bear = red, sticky = dim, neutral = white ---
+    color stateCol = cText
+    if str.contains(stateStr, "Bull") and not str.contains(stateStr, "Broken")
+        stateCol := cBull
+    else if str.contains(stateStr, "Bear") and not str.contains(stateStr, "Broken")
+        stateCol := cBear
+    else if isSticky
+        stateCol := cDim
+
+    // --- Higher Timeframe Bias ---
+    string biasTxt = ""
+    color  biasCol = cText
+    if not useBias
+        biasTxt := "Filter Off"
+    else if not biasAvailable
+        biasTxt := "Not Available"
+    else if htfBias == 1
+        biasTxt := "Bull (" + biasTFname + ")"
+        biasCol := cBull
+    else if htfBias == -1
+        biasTxt := "Bear (" + biasTFname + ")"
+        biasCol := cBear
+    else
+        biasTxt := "Neutral (" + biasTFname + ")"
+
+    // --- Anchor colours: depend on which direction's structure they belong to ---
+    // Bull setup: anchor high = bullish extreme (green), anchor low = invalidation level (red)
+    // Bear setup: anchor high = invalidation level (red), anchor low = bearish extreme (green)
+    string anchorHiTxt = na(anchorHi) ? "—" : str.tostring(anchorHi, format.mintick)
+    string anchorLoTxt = na(anchorLo) ? "—" : str.tostring(anchorLo, format.mintick)
+    color  anchorHiCol = cText
+    color  anchorLoCol = cText
+    if trend == 1
+        anchorHiCol := cBull
+        anchorLoCol := cBear
+    else if trend == -1
+        anchorHiCol := cBear
+        anchorLoCol := cBull
+
+    string pullbackTxt = "—"
+    if trend != 0 and not na(anchorHiBar) and not na(anchorLoBar)
+        int youngestBar = math.max(anchorHiBar, anchorLoBar)
+        int barsSince   = bar_index - youngestBar
+        pullbackTxt := str.tostring(barsSince) + " bars ago"
+
+    table.cell(info, 0, 0, "UK ALGORITHMS", text_color = cText, bgcolor = brandBG, text_size = size.normal, text_halign = text.align_center)
+    table.cell(info, 1, 0, "CONFIRMED FIB", text_color = cText, bgcolor = brandBG, text_size = size.normal, text_halign = text.align_center)
+
+    table.cell(info, 0, 1, "Structure",                text_color = cSub,     bgcolor = headerBG, text_size = size.small, text_halign = text.align_center)
+    table.cell(info, 1, 1, stateStr,                   text_color = stateCol, bgcolor = headerBG, text_size = size.small, text_halign = text.align_center)
+
+    table.cell(info, 0, 2, "Higher Timeframe Bias",    text_color = cSub,    bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+    table.cell(info, 1, 2, biasTxt,                    text_color = biasCol, bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+
+    table.cell(info, 0, 3, "Anchor High",              text_color = cSub,        bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+    table.cell(info, 1, 3, anchorHiTxt,                text_color = anchorHiCol, bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+
+    table.cell(info, 0, 4, "Anchor Low",               text_color = cSub,        bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+    table.cell(info, 1, 4, anchorLoTxt,                text_color = anchorLoCol, bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+
+    table.cell(info, 0, 5, "Pullback Formed",          text_color = cSub,  bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
+    table.cell(info, 1, 5, pullbackTxt,                text_color = cText, bgcolor = panelBG, text_size = size.small, text_halign = text.align_center)
