@@ -1,129 +1,359 @@
 {
   "ticker": "SPY (S&P 500 Proxy)",
-  "timestamp": "2026-04-28T19:39:55.374745+00:00",
+  "timestamp": "2026-04-28T20:11:21.136266+00:00",
   "current_price": 711.54,
   "market_state": {
-    "is_open": true,
-    "minutes_to_close": 20,
-    "next_close_time": "2026-04-28 16:00:00 ET",
+    "is_open": false,
+    "minutes_to_close": 1428,
+    "next_close_time": "2026-04-29 16:00:00 ET",
     "data_source": "yahoo_finance",
     "previous_close": 715.17,
     "day_high": 712.6015014648438,
     "day_low": 709.4099731445312,
-    "volume": 29078303
+    "volume": 37342531
   },
   "closing_projection": {
-    "projected_close": 711.55,
-    "median_close": 711.53,
-    "probability_above_current": 49.78,
-    "probability_below_current": 50.22,
+    "projected_close": 711.97,
+    "median_close": 712.04,
+    "probability_above_current": 51.54,
+    "probability_below_current": 48.46,
     "probability_ranges": {
-      "prob_above_current": 49.78,
-      "prob_below_current": 50.22,
-      "prob_up_0_5pct": 2.04,
-      "prob_up_1pct": 0.0,
-      "prob_down_0_5pct": 2.02,
-      "prob_down_1pct": 0.0,
-      "prob_within_0_5pct": 95.94,
-      "prob_within_1pct": 100.0
+      "prob_above_current": 51.54,
+      "prob_below_current": 48.46,
+      "prob_up_0_5pct": 40.04,
+      "prob_up_1pct": 30.14,
+      "prob_down_0_5pct": 38.06,
+      "prob_down_1pct": 28.38,
+      "prob_within_0_5pct": 21.9,
+      "prob_within_1pct": 41.48
     },
     "confidence_intervals": {
       "50%": [
-        710.36,
-        712.72
+        703.17,
+        720.81
       ],
       "80%": [
-        709.27,
-        713.85
+        694.56,
+        728.98
       ],
       "90%": [
-        708.71,
-        714.46
+        689.88,
+        734.23
       ]
     },
     "price_targets": {
-      "projected_close": 711.55,
-      "median_close": 711.53,
-      "support": 710.36,
-      "resistance": 712.72,
-      "strong_support": 708.71,
-      "strong_resistance": 714.46
+      "projected_close": 711.97,
+      "median_close": 712.04,
+      "support": 703.17,
+      "resistance": 720.81,
+      "strong_support": 689.88,
+      "strong_resistance": 734.23
     }
   },
   "minute_projection": {
     "current_price": 711.54,
-    "projected_next_minute": 711.53,
-    "one_minute_std": 0.3958,
+    "projected_next_minute": 711.55,
+    "one_minute_std": 0.3521,
     "one_minute_range": [
-      710.89,
-      712.18
+      710.98,
+      712.14
     ],
-    "prob_up_next_minute": 48.7,
-    "prob_down_next_minute": 51.3
+    "prob_up_next_minute": 51.2,
+    "prob_down_next_minute": 48.8
   },
   "hourly_projections": [
     {
-      "hour_label": "Close (0.3h)",
+      "hour_label": "+1h",
+      "projected_price": 711.6,
+      "probability_up": 50.1,
+      "probability_down": 49.9,
+      "confidence_interval_low": 708.18,
+      "confidence_interval_high": 715.06,
+      "expected_range": 6.88,
+      "volatility": 2.7112
+    },
+    {
+      "hour_label": "+2h",
+      "projected_price": 711.7,
+      "probability_up": 50.92,
+      "probability_down": 49.08,
+      "confidence_interval_low": 706.87,
+      "confidence_interval_high": 716.48,
+      "expected_range": 9.61,
+      "volatility": 3.8343
+    },
+    {
+      "hour_label": "+3h",
+      "projected_price": 711.64,
+      "probability_up": 50.42,
+      "probability_down": 49.58,
+      "confidence_interval_low": 705.68,
+      "confidence_interval_high": 717.67,
+      "expected_range": 11.99,
+      "volatility": 4.6957
+    },
+    {
+      "hour_label": "+4h",
       "projected_price": 711.56,
-      "probability_up": 50.12,
-      "probability_down": 49.88,
-      "confidence_interval_low": 709.33,
-      "confidence_interval_high": 713.84,
-      "expected_range": 4.51,
-      "volatility": 1.7493
+      "probability_up": 49.5,
+      "probability_down": 50.5,
+      "confidence_interval_low": 704.54,
+      "confidence_interval_high": 718.73,
+      "expected_range": 14.19,
+      "volatility": 5.4611
+    },
+    {
+      "hour_label": "+5h",
+      "projected_price": 711.56,
+      "probability_up": 49.88,
+      "probability_down": 50.12,
+      "confidence_interval_low": 703.83,
+      "confidence_interval_high": 719.48,
+      "expected_range": 15.66,
+      "volatility": 6.0782
+    },
+    {
+      "hour_label": "+6h",
+      "projected_price": 711.6,
+      "probability_up": 49.3,
+      "probability_down": 50.7,
+      "confidence_interval_low": 703.11,
+      "confidence_interval_high": 720.17,
+      "expected_range": 17.07,
+      "volatility": 6.6401
+    },
+    {
+      "hour_label": "+7h",
+      "projected_price": 711.66,
+      "probability_up": 50.32,
+      "probability_down": 49.68,
+      "confidence_interval_low": 702.42,
+      "confidence_interval_high": 720.95,
+      "expected_range": 18.54,
+      "volatility": 7.1905
+    },
+    {
+      "hour_label": "+8h",
+      "projected_price": 711.59,
+      "probability_up": 49.72,
+      "probability_down": 50.28,
+      "confidence_interval_low": 701.89,
+      "confidence_interval_high": 721.3,
+      "expected_range": 19.41,
+      "volatility": 7.6036
+    },
+    {
+      "hour_label": "+9h",
+      "projected_price": 711.8,
+      "probability_up": 51.36,
+      "probability_down": 48.64,
+      "confidence_interval_low": 701.17,
+      "confidence_interval_high": 722.32,
+      "expected_range": 21.15,
+      "volatility": 8.1527
+    },
+    {
+      "hour_label": "+10h",
+      "projected_price": 712.04,
+      "probability_up": 51.32,
+      "probability_down": 48.68,
+      "confidence_interval_low": 701.39,
+      "confidence_interval_high": 723.23,
+      "expected_range": 21.84,
+      "volatility": 8.4902
+    },
+    {
+      "hour_label": "+11h",
+      "projected_price": 711.68,
+      "probability_up": 50.56,
+      "probability_down": 49.44,
+      "confidence_interval_low": 700.01,
+      "confidence_interval_high": 723.0,
+      "expected_range": 22.99,
+      "volatility": 9.0745
+    },
+    {
+      "hour_label": "+12h",
+      "projected_price": 711.87,
+      "probability_up": 51.18,
+      "probability_down": 48.82,
+      "confidence_interval_low": 699.68,
+      "confidence_interval_high": 723.99,
+      "expected_range": 24.32,
+      "volatility": 9.4487
+    },
+    {
+      "hour_label": "+13h",
+      "projected_price": 712.02,
+      "probability_up": 51.92,
+      "probability_down": 48.08,
+      "confidence_interval_low": 699.42,
+      "confidence_interval_high": 724.72,
+      "expected_range": 25.29,
+      "volatility": 9.8799
+    },
+    {
+      "hour_label": "+14h",
+      "projected_price": 712.07,
+      "probability_up": 51.74,
+      "probability_down": 48.26,
+      "confidence_interval_low": 698.96,
+      "confidence_interval_high": 725.4,
+      "expected_range": 26.43,
+      "volatility": 10.224
+    },
+    {
+      "hour_label": "+15h",
+      "projected_price": 711.74,
+      "probability_up": 49.7,
+      "probability_down": 50.3,
+      "confidence_interval_low": 698.61,
+      "confidence_interval_high": 725.33,
+      "expected_range": 26.72,
+      "volatility": 10.4843
+    },
+    {
+      "hour_label": "+16h",
+      "projected_price": 711.96,
+      "probability_up": 50.84,
+      "probability_down": 49.16,
+      "confidence_interval_low": 698.04,
+      "confidence_interval_high": 725.86,
+      "expected_range": 27.82,
+      "volatility": 11.0018
+    },
+    {
+      "hour_label": "+17h",
+      "projected_price": 711.89,
+      "probability_up": 51.46,
+      "probability_down": 48.54,
+      "confidence_interval_low": 696.87,
+      "confidence_interval_high": 726.85,
+      "expected_range": 29.98,
+      "volatility": 11.5535
+    },
+    {
+      "hour_label": "+18h",
+      "projected_price": 712.19,
+      "probability_up": 51.2,
+      "probability_down": 48.8,
+      "confidence_interval_low": 697.52,
+      "confidence_interval_high": 727.15,
+      "expected_range": 29.63,
+      "volatility": 11.6079
+    },
+    {
+      "hour_label": "+19h",
+      "projected_price": 712.09,
+      "probability_up": 51.0,
+      "probability_down": 49.0,
+      "confidence_interval_low": 697.12,
+      "confidence_interval_high": 727.41,
+      "expected_range": 30.28,
+      "volatility": 11.7832
+    },
+    {
+      "hour_label": "+20h",
+      "projected_price": 711.63,
+      "probability_up": 50.46,
+      "probability_down": 49.54,
+      "confidence_interval_low": 696.15,
+      "confidence_interval_high": 726.93,
+      "expected_range": 30.78,
+      "volatility": 11.962
+    },
+    {
+      "hour_label": "+21h",
+      "projected_price": 711.68,
+      "probability_up": 50.56,
+      "probability_down": 49.44,
+      "confidence_interval_low": 695.88,
+      "confidence_interval_high": 727.53,
+      "expected_range": 31.65,
+      "volatility": 12.4304
+    },
+    {
+      "hour_label": "+22h",
+      "projected_price": 712.1,
+      "probability_up": 52.16,
+      "probability_down": 47.84,
+      "confidence_interval_low": 695.56,
+      "confidence_interval_high": 728.45,
+      "expected_range": 32.9,
+      "volatility": 12.8461
+    },
+    {
+      "hour_label": "+23h",
+      "projected_price": 712.2,
+      "probability_up": 51.34,
+      "probability_down": 48.66,
+      "confidence_interval_low": 695.64,
+      "confidence_interval_high": 728.97,
+      "expected_range": 33.33,
+      "volatility": 13.0468
+    },
+    {
+      "hour_label": "Close (23.8h)",
+      "projected_price": 712.04,
+      "probability_up": 52.04,
+      "probability_down": 47.96,
+      "confidence_interval_low": 695.11,
+      "confidence_interval_high": 728.86,
+      "expected_range": 33.75,
+      "volatility": 13.0803
     }
   ],
   "technical_indicators": {
-    "rsi": 28.14,
+    "rsi": 29.68,
     "macd": {
-      "line": -3.5397,
-      "signal": -3.1857,
-      "histogram": -0.354
+      "line": 1.9635,
+      "signal": 1.7671,
+      "histogram": 0.1963
     },
     "bollinger_bands": {
-      "upper": 761.44,
-      "middle": 740.86,
-      "lower": 720.27
+      "upper": 746.27,
+      "middle": 728.83,
+      "lower": 711.38
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.5444,
-      "gamma": 0.01119,
-      "theta": -0.2876,
-      "vega": 0.8088,
-      "rho": 0.3055
+      "delta": 0.5475,
+      "gamma": 0.012544,
+      "theta": -0.2625,
+      "vega": 0.808,
+      "rho": 0.3086
     },
-    "atm_call_price": 15.69,
-    "atm_put_price": 12.62,
-    "implied_move_pct": 0.25
+    "atm_call_price": 14.16,
+    "atm_put_price": 11.1,
+    "implied_move_pct": 1.88
   },
   "simulation": {
     "statistics": {
-      "mean": 711.5475,
-      "std": 1.7534,
-      "p05": 708.7122,
-      "p10": 709.2682,
-      "p25": 710.364,
-      "p50": 711.5299,
-      "p75": 712.7226,
-      "p90": 713.8462,
-      "p95": 714.4551,
-      "min": 704.4851,
-      "max": 717.4389,
-      "skewness": -0.0065,
-      "kurtosis": -0.0275
+      "mean": 711.9747,
+      "std": 13.3742,
+      "p05": 689.8783,
+      "p10": 694.5628,
+      "p25": 703.1722,
+      "p50": 712.0415,
+      "p75": 720.8122,
+      "p90": 728.9801,
+      "p95": 734.2278,
+      "min": 661.9252,
+      "max": 758.2428,
+      "skewness": 0.0522,
+      "kurtosis": -0.0211
     },
     "simulations": 5000,
-    "volatility": 0.1737,
-    "forecast_minutes": 20
+    "volatility": 0.1548,
+    "forecast_minutes": 1428
   },
-  "signal": "NEUTRAL",
-  "confidence": 25.0,
+  "signal": "BULLISH",
+  "confidence": 75.0,
   "data_sources_used": [
-    "dji_1pm_close/prediction_results.json",
     "yfinance_data/yfinance.dat",
+    "market_prediction/latest_prediction.json",
     "yahoo_finance",
-    "market_prediction/latest_prediction.json"
+    "dji_1pm_close/prediction_results.json"
   ]
 }
