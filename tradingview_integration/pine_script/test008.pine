@@ -1,0 +1,1090 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © BullByte
+
+
+//@version=6
+// ============================================================
+// Liquidity Echo[BullByte]
+// Version: 1.0
+//
+// Detects institutional liquidity sweeps at higher-timeframe
+// compression zones, measures market response via volume
+// vacuum and pressure gradient, then generates high-probability
+// reversal entries with full automated trade management.
+//
+// Four confirmation layers work together on every signal:
+//   1. HTF Compression Zones  - locates where price is coiling
+//   2. Volume Vacuum          - low activity preceding the move
+//   3. Sweep Classification   - spike or grind through the zone
+//   4. Pressure Gradient      - momentum already reversing
+//
+// Auto-calibration reads the current chart's own behavior to
+// set all thresholds automatically. No asset class selection
+// is required. Works on crypto, forex, indices, futures,
+// commodities, and equities without any manual configuration.
+//
+// DISCLAIMER:
+//   This indicator is for educational purposes only and does
+//   not constitute financial advice. Trading carries
+//   substantial risk of loss. Past signals do not guarantee
+//   future results. Always apply your own judgment and
+//   risk management before entering any trade.
+// ============================================================
+
+indicator(title = 'Liquidity Echo[BullByte]', shorttitle = 'LiqEcho[BullByte]', overlay = true, max_labels_count = 300, max_lines_count = 300, max_boxes_count = 200)
+
+// ============================================================
+// SECTION 1 - INTERNAL CONSTANTS
+// ============================================================
+
+var int STATE_IDLE = 0
+var int STATE_ACTIVE = 1
+
+var int DIR_NONE = 0
+var int DIR_LONG = 1
+var int DIR_SHORT = -1
+
+var int SWEEP_NONE = 0
+var int SWEEP_MINOR = 1
+var int SWEEP_MAJOR = 2
+var int SWEEP_FLUSH = 3
+var int SWEEP_GRIND = 4
+
+// ============================================================
+// SECTION 2 - AUTO-CALIBRATION ENGINE
+//
+// Measures three behavioral properties of the current chart
+// and derives all signal thresholds automatically.
+//
+// Wick-Body Ratio  - determines spike vs grind character.
+//                    High ratio means price sweeps via sharp
+//                    wicks. Low ratio means price grinds
+//                    slowly through levels then closes back.
+//
+// Volume CV        - coefficient of variation in volume.
+//                    High CV means volume is session-structured
+//                    with clear spikes and quiet periods.
+//                    Low CV means volume flows continuously.
+//
+// ATR Mean Pct     - average volatility rank over the window.
+//                    Used to calibrate compression sensitivity
+//                    relative to the instrument's own range.
+//
+// The Sensitivity Bias is the only user decision needed.
+// It scales all auto-derived thresholds uniformly based on
+// personal risk preference rather than asset class.
+// ============================================================
+
+string GRP_CAL = '── Auto-Calibration ──────────────────'
+
+bool i_auto_cal = input.bool(defval = true, title = 'Auto-Calibration', group = GRP_CAL, tooltip = 'When ON the indicator measures the current chart ' + 'behavior and sets all thresholds automatically.\n\n' + 'Works on any asset without manual configuration. ' + 'Turn OFF only to lock thresholds to a specific ' + 'calibration snapshot.')
+
+int i_cal_window = input.int(defval = 100, title = 'Calibration Window (bars)', minval = 50, maxval = 300, group = GRP_CAL, tooltip = 'Number of bars used to measure chart behavior.\n\n' + '100 - balanced, adapts within one session.\n' + '200 - stable, slower to adapt to regime changes.\n' + '50  - reactive, best avoided on thin history.')
+
+string i_bias = input.string(defval = 'NEUTRAL', title = 'Sensitivity Bias', options = ['CONSERVATIVE', 'NEUTRAL', 'AGGRESSIVE'], group = GRP_CAL, tooltip = 'Scales all calibrated thresholds uniformly.\n\n' + 'CONSERVATIVE - fewer signals, stricter confirmation.\n' + 'NEUTRAL      - thresholds applied as measured.\n' + 'AGGRESSIVE   - more signals, looser confirmation.')
+
+float BIAS_TIGHT = i_bias == 'CONSERVATIVE' ? 0.80 : i_bias == 'AGGRESSIVE' ? 1.20 : 1.00
+float BIAS_LOOSE = i_bias == 'CONSERVATIVE' ? 1.20 : i_bias == 'AGGRESSIVE' ? 0.80 : 1.00
+
+// Metric 1 - Wick-Body Ratio
+// Captures whether this instrument sweeps via sharp wicks
+// or via slow grinding closes through key levels.
+float cal_avg_wick = ta.sma(high - math.max(open, close) + math.min(open, close) - low, i_cal_window)
+float cal_avg_body = ta.sma(math.abs(close - open), i_cal_window)
+float cal_wick_body_ratio = cal_avg_body > 0 ? cal_avg_wick / cal_avg_body : 1.0
+
+// Metric 2 - Volume Coefficient of Variation
+// Distinguishes session-structured volume from continuous flow.
+float cal_vol_mean = ta.sma(volume, i_cal_window)
+float cal_vol_std = ta.stdev(volume, i_cal_window)
+float cal_volume_cv = cal_vol_mean > 0 ? cal_vol_std / cal_vol_mean : 0.5
+
+// Metric 3 - ATR Mean Percentile
+// Measures average volatility rank for compression calibration.
+float cal_atr_now = ta.atr(14)
+float cal_atr_hi = ta.highest(cal_atr_now, i_cal_window)
+float cal_atr_lo = ta.lowest(cal_atr_now, i_cal_window)
+float cal_atr_pct = cal_atr_hi - cal_atr_lo > 0 ? (cal_atr_now - cal_atr_lo) / (cal_atr_hi - cal_atr_lo) : 0.5
+float cal_atr_mean = ta.sma(cal_atr_pct, i_cal_window)
+
+// Raw threshold derivations from measured metrics
+float RAW_NARROWING = math.max(math.min(0.95 - cal_atr_mean * 0.25, 0.92), 0.68)
+float RAW_VACUUM = math.max(math.min(0.60 + cal_volume_cv * 0.28, 0.92), 0.55)
+float RAW_WICK_MIN = math.max(math.min(cal_wick_body_ratio * 0.22, 0.55), 0.08)
+float RAW_GRADIENT = math.max(math.min(0.08 + (1.0 - cal_wick_body_ratio / 3.0) * 0.18, 0.35), 0.06)
+
+// Grind mode activates automatically on instruments that
+// tend to push through levels with body closes rather than wicks.
+bool ENG_GRIND = cal_wick_body_ratio < 0.85
+int ENG_VOL_WINDOW = cal_volume_cv > 0.80 ? 78 : 20
+
+// Effective thresholds with bias applied and hard range clamps
+float EFF_NARROWING = i_auto_cal ? math.min(RAW_NARROWING * BIAS_LOOSE, 0.95) : 0.82
+float EFF_VACUUM = i_auto_cal ? math.min(RAW_VACUUM * BIAS_LOOSE, 1.10) : 0.80
+float EFF_WICK_MIN = i_auto_cal ? math.max(RAW_WICK_MIN * BIAS_TIGHT, 0.08) : 0.28
+float EFF_GRADIENT = i_auto_cal ? math.max(RAW_GRADIENT * BIAS_TIGHT, 0.06) : 0.18
+
+// ============================================================
+// SECTION 3 - HTF COMPRESSION ZONES
+// ============================================================
+
+string GRP_HTF = '── HTF Compression Zones ─────────────'
+
+string i_htf_mode = input.string(defval = '15m', title = 'HTF Reference', options = ['OFF', '5m', '10m', '15m', '30m', '45m', '1H', '2H', '4H'], group = GRP_HTF, tooltip = 'Timeframe used to detect compression zones.\n\n' + 'Crypto  5m chart -> 15m\n' + 'Futures 5m chart -> 15m or 30m\n' + 'Index   5m chart -> 30m or 1H\n\n' + 'OFF uses local pivot structure instead.')
+
+int i_max_zones = input.int(defval = 3, title = 'Max Active Zones', minval = 1, maxval = 5, group = GRP_HTF, tooltip = 'Maximum compression zones tracked simultaneously.')
+
+int i_zone_lifetime = input.int(defval = 40, title = 'Zone Lifetime (bars)', minval = 10, maxval = 120, group = GRP_HTF, tooltip = 'Bars before an untriggered zone expires and is removed.')
+
+int i_min_touches = input.int(defval = 0, title = 'Min Zone Touches Before Signal', minval = 0, maxval = 3, group = GRP_HTF, tooltip = 'Zone must be tested this many times before a sweep ' + 'against it can generate a signal.\n\n' + '0 - any zone qualifies immediately.\n' + '1 - zone must have been visited once first.\n' + '2 - high-conviction tested zones only.')
+
+bool i_show_zones = input.bool(defval = true, title = 'Show Zone Boxes', group = GRP_HTF, tooltip = 'Fresh zones appear purple. Zones tested once appear ' + 'lighter. Zones tested twice or more appear orange, ' + 'indicating the highest institutional significance.')
+
+// ============================================================
+// SECTION 4 - SWEEP DETECTION
+// ============================================================
+
+string GRP_SWEEP = '── Sweep Detection ───────────────────'
+
+float i_wick_major = input.float(defval = 0.80, title = 'Major Sweep Wick (ATR)', minval = 0.40, maxval = 2.50, step = 0.10, group = GRP_SWEEP, tooltip = 'Wick extension beyond zone in ATR units that ' + 'qualifies as a MAJOR sweep. Anything below this ' + 'threshold is classified as MINOR.')
+
+float i_wick_flush = input.float(defval = 1.50, title = 'Flush Sweep Wick (ATR)', minval = 1.00, maxval = 4.00, step = 0.10, group = GRP_SWEEP, tooltip = 'Wick extension that qualifies as a FLUSH sweep, ' + 'the most aggressive stop-hunt classification.')
+
+float i_body_back = input.float(defval = 1.80, title = 'Max Body Distance From Zone (ATR)', minval = 0.50, maxval = 4.00, step = 0.10, group = GRP_SWEEP, tooltip = 'For spike sweeps the candle body must be within ' + 'this many ATR of the zone boundary. Prevents ' + 'classifying full breakout candles as sweeps.')
+
+int i_sweep_expiry = input.int(defval = 8, title = 'Sweep Window (bars)', minval = 2, maxval = 20, group = GRP_SWEEP, tooltip = 'Bars after a sweep during which a commitment ' + 'candle can confirm the signal.')
+
+bool i_grind_enabled = input.bool(defval = true, title = 'Enable Grind Sweep Path', group = GRP_SWEEP, tooltip = 'Detects sweeps where price slowly pushes through ' + 'a zone over several bars then closes back inside. ' + 'No spike wick required. Auto-activates on instruments ' + 'with low wick-body ratios.')
+
+float i_grind_max_close = input.float(defval = 0.30, title = 'Grind Max Close Beyond Zone (ATR)', minval = 0.05, maxval = 1.50, step = 0.05, group = GRP_SWEEP, tooltip = 'The returning close must be within this distance ' + 'of the zone boundary. Prevents labeling a sustained ' + 'breakout run as a grind sweep.')
+
+int i_grind_lookback = input.int(defval = 3, title = 'Grind Lookback (bars)', minval = 1, maxval = 8, group = GRP_SWEEP, tooltip = 'How many bars back to look for the grind excursion ' + 'outside the zone. 3 bars equals 15 minutes on a 5m chart.')
+
+int i_vac_bars = input.int(defval = 1, title = 'Min Consecutive Low-Volume Bars', minval = 1, maxval = 4, group = GRP_SWEEP, tooltip = 'Volume must stay below the vacuum threshold for ' + 'this many consecutive bars before the condition activates.')
+
+// ============================================================
+// SECTION 5 - COMMITMENT CANDLE
+// ============================================================
+
+string GRP_COMMIT = '── Commitment Candle ─────────────────'
+
+float i_commit_body = input.float(defval = 0.10, title = 'Min Body Size (ATR ratio)', minval = 0.05, maxval = 0.60, step = 0.05, group = GRP_COMMIT, tooltip = 'The confirmation candle body must be at least this ' + 'fraction of ATR. Filters doji and indecision bars.')
+
+float i_commit_vol = input.float(defval = 0.65, title = 'Min Volume vs Average', minval = 0.30, maxval = 1.50, step = 0.05, group = GRP_COMMIT, tooltip = 'Confirmation candle volume must be at least this ' + 'ratio of the rolling average. 0.65 means 65% of average.')
+
+bool i_close_beyond = input.bool(defval = true, title = 'Close Must Cross Zone Boundary', group = GRP_COMMIT, tooltip = 'Commitment candle must close on the signal side ' + 'of the zone. Reduces premature entries.')
+
+bool i_two_bar_confirm = input.bool(defval = false, title = 'Two-Bar Confirmation', group = GRP_COMMIT, tooltip = 'Both the current and prior candle must close in ' + 'the signal direction. Reduces false entries on ' + 'slow-moving instruments at the cost of one bar lag.')
+
+// ============================================================
+// SECTION 6 - TRADE MANAGEMENT
+// ============================================================
+
+string GRP_TM = '── Trade Management ──────────────────'
+
+int i_atr_len = input.int(defval = 14, title = 'ATR Length', minval = 5, maxval = 50, group = GRP_TM)
+
+float i_sl_atr = input.float(defval = 2.00, title = 'Stop Loss Distance (ATR)', minval = 0.50, maxval = 5.00, step = 0.25, group = GRP_TM, tooltip = 'Stop loss is placed exactly this many ATR from ' + 'the entry price on every trade.\n\n' + '1.0 - tight, suits high-frequency scalping.\n' + '1.5 - standard, recommended starting point.\n' + '2.0 - wider, suits slower moving instruments.\n' + '2.5+ - wide, use on higher timeframes only.')
+
+float i_tp1_atr = input.float(defval = 2.00, title = 'Target 1 Distance (ATR)', minval = 0.50, maxval = 6.00, step = 0.25, group = GRP_TM)
+
+float i_tp2_atr = input.float(defval = 3.50, title = 'Target 2 Distance (ATR)', minval = 1.00, maxval = 10.0, step = 0.25, group = GRP_TM)
+
+float i_tp1_pct = input.float(defval = 50.0, title = 'Position Closed at Target 1 (%)', minval = 10.0, maxval = 90.0, step = 5.0, group = GRP_TM, tooltip = 'Percentage of the position closed at Target 1. ' + 'The remainder runs toward Target 2.')
+
+bool i_breakeven = input.bool(defval = false, title = 'Move Stop to Breakeven After Target 1', group = GRP_TM)
+
+bool i_trail_on = input.bool(defval = false, title = 'Enable Trailing Stop', group = GRP_TM)
+
+float i_trail_atr = input.float(defval = 0.80, title = 'Trailing Stop Offset (ATR)', minval = 0.20, maxval = 3.00, step = 0.10, group = GRP_TM, tooltip = 'Distance the trailing stop maintains behind the ' + 'lowest low (long) or highest high (short) of the last 4 bars.')
+
+string i_trail_start = input.string(defval = 'TP1', title = 'Trailing Starts After', options = ['ENTRY', 'TP1'], group = GRP_TM, tooltip = 'ENTRY - trailing begins immediately on signal.\n' + 'TP1   - trailing activates only after Target 1 is hit.')
+
+int i_timeout = input.int(defval = 40, title = 'Target 1 Timeout (bars)', minval = 5, maxval = 200, group = GRP_TM, tooltip = 'If Target 1 is not reached within this many bars ' + 'the trade closes. Prevents capital being tied up ' + 'in stalled moves.')
+
+int i_spacing = input.int(defval = 8, title = 'Min Bars Between Signals', minval = 0, maxval = 100, group = GRP_TM, tooltip = 'Prevents consecutive signals on the same directional ' + 'impulse. 8 bars equals 40 minutes on a 5m chart. ' + 'Set to 0 to disable.')
+
+bool i_ema_filter = input.bool(defval = true, title = 'EMA Trend Filter', group = GRP_TM, tooltip = 'Long signals only fire above the EMA. ' + 'Short signals only fire below. Aligns entries with macro bias.')
+
+int i_ema_len = input.int(defval = 21, title = 'EMA Length', minval = 8, maxval = 200, group = GRP_TM, tooltip = '21  - fast trend reference, suits crypto.\n' + '50  - medium, suits futures.\n' + '200 - slow macro bias, suits indices.')
+
+// ============================================================
+// SECTION 7 - VISUAL SETTINGS
+// ============================================================
+
+string GRP_VIS = '── Visual Settings ───────────────────'
+
+string i_label_mode = input.string(defval = 'MINIMAL', title = 'Signal Label Detail', options = ['OFF', 'MINIMAL', 'DETAIL'], group = GRP_VIS, tooltip = 'OFF     - no labels, use dashboard only.\n' + 'MINIMAL - direction, grade, quality score.\n' + 'DETAIL  - adds sweep type, zone price, all levels.')
+
+bool i_show_history = input.bool(true, 'Show Historical Trade Levels', group = GRP_VIS, tooltip = 'Keeps past trade entry, stop, and target lines on ' + 'chart for reviewing signal quality historically.')
+int i_max_history = input.int(30, 'Max Historical Trades Shown', minval = 10, maxval = 100, group = GRP_VIS)
+bool i_show_shapes = input.bool(true, 'Quality Symbols on Signals', group = GRP_VIS, tooltip = 'PRIME = Gold Diamond   HIGH = Green Circle\n' + 'MED   = Yellow Square  LOW  = Gray X')
+bool i_show_labels = input.bool(true, 'Signal Labels', group = GRP_VIS)
+bool i_show_boxes = input.bool(true, 'Trade Forecast Boxes', group = GRP_VIS)
+bool i_show_ema = input.bool(true, 'Show EMA Line', group = GRP_VIS)
+bool i_show_trail = input.bool(true, 'Show Trailing Stop Line', group = GRP_VIS)
+bool i_show_dash = input.bool(true, 'Show Dashboard Panel', group = GRP_VIS)
+bool i_show_vacuum = input.bool(true, 'Highlight Vacuum Bars', group = GRP_VIS, tooltip = 'Subtle yellow tint on bars where volume vacuum is active.')
+bool i_show_grind_dot = input.bool(true, 'Show Grind Sweep Markers', group = GRP_VIS, tooltip = 'Small orange triangles marking grind-path sweep bars.')
+
+color i_c_bull = input.color(color.new(#00E676, 0), 'Bull Color', inline = 'ca', group = GRP_VIS)
+color i_c_bear = input.color(color.new(#FF1744, 0), 'Bear Color', inline = 'ca', group = GRP_VIS)
+color i_c_entry = input.color(color.new(#2196F3, 0), 'Entry Color', inline = 'cb', group = GRP_VIS)
+color i_c_stop = input.color(color.new(#FF5252, 0), 'Stop Color', inline = 'cb', group = GRP_VIS)
+color i_c_zone = input.color(color.new(#7C4DFF, 0), 'Zone Color', inline = 'cc', group = GRP_VIS)
+
+// ============================================================
+// SECTION 8 - BASE CALCULATIONS
+// ============================================================
+
+float atr_val = ta.atr(i_atr_len)
+float ema_val = ta.ema(close, i_ema_len)
+float vol_avg = ta.sma(volume, ENG_VOL_WINDOW)
+float vol_ratio = vol_avg > 0 ? volume / vol_avg : 1.0
+bool vol_ok = not na(volume) and volume > 0 and not na(vol_avg)
+
+float body_size = math.abs(close - open)
+float body_atr_r = atr_val > 0 ? body_size / atr_val : 0.0
+float wick_up = high - math.max(open, close)
+float wick_dn = math.min(open, close) - low
+
+bool bull_bar = close > open
+bool bear_bar = close < open
+
+float atr_hi = ta.highest(atr_val, 100)
+float atr_lo = ta.lowest(atr_val, 100)
+float atr_pct = atr_hi - atr_lo > 0 ? (atr_val - atr_lo) / (atr_hi - atr_lo) : 0.5
+
+bool trend_long = not i_ema_filter or close > ema_val
+bool trend_short = not i_ema_filter or close < ema_val
+bool htf_on = i_htf_mode != 'OFF'
+bool confirmed = barstate.isconfirmed
+bool ready = bar_index > i_cal_window and not na(atr_val) and not na(ema_val)
+
+string htf_tf = i_htf_mode == '5m' ? '5' : i_htf_mode == '10m' ? '10' : i_htf_mode == '15m' ? '15' : i_htf_mode == '30m' ? '30' : i_htf_mode == '45m' ? '45' : i_htf_mode == '1H' ? '60' : i_htf_mode == '2H' ? '120' : i_htf_mode == '4H' ? '240' : '15'
+
+// ============================================================
+// SECTION 9 - PRESSURE GRADIENT
+//
+// Measures momentum shift via a 3-bar delta proxy.
+// Delta per bar = (2*close - high - low) / range, normalized
+// to the range -1 to +1. The gradient is the rate of change
+// in delta from 2 bars ago to now, divided by 2.
+// A positive gradient means buying pressure is accelerating.
+// A negative gradient means selling pressure is accelerating.
+// ============================================================
+
+float delta_0 = (2 * close - high - low) / math.max(high - low, syminfo.mintick)
+float delta_2 = (2 * close[2] - high[2] - low[2]) / math.max(high[2] - low[2], syminfo.mintick)
+float grad = (delta_0 - delta_2) / 2.0
+
+bool grad_long = grad > EFF_GRADIENT
+bool grad_short = grad < -EFF_GRADIENT
+
+// ============================================================
+// SECTION 10 - HTF COMPRESSION ZONE DETECTION
+//
+// Requests higher timeframe OHLC via a single tuple call so
+// all five values share the same HTF bar context. Uses
+// lookahead_off on confirmed chart bars only to prevent
+// intra-bar zone registration from unconfirmed HTF data.
+//
+// Zone colors reflect touch count:
+//   Purple dim  - fresh zone, zero touches
+//   Purple mid  - touched once
+//   Orange      - touched twice or more, highest significance
+// ============================================================
+
+[htf_h, htf_l, htf_r, htf_r1, htf_r2] = request.security(syminfo.tickerid, htf_tf, [high, low, high - low, high[1] - low[1], high[2] - low[2]], lookahead = barmerge.lookahead_off)
+
+float eff_htf_h = htf_on ? htf_h : na
+float eff_htf_l = htf_on ? htf_l : na
+float eff_htf_r = htf_on ? htf_r : na
+float eff_htf_r1 = htf_on ? htf_r1 : na
+float eff_htf_r2 = htf_on ? htf_r2 : na
+
+float htf_avg_r = (eff_htf_r + eff_htf_r1 + eff_htf_r2) / 3
+bool is_compress = htf_on and not na(htf_avg_r) and htf_avg_r > 0 and eff_htf_r < htf_avg_r * EFF_NARROWING
+
+float compress_str = 0.0
+if is_compress and htf_avg_r > 0
+    float ratio = eff_htf_r / htf_avg_r
+    compress_str := ratio < 0.55 ? 3.0 : ratio < 0.68 ? 2.0 : 1.0
+    compress_str
+
+var array<float> z_highs = array.new_float()
+var array<float> z_lows = array.new_float()
+var array<int> z_bars = array.new_int()
+var array<float> z_str = array.new_float()
+var array<int> z_touches = array.new_int()
+var array<box> z_boxes = array.new_box()
+
+// Zone registration gated on confirmed bars only to prevent
+// phantom zones from unconfirmed intra-bar HTF readings.
+if confirmed and is_compress
+    bool new_zone = true
+    if array.size(z_highs) > 0
+        for i = 0 to array.size(z_highs) - 1 by 1
+            if not(eff_htf_h < array.get(z_lows, i) or eff_htf_l > array.get(z_highs, i))
+                new_zone := false
+                break
+    if new_zone
+        array.unshift(z_highs, eff_htf_h)
+        array.unshift(z_lows, eff_htf_l)
+        array.unshift(z_bars, bar_index)
+        array.unshift(z_str, compress_str)
+        array.unshift(z_touches, 0)
+        if i_show_zones
+            box b = box.new(bar_index, eff_htf_h, bar_index + i_zone_lifetime, eff_htf_l, border_color = color.new(i_c_zone, 50), bgcolor = color.new(i_c_zone, 91))
+            array.unshift(z_boxes, b)
+
+// Touch counter gated on confirmed bars to prevent intra-bar
+// price excursions from inflating zone touch counts.
+if confirmed and array.size(z_highs) > 0
+    for i = 0 to array.size(z_highs) - 1 by 1
+        bool hit_top = high >= array.get(z_highs, i) - atr_val * 0.25 and low < array.get(z_highs, i)
+        bool hit_bot = low <= array.get(z_lows, i) + atr_val * 0.25 and high > array.get(z_lows, i)
+        if hit_top or hit_bot
+            array.set(z_touches, i, array.get(z_touches, i) + 1)
+
+// Expire zones that have exceeded their lifetime
+if array.size(z_highs) > 0
+    for i = array.size(z_highs) - 1 to 0 by 1
+        if bar_index - array.get(z_bars, i) > i_zone_lifetime
+            array.remove(z_highs, i)
+            array.remove(z_lows, i)
+            array.remove(z_bars, i)
+            array.remove(z_str, i)
+            array.remove(z_touches, i)
+            if i_show_zones and i < array.size(z_boxes)
+                box.delete(array.get(z_boxes, i))
+                array.remove(z_boxes, i)
+
+// Trim to maximum allowed zones
+while array.size(z_highs) > i_max_zones
+    array.pop(z_highs)
+    array.pop(z_lows)
+    array.pop(z_bars)
+    array.pop(z_str)
+    array.pop(z_touches)
+    if i_show_zones and array.size(z_boxes) > 0
+        box.delete(array.pop(z_boxes))
+
+// Refresh zone box colors and extend right edge to current bar
+if i_show_zones and array.size(z_boxes) > 0
+    for i = 0 to array.size(z_boxes) - 1 by 1
+        int t = array.get(z_touches, i)
+        color zc = t >= 2 ? color.new(#FF6D00, 82) : t == 1 ? color.new(i_c_zone, 87) : color.new(i_c_zone, 91)
+        box.set_bgcolor(array.get(z_boxes, i), zc)
+        box.set_right(array.get(z_boxes, i), bar_index + 10)
+
+// ============================================================
+// SECTION 11 - VOLUME VACUUM
+// ============================================================
+
+var int vac_count = 0
+vac_count := vol_ok and vol_ratio < EFF_VACUUM ? vac_count + 1 : 0
+bool vac_active = vol_ok and vac_count >= i_vac_bars
+
+bgcolor(i_show_vacuum and vac_active ? color.new(#FFF176, 96) : na, title = 'Volume Vacuum')
+
+// ============================================================
+// SECTION 12 - NEAREST ZONE LOOKUP
+//
+// Scans active zones to find the closest qualifying zone
+// above and below the current price. Zones must meet the
+// minimum touch requirement set by the user.
+// Falls back to local pivot structure when HTF is OFF.
+// ============================================================
+
+float piv_high = ta.pivothigh(high, 7, 2)
+float piv_low = ta.pivotlow(low, 7, 2)
+
+var float fb_res = na
+var float fb_sup = na
+
+if not na(piv_high)
+    fb_res := piv_high
+    fb_res
+if not na(piv_low)
+    fb_sup := piv_low
+    fb_sup
+
+float nz_bull = na
+float nz_bear = na
+float nz_bull_str = 0.0
+float nz_bear_str = 0.0
+int nz_bull_age = 0
+int nz_bear_age = 0
+int nz_bull_t = 0
+int nz_bear_t = 0
+
+if htf_on and array.size(z_highs) > 0
+    float bd = 1e10
+    float bd2 = 1e10
+    for i = 0 to array.size(z_highs) - 1 by 1
+        if array.get(z_touches, i) < i_min_touches
+            continue
+        float zh = array.get(z_highs, i)
+        float zl = array.get(z_lows, i)
+        int za = bar_index - array.get(z_bars, i)
+        float zs = array.get(z_str, i)
+        int zt = array.get(z_touches, i)
+        if zl < close and close - zl < bd
+            bd := close - zl
+            nz_bull := zl
+            nz_bull_str := zs
+            nz_bull_age := za
+            nz_bull_t := zt
+            nz_bull_t
+        if zh > close and zh - close < bd2
+            bd2 := zh - close
+            nz_bear := zh
+            nz_bear_str := zs
+            nz_bear_age := za
+            nz_bear_t := zt
+            nz_bear_t
+else if not htf_on
+    nz_bull := fb_sup
+    nz_bear := fb_res
+    nz_bear
+
+// ============================================================
+// SECTION 13 - SWEEP DETECTION
+//
+// PATH A - SPIKE SWEEP:
+//   A candle wicks through the zone boundary with a minimum
+//   wick size and the body closes back near the zone.
+//   This is the classic institutional stop-hunt pattern.
+//
+// PATH B - GRIND SWEEP:
+//   Price slowly pushes through a zone over several bars
+//   then a candle closes back inside the zone boundary.
+//   No spike wick is required. Common on instruments with
+//   low wick-body ratios such as indices and forex pairs.
+// ============================================================
+
+// Path A - Spike bull sweep
+bool spike_bull = not na(nz_bull) and vac_active and low < nz_bull and close >= nz_bull - atr_val * i_body_back and wick_dn >= atr_val * EFF_WICK_MIN and grad_long
+
+// Path A - Spike bear sweep
+bool spike_bear = not na(nz_bear) and vac_active and high > nz_bear and close <= nz_bear + atr_val * i_body_back and wick_up >= atr_val * EFF_WICK_MIN and grad_short
+
+// Path B - Grind bull sweep
+bool grind_ok = i_grind_enabled or ENG_GRIND
+
+bool grind_bull = false
+if grind_ok and not na(nz_bull)
+    bool was_below = false
+    for k = 1 to i_grind_lookback by 1
+        if low[k] < nz_bull - atr_val * 0.10
+            was_below := true
+            break
+    grind_bull := was_below and close > nz_bull and close < nz_bull + atr_val * i_grind_max_close and bull_bar and grad_long
+    grind_bull
+
+// Path B - Grind bear sweep
+bool grind_bear = false
+if grind_ok and not na(nz_bear)
+    bool was_above = false
+    for k = 1 to i_grind_lookback by 1
+        if high[k] > nz_bear + atr_val * 0.10
+            was_above := true
+            break
+    grind_bear := was_above and close < nz_bear and close > nz_bear - atr_val * i_grind_max_close and bear_bar and grad_short
+    grind_bear
+
+// Classify spike sweep severity by wick extension in ATR units
+f_classify(float wick_ext) =>
+    wick_ext >= i_wick_flush ? SWEEP_FLUSH : wick_ext >= i_wick_major ? SWEEP_MAJOR : wick_ext >= EFF_WICK_MIN ? SWEEP_MINOR : SWEEP_NONE
+
+float bull_ext = spike_bull and atr_val > 0 ? (nz_bull - low) / atr_val : 0.0
+float bear_ext = spike_bear and atr_val > 0 ? (high - nz_bear) / atr_val : 0.0
+
+int bull_class = grind_bull ? SWEEP_GRIND : spike_bull ? f_classify(bull_ext) : SWEEP_NONE
+int bear_class = grind_bear ? SWEEP_GRIND : spike_bear ? f_classify(bear_ext) : SWEEP_NONE
+
+bool bull_sweep_fired = bull_class != SWEEP_NONE
+bool bear_sweep_fired = bear_class != SWEEP_NONE
+
+f_sweep_str(int t) =>
+    t == SWEEP_FLUSH ? 'FLUSH' : t == SWEEP_MAJOR ? 'MAJOR' : t == SWEEP_MINOR ? 'MINOR' : t == SWEEP_GRIND ? 'GRIND' : 'NONE'
+
+plotshape(i_show_grind_dot and confirmed and grind_bull, 'Grind Bull', shape.triangleup, location.belowbar, color.new(#FFA726, 40), size = size.tiny)
+plotshape(i_show_grind_dot and confirmed and grind_bear, 'Grind Bear', shape.triangledown, location.abovebar, color.new(#FFA726, 40), size = size.tiny)
+
+// ============================================================
+// SECTION 14 - SWEEP STATE TRACKER
+//
+// Stores the details of the most recent sweep detection and
+// holds them open for the duration of the commitment window.
+// All state writes are gated on confirmed bars to prevent
+// intra-bar flicker from corrupting the sweep record.
+// Once a trade enters the sweep state is cleared.
+// ============================================================
+
+var int trade_state = STATE_IDLE
+
+var int sw_dir = DIR_NONE
+var int sw_type = SWEEP_NONE
+var int sw_bar = 0
+var float sw_zone = na
+var float sw_str = 0.0
+var int sw_touch = 0
+var bool sw_grind = false
+
+if confirmed and bull_sweep_fired and trade_state == STATE_IDLE
+    sw_dir := DIR_LONG
+    sw_type := bull_class
+    sw_bar := bar_index
+    sw_zone := nz_bull
+    sw_str := nz_bull_str
+    sw_touch := nz_bull_t
+    sw_grind := grind_bull
+    sw_grind
+
+if confirmed and bear_sweep_fired and trade_state == STATE_IDLE
+    sw_dir := DIR_SHORT
+    sw_type := bear_class
+    sw_bar := bar_index
+    sw_zone := nz_bear
+    sw_str := nz_bear_str
+    sw_touch := nz_bear_t
+    sw_grind := grind_bear
+    sw_grind
+
+bool sw_window = sw_dir != DIR_NONE and bar_index - sw_bar <= i_sweep_expiry and trade_state == STATE_IDLE
+
+if not sw_window and trade_state == STATE_IDLE
+    sw_dir := DIR_NONE
+    sw_dir
+
+// ============================================================
+// SECTION 15 - SIGNAL QUALITY SCORER
+//
+// Grades each signal from 0 to 10 across four dimensions.
+// Scores map to grades: PRIME 8-10, HIGH 6-7, MED 4-5, LOW 0-3.
+//
+// Zone compression strength  0-3 points
+// Sweep severity             0-3 points
+// Gradient momentum          0-2 points
+// Zone touch count           0-2 points
+// ============================================================
+
+f_quality_score(int sweep_t, float zone_s, float g, int touches) =>
+    int s = 0
+    s := s + (zone_s >= 3.0 ? 3 : zone_s >= 2.0 ? 2 : zone_s >= 1.0 ? 1 : 0)
+    s := s + (sweep_t == SWEEP_FLUSH ? 3 : sweep_t == SWEEP_MAJOR ? 2 : sweep_t == SWEEP_MINOR or sweep_t == SWEEP_GRIND ? 1 : 0)
+    s := s + (math.abs(g) >= 0.55 ? 2 : math.abs(g) >= 0.25 ? 1 : 0)
+    s := s + (touches >= 2 ? 2 : touches >= 1 ? 1 : 0)
+    math.min(s, 10)
+
+f_quality_grade(int s) =>
+    s >= 8 ? 'PRIME' : s >= 6 ? 'HIGH' : s >= 4 ? 'MED' : 'LOW'
+
+f_quality_bar(int s) =>
+    string b = ''
+    for i = 1 to 10 by 1
+        b := b + (i <= s ? '|' : '.')
+        b
+    b
+
+// ============================================================
+// SECTION 16 - COMMITMENT CANDLE VALIDATION
+//
+// The final gate before a signal is issued. The commitment
+// candle must demonstrate directional conviction via body
+// size, volume, and closing position relative to the zone.
+// ============================================================
+
+bool prior_bull_ok = not i_two_bar_confirm or close[1] > open[1] and close[1] > sw_zone
+bool prior_bear_ok = not i_two_bar_confirm or close[1] < open[1] and close[1] < sw_zone
+
+bool long_commit = confirmed and ready and sw_window and sw_dir == DIR_LONG and bull_bar and body_atr_r >= i_commit_body and vol_ok and vol_ratio >= i_commit_vol and (not i_close_beyond or close > sw_zone) and trend_long and prior_bull_ok
+
+bool short_commit = confirmed and ready and sw_window and sw_dir == DIR_SHORT and bear_bar and body_atr_r >= i_commit_body and vol_ok and vol_ratio >= i_commit_vol and (not i_close_beyond or close < sw_zone) and trend_short and prior_bear_ok
+
+// ============================================================
+// SECTION 17 - TRADE STATE MACHINE
+//
+// Stop loss is placed exactly i_sl_atr units of ATR from the
+// entry price in both directions. This is a single consistent
+// value with no anchor or cap complexity.
+// ============================================================
+
+var int t_dir = DIR_NONE
+var float t_entry = na
+var float t_sl = na
+var float t_tp1 = na
+var float t_tp2 = na
+var int t_ebar = 0
+var bool t_tp1_hit = false
+var bool t_tp2_hit = false
+var bool t_be = false
+var float t_pos = 1.0
+var int t_last_sig = -999
+
+var int sig_sweep = SWEEP_NONE
+var float sig_grad = 0.0
+var float sig_zone = na
+var int sig_score = 0
+var string sig_grade = '---'
+var bool sig_grind = false
+
+var line ln_entry = na
+var line ln_sl = na
+var line ln_tp1 = na
+var line ln_tp2 = na
+var box bx_prof1 = na
+var box bx_prof2 = na
+var box bx_loss = na
+
+var array<line> hist_lines = array.new_line()
+var array<box> hist_boxes = array.new_box()
+
+var float trail_val = na
+var bool trail_active = false
+var color trail_col = color.gray
+
+bool spacing_ok = i_spacing == 0 or bar_index - t_last_sig >= i_spacing
+
+f_archive(bool keep) =>
+    if not na(ln_entry)
+        if keep
+            array.push(hist_lines, ln_entry)
+        else
+            line.delete(ln_entry)
+    if not na(ln_sl)
+        if keep
+            array.push(hist_lines, ln_sl)
+        else
+            line.delete(ln_sl)
+    if not na(ln_tp1)
+        if keep
+            array.push(hist_lines, ln_tp1)
+        else
+            line.delete(ln_tp1)
+    if not na(ln_tp2)
+        if keep
+            array.push(hist_lines, ln_tp2)
+        else
+            line.delete(ln_tp2)
+    if not na(bx_prof1)
+        if keep
+            array.push(hist_boxes, bx_prof1)
+        else
+            box.delete(bx_prof1)
+    if not na(bx_prof2)
+        if keep
+            array.push(hist_boxes, bx_prof2)
+        else
+            box.delete(bx_prof2)
+    if not na(bx_loss)
+        if keep
+            array.push(hist_boxes, bx_loss)
+        else
+            box.delete(bx_loss)
+
+// Long entry
+if trade_state == STATE_IDLE and spacing_ok and long_commit
+    f_archive(i_show_history)
+    ln_entry := na
+    ln_sl := na
+    ln_tp1 := na
+    ln_tp2 := na
+    bx_prof1 := na
+    bx_prof2 := na
+    bx_loss := na
+
+    trade_state := STATE_ACTIVE
+    t_dir := DIR_LONG
+    t_entry := close
+    t_ebar := bar_index
+    t_last_sig := bar_index
+    sig_sweep := sw_type
+    sig_grad := grad
+    sig_zone := sw_zone
+    sig_grind := sw_grind
+    sig_score := f_quality_score(sw_type, sw_str, grad, sw_touch)
+    sig_grade := f_quality_grade(sig_score)
+    t_tp1_hit := false
+    t_tp2_hit := false
+    t_be := false
+    t_pos := 1.0
+    trail_val := na
+    trail_active := false
+    t_sl := t_entry - atr_val * i_sl_atr
+    t_tp1 := t_entry + atr_val * i_tp1_atr
+    t_tp2 := t_entry + atr_val * i_tp2_atr
+    sw_dir := DIR_NONE
+    sw_dir
+
+// Short entry
+if trade_state == STATE_IDLE and spacing_ok and short_commit
+    f_archive(i_show_history)
+    ln_entry := na
+    ln_sl := na
+    ln_tp1 := na
+    ln_tp2 := na
+    bx_prof1 := na
+    bx_prof2 := na
+    bx_loss := na
+
+    trade_state := STATE_ACTIVE
+    t_dir := DIR_SHORT
+    t_entry := close
+    t_ebar := bar_index
+    t_last_sig := bar_index
+    sig_sweep := sw_type
+    sig_grad := grad
+    sig_zone := sw_zone
+    sig_grind := sw_grind
+    sig_score := f_quality_score(sw_type, sw_str, grad, sw_touch)
+    sig_grade := f_quality_grade(sig_score)
+    t_tp1_hit := false
+    t_tp2_hit := false
+    t_be := false
+    t_pos := 1.0
+    trail_val := na
+    trail_active := false
+    t_sl := t_entry + atr_val * i_sl_atr
+    t_tp1 := t_entry - atr_val * i_tp1_atr
+    t_tp2 := t_entry - atr_val * i_tp2_atr
+    sw_dir := DIR_NONE
+    sw_dir
+
+// ============================================================
+// SECTION 18 - ACTIVE TRADE MANAGEMENT
+// ============================================================
+
+if trade_state == STATE_ACTIVE
+
+    if not t_tp1_hit
+        if t_dir == DIR_LONG and high >= t_tp1
+            t_tp1_hit := true
+            t_pos := 1.0 - i_tp1_pct / 100.0
+            t_pos
+        if t_dir == DIR_SHORT and low <= t_tp1
+            t_tp1_hit := true
+            t_pos := 1.0 - i_tp1_pct / 100.0
+            t_pos
+
+    if t_tp1_hit and i_breakeven and not t_be
+        t_sl := t_entry
+        t_be := true
+        t_be
+
+    if not t_tp2_hit
+        if t_dir == DIR_LONG and high >= t_tp2
+            t_tp2_hit := true
+            t_tp2_hit
+        if t_dir == DIR_SHORT and low <= t_tp2
+            t_tp2_hit := true
+            t_tp2_hit
+
+    if i_trail_on
+        bool do_trail = i_trail_start == 'ENTRY' ? true : t_tp1_hit
+        if do_trail
+            trail_val := t_dir == DIR_LONG ? math.max(na(trail_val) ? t_sl : trail_val, ta.lowest(low, 4) - atr_val * i_trail_atr) : math.min(na(trail_val) ? t_sl : trail_val, ta.highest(high, 4) + atr_val * i_trail_atr)
+            if not na(trail_val)
+                t_sl := trail_val
+                trail_active := true
+                trail_col := t_dir == DIR_LONG ? i_c_bull : i_c_bear
+                trail_col
+        else
+            trail_val := na
+            trail_active := false
+            trail_active
+
+    bool sl_hit = t_dir == DIR_LONG and low <= t_sl or t_dir == DIR_SHORT and high >= t_sl
+    bool timed_out = not t_tp1_hit and bar_index - t_ebar > i_timeout
+
+    if t_tp2_hit or sl_hit or timed_out
+
+        if not na(ln_entry)
+            line.set_x2(ln_entry, bar_index)
+        if not na(ln_sl)
+            line.set_x2(ln_sl, bar_index)
+        if not na(ln_tp1)
+            line.set_x2(ln_tp1, bar_index)
+        if not na(ln_tp2)
+            line.set_x2(ln_tp2, bar_index)
+        if not na(bx_prof1)
+            box.set_right(bx_prof1, bar_index)
+        if not na(bx_prof2)
+            box.set_right(bx_prof2, bar_index)
+        if not na(bx_loss)
+            box.set_right(bx_loss, bar_index)
+
+        if i_show_history
+            if not na(ln_entry)
+                array.push(hist_lines, ln_entry)
+            if not na(ln_sl)
+                array.push(hist_lines, ln_sl)
+            if not na(ln_tp1)
+                array.push(hist_lines, ln_tp1)
+            if not na(ln_tp2)
+                array.push(hist_lines, ln_tp2)
+            if not na(bx_prof1)
+                array.push(hist_boxes, bx_prof1)
+            if not na(bx_prof2)
+                array.push(hist_boxes, bx_prof2)
+            if not na(bx_loss)
+                array.push(hist_boxes, bx_loss)
+
+            while array.size(hist_lines) > i_max_history * 4
+                if array.size(hist_lines) > 0
+                    line.delete(array.shift(hist_lines))
+            while array.size(hist_boxes) > i_max_history * 3
+                if array.size(hist_boxes) > 0
+                    box.delete(array.shift(hist_boxes))
+        else
+            if not na(ln_entry)
+                line.delete(ln_entry)
+            if not na(ln_sl)
+                line.delete(ln_sl)
+            if not na(ln_tp1)
+                line.delete(ln_tp1)
+            if not na(ln_tp2)
+                line.delete(ln_tp2)
+            if not na(bx_prof1)
+                box.delete(bx_prof1)
+            if not na(bx_prof2)
+                box.delete(bx_prof2)
+            if not na(bx_loss)
+                box.delete(bx_loss)
+
+        ln_entry := na
+        ln_sl := na
+        ln_tp1 := na
+        ln_tp2 := na
+        bx_prof1 := na
+        bx_prof2 := na
+        bx_loss := na
+
+        trade_state := STATE_IDLE
+        t_dir := DIR_NONE
+        trail_val := na
+        trail_active := false
+        trail_active
+
+// ============================================================
+// SECTION 19 - SIGNAL FLAGS
+// ============================================================
+
+bool new_long = trade_state == STATE_ACTIVE and t_dir == DIR_LONG and bar_index == t_ebar
+bool new_short = trade_state == STATE_ACTIVE and t_dir == DIR_SHORT and bar_index == t_ebar
+
+// ============================================================
+// SECTION 20 - SIGNAL LABELS
+// ============================================================
+
+float lbl_offset = math.max(atr_val * 2.5, 50 * syminfo.mintick)
+
+if i_show_labels and new_long and i_label_mode != 'OFF'
+    string sweep_tag = sig_grind ? 'GRIND' : f_sweep_str(sig_sweep)
+    string txt_min = 'LONG  ' + sig_grade + '  ' + str.tostring(sig_score) + '/10'
+    string txt_full = '[L] LONG  ' + sig_grade + '  ' + str.tostring(sig_score) + '/10\n' + 'Sweep: ' + sweep_tag + '  Zone: ' + str.tostring(sig_zone, format.mintick) + '\n' + 'TP1: ' + str.tostring(t_tp1, format.mintick) + '  TP2: ' + str.tostring(t_tp2, format.mintick) + '\n' + 'SL: ' + str.tostring(t_sl, format.mintick)
+    color lc = sig_grade == 'PRIME' ? color.new(i_c_bull, 5) : sig_grade == 'HIGH' ? color.new(i_c_bull, 20) : sig_grade == 'MED' ? color.new(i_c_bull, 40) : color.new(i_c_bull, 60)
+    label.new(bar_index, low - lbl_offset, i_label_mode == 'MINIMAL' ? txt_min : txt_full, xloc.bar_index, yloc.price, lc, label.style_label_up, color.white, i_label_mode == 'MINIMAL' ? size.small : size.normal)
+
+if i_show_labels and new_short and i_label_mode != 'OFF'
+    string sweep_tag = sig_grind ? 'GRIND' : f_sweep_str(sig_sweep)
+    string txt_min = 'SHORT  ' + sig_grade + '  ' + str.tostring(sig_score) + '/10'
+    string txt_full = '[S] SHORT  ' + sig_grade + '  ' + str.tostring(sig_score) + '/10\n' + 'Sweep: ' + sweep_tag + '  Zone: ' + str.tostring(sig_zone, format.mintick) + '\n' + 'TP1: ' + str.tostring(t_tp1, format.mintick) + '  TP2: ' + str.tostring(t_tp2, format.mintick) + '\n' + 'SL: ' + str.tostring(t_sl, format.mintick)
+    color lc = sig_grade == 'PRIME' ? color.new(i_c_bear, 5) : sig_grade == 'HIGH' ? color.new(i_c_bear, 20) : sig_grade == 'MED' ? color.new(i_c_bear, 40) : color.new(i_c_bear, 60)
+    label.new(bar_index, high + lbl_offset, i_label_mode == 'MINIMAL' ? txt_min : txt_full, xloc.bar_index, yloc.price, lc, label.style_label_down, color.white, i_label_mode == 'MINIMAL' ? size.small : size.normal)
+
+// ============================================================
+// SECTION 21 - TRADE FORECAST BOXES AND LINES
+// ============================================================
+
+int ext = 55
+
+if i_show_boxes and new_long
+    bx_prof1 := box.new(bar_index, t_tp1, bar_index + ext, t_entry, border_color = na, bgcolor = color.new(#00E676, 85))
+    bx_prof2 := box.new(bar_index, t_tp2, bar_index + ext, t_tp1, border_color = na, bgcolor = color.new(#00E676, 90))
+    bx_loss := box.new(bar_index, t_entry, bar_index + ext, t_sl, border_color = na, bgcolor = color.new(#FF1744, 85))
+    ln_entry := line.new(bar_index, t_entry, bar_index + ext, t_entry, color = i_c_entry, width = 2)
+    ln_sl := line.new(bar_index, t_sl, bar_index + ext, t_sl, color = i_c_stop, width = 2)
+    ln_tp1 := line.new(bar_index, t_tp1, bar_index + ext, t_tp1, color = #00E676, width = 2, style = line.style_dashed)
+    ln_tp2 := line.new(bar_index, t_tp2, bar_index + ext, t_tp2, color = #00E676, width = 3, style = line.style_dashed)
+    ln_tp2
+
+if i_show_boxes and new_short
+    bx_prof1 := box.new(bar_index, t_entry, bar_index + ext, t_tp1, border_color = na, bgcolor = color.new(#00E676, 85))
+    bx_prof2 := box.new(bar_index, t_tp1, bar_index + ext, t_tp2, border_color = na, bgcolor = color.new(#00E676, 90))
+    bx_loss := box.new(bar_index, t_sl, bar_index + ext, t_entry, border_color = na, bgcolor = color.new(#FF1744, 85))
+    ln_entry := line.new(bar_index, t_entry, bar_index + ext, t_entry, color = i_c_entry, width = 2)
+    ln_sl := line.new(bar_index, t_sl, bar_index + ext, t_sl, color = i_c_stop, width = 2)
+    ln_tp1 := line.new(bar_index, t_tp1, bar_index + ext, t_tp1, color = #00E676, width = 2, style = line.style_dashed)
+    ln_tp2 := line.new(bar_index, t_tp2, bar_index + ext, t_tp2, color = #00E676, width = 3, style = line.style_dashed)
+    ln_tp2
+
+if trade_state == STATE_ACTIVE and not na(ln_entry)
+    int rx = bar_index + ext
+    line.set_x2(ln_entry, rx)
+    line.set_x2(ln_sl, rx)
+    line.set_y1(ln_sl, t_sl)
+    line.set_y2(ln_sl, t_sl)
+    line.set_x2(ln_tp1, rx)
+    line.set_x2(ln_tp2, rx)
+    if not na(bx_prof1)
+        box.set_right(bx_prof1, rx)
+        if t_tp1_hit
+            box.set_bgcolor(bx_prof1, color.new(#00E676, 72))
+    if not na(bx_prof2)
+        box.set_right(bx_prof2, rx)
+        if t_tp2_hit
+            box.set_bgcolor(bx_prof2, color.new(#00E676, 60))
+    if not na(bx_loss)
+        box.set_right(bx_loss, rx)
+        box.set_top(bx_loss, t_dir == DIR_LONG ? t_entry : t_sl)
+        box.set_bottom(bx_loss, t_dir == DIR_LONG ? t_sl : t_entry)
+
+// ============================================================
+// SECTION 22 - QUALITY SHAPES
+// ============================================================
+
+plotshape(i_show_shapes and new_long and sig_score >= 8, 'Prime Long', shape.diamond, location.abovebar, color.new(#FFD700, 0), size = size.tiny)
+plotshape(i_show_shapes and new_long and sig_score >= 6 and sig_score < 8, 'High Long', shape.circle, location.abovebar, color.new(#00E676, 0), size = size.tiny)
+plotshape(i_show_shapes and new_long and sig_score >= 4 and sig_score < 6, 'Med Long', shape.square, location.abovebar, color.new(#FFD600, 0), size = size.tiny)
+plotshape(i_show_shapes and new_long and sig_score < 4, 'Low Long', shape.xcross, location.abovebar, color.new(#787878, 0), size = size.tiny)
+plotshape(i_show_shapes and new_short and sig_score >= 8, 'Prime Short', shape.diamond, location.belowbar, color.new(#FFD700, 0), size = size.tiny)
+plotshape(i_show_shapes and new_short and sig_score >= 6 and sig_score < 8, 'High Short', shape.circle, location.belowbar, color.new(#00E676, 0), size = size.tiny)
+plotshape(i_show_shapes and new_short and sig_score >= 4 and sig_score < 6, 'Med Short', shape.square, location.belowbar, color.new(#FFD600, 0), size = size.tiny)
+plotshape(i_show_shapes and new_short and sig_score < 4, 'Low Short', shape.xcross, location.belowbar, color.new(#787878, 0), size = size.tiny)
+
+// ============================================================
+// SECTION 23 - EMA LINE
+// ============================================================
+
+plot(i_show_ema ? ema_val : na, 'EMA Glow', color.new(close > ema_val ? #00E676 : #FF1744, 70), linewidth = 5)
+plot(i_show_ema ? ema_val : na, 'EMA', close > ema_val ? #00E676 : #FF1744, linewidth = 2)
+
+// ============================================================
+// SECTION 24 - TRAILING STOP LINE
+// ============================================================
+
+float trail_plot = trail_active ? trail_val : na
+plot(i_show_trail ? trail_plot : na, 'Trail Glow', color.new(trail_col, 60), linewidth = 7, style = plot.style_linebr)
+plot(i_show_trail ? trail_plot : na, 'Trail', trail_col, linewidth = 2, style = plot.style_linebr)
+
+// ============================================================
+// SECTION 25 - DASHBOARD
+// ============================================================
+
+var table dash = table.new(position.top_right, 4, 13, bgcolor = color.new(#0D0D0D, 5), border_color = color.new(#2A2A2A, 0), border_width = 1, frame_color = color.new(#3A3A3A, 0), frame_width = 2)
+
+color DL = color.new(#787878, 0)
+color DV = color.new(#E0E0E0, 0)
+color DH = color.new(#FFFFFF, 0)
+color DA = color.new(#1A1A2E, 0)
+color DC = color.new(#141414, 0)
+color DG = color.new(#00E676, 0)
+color DR = color.new(#FF1744, 0)
+color DY = color.new(#FFD600, 0)
+color DO = color.new(#FFA726, 0)
+
+if i_show_dash and barstate.islast
+
+    table.cell(dash, 0, 0, 'Liquidity Echo', text_color = DH, text_size = size.small, bgcolor = DA, text_halign = text.align_left)
+    table.cell(dash, 1, 0, 'BullByte', text_color = color.new(#5C6BC0, 0), text_size = size.small, bgcolor = DA)
+    table.cell(dash, 2, 0, 'BIAS', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 3, 0, i_bias + (i_auto_cal ? ' AUTO' : ' LOCK'), text_color = DY, text_size = size.small, bgcolor = DA, text_halign = text.align_right)
+
+    string st_txt = trade_state == STATE_IDLE ? 'SCANNING' : t_dir == DIR_LONG ? 'LONG ACTIVE' : 'SHORT ACTIVE'
+    color st_col = trade_state == STATE_IDLE ? DY : t_dir == DIR_LONG ? DG : DR
+    float risk_d = trade_state == STATE_ACTIVE ? math.abs(t_entry - t_sl) : na
+
+    table.cell(dash, 0, 1, 'STATE', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 1, st_txt, text_color = st_col, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 1, 'SL DIST', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 1, trade_state == STATE_ACTIVE ? str.tostring(risk_d, format.mintick) + ' (' + str.tostring(i_sl_atr, '#.##') + ' ATR)' : '---', text_color = DV, text_size = size.tiny, bgcolor = DC, text_halign = text.align_right)
+
+    table.cell(dash, 0, 2, 'HTF ZONE', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 2, htf_on ? array.size(z_highs) > 0 ? 'ACTIVE' : 'NONE' : 'OFF', text_color = htf_on and array.size(z_highs) > 0 ? color.new(i_c_zone, 0) : DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 2, 'COUNT', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 2, str.tostring(array.size(z_highs)), text_color = DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    string cp_txt = compress_str >= 3 ? 'STRONG' : compress_str >= 2 ? 'MEDIUM' : compress_str >= 1 ? 'LIGHT' : 'NONE'
+    color cp_col = compress_str >= 3 ? DG : compress_str >= 2 ? DY : DL
+
+    table.cell(dash, 0, 3, 'COMPRESS', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 1, 3, cp_txt, text_color = cp_col, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 2, 3, 'ATR%', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 3, 3, str.tostring(atr_pct * 100, '#.#') + '%' + (atr_pct > 0.70 ? ' HOT' : atr_pct < 0.15 ? ' FLAT' : ' NORM'), text_color = atr_pct > 0.70 ? DG : atr_pct < 0.15 ? DR : DY, text_size = size.small, bgcolor = DA, text_halign = text.align_right)
+
+    table.cell(dash, 0, 4, 'VACUUM', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 4, vac_active ? 'ACTIVE' : 'NO', text_color = vac_active ? color.orange : DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 4, 'VOL RATIO', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 4, str.tostring(vol_ratio, '#.##') + 'x', text_color = vol_ratio >= 1.5 ? DG : vol_ratio < 0.7 ? DR : DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    string sw_d = sw_window ? f_sweep_str(sw_type) : trade_state == STATE_ACTIVE ? f_sweep_str(sig_sweep) : 'NONE'
+    color sw_c = sw_d == 'FLUSH' ? DG : sw_d == 'MAJOR' ? DY : sw_d == 'GRIND' ? DO : sw_d == 'MINOR' ? DV : DL
+
+    table.cell(dash, 0, 5, 'SWEEP', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 5, sw_d, text_color = sw_c, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 5, 'GRADIENT', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 5, str.tostring(grad, '#.##'), text_color = grad > 0.25 ? DG : grad < -0.25 ? DR : DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    string qb = trade_state == STATE_ACTIVE ? f_quality_bar(sig_score) : '----------'
+    table.cell(dash, 0, 6, 'QUALITY', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 1, 6, qb, text_color = sig_score >= 8 ? DG : sig_score >= 6 ? DY : DV, text_size = size.tiny, bgcolor = DA)
+    table.cell(dash, 2, 6, 'GRADE', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 3, 6, trade_state == STATE_ACTIVE ? sig_grade + '  ' + str.tostring(sig_score) + '/10' : '---', text_color = sig_grade == 'PRIME' ? DG : sig_grade == 'HIGH' ? DY : DV, text_size = size.small, bgcolor = DA, text_halign = text.align_right)
+
+    table.cell(dash, 0, 7, 'TP1 (' + str.tostring(int(i_tp1_pct)) + '%)', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 7, trade_state == STATE_ACTIVE ? t_tp1_hit ? 'HIT' : str.tostring(t_tp1, format.mintick) : '---', text_color = t_tp1_hit ? DG : DV, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 7, 'TP2 (' + str.tostring(int(100 - i_tp1_pct)) + '%)', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 7, trade_state == STATE_ACTIVE ? t_tp2_hit ? 'HIT' : str.tostring(t_tp2, format.mintick) : '---', text_color = t_tp2_hit ? DG : DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    string sl_type = t_be ? 'BREAKEVEN' : trail_active ? 'TRAILING' : 'INITIAL'
+    color sl_col = t_be ? DG : trail_active ? DY : DR
+
+    table.cell(dash, 0, 8, 'STOP', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 8, trade_state == STATE_ACTIVE ? str.tostring(t_sl, format.mintick) : '---', text_color = DV, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 8, 'TYPE', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 8, trade_state == STATE_ACTIVE ? sl_type : '---', text_color = sl_col, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    table.cell(dash, 0, 9, 'POS REMAIN', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 1, 9, trade_state == STATE_ACTIVE ? str.tostring(t_pos * 100, '#.#') + '%' : '---', text_color = DV, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 2, 9, 'TRAIL', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 3, 9, i_trail_on ? i_trail_start : 'OFF', text_color = i_trail_on ? DG : DL, text_size = size.small, bgcolor = DA, text_halign = text.align_right)
+
+    table.cell(dash, 0, 10, 'TREND', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 10, i_ema_filter ? close > ema_val ? 'BULL' : 'BEAR' : 'OFF', text_color = i_ema_filter ? close > ema_val ? DG : DR : DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 10, 'EMA ' + str.tostring(i_ema_len), text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 10, str.tostring(ema_val, format.mintick), text_color = DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+    int sw_rem = sw_window ? i_sweep_expiry - (bar_index - sw_bar) : 0
+    string sw_exp = sw_window ? str.tostring(sw_rem) + ' / ' + str.tostring(i_sweep_expiry) : trade_state == STATE_ACTIVE ? 'In Trade' : '---'
+    color sw_ec = sw_window ? sw_rem <= 2 ? DR : DY : DL
+
+    table.cell(dash, 0, 11, 'SWEEP EXP', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 1, 11, sw_exp, text_color = sw_ec, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 2, 11, 'HTF TF', text_color = DL, text_size = size.small, bgcolor = DA)
+    table.cell(dash, 3, 11, htf_on ? i_htf_mode : 'OFF', text_color = htf_on ? color.new(i_c_zone, 0) : DL, text_size = size.small, bgcolor = DA, text_halign = text.align_right)
+
+    bool grind_on = ENG_GRIND
+    string cal_status = i_auto_cal ? 'LIVE' : 'LOCKED'
+    color cal_col = i_auto_cal ? DG : DY
+
+    table.cell(dash, 0, 12, 'CALIBRATION', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 1, 12, cal_status, text_color = cal_col, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 2, 12, 'GRIND / SL', text_color = DL, text_size = size.small, bgcolor = DC)
+    table.cell(dash, 3, 12, (grind_on ? 'G+ ' : 'G- ') + str.tostring(i_sl_atr, '#.#') + ' ATR', text_color = grind_on ? DO : DV, text_size = size.small, bgcolor = DC, text_halign = text.align_right)
+
+// ============================================================
+// SECTION 26 - ALERTS
+// ============================================================
+
+alertcondition(confirmed and new_long, 'Long Signal', 'Liquidity Echo: LONG signal')
+alertcondition(confirmed and new_short, 'Short Signal', 'Liquidity Echo: SHORT signal')
+alertcondition(confirmed and bull_sweep_fired, 'Bull Sweep', 'Liquidity Echo: Bullish sweep detected')
+alertcondition(confirmed and bear_sweep_fired, 'Bear Sweep', 'Liquidity Echo: Bearish sweep detected')
+alertcondition(confirmed and t_tp1_hit and not t_tp1_hit[1], 'Target 1 Hit', 'Liquidity Echo: TP1 reached')
+alertcondition(confirmed and t_tp2_hit and not t_tp2_hit[1], 'Target 2 Hit', 'Liquidity Echo: TP2 reached')
+alertcondition(confirmed and t_be and not t_be[1], 'Breakeven', 'Liquidity Echo: Breakeven active')
+alertcondition(confirmed and trail_active and not trail_active[1], 'Trailing On', 'Liquidity Echo: Trailing stop active')
+// ============================================================
