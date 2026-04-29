@@ -1,0 +1,202 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//@version=6
+indicator("Auto Trend Lines [ZOM]", "ATL Pro", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+color COLOR_SUPP = #5b9cf6
+color COLOR_RES  = #787b86
+color COLOR_PIV_SUPP = color.new(COLOR_SUPP, 50)
+color COLOR_PIV_RES  = color.new(COLOR_RES, 50)
+
+int   barsToBreakoutInput = input.int(3, "Bars to Breakout", minval = 1, group = "Logic Settings", tooltip = "Number of consecutive bars closed beyond the line to consider a breakout.")
+string lineSizeInput      = input.string("Both", "Line Size", options = ["Small", "Large", "Both"], group = "Logic Settings", tooltip = "Size of pivots to use for trend lines.")
+float  proximityInput     = input.float(0.5, "Line Proximity Filter", minval = 0, maxval = 2, step = 0.1, group = "Logic Settings", tooltip = "Filter out lines that are too close to existing ones (multiplied by ATR). Higher values reduce clutter.")
+
+bool   showPivotsInput    = input.bool(false, "Show Pivots", group = "Display Settings", tooltip = "Show the pivot points used for calculations.")
+bool   showBreakoutsInput = input.bool(true, "Show Breakout Markers", group = "Display Settings", tooltip = "Show icons when a line is broken.")
+bool   showStatsInput     = input.bool(true, "Show Stats Table", group = "Display Settings", tooltip = "Display a summary of active trend lines.")
+
+bool   alertBreakout      = input.bool(true, "Alert: Line Breakout", group = "Alerts")
+bool   alertTouch         = input.bool(false, "Alert: Line Touch", group = "Alerts")
+bool   alertNewLine       = input.bool(false, "Alert: New Trend Line", group = "Alerts")
+
+type PivotPoint
+    int   idx
+    float price
+    bool  isHigh
+    int   size // 0: Small, 1: Large
+
+type TrendLine
+    PivotPoint p1
+    PivotPoint p2
+    line       id
+    float      slope
+    int        touches
+    int        size
+    int        baseLength
+    bool       isBroken
+    int        breakCounter
+    bool       isInfinite
+
+var PivotPoint[] smallHighs = array.new<PivotPoint>()
+var PivotPoint[] smallLows  = array.new<PivotPoint>()
+var PivotPoint[] largeHighs = array.new<PivotPoint>()
+var PivotPoint[] largeLows  = array.new<PivotPoint>()
+var TrendLine[]  activeLines = array.new<TrendLine>()
+
+var int totalBreaks = 0
+
+float atr = ta.atr(14)
+float touchThreshold = atr * 0.5
+
+float phSmall = ta.pivothigh(5, 5)
+float plSmall = ta.pivotlow(5, 5)
+float phLarge = ta.pivothigh(25, 25)
+float plLarge = ta.pivotlow(25, 25)
+
+float phTouch = ta.pivothigh(3, 3)
+float plTouch = ta.pivotlow(3, 3)
+
+if not na(phSmall)
+    smallHighs.push(PivotPoint.new(bar_index - 5, phSmall, true, 0))
+    if showPivotsInput and (lineSizeInput == "Small" or lineSizeInput == "Both")
+        label.new(bar_index - 5, phSmall, "▼", color = #00000000, textcolor = COLOR_PIV_RES, style = label.style_label_down, size = size.tiny)
+
+if not na(plSmall)
+    smallLows.push(PivotPoint.new(bar_index - 5, plSmall, false, 0))
+    if showPivotsInput and (lineSizeInput == "Small" or lineSizeInput == "Both")
+        label.new(bar_index - 5, plSmall, "▲", color = #00000000, textcolor = COLOR_PIV_SUPP, style = label.style_label_up, size = size.tiny)
+
+if not na(phLarge)
+    largeHighs.push(PivotPoint.new(bar_index - 25, phLarge, true, 1))
+    if showPivotsInput and (lineSizeInput == "Large" or lineSizeInput == "Both")
+        label.new(bar_index - 25, phLarge, "▼", color = #00000000, textcolor = COLOR_RES, style = label.style_label_down, size = size.small)
+
+if not na(plLarge)
+    largeLows.push(PivotPoint.new(bar_index - 25, plLarge, false, 1))
+    if showPivotsInput and (lineSizeInput == "Large" or lineSizeInput == "Both")
+        label.new(bar_index - 25, plLarge, "▲", color = #00000000, textcolor = COLOR_SUPP, style = label.style_label_up, size = size.small)
+
+createLine(PivotPoint p1, PivotPoint p2, float currentAtr, TrendLine[] lines) =>
+    float slope = (p2.price - p1.price) / (p2.idx - p1.idx)
+    bool valid = p1.isHigh ? p2.price <= p1.price : p2.price >= p1.price
+    
+    if valid
+        for tl in lines
+            if tl.p1.isHigh == p1.isHigh
+                float currentVal = tl.p1.price + tl.slope * (p2.idx - tl.p1.idx)
+                if math.abs(currentVal - p2.price) < currentAtr * proximityInput
+                    valid := false
+                    break
+
+    if valid and p1.size == 0
+        for tl in lines
+            if tl.size == 1 and tl.p1.isHigh == p1.isHigh
+                float startVal = tl.p1.price + tl.slope * (p1.idx - tl.p1.idx)
+                float endVal   = tl.p1.price + tl.slope * (p2.idx - tl.p1.idx)
+                if math.abs(startVal - p1.price) < currentAtr * 0.5 or math.abs(endVal - p2.price) < currentAtr * 0.5
+                    valid := false
+                    break
+    
+    if valid
+        int baseLen = p2.idx - p1.idx
+        line ln = line.new(p1.idx, p1.price, p2.idx, p2.price, 
+             color = p1.isHigh ? COLOR_RES : COLOR_SUPP, 
+             width = p1.size == 1 ? 2 : 1)
+        
+        line.set_extend(ln, extend.right)
+        lines.push(TrendLine.new(p1, p2, ln, slope, 0, p1.size, baseLen, false, 0, true))
+        
+        if alertNewLine
+            alert("New " + (p1.isHigh ? "Resistance" : "Support") + " Line Detected", alert.freq_once_per_bar_close)
+
+if not na(phSmall) and (lineSizeInput == "Small" or lineSizeInput == "Both")
+    if smallHighs.size() > 1
+        createLine(smallHighs.get(smallHighs.size() - 2), smallHighs.get(smallHighs.size() - 1), atr, activeLines)
+
+if not na(plSmall) and (lineSizeInput == "Small" or lineSizeInput == "Both")
+    if smallLows.size() > 1
+        createLine(smallLows.get(smallLows.size() - 2), smallLows.get(smallLows.size() - 1), atr, activeLines)
+
+if not na(phLarge) and (lineSizeInput == "Large" or lineSizeInput == "Both")
+    if largeHighs.size() > 1
+        createLine(largeHighs.get(largeHighs.size() - 2), largeHighs.get(largeHighs.size() - 1), atr, activeLines)
+
+if not na(plLarge) and (lineSizeInput == "Large" or lineSizeInput == "Both")
+    if largeLows.size() > 1
+        createLine(largeLows.get(largeLows.size() - 2), largeLows.get(largeLows.size() - 1), atr, activeLines)
+
+if activeLines.size() > 0
+    for i = activeLines.size() - 1 to 0
+        TrendLine tl = activeLines.get(i)
+        
+        float lineVal = tl.p1.price + tl.slope * (bar_index - tl.p1.idx)
+        bool isBeyond = tl.p1.isHigh ? close > lineVal : close < lineVal
+        
+        if isBeyond
+            tl.breakCounter += 1
+        else
+            tl.breakCounter := 0
+            
+        float touchVal = tl.p1.price + tl.slope * (bar_index - 3 - tl.p1.idx)
+        bool touched = false
+        if tl.p1.isHigh and not na(phTouch)
+            if math.abs(phTouch - touchVal) <= touchThreshold
+                tl.touches += 1
+                touched := true
+        else if not tl.p1.isHigh and not na(plTouch)
+            if math.abs(plTouch - touchVal) <= touchThreshold
+                tl.touches += 1
+                touched := true
+        
+        if touched and alertTouch
+            alert("Trend Line Touched: " + (tl.p1.isHigh ? "Resistance" : "Support"), alert.freq_once_per_bar)
+
+        int currentExt = bar_index - tl.p2.idx
+        bool maxExtReached = currentExt > tl.baseLength * 2
+        
+        if tl.breakCounter >= barsToBreakoutInput or (tl.isInfinite and maxExtReached)
+            tl.isBroken := true
+            line.set_extend(tl.id, extend.none)
+            line.set_x2(tl.id, bar_index)
+            line.set_y2(tl.id, lineVal)
+            
+            if tl.breakCounter >= barsToBreakoutInput
+                totalBreaks += 1
+                if showBreakoutsInput
+                    label.new(bar_index, tl.p1.isHigh ? high : low, "✦", 
+                         color = #00000000, 
+                         textcolor = tl.p1.isHigh ? COLOR_SUPP : COLOR_RES, 
+                         style = tl.p1.isHigh ? label.style_label_up : label.style_label_down, 
+                         size = size.small)
+                if alertBreakout
+                    alert("Trend Line Breakout Confirmed: " + (tl.p1.isHigh ? "Bullish" : "Bearish"), alert.freq_once_per_bar)
+            
+            activeLines.remove(i)
+        else
+            line.set_x2(tl.id, bar_index + 1)
+            line.set_y2(tl.id, tl.p1.price + tl.slope * (bar_index + 1 - tl.p1.idx))
+
+var table stats = table.new(position.top_right, 2, 4, bgcolor = color.new(chart.bg_color, 10), border_color = chart.fg_color, border_width = 1)
+if showStatsInput and barstate.islast
+    int activeSupp = 0
+    int activeRes  = 0
+    for tl in activeLines
+        if tl.p1.isHigh
+            activeRes += 1
+        else
+            activeSupp += 1
+            
+    table.cell(stats, 0, 0, "Metric", text_color = chart.fg_color, text_size = size.small)
+    table.cell(stats, 1, 0, "Value", text_color = chart.fg_color, text_size = size.small)
+    
+    table.cell(stats, 0, 1, "Active Support", text_color = COLOR_SUPP, text_size = size.small)
+    table.cell(stats, 1, 1, str.tostring(activeSupp), text_color = COLOR_SUPP, text_size = size.small)
+    
+    table.cell(stats, 0, 2, "Active Resistance", text_color = COLOR_RES, text_size = size.small)
+    table.cell(stats, 1, 2, str.tostring(activeRes), text_color = COLOR_RES, text_size = size.small)
+    
+    table.cell(stats, 0, 3, "Total Breakouts", text_color = chart.fg_color, text_size = size.small)
+    table.cell(stats, 1, 3, str.tostring(totalBreaks), text_color = chart.fg_color, text_size = size.small)
+
+if activeLines.size() > 100
+    activeLines.remove(0)
