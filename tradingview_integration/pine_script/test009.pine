@@ -1,0 +1,716 @@
+//@version=6
+indicator("Structure & Flow", shorttitle="S&F", overlay=true, scale=scale.none,
+     dynamic_requests=true, max_bars_back=600, max_labels_count=150, max_lines_count=80, max_boxes_count=40)
+
+// ══════════════════════════════════════════════════════════════════════
+// INPUTS
+// ══════════════════════════════════════════════════════════════════════
+g1 = "Structure"
+swingLen         = input.int(5, "Swing Pivot Length", minval=2, maxval=20, group=g1)
+atrLen           = input.int(14, "ATR Length", minval=5, maxval=50, group=g1)
+bosAtrBufMult    = input.float(0.05, "BOS ATR Buffer", minval=0.0, step=0.01, group=g1)
+obLookback       = input.int(12, "OB Search Bars", minval=3, maxval=50, group=g1)
+obMinBodyPct     = input.float(0.25, "Min OB Body %", minval=0.05, maxval=0.90, step=0.05, group=g1)
+obForwardBars    = input.int(140, "OB Forward Extension Bars", minval=20, maxval=500, group=g1)
+obAutoHideFar    = input.bool(true, "Auto-Hide Far OBs", group=g1)
+obMaxDistanceAtr = input.float(12.0, "Max OB Distance (ATR)", minval=2.0, maxval=100.0, step=1.0, group=g1)
+mitigationMode   = input.string("Close through", "OB Mitigation", options=["Wick touch", "Close through"], group=g1)
+
+g2 = "Filters & Scoring"
+useLocationGate = input.bool(true, "Require Location Gate", group=g2)
+locAtrMult      = input.float(0.40, "Location Tolerance (ATR)", minval=0.05, step=0.05, group=g2)
+showB           = input.bool(true, "Enable B-Tier", group=g2)
+bTierNeedsHTF   = input.bool(true, "B-Tier Needs HTF", group=g2)
+htfOn           = input.bool(true, "Use HTF Filter", group=g2)
+htfTf           = input.timeframe("W", "Higher Timeframe", group=g2)
+deltaThresh     = input.float(0.05, "Delta Threshold", minval=0.0, step=0.01, group=g2)
+rvolThresh      = input.float(1.30, "RVOL Threshold", minval=0.1, step=0.05, group=g2)
+cooldownBars    = input.int(8, "Signal Cooldown", minval=0, maxval=100, group=g2)
+minAtrPct       = input.float(0.003, "Min ATR %", minval=0.0, step=0.001, group=g2)
+ltfActivityMult = input.float(0.20, "Lower TF Activity Relaxation", minval=0.05, maxval=1.0, step=0.05, group=g2)
+plusScore       = input.float(95, "A+ Score Threshold", minval=80, maxval=100, step=1, group=g2)
+
+g3 = "Premium Trail Bands"
+showBands       = input.bool(true, "Show Trail Bands", group=g3)
+showMidChannel  = input.bool(true, "Show Middle Trail Channel", group=g3)
+showTrailLine   = input.bool(true, "Show Trail Line", group=g3)
+zoneAtrMult     = input.float(1.05, "Zone ATR Multiplier", minval=0.2, step=0.05, group=g3)
+zoneGapMult     = input.float(0.65, "Stack Gap Multiplier", minval=0.0, step=0.05, group=g3)
+ltfGapWeight    = input.float(0.15, "Lower TF Stack Gap Weight", minval=0.0, maxval=1.0, step=0.05, group=g3)
+maxGapAtrMult   = input.float(3.0, "Max Stack Gap Used In Bands (ATR)", minval=0.5, maxval=20.0, step=0.25, group=g3)
+trailSmooth     = input.int(8, "Trail Smoothing", minval=1, maxval=50, group=g3)
+widthSmooth     = input.int(10, "Width Smoothing", minval=1, maxval=50, group=g3)
+edgeSmooth      = input.int(7, "Edge Smoothing", minval=1, maxval=50, group=g3)
+channelWidth    = input.float(0.30, "Middle Channel Width", minval=0.1, step=0.05, group=g3)
+innerBandWidth  = input.float(0.90, "Inner Zone Width", minval=0.2, step=0.05, group=g3)
+outerBandWidth  = input.float(1.70, "Outer Zone Width", minval=0.5, step=0.05, group=g3)
+minZoneFloor    = input.float(0.70, "Minimum Zone Floor (ATR)", minval=0.1, step=0.05, group=g3)
+maxCompressStep = input.float(0.06, "Max Band Compression Per Bar", minval=0.01, maxval=0.50, step=0.01, group=g3)
+ltfFloorBoost   = input.float(0.20, "Lower TF Floor Boost", minval=0.0, step=0.05, group=g3)
+
+g4 = "Display"
+showSwingLines  = input.bool(true,  "Swing Lines", group=g4)
+showOBs         = input.bool(true,  "Order Blocks", group=g4)
+fadeMitigated   = input.bool(true,  "Fade Mitigated OBs", group=g4)
+paintSignalBars = input.bool(true,  "Paint Signal Bars", group=g4)
+showEMA         = input.bool(false, "EMA 50", group=g4)
+showVWAP        = input.bool(false, "YVWAP", group=g4)
+showHUD         = input.bool(true,  "Status HUD", group=g4)
+
+g5 = "Alerts"
+enableDynamicAlerts = input.bool(true, "Enable Dynamic alert() Messages", group=g5)
+
+// ══════════════════════════════════════════════════════════════════════
+// PALETTE
+// ══════════════════════════════════════════════════════════════════════
+C_BULL = #00d4a8
+C_BEAR = #ff4d6d
+C_MID  = #4f7cff
+C_INFO = #7c6af7
+C_WARN = #fbbf24
+C_DIM  = #4a5568
+C_TEXT = #e2e8f0
+C_BG   = #0d1117
+C_BG2  = #161b22
+
+// ══════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════
+nearLevel(level, tol) =>
+    not na(level) and low <= level + tol and high >= level - tol
+
+nearZone(top, bottom, tol) =>
+    not na(top) and not na(bottom) and high >= bottom - tol and low <= top + tol
+
+scoreClamp(x) =>
+    math.max(0.0, math.min(100.0, x))
+
+// ══════════════════════════════════════════════════════════════════════
+// YEARLY ANCHORED VWAP
+// ══════════════════════════════════════════════════════════════════════
+var float _sv = 0.0
+var float _v  = 0.0
+
+if timeframe.change("12M")
+    _sv := 0.0
+    _v  := 0.0
+
+_sv += hlc3 * nz(volume, 1.0)
+_v  += nz(volume, 1.0)
+yVwap = _v > 0 ? _sv / _v : hlc3
+
+// ══════════════════════════════════════════════════════════════════════
+// CORE SERIES
+// ══════════════════════════════════════════════════════════════════════
+tfSec = timeframe.in_seconds(timeframe.period)
+isLowerTF = not na(tfSec) and tfSec > 0 and tfSec <= 3600
+
+atr      = ta.atr(atrLen)
+ema50    = ta.ema(close, 50)
+stackMid = (ema50 + yVwap) * 0.5
+
+bullStack    = ema50 > yVwap and close > ema50 and close > yVwap
+bearStack    = ema50 < yVwap and close < ema50 and close < yVwap
+neutralStack = not bullStack and not bearStack
+
+effectiveMinAtrPct = minAtrPct * (isLowerTF ? ltfActivityMult : 1.0)
+atrPct             = close != 0 ? atr / close : 0.0
+marketActive       = atrPct >= effectiveMinAtrPct
+
+// ══════════════════════════════════════════════════════════════════════
+// HTF FILTER — GATED CONFIRMED HTF VALUES
+// ══════════════════════════════════════════════════════════════════════
+chartSec = timeframe.in_seconds(timeframe.period)
+htfSec   = timeframe.in_seconds(htfTf)
+validHTF = not na(chartSec) and not na(htfSec) and htfSec > chartSec
+useHTF   = htfOn and validHTF
+
+htfClose = useHTF ? request.security(syminfo.tickerid, htfTf, close[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on) : na
+htfEma   = useHTF ? request.security(syminfo.tickerid, htfTf, ta.ema(close, 50)[1], gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_on) : na
+
+htfBull = not htfOn ? true : useHTF ? htfClose > htfEma : false
+htfBear = not htfOn ? true : useHTF ? htfClose < htfEma : false
+bUseHTF = htfOn and bTierNeedsHTF
+
+// ══════════════════════════════════════════════════════════════════════
+// STRUCTURE / BOS
+// ══════════════════════════════════════════════════════════════════════
+swH = ta.pivothigh(high, swingLen, swingLen)
+swL = ta.pivotlow(low, swingLen, swingLen)
+
+var float sh1 = na
+var float sh2 = na
+var int   shb1 = na
+var float sl1 = na
+var float sl2 = na
+var int   slb1 = na
+var float lastBH = na
+var float lastBL = na
+
+if not na(swH)
+    sh2  := sh1
+    sh1  := swH
+    shb1 := bar_index - swingLen
+
+if not na(swL)
+    sl2  := sl1
+    sl1  := swL
+    slb1 := bar_index - swingLen
+
+buf = bosAtrBufMult * atr
+
+bullBOSraw = not na(sh1) and not na(sh2) and sh1 > sh2 and close > sh1 + buf and (na(lastBH) or math.abs(sh1 - lastBH) > syminfo.mintick)
+bearBOSraw = not na(sl1) and not na(sl2) and sl1 < sl2 and close < sl1 - buf and (na(lastBL) or math.abs(sl1 - lastBL) > syminfo.mintick)
+
+bullBOS = barstate.isconfirmed and bullBOSraw and not bullBOSraw[1]
+bearBOS = barstate.isconfirmed and bearBOSraw and not bearBOSraw[1]
+
+if bullBOS
+    lastBH := sh1
+if bearBOS
+    lastBL := sl1
+
+// ══════════════════════════════════════════════════════════════════════
+// PREMIUM TRAIL BANDS — LOWER-TF SAFE
+// ══════════════════════════════════════════════════════════════════════
+atrBase = ta.ema(atr, widthSmooth)
+gapBase = ta.ema(math.abs(ema50 - yVwap), widthSmooth)
+gapCap  = atrBase * maxGapAtrMult
+gapUsed = math.min(gapBase, gapCap)
+gapTooWideForLtf = isLowerTF and gapBase > gapCap
+
+rawTrail =
+     bullStack ? math.max(ema50, yVwap) :
+     bearStack ? math.min(ema50, yVwap) :
+     gapTooWideForLtf ? ema50 :
+     stackMid
+
+trailBase = ta.ema(rawTrail, trailSmooth)
+
+gapWeight = isLowerTF ? math.min(zoneGapMult, ltfGapWeight) : zoneGapMult
+rawWidth  = atrBase * zoneAtrMult + gapUsed * gapWeight
+
+floorMult  = minZoneFloor + (isLowerTF ? ltfFloorBoost : 0.0)
+widthFloor = atrBase * floorMult
+baseWidth  = math.max(rawWidth, widthFloor)
+
+var float zoneWidth = na
+compressFloor = na(zoneWidth[1]) ? baseWidth : zoneWidth[1] * (1.0 - maxCompressStep)
+zoneWidth := math.max(baseWidth, compressFloor)
+zoneWidthSm = ta.ema(zoneWidth, edgeSmooth)
+
+trail = ta.ema(trailBase, edgeSmooth)
+
+midUpperRaw = trail + zoneWidthSm * channelWidth
+midLowerRaw = trail - zoneWidthSm * channelWidth
+
+resLowerRaw = trail + zoneWidthSm * innerBandWidth
+resUpperRaw = trail + zoneWidthSm * outerBandWidth
+
+supUpperRaw = trail - zoneWidthSm * innerBandWidth
+supLowerRaw = trail - zoneWidthSm * outerBandWidth
+
+midUpper = ta.ema(midUpperRaw, edgeSmooth)
+midLower = ta.ema(midLowerRaw, edgeSmooth)
+resLower = ta.ema(resLowerRaw, edgeSmooth)
+resUpper = ta.ema(resUpperRaw, edgeSmooth)
+supUpper = ta.ema(supUpperRaw, edgeSmooth)
+supLower = ta.ema(supLowerRaw, edgeSmooth)
+
+// Hidden plots for fills
+pResU = plot(showBands ? resUpper : na, display=display.none)
+pResL = plot(showBands ? resLower : na, display=display.none)
+pMidU = plot(showBands and showMidChannel ? midUpper : na, display=display.none)
+pMidL = plot(showBands and showMidChannel ? midLower : na, display=display.none)
+pSupU = plot(showBands ? supUpper : na, display=display.none)
+pSupL = plot(showBands ? supLower : na, display=display.none)
+
+widthToAtr   = atr > 0 ? zoneWidthSm / atr : 1.0
+isCompressed = widthToAtr < 1.10
+isExpanded   = widthToAtr > 2.10
+
+resAlpha = bearStack ? (isCompressed ? 88 : 92) : bullStack ? 97 : 95
+midAlpha = neutralStack ? 95 : isCompressed ? 91 : isExpanded ? 94 : 93
+supAlpha = bullStack ? (isCompressed ? 88 : 92) : bearStack ? 97 : 95
+
+resColor = color.new(C_BEAR, resAlpha)
+midColor = color.new(C_MID,  midAlpha)
+supColor = color.new(C_BULL, supAlpha)
+
+fill(pResU, pResL, color=resColor, title="Upper Resistance Band")
+fill(pMidU, pMidL, color=midColor, title="Middle Trail Channel")
+fill(pSupU, pSupL, color=supColor, title="Lower Support Band")
+
+midHaloUpper = midUpper + atrBase * 0.06
+midHaloLower = midLower - atrBase * 0.06
+
+pMidHU = plot(showBands and showMidChannel ? midHaloUpper : na, display=display.none)
+pMidHL = plot(showBands and showMidChannel ? midHaloLower : na, display=display.none)
+
+midHaloColor =
+     bullStack ? color.new(C_BULL, 99) :
+     bearStack ? color.new(C_BEAR, 99) :
+     color.new(C_MID, 100)
+
+fill(pMidHU, pMidU, color=midHaloColor, title="Mid Halo Upper")
+fill(pMidL, pMidHL, color=midHaloColor, title="Mid Halo Lower")
+
+plot(showBands ? resUpper : na, "Res Upper Edge", color=color.new(C_BEAR, 82), linewidth=1)
+plot(showBands ? resLower : na, "Res Lower Edge", color=color.new(C_BEAR, 88), linewidth=1)
+plot(showBands and showMidChannel ? midUpper : na, "Mid Upper Edge", color=color.new(C_MID, 91), linewidth=1)
+plot(showBands and showMidChannel ? midLower : na, "Mid Lower Edge", color=color.new(C_MID, 91), linewidth=1)
+plot(showBands ? supUpper : na, "Sup Upper Edge", color=color.new(C_BULL, 88), linewidth=1)
+plot(showBands ? supLower : na, "Sup Lower Edge", color=color.new(C_BULL, 82), linewidth=1)
+
+trailColor =
+     bullStack ? color.new(C_BULL, 18) :
+     bearStack ? color.new(C_BEAR, 18) :
+     color.new(C_MID, 24)
+
+plot(showTrailLine ? trail : na, "Trail", color=trailColor, linewidth=2)
+plot(showEMA ? ema50 : na, "EMA 50", color=color.new(C_WARN, 25), linewidth=1)
+plot(showVWAP ? yVwap : na, "YVWAP", color=color.new(C_INFO, 20), linewidth=1)
+
+// ══════════════════════════════════════════════════════════════════════
+// ORDER BLOCK ENGINE — EXPIRING / SCALE-SAFE / STALE-CLEARING
+// ══════════════════════════════════════════════════════════════════════
+var float bullObTop = na
+var float bullObBot = na
+var float bearObTop = na
+var float bearObBot = na
+var bool  bullObMitigated = false
+var bool  bearObMitigated = false
+
+var box  bullObBox  = na
+var box  bearObBox  = na
+var line bullObWall = na
+var line bearObWall = na
+
+obSearch = math.min(math.max(obLookback, swingLen * 2), 20)
+
+if bullBOS
+    float bestBullScore = na
+    int   bestBullIdx   = na
+
+    for i = 1 to obSearch
+        if not na(close[i]) and close[i] < open[i]
+            body = math.abs(close[i] - open[i])
+            barRange = math.max(high[i] - low[i], syminfo.mintick)
+            bodyPct = body / barRange
+            upperWick = high[i] - math.max(open[i], close[i])
+            departure = math.max(close - high[i], 0.0)
+
+            if bodyPct >= obMinBodyPct
+                candidateScore = math.abs(high[i] - sh1) * 0.65 + barRange * 0.20 + upperWick * 0.15 - body * 0.25 - departure * 0.10
+                if na(bestBullScore) or candidateScore < bestBullScore
+                    bestBullScore := candidateScore
+                    bestBullIdx   := i
+
+    if not na(bestBullIdx)
+        bullObTop := high[bestBullIdx]
+        bullObBot := low[bestBullIdx]
+        bullObMitigated := false
+
+        if not na(bullObBox)
+            box.delete(bullObBox)
+        if not na(bullObWall)
+            line.delete(bullObWall)
+
+        if showOBs
+            bullObBox := box.new(left=bar_index - bestBullIdx, top=bullObTop, right=bar_index + obForwardBars, bottom=bullObBot,
+                                 border_color=color.new(C_BULL, 68),
+                                 bgcolor=color.new(C_BULL, 92),
+                                 border_width=1, extend=extend.none)
+            bullObWall := line.new(bar_index - bestBullIdx, bullObTop, bar_index - bestBullIdx, bullObBot,
+                                   color=color.new(C_BULL, 28), width=2)
+    else
+        bullObTop := na
+        bullObBot := na
+        bullObMitigated := false
+        if not na(bullObBox)
+            box.delete(bullObBox)
+            bullObBox := na
+        if not na(bullObWall)
+            line.delete(bullObWall)
+            bullObWall := na
+
+if bearBOS
+    float bestBearScore = na
+    int   bestBearIdx   = na
+
+    for i = 1 to obSearch
+        if not na(close[i]) and close[i] > open[i]
+            body = math.abs(close[i] - open[i])
+            barRange = math.max(high[i] - low[i], syminfo.mintick)
+            bodyPct = body / barRange
+            lowerWick = math.min(open[i], close[i]) - low[i]
+            departure = math.max(low[i] - close, 0.0)
+
+            if bodyPct >= obMinBodyPct
+                candidateScore = math.abs(low[i] - sl1) * 0.65 + barRange * 0.20 + lowerWick * 0.15 - body * 0.25 - departure * 0.10
+                if na(bestBearScore) or candidateScore < bestBearScore
+                    bestBearScore := candidateScore
+                    bestBearIdx   := i
+
+    if not na(bestBearIdx)
+        bearObTop := high[bestBearIdx]
+        bearObBot := low[bestBearIdx]
+        bearObMitigated := false
+
+        if not na(bearObBox)
+            box.delete(bearObBox)
+        if not na(bearObWall)
+            line.delete(bearObWall)
+
+        if showOBs
+            bearObBox := box.new(left=bar_index - bestBearIdx, top=bearObTop, right=bar_index + obForwardBars, bottom=bearObBot,
+                                 border_color=color.new(C_BEAR, 68),
+                                 bgcolor=color.new(C_BEAR, 92),
+                                 border_width=1, extend=extend.none)
+            bearObWall := line.new(bar_index - bestBearIdx, bearObTop, bar_index - bestBearIdx, bearObBot,
+                                   color=color.new(C_BEAR, 28), width=2)
+    else
+        bearObTop := na
+        bearObBot := na
+        bearObMitigated := false
+        if not na(bearObBox)
+            box.delete(bearObBox)
+            bearObBox := na
+        if not na(bearObWall)
+            line.delete(bearObWall)
+            bearObWall := na
+
+bullObExpired = not na(bullObBox) and bar_index > box.get_right(bullObBox)
+bearObExpired = not na(bearObBox) and bar_index > box.get_right(bearObBox)
+
+bullObMid = not na(bullObTop) and not na(bullObBot) ? (bullObTop + bullObBot) * 0.5 : na
+bearObMid = not na(bearObTop) and not na(bearObBot) ? (bearObTop + bearObBot) * 0.5 : na
+
+bullObFar = obAutoHideFar and not na(bullObMid) and math.abs(close - bullObMid) > atr * obMaxDistanceAtr
+bearObFar = obAutoHideFar and not na(bearObMid) and math.abs(close - bearObMid) > atr * obMaxDistanceAtr
+
+if not showOBs or bullObExpired or bullObFar
+    if not na(bullObBox)
+        box.delete(bullObBox)
+        bullObBox := na
+    if not na(bullObWall)
+        line.delete(bullObWall)
+        bullObWall := na
+    bullObTop := na
+    bullObBot := na
+    bullObMitigated := false
+
+if not showOBs or bearObExpired or bearObFar
+    if not na(bearObBox)
+        box.delete(bearObBox)
+        bearObBox := na
+    if not na(bearObWall)
+        line.delete(bearObWall)
+        bearObWall := na
+    bearObTop := na
+    bearObBot := na
+    bearObMitigated := false
+
+bullMitigatedNow = mitigationMode == "Wick touch" ? not na(bullObBot) and low < bullObBot : not na(bullObBot) and close < bullObBot
+bearMitigatedNow = mitigationMode == "Wick touch" ? not na(bearObTop) and high > bearObTop : not na(bearObTop) and close > bearObTop
+
+if not bullObMitigated and bullMitigatedNow
+    bullObMitigated := true
+    if showOBs and fadeMitigated and not na(bullObBox)
+        box.set_bgcolor(bullObBox, color.new(C_BULL, 97))
+        box.set_border_color(bullObBox, color.new(C_BULL, 84))
+        if not na(bullObWall)
+            line.set_color(bullObWall, color.new(C_BULL, 80))
+
+if not bearObMitigated and bearMitigatedNow
+    bearObMitigated := true
+    if showOBs and fadeMitigated and not na(bearObBox)
+        box.set_bgcolor(bearObBox, color.new(C_BEAR, 97))
+        box.set_border_color(bearObBox, color.new(C_BEAR, 84))
+        if not na(bearObWall)
+            line.set_color(bearObWall, color.new(C_BEAR, 80))
+
+// ══════════════════════════════════════════════════════════════════════
+// LOCATION GATE
+// ══════════════════════════════════════════════════════════════════════
+locTol = atr * locAtrMult
+
+nearYVWAP     = nearLevel(yVwap, locTol)
+nearBullPivot = nearLevel(sh1, locTol)
+nearBearPivot = nearLevel(sl1, locTol)
+nearBullOB    = not bullObMitigated and nearZone(bullObTop, bullObBot, locTol)
+nearBearOB    = not bearObMitigated and nearZone(bearObTop, bearObBot, locTol)
+nearSupBand   = nearZone(supUpper, supLower, locTol * 0.50)
+nearResBand   = nearZone(resUpper, resLower, locTol * 0.50)
+
+locLongOk  = not useLocationGate or nearBullOB or nearBullPivot or nearSupBand or nearYVWAP
+locShortOk = not useLocationGate or nearBearOB or nearBearPivot or nearResBand or nearYVWAP
+
+locLongState =
+     not useLocationGate ? "DISABLED" :
+     nearBullOB ? "BULL OB" :
+     nearBullPivot ? "PIVOT RETEST" :
+     nearSupBand ? "LOWER BAND" :
+     nearYVWAP ? "YVWAP" : "OFF"
+
+locShortState =
+     not useLocationGate ? "DISABLED" :
+     nearBearOB ? "BEAR OB" :
+     nearBearPivot ? "PIVOT RETEST" :
+     nearResBand ? "UPPER BAND" :
+     nearYVWAP ? "YVWAP" : "OFF"
+
+locState =
+     not useLocationGate ? "DISABLED" :
+     bullStack ? locLongState :
+     bearStack ? locShortState :
+     nearYVWAP ? "YVWAP" : "OFF"
+
+locColor =
+     not useLocationGate ? C_DIM :
+     (bullStack and locLongOk) ? C_BULL :
+     (bearStack and locShortOk) ? C_BEAR :
+     C_DIM
+
+// ══════════════════════════════════════════════════════════════════════
+// FLOW FILTERS
+// ══════════════════════════════════════════════════════════════════════
+rngSafe  = math.max(high - low, syminfo.mintick)
+volSafe  = nz(volume, 0.0)
+buyPress = ((close - low)  / rngSafe) * volSafe
+selPress = ((high - close) / rngSafe) * volSafe
+nDelta   = ta.ema(buyPress - selPress, 7) / math.max(ta.ema(volSafe, 7), 1.0)
+
+bullDelta = barstate.isconfirmed and nDelta >  deltaThresh
+bearDelta = barstate.isconfirmed and nDelta < -deltaThresh
+
+volMA  = ta.sma(volSafe, 20)
+rvol   = volMA > 0 ? volSafe / volMA : 1.0
+rvolOk = barstate.isconfirmed and rvol >= rvolThresh
+
+// ══════════════════════════════════════════════════════════════════════
+// SIGNAL QUALITY SCORE — DISPLAY / A+ INTELLIGENCE
+// ══════════════════════════════════════════════════════════════════════
+deltaBase = math.max(deltaThresh, 0.0001)
+rvolBase  = math.max(rvolThresh, 0.1)
+atrBasePct = math.max(effectiveMinAtrPct, 0.000001)
+
+bullBreakAtr = atr > 0 and not na(sh1) ? math.max(close - sh1, 0.0) / atr : 0.0
+bearBreakAtr = atr > 0 and not na(sl1) ? math.max(sl1 - close, 0.0) / atr : 0.0
+
+bullStackScore = bullStack ? 18.0 : 0.0
+bearStackScore = bearStack ? 18.0 : 0.0
+
+bullLocScore =
+     not useLocationGate ? 16.0 :
+     nearBullOB ? 18.0 :
+     nearBullPivot ? 16.0 :
+     nearSupBand ? 14.0 :
+     nearYVWAP ? 12.0 : 0.0
+
+bearLocScore =
+     not useLocationGate ? 16.0 :
+     nearBearOB ? 18.0 :
+     nearBearPivot ? 16.0 :
+     nearResBand ? 14.0 :
+     nearYVWAP ? 12.0 : 0.0
+
+bullBosScore = bullBOS ? math.min(20.0, 14.0 + bullBreakAtr * 10.0) : 0.0
+bearBosScore = bearBOS ? math.min(20.0, 14.0 + bearBreakAtr * 10.0) : 0.0
+
+bullFlowPartial = nDelta > deltaThresh * 0.70
+bearFlowPartial = nDelta < -deltaThresh * 0.70
+
+bullDeltaScore = nDelta > 0 ? math.min(16.0, (nDelta / deltaBase) * 8.0) : 0.0
+bearDeltaScore = nDelta < 0 ? math.min(16.0, (math.abs(nDelta) / deltaBase) * 8.0) : 0.0
+
+rvolScore = math.min(12.0, (rvol / rvolBase) * 8.0)
+
+htfBullScore = not htfOn ? 8.0 : htfBull ? 10.0 : 0.0
+htfBearScore = not htfOn ? 8.0 : htfBear ? 10.0 : 0.0
+
+activityScore = math.min(6.0, (atrPct / atrBasePct) * 3.0)
+
+bullScore = scoreClamp(bullStackScore + bullLocScore + bullBosScore + bullDeltaScore + rvolScore + htfBullScore + activityScore)
+bearScore = scoreClamp(bearStackScore + bearLocScore + bearBosScore + bearDeltaScore + rvolScore + htfBearScore + activityScore)
+
+// ══════════════════════════════════════════════════════════════════════
+// SIGNAL ENGINE — HARD GATES ONLY
+// ══════════════════════════════════════════════════════════════════════
+bullAraw = marketActive and locLongOk and bullStack and bullBOS and bullDelta and rvolOk and htfBull
+bearAraw = marketActive and locShortOk and bearStack and bearBOS and bearDelta and rvolOk and htfBear
+
+bullBraw = marketActive and showB and locLongOk and bullStack and bullBOS and ((bullDelta and not rvolOk) or (bullFlowPartial and rvolOk)) and (not bUseHTF or htfBull) and not bullAraw
+bearBraw = marketActive and showB and locShortOk and bearStack and bearBOS and ((bearDelta and not rvolOk) or (bearFlowPartial and rvolOk)) and (not bUseHTF or htfBear) and not bearAraw
+
+var int lastSignalBar = na
+canSignal = na(lastSignalBar) or bar_index - lastSignalBar >= cooldownBars
+
+bullA = bullAraw and canSignal
+bearA = bearAraw and canSignal
+bullB = bullBraw and canSignal and not bullA
+bearB = bearBraw and canSignal and not bearA
+
+if bullA or bearA or bullB or bearB
+    lastSignalBar := bar_index
+
+// ══════════════════════════════════════════════════════════════════════
+// SWING LINES
+// ══════════════════════════════════════════════════════════════════════
+swingHighColor =
+     bullStack ? color.new(C_BEAR, 82) :
+     bearStack ? color.new(C_BEAR, 74) :
+     color.new(C_BEAR, 78)
+
+swingLowColor =
+     bearStack ? color.new(C_BULL, 82) :
+     bullStack ? color.new(C_BULL, 74) :
+     color.new(C_BULL, 78)
+
+plot(showSwingLines ? sh1 : na, "Swing High", color=swingHighColor, linewidth=1, style=plot.style_linebr)
+plot(showSwingLines ? sl1 : na, "Swing Low",  color=swingLowColor,  linewidth=1, style=plot.style_linebr)
+
+// ══════════════════════════════════════════════════════════════════════
+// BAR PAINT
+// ══════════════════════════════════════════════════════════════════════
+bullAPlus = bullA and bullScore >= plusScore
+bearAPlus = bearA and bearScore >= plusScore
+
+sigBarColor =
+     paintSignalBars ?
+         bullAPlus ? color.new(C_BULL, 0) :
+         bearAPlus ? color.new(C_BEAR, 0) :
+         bullA ? color.new(C_BULL, 12) :
+         bearA ? color.new(C_BEAR, 12) :
+         (showB and bullB) ? color.new(C_BULL, 46) :
+         (showB and bearB) ? color.new(C_BEAR, 46) : na
+     : na
+
+barcolor(sigBarColor)
+
+// ══════════════════════════════════════════════════════════════════════
+// LABELS
+// ══════════════════════════════════════════════════════════════════════
+labelOffset = atr * 1.15
+
+bullAText = bullAPlus ? "A+" : "A"
+bearAText = bearAPlus ? "A+" : "A"
+
+bullATip = "A-Tier Long\nScore: " + str.tostring(bullScore, "#") + "\nLocation: " + locLongState + "\nDelta: " + str.tostring(nDelta, "#.###") + "\nRVOL: " + str.tostring(rvol, "#.##") + "x" + "\nHTF: " + (not htfOn ? "Off" : not validHTF ? "Invalid TF" : htfBull ? "Bullish" : "Blocked")
+bearATip = "A-Tier Short\nScore: " + str.tostring(bearScore, "#") + "\nLocation: " + locShortState + "\nDelta: " + str.tostring(nDelta, "#.###") + "\nRVOL: " + str.tostring(rvol, "#.##") + "x" + "\nHTF: " + (not htfOn ? "Off" : not validHTF ? "Invalid TF" : htfBear ? "Bearish" : "Blocked")
+
+bullBTip = "B-Tier Long\nScore: " + str.tostring(bullScore, "#") + "\nLocation: " + locLongState + "\nDelta: " + str.tostring(nDelta, "#.###") + "\nRVOL: " + str.tostring(rvol, "#.##") + "x"
+bearBTip = "B-Tier Short\nScore: " + str.tostring(bearScore, "#") + "\nLocation: " + locShortState + "\nDelta: " + str.tostring(nDelta, "#.###") + "\nRVOL: " + str.tostring(rvol, "#.##") + "x"
+
+if bullA
+    label.new(bar_index, low - labelOffset, bullAText,
+              style=label.style_label_up,
+              color=C_BULL,
+              textcolor=C_BG,
+              size=size.normal,
+              tooltip=bullATip)
+
+if showB and bullB
+    label.new(bar_index, low - labelOffset * 0.72, "B",
+              style=label.style_label_up,
+              color=color.new(C_BULL, 48),
+              textcolor=C_BG,
+              size=size.small,
+              tooltip=bullBTip)
+
+if bearA
+    label.new(bar_index, high + labelOffset, bearAText,
+              style=label.style_label_down,
+              color=C_BEAR,
+              textcolor=C_TEXT,
+              size=size.normal,
+              tooltip=bearATip)
+
+if showB and bearB
+    label.new(bar_index, high + labelOffset * 0.72, "B",
+              style=label.style_label_down,
+              color=color.new(C_BEAR, 48),
+              textcolor=C_TEXT,
+              size=size.small,
+              tooltip=bearBTip)
+
+// ══════════════════════════════════════════════════════════════════════
+// HUD
+// ══════════════════════════════════════════════════════════════════════
+var table hud = na
+
+if barstate.isfirst
+    hud := table.new(position.top_right, 5, 2,
+                     bgcolor=color.new(C_BG2, 5),
+                     border_color=color.new(C_DIM, 50), border_width=1,
+                     frame_color=color.new(C_DIM, 20), frame_width=1)
+
+if barstate.islast and not na(hud)
+    if showHUD
+        regimeTxt = bullStack ? "BULL STACK" : bearStack ? "BEAR STACK" : "NEUTRAL"
+        regimeCol = bullStack ? C_BULL : bearStack ? C_BEAR : C_DIM
+
+        htfTxt = not htfOn ? "OFF" : validHTF ? (htfBull ? htfTf + " UP" : htfBear ? htfTf + " DOWN" : htfTf + " FLAT") : "INVALID TF"
+
+        signalTxt =
+             bullAPlus ? "A+ LONG" :
+             bearAPlus ? "A+ SHORT" :
+             bullA ? "A LONG" :
+             bearA ? "A SHORT" :
+             (showB and bullB) ? "B LONG" :
+             (showB and bearB) ? "B SHORT" : "NONE"
+
+        signalCol = (bullA or bullB) ? C_BULL : (bearA or bearB) ? C_BEAR : C_DIM
+
+        activeScore =
+             (bullA or bullB) ? bullScore :
+             (bearA or bearB) ? bearScore :
+             bullStack ? bullScore :
+             bearStack ? bearScore :
+             math.max(bullScore, bearScore)
+
+        flowTxt = str.tostring(nDelta * 100, "#") + "% | " + str.tostring(rvol, "#.1") + "x"
+        flowCol = bullDelta ? C_BULL : bearDelta ? C_BEAR : (rvolOk ? C_WARN : C_DIM)
+
+        stateTxt = marketActive ? "ACTIVE" : "QUIET"
+        stateCol = marketActive ? C_INFO : C_DIM
+
+        table.cell(hud, 0, 0, "REGIME / HTF", text_color=C_DIM, text_size=size.tiny, text_halign=text.align_center)
+        table.cell(hud, 1, 0, "LOCATION",     text_color=C_DIM, text_size=size.tiny, text_halign=text.align_center)
+        table.cell(hud, 2, 0, "SIGNAL / Q",   text_color=C_DIM, text_size=size.tiny, text_halign=text.align_center)
+        table.cell(hud, 3, 0, "FLOW",         text_color=C_DIM, text_size=size.tiny, text_halign=text.align_center)
+        table.cell(hud, 4, 0, "STATE",        text_color=C_DIM, text_size=size.tiny, text_halign=text.align_center)
+
+        table.cell(hud, 0, 1, regimeTxt + " | " + htfTxt, text_color=regimeCol, text_size=size.small, text_halign=text.align_center)
+        table.cell(hud, 1, 1, locState, text_color=locColor, text_size=size.small, text_halign=text.align_center)
+        table.cell(hud, 2, 1, signalTxt + " | " + str.tostring(activeScore, "#"), text_color=signalCol, text_size=size.small, text_halign=text.align_center)
+        table.cell(hud, 3, 1, flowTxt, text_color=flowCol, text_size=size.small, text_halign=text.align_center)
+        table.cell(hud, 4, 1, stateTxt, text_color=stateCol, text_size=size.small, text_halign=text.align_center)
+    else
+        for c = 0 to 4
+            table.cell(hud, c, 0, "")
+            table.cell(hud, c, 1, "")
+
+// ══════════════════════════════════════════════════════════════════════
+// ALERTS
+// ══════════════════════════════════════════════════════════════════════
+alertcondition(bullA, "A-Tier Long",  "SDRC S&B Premium - A-Tier Long")
+alertcondition(bearA, "A-Tier Short", "SDRC S&B Premium - A-Tier Short")
+alertcondition(showB and bullB, "B-Tier Long",  "SDRC S&B Premium - B-Tier Long")
+alertcondition(showB and bearB, "B-Tier Short", "SDRC S&B Premium - B-Tier Short")
+alertcondition(bullBOS, "Bull BOS", "SDRC S&B Premium - Bullish Break of Structure")
+alertcondition(bearBOS, "Bear BOS", "SDRC S&B Premium - Bearish Break of Structure")
+
+fireSignal = bullA or bearA or bullB or bearB
+
+if enableDynamicAlerts and fireSignal
+    sideTxt = (bullA or bullB) ? "LONG" : "SHORT"
+    tierTxt = (bullAPlus or bearAPlus) ? "A+" : (bullA or bearA) ? "A" : "B"
+    scoreTxt = (bullA or bullB) ? str.tostring(bullScore, "#") : str.tostring(bearScore, "#")
+    locationTxt = (bullA or bullB) ? locLongState : locShortState
+    alert("SDRC S&B Premium | " + tierTxt + " " + sideTxt +
+          " | Score: " + scoreTxt +
+          " | Location: " + locationTxt +
+          " | Delta: " + str.tostring(nDelta, "#.###") +
+          " | RVOL: " + str.tostring(rvol, "#.##") + "x",
+          alert.freq_once_per_bar_close)
