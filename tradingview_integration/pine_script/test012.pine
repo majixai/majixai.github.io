@@ -1,0 +1,871 @@
+// Liquidity Surge Forecast with Markov Chains [TechnicalZen]
+// "Clear direction from learned regimes."
+//
+// Aesthetic:
+//   SEAMLESS carpet — terrain strips share color between fill and outline; no visible seams.
+//   DOTTED wireframe — box, X=0 plane, and grids rendered dotted so structure reads but stays quiet.
+//   DEPTH FOG — each strip's color tints toward an atmospheric navy-violet as Z increases,
+//               giving real 3D depth perception without extra objects.
+//
+// Two layered terrains inside a bounded 3D box:
+//   MOMENTUM TERRAIN    — 20 HMA layers of MFI (or RSI). Yellow/green/red, fog-tinted.
+//   PRICE CURRENT CARPET — 12 layers: VWMA 2-bar slope OR signed-ADX HMAs (per oscType). Cyan / light-blue / maroon, fog-tinted.
+//
+// Deltas vs v1:
+//   - All wireframe lines → dotted style
+//   - Terrain polylines: line_color == fill_color → seamless surface
+//   - New f_depthTint blends base color into a depth fog color by Z position
+//   - Mesh dotted columns on terrain REMOVED (they broke the carpet)
+//   - A–I reference points REMOVED (cleaner plane)
+//   - Y=0 horizon: thicker, solid (the one element that *should* stand out as "sea level")
+//
+// Invisible plot(±50) anchors pin the pane's Y range so the box stays a constant size.
+
+//@version=6
+indicator("Liquidity Surge Forecast with Markov Chains [TechnicalZen]", "Liquidity Surge + Markov [TechnicalZen]", overlay = false, max_polylines_count = 100, max_lines_count = 300, max_labels_count = 20, calc_bars_count = 3000)
+
+//---------------------------------------------------------------------------------------------------------------------}
+int    timeSpan    = input.int(15, "Time Span (bars each side of 0)", minval = 5, maxval = 100, tooltip = "Number of past bars to render. Around 15 reads cleanly — higher values pile the strips on top of each other.")
+string momentumSrc = input.string("MFI", "Momentum Source", options = ["MFI", "RSI"], tooltip = "MFI = Money Flow Index (volume-weighted momentum). RSI = Relative Strength Index (pure price momentum).")
+int    rsiLen      = input.int(14, "Momentum Length", minval = 2)
+float yAmp     = input.float(2.0, "Rib Amplification", minval = 0.5, maxval = 5.0, step = 0.1, tooltip = "Stretches momentum ribs vertically. MFI/RSI rarely hits 0/100, so the raw centered value (x-50)*2 usually stays in ±40. Bumping amp makes moderate swings fill more of the ±100 axis. Clamped to ±100.")
+
+float yawDeg   = input.float(-20, "Yaw (°)",            group = "Camera", minval = -180, maxval = 180, tooltip = "Viewer presets: 0°=back/mid, 90°=right, 180°=front, -90°=left.")
+float pitchDeg = input.float(15,  "Pitch (°)",          group = "Camera", minval = 1,   maxval = 89, tooltip = "Eye-level at ~5°. Top-down (above Y=100) at ~89°. Intermediate values tilt between.")
+float sTime    = input.float(1.2, "Scale X (Time, bars per unit)", group = "Camera", step = 0.1, minval = 0.1)
+float sAlt     = input.float(0.4, "Scale Y (Vertical)",            group = "Camera", step = 0.1, minval = 0.1, tooltip = "Fixed scale for Y axis. Keeps box size constant regardless of volatility.")
+float sDepth   = input.float(0.4, "Scale Z (Depth)",               group = "Camera", step = 0.1, minval = 0.1, tooltip = "Fixed scale for Z axis.")
+int   offsetX  = input.int(0,     "Offset X",           group = "Camera")
+float offsetY  = input.float(0,   "Offset Y",           group = "Camera")
+
+string oscType    = input.string("Hull-VWMA", "Oscillator Type", options = ["Hull-VWMA", "ADX"], group = "Oscillator")
+int    vwmaLen    = input.int(30, "VWMA Length",     group = "Oscillator", minval = 2)
+float  oscScale   = input.float(500.0, "Hull-VWMA Scale", group = "Oscillator", minval = 1.0, step = 10.0, tooltip = "Slope is a tiny % change — multiplier pushes it into the ±100 box range. Raise if signal looks flat.")
+int    adxLen     = input.int(14,  "ADX Length (DMI period)", group = "Oscillator", minval = 2)
+bool   showOsc    = input.bool(true, "Show Oscillator Carpet", group = "Oscillator", tooltip = "Renders the 12-layer carpet (Hull-VWMA slopes or signed-ADX HMAs, depending on Oscillator Type).")
+color  oscBullCol = input.color(#00BCD4, "Bull Color (osc > 0)", group = "Oscillator", tooltip = "Cyan family — extreme positive oscillator.")
+color  oscBearCol = input.color(#800000, "Bear Color (osc < 0)", group = "Oscillator", tooltip = "Maroon family — extreme negative oscillator.")
+color  oscNeutCol = input.color(#87CEEB, "Neutral Tint (mag ≈ 0)", group = "Oscillator", tooltip = "Light blue — weak signals blend toward this color.")
+
+bool  showAxisLabels = input.bool(false, "Show Axis Markers",            group = "Display", tooltip = "Labels at -100, 0, +100 on Y and Z axes.")
+bool  showEmoji      = input.bool(true, "Show Emoji Markers",            group = "Display", tooltip = "🏄‍♂ at momentum leading edge, ⛵ at oscillator leading edge. 🐳 (bull) or 🐋 (bear) at forecast leading edge when BOTH projected end-of-forecast values (Money Flow + Price Current) land on the same side of zero.")
+
+bool  showForecast     = input.bool(true,  "Show Slope Forecast",        group = "Forecast", tooltip = "Extrapolates each layer forward using its current slope, with exponential decay. Projects a ghost terrain into the future half of the box.")
+int   forecastSlopeLen = input.int(6,      "Slope Lookback (bars)",      group = "Forecast", minval = 2, maxval = 50, tooltip = "How many past bars to compute the slope from. Shorter = more reactive, longer = smoother. Default 6 tuned for 1m day trading — 6-min slope smooths the 1m noise. Capped internally to Time Span to fit the ring buffer.")
+float forecastDecay    = input.float(0.92, "Forecast Decay per Bar",     group = "Forecast", minval = 0.5, maxval = 1.0, step = 0.01, tooltip = "Each future bar the slope contribution multiplies by this factor. 1.0 = pure linear extrapolation, 0.9 = strong fade, 0.95 = gentle fade.")
+
+// ---- Choppiness Filter: suppresses whales when the market is chopping or drifting sideways, shows 🦈 instead ----
+bool  useChopFilter    = input.bool(true,  "Gate Whale by Choppiness",   group = "Choppiness Filter", tooltip = "When either chop detector fires, the 🐳 / 🐋 whale is replaced by a 🦈 shark — warning that the tape isn't trending. Dashboard signals from chop periods are also excluded.")
+int   chopLen          = input.int(14,     "CI Length",                  group = "Choppiness Filter", minval = 4, maxval = 60,  tooltip = "Lookback for the classic Choppiness Index (TR sum vs high-low range).")
+float chopThresh       = input.float(61.8, "CI Threshold (chop above)",  group = "Choppiness Filter", minval = 30.0, maxval = 80.0, step = 0.1, tooltip = "CI above this = price is circling rather than travelling. 61.8 is the classic Fibonacci upper threshold.")
+int   angleShortLen    = input.int(12,     "Angle Short Period",         group = "Choppiness Filter", minval = 2,   maxval = 50)
+int   angleLongLen     = input.int(26,     "Angle Long Period",          group = "Choppiness Filter", minval = 5,   maxval = 100)
+float angleTrendThresh = input.float(5.0,  "Angle Trend Threshold (°)",  group = "Choppiness Filter", minval = 1.0, maxval = 30.0, step = 0.5, tooltip = "Both short and long angles must exceed ±this to qualify as a clear trend.")
+float angleSideThresh  = input.float(2.0,  "Angle Sideways Threshold (°)", group = "Choppiness Filter", minval = 0.5, maxval = 10.0, step = 0.1, tooltip = "Both short and long angles must be within ±this to qualify as sideways drift. Catches slow-drift regimes that the CI alone misses.")
+
+bool   showDashboard = input.bool(true,   "Show Win-Rate Dashboard", group = "Dashboard", tooltip = "Tracks 🐳 / 🐋 confluence signals. Each signal is evaluated when the NEXT signal fires. Win = directional close-favorable OR Maximum Favorable Excursion between signals ≥ threshold (either qualifies).")
+string dashPos       = input.string("Bottom Right", "Dashboard Position", options = ["Top Right", "Top Left", "Middle Right", "Middle Left", "Bottom Right", "Bottom Left"], group = "Dashboard")
+string dashFontSize  = input.string("Normal", "Dashboard Text Size", options = ["Tiny", "Small", "Normal", "Large", "Huge"], group = "Dashboard", tooltip = "Base size for dashboard body cells. Footer is one tier smaller automatically.")
+
+// ---- Markov Predictor (2nd-order chain over regime states, Laplace-smoothed, recency-decayed, duration-conditioned) ----
+bool  useMarkov      = input.bool(true,  "Use Markov Predictor",       group = "Markov Predictor", tooltip = "2nd-order Markov chain learns regime transition probabilities from your chart's history. Gates whale confirmation and generates 'hatchling' pre-whales when it predicts a transition out of Sideways.")
+float markovDecay    = input.float(0.997, "Count Decay per Bar",       group = "Markov Predictor", minval = 0.9, maxval = 1.0, step = 0.001, tooltip = "Exponential recency weighting. 1.0 = all history equal weight. Lower = recent transitions count more. Default 0.997 tuned for 1m day trading (half-life ≈ 4 hours = half a session). For 5m use 0.990; for hourly use 0.995.")
+float preWhaleThresh = input.float(55.0,  "Hatchling Threshold %",     group = "Markov Predictor", minval = 34.0, maxval = 90.0, step = 1.0, tooltip = "When current state is Sideways, show a small 'hatchling' whale if the Markov chain assigns this probability or higher to Bull or Bear next. Baseline is 33% (random among 3 states); 55% = meaningful lean.")
+bool  showMarkovRow  = input.bool(true,   "Show Markov Row in Dash",   group = "Markov Predictor", tooltip = "Adds a dashboard row showing the current Markov prediction: P(🐳) / P(🦀) / P(🐋) and the sample size of the current context.")
+
+// Dashboard font-size ladder (body tier + one-tier-smaller footer)
+string _dashBodySize   = dashFontSize == "Tiny"   ? size.tiny   : dashFontSize == "Small"  ? size.small  : dashFontSize == "Normal" ? size.normal : dashFontSize == "Large"  ? size.large  : size.huge
+string _dashFooterSize = dashFontSize == "Tiny"   ? size.tiny   : dashFontSize == "Small"  ? size.tiny   : dashFontSize == "Normal" ? size.small  : dashFontSize == "Large"  ? size.normal : size.large
+int    atrLen        = input.int(14,      "ATR Length",                group = "Dashboard", minval = 2, maxval = 100, tooltip = "Lookback for ATR used to scale the win threshold. 14 = classic Wilder ATR.")
+float  atrMult       = input.float(0.5,   "Win Threshold (× ATR)",     group = "Dashboard", minval = 0.1, maxval = 5.0, step = 0.1, tooltip = "If MFE between two successive signals reaches this multiple of ATR at the first signal's bar, that qualifies as a win — even if the directional close check fails.")
+color  dashTextCol   = input.color(color.new(color.white, 10), "Dashboard Text",       group = "Dashboard")
+color  dashBgCol     = input.color(color.new(color.black, 30), "Dashboard Background", group = "Dashboard")
+
+bool  showFloorGrid = input.bool(true,  "Y=0 Floor Grid (dotted)",   group = "Wireframe", tooltip = "Dotted grid lines on the water surface (Y=0).")
+bool  showBackGrid  = input.bool(false, "Back Wall Grid (dotted)",   group = "Wireframe", tooltip = "Dotted grid lines on the far Z wall (past side).")
+bool  showSideGrid  = input.bool(false, "Side Wall Grid (dotted)",  group = "Wireframe", tooltip = "Dotted grid lines on the left X wall.")
+int   gridStep      = input.int(25, "Grid Spacing",                 group = "Wireframe", minval = 10, maxval = 50)
+
+color boxColor    = input.color(color.new(color.gray, 70),  "Box Wireframe (dotted)",   group = "Style")
+color nowPlaneCol = input.color(color.new(color.white, 70), "X=0 Plane (dotted)",       group = "Style")
+color yZeroEdge   = input.color(color.new(#64B5F6, 40),     "Y=0 Horizon (solid)",      group = "Style", tooltip = "The bright horizontal outline at the water surface — the one structural element that *should* read loudly.")
+color axisLabelCol= input.color(color.new(color.white, 30), "Axis Markers",             group = "Style")
+color gridColor   = input.color(color.new(color.white, 85), "Wireframe Grid (dotted)",  group = "Style")
+color fogColor    = input.color(#1A1A2E,                    "Depth Fog Color",          group = "Style", tooltip = "Strip colors tint toward this as Z increases (far layers fade into atmospheric haze). Dark navy-violet reads well on both light and dark TradingView themes.")
+float fogStrength = input.float(0.55, "Depth Fog Strength", group = "Style", minval = 0.0, maxval = 1.0, step = 0.05, tooltip = "How strongly far layers blend into fog color. 0 = no fog, 1 = far layers fully fogged. 0.55 = balanced atmosphere.")
+
+//---------------------------------------------------------------------------------------------------------------------}
+type Camera
+    int anchorX
+    float anchorY
+    float cYaw
+    float sYaw
+    float cPit
+    float sPit
+    float sT
+    float sA
+    float sD
+
+method project(Camera this, float x, float y, float z) =>
+    float xs = x * this.sT
+    float ys = y * this.sA
+    float zs = z * this.sD
+    float screenX = xs * this.cYaw - zs * this.sYaw
+    float screenY = ys * this.cPit + (xs * this.sYaw + zs * this.cYaw) * this.sPit
+    chart.point.from_index(this.anchorX + int(screenX), this.anchorY + screenY)
+
+
+//---------------------------------------------------------------------------------------------------------------------}
+float rsiRaw = momentumSrc == "MFI" ? ta.mfi(hlc3, rsiLen) : ta.rsi(close, rsiLen)
+
+// ---- MOMENTUM TERRAIN (20 depth layers, HMA lengths from 3 → 60) ----
+float _rH0  = ta.hma(rsiRaw, 3)
+float _rH1  = ta.hma(rsiRaw, 4)
+float _rH2  = ta.hma(rsiRaw, 5)
+float _rH3  = ta.hma(rsiRaw, 6)
+float _rH4  = ta.hma(rsiRaw, 8)
+float _rH5  = ta.hma(rsiRaw, 10)
+float _rH6  = ta.hma(rsiRaw, 12)
+float _rH7  = ta.hma(rsiRaw, 14)
+float _rH8  = ta.hma(rsiRaw, 17)
+float _rH9  = ta.hma(rsiRaw, 20)
+float _rH10 = ta.hma(rsiRaw, 23)
+float _rH11 = ta.hma(rsiRaw, 26)
+float _rH12 = ta.hma(rsiRaw, 30)
+float _rH13 = ta.hma(rsiRaw, 34)
+float _rH14 = ta.hma(rsiRaw, 38)
+float _rH15 = ta.hma(rsiRaw, 42)
+float _rH16 = ta.hma(rsiRaw, 46)
+float _rH17 = ta.hma(rsiRaw, 50)
+float _rH18 = ta.hma(rsiRaw, 55)
+float _rH19 = ta.hma(rsiRaw, 60)
+
+f_rsiCenter(float r) =>
+    float raw = na(r) ? 50.0 : r
+    math.max(-100.0, math.min(100.0, (raw - 50.0) * 2.0 * yAmp))
+
+// Ring buffer must hold max(timeSpan+1, forecastSlopeLen+1) slots
+int _bufSize = math.max(timeSpan + 1, forecastSlopeLen + 1)
+
+// Effective slope length — capped to timeSpan so the ring buffer never wraps past available history.
+// Used everywhere (dashboard, emoji, Markov-derived signals) so slope readings are identical across the whole script.
+int _effSlopeLen = math.min(forecastSlopeLen, timeSpan)
+
+var matrix<float> rsiTerrain = matrix.new<float>(20, _bufSize, 0.0)
+int _rsiColIdx = bar_index % _bufSize
+// Array-driven population. The HMA calls above stay unrolled (Pine requires simple-int length),
+// but the 20 per-bar matrix writes collapse into one loop.
+array<float> _rsiHMAs = array.from(_rH0, _rH1, _rH2, _rH3, _rH4, _rH5, _rH6, _rH7, _rH8, _rH9, _rH10, _rH11, _rH12, _rH13, _rH14, _rH15, _rH16, _rH17, _rH18, _rH19)
+for i = 0 to 19
+    rsiTerrain.set(i, _rsiColIdx, f_rsiCenter(_rsiHMAs.get(i)))
+
+// Momentum gradient: yellow @ 0 → green @ +50/+100 ; yellow @ 0 → red @ -50/-100
+f_rsiColor(float v) =>
+    v >= 50.0 ? #00E676 : v <= -50.0 ? #FF5252 : v >= 0.0 ? color.from_gradient(v / 50.0, 0, 1, #FFEB3B, #00E676) : color.from_gradient((-v) / 50.0, 0, 1, #FFEB3B, #FF5252)
+
+// ADX (signed via DI direction)
+[_pdi, _mdi, adxRaw] = ta.dmi(adxLen, adxLen)
+float adxDir    = _pdi >= _mdi ? 1.0 : -1.0
+float adxSigned = adxRaw * adxDir
+
+// ---- ADX TERRAIN (12 HMA layers of signed ADX) — fills the carpet when oscType = "ADX" ----
+float _aH0  = ta.hma(adxSigned, 3)
+float _aH1  = ta.hma(adxSigned, 5)
+float _aH2  = ta.hma(adxSigned, 7)
+float _aH3  = ta.hma(adxSigned, 10)
+float _aH4  = ta.hma(adxSigned, 14)
+float _aH5  = ta.hma(adxSigned, 19)
+float _aH6  = ta.hma(adxSigned, 25)
+float _aH7  = ta.hma(adxSigned, 32)
+float _aH8  = ta.hma(adxSigned, 40)
+float _aH9  = ta.hma(adxSigned, 49)
+float _aH10 = ta.hma(adxSigned, 59)
+float _aH11 = ta.hma(adxSigned, 70)
+
+// ---- Hull-VWMA TERRAIN (12 depth layers) ----
+float vwmaSrc = ta.vwma(close, vwmaLen)
+
+float _hma0  = ta.hma(vwmaSrc, 3)
+float _hma1  = ta.hma(vwmaSrc, 5)
+float _hma2  = ta.hma(vwmaSrc, 7)
+float _hma3  = ta.hma(vwmaSrc, 10)
+float _hma4  = ta.hma(vwmaSrc, 14)
+float _hma5  = ta.hma(vwmaSrc, 19)
+float _hma6  = ta.hma(vwmaSrc, 25)
+float _hma7  = ta.hma(vwmaSrc, 32)
+float _hma8  = ta.hma(vwmaSrc, 40)
+float _hma9  = ta.hma(vwmaSrc, 49)
+float _hma10 = ta.hma(vwmaSrc, 59)
+float _hma11 = ta.hma(vwmaSrc, 70)
+
+f_slope(float hmaNow, float hmaPrev) =>
+    float raw = not na(hmaPrev) and hmaPrev != 0.0 ? (hmaNow - hmaPrev) / hmaPrev * 100.0 * oscScale : 0.0
+    math.max(-100.0, math.min(100.0, raw))
+
+f_clampAdx(float v) => math.max(-100.0, math.min(100.0, nz(v)))
+
+// Angle of a series over `len` bars — normalised slope mapped through atan to degrees.
+// Lifted from RB_Price Action Combo 3: scale-invariant directional "cleanliness" metric.
+f_angle(float src, int len) =>
+    float srcChange  = src - src[1]
+    float meanChg    = (src - src[len]) / len
+    float stdevChg   = ta.stdev(srcChange, len)
+    float normSlope  = stdevChg == 0 ? (meanChg != 0 ? math.sign(meanChg) * 100.0 : 0.0) : meanChg / stdevChg
+    math.atan(normSlope) * (180.0 / math.pi)
+
+// Per-series regime classification: -1 down, 0 sideways, 1 up, 2 neutral (transitional)
+f_angleRegime(float aShort, float aLong, float trendT, float sideT) =>
+    int r = 2
+    if aShort >= trendT and aLong >= trendT
+        r := 1
+    else if aShort <= -trendT and aLong <= -trendT
+        r := -1
+    else if math.abs(aShort) < sideT and math.abs(aLong) < sideT
+        r := 0
+    r
+
+// Depth fog: blend base color toward fogColor based on Z position.
+// Z = -100 (near) → 0 fog.  Z = +100 (far) → fogStrength fog.
+f_depthTint(color base, float zPos) =>
+    float depthFactor = (zPos + 100.0) / 200.0
+    color.from_gradient(depthFactor * fogStrength, 0.0, 1.0, base, fogColor)
+
+float osc0  = f_slope(_hma0,  _hma0[2])
+float osc1  = f_slope(_hma1,  _hma1[2])
+float osc2  = f_slope(_hma2,  _hma2[2])
+float osc3  = f_slope(_hma3,  _hma3[2])
+float osc4  = f_slope(_hma4,  _hma4[2])
+float osc5  = f_slope(_hma5,  _hma5[2])
+float osc6  = f_slope(_hma6,  _hma6[2])
+float osc7  = f_slope(_hma7,  _hma7[2])
+float osc8  = f_slope(_hma8,  _hma8[2])
+float osc9  = f_slope(_hma9,  _hma9[2])
+float osc10 = f_slope(_hma10, _hma10[2])
+float osc11 = f_slope(_hma11, _hma11[2])
+
+var matrix<float> ampTerrain = matrix.new<float>(12, _bufSize, 0.0)
+int _colIdx = bar_index % _bufSize
+bool _isVwma = oscType == "Hull-VWMA"
+// Array-driven population with mode branching per layer.
+array<float> _oscVals = array.from(osc0, osc1, osc2, osc3, osc4, osc5, osc6, osc7, osc8, osc9, osc10, osc11)
+array<float> _adxVals = array.from(_aH0, _aH1, _aH2, _aH3, _aH4, _aH5, _aH6, _aH7, _aH8, _aH9, _aH10, _aH11)
+for i = 0 to 11
+    ampTerrain.set(i, _colIdx, _isVwma ? _oscVals.get(i) : f_clampAdx(_adxVals.get(i)))
+
+// ---- Pane anchors — sized to the actual projected extent of the box at current camera settings ----
+// Computes the worst-case projected Y = |y * sAlt * cos(pitch)| + (timeSpan * sTime * |sin(yaw)| + 100 * sDepth * |cos(yaw)|) * sin(pitch).
+// Replaces the old hardcoded ±50 anchors, which under extreme camera/scale settings could be exceeded
+// by the projection and let the pane auto-resize (visible jumpiness). Now the anchors adapt.
+float _yawRadG = yawDeg * math.pi / 180
+float _pitRadG = pitchDeg * math.pi / 180
+float _cYawG = math.cos(_yawRadG)
+float _sYawG = math.sin(_yawRadG)
+float _cPitG = math.cos(_pitRadG)
+float _sPitG = math.sin(_pitRadG)
+float _maxProjY = 100.0 * sAlt * _cPitG + (timeSpan * sTime * math.abs(_sYawG) + 100.0 * sDepth * math.abs(_cYawG)) * _sPitG
+float _anchorY  = math.max(_maxProjY, 50.0)   // floor at 50 so tight cameras don't squash the pane
+
+plot( _anchorY, color = color.new(color.black, 100), display = display.all, title = "pane anchor top")
+plot(-_anchorY, color = color.new(color.black, 100), display = display.all, title = "pane anchor bottom")
+
+// ---- Win-rate signal tracking (per-bar, matches emoji confluence logic) ----
+// Middle-layer momentum (index 9 → HMA 20) and oscillator (index 5 → HMA 19) slopes.
+// Uses _effSlopeLen everywhere so dashboard signals and emoji whales fire on the same slope window.
+float _dashRsiMid     = f_rsiCenter(_rH9)
+float _dashRsiMidPast = f_rsiCenter(_rH9[_effSlopeLen])
+float _dashRsiSlope   = (_dashRsiMid - _dashRsiMidPast) / _effSlopeLen
+
+float _dashOscMid     = _isVwma ? osc5                  : f_clampAdx(_aH5)
+float _dashOscMidPast = _isVwma ? osc5[_effSlopeLen]    : f_clampAdx(_aH5[_effSlopeLen])
+float _dashOscSlope   = (_dashOscMid - _dashOscMidPast) / _effSlopeLen
+
+// ---- Choppiness detection (dual detector — suppresses whales in chop/sideways, surfaces 🦈 / 🦀) ----
+// 1. Classic Choppiness Index (CI): price-action range-vs-travel measure. > threshold = circling, not travelling.
+// 2. Angle-based sideways consensus: per-series (close/high/low) trend classification at short + long periods.
+//    "Sideways" = the market is NOT clearly trending up or down. Matches the visual yellow in RB_Price Action
+//    Combo 3 — covers both strict consensus-Sideways AND consensus-Neutral (mixed votes). Was too strict before
+//    at ">=2 side votes"; now fires whenever no single direction owns a strict majority.
+float _ciSumTR    = math.sum(ta.tr, chopLen)
+float _ciRange    = ta.highest(high, chopLen) - ta.lowest(low, chopLen)
+float _ci         = _ciRange > 0 and _ciSumTR > 0 ? 100.0 * math.log10(_ciSumTR / _ciRange) / math.log10(chopLen) : 50.0
+bool  _isChopCI   = _ci >= chopThresh
+
+int _rC = f_angleRegime(f_angle(close, angleShortLen), f_angle(close, angleLongLen), angleTrendThresh, angleSideThresh)
+int _rH = f_angleRegime(f_angle(high,  angleShortLen), f_angle(high,  angleLongLen), angleTrendThresh, angleSideThresh)
+int _rL = f_angleRegime(f_angle(low,   angleShortLen), f_angle(low,   angleLongLen), angleTrendThresh, angleSideThresh)
+int _upVotes   = (_rC ==  1 ? 1 : 0) + (_rH ==  1 ? 1 : 0) + (_rL ==  1 ? 1 : 0)
+int _downVotes = (_rC == -1 ? 1 : 0) + (_rH == -1 ? 1 : 0) + (_rL == -1 ? 1 : 0)
+int _sideVotes = (_rC ==  0 ? 1 : 0) + (_rH ==  0 ? 1 : 0) + (_rL ==  0 ? 1 : 0)
+int _neutVotes = (_rC ==  2 ? 1 : 0) + (_rH ==  2 ? 1 : 0) + (_rL ==  2 ? 1 : 0)
+bool _consensusUp   = _upVotes   > _downVotes and _upVotes   > _sideVotes and _upVotes   > _neutVotes
+bool _consensusDown = _downVotes > _upVotes   and _downVotes > _sideVotes and _downVotes > _neutVotes
+bool _isChopAngle   = not _consensusUp and not _consensusDown
+
+bool _isChoppy = useChopFilter and (_isChopCI or _isChopAngle)
+
+// ---- Markov Predictor — 2nd-order chain over {Bear=0, Side=1, Bull=2} regime states ----
+// Two matrices (short-duration vs long-duration current state), each 9 contexts × 3 next-states = 27 cells.
+// Context at bar t = (state[t-2], state[t-1]). Prediction for bar t+1 uses (state[t-1], state[t]).
+// Update rule: at bar t, increment counts[ctx=(state[t-2],state[t-1])][state[t]] in the matrix chosen by duration.
+// All cells decay by markovDecay every bar (recency weighting). Laplace smoothing (α=1) at prediction time.
+
+int _mkState = _consensusUp ? 2 : _consensusDown ? 0 : 1
+var int _stateDur = 1
+_stateDur := (not na(_mkState[1]) and _mkState == _mkState[1]) ? _stateDur + 1 : 1
+
+int _mcDurSplit  = 5     // bars threshold — current state held short (<5) vs long (≥5)
+float _mcAlpha   = 1.0   // Laplace pseudocount
+int _mcMinSample = 10    // minimum observations in a context for prediction to be "confident"
+
+var matrix<float> _mcShort = matrix.new<float>(9, 3, 0.0)
+var matrix<float> _mcLong  = matrix.new<float>(9, 3, 0.0)
+
+// Decay all counts every bar (cheap: 54 multiplications)
+if useMarkov
+    for ri = 0 to 8
+        for ci = 0 to 2
+            _mcShort.set(ri, ci, _mcShort.get(ri, ci) * markovDecay)
+            _mcLong.set(ri, ci,  _mcLong.get(ri, ci)  * markovDecay)
+
+// Update: need at least 3 bars of state history to form a (prev2, prev1, curr) triple
+int _ctxUpdate = not na(_mkState[2]) and not na(_mkState[1]) ? _mkState[2] * 3 + _mkState[1] : -1
+if useMarkov and _ctxUpdate >= 0
+    int _prevDur = nz(_stateDur[1], 1)
+    matrix<float> _targetMc = _prevDur < _mcDurSplit ? _mcShort : _mcLong
+    _targetMc.set(_ctxUpdate, _mkState, _targetMc.get(_ctxUpdate, _mkState) + 1.0)
+
+// Predict: context for next-bar prediction is (state[t-1], state[t])
+int _ctxPredict = not na(_mkState[1]) ? _mkState[1] * 3 + _mkState : -1
+float _pBull = 0.333
+float _pSide = 0.333
+float _pBear = 0.333
+float _mcSampleN = 0.0
+bool  _mcConfident = false
+
+if useMarkov and _ctxPredict >= 0
+    matrix<float> _activeMc = _stateDur < _mcDurSplit ? _mcShort : _mcLong
+    float _cBear = _activeMc.get(_ctxPredict, 0)
+    float _cSide = _activeMc.get(_ctxPredict, 1)
+    float _cBull = _activeMc.get(_ctxPredict, 2)
+    _mcSampleN := _cBear + _cSide + _cBull
+    float _denom = _mcSampleN + 3.0 * _mcAlpha
+    _pBear := (_cBear + _mcAlpha) / _denom
+    _pSide := (_cSide + _mcAlpha) / _denom
+    _pBull := (_cBull + _mcAlpha) / _denom
+    _mcConfident := _mcSampleN >= _mcMinSample
+
+// Argmax of prediction → Markov's "vote" for next regime (0=Bear, 1=Side, 2=Bull)
+int _mcVote = _pBull >= _pSide and _pBull >= _pBear ? 2 : _pBear >= _pSide ? 0 : 1
+
+// ---- Current State summary — powered by Markov for the dashboard's "Current State" row ----
+// Reads: current regime label + duration + balance state (balanced/imbalanced) + expected-bars-to-change + next-likely direction.
+// Balance: if the three next-bar probabilities are all within a 15-point spread, regime has no clear lean
+//          → change is imminent. Otherwise regime is "imbalanced" and the stay probability tells us how long it will persist.
+// Expected-bars-to-change uses geometric-distribution mean: 1 / (1 − P(stay)). Clamped [1, 99].
+// Four aggregate states — exhaustive. The previous "🦀 Neutral" fallback was dead code because
+// _isChopAngle is defined as (not _consensusUp and not _consensusDown), so whenever Bull/Bear
+// consensus fails and CI-chop isn't active, _isChopAngle is true by construction.
+string _curStateEmoji = _isChopCI    ? "🦈 Chop-zone" :                        _consensusUp ? "🐳 Bull"      :                        _consensusDown ? "🐋 Bear"    :                                       "🦀 Sideways"
+
+float _pStayCurrent = _mkState == 2 ? _pBull : _mkState == 0 ? _pBear : _pSide
+int   _expChangeBars = _pStayCurrent >= 0.999 ? 99 : _pStayCurrent <= 0.0 ? 1 : math.min(99, int(math.round(1.0 / (1.0 - _pStayCurrent))))
+float _probRange = math.max(_pBull, math.max(_pSide, _pBear)) - math.min(_pBull, math.min(_pSide, _pBear))
+bool  _balanced  = _probRange < 0.15
+
+// Most-likely NEXT regime (excluding current) — tells trader which way the market leans next
+int _nextLikely = 1
+float _pNextLikely = -1.0
+if _mkState != 2 and _pBull > _pNextLikely
+    _nextLikely := 2
+    _pNextLikely := _pBull
+if _mkState != 0 and _pBear > _pNextLikely
+    _nextLikely := 0
+    _pNextLikely := _pBear
+if _mkState != 1 and _pSide > _pNextLikely
+    _nextLikely := 1
+    _pNextLikely := _pSide
+string _nextLikelyEmoji = _nextLikely == 2 ? "🐳 Bull" : _nextLikely == 0 ? "🐋 Bear" : "🦀 Sideways"
+
+// ---- Projected-end confluence (not current-state). Decay math does the smoothing naturally:
+//   - Trending: slope + level project far from zero on one side → confluence persists
+//   - Choppy:   slopes oscillate, mids near zero → projection hovers near zero → no whale
+//   - Sharp reversal: slope flip + mid decay → projection crosses zero within a few bars → whale flips
+float _projFactor  = math.pow(forecastDecay, timeSpan)
+float _dashRsiEnd  = math.max(-100.0, math.min(100.0, _dashRsiMid + _dashRsiSlope * timeSpan * _projFactor))
+float _dashOscEnd  = math.max(-100.0, math.min(100.0, _dashOscMid + _dashOscSlope * timeSpan * _projFactor))
+bool _dashBullConf = _dashRsiEnd > 0 and _dashOscEnd > 0 and not _isChoppy
+bool _dashBearConf = _dashRsiEnd < 0 and _dashOscEnd < 0 and not _isChoppy
+
+// Entry = first bar of a new confluence state (transition from non-confluence).
+// Bool historical refs return na on bar 0; `not na` propagates na which reads as false in bool context → no first-bar false trigger.
+bool _dashBullEntry = _dashBullConf and not _dashBullConf[1]
+bool _dashBearEntry = _dashBearConf and not _dashBearConf[1]
+
+// Shark = CI chop (violent range-bound circling)   → 🦈
+// Crab  = angle sideways (slow drift, flat angles) → 🦀
+// Counters track events (transitions into the state) and bars (total bars in the state).
+bool _sharkEntry = _isChopCI    and not _isChopCI[1]
+bool _crabEntry  = _isChopAngle and not _isChopAngle[1]
+
+var int dashSharkEvents = 0
+var int dashSharkBars   = 0
+var int dashCrabEvents  = 0
+var int dashCrabBars    = 0
+
+if _isChopCI
+    dashSharkBars := dashSharkBars + 1
+    if _sharkEntry
+        dashSharkEvents := dashSharkEvents + 1
+if _isChopAngle
+    dashCrabBars := dashCrabBars + 1
+    if _crabEntry
+        dashCrabEvents := dashCrabEvents + 1
+
+// ATR used for volatility-scaled win threshold
+float _atrSeries = ta.atr(atrLen)
+
+// ---- Next-signal evaluation model ----
+// Each signal (bull or bear) is held pending until the NEXT signal fires (either direction).
+// At that moment we judge the previous signal:
+//   direction-win = closed favorable vs its entry
+//   MFE-win       = running extreme-favorable move between signals ≥ atrMult × ATR at entry bar
+//   either qualifies → win
+// The most recent signal is unresolved until a new one arrives.
+
+var int   _prevSigDir    = 0      // 0 = none, 1 = bull, -1 = bear
+var float _prevSigEntry  = na
+var float _prevSigATR    = na
+var float _runMaxSince   = na     // running max high since prev signal (inclusive)
+var float _runMinSince   = na     // running min low since prev signal (inclusive)
+
+var int dashBullSignals = 0
+var int dashBearSignals = 0
+var int dashBullWins    = 0
+var int dashBearWins    = 0
+
+// 1) Update running extrema while a signal is pending (must happen every bar, not only on new signals)
+if _prevSigDir != 0
+    _runMaxSince := math.max(nz(_runMaxSince, high), high)
+    _runMinSince := math.min(nz(_runMinSince, low),  low)
+
+// 2) On a new signal: resolve the previous one (if any), then start tracking the new one
+bool _newSig = _dashBullEntry or _dashBearEntry
+if _newSig
+    if _prevSigDir != 0
+        bool  _dirWon = _prevSigDir == 1 ? close > _prevSigEntry : close < _prevSigEntry
+        float _mfe    = _prevSigDir == 1 ? _runMaxSince - _prevSigEntry : _prevSigEntry - _runMinSince
+        bool  _mfeWon = _prevSigATR > 0 and _mfe >= atrMult * _prevSigATR
+        bool  _won    = _dirWon or _mfeWon
+        if _prevSigDir == 1
+            dashBullSignals := dashBullSignals + 1
+            if _won
+                dashBullWins := dashBullWins + 1
+        else
+            dashBearSignals := dashBearSignals + 1
+            if _won
+                dashBearWins := dashBearWins + 1
+    // Start tracking the new signal (reset running extrema to this bar's high/low)
+    _prevSigDir   := _dashBullEntry ? 1 : -1
+    _prevSigEntry := close
+    _prevSigATR   := _atrSeries
+    _runMaxSince  := high
+    _runMinSince  := low
+
+if barstate.islast
+    // Render lifecycle: full delete-and-rebuild on every last-bar tick.
+    // Why: Pine polylines are immutable (no point mutation after creation), so a redraw requires deletion + recreation.
+    // Lines and labels DO support in-place mutation, but mixing mutable and immutable object pools would complicate
+    // the render code beyond the benefit. Current peak object count (~60 polylines + ~20 lines + ~3 labels) is
+    // well within Pine's per-indicator limits and acceptable for realtime use. If the scene ever grows materially
+    // larger, the first optimization to revisit is gating rebuild on state-change rather than every tick.
+    for p in polyline.all
+        p.delete()
+    for ln in line.all
+        ln.delete()
+    for lbl in label.all
+        lbl.delete()
+
+    // Camera trig is computed at module scope (_cYawG, _sYawG, _cPitG, _sPitG) so the pane anchors can use it too.
+    Camera cam = Camera.new(
+         anchorX = bar_index + offsetX,
+         anchorY = 0.0 + offsetY,
+         cYaw    = _cYawG,
+         sYaw    = _sYawG,
+         cPit    = _cPitG,
+         sPit    = _sPitG,
+         sT      = sTime,
+         sA      = sAlt,
+         sD      = sDepth
+     )
+
+    float T  = timeSpan
+    int   Ti = timeSpan
+
+    // ---- Box wireframe — 12 edges, DOTTED ----
+    line.new(cam.project(-T, -100, -100), cam.project( T, -100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T, -100, -100), cam.project( T, -100,  100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T, -100,  100), cam.project(-T, -100,  100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project(-T, -100,  100), cam.project(-T, -100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project(-T,  100, -100), cam.project( T,  100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T,  100, -100), cam.project( T,  100,  100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T,  100,  100), cam.project(-T,  100,  100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project(-T,  100,  100), cam.project(-T,  100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project(-T, -100, -100), cam.project(-T,  100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T, -100, -100), cam.project( T,  100, -100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project( T, -100,  100), cam.project( T,  100,  100), color = boxColor, style = line.style_dotted)
+    line.new(cam.project(-T, -100,  100), cam.project(-T,  100,  100), color = boxColor, style = line.style_dotted)
+
+    // ---- X=0 plane (past/future divider), DOTTED ----
+    line.new(cam.project(0, -100, -100), cam.project(0,  100, -100), color = nowPlaneCol, style = line.style_dotted)
+    line.new(cam.project(0,  100, -100), cam.project(0,  100,  100), color = nowPlaneCol, style = line.style_dotted)
+    line.new(cam.project(0,  100,  100), cam.project(0, -100,  100), color = nowPlaneCol, style = line.style_dotted)
+    line.new(cam.project(0, -100,  100), cam.project(0, -100, -100), color = nowPlaneCol, style = line.style_dotted)
+
+    // ---- Y=0 horizon — SOLID, bolder (the tide line) ----
+    array<chart.point> yZero = array.new<chart.point>()
+    yZero.push(cam.project(-T, 0, -100))
+    yZero.push(cam.project( T, 0, -100))
+    yZero.push(cam.project( T, 0,  100))
+    yZero.push(cam.project(-T, 0,  100))
+    polyline.new(yZero, closed = true, fill_color = color.new(#000000, 100), line_color = yZeroEdge, line_width = 2)
+
+    // ---- Dotted wireframe grids ----
+    if showFloorGrid
+        for gz = -100 to 100 by gridStep
+            line.new(cam.project(-T, 0, gz), cam.project(T, 0, gz), color = gridColor, style = line.style_dotted)
+        for gx = -Ti to Ti by gridStep
+            line.new(cam.project(gx, 0, -100), cam.project(gx, 0, 100), color = gridColor, style = line.style_dotted)
+    if showBackGrid
+        for gy = -100 to 100 by gridStep
+            line.new(cam.project(-T, gy, 100), cam.project(T, gy, 100), color = gridColor, style = line.style_dotted)
+        for gx = -Ti to Ti by gridStep
+            line.new(cam.project(gx, -100, 100), cam.project(gx, 100, 100), color = gridColor, style = line.style_dotted)
+    if showSideGrid
+        for gy = -100 to 100 by gridStep
+            line.new(cam.project(-T, gy, -100), cam.project(-T, gy, 100), color = gridColor, style = line.style_dotted)
+        for gz = -100 to 100 by gridStep
+            line.new(cam.project(-T, -100, gz), cam.project(-T, 100, gz), color = gridColor, style = line.style_dotted)
+
+    // ---- MOMENTUM TERRAIN: 20 depth layers, 19 seamless fog-tinted strips ----
+    int rsiHead   = bar_index % _bufSize
+    int rsiOldest = (rsiHead - (timeSpan - 1) + _bufSize * 10) % _bufSize
+    float zStepR  = 200.0 / 19.0
+    for d = 0 to 18
+        array<chart.point> terrR = array.new<chart.point>()
+        float zd1 = -100.0 + d       * zStepR
+        float zd2 = -100.0 + (d + 1) * zStepR
+        float midZ = (zd1 + zd2) / 2.0
+        for tt = 0 to timeSpan - 1
+            int hxi = (rsiOldest + tt) % _bufSize
+            terrR.push(cam.project(tt - timeSpan, rsiTerrain.get(d, hxi), zd1))
+        for tt = timeSpan - 1 to 0
+            int hxi = (rsiOldest + tt) % _bufSize
+            terrR.push(cam.project(tt - timeSpan, rsiTerrain.get(d + 1, hxi), zd2))
+        int midT  = timeSpan / 2
+        int midHx = (rsiOldest + midT) % _bufSize
+        float avgR = (rsiTerrain.get(d, midHx) + rsiTerrain.get(d + 1, midHx)) / 2.0
+        color rCol    = f_rsiColor(avgR)
+        color rColFog = f_depthTint(rCol, midZ)
+        color rFillC  = color.new(rColFog, 72)                 // fill (carpet)
+        color rLineC  = color.new(rColFog, 50)                 // brighter outline for dotted wave lines
+        polyline.new(terrR, closed = true, fill_color = rFillC, line_color = rLineC, line_width = 1, line_style = line.style_dotted)
+
+    // ---- Oscillator carpet (past): 12 layers, 11 seamless fog-tinted strips ----
+    if showOsc
+        int head   = bar_index % _bufSize
+        int oldest = (head - (timeSpan - 1) + _bufSize * 10) % _bufSize
+        float zStep = 200.0 / 11.0
+        for d = 0 to 10
+            array<chart.point> terr = array.new<chart.point>()
+            float zd1 = -100.0 + d       * zStep
+            float zd2 = -100.0 + (d + 1) * zStep
+            float midZ = (zd1 + zd2) / 2.0
+            for tt = 0 to timeSpan - 1
+                int hxi = (oldest + tt) % _bufSize
+                float amp = ampTerrain.get(d, hxi)
+                terr.push(cam.project(tt - timeSpan, amp, zd1))
+            for tt = timeSpan - 1 to 0
+                int hxi = (oldest + tt) % _bufSize
+                float amp = ampTerrain.get(d + 1, hxi)
+                terr.push(cam.project(tt - timeSpan, amp, zd2))
+            int midT = timeSpan / 2
+            int midHx = (oldest + midT) % _bufSize
+            float midAmpD   = ampTerrain.get(d, midHx)
+            float midAmpD1  = ampTerrain.get(d + 1, midHx)
+            float avgAmp    = (midAmpD + midAmpD1) / 2.0
+            float magAmp    = (math.abs(midAmpD) + math.abs(midAmpD1)) / 2.0
+            color sideCol   = avgAmp >= 0 ? oscBullCol : oscBearCol
+            color baseCol   = color.from_gradient(math.min(1.0, magAmp / 50.0), 0, 1, oscNeutCol, sideCol)
+            color baseFog   = f_depthTint(baseCol, midZ)
+            int   stripA    = int(math.max(60.0, 88.0 - magAmp * 0.3))   // strong=60, weak=88
+            int   lineA     = int(math.max(38.0, stripA - 22))            // brighter outline for dotted wave lines
+            color stripFill = color.new(baseFog, stripA)
+            color stripLine = color.new(baseFog, lineA)
+            polyline.new(terr, closed = true, fill_color = stripFill, line_color = stripLine, line_width = 1, line_style = line.style_dotted)
+
+    // ---- Axis markers: -100, 0, +100 on Y and Z ----
+    if showAxisLabels
+        chart.point yPlus  = cam.project(-T,  100, 100)
+        chart.point yZeroL = cam.project(-T,    0, 100)
+        chart.point yMinus = cam.project(-T, -100, 100)
+        label.new(yPlus.index,  yPlus.price,  "Y +100", color = #00000000, textcolor = axisLabelCol, style = label.style_label_right, size = size.tiny)
+        label.new(yZeroL.index, yZeroL.price, "Y 0",    color = #00000000, textcolor = axisLabelCol, style = label.style_label_right, size = size.tiny)
+        label.new(yMinus.index, yMinus.price, "Y -100", color = #00000000, textcolor = axisLabelCol, style = label.style_label_right, size = size.tiny)
+        chart.point zPlus  = cam.project(-T, -100,  100)
+        chart.point zZeroZ = cam.project(-T, -100,    0)
+        chart.point zMinus = cam.project(-T, -100, -100)
+        label.new(zPlus.index,  zPlus.price,  "Z +100", color = #00000000, textcolor = axisLabelCol, style = label.style_label_left, size = size.tiny)
+        label.new(zZeroZ.index, zZeroZ.price, "Z 0",    color = #00000000, textcolor = axisLabelCol, style = label.style_label_left, size = size.tiny)
+        label.new(zMinus.index, zMinus.price, "Z -100", color = #00000000, textcolor = axisLabelCol, style = label.style_label_left, size = size.tiny)
+
+    // ---- FORECAST TERRAIN: slope-extrapolate each HMA layer into the future half ----
+    // _effSlopeLen is module-scope — same value used by the dashboard/Markov path above for consistency.
+    int   _fcCurrIdx  = bar_index % _bufSize
+    int   _fcPastIdx  = (_fcCurrIdx - _effSlopeLen + _bufSize * 10) % _bufSize
+
+    if showForecast
+        // Momentum forecast (19 seamless fog-tinted strips)
+        for d = 0 to 18
+            float _currD  = rsiTerrain.get(d,     _fcCurrIdx)
+            float _pastD  = rsiTerrain.get(d,     _fcPastIdx)
+            float _currD1 = rsiTerrain.get(d + 1, _fcCurrIdx)
+            float _pastD1 = rsiTerrain.get(d + 1, _fcPastIdx)
+            float _slopeD  = (_currD  - _pastD)  / _effSlopeLen
+            float _slopeD1 = (_currD1 - _pastD1) / _effSlopeLen
+            float zd1 = -100.0 + d       * zStepR
+            float zd2 = -100.0 + (d + 1) * zStepR
+            float midZ = (zd1 + zd2) / 2.0
+            array<chart.point> fcR = array.new<chart.point>()
+            for ft = 0 to timeSpan
+                float vd = math.max(-100.0, math.min(100.0, _currD + _slopeD * ft * math.pow(forecastDecay, ft)))
+                fcR.push(cam.project(ft, vd, zd1))
+            for ft = timeSpan to 0
+                float vd = math.max(-100.0, math.min(100.0, _currD1 + _slopeD1 * ft * math.pow(forecastDecay, ft)))
+                fcR.push(cam.project(ft, vd, zd2))
+            color rcC      = f_rsiColor((_currD + _currD1) / 2.0)
+            color rcCFog   = f_depthTint(rcC, midZ)
+            color fcR_Fill = color.new(rcCFog, 85)             // ghostlier fill
+            color fcR_Line = color.new(rcCFog, 65)             // brighter dotted outline
+            polyline.new(fcR, closed = true, fill_color = fcR_Fill, line_color = fcR_Line, line_width = 1, line_style = line.style_dotted)
+
+        // Oscillator forecast (11 seamless fog-tinted strips)
+        float zStepV = 200.0 / 11.0
+        for d = 0 to 10
+            float _currD  = ampTerrain.get(d,     _fcCurrIdx)
+            float _pastD  = ampTerrain.get(d,     _fcPastIdx)
+            float _currD1 = ampTerrain.get(d + 1, _fcCurrIdx)
+            float _pastD1 = ampTerrain.get(d + 1, _fcPastIdx)
+            float _slopeD  = (_currD  - _pastD)  / _effSlopeLen
+            float _slopeD1 = (_currD1 - _pastD1) / _effSlopeLen
+            float zd1 = -100.0 + d       * zStepV
+            float zd2 = -100.0 + (d + 1) * zStepV
+            float midZ = (zd1 + zd2) / 2.0
+            array<chart.point> fcV = array.new<chart.point>()
+            for ft = 0 to timeSpan
+                float vd = math.max(-100.0, math.min(100.0, _currD + _slopeD * ft * math.pow(forecastDecay, ft)))
+                fcV.push(cam.project(ft, vd, zd1))
+            for ft = timeSpan to 0
+                float vd = math.max(-100.0, math.min(100.0, _currD1 + _slopeD1 * ft * math.pow(forecastDecay, ft)))
+                fcV.push(cam.project(ft, vd, zd2))
+            float _avgMag = (math.abs(_currD) + math.abs(_currD1)) / 2.0
+            float _avgV   = (_currD + _currD1) / 2.0
+            color _sideC  = _avgV >= 0 ? oscBullCol : oscBearCol
+            color _baseC   = color.from_gradient(math.min(1.0, _avgMag / 50.0), 0, 1, oscNeutCol, _sideC)
+            color _baseF   = f_depthTint(_baseC, midZ)
+            color fcV_Fill = color.new(_baseF, 88)             // ghostliest fill
+            color fcV_Line = color.new(_baseF, 70)             // brighter dotted outline
+            polyline.new(fcV, closed = true, fill_color = fcV_Fill, line_color = fcV_Line, line_width = 1, line_style = line.style_dotted)
+
+    // ---- Emoji markers (riders + whales) ----
+    if showEmoji
+        float _rsiMid    = rsiTerrain.get(9, _fcCurrIdx)
+        float _rsiPast   = rsiTerrain.get(9, _fcPastIdx)
+        float _rsiSlope  = (_rsiMid - _rsiPast) / _effSlopeLen
+
+        float _secondMid   = ampTerrain.get(5, _fcCurrIdx)
+        float _secondPast  = ampTerrain.get(5, _fcPastIdx)
+        float _secondSlope = (_secondMid - _secondPast) / _effSlopeLen
+
+        chart.point _rsiPt = cam.project(0, _rsiMid, 0)
+        label.new(_rsiPt.index, _rsiPt.price, "🏄‍♂", color = #00000000, textcolor = color.white, style = label.style_label_center, size = size.large)
+
+        chart.point _vwmaPt = cam.project(0, _secondMid, 0)
+        label.new(_vwmaPt.index, _vwmaPt.price, "⛵", color = #00000000, textcolor = color.white, style = label.style_label_center, size = size.large)
+
+        // Precompute Markov gate + hatchling conditions (used across multiple branches below)
+        //   _markovBullOK / _markovBearOK — permits a full whale when Markov doesn't disagree.
+        //     If Markov is off, not confident yet, or votes the same direction → PASS. Only a confident
+        //     opposite vote blocks. This is a "naysayer" gate, not a strict confirmation.
+        //   _hatchBull / _hatchBear — fires a SMALL pre-whale when current state is Sideways and the
+        //     Markov chain assigns ≥ preWhaleThresh probability to Bull/Bear next.
+        bool _markovBullOK = not useMarkov or not _mcConfident or _mcVote != 0
+        bool _markovBearOK = not useMarkov or not _mcConfident or _mcVote != 2
+        bool _hatchBull    = useMarkov and _mcConfident and _mkState == 1 and _pBull >= preWhaleThresh / 100.0
+        bool _hatchBear    = useMarkov and _mcConfident and _mkState == 1 and _pBear >= preWhaleThresh / 100.0
+
+        // Regime-aware marker at the forecast horizon:
+        //   🦈 Shark — CI chop (violent range-bound circling). Strongest warning, always wins.
+        //   🦀 Crab  — angle-based sideways default, UNLESS Markov upgrades it to a hatchling whale.
+        //   🐳 / 🐋 Full whale — projected-end confluence AND Markov doesn't disagree. size.huge at forecast edge.
+        //   🐳 / 🐋 Hatchling — current state Sideways + Markov predicts transition. size.small at forecast mid.
+        if _isChopCI and useChopFilter
+            chart.point _sharkPt = cam.project(timeSpan, 0, 0)
+            label.new(_sharkPt.index, _sharkPt.price, "🦈", color = #00000000, textcolor = color.white, style = label.style_label_center, size = size.huge)
+        else if _isChopAngle and useChopFilter and not (_hatchBull or _hatchBear)
+            chart.point _crabPt = cam.project(timeSpan, 0, 0)
+            label.new(_crabPt.index, _crabPt.price, "🦀", color = #00000000, textcolor = color.white, style = label.style_label_center, size = size.huge)
+        else
+            // Whale fires on PROJECTED end-of-forecast confluence, Markov-gated.
+            float _projFactorE = math.pow(forecastDecay, timeSpan)
+            float _rsiEndY     = math.max(-100.0, math.min(100.0, _rsiMid    + _rsiSlope    * timeSpan * _projFactorE))
+            float _oscEndY     = math.max(-100.0, math.min(100.0, _secondMid + _secondSlope * timeSpan * _projFactorE))
+            bool _bullProjected = _rsiEndY > 0 and _oscEndY > 0 and _markovBullOK
+            bool _bearProjected = _rsiEndY < 0 and _oscEndY < 0 and _markovBearOK
+            if _bullProjected or _bearProjected
+                string _whaleEmoji = _bullProjected ? "🐳" : "🐋"
+                chart.point _fcPt = cam.project(timeSpan, _rsiEndY, 0)
+                label.new(_fcPt.index, _fcPt.price, _whaleEmoji, color = #00000000, textcolor = color.white, style = label.style_label_center, size = size.huge)
+            else if _hatchBull or _hatchBear
+                // Hatchling: Markov predicts transition from Sideways. Small size, mid-forecast position.
+                string _hatchEmoji = _hatchBull ? "🐳" : "🐋"
+                chart.point _hatchPt = cam.project(timeSpan / 2, 0, 0)
+                label.new(_hatchPt.index, _hatchPt.price, _hatchEmoji, color = #00000000, textcolor = color.new(color.white, 20), style = label.style_label_center, size = size.small)
+
+        // ---- Win-rate dashboard ----
+    if showDashboard
+        string _posStr = dashPos == "Top Right"     ? position.top_right     :
+                         dashPos == "Top Left"      ? position.top_left      :
+                         dashPos == "Middle Right"  ? position.middle_right  :
+                         dashPos == "Middle Left"   ? position.middle_left   :
+                         dashPos == "Bottom Left"   ? position.bottom_left   :
+                                                      position.bottom_right
+
+        // 5 fixed rows:
+        //   0 header
+        //   1 column headers
+        //   2 counts
+        //   3 wins / bars
+        //   4 rates
+        // +2 optional Markov rows
+        // +up to 2 Current State rows
+        // +2 footer rows
+        int _dashRows = showMarkovRow ? 11 : 9
+
+        // Narrow body columns, but preserve readability.
+        int _dashColW =
+             dashFontSize == "Tiny"   ? 5 :
+             dashFontSize == "Small"  ? 5 :
+             dashFontSize == "Normal" ? 6 :
+             dashFontSize == "Large"  ? 7 : 8
+        int _dashMergeW = _dashColW * 4
+
+        // Recreate table if position or row-count mode changes.
+        var table  dashTbl      = na
+        var string _dashPosPrev = ""
+        var int    _dashRowsPrev = na
+
+        bool _needNewDash = na(dashTbl) or _dashPosPrev != dashPos or _dashRowsPrev != _dashRows
+        if _needNewDash
+            if not na(dashTbl)
+                table.delete(dashTbl)
+            dashTbl := table.new(
+                 _posStr, 4, _dashRows,
+                 border_color = color.new(color.gray, 50),
+                 border_width = 1,
+                 frame_color  = color.new(color.gray, 30),
+                 frame_width  = 1)
+            _dashPosPrev  := dashPos
+            _dashRowsPrev := _dashRows
+
+        table.clear(dashTbl, 0, 0, 3, _dashRows - 1)
+
+        // Bull / Bear win rates
+        float _bullRate = dashBullSignals > 0 ? float(dashBullWins) / float(dashBullSignals) * 100.0 : 0.0
+        float _bearRate = dashBearSignals > 0 ? float(dashBearWins) / float(dashBearSignals) * 100.0 : 0.0
+        color _bullRateCol = _bullRate >= 60 ? #00E676 : _bullRate >= 40 ? #FFEB3B : #FF5252
+        color _bearRateCol = _bearRate >= 60 ? #00E676 : _bearRate >= 40 ? #FFEB3B : #FF5252
+
+        // Shark / Crab regime presence
+        int   _totalBars = bar_index + 1
+        float _sharkPct  = _totalBars > 0 ? float(dashSharkBars) / float(_totalBars) * 100.0 : 0.0
+        float _crabPct   = _totalBars > 0 ? float(dashCrabBars)  / float(_totalBars) * 100.0 : 0.0
+
+        color _regimeBg = color.new(color.black, 35)
+
+        // Row 0 — header
+        dashTbl.cell(0, 0, "Liquidity Surge + Markov · Win Rate", width = _dashMergeW, text_color = dashTextCol, bgcolor = color.new(color.black, 10), text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.merge_cells(0, 0, 3, 0)
+
+        // Row 1 — column headers
+        string _bullBearTT = "Row 2: signals fired  ·  Row 3: wins  ·  Row 4: win rate"
+        string _regimeTT   = "Row 2: events (entries into state)  ·  Row 3: total bars in state  ·  Row 4: % of chart bars in state"
+
+        dashTbl.cell(0, 1, "🐳 Bull",      width = _dashColW, text_color = oscBullCol,  bgcolor = color.new(color.black, 40), text_size = _dashBodySize, text_halign = text.align_center, tooltip = _bullBearTT)
+        dashTbl.cell(1, 1, "🐋 Bear",      width = _dashColW, text_color = oscBearCol,  bgcolor = color.new(color.black, 40), text_size = _dashBodySize, text_halign = text.align_center, tooltip = _bullBearTT)
+        dashTbl.cell(2, 1, "🦈 Chop-zone", width = _dashColW, text_color = color.orange, bgcolor = color.new(color.black, 40), text_size = _dashBodySize, text_halign = text.align_center, tooltip = _regimeTT)
+        dashTbl.cell(3, 1, "🦀 Sideways",  width = _dashColW, text_color = color.yellow, bgcolor = color.new(color.black, 40), text_size = _dashBodySize, text_halign = text.align_center, tooltip = _regimeTT)
+
+        // Row 2 — counts
+        dashTbl.cell(0, 2, str.tostring(dashBullSignals) + " sigs",   width = _dashColW, text_color = dashTextCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(1, 2, str.tostring(dashBearSignals) + " sigs",   width = _dashColW, text_color = dashTextCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(2, 2, str.tostring(dashSharkEvents) + " events", width = _dashColW, text_color = dashTextCol, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(3, 2, str.tostring(dashCrabEvents)  + " events", width = _dashColW, text_color = dashTextCol, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+
+        // Row 3 — wins / bars
+        dashTbl.cell(0, 3, str.tostring(dashBullWins)  + " wins", width = _dashColW, text_color = dashTextCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(1, 3, str.tostring(dashBearWins)  + " wins", width = _dashColW, text_color = dashTextCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(2, 3, str.tostring(dashSharkBars) + " bars", width = _dashColW, text_color = dashTextCol, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(3, 3, str.tostring(dashCrabBars)  + " bars", width = _dashColW, text_color = dashTextCol, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+
+        // Row 4 — rates
+        dashTbl.cell(0, 4, dashBullSignals > 0 ? str.tostring(_bullRate, "#.#") + "%" : "—", width = _dashColW, text_color = _bullRateCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(1, 4, dashBearSignals > 0 ? str.tostring(_bearRate, "#.#") + "%" : "—", width = _dashColW, text_color = _bearRateCol, bgcolor = dashBgCol, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(2, 4, str.tostring(_sharkPct, "#.#") + "%", width = _dashColW, text_color = color.orange, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.cell(3, 4, str.tostring(_crabPct,  "#.#") + "%", width = _dashColW, text_color = color.yellow, bgcolor = _regimeBg, text_size = _dashBodySize, text_halign = text.align_center)
+
+        // Row position tracker
+        int _rowPos = 5
+
+        // Optional Markov section — split into 2 rows to reduce width pressure without shortening content
+        if showMarkovRow
+            color _mkBg = _mcConfident ? color.new(color.black, 25) : color.new(color.black, 45)
+            string _mkConfTag = _mcConfident ? "" : " · low-n"
+
+            dashTbl.cell(0, _rowPos, "Markov Forecast Next", width = _dashMergeW, text_color = dashTextCol, bgcolor = _mkBg, text_size = _dashBodySize, text_halign = text.align_center)
+            dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
+            _rowPos := _rowPos + 1
+
+            string _mkRowText = "🐳 " + str.tostring(_pBull * 100, "#.#") + "%  ·  🦀 " + str.tostring(_pSide * 100, "#.#") + "%  ·  🐋 " + str.tostring(_pBear * 100, "#.#") + "%   (n=" + str.tostring(math.round(_mcSampleN)) + _mkConfTag + ")"
+            dashTbl.cell(0, _rowPos, _mkRowText, width = _dashMergeW, text_color = dashTextCol, bgcolor = _mkBg, text_size = _dashBodySize, text_halign = text.align_center)
+            dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
+            _rowPos := _rowPos + 1
+
+        // Current State section — full wording preserved, split across up to 2 rows
+        string _csLine1 = useMarkov and _mcConfident
+             ? (_curStateEmoji + " · " + str.tostring(_stateDur) + " bars · stay " + str.tostring(math.round(_pStayCurrent * 100)) + "%")
+             : useMarkov
+                 ? (_curStateEmoji + " · " + str.tostring(_stateDur) + " bars · learning")
+                 : (_curStateEmoji + " · " + str.tostring(_stateDur) + " bars")
+
+        string _csLine2 = useMarkov and _mcConfident
+             ? ("change in ~" + str.tostring(_expChangeBars) + " bars → " + _nextLikelyEmoji)
+             : ""
+
+        color _csTextCol = _balanced and useMarkov and _mcConfident ? #FFEB3B : _mcConfident and useMarkov ? #00E676 : color.new(dashTextCol, 20)
+
+        dashTbl.cell(0, _rowPos, _csLine1, width = _dashMergeW, text_color = _csTextCol, bgcolor = color.new(color.black, 15), text_size = _dashBodySize, text_halign = text.align_center)
+        dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
+        _rowPos := _rowPos + 1
+
+        if _csLine2 != ""
+            dashTbl.cell(0, _rowPos, _csLine2, width = _dashMergeW, text_color = _csTextCol, bgcolor = color.new(color.black, 15), text_size = _dashBodySize, text_halign = text.align_center)
+            dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
+            _rowPos := _rowPos + 1
+
+        // Footer — split into 2 rows so content stays intact
+        dashTbl.cell(0, _rowPos, "⚠ Not advice · MFE " + str.tostring(atrMult, "#.##") + "×ATR", width = _dashMergeW, text_color = color.new(dashTextCol, 50), bgcolor = color.new(color.black, 20), text_size = _dashFooterSize, text_halign = text.align_center)
+        dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
+        _rowPos := _rowPos + 1
+
+        dashTbl.cell(0, _rowPos, "Markov α=1 decay=" + str.tostring(markovDecay, "#.###"), width = _dashMergeW, text_color = color.new(dashTextCol, 50), bgcolor = color.new(color.black, 20), text_size = _dashFooterSize, text_halign = text.align_center)
+        dashTbl.merge_cells(0, _rowPos, 3, _rowPos)
