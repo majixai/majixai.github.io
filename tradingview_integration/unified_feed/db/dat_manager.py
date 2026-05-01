@@ -5,13 +5,22 @@ gzip-compressed ``.dat.gz`` file.  All writes are performed atomically
 (write-to-temp-then-rename) to avoid corruption on crash.  Rotation is
 supported by date and/or file size.
 
+By default the database is stored under the repository-root ``dbs/``
+directory so it is immediately visible to the ``dbs/monitor.js`` file
+watcher.  The ``dbs/files.json`` manifest is kept in sync automatically
+after every write.
+
 Usage::
 
-    dm = DatabaseManager("tradingview_integration/pine_seeds/cache.dat.gz")
+    # Default — stored in <repo_root>/dbs/cache.dat.gz
+    dm = DatabaseManager("cache.dat.gz")
     dm.open_dat()
     dm.append_summary("SPY", "1m", last_ts=1700000000, sha256="abc…", metadata={})
     rows = dm.query_summaries({"ticker": "SPY"})
     dm.close()
+
+    # Explicit path
+    dm = DatabaseManager("/data/feed.dat.gz")
 """
 
 import gzip
@@ -26,6 +35,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 log = logging.getLogger(__name__)
+
+# Repository root — three levels up from this file:
+# tradingview_integration/unified_feed/db/dat_manager.py
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+
+# Default storage directory (repo_root/dbs/) — matches the dbs/ monitor
+_DEFAULT_DBS_DIR = _REPO_ROOT / "dbs"
+
+# Manifest kept in sync by DatabaseManager
+_FILES_JSON = _DEFAULT_DBS_DIR / "files.json"
 
 # Maximum uncompressed DB size before automatic rotation (bytes)
 DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
@@ -49,6 +68,30 @@ CREATE INDEX IF NOT EXISTS idx_fs_last_ts  ON fetch_summary (last_ts);
 """
 
 
+def _update_dbs_manifest(dbs_dir: Path) -> None:
+    """Atomically rewrite ``dbs/files.json`` to list every file in *dbs_dir*.
+
+    The manifest is read by ``dbs/monitor.js`` to display ``.dat`` /
+    ``.dat.gz`` files.  The update is atomic (write-to-temp-then-rename) to
+    avoid leaving a corrupt manifest visible to readers.
+
+    Args:
+        dbs_dir: Path to the repository-root ``dbs/`` directory.
+    """
+    if not dbs_dir.is_dir():
+        return
+    files = sorted(
+        entry.name
+        for entry in dbs_dir.iterdir()
+        if entry.is_file() and entry.name != "files.json"
+    )
+    manifest_path = dbs_dir / "files.json"
+    tmp_path = manifest_path.with_suffix(".tmp.json")
+    tmp_path.write_text(json.dumps(files, indent=2) + "\n", encoding="utf-8")
+    tmp_path.replace(manifest_path)
+    log.debug("updated dbs/files.json (%d entries)", len(files))
+
+
 class DatabaseManager:
     """Manages a gzip-compressed SQLite ``.dat.gz`` file.
 
@@ -56,8 +99,15 @@ class DatabaseManager:
     re-compressed and written atomically to *dat_path* on :meth:`close` (or
     after every :meth:`append_summary` call for durability).
 
+    When *dat_path* is a bare filename (no directory component) it is resolved
+    relative to the repository-root ``dbs/`` directory so the file is
+    immediately visible to ``dbs/monitor.js``.  The ``dbs/files.json``
+    manifest is updated atomically after every flush whenever the file lives
+    inside the ``dbs/`` directory.
+
     Args:
         dat_path: Path to the ``.dat.gz`` file (created if absent).
+                  A bare filename is resolved to ``<repo_root>/dbs/<name>``.
         max_size_bytes: Uncompressed size threshold that triggers rotation.
     """
 
@@ -66,7 +116,11 @@ class DatabaseManager:
         dat_path: Any,
         max_size_bytes: int = DEFAULT_MAX_SIZE_BYTES,
     ) -> None:
-        self._dat_path = Path(dat_path)
+        p = Path(dat_path)
+        # Bare filename → place in the default dbs/ directory
+        if not p.is_absolute() and p.parent == Path("."):
+            p = _DEFAULT_DBS_DIR / p
+        self._dat_path = p
         self._max_size_bytes = max_size_bytes
         self._tmp_db: Optional[str] = None
         self._con: Optional[sqlite3.Connection] = None
@@ -232,7 +286,11 @@ class DatabaseManager:
             raise RuntimeError("DatabaseManager is not open — call open_dat() first")
 
     def _flush_to_dat(self) -> None:
-        """Compress the temp DB and atomically replace the .dat.gz file."""
+        """Compress the temp DB and atomically replace the .dat.gz file.
+
+        After a successful write, updates ``dbs/files.json`` when the file
+        lives inside the repository-root ``dbs/`` directory.
+        """
         if self._tmp_db is None:
             return
         self._dat_path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,6 +308,14 @@ class DatabaseManager:
                 os.unlink(tmp_gz)
             except OSError:
                 pass
+            return
+
+        # Keep dbs/files.json in sync when the file lives in the dbs/ dir
+        try:
+            if self._dat_path.resolve().parent == _DEFAULT_DBS_DIR.resolve():
+                _update_dbs_manifest(_DEFAULT_DBS_DIR)
+        except Exception as exc:
+            log.warning("could not update dbs/files.json: %s", exc)
 
     def _rotate(self) -> None:
         """Rename the current .dat.gz to a timestamped archive copy."""

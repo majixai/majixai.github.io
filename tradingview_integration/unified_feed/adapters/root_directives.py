@@ -1,7 +1,14 @@
 """Root-directive adapters for unified_feed.
 
-Safely loads optional YAML / JSON / Python directive files from the
-``finance/`` and ``mathematics/`` directories at the repository root.
+Safely loads optional YAML / JSON / Python directive files from several
+well-known directories at the repository root:
+
+* ``finance/`` and ``mathematics/`` — domain-specific model directives
+* ``dbs/`` — database configuration / file manifests (JSON)
+* ``actions/`` — action-dispatcher configuration snippets
+* root-level ``*.py`` files whose names suggest directives (e.g.
+  ``config.py``, ``settings.py``, ``directives.py``)
+
 All loading is *read-only* and *optional*: the module logs a warning and
 continues when a directory or file is absent or unreadable.
 
@@ -30,8 +37,17 @@ log = logging.getLogger(__name__)
 # tradingview_integration/unified_feed/adapters/root_directives.py
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 
-# Directories to scan for directive files
-_DIRECTIVE_DIRS: List[str] = ["finance", "mathematics"]
+# Subdirectories to scan for directive files (order matters for merge priority)
+_DIRECTIVE_DIRS: List[str] = ["finance", "mathematics", "dbs", "actions"]
+
+# Root-level Python filenames treated as directive files (safe subset)
+_ROOT_PY_DIRECTIVE_NAMES = {
+    "config.py",
+    "settings.py",
+    "directives.py",
+    "constants.py",
+    "params.py",
+}
 
 # Supported file extensions (in priority order)
 _SUPPORTED_EXTS = [".yaml", ".yml", ".json", ".py"]
@@ -56,9 +72,16 @@ def _load_yaml_safe(path: Path) -> Optional[Dict[str, Any]]:
 
 
 def _load_json_safe(path: Path) -> Optional[Dict[str, Any]]:
+    """Load a JSON file.  If the top-level value is a list, wrap it under
+    the filename stem so callers always receive a plain dict."""
     try:
         with open(path, "r", encoding="utf-8") as fh:
-            return json.load(fh)
+            raw = json.load(fh)
+        if isinstance(raw, list):
+            return {path.stem: raw}
+        if isinstance(raw, dict):
+            return raw
+        return {path.stem: raw}
     except Exception as exc:
         log.warning("could not load JSON %s: %s", path, exc)
         return None
@@ -137,16 +160,51 @@ def load_directives_from_dir(directory: Path) -> Dict[str, Any]:
     return merged
 
 
+def load_root_python_directives(repo_root: Optional[Path] = None) -> Dict[str, Any]:
+    """Load directive values from well-known root-level Python files.
+
+    Only files whose basenames are listed in ``_ROOT_PY_DIRECTIVE_NAMES`` are
+    loaded (e.g. ``config.py``, ``settings.py``).  This avoids accidentally
+    executing complex application scripts such as ``app.py`` or ``run.py``.
+
+    Args:
+        repo_root: Override the repository root path.
+
+    Returns:
+        Merged dict of all simple scalar / list / dict assignments found.
+    """
+    root = repo_root or _REPO_ROOT
+    merged: Dict[str, Any] = {}
+
+    for name in sorted(_ROOT_PY_DIRECTIVE_NAMES):
+        candidate = root / name
+        if candidate.is_file():
+            data = _load_py_safe(candidate)
+            if data:
+                merged.update(data)
+                log.debug("loaded root python directive %s (%d keys)", name, len(data))
+
+    return merged
+
+
 def load_all_directives(repo_root: Optional[Path] = None) -> Dict[str, Dict[str, Any]]:
-    """Load directives from all configured root directories.
+    """Load directives from all configured root directories and root Python files.
+
+    Scans the following sources (all optional / gracefully skipped when absent):
+
+    * ``finance/``, ``mathematics/`` — domain model directives
+    * ``dbs/`` — database configuration and file manifests
+    * ``actions/`` — action-dispatcher configuration
+    * Root-level ``*.py`` directive files (safe whitelist only)
 
     Args:
         repo_root: Override the repository root (defaults to auto-detected
                    root four levels above this file).
 
     Returns:
-        Dict mapping directory name (e.g. ``"finance"``) to its merged
-        directive dict.  Absent directories are omitted from the result.
+        Dict mapping source name (e.g. ``"finance"``, ``"dbs"``,
+        ``"actions"``, ``"python"``) to its merged directive dict.
+        Absent or empty sources are omitted from the result.
     """
     root = repo_root or _REPO_ROOT
     result: Dict[str, Dict[str, Any]] = {}
@@ -158,6 +216,12 @@ def load_all_directives(repo_root: Optional[Path] = None) -> Dict[str, Dict[str,
             log.info("loaded %d directive key(s) from %s/", len(directives), dir_name)
         else:
             log.debug("no directives found in %s/", dir_name)
+
+    # Root-level Python directive files (config.py, settings.py, etc.)
+    py_directives = load_root_python_directives(root)
+    if py_directives:
+        result["python"] = py_directives
+        log.info("loaded %d directive key(s) from root Python files", len(py_directives))
 
     return result
 
@@ -216,3 +280,4 @@ def map_to_tensor_calculus_inputs(
                 result["extra"][k] = v
 
     return result
+

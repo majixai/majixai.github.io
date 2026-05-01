@@ -101,10 +101,13 @@ ok, expected, actual = verify_artifact("data/SPY_1m.parquet", strict=True)
 
 Ticker fetch summaries are persisted in gzip-compressed SQLite `.dat.gz` files with atomic writes and optional rotation by size.
 
+**`dbs/` integration** — a bare filename (no directory component) is automatically resolved to the repository-root `dbs/` directory so the file is immediately visible to `dbs/monitor.js`.  `dbs/files.json` is rewritten atomically after every flush.
+
 ```python
 from tradingview_integration.unified_feed.db.dat_manager import DatabaseManager
 
-with DatabaseManager("pine_seeds/cache.dat.gz") as dm:
+# Stored in <repo_root>/dbs/cache.dat.gz; dbs/files.json updated automatically
+with DatabaseManager("cache.dat.gz") as dm:
     dm.append_summary(
         ticker="SPY",
         interval="1m",
@@ -118,7 +121,15 @@ with DatabaseManager("pine_seeds/cache.dat.gz") as dm:
 
 ### Root directive adapters (`adapters/root_directives.py`)
 
-Optional YAML / JSON / Python directive files in `finance/` and `mathematics/` at the repository root are loaded read-only and mapped to Feature Engine and `tensor_calculus` inputs. Loading is skipped gracefully when the directories are absent.
+Reads optional YAML / JSON / Python directive files from several well-known root directories and maps them to Feature Engine and `tensor_calculus` inputs.  All sources are optional and silently skipped when absent.
+
+| Source | Key in result | What is loaded |
+|--------|---------------|----------------|
+| `finance/` | `"finance"` | Domain model directives |
+| `mathematics/` | `"mathematics"` | Math / calculus directives |
+| `dbs/` | `"dbs"` | DB config files; `files.json` list wrapped under `"files"` key |
+| `actions/` | `"actions"` | Action-dispatcher config snippets |
+| Root `*.py` whitelist | `"python"` | `config.py`, `settings.py`, `directives.py`, etc. (safe subset) |
 
 ```python
 from tradingview_integration.unified_feed.adapters.root_directives import (
@@ -127,7 +138,7 @@ from tradingview_integration.unified_feed.adapters.root_directives import (
     map_to_tensor_calculus_inputs,
 )
 
-directives = load_all_directives()                   # {} if dirs absent
+directives = load_all_directives()                   # {} if all sources absent
 fe_inputs  = map_to_feature_engine_inputs(directives)
 tc_inputs  = map_to_tensor_calculus_inputs(directives)
 ```

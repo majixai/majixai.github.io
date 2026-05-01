@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from tradingview_integration.unified_feed.adapters.root_directives import (
     load_all_directives,
     load_directives_from_dir,
+    load_root_python_directives,
     map_to_feature_engine_inputs,
     map_to_tensor_calculus_inputs,
 )
@@ -92,6 +93,56 @@ class TestLoadDirectivesFromDir(unittest.TestCase):
         self.assertNotIn("my_func", result)
         self.assertEqual(result.get("ok_value"), 42)
 
+    def test_json_list_wrapped_under_stem(self):
+        """A JSON array at top level is wrapped under the filename stem."""
+        (self._dir / "files.json").write_text(
+            json.dumps(["a.dat", "b.dat"]), encoding="utf-8"
+        )
+        result = load_directives_from_dir(self._dir)
+        # "files" key should hold the list
+        self.assertEqual(result.get("files"), ["a.dat", "b.dat"])
+
+
+class TestLoadRootPythonDirectives(unittest.TestCase):
+    def setUp(self):
+        self._td = tempfile.TemporaryDirectory()
+        self._root = Path(self._td.name)
+
+    def tearDown(self):
+        self._td.cleanup()
+
+    def test_no_directive_files_returns_empty(self):
+        # app.py should NOT be loaded (not in the whitelist)
+        (self._root / "app.py").write_text("APP_PORT = 5000\n", encoding="utf-8")
+        result = load_root_python_directives(self._root)
+        self.assertEqual(result, {})
+
+    def test_config_py_loaded(self):
+        (self._root / "config.py").write_text(
+            "DEBUG = False\nTIMEOUT = 30\n", encoding="utf-8"
+        )
+        result = load_root_python_directives(self._root)
+        self.assertFalse(result.get("DEBUG"))
+        self.assertEqual(result.get("TIMEOUT"), 30)
+
+    def test_settings_py_loaded(self):
+        (self._root / "settings.py").write_text(
+            "MAX_WORKERS = 4\n", encoding="utf-8"
+        )
+        result = load_root_python_directives(self._root)
+        self.assertEqual(result.get("MAX_WORKERS"), 4)
+
+    def test_absent_whitelist_files_skipped_silently(self):
+        result = load_root_python_directives(self._root)
+        self.assertEqual(result, {})
+
+    def test_multiple_whitelist_files_merged(self):
+        (self._root / "config.py").write_text("A = 1\n", encoding="utf-8")
+        (self._root / "settings.py").write_text("B = 2\n", encoding="utf-8")
+        result = load_root_python_directives(self._root)
+        self.assertEqual(result.get("A"), 1)
+        self.assertEqual(result.get("B"), 2)
+
 
 class TestLoadAllDirectives(unittest.TestCase):
     def setUp(self):
@@ -121,6 +172,35 @@ class TestLoadAllDirectives(unittest.TestCase):
         result = load_all_directives(repo_root=self._root)
         self.assertIn("finance", result)
         self.assertIn("mathematics", result)
+
+    def test_dbs_dir_loaded(self):
+        dbs = self._root / "dbs"
+        dbs.mkdir()
+        (dbs / "files.json").write_text(json.dumps(["a.dat", "b.dat"]))
+        result = load_all_directives(repo_root=self._root)
+        self.assertIn("dbs", result)
+        # files.json list is wrapped under "files" key
+        self.assertIn("files", result["dbs"])
+
+    def test_actions_dir_loaded(self):
+        act = self._root / "actions"
+        act.mkdir()
+        (act / "config.json").write_text(json.dumps({"namespace": "test-app"}))
+        result = load_all_directives(repo_root=self._root)
+        self.assertIn("actions", result)
+        self.assertEqual(result["actions"]["namespace"], "test-app")
+
+    def test_root_python_under_python_key(self):
+        (self._root / "config.py").write_text("WORKERS = 8\n", encoding="utf-8")
+        result = load_all_directives(repo_root=self._root)
+        self.assertIn("python", result)
+        self.assertEqual(result["python"]["WORKERS"], 8)
+
+    def test_non_directive_py_not_in_python_key(self):
+        """app.py must NOT appear in the 'python' namespace."""
+        (self._root / "app.py").write_text("PORT = 5000\n", encoding="utf-8")
+        result = load_all_directives(repo_root=self._root)
+        self.assertNotIn("python", result)
 
 
 class TestMappingHelpers(unittest.TestCase):
@@ -156,3 +236,4 @@ class TestMappingHelpers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
