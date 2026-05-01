@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixGo — Goals Operations</title>
+  <link rel="stylesheet" href="go.css">
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────────────────────────────── -->
+<header class="go-topbar">
+  <h1>🎯 MajixGo — Goals Ops</h1>
+  <input type="search" id="searchInput" placeholder="Search goals…" autocomplete="off">
+  <button class="go-btn" id="btnUndo" title="Undo">↩ Undo</button>
+  <button class="go-btn" id="btnRedo" title="Redo">↪ Redo</button>
+  <button class="go-btn" id="btnExportJSON" title="Export JSON">⬇ JSON</button>
+  <button class="go-btn" id="btnExportMD"   title="Export Markdown">⬇ MD</button>
+  <button class="go-btn" id="btnImport"     title="Import JSON">⬆ Import</button>
+</header>
+
+<!-- ── Stats bar ─────────────────────────────────────────────────────────────── -->
+<div class="go-stats-bar" id="statsBar"></div>
+
+<!-- ── Main layout ───────────────────────────────────────────────────────────── -->
+<div class="go-layout">
+
+  <!-- Sidebar: create / edit form -->
+  <aside class="go-sidebar">
+    <div class="go-sidebar-inner">
+      <div class="go-form-title" id="formTitle">New Goal</div>
+
+      <input type="hidden" id="goalId">
+
+      <div class="go-field">
+        <label for="fTitle">Title *</label>
+        <input id="fTitle" placeholder="What needs to be done?">
+      </div>
+
+      <div class="go-field">
+        <label for="fDesc">Description</label>
+        <textarea id="fDesc" placeholder="Acceptance criteria, context…"></textarea>
+      </div>
+
+      <div class="go-field">
+        <label for="fStatus">Status</label>
+        <select id="fStatus">
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="done">Done</option>
+          <option value="blocked">Blocked</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div class="go-field">
+        <label for="fPriority">Priority</label>
+        <select id="fPriority">
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+
+      <div class="go-field">
+        <label for="fCategory">Category</label>
+        <input id="fCategory" list="categoryList" placeholder="finance, tools, ai…">
+        <datalist id="categoryList">
+          <option value="finance">
+          <option value="tools">
+          <option value="ai">
+          <option value="gaming">
+          <option value="data">
+          <option value="infra">
+          <option value="docs">
+          <option value="general">
+        </datalist>
+      </div>
+
+      <div class="go-field">
+        <label for="fLinkedProject">Linked Project</label>
+        <input id="fLinkedProject" placeholder="e.g. tradingview_integration">
+      </div>
+
+      <div class="go-field">
+        <label for="fDueDate">Due Date</label>
+        <input id="fDueDate" type="date">
+      </div>
+
+      <div class="go-field">
+        <label for="fTags">Tags (comma-separated)</label>
+        <input id="fTags" placeholder="phase-a, backend, urgent">
+      </div>
+
+      <div class="go-field">
+        <label for="fNotes">Notes / Progress Log</label>
+        <textarea id="fNotes" placeholder="Running notes…"></textarea>
+      </div>
+
+      <div class="go-btn-group">
+        <button class="go-btn go-btn--primary" id="btnSave">Save Goal</button>
+        <button class="go-btn" id="btnNew" type="button">Clear</button>
+        <button class="go-btn go-btn--danger" id="btnDelete" type="button" style="display:none">Delete</button>
+      </div>
+
+      <div class="go-status" id="formStatus"></div>
+    </div>
+  </aside>
+
+  <!-- Main: filters + goal list -->
+  <main class="go-main">
+    <div class="go-toolbar">
+      <select id="filterStatus">
+        <option value="">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="in-progress">In Progress</option>
+        <option value="done">Done</option>
+        <option value="blocked">Blocked</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+
+      <select id="filterPriority">
+        <option value="">All Priorities</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+
+      <select id="filterCategory">
+        <option value="">All Categories</option>
+      </select>
+
+      <label style="font-size:.8rem;color:var(--go-text-muted);display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="filterOverdue"> Overdue only
+      </label>
+
+      <span style="flex:1"></span>
+
+      <select id="sortBy" title="Sort by">
+        <option value="updatedAt-desc">Updated ↓</option>
+        <option value="createdAt-desc">Created ↓</option>
+        <option value="dueDate-asc">Due Date ↑</option>
+        <option value="priority-desc">Priority ↓</option>
+        <option value="title-asc">Title A-Z</option>
+      </select>
+    </div>
+
+    <div class="go-list" id="goalList"></div>
+  </main>
+
+</div>
+
+<!-- Hidden import input -->
+<input type="file" id="importFile" accept=".json" style="display:none">
+
+<script>
+window.GO_CONFIG = {
+  namespace:    'go',
+  storageKey:   'majixGoals',
+  historyLimit: 100,
+  autoDispatch: false,
+};
+</script>
+<script src="go-core.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var G = window.MajixGo;
+
+  // ── DOM refs ────────────────────────────────────────────────────────────────
+  var goalIdEl       = document.getElementById('goalId');
+  var fTitle         = document.getElementById('fTitle');
+  var fDesc          = document.getElementById('fDesc');
+  var fStatus        = document.getElementById('fStatus');
+  var fPriority      = document.getElementById('fPriority');
+  var fCategory      = document.getElementById('fCategory');
+  var fLinkedProject = document.getElementById('fLinkedProject');
+  var fDueDate       = document.getElementById('fDueDate');
+  var fTags          = document.getElementById('fTags');
+  var fNotes         = document.getElementById('fNotes');
+  var formStatus     = document.getElementById('formStatus');
+  var formTitle      = document.getElementById('formTitle');
+  var btnSave        = document.getElementById('btnSave');
+  var btnNew         = document.getElementById('btnNew');
+  var btnDelete      = document.getElementById('btnDelete');
+  var btnUndo        = document.getElementById('btnUndo');
+  var btnRedo        = document.getElementById('btnRedo');
+  var btnExportJSON  = document.getElementById('btnExportJSON');
+  var btnExportMD    = document.getElementById('btnExportMD');
+  var btnImport      = document.getElementById('btnImport');
+  var importFile     = document.getElementById('importFile');
+  var searchInput    = document.getElementById('searchInput');
+  var filterStatus   = document.getElementById('filterStatus');
+  var filterPriority = document.getElementById('filterPriority');
+  var filterCategory = document.getElementById('filterCategory');
+  var filterOverdue  = document.getElementById('filterOverdue');
+  var sortBy         = document.getElementById('sortBy');
+  var goalListEl     = document.getElementById('goalList');
+  var statsBarEl     = document.getElementById('statsBar');
+
+  // ── Priority sort weight ────────────────────────────────────────────────────
+  var PRIORITY_W = { critical: 4, high: 3, medium: 2, low: 1 };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  function renderStats() {
+    var s = G.stats();
+    statsBarEl.innerHTML =
+      '<span>Total <strong>' + s.total + '</strong></span>' +
+      '<span>Pending <strong>' + (s.byStatus.pending || 0) + '</strong></span>' +
+      '<span>In Progress <strong>' + (s.byStatus['in-progress'] || 0) + '</strong></span>' +
+      '<span>Done <strong>' + (s.byStatus.done || 0) + '</strong></span>' +
+      '<span>Blocked <strong>' + (s.byStatus.blocked || 0) + '</strong></span>' +
+      (s.overdue ? '<span style="color:var(--go-danger)">⚠ Overdue <strong>' + s.overdue + '</strong></span>' : '') +
+      '<span>Completion <strong>' + s.completionRate + '%</strong></span>';
+  }
+
+  function buildCategoryFilter(goals) {
+    var cats = {};
+    goals.forEach(function (g) { cats[g.category] = true; });
+    var cur = filterCategory.value;
+    filterCategory.innerHTML = '<option value="">All Categories</option>';
+    Object.keys(cats).sort().forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      if (c === cur) opt.selected = true;
+      filterCategory.appendChild(opt);
+    });
+  }
+
+  function applyFiltersAndSort(goals) {
+    var q      = searchInput.value.trim();
+    var status = filterStatus.value;
+    var prio   = filterPriority.value;
+    var cat    = filterCategory.value;
+    var over   = filterOverdue.checked;
+
+    var list = q ? G.search(q) : goals;
+
+    list = list.filter(function (g) {
+      if (status && g.status   !== status) return false;
+      if (prio   && g.priority !== prio)   return false;
+      if (cat    && g.category !== cat)    return false;
+      if (over   && !G.isOverdue(g))       return false;
+      return true;
+    });
+
+    var [field, dir] = (sortBy.value || 'updatedAt-desc').split('-');
+    list.sort(function (a, b) {
+      var av, bv;
+      if (field === 'priority') {
+        av = PRIORITY_W[a.priority] || 0;
+        bv = PRIORITY_W[b.priority] || 0;
+      } else {
+        av = a[field] || '';
+        bv = b[field] || '';
+      }
+      if (av < bv) return dir === 'asc' ? -1 : 1;
+      if (av > bv) return dir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }
+
+  function renderList() {
+    var all      = G.list();
+    buildCategoryFilter(all);
+    var filtered = applyFiltersAndSort(all);
+    renderStats();
+
+    if (!filtered.length) {
+      goalListEl.innerHTML =
+        '<div class="go-empty"><div class="go-empty-icon">🎯</div>' +
+        (all.length ? 'No goals match the current filters.' : 'No goals yet. Add your first goal!') +
+        '</div>';
+      return;
+    }
+
+    var selId = goalIdEl.value;
+    goalListEl.innerHTML = '';
+    filtered.forEach(function (g) {
+      var card = document.createElement('div');
+      card.className = 'go-card' + (g.id === selId ? ' go-card--selected' : '');
+      card.dataset.id       = g.id;
+      card.dataset.priority = g.priority;
+
+      var tags = (g.tags || []).map(function (t) {
+        return '<span class="go-tag">' + esc(t) + '</span>';
+      }).join(' ');
+
+      var due = '';
+      if (g.dueDate) {
+        var overdue = G.isOverdue(g);
+        due = '<span class="' + (overdue ? 'go-overdue' : '') + '">' +
+              (overdue ? '⚠ ' : '') + 'Due ' + g.dueDate.slice(0, 10) + '</span>';
+      }
+
+      card.innerHTML =
+        '<div class="go-card-header">' +
+          '<span class="go-card-title">' + esc(g.title) + '</span>' +
+          '<span class="go-badge go-badge--' + g.status   + '">' + g.status   + '</span>' +
+          '<span class="go-badge go-badge--' + g.priority + '">' + g.priority + '</span>' +
+        '</div>' +
+        '<div class="go-card-meta">' +
+          (g.category   ? '<span>📂 ' + esc(g.category) + '</span>' : '') +
+          (g.linkedProject ? '<span>🔗 ' + esc(g.linkedProject) + '</span>' : '') +
+          due +
+          tags +
+        '</div>';
+
+      card.addEventListener('click', function () { loadGoal(g.id); });
+      goalListEl.appendChild(card);
+    });
+  }
+
+  // ── Form helpers ────────────────────────────────────────────────────────────
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function clearForm() {
+    goalIdEl.value       = '';
+    fTitle.value         = '';
+    fDesc.value          = '';
+    fStatus.value        = 'pending';
+    fPriority.value      = 'medium';
+    fCategory.value      = '';
+    fLinkedProject.value = '';
+    fDueDate.value       = '';
+    fTags.value          = '';
+    fNotes.value         = '';
+    formTitle.textContent = 'New Goal';
+    btnDelete.style.display = 'none';
+    formStatus.textContent  = '';
+    document.querySelectorAll('.go-card--selected').forEach(function (el) {
+      el.classList.remove('go-card--selected');
+    });
+  }
+
+  function loadGoal(id) {
+    var g = G.get(id);
+    if (!g) return;
+    goalIdEl.value       = g.id;
+    fTitle.value         = g.title;
+    fDesc.value          = g.description;
+    fStatus.value        = g.status;
+    fPriority.value      = g.priority;
+    fCategory.value      = g.category;
+    fLinkedProject.value = g.linkedProject;
+    fDueDate.value       = g.dueDate ? g.dueDate.slice(0, 10) : '';
+    fTags.value          = (g.tags || []).join(', ');
+    fNotes.value         = g.notes;
+    formTitle.textContent = 'Edit Goal';
+    btnDelete.style.display = '';
+    formStatus.textContent  = 'Editing: ' + g.id.slice(0, 8);
+    renderList();
+  }
+
+  function setStatus(msg) {
+    formStatus.textContent = msg;
+    setTimeout(function () { if (formStatus.textContent === msg) formStatus.textContent = ''; }, 3000);
+  }
+
+  // ── Event handlers ──────────────────────────────────────────────────────────
+
+  btnSave.addEventListener('click', function () {
+    var id = goalIdEl.value;
+    var data = {
+      title:         fTitle.value.trim(),
+      description:   fDesc.value.trim(),
+      status:        fStatus.value,
+      priority:      fPriority.value,
+      category:      fCategory.value.trim() || 'general',
+      linkedProject: fLinkedProject.value.trim(),
+      dueDate:       fDueDate.value || '',
+      tags:          fTags.value.split(',').map(function (t) { return t.trim(); }).filter(Boolean),
+      notes:         fNotes.value.trim(),
+    };
+    try {
+      if (id) {
+        G.update(id, data);
+        setStatus('✓ Goal updated.');
+      } else {
+        var g = G.add(data);
+        goalIdEl.value = g.id;
+        btnDelete.style.display = '';
+        formTitle.textContent = 'Edit Goal';
+        setStatus('✓ Goal added.');
+      }
+      renderList();
+    } catch (e) {
+      setStatus('✗ ' + e.message);
+    }
+  });
+
+  btnNew.addEventListener('click', function () { clearForm(); renderList(); });
+
+  btnDelete.addEventListener('click', function () {
+    var id = goalIdEl.value;
+    if (!id) return;
+    if (!confirm('Delete this goal?')) return;
+    G.remove(id);
+    clearForm();
+    renderList();
+    setStatus('Goal deleted.');
+  });
+
+  btnUndo.addEventListener('click', function () {
+    G.undo(); clearForm(); renderList(); setStatus('Undo applied.');
+  });
+  btnRedo.addEventListener('click', function () {
+    G.redo(); clearForm(); renderList(); setStatus('Redo applied.');
+  });
+
+  btnExportJSON.addEventListener('click', function () {
+    download('goals.json', G.export('json'), 'application/json');
+  });
+  btnExportMD.addEventListener('click', function () {
+    download('goals.md', G.export('md'), 'text/markdown');
+  });
+
+  btnImport.addEventListener('click', function () { importFile.click(); });
+  importFile.addEventListener('change', function () {
+    var file = importFile.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var result = G.importJSON(e.target.result);
+        renderList();
+        setStatus('✓ Imported ' + result.added + ' goals (' + result.skipped + ' skipped).');
+      } catch (err) {
+        setStatus('✗ Import failed: ' + err.message);
+      }
+      importFile.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  searchInput.addEventListener('input', function () { renderList(); });
+  filterStatus.addEventListener('change', function () { renderList(); });
+  filterPriority.addEventListener('change', function () { renderList(); });
+  filterCategory.addEventListener('change', function () { renderList(); });
+  filterOverdue.addEventListener('change', function () { renderList(); });
+  sortBy.addEventListener('change', function () { renderList(); });
+
+  // ── Keyboard shortcut: Ctrl+S saves ─────────────────────────────────────────
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      btnSave.click();
+    }
+  });
+
+  // ── Download helper ─────────────────────────────────────────────────────────
+  function download(filename, content, mime) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ── Initial render ──────────────────────────────────────────────────────────
+  renderList();
+
+}());
+</script>
+</body>
+</html>
