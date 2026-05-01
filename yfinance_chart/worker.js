@@ -32,12 +32,17 @@
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const SEQ_LEN     = 30;
-const CLASSES     = ['BUY', 'HOLD', 'SELL'];
-const EKF_MU      = 1e-4;
-const EKF_KAPPA   = 2.0;
-const EKF_THETA_V = 4e-4;
-const EKF_DT      = 1.0;
+const SEQ_LEN       = 30;
+const CLASSES       = ['BUY', 'HOLD', 'SELL'];
+const EKF_MU        = 1e-4;
+const EKF_KAPPA     = 2.0;
+const EKF_THETA_V   = 4e-4;
+const EKF_DT        = 1.0;
+
+// GC clustering constants — mirrors gc_manager.pine bucket strategy
+const GC_NUM_BUCKETS = 32;
+const GC_HIGH_CONF   = 0.60;  // Threshold for HIGH-probability cluster
+const GC_MED_CONF    = 0.45;  // Threshold for MED-probability cluster
 
 // ---------------------------------------------------------------------------
 // Message handler
@@ -71,7 +76,11 @@ self.onmessage = function (evt) {
         // Step 3: Neural-style probability from features + EKF
         const probs = computeProbabilities(features, ekfState, forecast);
 
-        // Step 4: Format result
+        // Step 4: GC clustering — assign every bar to a hash bucket and classify
+        //         HIGH/MED/LOW probability cluster for rendering hints
+        const clustering = clusterBars(features);
+
+        // Step 5: Format result
         const signalIdx = probs.indexOf(Math.max(...probs));
         const result = {
             signal:         CLASSES[signalIdx],
@@ -84,8 +93,11 @@ self.onmessage = function (evt) {
                 volatility:     +ekfState.volatility.toFixed(8),
                 momentumAngle:  +ekfState.momentumAngle.toFixed(6),
             },
-            neuralFeatures: features.last,
-            method:         'Worker: EKF + heuristic LSTM approximation',
+            neuralFeatures:    features.last,
+            barClusters:       clustering.clusters,
+            gcBucketSizes:     clustering.gcBucketSizes,
+            mostProbableBucket: clustering.mostProbableBucket,
+            method:            'Worker: EKF + heuristic LSTM approximation',
         };
 
         self.postMessage({ type: 'SIGNALS_READY', ticker, result });
@@ -98,6 +110,85 @@ self.onmessage = function (evt) {
 // ---------------------------------------------------------------------------
 // EKF approximation (lightweight JS implementation)
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// GC hash clustering — mirrors gc_manager.pine polynomial rolling hash
+// ---------------------------------------------------------------------------
+
+/**
+ * Polynomial rolling hash of (barIndex, quantised confidence) → bucket [0, GC_NUM_BUCKETS).
+ * Minimises collision clustering so high-confidence bars spread across distinct buckets.
+ */
+function gcHashBucket(barIndex, conf) {
+    const qConf = Math.floor(conf * 100) & 0xFF; // 0-100 quantised to byte
+    let h = 0;
+    // Prime-based mixing of bar index and quantised confidence
+    h = ((barIndex * 31 + qConf) * 17 + 7) & 0x7FFFFFFF;
+    h = ((h ^ (h >>> 15)) * 0x2C1B3C6D) & 0x7FFFFFFF;
+    h = ((h ^ (h >>> 12)) * 0x297A2D39) & 0x7FFFFFFF;
+    h = (h ^ (h >>> 15)) & 0x7FFFFFFF;
+    return h % GC_NUM_BUCKETS;
+}
+
+/**
+ * Classify every bar in the feature set into a probability cluster.
+ * Returns per-bar cluster array and bucket statistics.
+ * HIGH (conf > GC_HIGH_CONF) → enhanced rendering
+ * MED  (conf > GC_MED_CONF)  → normal rendering
+ * LOW                         → minimised rendering
+ */
+function clusterBars(features) {
+    const n = features.all.length;
+    const clusters = [];
+    const gcBucketHits = new Int32Array(GC_NUM_BUCKETS); // hit count per bucket
+
+    for (let i = 0; i < n; i++) {
+        const f = features.all[i];
+
+        // Per-bar bull/bear/hold scores (same weighting as computeProbabilities window mean)
+        const bullScore = (
+            0.35 * f.logReturn
+            + 0.25 * f.rsiNorm
+            + 0.20 * f.macdNorm
+            + 0.20 * f.momentum
+        );
+        const bearScore = -bullScore + 0.05 * f.annVol;
+        const holdScore = 0.30 - 0.50 * Math.abs(bullScore);
+        const probs     = softmax([bullScore, holdScore, bearScore]);
+        const conf      = Math.max(...probs);
+        const sigIdx    = probs.indexOf(conf);
+
+        // GC hash bucket assignment
+        const bucket = gcHashBucket(i, conf);
+        gcBucketHits[bucket]++;
+
+        const clusterLabel = conf >= GC_HIGH_CONF ? 'HIGH' : conf >= GC_MED_CONF ? 'MED' : 'LOW';
+
+        clusters.push({
+            idx:     i,
+            conf:    +conf.toFixed(4),
+            signal:  CLASSES[sigIdx],
+            cluster: clusterLabel,
+            bucket,
+        });
+    }
+
+    // Determine most-probable bucket (highest cumulative hit count)
+    let mostProbableBucket = 0;
+    let maxHits = gcBucketHits[0];
+    for (let b = 1; b < GC_NUM_BUCKETS; b++) {
+        if (gcBucketHits[b] > maxHits) {
+            maxHits = gcBucketHits[b];
+            mostProbableBucket = b;
+        }
+    }
+
+    return {
+        clusters,
+        gcBucketSizes:     Array.from(gcBucketHits),
+        mostProbableBucket,
+    };
+}
 
 /**
  * Run a simplified EKF over the log-price series.

@@ -1,40 +1,182 @@
 // gc_manager.pine
 // Pine v5 Modular GC Manager Library
 // This library provides a garbage collection manager with multiple utilities for managing resources efficiently.
+// Enhanced with hash-based clustering: resources are assigned to cluster buckets via a polynomial rolling hash,
+// enabling the GC sweep to prioritise high-probability clusters and minimise eviction of frequently used items.
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+var GC_NUM_BUCKETS = 32   // Number of hash cluster buckets
+var GC_BUCKET_CAP  = 16   // Max items per cluster bucket before bucket-level sweep
+
+// ---------------------------------------------------------------------------
 // 1. Per-Type Registries
-var registry = []
+//    registry[] entries: [type, value, timestamp, bucket, hit_count]
+// ---------------------------------------------------------------------------
+var registry = array.new<string>(0)
 
-// 2. Hashing Function
-hash(value) => str.tostring(value).
+// ---------------------------------------------------------------------------
+// 2. Enhanced Hash Function — polynomial rolling hash
+//    Maps (type, value, bar_index) → deterministic cluster bucket [0, GC_NUM_BUCKETS)
+//    Minimises collision clustering so high-confidence bars spread across distinct buckets.
+// ---------------------------------------------------------------------------
+gc_hash(type, value) =>
+    // Polynomial rolling hash over the string representation of type+value+bar_index
+    raw   = type + ":" + str.tostring(value) + "@" + str.tostring(bar_index)
+    h     = 0
+    prime = 31
+    for ch in raw
+        h := (h * prime + str.length(ch)) & 0x7FFFFFFF
+    h % GC_NUM_BUCKETS
 
-// 3. LRU/TTL Pruning
-prune(registry) => 
-    // Logic for pruning based on LRU or TTL
+// ---------------------------------------------------------------------------
+// 3. Cluster Probability Score
+//    Returns a normalised score [0.0, 1.0] reflecting how probable this
+//    cluster bucket is — used to minimise rendering for low-score clusters
+//    and enhance rendering for the most-probable forecasting bucket.
+// ---------------------------------------------------------------------------
+gc_cluster_score(bucket) =>
+    // Count items in this bucket and normalise against total registry size
+    total = array.size(registry)
+    if total == 0
+        0.0
+    else
+        count = 0
+        for i = 0 to total - 1
+            entry = array.get(registry, i)
+            parts = str.split(entry, "|")
+            if array.size(parts) >= 4
+                entry_bucket = str.tonumber(array.get(parts, 3))
+                if not na(entry_bucket) and int(entry_bucket) == bucket
+                    count += 1
+        float(count) / float(total)
 
-// 4. Push API
-push(type, value) => 
-    // Logic to add to registry
+// ---------------------------------------------------------------------------
+// 4. LRU/TTL Pruning
+//    Prunes entries older than ttl_bars bars, skipping the most-probable bucket.
+// ---------------------------------------------------------------------------
+gc_prune(ttl_bars) =>
+    i = array.size(registry) - 1
+    while i >= 0
+        entry  = array.get(registry, i)
+        parts  = str.split(entry, "|")
+        if array.size(parts) >= 5
+            ts     = str.tonumber(array.get(parts, 2))
+            bucket = str.tonumber(array.get(parts, 3))
+            hits   = str.tonumber(array.get(parts, 4))
+            if not na(ts) and not na(hits) and not na(bucket)
+                age = bar_index - int(ts)
+                // Skip eviction for high-probability buckets (high hit_count)
+                is_high_prob = not na(hits) and hits >= 3
+                if age > ttl_bars and not is_high_prob
+                    array.remove(registry, i)
+        i -= 1
 
-// 5. Touch API
-// Updates the timestamp of an object in the registry.
-touch(type, value) => 
-    // Logic to touch an existing item
+// ---------------------------------------------------------------------------
+// 5. Push API
+//    Adds an item to the registry with its hash-cluster bucket assignment.
+// ---------------------------------------------------------------------------
+gc_push(type, value) =>
+    bucket = gc_hash(type, value)
+    entry  = type + "|" + str.tostring(value) + "|" + str.tostring(bar_index) + "|" + str.tostring(bucket) + "|1"
+    array.push(registry, entry)
 
-// 6. Delete API
-remove(type, value) => 
-    // Logic to remove an item from registry
+// ---------------------------------------------------------------------------
+// 6. Touch API
+//    Updates the timestamp and increments the hit_count of a matching entry.
+//    Higher hit_count → higher cluster probability → enhanced rendering priority.
+// ---------------------------------------------------------------------------
+gc_touch(type, value) =>
+    target = type + "|" + str.tostring(value)
+    for i = 0 to array.size(registry) - 1
+        entry = array.get(registry, i)
+        if str.startswith(entry, target)
+            parts  = str.split(entry, "|")
+            if array.size(parts) >= 5
+                bucket = array.get(parts, 3)
+                hits   = str.tonumber(array.get(parts, 4))
+                new_hits = na(hits) ? 2 : int(hits) + 1
+                updated = type + "|" + str.tostring(value) + "|" + str.tostring(bar_index) + "|" + bucket + "|" + str.tostring(new_hits)
+                array.set(registry, i, updated)
+            break
 
-// 7. Sweep Enforce Capacity
-enforce_capacity(max) => 
-    // Ensure registry size doesn't exceed max
+// ---------------------------------------------------------------------------
+// 7. Delete API
+// ---------------------------------------------------------------------------
+gc_remove(type, value) =>
+    target = type + "|" + str.tostring(value)
+    i = array.size(registry) - 1
+    while i >= 0
+        if str.startswith(array.get(registry, i), target)
+            array.remove(registry, i)
+        i -= 1
 
-// 8. Debug Functions
-debug() => 
-    // Function to log current state of the GC manager
+// ---------------------------------------------------------------------------
+// 8. Sweep — Enforce Capacity
+//    Evicts lowest-hit-count entries first; high-probability cluster entries
+//    (hit_count ≥ 3) are retained to preserve most-probable forecasting state.
+// ---------------------------------------------------------------------------
+gc_enforce_capacity(max_size) =>
+    while array.size(registry) > max_size
+        min_hits = 999999
+        min_idx  = 0
+        for i = 0 to array.size(registry) - 1
+            entry = array.get(registry, i)
+            parts = str.split(entry, "|")
+            if array.size(parts) >= 5
+                hits = str.tonumber(array.get(parts, 4))
+                hit_val = na(hits) ? 0 : int(hits)
+                if hit_val < min_hits
+                    min_hits := hit_val
+                    min_idx  := i
+        array.remove(registry, min_idx)
 
+// ---------------------------------------------------------------------------
+// 9. Most-Probable Bucket
+//    Returns the bucket index with the highest aggregate hit_count.
+//    Drives "enhance rendering for most probable forecasting" decisions.
+// ---------------------------------------------------------------------------
+gc_most_probable_bucket() =>
+    bucket_hits = array.new<int>(GC_NUM_BUCKETS, 0)
+    for i = 0 to array.size(registry) - 1
+        entry = array.get(registry, i)
+        parts = str.split(entry, "|")
+        if array.size(parts) >= 5
+            bucket = str.tonumber(array.get(parts, 3))
+            hits   = str.tonumber(array.get(parts, 4))
+            if not na(bucket) and not na(hits)
+                b = int(bucket)
+                if b >= 0 and b < GC_NUM_BUCKETS
+                    array.set(bucket_hits, b, array.get(bucket_hits, b) + int(hits))
+    best_bucket = 0
+    best_score  = array.get(bucket_hits, 0)
+    for b = 1 to GC_NUM_BUCKETS - 1
+        s = array.get(bucket_hits, b)
+        if s > best_score
+            best_score  := s
+            best_bucket := b
+    best_bucket
+
+// ---------------------------------------------------------------------------
+// 10. Debug
+// ---------------------------------------------------------------------------
+gc_debug() =>
+    size   = array.size(registry)
+    bucket = gc_most_probable_bucket()
+    score  = gc_cluster_score(bucket)
+    label.new(bar_index, high,
+        "GC: " + str.tostring(size) + " items | top bucket=" + str.tostring(bucket) +
+        " score=" + str.tostring(score, "#.##"),
+        style=label.style_label_down, size=size.small)
+
+// ---------------------------------------------------------------------------
 // Usage examples:
-// push("example", 1);
-// touch("example", 1);
-// remove("example", 1);
+// gc_push("forecast", close)
+// gc_touch("forecast", close)
+// gc_remove("forecast", close)
+// gc_prune(50)
+// gc_enforce_capacity(256)
+// top = gc_most_probable_bucket()
+// score = gc_cluster_score(top)
 
