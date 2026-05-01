@@ -12,13 +12,6 @@ type HTFBar
     float l = low
     float c = close
     int   t = time
-type htf_b
-    float o
-    float h
-    float l
-    float c
-    int   t
-    color col
 
 var HTFBar lastKnownHTF = na
 
@@ -194,15 +187,6 @@ type trd_e
     int a_st
     bool i_be
 
-type mc_sm
-    float w_rt
-    float e_vl
-    float m_dd
-    string vr
-
-type pt_ar
-    array<chart.point> pts
-
 type opt_g
     float dlt
     float gma
@@ -285,11 +269,6 @@ rf_rt = input.float(0.05, "Risk-Free Rate", step=0.01, group=g_bsm)
 t_ex  = input.float(30.0, "Days to Exp", group=g_bsm) 
 st_ml = input.float(1.0, "Strike Mult", step=0.01, group=g_bsm)
 
-grp_vis = "Visuals & Auditing"
-curvePath = input.bool(true, "Smooth Polyline Curves", group=grp_vis)
-showMC = input.bool(true, "Show Monte Carlo Random Paths", group=grp_vis)
-showConso = input.bool(true, "Highlight Active Consolidations", group=grp_vis)
-
 // --- Visuals & Auditing ---
 g_vis = "Visuals & Auditing"
 curvP = input.bool(true, "Smooth Polyline Curves", group=g_vis)
@@ -297,18 +276,6 @@ sh_mc = input.bool(true, "Show Monte Carlo Random Paths", group=g_vis)
 sh_co = input.bool(true, "Highlight Active Consolidations", group=g_vis)
 sh_gb = input.bool(true, "Show Ghost Bars", group=g_vis)
 
-src = input.source(close, 'Source Data', group=g_alp)
-
-// ============================================================================
-// 2. INPUT CONFIGURATIONS
-// ============================================================================
-
-g_mcd = "MACD Settings"
-
-g_lmt = "Rolling Limits"
-n_mr = input.bool(true, "Enable Mean Rev", group=g_cst)
-
-g_vsx = "Extended Projections"
 
 // ============================================================================
 // 3. GLOBAL OBJECT INITIALIZATION
@@ -1548,7 +1515,7 @@ if barstate.isconfirmed
         uz.adaptiveCoeff := math.max(b_cf, uz.adaptiveCoeff - 0.02)
 
 mfi_val = ta.mfi(hlc3, al_pr)
-rsi_val = ta.rsi(src, al_pr)
+rsi_val = ta.rsi(al_sr, al_pr)
 momentum_engine = (mfi_val + rsi_val) / 2 >= 50
 
 float norm_rsi = math.max(-1.0, math.min(1.0, (rsi_val - 50) / 50.0))
@@ -1564,38 +1531,6 @@ AlphaTrend := momentum_engine ? (upT < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : u
 
 bool alphaFlip = ta.change(AlphaTrend > AlphaTrend[2]) != 0
 bool signalTrigger = alphaFlip or brk.isValidBreakout or pe.isReversal
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ############################################################################################################
-// ################################################ START HERE ################################################
-// ############################################################################################################
-
-
 
 calc_kinematics(source, length) =>
     float sumX = 0.0, float sumY = 0.0, float sumXY = 0.0, float sumX2 = 0.0
@@ -1813,7 +1748,6 @@ f_apply_bayesian_trig_curvature(float expected_price, float prior_price, float e
 // ----------------------------------------------------------------------------
 show_table = input.bool(true, "Display HUD Table on Chart", group="Visual Settings", tooltip="If off, data is only visible in the Data Window.")
 
-show_tables = input.bool(true, "Display HUD Tables on Chart", group="Visual Settings")
 
 // --- 1. GLOBAL ARRAYS FOR DYNAMIC CLEANUP ---
 var mc_lines          = array.new<polyline>()
@@ -1912,17 +1846,17 @@ f_render_staggered_forecast(pf, kin, uz, acc, mcMatrix, tf_multiplier, tf_color)
         array.push(forecast_shapes, ribbon)
 
         // CONSTRUCTING POLYLINES & CONICS
-        array.push(main_polylines, polyline.new(pts_mean, curved=curvePath, line_color=tf_color, line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time))
-        array.push(main_polylines, polyline.new(pts_up, curved=curvePath, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
-        array.push(main_polylines, polyline.new(pts_dn, curved=curvePath, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_mean, curved=curvP, line_color=tf_color, line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_up, curved=curvP, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_dn, curved=curvP, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
         
         polyline conic_pl = polyline.new(pts_conic, curved=true, line_color=color.new(#B200FF, 50), line_width=2, xloc=xloc.bar_time)
         array.push(mc_lines, conic_pl)
         
-        if showMC
+        if sh_mc
             for r = 0 to mc_count - 1
                 int transp = 90 - math.round(20 * (r / math.max(1, mc_count - 1)))
-                polyline mc_pl = polyline.new(array.get(mc_pts_matrix, r).pts, curved=curvePath, line_color=color.new(#FFFFFF, transp), line_width=1, xloc=xloc.bar_time)
+                polyline mc_pl = polyline.new(array.get(mc_pts_matrix, r).pts, curved=curvP, line_color=color.new(#FFFFFF, transp), line_width=1, xloc=xloc.bar_time)
                 array.push(mc_lines, mc_pl)
         
         // MULTI-LAYERED PROBABILITY ARRIVAL ZONES
@@ -2008,17 +1942,6 @@ if barstate.islast
         
     float baseline_drift = (compositeBaseline - compositeBaseline[1]) / compositeBaseline[1] * 100
     baselineLbl := label.new(line.get_x1(baseline_ray), compositeBaseline, "Composite MR Baseline\nDrift: " + str.tostring(baseline_drift, "#.###") + "%", color=color.new(color.black, 40), textcolor=color.new(#FFD700, 0), style=label.style_label_down, size=size.small)
-    // 3d. Draw the Singular Composite Baseline Ray
-    if not na(baseline_ray)
-        line.delete(baseline_ray)
-        
-    baseline_ray := line.new(bar_index - 5, compositeBaseline, bar_index, compositeBaseline, color=color.new(#FFD700, 30), style=line.style_dashed, width=2)
-    line.set_extend(baseline_ray, extend.right)
-
-    if not na(baselineLbl)
-        label.delete(baselineLbl)
-        
-    baselineLbl := label.new(line.get_x1(baseline_ray), compositeBaseline, "Composite MR Baseline\nDrift: " + str.tostring(baseline_drift, "#.###") + "%", color=color.new(color.black, 40), textcolor=color.new(#FFD700, 0), style=label.style_label_down, size=size.small)
 
 plot(acc.probabilityBull * 100, "Prob Bull %", display=display.data_window)
 plot(uz.adaptiveCoeff, "Adaptive Coeff", display=display.data_window)
@@ -2037,7 +1960,7 @@ if not na(lastKnownHTF)
     htfTrendStr := lastKnownHTF.c > lastKnownHTF.o ? "BULLISH" : "BEARISH"
     htfTrendCol := lastKnownHTF.c > lastKnownHTF.o ? color.lime : color.red
 
-if barstate.islast and show_tables
+if barstate.islast and show_table
     table.cell(mainTable, 0, 0, "KINEMATIC + GEOMETRIC ENSEMBLE", bgcolor=color.black, text_color=color.white)
     table.merge_cells(mainTable, 0, 0, 3, 0)
     table.cell(mainTable, 0, 1, "METRIC", bgcolor=color.gray, text_color=color.white)
@@ -2142,7 +2065,6 @@ var p_hi = array.new<pvt_n>()
 var p_lo = array.new<pvt_n>()
 var a_tr = trd_e.new(0.0, 0.0, 0.0, 0.0, 0, false)
 
-max_bars_back(close, 4000)
 max_bars_back(time, 4000)
 
 // ============================================================================
@@ -2180,22 +2102,6 @@ float m_wt = matrix.get(e_wt, 0, 2)
 
 bool m_bl = h_mn > 0 and (rl_md ? (h_s1 > 0 or h_s2 > 0) : (h_s1 > 0 and h_s2 > 0 and h_s3 > 0))
 bool m_br = h_mn < 0 and (rl_md ? (h_s1 < 0 or h_s2 < 0) : (h_s1 < 0 and h_s2 < 0 and h_s3 < 0))
-
-
-
-
-
-
-
-
-
-
-
-
-// ############################################################################################################
-// ################################################ START HERE ################################################
-// ############################################################################################################
-
 // ============================================================================
 // 6. KINEMATIC & TRIGONOMETRIC ENGINE
 // ============================================================================
@@ -2489,161 +2395,3 @@ plot(grs.gma, "OPT GMA", display=display.data_window)
 // For strings/states in data window, we use plotchar with a value
 plot(m_bl ? 1 : m_br ? -1 : 0, "MCD SYN (1:Bul, -1:Ber)", display=display.data_window)
 
-
-
-
-
-
-
-
-
-
-
-
-
-// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © wielkieef
-
-// //@version=5
-// strategy("CCI Surge - Momentum Continuation Strateg", overlay=true, pyramiding=1, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=75, calc_on_order_fills=false, calc_on_every_tick=true, process_orders_on_close=true, slippage=0, commission_type=strategy.commission.percent, commission_value=0.03, max_lines_count=500, max_labels_count=500)
-
-// === STRATEGY INPUTS ===
-trailingStopPct = input.float(6.0, title="Trailing Stop %", minval=0.1, group="Strategy")
-cciLen = input.int(14, title="CCI Length", group="Strategy")
-cciHigh = input.int(100, title="CCI Bullish Threshold", group="Strategy")
-cciLow = input.int(-100, title="CCI Bearish Threshold", group="Strategy")
-hmaLen = input.int(80, title="HMA Length", group="Strategy")
-atrLength = input.int(14, title="ATR Length", group="Strategy")
-atrMultiplier = input.float(2.0, title="ATR SL Multiplier", step=0.1, group="Strategy")
-
-// === VISUAL TOGGLES ===
-showHMA        = input.bool(false, "Show HMA line",          group="Visualization — Indicators")
-showATRSL      = input.bool(false, "Show ATR SL levels",     group="Visualization — Indicators")
-showCCIBars    = input.bool(true,  "Color bars by CCI",      group="Visualization — Indicators", tooltip="Świece zielone gdy CCI > 0, czerwone gdy < 0")
-showPositionBg = input.bool(true,  "Position background",    group="Visualization — Indicators", tooltip="Tło zielone gdy long, czerwone gdy short")
-
-// === VISUAL COLORS ===
-hitColor       = input.color(color.fuchsia, "Exit cross color",      group="Visualization — Colors")
-longArrowColor = input.color(color.blue,    "Long entry arrow color", group="Visualization — Colors")
-shortArrowColor= input.color(color.red,     "Short entry arrow color",group="Visualization — Colors")
-tpLongColor    = input.color(color.red,     "TP Long arrow color",    group="Visualization — Colors")
-tpShortColor   = input.color(color.green,   "TP Short arrow color",   group="Visualization — Colors")
-slColor        = input.color(color.fuchsia, "SL arrow color",         group="Visualization — Colors")
-cciBullColor   = input.color(#26a69a,       "CCI bullish bar color",  group="Visualization — Colors")
-cciBearColor   = input.color(#ef5350,       "CCI bearish bar color",  group="Visualization — Colors")
-
-// === LOGIC ===
-atrValue = ta.atr(atrLength)
-cci = ta.cci(close, cciLen)
-hma = ta.hma(close, hmaLen)
-hmaUp = hma > hma[1] and close > hma
-hmaDn = hma < hma[1] and close < hma
-
-var bool gateLong = true
-var bool gateShort = true
-if cci <= cciHigh
-    gateLong := true
-if cci >= cciLow
-    gateShort := true
-if strategy.position_size[1] != 0 and strategy.position_size == 0
-    gateLong := false
-    gateShort := false
-
-inPosition = strategy.opentrades > 0
-barsInPosition = inPosition ? bar_index - strategy.opentrades.entry_bar_index(0) : 0
-trailReady = barsInPosition >= 1
-trail_offset = strategy.position_avg_price * trailingStopPct / 100
-
-longSignal  = cci > cciHigh and hmaUp and gateLong  and not inPosition
-shortSignal = cci < cciLow  and hmaDn and gateShort and not inPosition
-
-var bool lastWasSL_long  = false
-var bool lastWasSL_short = false
-
-var float atrSL_long = na
-var float atrSL_short = na
-if longSignal
-    strategy.entry("Long", strategy.long)
-    atrSL_long := close - atrValue * atrMultiplier
-    atrSL_short := na
-    gateLong := false
-    lastWasSL_long  := false
-    lastWasSL_short := false
-if shortSignal
-    strategy.entry("Short", strategy.short)
-    atrSL_short := close + atrValue * atrMultiplier
-    atrSL_long := na
-    gateShort := false
-    lastWasSL_long  := false
-    lastWasSL_short := false
-
-slLongTriggered  = false
-slShortTriggered = false
-if strategy.position_size > 0 and not na(atrSL_long) and low <= atrSL_long
-    strategy.close("Long", comment="ATR SL")
-    atrSL_long := na
-    slLongTriggered := true
-    lastWasSL_long := true
-if strategy.position_size < 0 and not na(atrSL_short) and high >= atrSL_short
-    strategy.close("Short", comment="ATR SL")
-    atrSL_short := na
-    slShortTriggered := true
-    lastWasSL_short := true
-
-if inPosition and trailReady
-    if strategy.position_size > 0
-        strategy.exit("Trailing TP", from_entry="Long",  trail_points=trail_offset, trail_offset=trail_offset)
-    if strategy.position_size < 0
-        strategy.exit("Trailing TP", from_entry="Short", trail_points=trail_offset, trail_offset=trail_offset)
-
-// === BARCOLOR ===
-cciBarCol = cci > 0 ? cciBullColor : cciBearColor
-barcolor(showCCIBars ? cciBarCol : na, title="CCI bar color")
-
-// === OPTIONAL PLOTS ===
-plot(showHMA ? hma : na, color=color.new(color.purple, 30), linewidth=2, title="HMA")
-plot(showATRSL and strategy.position_size > 0 ? atrSL_long  : na, color=color.new(color.red, 50), linewidth=1, title="ATR SL Long",  style=plot.style_linebr)
-plot(showATRSL and strategy.position_size < 0 ? atrSL_short : na, color=color.new(color.red, 50), linewidth=1, title="ATR SL Short", style=plot.style_linebr)
-
-// === ENTRY ARROWS ===
-plotshape(longSignal,  title="LONG entry",  style=shape.triangleup,   location=location.belowbar, color=longArrowColor,  size=size.small)
-plotshape(shortSignal, title="SHORT entry", style=shape.triangledown, location=location.abovebar, color=shortArrowColor, size=size.small)
-
-// === EXIT DETECTION ===
-var int closedCountForArrows = 0
-tpLong  = false
-tpShort = false
-slLong  = false
-slShort = false
-exitHitPrice = float(na)
-
-if strategy.closedtrades > closedCountForArrows
-    tradeIdx = strategy.closedtrades - 1
-    sizeT = strategy.closedtrades.size(tradeIdx)
-    wasLong = sizeT > 0
-    
-    if wasLong
-        if lastWasSL_long
-            slLong := true
-        else
-            tpLong := true
-    else
-        if lastWasSL_short
-            slShort := true
-        else
-            tpShort := true
-    
-    exitHitPrice := strategy.closedtrades.exit_price(tradeIdx)
-    closedCountForArrows := strategy.closedtrades
-
-// === TP/SL labels ===
-plotshape(tpLong,  title="TP Long",  style=shape.triangledown, location=location.abovebar, color=tpLongColor,  size=size.tiny, text="TP", textcolor=tpLongColor)
-plotshape(tpShort, title="TP Short", style=shape.triangleup,   location=location.belowbar, color=tpShortColor, size=size.tiny, text="TP", textcolor=tpShortColor)
-plotshape(slLong,  title="SL Long",  style=shape.xcross,       location=location.belowbar, color=slColor,      size=size.small, text="SL", textcolor=slColor)
-plotshape(slShort, title="SL Short", style=shape.xcross,       location=location.abovebar, color=slColor,      size=size.small, text="SL", textcolor=slColor)
-
-// === Hit Price
-plot(exitHitPrice, title="Exit hit", style=plot.style_cross, color=hitColor, linewidth=5)
-
-// === Position background ===
-bgcolor(showPositionBg and strategy.position_size > 0 ? color.new(color.green, 96) : showPositionBg and strategy.position_size < 0 ? color.new(color.red, 96) : na, title="Position background")
