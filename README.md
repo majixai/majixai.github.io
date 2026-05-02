@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-02 05:47 UTC_
+_Last updated: 2026-05-02 07:09 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,26 +13,26 @@ _Last updated: 2026-05-02 05:47 UTC_
 |--------|-------|
 | 📁 Project Directories | 158 |
 | ⚙️ GitHub Actions Workflows | 61 |
-| 📝 Total Commits | 123796 |
+| 📝 Total Commits | 123817 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`142508e3b4`](https://github.com/majixai/majixai.github.io/commit/142508e3b4c8d34363000502643401cdeb974b73) -- 2026-05-02 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-05-02 05:40:56 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`a715f87a6a`](https://github.com/majixai/majixai.github.io/commit/a715f87a6ae1bce7c8d8b6a3981b67fda03abc9c) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-02 05:27:01 UTC -- [Open page](https://majixai.github.io/router/)
-- [`cc4dfc7fe9`](https://github.com/majixai/majixai.github.io/commit/cc4dfc7fe9f8dfb89edac875e4c1c344791eec81) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-02 05:24:25 UTC -- [Open page](https://majixai.github.io/data/)
-- [`06e8b58430`](https://github.com/majixai/majixai.github.io/commit/06e8b58430f2b928edf775e1a2d9ec1bdc23618c) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-02 05:24:13 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`0a4af546f4`](https://github.com/majixai/majixai.github.io/commit/0a4af546f4aabbdf3bfc8f55da6cdb36b7a1ad4c) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-02 05:23:08 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`e165005997`](https://github.com/majixai/majixai.github.io/commit/e165005997d31cd7cb59d5acd3f0ec63f6d2447c) -- 2026-05-02 -- Copilot -- Merge 101c1c80b788edfeab4562ee13bc841613204050 into 706701ab4e273d564f29c06a107cd9256ae4cbbf -- [Open page](https://majixai.github.io/router/)
+- [`101c1c80b7`](https://github.com/majixai/majixai.github.io/commit/101c1c80b788edfeab4562ee13bc841613204050) -- 2026-05-01 -- majixai -- Merge branch 'main' into copilot/add-provenance-helper-and-db-manager -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`706701ab4e`](https://github.com/majixai/majixai.github.io/commit/706701ab4e273d564f29c06a107cd9256ae4cbbf) -- 2026-05-02 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`715c12aba7`](https://github.com/majixai/majixai.github.io/commit/715c12aba7a234e5ea2a13ebfb49647eb036c879) -- 2026-05-01 -- majixai -- Change greeting from 'Hello' to 'Goodbye' -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`aefad83c24`](https://github.com/majixai/majixai.github.io/commit/aefad83c24fc1781d7e22a5365d95a6f8f7cb01a) -- 2026-05-02 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-05-02 06:54:08 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `1a71a0d` — 2026-05-02 — **github-actions[bot]** — data: Update index data - 2026-05-02 01:45:32 UTC  
-  _40276 lines changed (39407+ / 869-)_
+- **Biggest update today:** `101c1c8` — 2026-05-01 — **majixai** — Merge branch 'main' into copilot/add-provenance-helper-and-db-manager  
+  _154142 lines changed (151240+ / 2902-)_
 - **Biggest update this week:** `e38471a` — 2026-04-28 — **github-actions[bot]** — data: Update index data - 2026-04-28 01:48:15 UTC  
   _349492 lines changed (348370+ / 1122-)_
-- **Biggest update this month:** `13c2b97` — 2026-05-01 — **github-actions[bot]** — data: Update index data - 2026-05-01 01:47:53 UTC  
-  _103963 lines changed (102846+ / 1117-)_
+- **Biggest update this month:** `101c1c8` — 2026-05-01 — **majixai** — Merge branch 'main' into copilot/add-provenance-helper-and-db-manager  
+  _154142 lines changed (151240+ / 2902-)_
 - **Biggest update this quarter:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
   _383440 lines changed (379676+ / 3764-)_
 - **Biggest update this year:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
