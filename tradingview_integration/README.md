@@ -51,3 +51,102 @@ A composite score is computed from these signals. When the score exceeds the **b
 4.  Set up the GitHub Actions workflow to trigger the web app URL on a schedule.
 
 This setup provides a flexible pipeline to get external data into TradingView indicators, managed and updated through Google Apps Script and GitHub Actions.
+
+---
+
+## Unified Feed (`/unified_feed`)
+
+The `unified_feed/` package provides a scalable, offline-capable data pipeline with SHA-256 provenance tracking and gzip-compressed SQLite storage.
+
+### Timing windows
+
+| Horizon | Range |
+|---------|-------|
+| Short-term | 1 minute – 120 minutes |
+| Medium-term | 1 hour – 3 days |
+| Long-term | 1 day – 2 weeks |
+
+### Provenance helper (`utils/sha256_provenance.py`)
+
+Every artifact written by the pipeline gets two sidecar files:
+
+- `artifact.sha256` — single-line hex digest of the file contents.
+- `artifact.meta.json` — JSON object containing `sha256`, `filename_sha256`, and any custom metadata fields.
+
+**Filename hashing** (`sha256_of_filename`) hashes only the basename of the artifact path, so an artifact can be moved to a different directory without invalidating its filename hash. This is distinct from the content hash (`sha256_of_file`) and is useful for detecting renames or encoding structured information in filenames (e.g. ticker, date, interval).
+
+```python
+from tradingview_integration.unified_feed.utils.sha256_provenance import (
+    sha256_of_file,
+    sha256_of_filename,
+    write_metadata_atomic,
+    verify_artifact,
+)
+
+# Hash content
+content_hash = sha256_of_file("data/SPY_1m.parquet")
+
+# Hash filename (basename only — independent of directory)
+name_hash = sha256_of_filename("data/SPY_1m.parquet")
+# name_hash == sha256_of_filename("other/SPY_1m.parquet")  # True
+
+# Write sidecars atomically
+write_metadata_atomic("data/SPY_1m.parquet", {"ticker": "SPY", "interval": "1m"})
+
+# Verify integrity
+ok, expected, actual = verify_artifact("data/SPY_1m.parquet", strict=True)
+```
+
+### Dynamic .dat.gz databases (`db/dat_manager.py`)
+
+Ticker fetch summaries are persisted in gzip-compressed SQLite `.dat.gz` files with atomic writes and optional rotation by size.
+
+**`dbs/` integration** — a bare filename (no directory component) is automatically resolved to the repository-root `dbs/` directory so the file is immediately visible to `dbs/monitor.js`.  `dbs/files.json` is rewritten atomically after every flush.
+
+```python
+from tradingview_integration.unified_feed.db.dat_manager import DatabaseManager
+
+# Stored in <repo_root>/dbs/cache.dat.gz; dbs/files.json updated automatically
+with DatabaseManager("cache.dat.gz") as dm:
+    dm.append_summary(
+        ticker="SPY",
+        interval="1m",
+        last_ts=1700000000,
+        sha256=content_hash,
+        filename_sha256=name_hash,
+        metadata={"source": "yfinance"},
+    )
+    rows = dm.query_summaries({"ticker": "SPY"})
+```
+
+### Root directive adapters (`adapters/root_directives.py`)
+
+Reads optional YAML / JSON / Python directive files from several well-known root directories and maps them to Feature Engine and `tensor_calculus` inputs.  All sources are optional and silently skipped when absent.
+
+| Source | Key in result | What is loaded |
+|--------|---------------|----------------|
+| `finance/` | `"finance"` | Domain model directives |
+| `mathematics/` | `"mathematics"` | Math / calculus directives |
+| `dbs/` | `"dbs"` | DB config files; `files.json` list wrapped under `"files"` key |
+| `actions/` | `"actions"` | Action-dispatcher config snippets |
+| Root `*.py` whitelist | `"python"` | `config.py`, `settings.py`, `directives.py`, etc. (safe subset) |
+
+```python
+from tradingview_integration.unified_feed.adapters.root_directives import (
+    load_all_directives,
+    map_to_feature_engine_inputs,
+    map_to_tensor_calculus_inputs,
+)
+
+directives = load_all_directives()                   # {} if all sources absent
+fe_inputs  = map_to_feature_engine_inputs(directives)
+tc_inputs  = map_to_tensor_calculus_inputs(directives)
+```
+
+### Database migrations (`db/migrations/`)
+
+`db/migrations/001_initial.sql` creates the `artifact_metadata`, `fetch_record`, and `job` tables. Apply it to a new SQLite file:
+
+```bash
+sqlite3 mydb.sqlite < tradingview_integration/unified_feed/db/migrations/001_initial.sql
+```

@@ -3,6 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
+_Last updated: 2026-05-02 07:09 UTC_
 _Last updated: 2026-05-02 15:57 UTC_
 <!-- END_LAST_UPDATED -->
 
@@ -18,6 +19,11 @@ _Last updated: 2026-05-02 15:57 UTC_
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
+- [`e165005997`](https://github.com/majixai/majixai.github.io/commit/e165005997d31cd7cb59d5acd3f0ec63f6d2447c) -- 2026-05-02 -- Copilot -- Merge 101c1c80b788edfeab4562ee13bc841613204050 into 706701ab4e273d564f29c06a107cd9256ae4cbbf -- [Open page](https://majixai.github.io/router/)
+- [`101c1c80b7`](https://github.com/majixai/majixai.github.io/commit/101c1c80b788edfeab4562ee13bc841613204050) -- 2026-05-01 -- majixai -- Merge branch 'main' into copilot/add-provenance-helper-and-db-manager -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`706701ab4e`](https://github.com/majixai/majixai.github.io/commit/706701ab4e273d564f29c06a107cd9256ae4cbbf) -- 2026-05-02 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`715c12aba7`](https://github.com/majixai/majixai.github.io/commit/715c12aba7a234e5ea2a13ebfb49647eb036c879) -- 2026-05-01 -- majixai -- Change greeting from 'Hello' to 'Goodbye' -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`aefad83c24`](https://github.com/majixai/majixai.github.io/commit/aefad83c24fc1781d7e22a5365d95a6f8f7cb01a) -- 2026-05-02 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-05-02 06:54:08 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 - [`c7a3f1333b`](https://github.com/majixai/majixai.github.io/commit/c7a3f1333b9e3b3b9bfa75d41d052b515adc097b) -- 2026-05-02 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-05-02 15:49:01 UTC -- [Open page](https://majixai.github.io/market_prediction/)
 - [`bf7830ba0d`](https://github.com/majixai/majixai.github.io/commit/bf7830ba0d9c71f8797269d7c610d45a6d4d3f4d) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — sp projection 2026-05-02 15:47:39 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 - [`6e6527b6bb`](https://github.com/majixai/majixai.github.io/commit/6e6527b6bb95ef9224b663b048292e98f4b1f2f6) -- 2026-05-02 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-02 15:46:25 UTC -- [Open page](https://majixai.github.io/data/)
@@ -27,12 +33,12 @@ _Last updated: 2026-05-02 15:57 UTC_
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `1a71a0d` — 2026-05-02 — **github-actions[bot]** — data: Update index data - 2026-05-02 01:45:32 UTC  
-  _40276 lines changed (39407+ / 869-)_
+- **Biggest update today:** `101c1c8` — 2026-05-01 — **majixai** — Merge branch 'main' into copilot/add-provenance-helper-and-db-manager  
+  _154142 lines changed (151240+ / 2902-)_
 - **Biggest update this week:** `e38471a` — 2026-04-28 — **github-actions[bot]** — data: Update index data - 2026-04-28 01:48:15 UTC  
   _349492 lines changed (348370+ / 1122-)_
-- **Biggest update this month:** `13c2b97` — 2026-05-01 — **github-actions[bot]** — data: Update index data - 2026-05-01 01:47:53 UTC  
-  _103963 lines changed (102846+ / 1117-)_
+- **Biggest update this month:** `101c1c8` — 2026-05-01 — **majixai** — Merge branch 'main' into copilot/add-provenance-helper-and-db-manager  
+  _154142 lines changed (151240+ / 2902-)_
 - **Biggest update this quarter:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
   _383440 lines changed (379676+ / 3764-)_
 - **Biggest update this year:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
