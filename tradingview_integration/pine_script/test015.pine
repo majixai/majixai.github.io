@@ -361,15 +361,6 @@ b_tc(float expectedPrice, float priorPrice, float errorTerm, int stepIdx, float 
     float posteriorShift = (bayesDiff * curveScalar) * math.exp(-stepIdx / (10.0 * adaptCoeff))
     expectedPrice + posteriorShift
 
-// Compute price distribution skewness (3rd standardised moment)
-calc_skewness(float[] prices, int lb) =>
-    float mn   = ta.sma(close, lb)
-    float sd   = ta.stdev(close, lb)
-    float cubd = 0.0
-    for i = 0 to lb - 1
-        cubd += math.pow(close[i] - mn, 3)
-    sd != 0 ? (cubd / lb) / math.pow(sd, 3) : 0.0
-
 // ---------------------- Draw-object lifecycle helpers ----------------------
 push_box_capped(box[] arr, box obj, int cap) =>
     array.push(arr, obj)
@@ -513,56 +504,14 @@ OptionsGreeks greeks = g_grk(close, close*st_ml, rf_rt, t_ex/365.0, ta.stdev(clo
 // 6. KINEMATIC & ALPHATREND ENGINE
 // ============================================================================
 
-// Ordinary Least Squares kinematic regression on a rolling price buffer
-c_kn(float[] priceArr, int lb) =>
-    float sumX=0.0, float sumY=0.0, float sumXY=0.0, float sumX2=0.0
-    for i = 0 to lb - 1
-        float v = array.get(priceArr, lb - 1 - i)
-        sumX += i, sumY += v, sumXY += i*v, sumX2 += i*i
-    float n         = lb
-    float velocity  = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX)
-    float intercept = (sumY - velocity*sumX) / n
-    float ssRes     = 0.0
-    for i = 0 to lb - 1
-        float v = array.get(priceArr, lb - 1 - i)
-        ssRes += math.pow(v - (intercept + velocity*i), 2)
-    float prevVel   = nz(velocity[2], velocity)
-    float accel     = (velocity - prevVel) / 2.0
-    KinematicModel.new(velocity, accel, intercept, math.sqrt(ssRes / n), lb)
-
-// Ring-buffer kinematic regression (avoids per-bar shift/unshift churn).
-c_kn_ring(float[] ringBuf, int head, int count, int lb) =>
-    int ringSize = array.size(ringBuf)
-    int nInt = math.min(lb, count)
-    float n = nInt
-    float sumX=0.0, float sumY=0.0, float sumXY=0.0, float sumX2=0.0
-    int start = (head - nInt + ringSize) % ringSize
-    for i = 0 to nInt - 1
-        int idx = (start + i) % ringSize
-        float v = array.get(ringBuf, idx)
-        sumX += i, sumY += v, sumXY += i*v, sumX2 += i*i
-    float velocity  = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX)
-    float intercept = (sumY - velocity*sumX) / n
-    float ssRes     = 0.0
-    for i = 0 to nInt - 1
-        int idx = (start + i) % ringSize
-        float v = array.get(ringBuf, idx)
-        ssRes += math.pow(v - (intercept + velocity*i), 2)
-    float prevVel   = nz(velocity[2], velocity)
-    float accel     = (velocity - prevVel) / 2.0
-    KinematicModel.new(velocity, accel, intercept, math.sqrt(ssRes / n), nInt)
-
-// Maintain a rolling 50-bar close ring buffer for regression input
-var float[] closeBuf = array.new_float(50, close)
-var int closeBufHead = 0
-var int closeBufCount = 50
-if barstate.isrealtime or barstate.ishistory
-    array.set(closeBuf, closeBufHead, close)
-    closeBufHead := (closeBufHead + 1) % array.size(closeBuf)
-    closeBufCount := math.min(array.size(closeBuf), closeBufCount + 1)
-
-if closeBufCount >= 20
-    kin         := c_kn_ring(closeBuf, closeBufHead, closeBufCount, 20)
+// Kinematic model via ta.linreg (replaces manual OLS c_kn/c_kn_ring loops)
+if bar_index >= 20
+    float linVal     = ta.linreg(close, 20, 0)
+    float velocity   = linVal - ta.linreg(close, 20, 1)
+    float prevVel    = nz(velocity[2], velocity)
+    float accel      = (velocity - prevVel) / 2.0
+    float errorTerm  = ta.stdev(close - linVal, 20)
+    kin              := KinematicModel.new(velocity, accel, linVal, errorTerm, 20)
     uz.standardError := kin.errorTerm
 
 // AlphaTrend core: ATR + RSI + MFI momentum engine
@@ -690,7 +639,7 @@ if anyBull or anyBear
     brk.anchorPOC       := poc3!=0 ? poc3 : (poc2!=0 ? poc2 : (poc1!=0 ? poc1 : close))
 
 // ============================================================================
-// 8. CANDLESTICK LEXICON (FULL 80+ PATTERN SET)
+// 8. CANDLESTICK LEXICON (TOP 27 PATTERNS)
 // ============================================================================
 
 float bodySize  = math.abs(close - open)
@@ -712,349 +661,89 @@ bool isHammer   = isBear[1] and lowerWick > bodySize*2 and upperWick < bodySize*
 bool isHangMan  = isBull[1] and lowerWick > bodySize*2 and upperWick < bodySize*0.5 and totalSize > avgSize*0.8
 bool isShootStar = isBull[1] and upperWick > bodySize*2 and lowerWick < bodySize*0.5 and totalSize > avgSize*0.8
 bool isInvHam   = isBear[1] and upperWick > bodySize*2 and lowerWick < bodySize*0.5 and totalSize > avgSize*0.8
-bool isBullBelt = isBull and lowerWick < totalSize*0.05 and bodySize > avgBody and upperWick > 0
-bool isBearBelt = isBear and upperWick < totalSize*0.05 and bodySize > avgBody and lowerWick > 0
-bool isShavenH  = isBull and upperWick == 0 and bodySize > avgBody
-bool isShavenB  = isBear and lowerWick == 0 and bodySize > avgBody
-// Extended single-bar patterns (from full lexicon)
-bool isRickshaw = isDoji and upperWick > totalSize*0.4 and lowerWick > totalSize*0.4
-bool isTakuri   = lowerWick > bodySize*3 and upperWick < bodySize*0.1
-bool isHighWave = upperWick > avgBody and lowerWick > avgBody and bodySize < avgBody*0.5
-bool isSpinTop  = upperWick > bodySize and lowerWick > bodySize and not isDoji and bodySize > totalSize*0.1
 
 // Two-bar patterns
 bool bullEngulf  = isBull and isBear[1] and close >= open[1] and open <= close[1] and bodySize > bodySize[1]
 bool bearEngulf  = isBear and isBull[1] and close <= open[1] and open >= close[1] and bodySize > bodySize[1]
 bool bullHarami  = isBull and isBear[1] and close < open[1] and open > close[1]
 bool bearHarami  = isBear and isBull[1] and close > open[1] and open < close[1]
-bool bullHaramiX = isBear[1] and isDoji and high < open[1] and low > close[1]
-bool bearHaramiX = isBull[1] and isDoji and high < close[1] and low > open[1]
 bool piercing    = isBear[1] and isBull and open < low[1] and close > (open[1]+close[1])/2 and close < open[1]
 bool darkCloud   = isBull[1] and isBear and open > high[1] and close < (open[1]+close[1])/2 and close > open[1]
 bool tweezBot    = math.abs(low - low[1]) < avgSize*0.05 and isBear[1] and isBull
 bool tweezTop    = math.abs(high - high[1]) < avgSize*0.05 and isBull[1] and isBear
 bool bullKicker  = isBear[1] and isBull and open >= high[1] and close > open
 bool bearKicker  = isBull[1] and isBear and open <= low[1] and close < open
-bool bullMeetLn  = isBear[1] and isBull and math.abs(close - close[1]) < avgSize*0.05 and open < close[1]
-bool bearMeetLn  = isBull[1] and isBear and math.abs(close - close[1]) < avgSize*0.05 and open > close[1]
-bool onNeckBull  = isBear[1] and isBull and math.abs(close - low[1]) < avgSize*0.05
-bool onNeckBear  = isBull[1] and isBear and math.abs(close - high[1]) < avgSize*0.05
-bool thrustBull  = isBear[1] and isBull and close > (open[1]+close[1])/2 and close < open[1]
-bool thrustBear  = isBull[1] and isBear and close < (open[1]+close[1])/2 and close > open[1]
-// Extended two-bar patterns (from full lexicon)
-bool inNeck      = isBear[1] and isBull and open < low[1] and close >= close[1] and close <= close[1]+(avgSize*0.05)
-bool isThrusting = isBear[1] and isBull and open < low[1] and close < (open[1]+close[1])/2 and close > close[1]
-bool bullSep     = isBear[1] and isBull and math.abs(open - open[1]) < avgSize*0.05
-bool bearSep     = isBull[1] and isBear and math.abs(open - open[1]) < avgSize*0.05
-bool homPigeon   = isBear[1] and isBear and open < open[1] and close > close[1]
-bool descHawk    = isBull[1] and isBull and open > open[1] and close < close[1]
-bool matchLow    = isBear[1] and isBear and math.abs(close - close[1]) < avgSize*0.05
-bool aboStomach  = isBear[1] and isBull and open >= (open[1]+close[1])/2 and close > open[1]
-bool belStomach  = isBull[1] and isBear and open <= (open[1]+close[1])/2 and close < open[1]
 
 // Three-bar patterns
 bool mornStar    = isBear[2] and isBull and bodySize[1] < totalSize[1]*0.3 and close > close[2]+(open[2]-close[2])/2
 bool eveStar     = isBull[2] and isBear and bodySize[1] < totalSize[1]*0.3 and close < close[2]-(close[2]-open[2])/2
 bool mornDojiSt  = isBear[2] and isDoji[1] and isBull and close > close[2]+(open[2]-close[2])/2
 bool eveDojiSt   = isBull[2] and isDoji[1] and isBear and close < close[2]-(close[2]-open[2])/2
-bool abanBabyBl  = isBear[2] and isDoji[1] and isBull and high[1] < low[2] and low > high[1]
-bool abanBabyBr  = isBull[2] and isDoji[1] and isBear and low[1] > high[2] and high < low[1]
 bool threeWhSld  = isBull and isBull[1] and isBull[2] and close>close[1] and close[1]>close[2] and open>open[1] and open[1]>open[2]
 bool threeBkCrw  = isBear and isBear[1] and isBear[2] and close<close[1] and close[1]<close[2] and open<open[1] and open[1]<open[2]
-bool threeInsUp  = bullHarami[1] and isBull and close > close[1]
-bool threeInsDn  = bearHarami[1] and isBear and close < close[1]
-bool threeOutUp  = bullEngulf[1] and isBull and close > close[1]
-bool threeOutDn  = bearEngulf[1] and isBear and close < close[1]
-bool triStarBull = isDoji[2] and isDoji[1] and isDoji and low[1] < low[2] and low[1] < low
-bool triStarBear = isDoji[2] and isDoji[1] and isDoji and high[1] > high[2] and high[1] > high
-bool tasukiUp    = isBull[2] and isBull[1] and isBear and open < close[1] and open > open[1] and close > open[2] and close < close[1]
-bool tasukiDn    = isBear[2] and isBear[1] and isBull and open > close[1] and open < open[1] and close < open[2] and close > close[1]
-// Extended three-bar patterns (from full lexicon)
-bool identCrows  = isBear[2] and isBear[1] and isBear and math.abs(open[1]-close[2]) < avgSize*0.05 and math.abs(open-close[1]) < avgSize*0.05
-bool stickSandwch= isBear[2] and isBull[1] and isBear and math.abs(close-close[2]) < avgSize*0.05 and close < open
-bool advBlock    = isBull[2] and isBull[1] and isBull and close>close[1] and close[1]>close[2] and upperWick>bodySize and upperWick[1]>bodySize[1]
-bool deliberation= isBull[2] and isBull[1] and isBull and close>close[1] and close[1]>close[2] and bodySize < avgBody*0.5
-bool descentBlk  = isBear[2] and isBear[1] and isBear and close[2]>close[1] and close[1]>close and lowerWick>bodySize and lowerWick[1]>bodySize[1]
-bool uniq3River  = isBear[2] and isBear[1] and isBull and lowerWick[1]>bodySize[1]*2 and low>low[1] and close<close[1]
-bool twoCrows    = isBull[2] and isBear[1] and isBear and open<open[1] and close<close[1] and close>close[2]
-bool upGap2Crows = isBull[2] and isBear[1] and isBear and open[1]>close[2] and open>open[1] and close<close[1] and close>close[2]
-bool dnGap3Meth  = isBear[2] and isBear[1] and isBull and high[1]<low[2] and open<close[1] and close>close[2]
-bool upGap3Meth  = isBull[2] and isBull[1] and isBear and low[1]>high[2] and open>close[1] and close<close[2]
-bool three3South = isBear[2] and isBear[1] and isBear and low[2]<low[1] and low[1]<low and high[2]>high[1] and high[1]>high
-bool bullDojiSt  = isBear[1] and isDoji and open < close[1]
-bool bearDojiSt  = isBull[1] and isDoji and open > close[1]
-bool colDoji     = isBear[2] and isBear[1] and isDoji and open < low[1]
 
-// Four/Five bar patterns
-bool ls3Strike   = isBull[3] and isBull[2] and isBull[1] and isBear and open > close[1] and close < open[3]
-bool ls3StrkBl   = isBear[3] and isBear[2] and isBear[1] and isBull and open < close[1] and close > open[3]
+// Four/five-bar continuation patterns
 bool rising3     = isBull[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4] and high[3] < high[4]
 bool falling3    = isBear[4] and isBull[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4] and low[3] > low[4]
-// Extended four/five-bar patterns (from full lexicon)
-bool concealSwal = isBearMaru[3] and isBearMaru[2] and isBear[1] and isBear and open[1]<close[2] and high[1]>close[2] and open>high[1] and close<low[1]
-bool breakawayBl = isBear[4] and isBear[3] and isBear[2] and isBear[1] and isBull and open[3]<low[4] and close>open[3] and close<close[4]
-bool breakawayBr = isBull[4] and isBull[3] and isBull[2] and isBull[1] and isBear and open[3]>high[4] and close<open[3] and close>close[4]
-bool matHoldBl   = isBull[4] and isBull[3] and isBear[2] and isBear[1] and isBull and close>high[4] and low[1]>low[4]
-bool matHoldBr   = isBear[4] and isBear[3] and isBull[2] and isBull[1] and isBear and close<low[4] and high[1]<high[4]
-bool ladderBot   = isBear[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close[4]>close[3] and close[3]>close[2] and open[1]>close[2] and close>high[1]
 
-// Declare variables with default values
+// Pattern score computation
 int candleScore = 0
 string candleName = "NONE"
 
-// Pattern score computation
 if rising3
-    candleScore := 10
-    candleName := "Rising 3"
+    candleScore := 10, candleName := "Rising 3"
 else if falling3
-    candleScore := -10
-    candleName := "Falling 3"
-else if matHoldBl
-    candleScore := 10
-    candleName := "Mat Hold Bull"
-else if matHoldBr
-    candleScore := -10
-    candleName := "Mat Hold Bear"
-else if ladderBot
-    candleScore := 9
-    candleName := "Ladder Bottom"
-else if breakawayBl
-    candleScore := 8
-    candleName := "Breakaway Bull"
-else if breakawayBr
-    candleScore := -8
-    candleName := "Breakaway Bear"
-else if ls3StrkBl
-    candleScore := 8
-    candleName := "3L Strike Bull"
-else if ls3Strike
-    candleScore := -8
-    candleName := "3L Strike Bear"
-else if concealSwal
-    candleScore := -8
-    candleName := "Concealing Swallow"
-else if abanBabyBl
-    candleScore := 7
-    candleName := "Aband Baby Bull"
-else if abanBabyBr
-    candleScore := -7
-    candleName := "Aband Baby Bear"
-else if mornDojiSt
-    candleScore := 7
-    candleName := "Morning Doji Star"
-else if eveDojiSt
-    candleScore := -7
-    candleName := "Evening Doji Star"
-else if triStarBull
-    candleScore := 7
-    candleName := "Tri-Star Bull"
-else if triStarBear
-    candleScore := -7
-    candleName := "Tri-Star Bear"
+    candleScore := -10, candleName := "Falling 3"
 else if bullKicker
-    candleScore := 7
-    candleName := "Bull Kicker"
+    candleScore := 7, candleName := "Bull Kicker"
 else if bearKicker
-    candleScore := -7
-    candleName := "Bear Kicker"
+    candleScore := -7, candleName := "Bear Kicker"
+else if mornDojiSt
+    candleScore := 7, candleName := "Morning Doji Star"
+else if eveDojiSt
+    candleScore := -7, candleName := "Evening Doji Star"
 else if threeWhSld
-    candleScore := 6
-    candleName := "3 White Soldiers"
+    candleScore := 6, candleName := "3 White Soldiers"
 else if threeBkCrw
-    candleScore := -6
-    candleName := "3 Black Crows"
-else if identCrows
-    candleScore := -6
-    candleName := "Identical 3 Crows"
-else if threeInsUp
-    candleScore := 6
-    candleName := "3 Inside Up"
-else if threeInsDn
-    candleScore := -6
-    candleName := "3 Inside Down"
-else if threeOutUp
-    candleScore := 6
-    candleName := "3 Outside Up"
-else if threeOutDn
-    candleScore := -6
-    candleName := "3 Outside Down"
+    candleScore := -6, candleName := "3 Black Crows"
 else if mornStar
-    candleScore := 5
-    candleName := "Morning Star"
+    candleScore := 5, candleName := "Morning Star"
 else if eveStar
-    candleScore := -5
-    candleName := "Evening Star"
-else if tasukiUp
-    candleScore := 4
-    candleName := "Upside Tasuki"
-else if tasukiDn
-    candleScore := -4
-    candleName := "Downside Tasuki"
-else if upGap3Meth
-    candleScore := -5
-    candleName := "Up Gap 3 Methods"
-else if dnGap3Meth
-    candleScore := 5
-    candleName := "Down Gap 3 Methods"
-else if upGap2Crows
-    candleScore := -5
-    candleName := "Up Gap 2 Crows"
-else if colDoji
-    candleScore := -4
-    candleName := "Collapsing Doji Star"
+    candleScore := -5, candleName := "Evening Star"
 else if bullEngulf
-    candleScore := 4
-    candleName := "Bullish Engulfing"
+    candleScore := 4, candleName := "Bullish Engulfing"
 else if bearEngulf
-    candleScore := -4
-    candleName := "Bearish Engulfing"
+    candleScore := -4, candleName := "Bearish Engulfing"
 else if piercing
-    candleScore := 4
-    candleName := "Piercing Line"
+    candleScore := 4, candleName := "Piercing Line"
 else if darkCloud
-    candleScore := -4
-    candleName := "Dark Cloud Cover"
+    candleScore := -4, candleName := "Dark Cloud Cover"
 else if tweezBot
-    candleScore := 4
-    candleName := "Tweezer Bottom"
+    candleScore := 4, candleName := "Tweezer Bottom"
 else if tweezTop
-    candleScore := -4
-    candleName := "Tweezer Top"
-else if bullHaramiX
-    candleScore := 3
-    candleName := "Bull Harami Cross"
-else if bearHaramiX
-    candleScore := -3
-    candleName := "Bear Harami Cross"
-else if bullMeetLn
-    candleScore := 3
-    candleName := "Bull Meeting Lines"
-else if bearMeetLn
-    candleScore := -3
-    candleName := "Bear Meeting Lines"
-else if thrustBull
-    candleScore := 3
-    candleName := "Bullish Thrust"
-else if thrustBear
-    candleScore := -3
-    candleName := "Bearish Thrust"
-else if isThrusting
-    candleScore := 2
-    candleName := "Thrusting Line"
-else if inNeck
-    candleScore := -2
-    candleName := "In-Neck Line"
+    candleScore := -4, candleName := "Tweezer Top"
 else if bullHarami
-    candleScore := 2
-    candleName := "Bullish Harami"
+    candleScore := 2, candleName := "Bullish Harami"
 else if bearHarami
-    candleScore := -2
-    candleName := "Bearish Harami"
+    candleScore := -2, candleName := "Bearish Harami"
 else if isBullMaru
-    candleScore := 2
-    candleName := "Bull Marubozu"
+    candleScore := 2, candleName := "Bull Marubozu"
 else if isBearMaru
-    candleScore := -2
-    candleName := "Bear Marubozu"
-else if isBullBelt
-    candleScore := 2
-    candleName := "Bull Belt Hold"
-else if isBearBelt
-    candleScore := -2
-    candleName := "Bear Belt Hold"
-else if bullSep
-    candleScore := 2
-    candleName := "Bull Separating"
-else if bearSep
-    candleScore := -2
-    candleName := "Bear Separating"
-else if aboStomach
-    candleScore := 2
-    candleName := "Above Stomach"
-else if belStomach
-    candleScore := -2
-    candleName := "Below Stomach"
-else if homPigeon
-    candleScore := 2
-    candleName := "Homing Pigeon"
-else if descHawk
-    candleScore := -2
-    candleName := "Descending Hawk"
-else if matchLow
-    candleScore := 2
-    candleName := "Matching Low"
-else if stickSandwch
-    candleScore := 2
-    candleName := "Stick Sandwich"
-else if bullDojiSt
-    candleScore := 2
-    candleName := "Bull Doji Star"
-else if bearDojiSt
-    candleScore := -2
-    candleName := "Bear Doji Star"
-else if uniq3River
-    candleScore := 2
-    candleName := "Unique 3 River"
-else if three3South
-    candleScore := 2
-    candleName := "3 Stars in South"
-else if advBlock
-    candleScore := -2
-    candleName := "Advance Block"
-else if deliberation
-    candleScore := -2
-    candleName := "Deliberation"
-else if descentBlk
-    candleScore := 2
-    candleName := "Descent Block"
-else if twoCrows
-    candleScore := -2
-    candleName := "Two Crows"
-else if onNeckBull
-    candleScore := 1
-    candleName := "On Neck Bull"
-else if onNeckBear
-    candleScore := -1
-    candleName := "On Neck Bear"
+    candleScore := -2, candleName := "Bear Marubozu"
 else if isHammer
-    candleScore := 1
-    candleName := "Hammer"
+    candleScore := 1, candleName := "Hammer"
 else if isShootStar
-    candleScore := -1
-    candleName := "Shooting Star"
+    candleScore := -1, candleName := "Shooting Star"
 else if isHangMan
-    candleScore := -1
-    candleName := "Hanging Man"
+    candleScore := -1, candleName := "Hanging Man"
 else if isInvHam
-    candleScore := 1
-    candleName := "Inverted Hammer"
-else if isShavenH
-    candleScore := 1
-    candleName := "Shaven Head"
-else if isShavenB
-    candleScore := -1
-    candleName := "Shaven Bottom"
-else if isTakuri
-    candleScore := 1
-    candleName := "Takuri Line"
+    candleScore := 1, candleName := "Inverted Hammer"
 else if isDragon
-    candleScore := 1
-    candleName := "Dragonfly Doji"
+    candleScore := 1, candleName := "Dragonfly Doji"
 else if isGrave
-    candleScore := -1
-    candleName := "Gravestone Doji"
-else if isRickshaw
-    candleScore := 0
-    candleName := "Rickshaw Man"
-else if isHighWave
-    candleScore := 0
-    candleName := "High Wave"
-else if isSpinTop
-    candleScore := 0
-    candleName := "Spinning Top"
+    candleScore := -1, candleName := "Gravestone Doji"
 else if isDoji
-    candleScore := 0
-    candleName := "Doji"
+    candleScore := 0, candleName := "Doji"
 
 
 pe.activeCandlePat := candleName
@@ -2120,12 +1809,6 @@ float sAtr_hi = ta.sma(ta.tr, math.min(100, al_pr + 3))
 float bnd_lo  = low  - sAtr_lo * math.max(b_cf - 0.3, 0.5)
 float bnd_hi  = high + sAtr_hi * (b_cf + 0.3)
 
-var float[] sensitivity_hi = array.new_float(5, close)
-var float[] sensitivity_lo = array.new_float(5, close)
-for i = 0 to 4
-    array.set(sensitivity_hi, i, close + kin.velocity*(i+1) + kin.errorTerm*(i+1))
-    array.set(sensitivity_lo, i, close + kin.velocity*(i+1) - kin.errorTerm*(i+1))
-
 // ============================================================================
 // 22. VOLUME-WEIGHTED PROJECTION REFINEMENT
 // ============================================================================
@@ -2159,10 +1842,12 @@ bool  obvBear = obvAccum < obvEma
 // 23. ADDITIONAL KINEMATIC PASSES (MULTI-LAG ENSEMBLE)
 // ============================================================================
 
-// Compute kinematic model on 3 different lookback periods and blend
-KinematicModel kinShort  = array.size(closeBuf) >= 10  ? c_kn(closeBuf, 10)  : kin
-KinematicModel kinMedium = array.size(closeBuf) >= 20  ? c_kn(closeBuf, 20)  : kin
-KinematicModel kinLong   = array.size(closeBuf) >= 40  ? c_kn(closeBuf, math.min(40, array.size(closeBuf)-1)) : kin
+// Compute kinematic model on 3 different lookback periods and blend (using ta.linreg)
+float v10 = bar_index >= 10 ? ta.linreg(close, 10, 0) - ta.linreg(close, 10, 1) : kin.velocity
+float v40 = bar_index >= 40 ? ta.linreg(close, 40, 0) - ta.linreg(close, 40, 1) : kin.velocity
+KinematicModel kinShort  = bar_index >= 10 ? KinematicModel.new(v10, (v10-nz(v10[2],v10))/2.0, ta.linreg(close,10,0), ta.stdev(close-ta.linreg(close,10,0),10), 10) : kin
+KinematicModel kinMedium = kin
+KinematicModel kinLong   = bar_index >= 40 ? KinematicModel.new(v40, (v40-nz(v40[2],v40))/2.0, ta.linreg(close,40,0), ta.stdev(close-ta.linreg(close,40,0),40), 40) : kin
 
 // Blended velocity and error (weights: 0.2 short / 0.5 medium / 0.3 long)
 float blendedVel   = kinShort.velocity  * 0.2 + kinMedium.velocity  * 0.5 + kinLong.velocity  * 0.3
@@ -2295,15 +1980,6 @@ float momRoC   = momNorm - nz(momNorm[3], momNorm)
 // ============================================================================
 // 29. CROSS-ASSET CORRELATION ENGINE
 // ============================================================================
-
-// Compute rolling 20-bar correlation between primary and each security
-f_corr(float[] a, float[] b, int lb) =>
-    float ma = ta.sma(array.get(a,0), lb), float mb = ta.sma(array.get(b,0), lb)
-    float sa = ta.stdev(array.get(a,0), lb), float sb = ta.stdev(array.get(b,0), lb)
-    float covar = 0.0
-    for i = 0 to lb - 1
-        covar += (array.get(a,0)[i] - ma) * (array.get(b,0)[i] - mb)
-    (sa * sb) > 0 ? (covar / lb) / (sa * sb) : 0.0
 
 // Close series from securities (request.security already fetched earlier via MACD calls)
 float corr_s1 = ta.correlation(close, request.security(s_1, timeframe.period, close), 20)
@@ -2740,33 +2416,6 @@ bool  atGannAngl = (not na(gann1x1Hi) and math.abs(close - gann1x1Hi) / close < 
                    (not na(gann1x1Lo) and math.abs(close - gann1x1Lo) / close < 0.003)
 
 // ============================================================================
-// 44. FINAL DATA WINDOW — EXTENDED METRICS
-// ============================================================================
-
-// Rolling alpha/beta vs S&P 500 proxy (using s_1 as benchmark)
-float benchClose   = request.security(s_1, timeframe.period, close)
-float benchRet     = (benchClose - benchClose[1]) / benchClose[1]
-float assetRet     = (close      - close[1])      / close[1]
-float betaEst      = ta.correlation(assetRet, benchRet, 20) *
-                     (ta.stdev(assetRet, 20) / math.max(ta.stdev(benchRet, 20), 0.0001))
-float alphaEst     = ta.sma(assetRet, 20) - betaEst * ta.sma(benchRet, 20)
-float infoRatio    = ta.stdev(assetRet - benchRet, 20) > 0 ?
-                     ta.sma(assetRet - benchRet, 20) / ta.stdev(assetRet - benchRet, 20) : 0.0
-
-// Calmar ratio approximation
-float calmarRatio  = drawdownPct > 0 ? (strategy.equity / strategy.initial_capital - 1) / (drawdownPct/100) : 0.0
-
-// Sortino ratio (uses downside deviation)
-float rfDaily      = rf_rt / 252
-float excessRet    = assetRet - rfDaily
-float downDev2     = 0.0
-for i = 0 to 19
-    float r = assetRet[i]
-    if r < rfDaily
-        downDev2 += math.pow(r - rfDaily, 2)
-float sortinoRatio = math.sqrt(downDev2 / 20) > 0 ?
-                     ta.sma(excessRet, 20) / math.sqrt(downDev2 / 20) * math.sqrt(252) : 0.0
-// ============================================================================
 // 17. DATA WINDOW PLOTS (OPTIMIZED - 64 PLOT LIMIT COMPLIANT)
 // ============================================================================
 // ============================================================================
@@ -2843,103 +2492,3 @@ float biasMap = vwapBias + (mssActive ? 1 : 0)
 plot(biasMap, "Bias/MSS Combo", display=display.data_window)
 
 
-
-
-
-// --- Inputs ---
-lookback      = input.int(20, "Lookback Period", minval=1)
-showPriceInfo = input.bool(true, "Show Price in Label")
-showTimeInfo  = input.bool(true, "Show Time in Label")
-lineColor     = input.color(color.red, "Line Color")
-
-// --- Calculations ---
-// Find the highest and lowest values in the lookback
-highestVal = ta.highest(high, lookback)
-lowestVal  = ta.lowest(low, lookback)
-
-// Find the offset (how many bars ago) these occurred
-highestOffset = ta.highestbars(high, lookback)
-lowestOffset  = ta.lowestbars(low, lookback)
-
-// Logic: "If negative" (High happened before the Low, indicating a drop)
-isNegative = highestOffset < lowestOffset 
-
-// Persistent line variable
-var line highLowLine = na
-var label infoLabel = na
-
-if isNegative
-    // Remove previous drawings to only show the most recent
-    line.delete(highLowLine)
-    label.delete(infoLabel)
-
-    // Draw line from Recent High to Recent Low
-    highLowLine := line.new(
-         x1 = bar_index + highestOffset, y1 = highestVal,
-         x2 = bar_index + lowestOffset,  y2 = lowestVal,
-         color = lineColor, width = 2
-         )
-
-    // Create Label for Price and Time
-    string labelText = ""
-    if showPriceInfo
-        labelText := "Range: " + str.tostring(highestVal - lowestVal)
-    if showTimeInfo
-        labelText := labelText + "\nBars: " + str.tostring(math.abs(highestOffset - lowestOffset))
-
-    if labelText != ""
-        infoLabel := label.new(
-             bar_index + lowestOffset, lowestVal, 
-             text = labelText, 
-             style = label.style_label_up, 
-             color = color.new(lineColor, 80)
-             )
-
-
-
-// --- Inputs ---
-sdLookback    = input.int(20, "SD Calculation Lookback")
-
-// Function to draw the H-L connector and horizontal SD lines
-renderLevels(int lookbackBars, string labelSuffix) =>
-    float hVal = ta.highest(high, lookbackBars)
-    float lVal = ta.lowest(low, lookbackBars)
-    int hOff   = ta.highestbars(high, lookbackBars)
-    int lOff   = ta.lowestbars(low, lookbackBars)
-    
-    // 1. Draw the "Negative" Slope (High occurred before Low)
-    if hOff < lOff
-        line.new(bar_index + hOff, hVal, bar_index + lOff, lVal, color=lineColor, width=1)
-
-    // 2. Horizontal Projection Logic: High within 1 SD of current OC (Open/Close average)
-    float currentOC = (open + close) / 2
-    float stdevOC   = ta.stdev(currentOC, lookbackBars)
-    
-    if math.abs(hVal - currentOC) < stdevOC
-        // Horizontal line for last 5 bars and next 10 bars
-        line.new(bar_index - 5, hVal, bar_index + 10, hVal, color=color.new(color.gray, 50), style=line.style_dashed)
-
-// --- Timeframe Calculations ---
-// Convert hours to approximate bars based on current chart timeframe
-barsInHour = math.max(1, math.floor(60 / timeframe.multiplier))
-renderLevels(barsInHour, "1H")
-renderLevels(barsInHour * 2, "2H")
-renderLevels(barsInHour * 4, "4H")
-renderLevels(barsInHour * 24, "24H")
-
-// --- Breakout Momentum Tracking ---
-float barRange = high - low
-float avgRange = ta.sma(barRange, sdLookback)
-float stdRange = ta.stdev(barRange, sdLookback)
-
-bool isNewHigh = high > ta.highest(high[1], sdLookback)
-bool isNewLow  = low < ta.lowest(low[1], sdLookback)
-bool isVolatile = barRange > (avgRange + 2 * stdRange)
-
-// Visual cue for high-SD breakouts
-plotshape(isNewHigh and isVolatile, "Volatility High", shape.triangleup, location.abovebar, color.red, size=size.small)
-plotshape(isNewLow and isVolatile, "Volatility Low", shape.triangledown, location.belowbar, color.green, size=size.small)
-
-// --- Alerts for Large Moves ---
-if (isNewHigh or isNewLow) and isVolatile
-    alert("Volatility Breakout Detected", alert.freq_once_per_bar)
