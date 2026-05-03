@@ -22,6 +22,9 @@ import unittest
 import numpy as np
 
 _REPO = pathlib.Path(__file__).resolve().parents[2]
+
+# Unix timestamp for 2024-01-01 00:00:00 UTC, used as the base time in synthetic data.
+_BASE_TIMESTAMP = 1_704_067_200
 if str(_REPO) not in sys.path:
     sys.path.insert(0, str(_REPO))
 
@@ -55,17 +58,16 @@ def _make_rates(n: int = 300, drift: float = 0.0, vol: float = 0.0005,
         ("real_volume", np.int64),
     ])
     arr = np.zeros(n, dtype=dtype)
-    prices = [base]
-    for _ in range(n - 1):
-        prices.append(prices[-1] * math.exp(drift / _ANNUALISE_FACTOR + vol * rng.standard_normal()))
-    prices = np.array(prices)
-    for i in range(n):
-        arr[i]["time"]        = 1_704_067_200 + i * 60
-        arr[i]["open"]        = prices[i]
-        arr[i]["high"]        = prices[i] * (1 + abs(rng.normal(0, vol)))
-        arr[i]["low"]         = prices[i] * (1 - abs(rng.normal(0, vol)))
-        arr[i]["close"]       = prices[i] * math.exp(rng.normal(0, vol))
-        arr[i]["tick_volume"] = int(rng.integers(100, 1000))
+    # Build log-returns then cumprod for a GBM price path
+    log_ret = drift / _ANNUALISE_FACTOR + vol * rng.standard_normal(n)
+    log_ret[0] = 0.0
+    prices = base * np.exp(np.cumsum(log_ret))
+    arr["time"]        = _BASE_TIMESTAMP + np.arange(n) * 60
+    arr["open"]        = prices
+    arr["high"]        = prices * (1 + np.abs(rng.normal(0, vol, n)))
+    arr["low"]         = prices * (1 - np.abs(rng.normal(0, vol, n)))
+    arr["close"]       = prices * np.exp(rng.normal(0, vol, n))
+    arr["tick_volume"] = rng.integers(100, 1000, n)
     return arr
 
 
@@ -84,13 +86,13 @@ def _make_mean_reverting_rates(n: int = 300, theta: float = 1.085,
     arr = np.zeros(n, dtype=dtype)
     p = theta
     for i in range(n):
-        arr[i]["time"]  = 1_704_067_200 + i * 60
+        arr[i]["time"]  = _BASE_TIMESTAMP + i * 60
         arr[i]["open"]  = p
         arr[i]["high"]  = p + abs(rng.normal(0, sigma))
         arr[i]["low"]   = p - abs(rng.normal(0, sigma))
         arr[i]["close"] = p
         arr[i]["tick_volume"] = 500
-        # OU update
+        # OU update: dX = κ(θ − X)dt + σ dW
         dW = rng.standard_normal() * math.sqrt(dt)
         p  = p + kappa * (theta - p) * dt + sigma * dW
     return arr

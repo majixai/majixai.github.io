@@ -37,8 +37,9 @@ MajixActions.dispatch('history/query', {
       var logEl = document.getElementById('log');
 
       MajixActions.on('*', function (payload, meta) {
+        var type = (meta && meta.action) ? meta.action : '(unknown)';
         var item = document.createElement('p');
-        item.textContent = '[' + new Date().toISOString() + '] action dispatched';
+        item.textContent = '[' + new Date().toISOString() + '] ' + type + ' dispatched';
         logEl.appendChild(item);
       });
 

@@ -205,9 +205,13 @@ class _MockState:
 
 _STATE = _MockState()
 
+# Internal helpers
+_SECONDS_PER_MINUTE = 60  # seconds in one minute bar (used for time spacing in mock data)
+
 # ---------------------------------------------------------------------------
 # Mock helper builders
 # ---------------------------------------------------------------------------
+
 
 def _mock_account_info() -> AccountInfo:
     return AccountInfo(
@@ -299,7 +303,7 @@ def _make_rates_array(n: int, base_price: float = 1.08500) -> np.ndarray:
     prices = base_price + np.cumsum(rng.normal(0, 0.0001, n))
     now = int(time.time())
     for i in range(n):
-        arr[i]["time"] = now - (n - i) * 60
+        arr[i]["time"] = now - (n - i) * _SECONDS_PER_MINUTE
         arr[i]["open"] = prices[i]
         arr[i]["high"] = prices[i] + abs(rng.normal(0, 0.0002))
         arr[i]["low"]  = prices[i] - abs(rng.normal(0, 0.0002))

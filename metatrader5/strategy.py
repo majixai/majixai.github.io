@@ -43,6 +43,7 @@ import numpy as np
 
 _EPSILON = 1e-10
 _ANNUALISE_FACTOR = 252  # trading days per year
+_MIN_OU_OBS = 10        # minimum observations required for OU parameter estimation
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +56,13 @@ def _normal_cdf(x: float) -> float:
 
 
 def _normal_quantile(p: float) -> float:
-    """Rational approximation for the inverse normal CDF (Abramowitz & Stegun)."""
+    """Rational approximation for the inverse normal CDF (Abramowitz & Stegun).
+
+    Parameters
+    ----------
+    p : float
+        Probability in the open interval (0, 1).
+    """
     if not (0.0 < p < 1.0):
         raise ValueError(f"p must be in (0,1); got {p}")
     if p < 0.5:
@@ -107,8 +114,8 @@ def fit_ou_params(
     theta : float   — long-run mean level
     sigma : float   — instantaneous volatility
     """
-    if len(prices) < 10:
-        raise ValueError("Need at least 10 price observations for OU fit.")
+    if len(prices) < _MIN_OU_OBS:
+        raise ValueError(f"Need at least {_MIN_OU_OBS} price observations for OU fit.")
     x = prices[:-1]
     y = prices[1:]
     # OLS: y = a*x + b  (via normal equations)
