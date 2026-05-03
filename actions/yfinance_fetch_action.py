@@ -31,6 +31,14 @@ Forecast types produced per ticker
 3. neural        — BUY / HOLD / SELL signal via NeuralBridge (LSTM + EKF)
 4. ou_reversion  — Ornstein-Uhlenbeck mean-reversion speed κ and half-life
 5. trend         — Simple linear-regression slope over the period
+
+Exit codes
+----------
+0  — Completed successfully; no bull triggers found.
+1  — Aborted (no symbols to process or argument error).
+2  — Completed successfully AND bull triggers were detected.  This is an
+     informational signal, not an error.  The workflow treats it as success
+     (``if [ $EXIT -eq 2 ]; then exit 0; fi``).
 """
 
 from __future__ import annotations
