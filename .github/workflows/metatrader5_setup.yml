@@ -1,0 +1,34 @@
+name: MetaTrader5 Package Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      upgrade:
+        description: 'Upgrade to the latest MetaTrader5 version'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  metatrader5_setup:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install or upgrade MetaTrader5
+        run: python actions/metatrader5_setup.py $(if ('${{ github.event.inputs.upgrade }}' -eq 'true') { '--upgrade' })
+        shell: pwsh
+
+      - name: Verify installation
+        run: python -c "import MetaTrader5; print('MetaTrader5 version:', MetaTrader5.__version__)"
+        shell: pwsh
