@@ -1,0 +1,148 @@
+name: Financial Email Reports
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schedule summary (all times UTC → convert to local)
+#
+# Weekdays (Mon–Fri)
+#   06:00 UTC  — Pre-market bull screener (stocks + crypto), today & 3-day forecast
+#   09:00 UTC  — 9 AM open snapshot + 1/3-day GBM forecasts
+#   10:00 UTC  — 10 AM mid-morning report
+#   13:00 UTC  — 1 PM indices close summary
+#
+# Weekends (Sat + Sun)
+#   09:00 UTC  — Morning weekly digest
+#   22:00 UTC  — Evening weekly digest
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # ── Weekday 6 AM UTC (pre-market open bull screener) ──────────────────────
+    - cron: '0 6 * * 1-5'
+    # ── Weekday 9 AM UTC ──────────────────────────────────────────────────────
+    - cron: '0 9 * * 1-5'
+    # ── Weekday 10 AM UTC ─────────────────────────────────────────────────────
+    - cron: '0 10 * * 1-5'
+    # ── Weekday 1 PM UTC (indices close report) ───────────────────────────────
+    - cron: '0 13 * * 1-5'
+    # ── Saturday 9 AM UTC ─────────────────────────────────────────────────────
+    - cron: '0 9 * * 6'
+    # ── Saturday 10 PM UTC ────────────────────────────────────────────────────
+    - cron: '0 22 * * 6'
+    # ── Sunday 9 AM UTC ───────────────────────────────────────────────────────
+    - cron: '0 9 * * 0'
+    # ── Sunday 10 PM UTC ──────────────────────────────────────────────────────
+    - cron: '0 22 * * 0'
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >
+          Report mode to send manually:
+          weekday_open | weekday_9am | weekday_10am | weekday_1pm |
+          weekend_9am  | weekend_10pm
+        required: false
+        default: 'weekday_open'
+      dry_run:
+        description: 'Print report without sending email (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: financial-email-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  send-financial-email:
+    name: Send Financial Email Report
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      # ── 3. Dependencies ──────────────────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install yfinance pandas numpy scipy
+
+      # ── 4. Determine report mode from cron schedule ──────────────────────────
+      #
+      #  GitHub Actions does not expose the matched cron rule directly, so we
+      #  determine the mode by inspecting the current UTC hour and day-of-week.
+      #
+      - name: Determine report mode
+        id: mode
+        run: |
+          if [ -n "${{ github.event.inputs.mode }}" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+            echo "INFO: Manual mode override: ${{ github.event.inputs.mode }}"
+          else
+            HOUR=$(date -u +%H)
+            DOW=$(date -u +%u)   # 1=Mon … 7=Sun
+            echo "INFO: UTC hour=${HOUR}  day-of-week=${DOW}"
+
+            if [ "$DOW" -ge 6 ]; then
+              # Weekend (6=Sat, 7=Sun)
+              if [ "$HOUR" -eq 9 ]; then
+                MODE="weekend_9am"
+              else
+                MODE="weekend_10pm"
+              fi
+            else
+              # Weekday
+              case "$HOUR" in
+                6)  MODE="weekday_open"  ;;
+                9)  MODE="weekday_9am"   ;;
+                10) MODE="weekday_10am"  ;;
+                13) MODE="weekday_1pm"   ;;
+                *)  MODE="weekday_open"  ;;
+              esac
+            fi
+            echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+            echo "INFO: Resolved mode: ${MODE}"
+          fi
+
+      # ── 5. Generate & send report ─────────────────────────────────────────────
+      - name: Send financial email report
+        env:
+          SMTP_SERVER:      ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT:        ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME:    ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD:    ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL:     ${{ secrets.SENDER_EMAIL }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        run: |
+          MODE="${{ steps.mode.outputs.mode }}"
+          DRY="${{ github.event.inputs.dry_run || 'false' }}"
+
+          echo "INFO: Generating ${MODE} report..."
+
+          if [ "$DRY" = "true" ]; then
+            python email/send_email.py --mode "$MODE" --dry-run --out /tmp/report_preview.html
+            echo "DRY RUN complete — preview saved to /tmp/report_preview.html"
+          else
+            python email/send_email.py --mode "$MODE" --out /tmp/report_latest.html
+          fi
+          echo "SUCCESS: Email step complete."
+
+      # ── 6. Upload HTML report as artifact (14-day retention) ─────────────────
+      - name: Upload HTML report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: financial-report-${{ steps.mode.outputs.mode }}-${{ github.run_number }}
+          path: /tmp/report_*.html
+          retention-days: 14
+          if-no-files-found: ignore
