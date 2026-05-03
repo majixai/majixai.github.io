@@ -114,7 +114,6 @@ def _send(subject: str, html: str, recipients: list[str], dry_run: bool = False)
 
     ctx = ssl.create_default_context()
     with smtplib.SMTP(server, port) as smtp:
-        smtp.ehlo()
         smtp.starttls(context=ctx)
         smtp.login(username, password)
         smtp.sendmail(sender, recipients, msg.as_string())

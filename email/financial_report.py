@@ -93,12 +93,23 @@ ACCENT_COLOR = "#58a6ff"
 # Math helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _safe_pct(val: float) -> str:
+def _safe_pct(val: Optional[float]) -> str:
     """Format float as percentage string."""
     if val is None or (isinstance(val, float) and math.isnan(val)):
         return "—"
     sign = "+" if val >= 0 else ""
     return f"{sign}{val:.2f}%"
+
+
+def _format_forecast_pct(forecast: Dict[str, Any]) -> str:
+    """Format a forecast dict's expected % change as a signed string."""
+    if not forecast:
+        return "—"
+    pct = forecast.get("pct_change_expected", float("nan"))
+    if isinstance(pct, float) and math.isnan(pct):
+        return "—"
+    sign = "+" if pct >= 0 else ""
+    return f"{sign}{pct:.2f}%"
 
 
 def _colour(val: float) -> str:
@@ -430,8 +441,8 @@ def _bull_table(rows: List[Dict[str, Any]], title: str = "🚀 Most Bullish Tick
 
         f1d = r.get("forecast_1d", {})
         f3d = r.get("forecast_3d", {})
-        f1d_str = f"+{f1d['pct_change_expected']:.2f}%" if f1d.get("pct_change_expected", 0) >= 0 else f"{f1d['pct_change_expected']:.2f}%"
-        f3d_str = f"+{f3d['pct_change_expected']:.2f}%" if f3d.get("pct_change_expected", 0) >= 0 else f"{f3d['pct_change_expected']:.2f}%"
+        f1d_str = _format_forecast_pct(f1d)
+        f3d_str = _format_forecast_pct(f3d)
         f1d_ci  = f"[{f1d['ci_lo']:,.2f}–{f1d['ci_hi']:,.2f}]" if f1d else "—"
         f3d_ci  = f"[{f3d['ci_lo']:,.2f}–{f3d['ci_hi']:,.2f}]" if f3d else "—"
 
@@ -521,10 +532,8 @@ def _crypto_table(snaps: Dict[str, Any]) -> str:
         hfd   = m.get("higuchi_fd", float("nan"))
         f1d   = m.get("forecast_1d", {})
         f3d   = m.get("forecast_3d", {})
-        f1d_str = (f"{'+' if f1d.get('pct_change_expected',0)>=0 else ''}{f1d['pct_change_expected']:.2f}%"
-                   if f1d else "—")
-        f3d_str = (f"{'+' if f3d.get('pct_change_expected',0)>=0 else ''}{f3d['pct_change_expected']:.2f}%"
-                   if f3d else "—")
+        f1d_str = _format_forecast_pct(f1d)
+        f3d_str = _format_forecast_pct(f3d)
         cc = _ticker_color_class(chg)
         html += f"""<tr>
           <td><strong>{tkr.replace('-USD','')}</strong></td>
@@ -589,7 +598,7 @@ def build_weekday_open_report(now: Optional[datetime] = None) -> Tuple[str, str]
     if now is None:
         now = datetime.now(timezone.utc)
     ts       = now.strftime("%Y-%m-%d %H:%M UTC")
-    date_str = now.strftime("%A, %B %-d %Y")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
 
     index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
     bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=12)
@@ -611,7 +620,7 @@ def build_weekday_9am_report(now: Optional[datetime] = None) -> Tuple[str, str]:
     if now is None:
         now = datetime.now(timezone.utc)
     ts       = now.strftime("%Y-%m-%d %H:%M UTC")
-    date_str = now.strftime("%A, %B %-d %Y")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
 
     index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
     bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=10)
@@ -633,7 +642,7 @@ def build_weekday_10am_report(now: Optional[datetime] = None) -> Tuple[str, str]
     if now is None:
         now = datetime.now(timezone.utc)
     ts       = now.strftime("%Y-%m-%d %H:%M UTC")
-    date_str = now.strftime("%A, %B %-d %Y")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
 
     index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
     bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
@@ -651,7 +660,7 @@ def build_weekday_1pm_report(now: Optional[datetime] = None) -> Tuple[str, str]:
     if now is None:
         now = datetime.now(timezone.utc)
     ts       = now.strftime("%Y-%m-%d %H:%M UTC")
-    date_str = now.strftime("%A, %B %-d %Y")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
 
     index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
     bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
@@ -694,7 +703,7 @@ def build_weekend_report(now: Optional[datetime] = None, slot: str = "9am") -> T
     if now is None:
         now = datetime.now(timezone.utc)
     ts       = now.strftime("%Y-%m-%d %H:%M UTC")
-    date_str = now.strftime("%A, %B %-d %Y")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
 
     index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
     bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=12)
