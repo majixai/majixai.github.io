@@ -1,3 +1,180 @@
+# Pattern Recognition Engine — Pine Script v5
+
+**File:** `pattern_recognition.pine`
+**Language:** Pine Script v5
+**Type:** Indicator (overlay)
+
+---
+
+## Overview
+
+A comprehensive pattern-recognition engine that detects **83 chart patterns** across four
+categories.  Every detected pattern is stamped with a colour-coded label directly on the
+chart.  Toggle each category on/off independently from the **Inputs** panel.
+
+---
+
+## Pattern Catalogue (83 total)
+
+### Single-Bar Candlestick [11]
+
+| # | Pattern | Label | Bias |
+|---|---------|-------|------|
+| 1 | Doji | `DOJI` | Neutral |
+| 2 | Long-Legged Doji | `LLD` | Neutral |
+| 3 | Dragonfly Doji | `DFD` | Bullish |
+| 4 | Gravestone Doji | `GSD` | Bearish |
+| 5 | Spinning Top | `SPIN` | Neutral |
+| 6 | Marubozu Bullish | `MARU↑` | Bullish |
+| 7 | Marubozu Bearish | `MARU↓` | Bearish |
+| 8 | Hammer | `HAMR` | Bullish |
+| 9 | Hanging Man | `HANG` | Bearish |
+| 10 | Inverted Hammer | `INVH` | Bullish |
+| 11 | Shooting Star | `SHOT★` | Bearish |
+
+### Two-Bar Candlestick [13]
+
+| # | Pattern | Label | Bias |
+|---|---------|-------|------|
+| 12 | Bullish Engulfing | `ENG↑` | Bullish |
+| 13 | Bearish Engulfing | `ENG↓` | Bearish |
+| 14 | Tweezer Top | `TWEE↓` | Bearish |
+| 15 | Tweezer Bottom | `TWEE↑` | Bullish |
+| 16 | Bullish Harami | `HAMI↑` | Bullish |
+| 17 | Bearish Harami | `HAMI↓` | Bearish |
+| 18 | Bullish Harami Cross | `HAMI×↑` | Bullish |
+| 19 | Bearish Harami Cross | `HAMI×↓` | Bearish |
+| 20 | Piercing Line | `PIER` | Bullish |
+| 21 | Dark Cloud Cover | `DARK` | Bearish |
+| 22 | On-Neck | `ONECK` | Bearish |
+| 23 | In-Neck | `INECK` | Bearish |
+| 24 | Thrusting | `THRU` | Bearish |
+
+### Multi-Bar Candlestick [20]
+
+| # | Pattern | Label | Bias |
+|---|---------|-------|------|
+| 25 | Morning Star | `MORN★` | Bullish |
+| 26 | Evening Star | `EVEN★` | Bearish |
+| 27 | Morning Doji Star | `MDoji★` | Bullish |
+| 28 | Evening Doji Star | `EDoji★` | Bearish |
+| 29 | Three White Soldiers | `3SOL↑` | Bullish |
+| 30 | Three Black Crows | `3CRW↓` | Bearish |
+| 31 | Three Inside Up | `3IN↑` | Bullish |
+| 32 | Three Inside Down | `3IN↓` | Bearish |
+| 33 | Three Outside Up | `3OUT↑` | Bullish |
+| 34 | Three Outside Down | `3OUT↓` | Bearish |
+| 35 | Rising Three Methods | `RISE3` | Bullish |
+| 36 | Falling Three Methods | `FALL3` | Bearish |
+| 37 | Abandoned Baby Bullish | `ABB↑` | Bullish |
+| 38 | Abandoned Baby Bearish | `ABB↓` | Bearish |
+| 39 | Upside Gap Two Crows | `UG2C` | Bearish |
+| 40 | Tasuki Gap Bullish | `TASK↑` | Bullish |
+| 41 | Tasuki Gap Bearish | `TASK↓` | Bearish |
+| 42 | Mat Hold | `MATH` | Bullish |
+| 43 | Kicker Bullish | `KICK↑` | Bullish |
+| 44 | Kicker Bearish | `KICK↓` | Bearish |
+
+### Classic Chart Patterns [31]
+
+| # | Pattern | Label | Bias |
+|---|---------|-------|------|
+| 45 | Head & Shoulders | `H&S` | Bearish |
+| 46 | Inverse H&S | `iH&S` | Bullish |
+| 47 | Double Top | `DBL↓` | Bearish |
+| 48 | Double Bottom | `DBL↑` | Bullish |
+| 49 | Triple Top | `TRI↓` | Bearish |
+| 50 | Triple Bottom | `TRI↑` | Bullish |
+| 51 | Cup & Handle | `CUP` | Bullish |
+| 52 | Inverted Cup & Handle | `iCUP` | Bearish |
+| 53 | Ascending Triangle | `ASC△` | Bullish |
+| 54 | Descending Triangle | `DSC▽` | Bearish |
+| 55 | Symmetrical Triangle | `SYM△` | Neutral |
+| 56 | Expanding Triangle | `EXP△` | Neutral |
+| 57 | Rising Wedge | `R.WDG↓` | Bearish |
+| 58 | Falling Wedge | `F.WDG↑` | Bullish |
+| 59 | Bull Flag | `BULL♦` | Bullish |
+| 60 | Bear Flag | `BEAR♦` | Bearish |
+| 61 | Bull Pennant | `B.PNT↑` | Bullish |
+| 62 | Bear Pennant | `B.PNT↓` | Bearish |
+| 63 | Rounding Bottom | `SAUC↑` | Bullish |
+| 64 | Rounding Top | `RTOP↓` | Bearish |
+| 65 | Rectangle Bullish Break | `RECT↑` | Bullish |
+| 66 | Rectangle Bearish Break | `RECT↓` | Bearish |
+| 67 | Diamond Top | `DIAM↓` | Bearish |
+| 68 | Diamond Bottom | `DIAM↑` | Bullish |
+| 69 | Bump and Run Reversal | `BUMP↓` | Bearish |
+| 70 | Dead Cat Bounce | `DCB↓` | Bearish |
+| 71 | High-Tight Flag | `HTF↑` | Bullish |
+| 72 | Channel Up | `CH↑` | Bullish |
+| 73 | Channel Down | `CH↓` | Bearish |
+| 74 | Megaphone | `MEGA` | Neutral |
+| 75 | Flat Top Breakout | `FLT↑` | Bullish |
+
+### Harmonic Patterns [26]
+
+| # | Pattern | Label | Key Ratios |
+|---|---------|-------|-----------|
+| 76 | ABCD Bullish | `ABCD↑` | CD=AB, BC=0.618·AB |
+| 77 | ABCD Bearish | `ABCD↓` | CD=AB, BC=0.618·AB |
+| 78 | Gartley Bullish | `GART↑` | AB=0.618·XA, CD=0.786·XA |
+| 79 | Gartley Bearish | `GART↓` | AB=0.618·XA, CD=0.786·XA |
+| 80 | Bat Bullish | `BAT↑` | AB=0.382-0.5·XA, CD=0.886·XA |
+| 81 | Bat Bearish | `BAT↓` | AB=0.382-0.5·XA, CD=0.886·XA |
+| 82 | Butterfly Bullish | `BFLY↑` | AB=0.786·XA, CD=1.272-1.618·XA |
+| 83 | Butterfly Bearish | `BFLY↓` | AB=0.786·XA, CD=1.272-1.618·XA |
+| 84 | Crab Bullish | `CRAB↑` | AB=0.382-0.618·XA, CD=1.618·XA |
+| 85 | Crab Bearish | `CRAB↓` | AB=0.382-0.618·XA, CD=1.618·XA |
+| 86 | Deep Crab Bullish | `DCRAB↑` | AB=0.886·XA, CD=2.618-3.618·XA |
+| 87 | Deep Crab Bearish | `DCRAB↓` | AB=0.886·XA, CD=2.618-3.618·XA |
+| 88 | Cypher Bullish | `CYPH↑` | AB=0.382-0.618·XA, CD=0.786·XC |
+| 89 | Cypher Bearish | `CYPH↓` | AB=0.382-0.618·XA, CD=0.786·XC |
+| 90 | Shark Bullish | `SHRK↑` | AB=0.886-1.13·XA, BC=1.618-2.24 |
+| 91 | Shark Bearish | `SHRK↓` | AB=0.886-1.13·XA, BC=1.618-2.24 |
+| 92 | Alt Bat Bullish | `ABAT↑` | AB=0.382·XA, CD=1.13·XA |
+| 93 | Alt Bat Bearish | `ABAT↓` | AB=0.382·XA, CD=1.13·XA |
+| 94 | Three Drives Bullish | `3DRV↑` | Three equal-length down drives |
+| 95 | Three Drives Bearish | `3DRV↓` | Three equal-length up drives |
+| 96 | 5-0 Bullish | `5-0↑` | BC=1.618-2.24·AB, CD=0.5·BC |
+| 97 | 5-0 Bearish | `5-0↓` | BC=1.618-2.24·AB, CD=0.5·BC |
+| 98 | Nen-Star Bullish | `NEN↑` | AB=0.618·XA, CD=1.272·XA |
+| 99 | Nen-Star Bearish | `NEN↓` | AB=0.618·XA, CD=1.272·XA |
+| 100 | XABCD Alt Bullish | `XAB↑` | CD=1.272·AB |
+| 101 | XABCD Alt Bearish | `XAB↓` | CD=1.272·AB |
+
+---
+
+## Inputs
+
+| Group | Parameter | Default | Description |
+|-------|-----------|---------|-------------|
+| Candlestick | Single-Bar | on | Toggle 11 single-bar patterns |
+| Candlestick | Two-Bar | on | Toggle 13 two-bar patterns |
+| Candlestick | Multi-Bar | on | Toggle 20 multi-bar patterns |
+| Chart | Chart Patterns | on | Toggle 31 classic chart patterns |
+| Chart | Pivot Left/Right | 5 / 5 | Pivot confirmation bars each side |
+| Chart | Max Pivot History | 10 | Depth of pivot arrays |
+| Chart | Pattern Tolerance | 3% | Price similarity tolerance |
+| Harmonic | Harmonic Patterns | on | Toggle 26 harmonic patterns |
+| Harmonic | Fibonacci Tolerance | 5% | Ratio matching tolerance |
+| Display | Label Size | small | tiny / small / normal |
+| Display | Show Bullish Labels | on | Hide/show green labels |
+| Display | Show Bearish Labels | on | Hide/show red labels |
+| Display | ATR Length | 14 | ATR length for candle sizing |
+
+---
+
+## Visual Elements
+
+| Element | Description |
+|---------|-------------|
+| Green label (▲) | Bullish pattern detected |
+| Red label (▼) | Bearish pattern detected |
+| Gray label (▼) | Neutral / reversal-agnostic pattern |
+| Summary table | Top-right table showing pattern count per category |
+
+---
+
 # Scalp POI Strategy — Pine Script v2
 
 **File:** `scalp_poi_hs_dirac.pine`  
