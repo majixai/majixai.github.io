@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetaTrader 5 — MajixAI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0d1117; color: #c9d1d9; }
+    h1   { color: #58a6ff; }
+    pre  { background: #161b22; padding: 1rem; border-radius: 6px; overflow-x: auto; }
+    code { color: #79c0ff; }
+    #log { margin-top: 1.5rem; min-height: 4rem; background: #161b22; padding: 1rem; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>MetaTrader 5 · MajixAI Pipeline</h1>
+  <p>Action-enabled MT5 data pipeline. Open the browser console to see dispatched actions.</p>
+
+  <pre><code>// Dispatch a history query action
+MajixActions.dispatch('history/query', {
+  date_from: '2024-01-01',
+  date_to:   '2024-12-31',
+});</code></pre>
+
+  <div id="log">Action log will appear here…</div>
+
+  <script>
+    window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'metatrader5' };
+    if (typeof MajixActions !== 'undefined') MajixActions.init();
+  </script>
+  <script src="/actions/actions-core.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof MajixActions === 'undefined') return;
+      MajixActions.init();
+
+      var logEl = document.getElementById('log');
+
+      MajixActions.on('*', function (payload, meta) {
+        var type = (meta && meta.action) ? meta.action : '(unknown)';
+        var item = document.createElement('p');
+        item.textContent = '[' + new Date().toISOString() + '] ' + type + ' dispatched';
+        logEl.appendChild(item);
+      });
+
+      MajixActions.dispatch('history/query', {
+        date_from: '2024-01-01',
+        date_to:   new Date().toISOString().slice(0, 10),
+      });
+    });
+  </script>
+</body>
+</html>
