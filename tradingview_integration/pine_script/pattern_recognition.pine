@@ -1,6 +1,6 @@
 //@version=5
 // =============================================================================
-// Pattern Recognition Engine — 83 Patterns  |  Pine Script v5
+// Pattern Recognition Engine — 101 Patterns + Bayesian Predictor  |  Pine Script v5
 //
 // §1  Inputs & settings
 // §2  Common calculations (ATR, candle anatomy, bar aliases)
@@ -11,10 +11,12 @@
 // §7  Multi-bar candlestick patterns   [18]  (3-bar × 17 + 4-bar × 1)
 // §8  Classic chart patterns           [31]
 // §9  Harmonic patterns                [26]
+// §10 Complex Situations — Confluence & Context Engine
+// §11 Bayesian Next-Pattern Class Predictor
 //
 // Total: 101 patterns
 // =============================================================================
-indicator("Pattern Recognition — 101 Patterns", overlay=true,
+indicator("Pattern Recognition — 101 Patterns + Bayesian Predictor", overlay=true,
          max_labels_count=500, max_lines_count=500, max_boxes_count=200)
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -42,6 +44,16 @@ lSzStr       = input.string("small", "Label Size",              options=["tiny",
 showBullLbl  = input.bool(true,  "Show Bullish Labels",         group=GRP_VZ)
 showBearLbl  = input.bool(true,  "Show Bearish Labels",         group=GRP_VZ)
 atrLen       = input.int(14,     "ATR Length",                  minval=2, group=GRP_VZ)
+
+var GRP_CX = "Complex Situations"
+showCplx     = input.bool(true,  "Complex Situation Labels",    group=GRP_CX)
+showTrend    = input.bool(true,  "EMA Trend Lines (20/50/200)", group=GRP_CX)
+hcMinSigs    = input.int(2,      "Min Signals for HC Label",    minval=1, maxval=6, group=GRP_CX)
+showBgShade  = input.bool(true,  "Background Trend Shade",      group=GRP_CX)
+
+var GRP_BY = "Bayesian Predictor"
+showBayes    = input.bool(true,  "Show Bayesian Table",         group=GRP_BY)
+bayAlpha     = input.int(1,      "Laplace Prior α (1–10)",      minval=1, maxval=10, group=GRP_BY)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // §2  COMMON CALCULATIONS
@@ -218,7 +230,7 @@ if showSingle
         bearLabel("SHOT★", high)
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// §6  TWO-BAR CANDLESTICK PATTERNS  [13]
+// §6  TWO-BAR CANDLESTICK PATTERNS  [15]  (13 classic + 2 kicker)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // 12. Bullish Engulfing — bear bar fully engulfed by bull bar
@@ -295,7 +307,7 @@ if showTwoBar
         bearLabel("KICK↓", high)
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// §7  MULTI-BAR CANDLESTICK PATTERNS  [20]
+// §7  MULTI-BAR CANDLESTICK PATTERNS  [18]  (3-bar × 17 + 4-bar × 1)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── Three-bar ─────────────────────────────────────────────────────────────────
@@ -431,7 +443,7 @@ if showMultiBar
         bullLabel("MATH", low)
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// §8  CLASSIC CHART PATTERNS  [21]
+// §8  CLASSIC CHART PATTERNS  [31]
 // Patterns fire when a new confirmed pivot is added to the arrays.
 // Detection uses the most recent pivots in phP / plP.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -732,7 +744,7 @@ if p_flatTopBO
     bullLabel("FLT↑", low)
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// §9  HARMONIC PATTERNS  [18]
+// §9  HARMONIC PATTERNS  [26]
 // Uses alternating pivot high / low sequences.
 // Legs: XA, AB, BC, CD — measured as absolute price moves.
 // Fib ratio: |AB|/|XA|, |BC|/|AB|, |CD|/|BC| etc.
@@ -1029,17 +1041,454 @@ p_xabcdBear = showHarm and newHarmBear and
 if p_xabcdBear
     bearLabel("XAB↓", high)
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// §10  COMPLEX SITUATIONS — CONFLUENCE & CONTEXT ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 10A. Trend context (EMA stack) ────────────────────────────────────────────
+ema20v    = ta.ema(close, 20)
+ema50v    = ta.ema(close, 50)
+ema200v   = ta.ema(close, 200)
+bullTrend = ema20v > ema50v and ema50v > ema200v    // classic bull alignment
+bearTrend = ema20v < ema50v and ema50v < ema200v    // classic bear alignment
+flatTrend = not bullTrend and not bearTrend
+
+// ── 10B. Volume context ───────────────────────────────────────────────────────
+volMA20  = ta.sma(volume, 20)
+volSurge = volume > volMA20 * 1.50    // above-average participation
+volDry   = volume < volMA20 * 0.70    // below-average (potential exhaustion)
+
+// ── 10C. ATR volatility regime ────────────────────────────────────────────────
+atrMA30     = ta.sma(atrV, 30)
+atrExpand   = atrV > atrMA30 * 1.20    // expanding volatility
+atrContract = atrV < atrMA30 * 0.80    // contracting (coiling)
+atrSqueeze  = atrExpand and atrContract[1]   // first bar of expansion after contraction
+
+// ── 10D. S/R proximity ────────────────────────────────────────────────────────
+nearR = not na(ph0) and ph0 > 0 and math.abs(close - ph0) / ph0 <= tolPct * 2.0
+nearS = not na(pl0) and pl0 > 0 and math.abs(close - pl0) / pl0 <= tolPct * 2.0
+
+// ── 10E. RSI divergence context ───────────────────────────────────────────────
+rsi14   = ta.rsi(close, 14)
+bullDiv = newPL and nPL >= 2 and pl0 < pl1v and rsi14 > rsi14[14]   // lower price low, higher RSI
+bearDiv = newPH and nPH >= 2 and ph0 > ph1v and rsi14 < rsi14[14]   // higher price high, lower RSI
+
+// ── 10F. Inside bar at S/R (coiled spring) ────────────────────────────────────
+insideBar  = high <= h1 and low >= l1
+insideAtSR = insideBar and (nearR or nearS)
+
+// ── 10G. Trend exhaustion: extended move + first counter-signal ───────────────
+// (References bullSigCount / bearSigCount computed in 10H; labels deferred to 10I)
+bullExhaust = close > ema200v + atrV * 2.5 and not bullTrend
+bearExhaust = close < ema200v - atrV * 2.5 and not bearTrend
+
+// ── 10H. Composite signal counts (bull / bear) ────────────────────────────────
+// Single-bar bull
+b1 = (p_hammer      ? 1:0) + (p_invHammer  ? 1:0) + (p_dfDoji      ? 1:0) + (p_marubozuBull ? 1:0)
+// Two-bar bull
+b2 = (p_bullEngulf  ? 1:0) + (p_tweezBot   ? 1:0) + (p_bullHarami  ? 1:0) +
+     (p_bullHaramiX ? 1:0) + (p_piercing   ? 1:0) + (bear1 and isBull and open >= h1 ? 1:0)
+// Multi-bar bull
+b3 = (p_mornStar    ? 1:0) + (p_mornDojiStar ? 1:0) + (p_3whiteSol   ? 1:0) +
+     (p_3insideUp   ? 1:0) + (p_3outsideUp   ? 1:0) + (p_risingThree ? 1:0) +
+     (p_abanBabyBull ? 1:0) + (p_matHold     ? 1:0)
+// Chart bull
+b4 = (p_ihs         ? 1:0) + (p_dblBot    ? 1:0) + (p_triBot       ? 1:0) + (p_cupHandle  ? 1:0) +
+     (p_ascTri       ? 1:0) + (p_fallingWedge ? 1:0) + (p_bullFlag  ? 1:0) +
+     (p_bullPennant  ? 1:0) + (p_roundBot  ? 1:0) + (p_rectBull     ? 1:0) +
+     (p_diamBot      ? 1:0) + (p_htFlag    ? 1:0) + (p_chanUp       ? 1:0) + (p_flatTopBO  ? 1:0)
+// Harmonic bull
+b5 = (p_abcdBull    ? 1:0) + (p_gartleyBull  ? 1:0) + (p_batBull     ? 1:0) +
+     (p_butterflyBull ? 1:0) + (p_crabBull   ? 1:0) + (p_deepCrabBull ? 1:0) +
+     (p_cypherBull   ? 1:0) + (p_sharkBull   ? 1:0) + (p_altBatBull  ? 1:0) +
+     (p_threedrivesBull ? 1:0) + (p_fiveZeroBull ? 1:0) + (p_nenStarBull ? 1:0) +
+     (p_xabcdBull    ? 1:0)
+bullSigCount = b1 + b2 + b3 + b4 + b5
+
+// Single-bar bear
+d1 = (p_shootStar   ? 1:0) + (p_hangMan     ? 1:0) + (p_gsDoji       ? 1:0) + (p_marubozuBear ? 1:0)
+// Two-bar bear
+d2 = (p_bearEngulf  ? 1:0) + (p_tweezTop    ? 1:0) + (p_bearHarami   ? 1:0) +
+     (p_bearHaramiX ? 1:0) + (p_darkCloud   ? 1:0) + (p_onNeck       ? 1:0) +
+     (p_inNeck      ? 1:0) + (p_thrusting   ? 1:0) + (bull1 and isBear and open <= l1 ? 1:0)
+// Multi-bar bear
+d3 = (p_evenStar    ? 1:0) + (p_evenDojiStar ? 1:0) + (p_3blackCrow  ? 1:0) +
+     (p_3insideDown ? 1:0) + (p_3outsideDown ? 1:0) + (p_fallingThree ? 1:0) +
+     (p_abanBabyBear ? 1:0) + (p_ugTwoCrows  ? 1:0)
+// Chart bear
+d4 = (p_hs          ? 1:0) + (p_dblTop      ? 1:0) + (p_triTop       ? 1:0) + (p_invCup     ? 1:0) +
+     (p_dscTri      ? 1:0) + (p_risingWedge ? 1:0) + (p_bearFlag     ? 1:0) +
+     (p_bearPennant ? 1:0) + (p_roundTop    ? 1:0) + (p_rectBear     ? 1:0) +
+     (p_diamTop     ? 1:0) + (p_bumpRun     ? 1:0) + (p_deadCat      ? 1:0) + (p_chanDown   ? 1:0)
+// Harmonic bear
+d5 = (p_abcdBear    ? 1:0) + (p_gartleyBear  ? 1:0) + (p_batBear     ? 1:0) +
+     (p_butterflyBear ? 1:0) + (p_crabBear   ? 1:0) + (p_deepCrabBear ? 1:0) +
+     (p_cypherBear   ? 1:0) + (p_sharkBear   ? 1:0) + (p_altBatBear  ? 1:0) +
+     (p_threedrivesBear ? 1:0) + (p_fiveZeroBear ? 1:0) + (p_nenStarBear ? 1:0) +
+     (p_xabcdBear    ? 1:0)
+bearSigCount = d1 + d2 + d3 + d4 + d5
+
+// Cross-category cluster (signals from candlestick / chart / harmonic sections)
+candleBullAny = b1 + b2 + b3 > 0
+chartBullAny  = b4 > 0
+harmBullAny   = b5 > 0
+bullCluster   = (candleBullAny ? 1:0) + (chartBullAny ? 1:0) + (harmBullAny ? 1:0)
+
+candleBearAny = d1 + d2 + d3 > 0
+chartBearAny  = d4 > 0
+harmBearAny   = d5 > 0
+bearCluster   = (candleBearAny ? 1:0) + (chartBearAny ? 1:0) + (harmBearAny ? 1:0)
+
+// ── 10I. Complex situation labels ────────────────────────────────────────────
+// High-Conviction: ≥N signals + EMA trend aligned + vol surge
+hcBull  = showCplx and bullSigCount >= hcMinSigs and bullTrend and volSurge
+hcBear  = showCplx and bearSigCount >= hcMinSigs and bearTrend and volSurge
+
+// Squeeze Breakout: ATR contracting→expanding + at least one signal
+sqzBull = showCplx and atrSqueeze and bullSigCount >= 1
+sqzBear = showCplx and atrSqueeze and bearSigCount >= 1
+
+// S/R Bounce: reversal signal at key level (typically counter-trend)
+srBull  = showCplx and nearS and bullSigCount >= 1 and (bearTrend or flatTrend) and not hcBull
+srBear  = showCplx and nearR and bearSigCount >= 1 and (bullTrend or flatTrend) and not hcBear
+
+// Divergence-confirmed: RSI divergence + pattern signal in same direction
+dvBull  = showCplx and bullDiv and bullSigCount >= 1
+dvBear  = showCplx and bearDiv and bearSigCount >= 1
+
+// Multi-category cluster: signals from ≥2 different section types
+clsBull = showCplx and bullCluster >= 2
+clsBear = showCplx and bearCluster >= 2
+
+// Trend exhaustion: price extended far beyond EMA200 + counter-signal
+exhBull = showCplx and bearExhaust and bullSigCount >= 1
+exhBear = showCplx and bullExhaust and bearSigCount >= 1
+
+// Inside bar coil at S/R key level
+coilSR  = showCplx and insideAtSR
+
+// Volume-dry reversal: pattern fires on unusually thin volume
+vdRev   = showCplx and volDry and (bullSigCount >= 1 or bearSigCount >= 1)
+
+// ── Labels (staggered y-offsets to reduce overlap) ───────────────────────────
+if hcBull
+    label.new(bar_index, low - atrV * 2.5,
+              "★HC BULL ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.lime, 0),
+              textcolor=color.black, size=size.normal)
+
+if hcBear
+    label.new(bar_index, high + atrV * 2.5,
+              "★HC BEAR ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.orange, 0),
+              textcolor=color.black, size=size.normal)
+
+if clsBull and not hcBull
+    label.new(bar_index, low - atrV * 2.0,
+              "CLSTR↑ [Cs/Ch/Hm]",
+              style=label.style_label_up,
+              color=color.new(color.green, 10),
+              textcolor=color.white, size=size.small)
+
+if clsBear and not hcBear
+    label.new(bar_index, high + atrV * 2.0,
+              "CLSTR↓ [Cs/Ch/Hm]",
+              style=label.style_label_down,
+              color=color.new(color.red, 10),
+              textcolor=color.white, size=size.small)
+
+if sqzBull and not hcBull
+    label.new(bar_index, low - atrV * 1.6,
+              "SQZ↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.teal, 10),
+              textcolor=color.white, size=size.small)
+
+if sqzBear and not hcBear
+    label.new(bar_index, high + atrV * 1.6,
+              "SQZ↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.maroon, 10),
+              textcolor=color.white, size=size.small)
+
+if srBull
+    label.new(bar_index, low - atrV * 1.2,
+              "SR↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.aqua, 20),
+              textcolor=color.black, size=size.small)
+
+if srBear
+    label.new(bar_index, high + atrV * 1.2,
+              "SR↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.fuchsia, 20),
+              textcolor=color.black, size=size.small)
+
+if dvBull and not hcBull and not sqzBull and not srBull
+    label.new(bar_index, low - atrV * 0.9,
+              "DIV↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.purple, 20),
+              textcolor=color.white, size=size.tiny)
+
+if dvBear and not hcBear and not sqzBear and not srBear
+    label.new(bar_index, high + atrV * 0.9,
+              "DIV↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.purple, 20),
+              textcolor=color.white, size=size.tiny)
+
+if exhBull
+    label.new(bar_index, low - atrV * 0.7,
+              "EXH↑",
+              style=label.style_label_up,
+              color=color.new(color.blue, 20),
+              textcolor=color.white, size=size.tiny)
+
+if exhBear
+    label.new(bar_index, high + atrV * 0.7,
+              "EXH↓",
+              style=label.style_label_down,
+              color=color.new(color.navy, 20),
+              textcolor=color.white, size=size.tiny)
+
+if coilSR
+    label.new(bar_index, (high + low) * 0.5,
+              "COIL@SR",
+              style=label.style_label_center,
+              color=color.new(color.purple, 35),
+              textcolor=color.white, size=size.tiny)
+
+if vdRev and not hcBull and not hcBear
+    label.new(bar_index, high + atrV * 0.4,
+              "VDR",
+              style=label.style_label_down,
+              color=color.new(color.gray, 50),
+              textcolor=color.white, size=size.tiny)
+
+// EMA trend lines
+plot(showTrend ? ema20v  : na, "EMA 20",  color=color.new(color.blue,   25), linewidth=1)
+plot(showTrend ? ema50v  : na, "EMA 50",  color=color.new(color.orange, 25), linewidth=1)
+plot(showTrend ? ema200v : na, "EMA 200", color=color.new(color.red,    25), linewidth=2)
+
+// Background trend shading
+bgcolor(showBgShade and bullTrend ? color.new(color.green, 96) :
+        showBgShade and bearTrend ? color.new(color.red,   96) : na)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §11  BAYESIAN NEXT-PATTERN CLASS PREDICTOR
+//
+// 5-state Markov chain over pattern classes:
+//   0 = Strong Bull   1 = Mild Bull   2 = Neutral   3 = Mild Bear   4 = Strong Bear
+//
+// Transition matrix T[i,j]  = count of times class-i was followed by class-j
+// Prior: T[i,j] = bayAlpha  (Laplace smoothing — avoids zero probabilities)
+// Posterior: P(next=j | prev=i)  =  T[i,j] / Σ_k T[i,k]
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Class encoding (priority: Strong > Mild > Neutral; bull beats bear on tie) ──
+strongBullPat = p_marubozuBull  or p_bullEngulf    or p_3whiteSol    or p_3outsideUp   or
+                p_mornStar      or p_mornDojiStar   or p_abanBabyBull or p_risingThree  or
+                p_matHold       or p_ihs             or p_dblBot       or p_triBot       or
+                p_rectBull      or p_flatTopBO       or p_gartleyBull  or p_batBull      or
+                p_butterflyBull or p_crabBull        or p_deepCrabBull or p_cypherBull   or
+                p_threedrivesBull
+
+mildBullPat   = p_hammer        or p_invHammer      or p_dfDoji       or p_bullHarami   or
+                p_bullHaramiX   or p_piercing        or p_tweezBot     or p_3insideUp    or
+                p_tasukiGapBull or p_ascTri          or p_fallingWedge or p_bullFlag     or
+                p_bullPennant   or p_cupHandle       or p_roundBot     or p_diamBot      or
+                p_htFlag        or p_chanUp          or p_abcdBull     or p_altBatBull   or
+                p_nenStarBull   or p_fiveZeroBull    or p_xabcdBull    or p_sharkBull
+
+neutralPat    = p_doji          or p_llDoji          or p_spinTop      or p_symTri       or
+                p_expTri        or p_megaphone
+
+mildBearPat   = p_hangMan       or p_shootStar       or p_gsDoji       or p_bearHarami   or
+                p_bearHaramiX   or p_darkCloud        or p_onNeck       or p_inNeck       or
+                p_thrusting     or p_tweezTop         or p_3insideDown  or p_tasukiGapBear or
+                p_dscTri        or p_risingWedge      or p_bearFlag     or p_bearPennant  or
+                p_invCup        or p_chanDown         or p_bumpRun      or p_deadCat      or
+                p_abcdBear      or p_altBatBear       or p_nenStarBear  or p_fiveZeroBear or
+                p_xabcdBear     or p_sharkBear
+
+strongBearPat = p_marubozuBear  or p_bearEngulf      or p_3blackCrow   or p_3outsideDown or
+                p_evenStar      or p_evenDojiStar     or p_abanBabyBear or p_fallingThree or
+                p_ugTwoCrows    or p_hs               or p_dblTop       or p_triTop       or
+                p_rectBear      or p_roundTop         or p_diamTop      or p_gartleyBear  or
+                p_batBear       or p_butterflyBear    or p_crabBear     or p_deepCrabBear or
+                p_cypherBear    or p_threedrivesBear
+
+// Encode current bar (−1 = no pattern)
+int bayCur = strongBullPat ? 0 : mildBullPat ? 1 : neutralPat ? 2 :
+             mildBearPat   ? 3 : strongBearPat ? 4 : -1
+
+// ── Transition matrix (25 cells, persists across bars) ───────────────────────
+var int[]  bayMx       = array.new_int(25, 0)   // init to 0; filled to α on bar 0
+var bool   bayInitDone = false
+var int    bayPrev     = -1                      // class of previous detection
+
+if not bayInitDone
+    for ii = 0 to 24
+        array.set(bayMx, ii, bayAlpha)
+    bayInitDone := true
+
+// Update matrix on each new detection
+if bayCur >= 0
+    if bayPrev >= 0
+        int transIdx = bayPrev * 5 + bayCur
+        array.set(bayMx, transIdx, array.get(bayMx, transIdx) + 1)
+    bayPrev := bayCur
+
+// ── Posterior probabilities for next class ───────────────────────────────────
+var float[] bayPost  = array.new_float(5, 20.0)
+var int     bayBest  = 2
+var float   bayBestP = 20.0
+
+if bayCur >= 0
+    int rTotal = 0
+    for jj = 0 to 4
+        rTotal += array.get(bayMx, bayCur * 5 + jj)
+    float bestP = 0.0
+    int   bestJ = 0
+    for jj = 0 to 4
+        float p = rTotal > 0 ? array.get(bayMx, bayCur * 5 + jj) / float(rTotal) * 100.0 : 20.0
+        array.set(bayPost, jj, p)
+        if p > bestP
+            bestP := p
+            bestJ := jj
+    bayBest  := bestJ
+    bayBestP := bestP
+
+// ── Helper functions ─────────────────────────────────────────────────────────
+bayClassName(c) =>
+    c == 0 ? "Strong Bull" : c == 1 ? "Mild Bull" : c == 2 ? "Neutral" :
+    c == 3 ? "Mild Bear"   : c == 4 ? "Strong Bear" : "—"
+
+bayClassBg(c) =>
+    c == 0 ? color.new(color.lime,   10) :
+    c == 1 ? color.new(color.green,  30) :
+    c == 2 ? color.new(color.silver, 40) :
+    c == 3 ? color.new(color.orange, 20) :
+             color.new(color.red,    10)
+
+probBar(pct) =>
+    int    filled = math.max(0, math.min(10, math.round(pct / 10.0)))
+    string bar    = ""
+    for _b = 1 to 10
+        bar += _b <= filled ? "█" : "░"
+    bar
+
+// ── Bayesian prediction table (bottom-right, 3 cols × 11 rows) ──────────────
+var table bayTbl = table.new(position.bottom_right, 3, 11,
+                             bgcolor=color.new(color.black, 55),
+                             border_color=color.new(color.gray, 50), border_width=1,
+                             frame_color=color.new(color.navy, 30), frame_width=1)
+
+if barstate.islast and showBayes
+    // Row 0 — header
+    table.cell(bayTbl, 0, 0, "Bayesian Predictor",
+               text_color=color.yellow, text_size=size.small,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 1, 0, "P(class)",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 2, 0, "Distribution",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+
+    // Row 1 — current class
+    string curStr = bayCur >= 0 ? bayClassName(bayCur) : "No Pattern"
+    color  curBg  = bayCur >= 0 ? bayClassBg(bayCur)   : color.new(color.gray, 60)
+    table.cell(bayTbl, 0, 1, "Current",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 1, curStr,
+               bgcolor=curBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 1, "B:" + str.tostring(bullSigCount) + " D:" + str.tostring(bearSigCount),
+               text_color=color.gray, text_size=size.tiny)
+
+    // Rows 2–6 — probability for each next class
+    for rr = 0 to 4
+        float pPct = array.get(bayPost, rr)
+        bool  top  = rr == bayBest
+        table.cell(bayTbl, 0, 2 + rr,
+                   bayClassName(rr),
+                   text_color=top ? color.white : color.gray,
+                   bgcolor=top ? bayClassBg(rr) : color.new(color.black, 70),
+                   text_size=size.tiny)
+        table.cell(bayTbl, 1, 2 + rr,
+                   str.tostring(math.round(pPct, 1)) + "%",
+                   text_color=top ? color.white : color.gray,
+                   bgcolor=top ? bayClassBg(rr) : color.new(color.black, 70),
+                   text_size=size.tiny)
+        table.cell(bayTbl, 2, 2 + rr,
+                   probBar(pPct),
+                   text_color=top ? color.yellow : color.new(color.gray, 30),
+                   text_size=size.tiny)
+
+    // Row 7 — top prediction
+    table.cell(bayTbl, 0, 7, "⟹ NEXT",
+               bgcolor=color.new(color.navy, 30),
+               text_color=color.yellow, text_size=size.small)
+    table.cell(bayTbl, 1, 7, bayClassName(bayBest),
+               bgcolor=bayClassBg(bayBest),
+               text_color=color.white, text_size=size.small)
+    table.cell(bayTbl, 2, 7,
+               str.tostring(math.round(bayBestP, 1)) + "%",
+               bgcolor=bayClassBg(bayBest),
+               text_color=color.white, text_size=size.small)
+
+    // Row 8 — observation count
+    int obsTotal = 0
+    for oo = 0 to 24
+        obsTotal += array.get(bayMx, oo)
+    int realObs = math.max(0, obsTotal - 25 * bayAlpha)
+    table.cell(bayTbl, 0, 8, "Observations",
+               text_color=color.gray, text_size=size.tiny)
+    table.cell(bayTbl, 1, 8, str.tostring(realObs) + " detected",
+               text_color=color.gray, text_size=size.tiny)
+    table.cell(bayTbl, 2, 8, "α = " + str.tostring(bayAlpha),
+               text_color=color.gray, text_size=size.tiny)
+
+    // Row 9 — EMA trend + volume
+    string trendStr = bullTrend ? "BULL" : bearTrend ? "BEAR" : "FLAT"
+    color  trendBg  = bullTrend ? color.new(color.green, 30) :
+                      bearTrend ? color.new(color.red,   30) : color.new(color.gray, 50)
+    string volStr   = volSurge  ? "SURGE" : volDry ? "DRY" : "NORM"
+    table.cell(bayTbl, 0, 9, "EMA Trend",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 9, trendStr,
+               bgcolor=trendBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 9, "Vol: " + volStr,
+               text_color=color.gray, text_size=size.tiny)
+
+    // Row 10 — ATR regime
+    string atrStr = atrSqueeze  ? "SQUEEZE" : atrExpand ? "EXPAND" :
+                    atrContract ? "COIL"    : "NORMAL"
+    color  atrBg  = atrSqueeze  ? color.new(color.purple, 20) :
+                    atrExpand   ? color.new(color.orange, 30) :
+                    atrContract ? color.new(color.blue,   30) : color.new(color.gray, 50)
+    table.cell(bayTbl, 0, 10, "ATR Regime",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 10, atrStr,
+               bgcolor=atrBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 10, atrSqueeze ? "⚡" : "",
+               text_color=color.yellow, text_size=size.tiny)
+
 // ══════════════════════════════════════════════════════════════════════════════
-// Pattern Summary Table (top-right)
+// Pattern Summary Table (top-right) — extended with complex signal counts
 // ══════════════════════════════════════════════════════════════════════════════
-var table tbl = table.new(position.top_right, 2, 6,
+var table tbl = table.new(position.top_right, 2, 8,
                           bgcolor=color.new(color.black, 60),
                           border_color=color.gray, border_width=1,
                           frame_color=color.gray, frame_width=1)
 
 if barstate.islast
-    table.cell(tbl, 0, 0, "Pattern Engine",  text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 30))
-    table.cell(tbl, 1, 0, "101 patterns",     text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 30))
+    table.cell(tbl, 0, 0, "Pattern Engine",  text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 30))
+    table.cell(tbl, 1, 0, "101 patterns",    text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 30))
     table.cell(tbl, 0, 1, "Single-bar",       text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 1, 1, "11",               text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 0, 2, "Two-bar + Kicker", text_color=color.silver, text_size=size.tiny)
@@ -1050,3 +1499,13 @@ if barstate.islast
     table.cell(tbl, 1, 4, "31",               text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 0, 5, "Harmonic",         text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 1, 5, "26",               text_color=color.silver, text_size=size.tiny)
+    // Signal count (from §10)
+    bullColor = bullSigCount >= hcMinSigs and bullTrend ? color.new(color.lime, 20) :
+                bullSigCount > 0 ? color.new(color.green, 30) : color.new(color.gray, 60)
+    bearColor = bearSigCount >= hcMinSigs and bearTrend ? color.new(color.orange, 20) :
+                bearSigCount > 0 ? color.new(color.red, 30) : color.new(color.gray, 60)
+    table.cell(tbl, 0, 6, "Bull sigs",        text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 6, str.tostring(bullSigCount), bgcolor=bullColor, text_color=color.white, text_size=size.small)
+    table.cell(tbl, 0, 7, "Bear sigs",        text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 7, str.tostring(bearSigCount), bgcolor=bearColor, text_color=color.white, text_size=size.small)
+
