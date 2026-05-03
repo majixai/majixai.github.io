@@ -7,14 +7,14 @@
 // §3  Pivot array maintenance (shared by Chart and Harmonic sections)
 // §4  Helper functions (labels, Fibonacci check, pct tolerance)
 // §5  Single-bar candlestick patterns  [11]
-// §6  Two-bar candlestick patterns     [13]
-// §7  Multi-bar candlestick patterns   [20]  (3-bar × 17 + 4-bar × 3)
-// §8  Classic chart patterns           [21]
-// §9  Harmonic patterns                [18]
+// §6  Two-bar candlestick patterns     [15]  (13 classic + 2 kicker)
+// §7  Multi-bar candlestick patterns   [18]  (3-bar × 17 + 4-bar × 1)
+// §8  Classic chart patterns           [31]
+// §9  Harmonic patterns                [26]
 //
-// Total: 83 patterns
+// Total: 101 patterns
 // =============================================================================
-indicator("Pattern Recognition — 80+ Patterns", overlay=true,
+indicator("Pattern Recognition — 101 Patterns", overlay=true,
          max_labels_count=500, max_lines_count=500, max_boxes_count=200)
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -176,10 +176,10 @@ p_gsDoji = isDoji and fullRange > 0 and upperWick >= fullRange * 0.60 and lowerW
 p_spinTop = bodySize < avgBody * 0.50 and upperWick > bodySize and lowerWick > bodySize and not isDoji
 
 // 6. Marubozu Bullish — strong bull body, near-zero wicks
-p_marubullBull = isBull and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
+p_marubozuBull = isBull and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
 
 // 7. Marubozu Bearish — strong bear body, near-zero wicks
-p_marubullBear = isBear and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
+p_marubozuBear = isBear and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
 
 // 8. Hammer — long lower wick ≥ 2× body, tiny upper wick, in downtrend
 p_hammer = lowerWick >= bodySize * 2.0 and upperWick <= bodySize * 0.50 and isBull and close < sma20
@@ -204,9 +204,9 @@ if showSingle
         neutLabel("DOJI", high)
     if p_spinTop
         neutLabel("SPIN", high)
-    if p_marubullBull
+    if p_marubozuBull
         bullLabel("MARU↑", low)
-    if p_marubullBear
+    if p_marubozuBear
         bearLabel("MARU↓", high)
     if p_hammer
         bullLabel("HAMR", low)
@@ -965,12 +965,12 @@ drive1b = not na(pl3v) and not na(ph3v) ? math.abs(ph3v - pl3v) : na
 drive2b = not na(pl2v) and not na(ph2v) ? math.abs(ph2v - pl2v) : na
 drive3b = not na(pl1v) and not na(ph0)  ? math.abs(ph0 - pl1v)  : na
 
-p_threedrivesBearbear = showHarm and newPH and nPH >= 4 and nPL >= 4 and
+p_threedrivesBear = showHarm and newPH and nPH >= 4 and nPL >= 4 and
                         not na(drive1b) and not na(drive2b) and not na(drive3b) and
                         fibOk(drive2b, drive1b, 1.0) and fibOk(drive3b, drive1b, 1.0) and
                         ph0 > ph2v and ph2v > ph3v               // drives stepping higher
 
-if p_threedrivesBearbear
+if p_threedrivesBear
     bearLabel("3DRV↓", high)
 
 // ── 96. 5-0 Pattern Bullish — BC = 1.618–2.24 of AB; CD = 0.50 of BC ────────
@@ -1039,13 +1039,13 @@ var table tbl = table.new(position.top_right, 2, 6,
 
 if barstate.islast
     table.cell(tbl, 0, 0, "Pattern Engine",  text_color=color.white, text_size=size.small, bgcolor=color.new(color.navy, 30))
-    table.cell(tbl, 1, 0, "83 patterns",      text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 30))
+    table.cell(tbl, 1, 0, "101 patterns",     text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 30))
     table.cell(tbl, 0, 1, "Single-bar",       text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 1, 1, "11",               text_color=color.silver, text_size=size.tiny)
-    table.cell(tbl, 0, 2, "Two-bar",          text_color=color.silver, text_size=size.tiny)
-    table.cell(tbl, 1, 2, "13",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 0, 2, "Two-bar + Kicker", text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 2, "15",               text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 0, 3, "Multi-bar (3+)",   text_color=color.silver, text_size=size.tiny)
-    table.cell(tbl, 1, 3, "20",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 3, "18",               text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 0, 4, "Classic chart",    text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 1, 4, "31",               text_color=color.silver, text_size=size.tiny)
     table.cell(tbl, 0, 5, "Harmonic",         text_color=color.silver, text_size=size.tiny)

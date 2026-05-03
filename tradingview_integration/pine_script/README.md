@@ -8,13 +8,13 @@
 
 ## Overview
 
-A comprehensive pattern-recognition engine that detects **83 chart patterns** across four
+A comprehensive pattern-recognition engine that detects **101 chart patterns** across four
 categories.  Every detected pattern is stamped with a colour-coded label directly on the
 chart.  Toggle each category on/off independently from the **Inputs** panel.
 
 ---
 
-## Pattern Catalogue (83 total)
+## Pattern Catalogue (101 total)
 
 ### Single-Bar Candlestick [11]
 
@@ -32,7 +32,7 @@ chart.  Toggle each category on/off independently from the **Inputs** panel.
 | 10 | Inverted Hammer | `INVH` | Bullish |
 | 11 | Shooting Star | `SHOT★` | Bearish |
 
-### Two-Bar Candlestick [13]
+### Two-Bar Candlestick [15]
 
 | # | Pattern | Label | Bias |
 |---|---------|-------|------|
@@ -49,8 +49,10 @@ chart.  Toggle each category on/off independently from the **Inputs** panel.
 | 22 | On-Neck | `ONECK` | Bearish |
 | 23 | In-Neck | `INECK` | Bearish |
 | 24 | Thrusting | `THRU` | Bearish |
+| 43 | Kicker Bullish | `KICK↑` | Bullish |
+| 44 | Kicker Bearish | `KICK↓` | Bearish |
 
-### Multi-Bar Candlestick [20]
+### Multi-Bar Candlestick [18]
 
 | # | Pattern | Label | Bias |
 |---|---------|-------|------|
@@ -72,8 +74,6 @@ chart.  Toggle each category on/off independently from the **Inputs** panel.
 | 40 | Tasuki Gap Bullish | `TASK↑` | Bullish |
 | 41 | Tasuki Gap Bearish | `TASK↓` | Bearish |
 | 42 | Mat Hold | `MATH` | Bullish |
-| 43 | Kicker Bullish | `KICK↑` | Bullish |
-| 44 | Kicker Bearish | `KICK↓` | Bearish |
 
 ### Classic Chart Patterns [31]
 
