@@ -1,0 +1,153 @@
+name: Predict Stock (Bash)
+
+# ── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/predict_stock*.sh'
+      - 'tests/bash/**'
+      - '.github/workflows/predict-stock.yml'
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: 'Ticker symbol (e.g. AAPL)'
+        required: false
+        default: 'AAPL'
+      days:
+        description: 'Days of history to use'
+        required: false
+        default: '120'
+  schedule:
+    - cron: '0 13 * * 1-5'   # 13:00 UTC on weekdays
+
+permissions:
+  contents: read
+
+# =============================================================================
+# JOB 1 — lint-bash
+# Runs shellcheck on all scripts; fails on warning-level (SC severity >= 2)
+# =============================================================================
+jobs:
+  lint-bash:
+    name: ShellCheck lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on all shell scripts
+        # --severity=warning catches warnings and errors (severity 1 & 2).
+        # Style (3) and info (4) issues are reported but do not fail the job.
+        run: |
+          shellcheck --severity=warning scripts/predict_stock.sh
+          shellcheck --severity=warning scripts/predict_stock_optimized.sh
+          echo "shellcheck passed — no high-severity issues found."
+
+# =============================================================================
+# JOB 2 — bash-tests
+# Runs the fixture-based unit tests for the optimised script (no network).
+# =============================================================================
+  bash-tests:
+    name: Bash unit tests
+    runs-on: ubuntu-latest
+    needs: lint-bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies (gawk, jq)
+        run: sudo apt-get install -y gawk jq
+
+      - name: Run bash unit tests
+        run: bash tests/bash/test_predict_opt.sh
+
+# =============================================================================
+# JOB 3 — predict
+# Runs the optimised script live (requires yfinance).
+# The original predict_stock.sh is kept in repo as fallback and can be
+# re-enabled by uncommenting the "Legacy check" step below.
+# =============================================================================
+  predict:
+    name: Run stock prediction
+    runs-on: ubuntu-latest
+    needs: bash-tests
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install yfinance
+
+      - name: Install gawk and jq
+        run: sudo apt-get install -y gawk jq
+
+      - name: Make scripts executable
+        run: chmod +x scripts/predict_stock_optimized.sh scripts/predict_stock.sh
+
+      - name: Run optimised prediction
+        run: |
+          mkdir -p artifacts
+          SYMBOL="${{ github.event.inputs.symbol || 'AAPL' }}"
+          DAYS="${{ github.event.inputs.days || '120' }}"
+          bash scripts/predict_stock_optimized.sh \
+            --symbol "${SYMBOL}" \
+            --out-dir artifacts \
+            --days "${DAYS}"
+
+      # ── Optional: cross-check with legacy script ─────────────────────────
+      # Uncomment to enable Alpha Vantage cross-check (requires secret ALPHAVANTAGE_API_KEY)
+      # - name: Legacy cross-check (predict_stock.sh)
+      #   if: ${{ secrets.ALPHAVANTAGE_API_KEY != '' }}
+      #   env:
+      #     ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+      #   run: |
+      #     SYMBOL="${{ github.event.inputs.symbol || 'AAPL' }}"
+      #     bash scripts/predict_stock.sh \
+      #       --symbol "${SYMBOL}" \
+      #       --out-dir artifacts/legacy \
+      #       --days "${{ github.event.inputs.days || '120' }}"
+
+      - name: Upload prediction artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: stock-predictions-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 30
+
+      - name: Write job summary
+        if: always()
+        run: |
+          SYMBOL="${{ github.event.inputs.symbol || 'AAPL' }}"
+          {
+            echo "## Stock Prediction Summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Symbol | \`${SYMBOL}\` |"
+            echo "| Days   | \`${{ github.event.inputs.days || '120' }}\` |"
+            echo "| Script | \`scripts/predict_stock_optimized.sh\` |"
+            if [ -f "artifacts/${SYMBOL}_prediction.json" ]; then
+              PRED=$(jq '.linear_regression.predicted_next_close' \
+                       "artifacts/${SYMBOL}_prediction.json" 2>/dev/null || echo "n/a")
+              LAST=$(jq '.last_close' \
+                       "artifacts/${SYMBOL}_prediction.json" 2>/dev/null || echo "n/a")
+              R2=$(jq '.linear_regression.r_squared' \
+                       "artifacts/${SYMBOL}_prediction.json" 2>/dev/null || echo "n/a")
+              echo "| Last close | \`${LAST}\` |"
+              echo "| Predicted next close | \`${PRED}\` |"
+              echo "| R² | \`${R2}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
