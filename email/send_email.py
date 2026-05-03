@@ -153,7 +153,8 @@ def _send_via_gas(
             body = resp.read().decode("utf-8")
             result = json.loads(body)
             if not result.get("ok"):
-                raise RuntimeError(f"GAS webhook returned error: {result.get('error')}")
+                err_msg = result.get("error") or f"unexpected response: {body}"
+                raise RuntimeError(f"GAS webhook returned error: {err_msg}")
             sent = result.get("sent", 0)
             print(f"[send_email/gas] Webhook accepted — {sent} email(s) sent for mode={mode}", flush=True)
     except urllib.error.HTTPError as exc:

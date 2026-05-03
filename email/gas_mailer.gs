@@ -13,7 +13,7 @@
  * Headers: Content-Type: application/json
  * Body (JSON):
  *   {
- *     "secret":     "<GAS_WEBHOOK_SECRET>",   // required — shared secret
+ *     "secret":     "<GAS_WEBHOOK_SECRET>",   // required when GAS_WEBHOOK_SECRET script property is set
  *     "subject":    "📈 Pre-Market Bull Alert — Monday, May 4 2026",
  *     "html":       "<html>…full HTML body…</html>",
  *     "recipients": "alice@example.com,bob@example.com",
@@ -162,15 +162,21 @@ function _sendEmails(subject, html, plain, recipients) {
 
 // ── GAS-native scheduled triggers ────────────────────────────────────────────
 
+// Set of exact handler function names managed by this script.
+// Used to avoid accidentally deleting unrelated triggers.
+const _MANAGED_FN_NAMES = new Set(
+  SCHEDULE_SLOTS.map(function (s) { return s.fn; })
+);
+
 /**
  * Install all time-based triggers.
  * Run this ONCE manually from the GAS editor.
  * It will delete existing MajixAI triggers before recreating them.
  */
 function installFinancialEmailTriggers() {
-  // Remove old triggers created by this script
+  // Remove only the triggers created by this script (exact function-name match)
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction().startsWith('send')) {
+    if (_MANAGED_FN_NAMES.has(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -197,7 +203,7 @@ function installFinancialEmailTriggers() {
  */
 function removeFinancialEmailTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction().startsWith('send')) {
+    if (_MANAGED_FN_NAMES.has(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });

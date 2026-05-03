@@ -100,11 +100,12 @@ jobs:
             echo "INFO: Manual mode override: ${{ github.event.inputs.mode }}"
           else
             HOUR=$(date -u +%H)
-            DOW=$(date -u +%u)   # 1=Mon … 7=Sun
+            # ISO week-day: 1=Mon … 6=Sat … 7=Sun  (note: differs from JS Date.getDay() 0=Sun…6=Sat)
+            DOW=$(date -u +%u)
             echo "INFO: UTC hour=${HOUR}  day-of-week=${DOW}"
 
-            if [ "$DOW" -ge 6 ]; then
-              # Weekend (6=Sat, 7=Sun)
+            if [ "$DOW" -eq 6 ] || [ "$DOW" -eq 7 ]; then
+              # Weekend: Sat=6, Sun=7
               if [ "$HOUR" -eq 9 ]; then
                 MODE="weekend_9am"
               else
