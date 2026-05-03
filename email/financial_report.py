@@ -738,16 +738,428 @@ def build_weekend_report(now: Optional[datetime] = None, slot: str = "9am") -> T
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Trading-Prompt Agent — overnight / pre-market / market-hours / midday slots
+#
+# Schedule (all times US Eastern, EDT = UTC-4 shown for GitHub cron reference):
+#
+#   OVERNIGHT  (10 PM – 6 AM ET)
+#     overnight_day_plan   11 PM ET (03:00 UTC)  — trading day ahead management
+#     overnight_bull_pick   1 AM ET (05:00 UTC)  — most bullish stock/crypto
+#     overnight_project     3 AM ET (07:00 UTC)  — project brief
+#
+#   PRE-MARKET (4 AM – 6:59 AM ET)
+#     premarket_1pm_proj    4:00 AM ET (08:00 UTC) — projected 1 PM close
+#     premarket_followup    5:30 AM ET (09:30 UTC) — follow-up project
+#     premarket_extra       6:30 AM ET (10:30 UTC) — third pre-market slot
+#
+#   MARKET MORNING (8 AM – 11:59 AM ET)
+#     weekday_9am           9:00 AM ET (13:00 UTC) — market open snapshot
+#     market_bullnews      10:00 AM ET (14:00 UTC) — extremely bullish / news-driven
+#     market_midday        11:59 AM ET (15:59 UTC) — midday follow-up
+#
+#   MIDDAY  (1 PM ET)
+#     market_1pm_et         1:00 PM ET (17:00 UTC) — index feedback + next day plan
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _trading_prompts_section(prompt_items: List[str], title: str = "🤖 Trading Prompts") -> str:
+    """Render a card with a numbered list of AI prompt suggestions."""
+    html = f"<div class='card'><h2>{title}</h2><ol style='padding-left:20px;line-height:1.8'>"
+    for item in prompt_items:
+        html += f"<li style='margin-bottom:6px'>{item}</li>"
+    html += "</ol></div>"
+    return html
+
+
+def _next_day_checklist_section(now: datetime) -> str:
+    """Produce a 'Next Trading Day' preparation checklist card."""
+    tomorrow = now + timedelta(days=1)
+    day_name = tomorrow.strftime("%A")
+    html = f"""<div class='card'>
+      <h2>📋 Next Trading Day Prep — {day_name}</h2>
+      <ul style='padding-left:20px;line-height:1.9'>
+        <li>Review overnight futures &amp; pre-market movers</li>
+        <li>Check Fed/macro calendar for scheduled announcements</li>
+        <li>Identify top bull candidates from overnight screener</li>
+        <li>Set key S&amp;P 500 / DJI support &amp; resistance levels</li>
+        <li>Update stop-loss levels for open positions</li>
+        <li>Review Monte Carlo projected close range</li>
+        <li>Scan crypto for correlation moves with risk assets</li>
+        <li>Confirm sector rotation signals (tech, energy, financials)</li>
+      </ul>
+    </div>"""
+    return html
+
+
+# ── Overnight slot builders ───────────────────────────────────────────────────
+
+def build_overnight_day_plan_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    11 PM ET — Trading Day Ahead Management.
+    Plans the next session: macro context, key levels, day plan prompts.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
+
+    prompts = [
+        "Summarise the macro drivers expected to move markets in the next session "
+        "and suggest 3 specific entry setups for tomorrow.",
+        "Based on current index futures and overnight sentiment, outline the bull vs bear "
+        "scenarios for S&amp;P 500 at the open.",
+        "List the 5 most important support and resistance levels for DJI and NASDAQ "
+        "entering tomorrow's session, with rationale.",
+    ]
+
+    subject = f"🌙 Trading Day Ahead Plan — {date_str}"
+    html  = _html_header("Trading Day Ahead Plan",
+                         f"Overnight session · day management brief · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Day-Ahead Planning Prompts")
+    html += _index_table(index_snaps, title="📊 After-Hours Index Snapshot")
+    html += _bull_table(bull_stocks, title="🚀 Overnight Bull Candidates")
+    html += _next_day_checklist_section(now)
+    html += _html_footer()
+    return subject, html
+
+
+def build_overnight_bull_pick_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    1 AM ET — Most Bullish Projected Stock / Crypto.
+    Deep bull screener across stocks and crypto with GBM forecasts.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=5)
+    bull_crypto = _fetch_bull_screener(CRYPTO_TICKERS, top_n=5)
+
+    prompts = [
+        "Which single stock from the current bull screener has the strongest confluence "
+        "of GBM forecast, RSI momentum, and MACD crossover? Provide a trade thesis.",
+        "For the top-ranked crypto by bull score, describe the overnight on-chain signals "
+        "and whether the current move is liquidity-driven or sentiment-driven.",
+        "Compare the Higuchi fractal dimension of the top stock pick vs top crypto pick "
+        "and explain what it implies for next-day volatility.",
+    ]
+
+    subject = f"⚡ Most Bullish Pick Alert — {date_str}"
+    html  = _html_header("Most Bullish Pick Alert",
+                         f"Overnight screener · top stock &amp; crypto · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Bull Pick Analysis Prompts")
+    html += _bull_table(bull_stocks, title="🚀 Top Bull Stocks (Overnight)")
+    html += _bull_table(bull_crypto, title="₿ Top Bull Crypto (Overnight)")
+    html += _html_footer()
+    return subject, html
+
+
+def build_overnight_project_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    3 AM ET — Project Overview.
+    Strategy project brief, portfolio review prompts, and algo signal review.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    prompts = [
+        "Review the MajixAI OU mean-reversion strategy performance over the past 5 sessions "
+        "and suggest parameter recalibrations based on current κ values.",
+        "Generate a 3-point GBM simulation brief for SPY, QQQ, and BTC that can be used "
+        "to calibrate position sizes entering tomorrow's open.",
+        "Outline a hedging strategy using VIX derivatives if the index RSI is above 70 "
+        "or below 30 at tomorrow's open.",
+    ]
+
+    subject = f"🛠️ Overnight Project Brief — {date_str}"
+    html  = _html_header("Overnight Project Brief",
+                         f"Strategy &amp; algo review · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Project &amp; Strategy Prompts")
+    html += _index_table(index_snaps, title="📊 Overnight Index Context")
+    html += _html_footer()
+    return subject, html
+
+
+# ── Pre-market slot builders ──────────────────────────────────────────────────
+
+def build_premarket_1pm_proj_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    4 AM ET — Projected 1 PM Close of Indices.
+    Early pre-market projection for midday index levels.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    # Load Monte Carlo projection if available
+    proj_html = ""
+    proj_file = _REPO / "sp_closing_projection" / "latest_projection.json"
+    if proj_file.exists():
+        try:
+            proj = json.loads(proj_file.read_text())
+            proj_html = f"""<div class='card'>
+              <h2>📐 S&amp;P 500 Projected 1 PM Close (Monte Carlo)</h2>
+              <div class='metric-row'>
+                <div class='metric'><div class='metric-label'>Expected Close</div>
+                  <div class='metric-value'>{proj.get('projected_close', '—'):,.2f}</div></div>
+                <div class='metric'><div class='metric-label'>Confidence</div>
+                  <div class='metric-value'>{proj.get('confidence_pct', '—')}%</div></div>
+                <div class='metric'><div class='metric-label'>Range</div>
+                  <div class='metric-value'>{proj.get('range_low','—'):,.0f}–{proj.get('range_high','—'):,.0f}</div></div>
+              </div>
+              <p class='chart-link'>🔗
+                <a href="{REPO_PAGES_BASE}/sp_closing_projection/sp_closing_projection_output.png">Projection Chart</a> &nbsp;·&nbsp;
+                <a href="{REPO_PAGES_BASE}/dji_1pm_close/dji_1pm_prediction.png">DJI 1PM Prediction</a>
+              </p>
+            </div>"""
+        except Exception:
+            pass
+
+    prompts = [
+        "Based on pre-market futures and the Monte Carlo projection, what is the most "
+        "likely S&amp;P 500 level at 1 PM ET today? Give a bull case, base case, and bear case.",
+        "Estimate the probability that DJI closes above its 20-day moving average by 1 PM ET, "
+        "using the GBM forecast and current RSI.",
+        "If the projected 1 PM close is within 0.5% of the current pre-market level, "
+        "what range-bound strategies are most appropriate?",
+    ]
+
+    subject = f"📐 Projected 1 PM Close — {date_str}"
+    html  = _html_header("Projected 1 PM Index Close",
+                         f"Pre-market 4 AM brief · Monte Carlo forecasts · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 1 PM Close Projection Prompts")
+    html += _index_table(index_snaps, title="📊 Pre-Market Index Snapshot (4 AM ET)")
+    html += proj_html
+    html += _html_footer()
+    return subject, html
+
+
+def build_premarket_followup_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    5:30 AM ET — Pre-Market Follow-Up Project.
+    Mid pre-market window: updated screener + sector rotation prompts.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=10)
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    prompts = [
+        "Identify which sector (tech, energy, financials, healthcare) is showing the "
+        "strongest pre-market momentum based on the current top movers list.",
+        "For each of the top 3 bull stock picks, describe the risk:reward ratio for a "
+        "gap-up continuation trade vs a fade-the-gap strategy at the open.",
+        "Update the overnight bull thesis: has the overnight narrative changed since the "
+        "11 PM brief? What new catalyst or risk factor has emerged?",
+    ]
+
+    subject = f"📊 Pre-Market Follow-Up (5:30 AM) — {date_str}"
+    html  = _html_header("Pre-Market Follow-Up Project",
+                         f"5:30 AM ET · sector rotation &amp; screener update · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Follow-Up Analysis Prompts")
+    html += _index_table(index_snaps, title="📊 Indices (5:30 AM ET)")
+    html += _bull_table(bull_stocks, title="🚀 Updated Bull Screener (5:30 AM ET)")
+    html += _html_footer()
+    return subject, html
+
+
+def build_premarket_extra_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    6:30 AM ET — Third Pre-Market Slot.
+    Final pre-market brief before the 9:30 AM open.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    prompts = [
+        "Final pre-market summary: rank today's 3 highest-conviction trade ideas with "
+        "entry price, target, and stop. Include confidence level for each.",
+        "Check if VIX level suggests elevated uncertainty entering today's open. "
+        "How should position sizing be adjusted accordingly?",
+        "Identify any early-morning news events (earnings, Fed speakers, macro data) "
+        "that could create gap-open opportunities in the first 30 minutes.",
+    ]
+
+    subject = f"🔔 Pre-Market Final Brief (6:30 AM) — {date_str}"
+    html  = _html_header("Pre-Market Final Brief",
+                         f"6:30 AM ET · final check before open · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Final Pre-Market Prompts")
+    html += _index_table(index_snaps, title="📊 Indices (6:30 AM ET — 3h Before Open)")
+    html += _bull_table(bull_stocks, title="🚀 Final Bull Candidate List")
+    html += _html_footer()
+    return subject, html
+
+
+# ── Market-hours slot builders ────────────────────────────────────────────────
+
+def build_market_bullnews_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    10 AM ET — Extremely Bullish Behavior / News-Driven Alert.
+    Scans for outsized moves, news catalysts, and momentum breakouts.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=10)
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    prompts = [
+        "Alert: scan for tickers with RSI > 75 AND bull_score > 5 in the first 30 minutes. "
+        "Identify if the move is news-driven or pure momentum, and suggest a chase vs wait strategy.",
+        "If the S&amp;P 500 is up more than 1.5% by 10 AM ET, evaluate whether this is a "
+        "sustainable trend day or an overextension likely to fade.",
+        "Identify the single most news-driven bull catalyst active right now (earnings beat, "
+        "acquisition, regulatory approval) and outline a momentum trade plan with a 30-min chart setup.",
+    ]
+
+    subject = f"⚡ Bull Momentum / News Alert (10 AM) — {date_str}"
+    html  = _html_header("Bull Momentum &amp; News Alert",
+                         f"10 AM ET · breakout &amp; news-driven movers · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Bull Momentum Prompts")
+    html += _index_table(index_snaps, title="📊 Indices at 10 AM ET")
+    html += _bull_table(bull_stocks, title="🚀 Extreme Bull Movers (10 AM Screener)")
+    html += _html_footer()
+    return subject, html
+
+
+def build_market_midday_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    11:59 AM ET — Midday Follow-Up.
+    Pre-lunch check: indices, positions, and afternoon setups.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+
+    prompts = [
+        "Midday check: compare the 11:59 AM index levels against the 4 AM projected 1 PM "
+        "close. Is the day tracking the bull, base, or bear scenario?",
+        "For any open positions from morning setups, evaluate whether to hold through "
+        "lunch or take partial profits given current momentum and VIX level.",
+        "Preview the afternoon session: identify the 2 most likely afternoon catalysts "
+        "(Fed speaker, auction results, market-on-close imbalances) and their directional bias.",
+    ]
+
+    subject = f"⏱️ Midday Market Follow-Up (11:59 AM) — {date_str}"
+    html  = _html_header("Midday Market Follow-Up",
+                         f"11:59 AM ET · lunch-time brief · {date_str}", ts)
+    html += _trading_prompts_section(prompts, title="💡 Midday Follow-Up Prompts")
+    html += _index_table(index_snaps, title="📊 Indices at 11:59 AM ET")
+    html += _bull_table(bull_stocks, title="📈 Midday Top Movers")
+    html += _html_footer()
+    return subject, html
+
+
+def build_market_1pm_et_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    """
+    1 PM ET — Index Feedback Data + Next Day Planning.
+    Dual-purpose report: afternoon index data AND next-session preparation.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts       = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    index_snaps = _fetch_snapshot(INDEX_TICKERS, period="5d")
+    bull_stocks = _fetch_bull_screener(BULL_STOCK_UNIVERSE, top_n=8)
+    bull_crypto = _fetch_bull_screener(CRYPTO_TICKERS, top_n=5)
+
+    # Load projection JSON
+    proj_html = ""
+    proj_file = _REPO / "sp_closing_projection" / "latest_projection.json"
+    if proj_file.exists():
+        try:
+            proj = json.loads(proj_file.read_text())
+            proj_html = f"""<div class='card'>
+              <h2>📐 S&amp;P 500 Closing Projection (1 PM ET Read)</h2>
+              <div class='metric-row'>
+                <div class='metric'><div class='metric-label'>Expected Close</div>
+                  <div class='metric-value'>{proj.get('projected_close', '—'):,.2f}</div></div>
+                <div class='metric'><div class='metric-label'>Confidence</div>
+                  <div class='metric-value'>{proj.get('confidence_pct', '—')}%</div></div>
+                <div class='metric'><div class='metric-label'>Range</div>
+                  <div class='metric-value'>{proj.get('range_low','—'):,.0f}–{proj.get('range_high','—'):,.0f}</div></div>
+              </div>
+              <p class='chart-link'>🔗
+                <a href="{REPO_PAGES_BASE}/sp_closing_projection/sp_closing_projection_output.png">Projection Chart</a> &nbsp;·&nbsp;
+                <a href="{REPO_PAGES_BASE}/dji_1pm_close/dji_1pm_prediction.png">DJI 1PM Chart</a>
+              </p>
+            </div>"""
+        except Exception:
+            pass
+
+    feedback_prompts = [
+        "Evaluate today's index performance against the pre-market projection: "
+        "did SPX, DJI, and NASDAQ hit their projected 1 PM levels? Describe variance and cause.",
+        "Based on the 1 PM index levels and current momentum, forecast the final 3 PM close "
+        "range for S&amp;P 500 with confidence percentages for each scenario.",
+    ]
+    planning_prompts = [
+        "Plan tomorrow's top 3 trading opportunities based on today's sector performance, "
+        "earnings calendar, and macro events scheduled overnight.",
+        "Review today's top 5 bull movers: which have continuation potential into tomorrow "
+        "vs which are likely to consolidate or reverse?",
+        "Summarise the key learnings from today's session — what worked, what didn't, "
+        "and how to refine tomorrow's pre-market brief.",
+    ]
+
+    subject = f"🏦 1 PM ET Index Feedback + Next Day Plan — {date_str}"
+    html  = _html_header("1 PM ET Index Feedback &amp; Next Day Planning",
+                         f"Dual-purpose brief · index data &amp; tomorrow's plan · {date_str}", ts)
+    html += _trading_prompts_section(feedback_prompts, title="📊 Index Feedback Prompts")
+    html += _index_table(index_snaps, title="📊 Indices at 1 PM ET")
+    html += proj_html
+    html += _trading_prompts_section(planning_prompts, title="📋 Next Day Planning Prompts")
+    html += _bull_table(bull_stocks, title="📈 1 PM ET Top Movers")
+    html += _crypto_table({r["ticker"]: r for r in bull_crypto})
+    html += _next_day_checklist_section(now)
+    html += _html_footer()
+    return subject, html
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CLI  (python email/financial_report.py --mode weekday_open)
 # ─────────────────────────────────────────────────────────────────────────────
+
+_ALL_MODES = [
+    "weekday_open", "weekday_9am", "weekday_10am", "weekday_1pm",
+    "weekend_9am", "weekend_10pm",
+    # Trading-prompt agent slots
+    "overnight_day_plan", "overnight_bull_pick", "overnight_project",
+    "premarket_1pm_proj", "premarket_followup", "premarket_extra",
+    "market_bullnews", "market_midday", "market_1pm_et",
+]
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate a financial HTML email report.")
     parser.add_argument(
         "--mode",
-        choices=["weekday_open","weekday_9am","weekday_10am","weekday_1pm",
-                 "weekend_9am","weekend_10pm"],
+        choices=_ALL_MODES,
         default="weekday_open",
         help="Report mode to generate",
     )
@@ -756,12 +1168,21 @@ if __name__ == "__main__":
 
     now = datetime.now(timezone.utc)
     dispatch = {
-        "weekday_open":  lambda: build_weekday_open_report(now),
-        "weekday_9am":   lambda: build_weekday_9am_report(now),
-        "weekday_10am":  lambda: build_weekday_10am_report(now),
-        "weekday_1pm":   lambda: build_weekday_1pm_report(now),
-        "weekend_9am":   lambda: build_weekend_report(now, "9am"),
-        "weekend_10pm":  lambda: build_weekend_report(now, "10pm"),
+        "weekday_open":       lambda: build_weekday_open_report(now),
+        "weekday_9am":        lambda: build_weekday_9am_report(now),
+        "weekday_10am":       lambda: build_weekday_10am_report(now),
+        "weekday_1pm":        lambda: build_weekday_1pm_report(now),
+        "weekend_9am":        lambda: build_weekend_report(now, "9am"),
+        "weekend_10pm":       lambda: build_weekend_report(now, "10pm"),
+        "overnight_day_plan": lambda: build_overnight_day_plan_report(now),
+        "overnight_bull_pick":lambda: build_overnight_bull_pick_report(now),
+        "overnight_project":  lambda: build_overnight_project_report(now),
+        "premarket_1pm_proj": lambda: build_premarket_1pm_proj_report(now),
+        "premarket_followup": lambda: build_premarket_followup_report(now),
+        "premarket_extra":    lambda: build_premarket_extra_report(now),
+        "market_bullnews":    lambda: build_market_bullnews_report(now),
+        "market_midday":      lambda: build_market_midday_report(now),
+        "market_1pm_et":      lambda: build_market_1pm_et_report(now),
     }
     subject, html = dispatch[args.mode]()
     print(f"Subject: {subject}", file=sys.stderr)
