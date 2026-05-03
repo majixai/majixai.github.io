@@ -240,3 +240,131 @@ The extender:
 2. Writes `<target_dir>/README.md` (when missing) with action-workflow guidance that points back to this `/actions/README.md`.
 
 Manual trigger is also available from **Actions → Extend Actions to New Sibling Directories** with optional `target_dir` and `force` inputs.
+
+---
+
+## Recommended Modifications, Enhancements & Optimizations
+
+The items below are prioritized suggestions for improving the `/actions` runtime, tooling, and related workflows. They are grouped by file so each contribution is self-contained.
+
+---
+
+### `actions-core.js`
+
+#### Modifications
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| M1 | **Re-initialization safety** | `init()` silently re-initializes when called more than once. Add an explicit `reset()` method and make `init()` a true no-op when already initialized (unless `{ force: true }` is passed). |
+| M2 | **Wildcard handler separation** | Wildcard (`'*'`) handlers currently share the same `_handlers` map. Move them to a dedicated `_wildcardHandlers` array to avoid `_ns('*')` collisions and make the intent clearer. |
+| M3 | **`once` namespace duplication** | `once()` calls `_ns(type)` and then passes the already-namespaced key to `on()`, which calls `_ns()` again, producing a double-prefixed type. Pass the raw type through `on()` only, not through both. |
+
+#### Enhancements
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| E1 | **Event replay / time-travel** | Expose `MajixActions.replay(actions?)` that re-dispatches a snapshot (defaults to `history()`) through the current middleware pipeline — useful for debugging and automated testing. |
+| E2 | **Priority handlers** | Add an optional `priority` number to `on()` so that critical handlers (e.g. auth guards) always run before lower-priority ones, without relying on registration order. |
+| E3 | **`dispatch` return shape** | When multiple handlers are registered `dispatch()` returns an array; with one it returns a scalar. Normalize the return value to always be an array (or always a single value when `singleResult: true` is in config) to avoid downstream `Array.isArray` checks. |
+| E4 | **Typed error class** | Replace bare `throw err` with a custom `MajixActionsError` that attaches the offending `action` object, making `onError` handlers more useful without needing a closure. |
+| E5 | **`sessionStorage` option** | Add `persistStorage: 'session'` alongside the existing `'local'` (default) option so history only survives the tab session, which is safer for sensitive financial payloads. |
+
+#### Optimizations
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| O1 | **Handler lookup cost** | `_handlers[type]` is looked up twice for every dispatch (once for the typed list, once for `'*'`). Cache the combined array reference per type in a `_resolvedHandlers` map, invalidated only when `on()`/`off()` changes that type. |
+| O2 | **History trim strategy** | `splice(0, delta)` is `O(n)` on large arrays. Replace with a circular buffer (pre-allocated array + head/tail indices) so history writes stay `O(1)`. |
+| O3 | **Middleware slice** | `_middleware.slice()` copies the entire pipeline on every dispatch. Convert to an index-walking loop over the original array to eliminate the allocation hot path. |
+| O4 | **localStorage serialization** | `JSON.stringify(_history)` serializes the entire log on every dispatch when `persistHistory` is `true`. Batch writes with a debounced flush (e.g. 300 ms) to reduce I/O pressure during rapid dispatch sequences. |
+
+---
+
+### `extend.py`
+
+#### Modifications
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| M1 | **Idempotency guard** | The current `--force` flag is all-or-nothing. Add `--force-index` and `--force-readme` flags so callers can selectively overwrite only one artifact without risking the other. |
+| M2 | **Encoding fallback** | `errors="replace"` silently corrupts non-UTF-8 bytes in `index.html`. Use `errors="strict"` by default and emit a clear warning when a decode error is caught, so corrupt files are never silently patched. |
+
+#### Enhancements
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| E1 | **Dry-run mode** | Add `--dry-run` to print what would change without writing any files, enabling safe CI previews. |
+| E2 | **Batch mode** | Accept multiple `target_dir` positional arguments so the workflow can process several directories in a single Python process invocation, reducing subprocess overhead. |
+| E3 | **Validation step** | After patching `index.html`, run a quick `html.parser`-based sanity check (via `html.parser` from the stdlib) to confirm the patched file is still valid HTML before writing. |
+| E4 | **Structured output** | Emit a JSON summary to stdout (one object per target) so the calling workflow can parse results without screen-scraping log lines. |
+
+#### Optimizations
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| O1 | **Regex pre-compilation** | `re.search` and `re.sub` patterns are recompiled on each call. Compile `BODY_RE = re.compile(r"</body>", re.IGNORECASE)` once at module level. |
+| O2 | **Single read/write** | `index_path.read_text` / `index_path.write_text` use separate file handles. Use `pathlib.Path.open` in `r+` mode with a single lock if concurrent runs are possible in the Actions matrix. |
+
+---
+
+### `metatrader5_setup.py`
+
+#### Modifications
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| M1 | **Version pinning** | Add an optional `--version <x.y.z>` argument so CI can pin to a known-good release (`pip install MetaTrader5==5.0.x`) and avoid surprise breakages from upstream releases. |
+| M2 | **Exit-code propagation** | `subprocess.run` without `check=False` swallows the exit code when pip aborts mid-install. Add `try/except subprocess.CalledProcessError` when using `check=True`, or keep `check=False` and document why. |
+
+#### Enhancements
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| E1 | **Post-install verification** | After a successful pip install, call `python -c "import MetaTrader5; print(MetaTrader5.__version__)"` within the same script so failures are surfaced as a Python exception rather than relying on a separate workflow step. |
+| E2 | **Requirements file support** | Accept `--requirements <file>` to install from a requirements file alongside MetaTrader5, enabling a single script call to set up the full environment. |
+| E3 | **Progress reporting** | Pass `--progress-bar on` to pip (or capture stdout/stderr separately) so GitHub Actions folds the pip output cleanly under a collapsible step group. |
+
+#### Optimizations
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| O1 | **Re-use pip cache** | The workflow does not set `cache-dependency-path` for `actions/setup-python`. Add a lightweight `requirements-metatrader5.txt` containing only `MetaTrader5` (pinned) and point the cache key at it so repeated runs skip the download entirely. |
+| O2 | **Skip redundant install** | Before calling pip, check `importlib.util.find_spec("MetaTrader5")` and compare the installed version against the target. Skip the install entirely when already up-to-date (unless `--upgrade` is explicitly requested). |
+
+---
+
+### `.github/workflows/metatrader5_setup.yml`
+
+#### Modifications
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| M1 | **Runner pinning** | `windows-latest` rolls forward automatically. Pin to `windows-2022` (or `windows-2019`) to guarantee a stable environment until an explicit update is desired. |
+| M2 | **Python version matrix** | MetaTrader5 binaries exist for Python 3.7–3.11. Add a `strategy.matrix.python-version` so a single manual dispatch validates all supported interpreters. |
+
+#### Enhancements
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| E1 | **Job summary** | Append a `$GITHUB_STEP_SUMMARY` block (as used in `extend_actions.yml`) that reports the installed package version and whether an upgrade actually occurred. |
+| E2 | **Scheduled auto-upgrade check** | Add a weekly `schedule` trigger that runs with `upgrade: true` and opens a PR (or commits) only when a newer version is available, keeping the package current without manual intervention. |
+| E3 | **Artifact upload** | Upload `pip show MetaTrader5` output as an artifact so the exact installed metadata is accessible from the workflow run page without re-running the job. |
+
+#### Optimizations
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| O1 | **pip cache** | Wire `cache: 'pip'` with `cache-dependency-path` pointing at a pinned `requirements-metatrader5.txt` (see `metatrader5_setup.py → O1` above) to avoid re-downloading the package on every run. |
+| O2 | **Conditional verify step** | The verification step (`import MetaTrader5`) always runs even when the install step fails. Add `if: success()` to skip it cleanly and avoid a misleading secondary error. |
+
+---
+
+### General `/actions` directory
+
+| # | Area | Recommendation |
+|---|------|----------------|
+| G1 | **Automated tests** | Add a `tests/` sub-directory with a Jest (or plain Node `assert`) test suite for `actions-core.js` and a Python `unittest` suite for `extend.py` and `metatrader5_setup.py`. Wire them to a new `actions_ci.yml` workflow. |
+| G2 | **CHANGELOG** | Maintain a `CHANGELOG.md` in this directory to track breaking changes to `actions-core.js` (especially namespace behaviour and return-shape differences). |
+| G3 | **Version header** | Add a `version` constant (e.g. `MajixActions.VERSION = '1.0.0'`) to `actions-core.js` so consuming pages can assert a minimum runtime version at startup. |
+| G4 | **CSP compatibility** | Document (or enforce) that `actions-core.js` is written to be compatible with strict Content Security Policy — no `eval`, no `new Function` — so sub-apps can safely set `script-src 'self'`. |
+| G5 | **Module export** | Wrap the IIFE with a UMD or ES-module guard so `actions-core.js` can be imported with `import`/`require` in Node test environments without needing `jsdom`. |
