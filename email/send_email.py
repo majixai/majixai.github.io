@@ -2,35 +2,49 @@
 """
 send_email.py — MajixAI Financial Email Sender
 ===============================================
-Reads SMTP credentials from environment variables and sends a single
-HTML financial report email.
+Generates an HTML financial report and dispatches it via one of two
+transport mechanisms.  Google Apps Script (GAS) webhook is the default
+because it requires no SMTP credentials and works entirely through
+Google's infrastructure.
 
-Environment variables
----------------------
-  SMTP_SERVER       — SMTP hostname   (e.g. smtp.gmail.com)
-  SMTP_PORT         — SMTP port       (default: 587)
-  SMTP_USERNAME     — SMTP login
-  SMTP_PASSWORD     — SMTP password / app-password
-  SENDER_EMAIL      — From address    (falls back to SMTP_USERNAME)
-  RECIPIENT_EMAILS  — Comma-separated list of To addresses
+Transport options (--transport / EMAIL_TRANSPORT env var)
+---------------------------------------------------------
+  gas    (default) — POST the HTML report to a deployed GAS Web App webhook.
+                     The GAS script then calls MailApp / GmailApp to send.
+                     Required env vars:
+                       EMAIL_GAS_WEBHOOK_URL  — deployed GAS web-app URL
+                       EMAIL_GAS_SECRET       — shared secret (optional but recommended)
+                       RECIPIENT_EMAILS       — comma-separated To addresses
+
+  smtp   (opt-in)  — Send directly via Python smtplib (STARTTLS).
+                     Required env vars:
+                       SMTP_SERVER, SMTP_PORT (default 587)
+                       SMTP_USERNAME, SMTP_PASSWORD
+                       SENDER_EMAIL           — From address
+                       RECIPIENT_EMAILS       — comma-separated To addresses
 
 Required argument
 -----------------
   --mode   weekday_open | weekday_9am | weekday_10am | weekday_1pm |
            weekend_9am  | weekend_10pm
 
-Optional
---------
-  --dry-run   Print the email to stdout instead of sending.
+Optional flags
+--------------
+  --transport gas|smtp  Override transport (default: gas)
+  --dry-run             Print the payload without sending
+  --out <path>          Save the generated HTML to a file
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import smtplib
 import ssl
 import sys
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -57,7 +71,9 @@ build_weekday_10am_report  = _fr_mod.build_weekday_10am_report
 build_weekday_1pm_report   = _fr_mod.build_weekday_1pm_report
 build_weekend_report       = _fr_mod.build_weekend_report
 
-# ── Dispatch table ─────────────────────────────────────────────────────────────
+
+# ── Report builder dispatch ───────────────────────────────────────────────────
+
 def _build(mode: str, now: datetime):
     dispatch = {
         "weekday_open":  lambda: build_weekday_open_report(now),
@@ -73,21 +89,109 @@ def _build(mode: str, now: datetime):
     return fn()
 
 
-# ── SMTP sender ────────────────────────────────────────────────────────────────
-def _send(subject: str, html: str, recipients: list[str], dry_run: bool = False) -> None:
+# ── GAS webhook transport (default) ──────────────────────────────────────────
+
+def _send_via_gas(
+    subject: str,
+    html: str,
+    recipients: list[str],
+    mode: str,
+    dry_run: bool = False,
+) -> None:
+    """
+    POST the generated HTML report to the GAS Web App webhook.
+
+    The GAS script (email/gas_mailer.gs) receives the payload and uses
+    MailApp / GmailApp to deliver the email from the Google account that
+    deployed the web app.  No SMTP credentials are needed.
+
+    Environment variables
+    ---------------------
+    EMAIL_GAS_WEBHOOK_URL  — Required.  Deployed GAS Web App URL.
+    EMAIL_GAS_SECRET       — Optional.  Shared secret validated by GAS.
+    """
+    webhook_url = os.environ.get("EMAIL_GAS_WEBHOOK_URL", "").strip()
+    secret      = os.environ.get("EMAIL_GAS_SECRET", "").strip()
+
+    payload = {
+        "subject":    subject,
+        "html":       html,
+        "recipients": ",".join(recipients),
+        "mode":       mode,
+    }
+    if secret:
+        payload["secret"] = secret
+
+    if dry_run:
+        print("=" * 70)
+        print(f"DRY RUN [GAS] — would POST to: {webhook_url or '(EMAIL_GAS_WEBHOOK_URL not set)'}")
+        print(f"Subject    : {subject}")
+        print(f"Recipients : {recipients}")
+        print(f"Mode       : {mode}")
+        print(f"Payload keys: {list(payload.keys())}")
+        print(f"HTML preview:\n{html[:3000]}")
+        print("=" * 70)
+        return
+
+    if not webhook_url:
+        raise RuntimeError(
+            "EMAIL_GAS_WEBHOOK_URL is not set.  "
+            "Deploy email/gas_mailer.gs as a GAS Web App and set the URL."
+        )
+    if not recipients:
+        raise RuntimeError("RECIPIENT_EMAILS is empty.")
+
+    data    = json.dumps(payload).encode("utf-8")
+    req     = urllib.request.Request(
+        webhook_url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8")
+            result = json.loads(body)
+            if not result.get("ok"):
+                raise RuntimeError(f"GAS webhook returned error: {result.get('error')}")
+            sent = result.get("sent", 0)
+            print(f"[send_email/gas] Webhook accepted — {sent} email(s) sent for mode={mode}", flush=True)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GAS webhook HTTP {exc.code}: {body}") from exc
+
+
+# ── SMTP transport (opt-in) ───────────────────────────────────────────────────
+
+def _send_via_smtp(
+    subject: str,
+    html: str,
+    recipients: list[str],
+    dry_run: bool = False,
+) -> None:
+    """
+    Send the HTML report directly via Python smtplib (STARTTLS).
+
+    Environment variables
+    ---------------------
+    SMTP_SERVER      — Required.  SMTP hostname (e.g. smtp.gmail.com).
+    SMTP_PORT        — Optional.  Default 587.
+    SMTP_USERNAME    — Required.  SMTP login.
+    SMTP_PASSWORD    — Required.  SMTP password / app-password.
+    SENDER_EMAIL     — Optional.  From address (falls back to SMTP_USERNAME).
+    """
     server   = os.environ.get("SMTP_SERVER", "")
     port     = int(os.environ.get("SMTP_PORT", "587"))
     username = os.environ.get("SMTP_USERNAME", "")
     password = os.environ.get("SMTP_PASSWORD", "")
-    sender   = os.environ.get("SENDER_EMAIL", username)
+    sender   = os.environ.get("SENDER_EMAIL", "") or username
 
     if dry_run:
         print("=" * 70)
-        print(f"DRY RUN — would send to: {recipients}")
-        print(f"Subject : {subject}")
-        print(f"From    : {sender}")
-        print("-" * 70)
-        print(html[:4000])
+        print(f"DRY RUN [SMTP] — server={server}:{port}  from={sender}")
+        print(f"Subject    : {subject}")
+        print(f"Recipients : {recipients}")
+        print(f"HTML preview:\n{html[:3000]}")
         print("=" * 70)
         return
 
@@ -98,17 +202,17 @@ def _send(subject: str, html: str, recipients: list[str], dry_run: bool = False)
     if not recipients:
         raise RuntimeError("RECIPIENT_EMAILS is empty.")
 
+    plain = (
+        f"Financial Report: {subject}\n\n"
+        "This email requires an HTML-capable mail client.\n"
+        "View the live dashboard at "
+        "https://majixai.github.io/majixai.github.io/yfinance/index.html"
+    )
+
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"]    = sender
     msg["To"]      = ", ".join(recipients)
-
-    # Plain-text fallback
-    plain = (
-        f"Financial Report: {subject}\n\n"
-        "This email requires an HTML-capable mail client.\n"
-        "View the live dashboard at https://majixai.github.io/majixai.github.io/yfinance/index.html"
-    )
     msg.attach(MIMEText(plain, "plain"))
     msg.attach(MIMEText(html, "html"))
 
@@ -118,10 +222,11 @@ def _send(subject: str, html: str, recipients: list[str], dry_run: bool = False)
         smtp.login(username, password)
         smtp.sendmail(sender, recipients, msg.as_string())
 
-    print(f"[send_email] Sent '{subject}' to {recipients}", flush=True)
+    print(f"[send_email/smtp] Sent '{subject}' to {recipients}", flush=True)
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
+
 def _parse() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Send a MajixAI financial email report.")
     p.add_argument(
@@ -134,21 +239,31 @@ def _parse() -> argparse.Namespace:
         help="Report mode / schedule slot to generate",
     )
     p.add_argument(
+        "--transport",
+        choices=["gas", "smtp"],
+        default=os.environ.get("EMAIL_TRANSPORT", "gas"),
+        help=(
+            "Email transport: 'gas' (default) uses the GAS webhook; "
+            "'smtp' uses Python smtplib directly"
+        ),
+    )
+    p.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print email to stdout instead of sending",
+        help="Print the payload without actually sending",
     )
     p.add_argument(
         "--out",
         default="",
-        help="Also save the HTML report to this file path",
+        help="Also save the generated HTML report to this file path",
     )
     return p.parse_args()
 
 
 def main() -> int:
-    args     = _parse()
-    now      = datetime.now(timezone.utc)
+    args = _parse()
+    now  = datetime.now(timezone.utc)
+
     subject, html = _build(args.mode, now)
 
     if args.out:
@@ -158,7 +273,14 @@ def main() -> int:
     recipients_raw = os.environ.get("RECIPIENT_EMAILS", "")
     recipients     = [r.strip() for r in recipients_raw.split(",") if r.strip()]
 
-    _send(subject, html, recipients, dry_run=args.dry_run)
+    transport = args.transport
+    print(f"[send_email] transport={transport}  mode={args.mode}", file=sys.stderr)
+
+    if transport == "gas":
+        _send_via_gas(subject, html, recipients, args.mode, dry_run=args.dry_run)
+    else:
+        _send_via_smtp(subject, html, recipients, dry_run=args.dry_run)
+
     return 0
 
 

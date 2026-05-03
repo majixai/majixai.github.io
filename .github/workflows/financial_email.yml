@@ -12,6 +12,9 @@ name: Financial Email Reports
 # Weekends (Sat + Sun)
 #   09:00 UTC  — Morning weekly digest
 #   22:00 UTC  — Evening weekly digest
+#
+# Default transport: GAS webhook (email/gas_mailer.gs deployed as GAS Web App)
+# Override with transport=smtp for direct Python SMTP sending.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -42,6 +45,13 @@ on:
           weekend_9am  | weekend_10pm
         required: false
         default: 'weekday_open'
+      transport:
+        description: >
+          Email transport.  'gas' (default) POSTs to the GAS Web App webhook
+          (set GAS_WEBHOOK_URL + GAS_WEBHOOK_SECRET secrets).
+          'smtp' uses Python smtplib (set SMTP_* secrets).
+        required: false
+        default: 'gas'
       dry_run:
         description: 'Print report without sending email (true/false)'
         required: false
@@ -115,26 +125,40 @@ jobs:
           fi
 
       # ── 5. Generate & send report ─────────────────────────────────────────────
+      #
+      # Transport selection (evaluated in priority order):
+      #   1. workflow_dispatch input  (transport: gas | smtp)
+      #   2. EMAIL_TRANSPORT env var  (set in repo/env variables)
+      #   3. Default: gas
+      #
       - name: Send financial email report
         env:
-          SMTP_SERVER:      ${{ secrets.SMTP_SERVER }}
-          SMTP_PORT:        ${{ secrets.SMTP_PORT }}
-          SMTP_USERNAME:    ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD:    ${{ secrets.SMTP_PASSWORD }}
-          SENDER_EMAIL:     ${{ secrets.SENDER_EMAIL }}
-          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          # ── GAS webhook transport (default) ──
+          EMAIL_GAS_WEBHOOK_URL: ${{ secrets.GAS_WEBHOOK_URL }}
+          EMAIL_GAS_SECRET:      ${{ secrets.GAS_WEBHOOK_SECRET }}
+          RECIPIENT_EMAILS:      ${{ secrets.RECIPIENT_EMAILS }}
+
+          # ── SMTP transport (opt-in) ───────────
+          SMTP_SERVER:           ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT:             ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME:         ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD:         ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL:          ${{ secrets.SENDER_EMAIL }}
         run: |
           MODE="${{ steps.mode.outputs.mode }}"
           DRY="${{ github.event.inputs.dry_run || 'false' }}"
+          TRANSPORT="${{ github.event.inputs.transport || 'gas' }}"
 
-          echo "INFO: Generating ${MODE} report..."
+          echo "INFO: mode=${MODE}  transport=${TRANSPORT}"
 
+          EXTRA_FLAGS="--transport ${TRANSPORT}"
           if [ "$DRY" = "true" ]; then
-            python email/send_email.py --mode "$MODE" --dry-run --out /tmp/report_preview.html
-            echo "DRY RUN complete — preview saved to /tmp/report_preview.html"
-          else
-            python email/send_email.py --mode "$MODE" --out /tmp/report_latest.html
+            EXTRA_FLAGS="${EXTRA_FLAGS} --dry-run"
           fi
+
+          python email/send_email.py --mode "$MODE" $EXTRA_FLAGS \
+            --out /tmp/report_latest.html
+
           echo "SUCCESS: Email step complete."
 
       # ── 6. Upload HTML report as artifact (14-day retention) ─────────────────
@@ -143,6 +167,25 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: financial-report-${{ steps.mode.outputs.mode }}-${{ github.run_number }}
-          path: /tmp/report_*.html
+          path: /tmp/report_latest.html
           retention-days: 14
           if-no-files-found: ignore
+
+      # ── 7. Optional: dispatch a GitHub repository_dispatch event back to repo ─
+      # This lets other workflows or external services react to a sent report.
+      # Fires only when the GAS transport is used and the run is not a dry-run.
+      - name: Notify GitHub (repository_dispatch)
+        if: >
+          github.event.inputs.dry_run != 'true' &&
+          (github.event.inputs.transport == 'gas' ||
+           github.event.inputs.transport == '')
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: financial_email_sent
+          client-payload: |
+            {
+              "mode": "${{ steps.mode.outputs.mode }}",
+              "transport": "${{ github.event.inputs.transport || 'gas' }}",
+              "run_id": "${{ github.run_id }}"
+            }
