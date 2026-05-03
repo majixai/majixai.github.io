@@ -22,7 +22,8 @@ SCRIPT="${REPO_ROOT}/scripts/predict_stock_optimized.sh"
 FIXTURES="${SCRIPT_DIR}/fixtures"
 
 TMP_OUT="$(mktemp -d)"
-cleanup() { rm -rf "${TMP_OUT}"; }
+TMP_STDERR="$(mktemp)"
+cleanup() { rm -rf "${TMP_OUT}" "${TMP_STDERR}"; }
 trap cleanup EXIT
 
 PASS=0
@@ -80,12 +81,12 @@ run_fixture() {
       --input-csv "${csv}" \
       --out-dir "${out_dir}" \
       --days 30 \
-      >/dev/null 2>/tmp/test_stderr; then
+      >/dev/null 2>"${TMP_STDERR}"; then
     printf '[%s] Script exited successfully\n' "${name}"
     FIXTURE_JSON="${out_dir}/${symbol}_prediction.json"
   else
     fail "[${name}] Script exited with error"
-    cat /tmp/test_stderr >&2
+    cat "${TMP_STDERR}" >&2
     FIXTURE_JSON=""
   fi
 }
