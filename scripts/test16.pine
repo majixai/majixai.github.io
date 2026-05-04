@@ -1,4 +1,10 @@
 //@version=5
+indicator("Quadratic Surface Fit — Conic Branch Extractor",
+          shorttitle          = "QSF-CBX v1",
+          overlay             = true,
+          max_polylines_count = 100,
+          max_labels_count    = 100,
+          max_lines_count     = 200)
 // ============================================================================
 // Quadratic Surface Conic Extractor — Pine Script v5 Indicator
 //
@@ -34,6 +40,62 @@ indicator("Quadratic Surface Conic Extractor", shorttitle="QSurf·Conic",
 // ============================================================================
 // §1  TYPE DEFINITIONS
 // ============================================================================
+// All multi-dimensional data structures are backed by flat 1-D float[] or
+// int[] arrays so that Pine Script v5's ban on nested collections is never
+// triggered.
+
+// ---------------------------------------------------------------------------
+// PointMatrix  — a rows × cols matrix stored as a single flat float[].
+// Logical element [r, c] resides at index  r * cols + c  (row-major).
+// ---------------------------------------------------------------------------
+type PointMatrix
+    int     rows   // logical row count
+    int     cols   // logical column count
+    float[] data   // flat storage; length must equal rows * cols
+
+// ---------------------------------------------------------------------------
+// FlatPolyline  — a variable-length polyline backed by two parallel 1-D
+// arrays (bar indices and prices) instead of array<chart.point>, sidestepping
+// the nested-collection restriction while keeping full chart.point semantics.
+// ---------------------------------------------------------------------------
+type FlatPolyline
+    int[]   bars    // bar_index values, length = capacity
+    float[] prices  // corresponding price levels, length = capacity
+    int     sz      // logical element count (<= array.size(bars))
+
+// ---------------------------------------------------------------------------
+// SurfaceFit  — the six coefficients of the best-fit quadratic surface
+//   z  =  a·x²  +  b·xy  +  c·y²  +  d·x  +  e·y  +  f
+// where x is a normalised bar-offset in [−1, 1] and y is a normalised
+// secondary variable (volume / ATR / RSI).
+// ---------------------------------------------------------------------------
+type SurfaceFit
+    float a          // pure x² curvature
+    float b          // cross-term (x·y coupling)
+    float c          // pure y² curvature
+    float d          // linear x slope
+    float e          // linear y slope
+    float f          // constant offset
+    float rmse       // root-mean-square fit error in normalised price units
+    bool  valid      // false when fewer than 6 points or matrix is singular
+
+// ---------------------------------------------------------------------------
+// ConicSection  — the iso-price curve extracted from the surface at z = z₀.
+// Equation:  A·x²  +  B·xy  +  C·y²  +  D·x  +  E·y  +  F  =  0
+// Discriminant:  D_val = B² − 4·A·C
+//   D_val < 0  →  ellipse     (price bounded / consolidation)
+//   D_val ≈ 0  →  parabola    (transitional / inflection)
+//   D_val > 0  →  hyperbola   (price diverging / breakout)
+// ---------------------------------------------------------------------------
+type ConicSection
+    float  A
+    float  B
+    float  C
+    float  D
+    float  E
+    float  F
+    float  disc    // B² − 4AC
+    string kind    // "ellipse" | "parabola" | "hyperbola"
 
 // ── PointMatrix ──────────────────────────────────────────────────────────────
 // Stores a 2-D grid of (x, y, value) triples using flat 1-D arrays only.
@@ -94,6 +156,491 @@ type ConicBranch
 // §2  INPUTS
 // ============================================================================
 
+g_sf  = "Surface Fit"
+sf_lb = input.int(40, "Fit Window (bars)",
+         minval=10, maxval=200, group=g_sf,
+         tooltip="Number of recent confirmed bars used to build the quadratic surface.")
+sf_yv = input.string("Volume", "Y-axis Variable",
+         options=["Volume", "ATR-14", "RSI-14"], group=g_sf,
+         tooltip="Secondary variable mapped to the surface y-axis (normalised internally).")
+sf_zv = input.string("Close", "Z-axis (Price) Variable",
+         options=["Close", "HLC3", "HL2"], group=g_sf,
+         tooltip="Price variable fitted on the surface z-axis.")
+
+g_cn  = "Conic Extraction"
+cn_z0 = input.float(0.0, "Iso-level Offset (σ)", step=0.1, group=g_cn,
+         tooltip="Iso-level for conic extraction = 0 maps to the fitted mean price. +1 / −1 shift by one normalised σ.")
+cn_sh = input.bool(true,  "Show Conic Labels",    group=g_cn)
+
+g_vis = "Visual"
+cl_fit = input.color(color.new(color.white,  30),  "Fit Curve",           group=g_vis)
+cl_el  = input.color(color.new(color.teal,   20),  "Ellipse Branches",    group=g_vis)
+cl_pa  = input.color(color.new(color.yellow, 20),  "Parabola Branches",   group=g_vis)
+cl_h1  = input.color(color.new(color.lime,   20),  "Hyperbola Branch +",  group=g_vis)
+cl_h2  = input.color(color.new(color.red,    20),  "Hyperbola Branch −",  group=g_vis)
+sh_tbl = input.bool(true, "Show Dashboard",        group=g_vis)
+
+// ============================================================================
+// §3  GLOBAL STATE
+// ============================================================================
+
+var polyline[] fitLines  = array.new<polyline>()  // main surface-fit curve
+var polyline[] br1Lines  = array.new<polyline>()  // conic branch 1 (y + 1σ)
+var polyline[] br2Lines  = array.new<polyline>()  // conic branch 2 (y − 1σ)
+var label[]    cnLabels  = array.new<label>()     // conic-kind annotation
+
+// Draw-object caps (stay well below Pine's global polyline/label limits)
+const int CAP_POLY   = 60
+const int CAP_LABELS = 60
+
+// Dashboard table — 2 columns (key / value) × 8 rows
+var table hud = table.new(position.top_right, 2, 8,
+     bgcolor      = color.new(color.black, 70),
+     border_width = 1,
+     border_color = color.new(color.gray, 60))
+
+// ============================================================================
+// §4  POINT-MATRIX HELPERS  (flat 1-D backing, row-major)
+// ============================================================================
+
+// Allocate a rows × cols PointMatrix; every element initialised to init_val.
+pm_new(int rows, int cols, float init_val) =>
+    PointMatrix.new(rows, cols, array.new_float(rows * cols, init_val))
+
+// Read element at logical position [r, c].
+pm_get(PointMatrix m, int r, int c) =>
+    array.get(m.data, r * m.cols + c)
+
+// Write element at logical position [r, c].
+pm_set(PointMatrix m, int r, int c, float v) =>
+    array.set(m.data, r * m.cols + c, v)
+
+// Add delta to element at [r, c]  (accumulate helper).
+pm_add(PointMatrix m, int r, int c, float delta) =>
+    int idx = r * m.cols + c
+    array.set(m.data, idx, array.get(m.data, idx) + delta)
+
+// Dot-product of row r of matrix A with a separate float[] vector v.
+pm_row_dot(PointMatrix A, int r, float[] v) =>
+    float s = 0.0
+    for c = 0 to A.cols - 1
+        s += pm_get(A, r, c) * array.get(v, c)
+    s
+
+// ============================================================================
+// §5  FLAT-POLYLINE HELPERS  (parallel bars[]/prices[] arrays)
+// ============================================================================
+
+// Allocate an empty FlatPolyline pre-reserved for cap data points.
+fp_new(int cap) =>
+    FlatPolyline.new(
+         array.new_int(cap, 0),
+         array.new_float(cap, na),
+         0)
+
+// Append one (bar_index, price) point — silently no-ops when at capacity.
+fp_push(FlatPolyline fp, int b, float p) =>
+    if fp.sz < array.size(fp.bars)
+        array.set(fp.bars,   fp.sz, b)
+        array.set(fp.prices, fp.sz, p)
+        fp.sz += 1
+
+// Convert to array<chart.point> required by polyline.new(), skipping na prices.
+// Guards fp.sz >= 1 so the range "0 to fp.sz-1" never inverts to "0 to -1".
+fp_to_pts(FlatPolyline fp) =>
+    array<chart.point> pts = array.new<chart.point>()
+    if fp.sz >= 1
+        for i = 0 to fp.sz - 1
+            int   bi = array.get(fp.bars,   i)
+            float pi = array.get(fp.prices, i)
+            if not na(pi)
+                array.push(pts, chart.point.from_index(bi, pi))
+    pts
+
+// ============================================================================
+// §6  GAUSSIAN ELIMINATION  (6 × 6 system, flat augmented PointMatrix)
+// ============================================================================
+// The augmented matrix [A | b] is represented as a PointMatrix with 6 rows
+// and 7 columns.  Columns 0–5 hold A; column 6 holds the RHS vector b.
+// Partial (column) pivoting is used for numerical stability.
+// Returns a float[6] solution; entries are na when the system is singular.
+//
+// Loop bounds are chosen carefully so that every range [start, end] satisfies
+// start <= end, avoiding Pine Script's auto-reverse-step behaviour when
+// start > end (which would cause out-of-bounds array accesses at the last
+// pivot step and in back-substitution).
+gauss6(PointMatrix aug) =>
+    PointMatrix m  = PointMatrix.new(aug.rows, aug.cols, array.copy(aug.data))
+    float[]     x  = array.new_float(6, na)
+    bool        ok = true
+
+    // Forward-elimination: only 5 pivot steps needed for a 6-row system;
+    // the loop stops at col = 4 so that "r2 = col+1 to 5" is always valid
+    // (minimum range 5 to 5, i.e., one iteration) and never inverts.
+    for col = 0 to 4
+        // Identify the row with the largest absolute element in this column.
+        int   pivRow = col
+        float pivVal = math.abs(pm_get(m, col, col))
+        for r2 = col + 1 to 5
+            float v2 = math.abs(pm_get(m, r2, col))
+            if v2 > pivVal
+                pivVal := v2
+                pivRow := r2
+        if pivVal < 1e-12
+            ok := false
+            break
+
+        // Swap the pivot row with the current working row.
+        if pivRow != col
+            for c2 = 0 to 6
+                float tmp = pm_get(m, col,    c2)
+                pm_set(m, col,    c2, pm_get(m, pivRow, c2))
+                pm_set(m, pivRow, c2, tmp)
+
+        // Eliminate entries below the pivot column.
+        float diag = pm_get(m, col, col)
+        for r2 = col + 1 to 5
+            float factor = pm_get(m, r2, col) / diag
+            pm_set(m, r2, col, 0.0)
+            for c2 = col + 1 to 6
+                pm_set(m, r2, c2,
+                     pm_get(m, r2, c2) - factor * pm_get(m, col, c2))
+
+    // Check the last diagonal element (row 5) which the loop above skips.
+    if ok and math.abs(pm_get(m, 5, 5)) < 1e-12
+        ok := false
+
+    // Back-substitution: iterate i = 5 down to 0.
+    // Guard "if i < 5" ensures the inner range "j = i+1 to 5" is only
+    // entered when i+1 <= 5, preventing the inverted range j = 6 to 5.
+    if ok
+        for i = 5 to 0 by -1
+            float s = pm_get(m, i, 6)
+            if i < 5
+                for j = i + 1 to 5
+                    s -= pm_get(m, i, j) * array.get(x, j)
+            array.set(x, i, s / pm_get(m, i, i))
+    x
+
+// ============================================================================
+// §7  QUADRATIC SURFACE FIT
+// ============================================================================
+// Fit  z = a·x² + b·xy + c·y² + d·x + e·y + f  to N ≥ 6 normalised triples.
+// xs, ys, zs: parallel float[] of equal length (normalised by the caller).
+// Uses a PointMatrix for the 6 × 7 augmented normal-equation system.
+qsf_fit(float[] xs, float[] ys, float[] zs) =>
+    SurfaceFit sf = SurfaceFit.new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false)
+    int N = array.size(xs)
+    if N >= 6
+        // Augmented matrix [XᵀX | Xᵀz], size 6 × 7.
+        PointMatrix aug = pm_new(6, 7, 0.0)
+
+        for i = 0 to N - 1
+            float xi = array.get(xs, i)
+            float yi = array.get(ys, i)
+            float zi = array.get(zs, i)
+
+            // Feature vector φ = [x², xy, y², x, y, 1] (length 6).
+            float[] phi = array.new_float(6)
+            array.set(phi, 0, xi * xi)
+            array.set(phi, 1, xi * yi)
+            array.set(phi, 2, yi * yi)
+            array.set(phi, 3, xi)
+            array.set(phi, 4, yi)
+            array.set(phi, 5, 1.0)
+
+            // XᵀX  +=  φ · φᵀ   and   Xᵀz  +=  φ · zᵢ
+            for r = 0 to 5
+                float pr = array.get(phi, r)
+                for c = 0 to 5
+                    pm_add(aug, r, c, pr * array.get(phi, c))
+                pm_add(aug, r, 6, pr * zi)
+
+        float[] coeffs = gauss6(aug)
+
+        // Check that back-substitution succeeded (no na entries).
+        bool anyNa = false
+        for k = 0 to 5
+            if na(array.get(coeffs, k))
+                anyNa := true
+                break
+
+        if not anyNa
+            sf.a := array.get(coeffs, 0)
+            sf.b := array.get(coeffs, 1)
+            sf.c := array.get(coeffs, 2)
+            sf.d := array.get(coeffs, 3)
+            sf.e := array.get(coeffs, 4)
+            sf.f := array.get(coeffs, 5)
+
+            // Root-mean-square residual in normalised price units.
+            float ss = 0.0
+            for i = 0 to N - 1
+                float xi = array.get(xs, i)
+                float yi = array.get(ys, i)
+                float zi = array.get(zs, i)
+                float zh = sf.a*xi*xi + sf.b*xi*yi + sf.c*yi*yi +
+                           sf.d*xi    + sf.e*yi     + sf.f
+                float re = zi - zh
+                ss      += re * re
+            sf.rmse  := math.sqrt(ss / N)
+            sf.valid := true
+    sf
+
+// ============================================================================
+// §8  CONIC SECTION EXTRACTION
+// ============================================================================
+// Build the ConicSection at iso-level z = z0_norm (in normalised units).
+// The conic equation is:  A·x² + B·xy + C·y² + D·x + E·y + F = 0
+// where every capital coefficient mirrors the matching surface coefficient
+// except F = sf.f − z0_norm.
+conic_extract(SurfaceFit sf, float z0_norm) =>
+    float disc = sf.b * sf.b - 4.0 * sf.a * sf.c
+    string kind = disc < -1e-9 ? "ellipse"
+                : disc >  1e-9 ? "hyperbola"
+                : "parabola"
+    ConicSection.new(
+         sf.a, sf.b, sf.c,
+         sf.d, sf.e,
+         sf.f - z0_norm,
+         disc, kind)
+
+// ============================================================================
+// §9  CONIC BRANCH PAIR EVALUATION
+// ============================================================================
+// At bar offset x with actual normalised secondary value y_act, compute two
+// price values representing the ±1 secondary-variable deviation branches:
+//
+//   z_br1  =  z_hat(x, y_act + 1)   (secondary var raised by 1 normalised σ)
+//   z_br2  =  z_hat(x, y_act − 1)   (secondary var lowered by 1 normalised σ)
+//
+// The spread  z_br1 − z_br2  = 2·(b·x + 2·c·y_act + e)  equals twice the
+// partial derivative ∂z/∂y at (x, y_act), so the branch type directly mirrors
+// the conic structure:
+//   ellipse   → spread is bounded / near-constant across the window
+//   hyperbola → spread can change sign (diverging / trend-break marker)
+//   parabola  → spread is a linear function of x
+//
+// Returns [z_fit, z_br1, z_br2] in normalised price units.
+branch_triple(SurfaceFit sf, float x, float y_act) =>
+    float yp1  = y_act + 1.0
+    float ym1  = y_act - 1.0
+    float z_fit = sf.a*x*x + sf.b*x*y_act + sf.c*y_act*y_act +
+                  sf.d*x   + sf.e*y_act    + sf.f
+    float z_br1 = sf.a*x*x + sf.b*x*yp1   + sf.c*yp1*yp1   +
+                  sf.d*x   + sf.e*yp1      + sf.f
+    float z_br2 = sf.a*x*x + sf.b*x*ym1   + sf.c*ym1*ym1   +
+                  sf.d*x   + sf.e*ym1      + sf.f
+    [z_fit, z_br1, z_br2]
+
+// ============================================================================
+// §10  DRAW-OBJECT LIFECYCLE HELPERS
+// ============================================================================
+// Each helper pushes a new object and evicts the oldest when the cap is hit,
+// keeping draw-object counts stable regardless of how long the indicator runs.
+
+push_poly_capped(polyline[] arr, polyline obj, int cap) =>
+    array.push(arr, obj)
+    if array.size(arr) > cap
+        polyline old = array.shift(arr)
+        if not na(old)
+            polyline.delete(old)
+
+push_label_capped(label[] arr, label obj, int cap) =>
+    array.push(arr, obj)
+    if array.size(arr) > cap
+        label old = array.shift(arr)
+        if not na(old)
+            label.delete(old)
+
+// ============================================================================
+// §11  Y-AXIS (SECONDARY) AND Z-AXIS (PRICE) VARIABLE SELECTION
+// ============================================================================
+
+float yRaw = sf_yv == "ATR-14" ? ta.atr(14)
+           : sf_yv == "RSI-14" ? ta.rsi(close, 14)
+           :                     volume
+
+float zRaw = sf_zv == "HLC3" ? hlc3
+           : sf_zv == "HL2"  ? hl2
+           :                   close
+
+// ============================================================================
+// §12  PER-BAR MAIN COMPUTATION
+// ============================================================================
+
+if barstate.isconfirmed and bar_index >= sf_lb
+    int N = sf_lb
+
+    // ── Step 1: collect window statistics for normalisation ─────────────────
+    float ySum = 0.0
+    float zSum = 0.0
+    for i = 0 to N - 1
+        ySum += nz(yRaw[i])
+        zSum += nz(zRaw[i])
+    float yMean = ySum / N
+    float zMean = zSum / N
+
+    float yVar = 0.0
+    float zVar = 0.0
+    for i = 0 to N - 1
+        float dy = nz(yRaw[i]) - yMean
+        float dz = nz(zRaw[i]) - zMean
+        yVar += dy * dy
+        zVar += dz * dz
+    float yStd = math.sqrt(yVar / N) + 1e-8
+    float zStd = math.sqrt(zVar / N) + 1e-8
+
+    // ── Step 2: build normalised xs / ys / zs flat arrays ───────────────────
+    //   x in [−1, 1]: oldest bar in window → −1, newest → +1
+    float[] xs = array.new_float(N)
+    float[] ys = array.new_float(N)
+    float[] zs = array.new_float(N)
+    for i = 0 to N - 1
+        array.set(xs, i, 2.0 * float(N - 1 - i) / float(N - 1) - 1.0)
+        array.set(ys, i, (nz(yRaw[i]) - yMean) / yStd)
+        array.set(zs, i, (nz(zRaw[i]) - zMean) / zStd)
+
+    // ── Step 3: quadratic surface fit ───────────────────────────────────────
+    SurfaceFit sf = qsf_fit(xs, ys, zs)
+
+    if sf.valid
+        // ── Step 4: extract the conic at the requested iso-level ────────────
+        ConicSection cs = conic_extract(sf, cn_z0)
+
+        // ── Step 5: populate three FlatPolylines (fit + branch1 + branch2) ──
+        FlatPolyline fp_fit = fp_new(N)
+        FlatPolyline fp_br1 = fp_new(N)
+        FlatPolyline fp_br2 = fp_new(N)
+
+        for i = 0 to N - 1
+            float xi = array.get(xs, i)
+            float yi = array.get(ys, i)
+            int   bi = bar_index - i   // bar_index of sample point
+
+            [z_f, z_b1, z_b2] = branch_triple(sf, xi, yi)
+
+            // Denormalise back to price space.
+            float p_fit = z_f  * zStd + zMean
+            float p_br1 = z_b1 * zStd + zMean
+            float p_br2 = z_b2 * zStd + zMean
+
+            fp_push(fp_fit, bi, p_fit)
+            fp_push(fp_br1, bi, p_br1)
+            fp_push(fp_br2, bi, p_br2)
+
+        // ── Step 6: choose colours by conic kind ────────────────────────────
+        color bCol1 = cs.kind == "ellipse"   ? cl_el
+                    : cs.kind == "parabola"  ? cl_pa
+                    :                          cl_h1
+        color bCol2 = cs.kind == "hyperbola" ? cl_h2 : bCol1
+
+        // ── Step 7: render polylines ─────────────────────────────────────────
+        if fp_fit.sz >= 2
+            push_poly_capped(fitLines,
+                 polyline.new(fp_to_pts(fp_fit),
+                              curved     = true,
+                              line_color = cl_fit,
+                              line_width = 2), CAP_POLY)
+
+        if fp_br1.sz >= 2
+            push_poly_capped(br1Lines,
+                 polyline.new(fp_to_pts(fp_br1),
+                              curved     = true,
+                              line_color = bCol1,
+                              line_width = 1), CAP_POLY)
+
+        if fp_br2.sz >= 2
+            push_poly_capped(br2Lines,
+                 polyline.new(fp_to_pts(fp_br2),
+                              curved     = true,
+                              line_color = bCol2,
+                              line_width = 1), CAP_POLY)
+
+        // ── Step 8: conic-kind label ─────────────────────────────────────────
+        if cn_sh
+            color lc = cs.kind == "ellipse"  ? cl_el
+                     : cs.kind == "parabola" ? cl_pa
+                     :                         cl_h1
+
+            // Conic symbol: ○ ellipse  ∪ parabola  ⊃ hyperbola
+            string sym = cs.kind == "ellipse"   ? "○"
+                       : cs.kind == "parabola"  ? "∪"
+                       :                          "⊃"
+
+            // Branch spread sign: + means branch1 > branch2 at current bar
+            float spread_now = (array.get(fp_br1.prices, 0) -
+                                array.get(fp_br2.prices, 0))
+            string spread_sym = spread_now >= 0 ? "▲" : "▼"
+
+            string lbl_txt = sym + " " + cs.kind
+                           + "\nΔ=" + str.tostring(cs.disc,        "#.###e0")
+                           + "\nRMSE=" + str.tostring(sf.rmse * zStd, "#.####")
+                           + "\nspread " + spread_sym
+
+            push_label_capped(cnLabels,
+                 label.new(bar_index, close,
+                           text      = lbl_txt,
+                           textcolor = lc,
+                           style     = label.style_label_left,
+                           color     = color.new(color.black, 80),
+                           size      = size.small), CAP_LABELS)
+
+        // ── Step 9: dashboard ────────────────────────────────────────────────
+        if sh_tbl
+            color kindCol = cs.kind == "ellipse"  ? cl_el
+                          : cs.kind == "parabola" ? cl_pa
+                          :                         cl_h1
+
+            // Header row
+            table.cell(hud, 0, 0, "QSF-CBX v1",
+                       text_color = color.white,
+                       text_size  = size.small,
+                       bgcolor    = color.new(color.navy, 50))
+            table.cell(hud, 1, 0, timeframe.period + " · " + sf_yv,
+                       text_color = color.white,
+                       text_size  = size.small,
+                       bgcolor    = color.new(color.navy, 50))
+
+            // Conic kind
+            table.cell(hud, 0, 1, "Conic",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 1, cs.kind,
+                       text_color = kindCol,      text_size = size.tiny)
+
+            // Discriminant
+            table.cell(hud, 0, 2, "Disc B²−4AC",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 2, str.tostring(cs.disc, "#.####e0"),
+                       text_color = color.white,  text_size = size.tiny)
+
+            // Fit RMSE
+            table.cell(hud, 0, 3, "RMSE (price)",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 3, str.tostring(sf.rmse * zStd, "#.#####"),
+                       text_color = color.white,  text_size = size.tiny)
+
+            // Surface coefficients a, b, c
+            table.cell(hud, 0, 4, "Coeff a (x²)",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 4, str.tostring(sf.a, "#.####"),
+                       text_color = color.white,  text_size = size.tiny)
+
+            table.cell(hud, 0, 5, "Coeff b (xy)",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 5, str.tostring(sf.b, "#.####"),
+                       text_color = color.white,  text_size = size.tiny)
+
+            table.cell(hud, 0, 6, "Coeff c (y²)",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 6, str.tostring(sf.c, "#.####"),
+                       text_color = color.white,  text_size = size.tiny)
+
+            // Fit window
+            table.cell(hud, 0, 7, "Window",
+                       text_color = color.silver, text_size = size.tiny)
+            table.cell(hud, 1, 7, str.tostring(sf_lb) + " bars",
+                       text_color = color.white,  text_size = size.tiny)
 G_FIT = "Quadratic Fit"
 G_VIS = "Visuals"
 
