@@ -49,17 +49,30 @@
 const PROP_SECRET        = 'GAS_WEBHOOK_SECRET';
 const PROP_RECIPIENTS    = 'RECIPIENT_EMAILS';
 const PROP_GITHUB_WH     = 'GITHUB_WEBHOOK_URL';
+const PROP_CALENDAR_ID   = 'TRADING_CALENDAR_ID';   // Google Calendar ID for trading events
 const REPORT_PAGES_BASE  = 'https://majixai.github.io/majixai.github.io';
 
-// Schedule slots → { dayOfWeek[], hour (24h) }
+// Schedule slots → { dayOfWeek[], hour (24h), minute, fn, calendarTitle }
 // dayOfWeek: 0=Sunday … 6=Saturday  (same as JS Date.getDay())
+// All times in America/New_York (ET).
 const SCHEDULE_SLOTS = [
-  { name: 'weekday_open',  days: [1,2,3,4,5], hour:  6, fn: 'sendWeekdayOpen'  },
-  { name: 'weekday_9am',   days: [1,2,3,4,5], hour:  9, fn: 'sendWeekday9am'   },
-  { name: 'weekday_10am',  days: [1,2,3,4,5], hour: 10, fn: 'sendWeekday10am'  },
-  { name: 'weekday_1pm',   days: [1,2,3,4,5], hour: 13, fn: 'sendWeekday1pm'   },
-  { name: 'weekend_9am',   days: [0,6],        hour:  9, fn: 'sendWeekendMorning' },
-  { name: 'weekend_10pm',  days: [0,6],        hour: 22, fn: 'sendWeekendEvening' },
+  // ── Legacy UTC-aligned slots (preserved for backward compatibility) ──────
+  { name: 'weekday_open',  days: [1,2,3,4,5], hour:  6, minute:  0, fn: 'sendWeekdayOpen',      calendarTitle: '🌅 Pre-Market Bull Alert'         },
+  { name: 'weekday_9am',   days: [1,2,3,4,5], hour:  9, minute:  0, fn: 'sendWeekday9am',        calendarTitle: '📊 9 AM Market Snapshot'           },
+  { name: 'weekday_10am',  days: [1,2,3,4,5], hour: 10, minute:  0, fn: 'sendWeekday10am',       calendarTitle: '🔔 10 AM Mid-Morning Report'       },
+  { name: 'weekday_1pm',   days: [1,2,3,4,5], hour: 13, minute:  0, fn: 'sendWeekday1pm',        calendarTitle: '🏦 1 PM Indices Close Report'      },
+  { name: 'weekend_9am',   days: [0,6],        hour:  9, minute:  0, fn: 'sendWeekendMorning',    calendarTitle: '🌅 Weekend Market Morning Digest'  },
+  { name: 'weekend_10pm',  days: [0,6],        hour: 22, minute:  0, fn: 'sendWeekendEvening',    calendarTitle: '🌙 Weekend Market Evening Digest'  },
+  // ── Trading-Prompt Agent slots (ET times) ────────────────────────────────
+  { name: 'overnight_day_plan',  days: [1,2,3,4,5], hour: 23, minute:  0, fn: 'sendOvernightDayPlan',   calendarTitle: '🌙 Trading Day Ahead Plan'         },
+  { name: 'overnight_bull_pick', days: [1,2,3,4,5], hour:  1, minute:  0, fn: 'sendOvernightBullPick',  calendarTitle: '⚡ Most Bullish Pick Alert'        },
+  { name: 'overnight_project',   days: [1,2,3,4,5], hour:  3, minute:  0, fn: 'sendOvernightProject',   calendarTitle: '🛠️ Overnight Project Brief'       },
+  { name: 'premarket_1pm_proj',  days: [1,2,3,4,5], hour:  4, minute:  0, fn: 'sendPremarket1pmProj',   calendarTitle: '📐 Projected 1 PM Close Brief'    },
+  { name: 'premarket_followup',  days: [1,2,3,4,5], hour:  5, minute: 30, fn: 'sendPremarketFollowup',  calendarTitle: '📊 Pre-Market Follow-Up (5:30 AM)' },
+  { name: 'premarket_extra',     days: [1,2,3,4,5], hour:  6, minute: 30, fn: 'sendPremarketExtra',     calendarTitle: '🔔 Pre-Market Final Brief (6:30 AM)'},
+  { name: 'market_bullnews',     days: [1,2,3,4,5], hour: 10, minute:  0, fn: 'sendMarketBullNews',     calendarTitle: '⚡ Bull Momentum / News Alert (10 AM)'},
+  { name: 'market_midday',       days: [1,2,3,4,5], hour: 11, minute: 59, fn: 'sendMarketMidday',       calendarTitle: '⏱️ Midday Market Follow-Up (11:59 AM)'},
+  { name: 'market_1pm_et',       days: [1,2,3,4,5], hour: 13, minute:  0, fn: 'sendMarket1pmET',        calendarTitle: '🏦 1 PM ET Index Feedback + Next Day Plan'},
 ];
 
 
@@ -101,6 +114,14 @@ function doPost(e) {
 
     const sent = _sendEmails(subject, html, plain, recipients);
 
+    // Create a Google Calendar event for this report slot
+    const slot = SCHEDULE_SLOTS.find(function (s) { return s.name === mode; });
+    _createCalendarEvent(
+      (slot && slot.calendarTitle) ? slot.calendarTitle : subject,
+      mode,
+      new Date()
+    );
+
     // Optional: notify GitHub that the email was sent
     _notifyGitHub({ mode: mode, sent: sent, subject: subject });
 
@@ -118,7 +139,7 @@ function doPost(e) {
  * Useful to verify the deployment URL is live.
  */
 function doGet() {
-  return _jsonOut({ ok: true, service: 'MajixAI gas_mailer', version: '1.0' });
+  return _jsonOut({ ok: true, service: 'MajixAI gas_mailer', version: '2.0', features: ['email', 'calendar'] });
 }
 
 
@@ -188,11 +209,12 @@ function installFinancialEmailTriggers() {
     ScriptApp.newTrigger(slot.fn)
       .timeBased()
       .atHour(slot.hour)
-      .nearMinute(0)
+      .nearMinute(slot.minute || 0)
       .everyDays(1)
       .inTimezone('America/New_York')
       .create();
-    console.log('[gas_mailer] Installed trigger for', slot.fn, 'at hour', slot.hour);
+    console.log('[gas_mailer] Installed trigger for', slot.fn,
+                'at hour', slot.hour, 'min', (slot.minute || 0));
   });
 
   console.log('[gas_mailer] All triggers installed.');
@@ -214,16 +236,27 @@ function removeFinancialEmailTriggers() {
 // ── Slot functions (called by triggers) ──────────────────────────────────────
 // Each function checks the current day-of-week and skips if out-of-schedule.
 
-function sendWeekdayOpen()    { _dispatchSlot('weekday_open',  [1,2,3,4,5]); }
-function sendWeekday9am()     { _dispatchSlot('weekday_9am',   [1,2,3,4,5]); }
-function sendWeekday10am()    { _dispatchSlot('weekday_10am',  [1,2,3,4,5]); }
-function sendWeekday1pm()     { _dispatchSlot('weekday_1pm',   [1,2,3,4,5]); }
-function sendWeekendMorning() { _dispatchSlot('weekend_9am',   [0,6]);        }
-function sendWeekendEvening() { _dispatchSlot('weekend_10pm',  [0,6]);        }
+function sendWeekdayOpen()    { _dispatchSlot('weekday_open',       [1,2,3,4,5]); }
+function sendWeekday9am()     { _dispatchSlot('weekday_9am',        [1,2,3,4,5]); }
+function sendWeekday10am()    { _dispatchSlot('weekday_10am',       [1,2,3,4,5]); }
+function sendWeekday1pm()     { _dispatchSlot('weekday_1pm',        [1,2,3,4,5]); }
+function sendWeekendMorning() { _dispatchSlot('weekend_9am',        [0,6]);        }
+function sendWeekendEvening() { _dispatchSlot('weekend_10pm',       [0,6]);        }
+// Trading-Prompt Agent slots
+function sendOvernightDayPlan()  { _dispatchSlot('overnight_day_plan',  [1,2,3,4,5]); }
+function sendOvernightBullPick() { _dispatchSlot('overnight_bull_pick', [1,2,3,4,5]); }
+function sendOvernightProject()  { _dispatchSlot('overnight_project',   [1,2,3,4,5]); }
+function sendPremarket1pmProj()  { _dispatchSlot('premarket_1pm_proj',  [1,2,3,4,5]); }
+function sendPremarketFollowup() { _dispatchSlot('premarket_followup',  [1,2,3,4,5]); }
+function sendPremarketExtra()    { _dispatchSlot('premarket_extra',     [1,2,3,4,5]); }
+function sendMarketBullNews()    { _dispatchSlot('market_bullnews',     [1,2,3,4,5]); }
+function sendMarketMidday()      { _dispatchSlot('market_midday',       [1,2,3,4,5]); }
+function sendMarket1pmET()       { _dispatchSlot('market_1pm_et',       [1,2,3,4,5]); }
 
 /**
  * Core dispatcher for schedule slots.
- * Builds a minimal HTML email directly from GAS (no Python needed).
+ * Builds a minimal HTML email directly from GAS (no Python needed),
+ * sends it via Gmail, and creates a Google Calendar event.
  *
  * @param {string}   modeName
  * @param {number[]} allowedDays  0=Sun … 6=Sat
@@ -251,6 +284,12 @@ function _dispatchSlot(modeName, allowedDays) {
   const sent = _sendEmails(subject, html, plain, recipients);
   console.log('[gas_mailer] Slot', modeName, '→ sent', sent, 'email(s)');
 
+  // Create a Google Calendar event for this report slot
+  const slot = SCHEDULE_SLOTS.find(function (s) { return s.name === modeName; });
+  if (slot) {
+    _createCalendarEvent(slot.calendarTitle || subject, modeName, now);
+  }
+
   _notifyGitHub({ mode: modeName, sent: sent, subject: subject });
 }
 
@@ -263,12 +302,21 @@ function _dispatchSlot(modeName, allowedDays) {
 function _buildGasSubject(mode, now) {
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'EEEE, MMMM d yyyy');
   const prefixes = {
-    weekday_open:  '🌅 Pre-Market Bull Alert',
-    weekday_9am:   '📊 9 AM Market Snapshot',
-    weekday_10am:  '🔔 10 AM Mid-Morning Report',
-    weekday_1pm:   '🏦 1 PM Indices Close Report',
-    weekend_9am:   '🌅 Weekend Market Morning Digest',
-    weekend_10pm:  '🌙 Weekend Market Evening Digest',
+    weekday_open:       '🌅 Pre-Market Bull Alert',
+    weekday_9am:        '📊 9 AM Market Snapshot',
+    weekday_10am:       '🔔 10 AM Mid-Morning Report',
+    weekday_1pm:        '🏦 1 PM Indices Close Report',
+    weekend_9am:        '🌅 Weekend Market Morning Digest',
+    weekend_10pm:       '🌙 Weekend Market Evening Digest',
+    overnight_day_plan: '🌙 Trading Day Ahead Plan',
+    overnight_bull_pick:'⚡ Most Bullish Pick Alert',
+    overnight_project:  '🛠️ Overnight Project Brief',
+    premarket_1pm_proj: '📐 Projected 1 PM Close',
+    premarket_followup: '📊 Pre-Market Follow-Up (5:30 AM)',
+    premarket_extra:    '🔔 Pre-Market Final Brief (6:30 AM)',
+    market_bullnews:    '⚡ Bull Momentum / News Alert (10 AM)',
+    market_midday:      '⏱️ Midday Market Follow-Up (11:59 AM)',
+    market_1pm_et:      '🏦 1 PM ET Index Feedback + Next Day Plan',
   };
   return (prefixes[mode] || '📈 Financial Report') + ' — ' + dateStr;
 }
@@ -278,7 +326,7 @@ function _buildGasHtml(mode, now) {
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'EEEE, MMMM d yyyy');
   const subject = _buildGasSubject(mode, now);
 
-  // Fetch index data via GOOGLEFINANCE (GAS built-in)
+  // Fetch index data via UrlFetchApp (Yahoo Finance)
   const indices = _fetchIndicesGas();
 
   let rows = '';
@@ -302,6 +350,67 @@ function _buildGasHtml(mode, now) {
     return '<li><a href="' + pair[0] + '">' + pair[1] + '</a></li>';
   }).join('');
 
+  // Trading-prompt agent: additional prompt cards for new slots
+  const tradingPromptCards = {
+    overnight_day_plan: [
+      'Summarise macro drivers for the next session and suggest 3 entry setups.',
+      'Outline the bull vs bear open scenarios for S&P 500 based on overnight futures.',
+      'List the 5 key support/resistance levels for DJI and NASDAQ entering tomorrow.',
+    ],
+    overnight_bull_pick: [
+      'Which stock has the strongest GBM + RSI + MACD confluence? Provide a trade thesis.',
+      'Describe overnight on-chain signals for the top-ranked crypto bull pick.',
+      'Compare Higuchi FD of top stock vs top crypto and implied next-day volatility.',
+    ],
+    overnight_project: [
+      'Review OU mean-reversion strategy performance and suggest parameter recalibrations.',
+      'Generate a 3-point GBM simulation brief for SPY, QQQ, and BTC.',
+      'Outline a VIX-derivative hedge strategy if RSI > 70 or < 30 at the open.',
+    ],
+    premarket_1pm_proj: [
+      'What is the most likely S&P 500 level at 1 PM ET? Give bull, base, and bear cases.',
+      'Estimate probability DJI closes above its 20-day MA by 1 PM using GBM + RSI.',
+      'If projected 1 PM close is within 0.5% of pre-market level, suggest range-bound strategies.',
+    ],
+    premarket_followup: [
+      'Which sector shows the strongest pre-market momentum from the top movers list?',
+      'Describe risk:reward for a gap-up continuation vs fade-the-gap for top 3 picks.',
+      'Has the overnight bull narrative changed? What new catalyst or risk factor emerged?',
+    ],
+    premarket_extra: [
+      'Final: rank today\'s 3 highest-conviction trades with entry, target, stop, and confidence.',
+      'Does VIX level suggest elevated uncertainty? How should position sizing be adjusted?',
+      'Identify early-morning news events creating gap-open opportunities in the first 30 min.',
+    ],
+    market_bullnews: [
+      'Alert: scan for RSI > 75 AND bull_score > 5 movers. News-driven or pure momentum?',
+      'If S&P 500 is up > 1.5% by 10 AM, is this a sustainable trend day or overextension?',
+      'Identify the single most news-driven bull catalyst now and outline a momentum trade plan.',
+    ],
+    market_midday: [
+      'Compare 11:59 AM index levels against the 4 AM projected 1 PM close. Which scenario?',
+      'For open morning positions, hold through lunch or take partial profits? Assess momentum.',
+      'Preview afternoon catalysts (Fed speaker, auction, MOC imbalances) and directional bias.',
+    ],
+    market_1pm_et: [
+      'Evaluate today\'s index performance vs pre-market projection. Describe variance and cause.',
+      'Forecast the final 3 PM close range for S&P 500 with confidence percentages.',
+      'Plan tomorrow\'s top 3 trading opportunities based on today\'s sector performance.',
+      'Review today\'s top bull movers: continuation vs consolidation potential tomorrow?',
+      'Summarise today\'s session learnings and how to refine tomorrow\'s pre-market brief.',
+    ],
+  };
+
+  let promptSection = '';
+  const prompts = tradingPromptCards[mode];
+  if (prompts && prompts.length > 0) {
+    promptSection = '<div class="card">'
+      + '<h2 style="color:#58a6ff;font-size:15px">💡 Trading Prompts</h2>'
+      + '<ol style="padding-left:20px;line-height:1.8">'
+      + prompts.map(function (p) { return '<li style="margin-bottom:6px">' + p + '</li>'; }).join('')
+      + '</ol></div>';
+  }
+
   return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
     + '<style>'
     + 'body{margin:0;padding:0;background:#0d1117;color:#e6edf3;font-family:Arial,sans-serif;font-size:14px}'
@@ -318,6 +427,7 @@ function _buildGasHtml(mode, now) {
     + '</style></head><body><div class="wrap">'
     + '<h1>📈 ' + subject + '</h1>'
     + '<div class="sub">Generated by GAS · ' + ts + '</div>'
+    + promptSection
     + '<div class="card">'
     + '<h2 style="color:#58a6ff;font-size:15px">📊 Major Indices</h2>'
     + '<table><thead><tr><th>Index</th><th>Last</th><th>Chg%</th></tr></thead><tbody>'
@@ -369,6 +479,71 @@ function _fetchIndicesGas() {
       return { label: idx.label, ticker: idx.ticker, price: null, change: 0 };
     }
   });
+}
+
+
+// ── Google Calendar integration ───────────────────────────────────────────────
+
+/**
+ * Create (or update) a 30-minute Google Calendar event for a report slot.
+ *
+ * Calendar selection (in priority order):
+ *   1. TRADING_CALENDAR_ID script property — a dedicated "MajixAI Trading" calendar ID.
+ *   2. The script owner's primary calendar (CalendarApp.getDefaultCalendar()).
+ *
+ * The event title matches the slot's calendarTitle.
+ * An existing event on the same day with the same title is updated rather than
+ * duplicated.
+ *
+ * @param {string} title      Human-readable event title (e.g. '🌙 Trading Day Ahead Plan').
+ * @param {string} modeName   Internal mode identifier for description metadata.
+ * @param {Date}   now        The current Date (used as the event start time).
+ */
+function _createCalendarEvent(title, modeName, now) {
+  try {
+    const calId = PropertiesService.getScriptProperties().getProperty(PROP_CALENDAR_ID);
+    const cal   = calId
+      ? CalendarApp.getCalendarById(calId)
+      : CalendarApp.getDefaultCalendar();
+
+    if (!cal) {
+      console.warn('[gas_mailer] _createCalendarEvent: calendar not found. '
+        + 'Set TRADING_CALENDAR_ID script property or ensure default calendar is accessible.');
+      return;
+    }
+
+    const start = new Date(now.getTime());
+    const end   = new Date(start.getTime() + 30 * 60 * 1000); // 30-minute event
+
+    const description = 'MajixAI Trading Prompt Agent\n'
+      + 'Mode: ' + modeName + '\n'
+      + 'Generated: ' + now.toISOString() + '\n\n'
+      + 'Open the email report for full index data, GBM forecasts, and trading prompts.\n'
+      + 'Dashboard: ' + REPORT_PAGES_BASE + '/yfinance/index.html';
+
+    // Check for a duplicate event on the same calendar day with the same title
+    const dayStart = new Date(start);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(start);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const existing = cal.getEvents(dayStart, dayEnd).filter(function (ev) {
+      return ev.getTitle() === title;
+    });
+
+    if (existing.length > 0) {
+      // Update the first matching event instead of creating a duplicate
+      const ev = existing[0];
+      ev.setTime(start, end);
+      ev.setDescription(description);
+      console.log('[gas_mailer] Calendar event updated:', title, start.toISOString());
+    } else {
+      cal.createEvent(title, start, end, { description: description });
+      console.log('[gas_mailer] Calendar event created:', title, start.toISOString());
+    }
+  } catch (err) {
+    console.warn('[gas_mailer] _createCalendarEvent failed:', err.message);
+  }
 }
 
 

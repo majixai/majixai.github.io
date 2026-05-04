@@ -65,23 +65,43 @@ _fr_spec = _ilu.spec_from_file_location(
 _fr_mod = _ilu.module_from_spec(_fr_spec)
 _fr_spec.loader.exec_module(_fr_mod)
 
-build_weekday_open_report  = _fr_mod.build_weekday_open_report
-build_weekday_9am_report   = _fr_mod.build_weekday_9am_report
-build_weekday_10am_report  = _fr_mod.build_weekday_10am_report
-build_weekday_1pm_report   = _fr_mod.build_weekday_1pm_report
-build_weekend_report       = _fr_mod.build_weekend_report
+build_weekday_open_report      = _fr_mod.build_weekday_open_report
+build_weekday_9am_report       = _fr_mod.build_weekday_9am_report
+build_weekday_10am_report      = _fr_mod.build_weekday_10am_report
+build_weekday_1pm_report       = _fr_mod.build_weekday_1pm_report
+build_weekend_report           = _fr_mod.build_weekend_report
+# Trading-prompt agent slots
+build_overnight_day_plan_report  = _fr_mod.build_overnight_day_plan_report
+build_overnight_bull_pick_report = _fr_mod.build_overnight_bull_pick_report
+build_overnight_project_report   = _fr_mod.build_overnight_project_report
+build_premarket_1pm_proj_report  = _fr_mod.build_premarket_1pm_proj_report
+build_premarket_followup_report  = _fr_mod.build_premarket_followup_report
+build_premarket_extra_report     = _fr_mod.build_premarket_extra_report
+build_market_bullnews_report     = _fr_mod.build_market_bullnews_report
+build_market_midday_report       = _fr_mod.build_market_midday_report
+build_market_1pm_et_report       = _fr_mod.build_market_1pm_et_report
 
 
 # ── Report builder dispatch ───────────────────────────────────────────────────
 
 def _build(mode: str, now: datetime):
     dispatch = {
-        "weekday_open":  lambda: build_weekday_open_report(now),
-        "weekday_9am":   lambda: build_weekday_9am_report(now),
-        "weekday_10am":  lambda: build_weekday_10am_report(now),
-        "weekday_1pm":   lambda: build_weekday_1pm_report(now),
-        "weekend_9am":   lambda: build_weekend_report(now, "9am"),
-        "weekend_10pm":  lambda: build_weekend_report(now, "10pm"),
+        "weekday_open":        lambda: build_weekday_open_report(now),
+        "weekday_9am":         lambda: build_weekday_9am_report(now),
+        "weekday_10am":        lambda: build_weekday_10am_report(now),
+        "weekday_1pm":         lambda: build_weekday_1pm_report(now),
+        "weekend_9am":         lambda: build_weekend_report(now, "9am"),
+        "weekend_10pm":        lambda: build_weekend_report(now, "10pm"),
+        # Trading-prompt agent slots
+        "overnight_day_plan":  lambda: build_overnight_day_plan_report(now),
+        "overnight_bull_pick": lambda: build_overnight_bull_pick_report(now),
+        "overnight_project":   lambda: build_overnight_project_report(now),
+        "premarket_1pm_proj":  lambda: build_premarket_1pm_proj_report(now),
+        "premarket_followup":  lambda: build_premarket_followup_report(now),
+        "premarket_extra":     lambda: build_premarket_extra_report(now),
+        "market_bullnews":     lambda: build_market_bullnews_report(now),
+        "market_midday":       lambda: build_market_midday_report(now),
+        "market_1pm_et":       lambda: build_market_1pm_et_report(now),
     }
     fn = dispatch.get(mode)
     if fn is None:
@@ -236,6 +256,10 @@ def _parse() -> argparse.Namespace:
         choices=[
             "weekday_open", "weekday_9am", "weekday_10am",
             "weekday_1pm", "weekend_9am", "weekend_10pm",
+            # Trading-prompt agent slots
+            "overnight_day_plan", "overnight_bull_pick", "overnight_project",
+            "premarket_1pm_proj", "premarket_followup", "premarket_extra",
+            "market_bullnews", "market_midday", "market_1pm_et",
         ],
         help="Report mode / schedule slot to generate",
     )
