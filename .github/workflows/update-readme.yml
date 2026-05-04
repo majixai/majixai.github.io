@@ -21,10 +21,11 @@ jobs:
     permissions:
       contents: write
     # Skip if the triggering commit was made by this workflow itself (scheduled runs always proceed)
+    # Guard against events that don't include head_commit (e.g. workflow_run) by checking for its presence first.
     if: |
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
-      !contains(github.event.head_commit.message, 'docs: auto-update README stats [skip ci]')
+      (github.event.head_commit && !contains(github.event.head_commit.message, 'docs: auto-update README stats [skip ci]'))
 
     steps:
       - name: Wait 3 minutes before updating
@@ -42,9 +43,32 @@ jobs:
           python-version: '3.11'
 
       - name: Run README update script
-        run: python scripts/update_readme.py
+        id: update_readme
+        run: |
+          set -o pipefail
+          # Run the script but do not fail the entire job on error. Record success state as an output.
+          if python scripts/update_readme.py 2>&1 | tee update_readme.log; then
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "success=false" >> $GITHUB_OUTPUT
+            echo "::warning::README update script failed — see update_readme.log for details"
+          fi
+
+      - name: Check for README changes
+        id: check_changes
+        # Only check for changes when the update script succeeded.
+        if: steps.update_readme.outputs.success == 'true'
+        run: |
+          # Detect if README.md has unstaged changes caused by the script.
+          if git diff --quiet -- README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit and push if README changed
+        # Only commit when the script succeeded AND README.md actually changed.
+        if: steps.update_readme.outputs.success == 'true' && steps.check_changes.outputs.changed == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs: auto-update README stats [skip ci]"
