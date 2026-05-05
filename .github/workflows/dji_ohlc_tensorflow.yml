@@ -1,0 +1,108 @@
+name: DJI OHLC TensorFlow Engine
+
+# ─────────────────────────────────────────────────────────────────────────────
+# All times below are in UTC, converted from US/Eastern (EDT = UTC-4).
+#
+#   Cron           UTC    → ET      Purpose
+#   ────────────   ─────    ──────   ───────────────────────────────────────
+#   0  4  * * *   04:00   12:00 AM  Overnight baseline OHLC
+#   0  5  * * *   05:00   01:00 AM  Early pre-market OHLC
+#   0 10  * * *   10:00   06:00 AM  Pre-market OHLC
+#   15 10  * * *  10:15   06:15 AM  Pre-market OHLC update
+#   30 10  * * *  10:30   06:30 AM  Futures open OHLC
+#   0 13  * * *   13:00   09:00 AM  Pre-open OHLC (T-30 min)
+#   0 16  * * *   16:00   12:00 PM  Intraday midday OHLC
+#   0 17  * * *   17:00   01:00 PM  Daily report + feedback mechanism
+#   0  2  * * *   02:00   10:00 PM  Next-day projection (prior evening UTC)
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: '0 4 * * *'    # 12:00 AM ET — Overnight Baseline OHLC
+    - cron: '0 5 * * *'    # 01:00 AM ET — Early Pre-Market OHLC
+    - cron: '0 10 * * *'   # 06:00 AM ET — Pre-Market OHLC
+    - cron: '15 10 * * *'  # 06:15 AM ET — Pre-Market OHLC Update
+    - cron: '30 10 * * *'  # 06:30 AM ET — Futures Open OHLC
+    - cron: '0 13 * * *'   # 09:00 AM ET — Pre-Open OHLC (T-30)
+    - cron: '0 16 * * *'   # 12:00 PM ET — Intraday Midday OHLC
+    - cron: '0 17 * * *'   # 01:00 PM ET — Daily Report + Feedback
+    - cron: '0 2 * * *'    # 10:00 PM ET — Next-Day Projection
+
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: >
+          Force a specific run mode.
+          Options: midnight | 1am | 6am | 6_15am | 6_30am |
+                   9am | noon | 1pm_report | 10pm_proj
+        required: false
+        default: ''
+      epochs:
+        description: 'Maximum LSTM training epochs (default: 30)'
+        required: false
+        default: '30'
+
+permissions:
+  contents: write
+
+jobs:
+  dji-ohlc-tensorflow:
+    name: DJI OHLC — ${{ github.event.inputs.run_mode || 'scheduled' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Python setup ──────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: dji_ohlc_tensorflow/requirements.txt
+
+      # ── 3. Install dependencies ──────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r dji_ohlc_tensorflow/requirements.txt
+          echo "[OK] Dependencies installed."
+
+      # ── 4. Run TensorFlow OHLC engine ────────────────────────────────────
+      - name: Run DJI OHLC TensorFlow engine
+        env:
+          RUN_MODE:  ${{ github.event.inputs.run_mode }}
+          TF_EPOCHS: ${{ github.event.inputs.epochs || '30' }}
+          # Suppress verbose TF/oneDNN output in CI
+          TF_CPP_MIN_LOG_LEVEL: "2"
+          TF_ENABLE_ONEDNN_OPTS: "0"
+        run: |
+          echo "=== DJI OHLC TensorFlow Engine ==="
+          echo "RUN_MODE  : ${RUN_MODE:-auto-detect}"
+          echo "Timestamp : $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          python dji_ohlc_tensorflow/dji_ohlc_tf.py
+          echo "=== Engine complete ==="
+
+      # ── 5. Commit and push results ────────────────────────────────────────
+      - name: Commit OHLC results
+        run: |
+          git config --global user.name  'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git add dji_ohlc_tensorflow/output/dji_ohlc_results.json \
+                  dji_ohlc_tensorflow/output/dji_ohlc_feedback.json \
+                  || true
+
+          if ! git diff --staged --quiet; then
+            MODE="${{ github.event.inputs.run_mode }}"
+            LABEL="${MODE:-scheduled}"
+            git commit -m "dji-ohlc: TF OHLC update [${LABEL}] — $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "[OK] Results pushed."
+          else
+            echo "[INFO] No changes to commit."
+          fi
