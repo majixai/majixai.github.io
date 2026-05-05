@@ -359,9 +359,9 @@ def _compute_indicators(df: pd.DataFrame) -> IndicatorSet:
         losses = np.where(deltas < 0, -deltas, 0.0)
         avg_gain = float(np.mean(gains[:14]))
         avg_loss = float(np.mean(losses[:14]))
-        for g, l in zip(gains[14:], losses[14:]):
+        for g, loss in zip(gains[14:], losses[14:]):
             avg_gain = (avg_gain * 13 + g) / 14
-            avg_loss = (avg_loss * 13 + l) / 14
+            avg_loss = (avg_loss * 13 + loss) / 14
         rs = avg_gain / max(avg_loss, 1e-12)
         rsi_14 = 100.0 - 100.0 / (1.0 + rs)
 
@@ -526,7 +526,11 @@ def _compute_sr_levels(
         ("PP", PP), ("R1", R1), ("R2", R2), ("R3", R3),
         ("S1", S1), ("S2", S2), ("S3", S3)
     ]:
-        strength = 0.9 if lbl == "PP" else 0.7 if lbl.startswith("R1") or lbl.startswith("S1") else 0.5
+        strength = 0.9
+        if lbl in ("R1", "S1"):
+            strength = 0.7
+        elif lbl != "PP":
+            strength = 0.5
         levels.append(SRLevel(lbl, round(price, 2), "pivot", strength))
 
     # ── 2. Bollinger Bands ────────────────────────────────────────────────────
@@ -538,9 +542,9 @@ def _compute_sr_levels(
     # ── 3. ATR Bands ─────────────────────────────────────────────────────────
     if not math.isnan(ohlcv.atr_14) and not math.isnan(ohlcv.close):
         atr = ohlcv.atr_14
-        for mult, lbl, suf in [(1.0, "ATR+1", "atr_band"), (2.0, "ATR+2", "atr_band"),
-                                (-1.0, "ATR-1", "atr_band"), (-2.0, "ATR-2", "atr_band")]:
-            levels.append(SRLevel(lbl, round(ohlcv.close + mult * atr, 2), suf, 0.60))
+        for mult, lbl in [(1.0, "ATR+1"), (2.0, "ATR+2"),
+                          (-1.0, "ATR-1"), (-2.0, "ATR-2")]:
+            levels.append(SRLevel(lbl, round(ohlcv.close + mult * atr, 2), "atr_band", 0.60))
 
     # ── 4. Fibonacci retracement from last-session range ─────────────────────
     rng = H - L
@@ -969,6 +973,7 @@ class IXIC1PMPredictor:
 
     def _run_simulations(self, S0: float, T: float) -> Dict:
         if T <= 0:
+            # Default: 207 minutes = time from 9:30 AM open to 1 PM target
             T = 207.0 / (self.config.trading_days * self.config.minutes_per_day)
 
         n_sims = self.config.simulations
