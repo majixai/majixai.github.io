@@ -51,8 +51,45 @@ class UIManager {
         }
 
         if (!state.isLoading) {
+            this.#renderLatestSiteBanner(state.latestSite);
             this.#renderCommitTimeline(filteredCommits.slice(0, 5));
         }
+    }
+
+    /**
+     * Renders (or updates) the banner that links to the most recently changed site.
+     * @private
+     * @param {object|null} latestSite - The data.json payload from the CI step.
+     */
+    #renderLatestSiteBanner(latestSite) {
+        const bannerId = 'latest-site-banner';
+        let banner = document.getElementById(bannerId);
+
+        if (!latestSite || !latestSite.latestSite) {
+            if (banner) banner.remove();
+            return;
+        }
+
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = bannerId;
+            banner.className = 'w3-panel w3-pale-blue w3-border w3-border-blue w3-round mb-3 mx-3 p-3';
+            this.#commitListEl.parentNode.insertBefore(banner, this.#commitListEl);
+        }
+
+        const date = latestSite.latestDate
+            ? new Date(latestSite.latestDate).toLocaleString()
+            : '';
+        const author = latestSite.latestAuthor ? ` by <strong>${latestSite.latestAuthor}</strong>` : '';
+        const msg = latestSite.latestMessage
+            ? `<em>${latestSite.latestMessage}</em>`
+            : 'View latest site';
+
+        banner.innerHTML = `
+            <p class="mb-1"><strong>🚀 Most Recently Updated Site</strong>${date ? ' &mdash; ' + date : ''}${author}</p>
+            <p class="mb-1">${msg}</p>
+            <a href="${latestSite.latestSite}" target="_blank" class="w3-button w3-blue w3-small">Open Site →</a>
+        `;
     }
 
     /**
