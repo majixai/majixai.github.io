@@ -117,19 +117,19 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: indices-dat
           path: data/indices/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: fortune500-dat
           path: data/fortune500/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: crypto-dat
           path: data/crypto/

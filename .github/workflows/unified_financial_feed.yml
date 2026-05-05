@@ -124,31 +124,31 @@ jobs:
 
       - run: pip install -r tradingview_integration/unified_feed/requirements.txt
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: sp-projection
           path: sp_closing_projection/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: market-prediction
           path: market_prediction/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: yfinance-core
           path: yfinance_data/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: yfinance-tech
           path: yfinance_data/
         continue-on-error: true
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4.1.3
         with:
           name: gf-quotes
           path: tradingview_integration/data/
