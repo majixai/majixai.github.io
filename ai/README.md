@@ -13,7 +13,7 @@ The `ai/` module provides a clean browser interface where users can enter any pr
 | File | Purpose |
 |------|---------|
 | `index.html` | UI – API key entry, chat history, prompt textarea |
-| `script.js`  | Google GenAI integration – streaming response, markdown rendering |
+| `script.js`  | Google GenAI integration – response, markdown rendering |
 | `style.css`  | Message bubble styles |
 | `README.md`  | This document |
 
@@ -22,7 +22,7 @@ The `ai/` module provides a clean browser interface where users can enter any pr
 1. Open `ai/index.html` in a browser (or navigate to the hosted URL).
 2. Paste your **Gemini API key** (free at [aistudio.google.com](https://aistudio.google.com/app/apikey)).
 3. Type a prompt in the text area and press **Send** (or `Ctrl+Enter`).
-4. The AI response streams in real-time and is rendered as Markdown.
+4. The AI response is rendered as Markdown.
 
 ## Dependencies (CDN, no build step)
 
@@ -34,4 +34,4 @@ The `ai/` module provides a clean browser interface where users can enter any pr
 ## Notes
 
 - The API key is stored only in the browser's memory for the current session; it is never sent anywhere except directly to the Gemini API.
-- Streaming is used so responses appear incrementally as the model generates them.
+- Each prompt is sent as a single-turn request; conversation history is not preserved between messages.
