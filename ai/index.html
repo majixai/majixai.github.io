@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixAI – AI Prompt Solver</title>
+
+  <!-- W3.CSS -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+
+  <!-- ES module import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+      "marked":        "https://esm.sh/marked@^15.0.7"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="w3-light-grey">
+
+  <!-- Header -->
+  <div class="w3-top w3-bar w3-dark-grey w3-padding" style="z-index:100;">
+    <a href="../index.html" class="w3-bar-item w3-button w3-hover-blue">
+      <i class="fa fa-arrow-left"></i> Home
+    </a>
+    <span class="w3-bar-item w3-padding-16" style="font-weight:600; letter-spacing:.5px;">
+      <i class="fa fa-robot w3-text-blue"></i>&nbsp; MajixAI – AI Prompt Solver
+    </span>
+  </div>
+
+  <!-- Main content -->
+  <div class="container" style="max-width:860px; padding-top:80px; padding-bottom:40px;">
+
+    <!-- API key input -->
+    <div class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom">
+      <label for="api-key-input" class="w3-text-dark-grey" style="font-size:.85rem; font-weight:600;">
+        <i class="fa fa-key"></i>&nbsp; Gemini API Key
+        <span class="w3-text-grey" style="font-weight:400;">
+          (get one free at
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a>)
+        </span>
+      </label>
+      <input
+        id="api-key-input"
+        type="password"
+        class="w3-input w3-border w3-round"
+        placeholder="AIza…"
+        autocomplete="off"
+        style="margin-top:6px;"
+      >
+    </div>
+
+    <!-- Chat history -->
+    <div
+      id="chat-container"
+      class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom"
+      style="min-height:200px;"
+    >
+      <p class="w3-text-grey w3-center" style="margin:40px 0;">
+        <i class="fa fa-comments fa-2x"></i><br>
+        Ask anything — the AI will solve and respond.
+      </p>
+    </div>
+
+    <!-- Prompt input -->
+    <div class="w3-card w3-white w3-round-large w3-padding">
+      <label for="prompt-input" class="w3-text-dark-grey" style="font-size:.85rem; font-weight:600;">
+        <i class="fa fa-pen-to-square"></i>&nbsp; Your Prompt
+      </label>
+      <textarea
+        id="prompt-input"
+        class="w3-input w3-border w3-round"
+        rows="3"
+        placeholder="Enter your prompt here… (Ctrl+Enter to send)"
+        style="margin-top:6px; font-size:.95rem;"
+      ></textarea>
+      <div class="w3-margin-top" style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+        <span class="w3-text-grey" style="font-size:.8rem;">
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
+        </span>
+        <button id="send-btn" class="w3-button w3-blue w3-round" style="min-width:110px;">
+          <i class="fa fa-paper-plane"></i>&nbsp; Send
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

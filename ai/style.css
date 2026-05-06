@@ -1,0 +1,75 @@
+/* AI module styles */
+
+body {
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+}
+
+#chat-container {
+  max-height: 60vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+.user-message {
+  background-color: #e7f3ff;
+  border: 1px solid #d1e8ff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 6px 0 6px auto;
+  max-width: 75%;
+  text-align: left;
+}
+
+.model-message {
+  background-color: #f4f4f4;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 6px auto 6px 0;
+  max-width: 75%;
+  text-align: left;
+}
+
+.model-message pre {
+  background: #2b2b2b;
+  color: #f8f8f2;
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+}
+
+.model-message code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+}
+
+.error-message {
+  background-color: #ffdddd;
+  color: #d8000c;
+  border: 1px solid #ffc2c2;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 6px auto 6px 0;
+  max-width: 75%;
+}
+
+.thinking-message {
+  font-style: italic;
+  color: #666;
+  background-color: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 6px auto 6px 0;
+  max-width: 75%;
+}
+
+#prompt-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+#send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
