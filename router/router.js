@@ -17,6 +17,8 @@
  *   window.addEventListener('route:change', handler);
  */
 
+import { hashRoute } from '../hash/hash.js';
+
 const ROUTES_URL = new URL('./routes.json', import.meta.url).href;
 
 /** sessionStorage key and TTL for the routes manifest cache. */
@@ -28,6 +30,8 @@ class Router extends EventTarget {
   #routes = [];
   /** @type {Map<string, object>} path/name → route object */
   #index = new Map();
+  /** @type {Map<string, string>} normalised path → SHA-256 route fingerprint */
+  #hashes = new Map();
   #ready = false;
   #readyCallbacks = [];
 
@@ -51,6 +55,7 @@ class Router extends EventTarget {
       const manifest = await this.#loadManifest();
       this.#routes = manifest.routes ?? [];
       this.#buildIndex();
+      await this.#buildHashes();
       this.#ready = true;
       this.#readyCallbacks.forEach(fn => fn());
       this.#readyCallbacks = [];
@@ -97,6 +102,25 @@ class Router extends EventTarget {
       this.#index.set(route.path.toLowerCase(), route);
       // Also index by name for convenience
       this.#index.set(route.name.toLowerCase(), route);
+    }
+  }
+
+  /**
+   * Compute SHA-256 fingerprints for all loaded routes and store them in
+   * #hashes, keyed by normalised path.  Called once after #buildIndex.
+   */
+  async #buildHashes() {
+    this.#hashes.clear();
+    const entries = await Promise.allSettled(
+      this.#routes.map(async route => {
+        const hex = await hashRoute(route);
+        return { key: route.path.toLowerCase(), hex };
+      })
+    );
+    for (const result of entries) {
+      if (result.status === 'fulfilled') {
+        this.#hashes.set(result.value.key, result.value.hex);
+      }
     }
   }
 
@@ -227,6 +251,19 @@ class Router extends EventTarget {
     return this.#routes.filter(
       r => r.category.toLowerCase() === category.toLowerCase(),
     );
+  }
+
+  /**
+   * Return the SHA-256 fingerprint for a route (computed via hash/hash.js).
+   * Returns `null` if the route is not found or hashes have not been computed.
+   *
+   * @param {string} input  Route path or name.
+   * @returns {string|null}  64-character lowercase hex string, or null.
+   */
+  getRouteHash(input) {
+    const route = this.resolve(input);
+    if (!route) return null;
+    return this.#hashes.get(route.path.toLowerCase()) ?? null;
   }
 
   /**

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2c3e50">
+  <meta name="description" content="MajixAI SHA-256 Hash Tool — compute and verify SHA-256 digests, and browse route fingerprints">
+  <title>MajixAI Hash</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --accent:  #06d6a0;
+      --bg:      #e8f0fe;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #1a252f 100%);
+      color: #fff;
+      padding: 2.5rem 1.5rem 2rem;
+      text-align: center;
+      position: relative;
+    }
+    header h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: .1em; margin: 0 0 .4rem; }
+    header p  { opacity: .85; margin: 0; font-size: 1.05rem; }
+    header a.back-link {
+      position: absolute;
+      top: 1.1rem; left: 1.2rem;
+      color: rgba(255,255,255,.75);
+      text-decoration: none;
+      font-size: .9rem;
+    }
+    header a.back-link:hover { color: #fff; }
+
+    /* ── Main layout ─────────────────────────────────────────────────────── */
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    /* ── Hash tool card ──────────────────────────────────────────────────── */
+    .hash-card {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 4px 18px rgba(0,0,0,.09);
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+    }
+    .hash-card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    textarea#input-text {
+      width: 100%;
+      min-height: 110px;
+      border: 2px solid #cdd8e3;
+      border-radius: .6rem;
+      padding: .7rem 1rem;
+      font-size: .95rem;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea#input-text:focus { border-color: var(--accent); }
+
+    .digest-box {
+      background: #f4f8fb;
+      border: 1px solid #dce8f0;
+      border-radius: .6rem;
+      padding: .75rem 1rem;
+      font-family: 'Courier New', monospace;
+      font-size: .88rem;
+      word-break: break-all;
+      color: #1a3a6e;
+      min-height: 2.8rem;
+      margin-top: 1rem;
+      position: relative;
+    }
+    .digest-box .copy-btn {
+      position: absolute;
+      top: .45rem; right: .6rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #888;
+      font-size: 1rem;
+      transition: color .2s;
+    }
+    .digest-box .copy-btn:hover { color: var(--accent); }
+
+    .verify-row {
+      display: flex;
+      gap: .6rem;
+      margin-top: .85rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .verify-row input {
+      flex: 1 1 300px;
+      padding: .45rem .9rem;
+      border: 2px solid #cdd8e3;
+      border-radius: .6rem;
+      font-size: .88rem;
+      font-family: 'Courier New', monospace;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .verify-row input:focus { border-color: var(--accent); }
+    #verify-result {
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    #verify-result.ok   { color: #2d6a4f; }
+    #verify-result.fail { color: #c62828; }
+
+    /* ── Route fingerprints table ────────────────────────────────────────── */
+    #routes-section h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+    .search-wrap {
+      position: relative;
+      max-width: 360px;
+      margin-bottom: 1rem;
+    }
+    .search-wrap input {
+      width: 100%;
+      padding: .45rem 1rem .45rem 2.2rem;
+      border: 2px solid #cdd8e3;
+      border-radius: 999px;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap .fa-magnifying-glass {
+      position: absolute;
+      left: .8rem; top: 50%;
+      transform: translateY(-50%);
+      color: #888;
+      pointer-events: none;
+    }
+
+    #routes-table-wrap {
+      overflow-x: auto;
+      border-radius: .7rem;
+      box-shadow: 0 3px 12px rgba(0,0,0,.07);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      font-size: .85rem;
+    }
+    thead th {
+      background: var(--primary);
+      color: #fff;
+      padding: .7rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tbody tr:nth-child(even) { background: #f7f9fc; }
+    tbody tr:hover { background: #e8f5ef; }
+    tbody td {
+      padding: .6rem 1rem;
+      vertical-align: middle;
+      border-bottom: 1px solid #eef2f7;
+    }
+    td.path-cell { font-family: monospace; color: #1a3a6e; }
+    td.hash-cell {
+      font-family: 'Courier New', monospace;
+      font-size: .78rem;
+      color: #555;
+      word-break: break-all;
+    }
+    td.hash-cell span.short { display: inline; }
+    td.hash-cell span.full  { display: none; }
+    td.hash-cell:hover span.short { display: none; }
+    td.hash-cell:hover span.full  { display: inline; }
+
+    #loading-msg { text-align: center; padding: 2rem; color: #888; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
+  <h1><i class="fa fa-fingerprint"></i> MajixAI Hash</h1>
+  <p>SHA-256 utility — compute digests, verify integrity, and browse route fingerprints</p>
+</header>
+
+<main>
+
+  <!-- ── Hash tool ──────────────────────────────────────────────────────── -->
+  <section class="hash-card" aria-label="SHA-256 calculator">
+    <h2><i class="fa fa-hashtag"></i> SHA-256 Calculator</h2>
+    <textarea id="input-text" placeholder="Type or paste any text here…" aria-label="Input text to hash" autofocus></textarea>
+
+    <div class="digest-box" id="digest-out" aria-live="polite">
+      <span id="digest-text" style="color:#aaa">— digest will appear here —</span>
+      <button class="copy-btn" id="copy-btn" title="Copy to clipboard" aria-label="Copy digest">
+        <i class="fa fa-copy"></i>
+      </button>
+    </div>
+
+    <!-- Verify panel -->
+    <div class="verify-row">
+      <input type="text" id="verify-input" placeholder="Paste an expected digest to verify…" aria-label="Expected hash digest">
+      <span id="verify-result"></span>
+    </div>
+  </section>
+
+  <!-- ── Route fingerprints ─────────────────────────────────────────────── -->
+  <section id="routes-section" aria-label="Route fingerprints">
+    <h2><i class="fa fa-route"></i> Route Fingerprints</h2>
+    <p style="color:#555; font-size:.9rem; margin-bottom:1rem;">
+      Every route in <code>routes.json</code> has a stable SHA-256 fingerprint
+      derived from its <code>path</code> and <code>name</code> fields.
+      Hover a digest cell to see the full hex string.
+    </p>
+    <div class="search-wrap">
+      <i class="fa fa-magnifying-glass"></i>
+      <input type="search" id="route-search" placeholder="Filter routes…" aria-label="Filter route table">
+    </div>
+    <div id="loading-msg"><i class="fa fa-spinner fa-spin"></i> Loading routes…</div>
+    <div id="routes-table-wrap" style="display:none">
+      <table aria-label="Route fingerprints">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Path</th>
+            <th>Category</th>
+            <th>SHA-256 Fingerprint</th>
+          </tr>
+        </thead>
+        <tbody id="routes-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+  import { sha256 }     from './hash.js';
+  import router         from '../router/router.js';
+
+  // ── SHA-256 calculator ──────────────────────────────────────────────────────
+  const inputEl    = document.getElementById('input-text');
+  const digestText = document.getElementById('digest-text');
+  const digestOut  = document.getElementById('digest-out');
+  const copyBtn    = document.getElementById('copy-btn');
+  const verifyInp  = document.getElementById('verify-input');
+  const verifyRes  = document.getElementById('verify-result');
+
+  let currentDigest = '';
+
+  async function updateDigest() {
+    const val = inputEl.value;
+    if (!val) {
+      digestText.textContent = '— digest will appear here —';
+      digestText.style.color = '#aaa';
+      currentDigest = '';
+      verifyRes.textContent = '';
+      return;
+    }
+    try {
+      currentDigest = await sha256(val);
+      digestText.textContent = currentDigest;
+      digestText.style.color = '#1a3a6e';
+    } catch (err) {
+      digestText.textContent = `Error: ${err.message}`;
+      digestText.style.color = '#c62828';
+    }
+    checkVerify();
+  }
+
+  function checkVerify() {
+    const expected = verifyInp.value.trim().toLowerCase();
+    if (!expected || !currentDigest) {
+      verifyRes.textContent = '';
+      verifyRes.className = '';
+      return;
+    }
+    if (currentDigest === expected) {
+      verifyRes.textContent = '✓ Match';
+      verifyRes.className = 'ok';
+    } else {
+      verifyRes.textContent = '✗ Mismatch';
+      verifyRes.className = 'fail';
+    }
+  }
+
+  inputEl.addEventListener('input', updateDigest);
+  verifyInp.addEventListener('input', checkVerify);
+
+  copyBtn.addEventListener('click', () => {
+    if (!currentDigest) return;
+    navigator.clipboard.writeText(currentDigest).then(() => {
+      copyBtn.innerHTML = '<i class="fa fa-check"></i>';
+      setTimeout(() => { copyBtn.innerHTML = '<i class="fa fa-copy"></i>'; }, 1500);
+    });
+  });
+
+  // ── Route fingerprints table ────────────────────────────────────────────────
+  const loadingMsg  = document.getElementById('loading-msg');
+  const tableWrap   = document.getElementById('routes-table-wrap');
+  const tbody       = document.getElementById('routes-tbody');
+  const routeSearch = document.getElementById('route-search');
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  let allRows = [];
+
+  function renderRows(rows) {
+    tbody.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (const { route, hash } of rows) {
+      const tr = document.createElement('tr');
+      const short = hash ? hash.slice(0, 16) + '…' : '';
+      tr.innerHTML = `
+        <td>${escHtml(route.name)}</td>
+        <td class="path-cell">${escHtml(route.path)}</td>
+        <td>${escHtml(route.category || '')}</td>
+        <td class="hash-cell" title="${escHtml(hash || '')}">
+          <span class="short">${escHtml(short)}</span>
+          <span class="full">${escHtml(hash || '')}</span>
+        </td>`;
+      frag.appendChild(tr);
+    }
+    tbody.appendChild(frag);
+  }
+
+  routeSearch.addEventListener('input', () => {
+    const q = routeSearch.value.trim().toLowerCase();
+    if (!q) { renderRows(allRows); return; }
+    renderRows(allRows.filter(({ route, hash }) =>
+      route.name.toLowerCase().includes(q) ||
+      route.path.toLowerCase().includes(q) ||
+      (route.category || '').toLowerCase().includes(q) ||
+      (hash || '').startsWith(q)
+    ));
+  });
+
+  router.ready().then(async () => {
+    const routes = router.routes;
+    allRows = routes.map(route => ({
+      route,
+      hash: router.getRouteHash(route.path),
+    }));
+    renderRows(allRows);
+    loadingMsg.style.display = 'none';
+    tableWrap.style.display  = '';
+  });
+</script>
+</body>
+</html>
