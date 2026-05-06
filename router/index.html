@@ -215,17 +215,24 @@
     }
     .card-path { color: #888; font-family: monospace; }
 
-    /* Category colours */
-    .cat-finance  { background: #dff0d8; color: #2d6a4f; }
-    .cat-gaming   { background: #fde8d8; color: #a84300; }
-    .cat-tools    { background: #dce8fd; color: #1a3a6e; }
-    .cat-web      { background: #ede8fd; color: #5a1a8a; }
-    .cat-data     { background: #fef3cd; color: #7a5200; }
-    .stripe-finance  { background: #52b788; }
-    .stripe-gaming   { background: #f4845f; }
-    .stripe-tools    { background: #4895ef; }
-    .stripe-web      { background: #9b72cf; }
-    .stripe-data     { background: #f4a261; }
+    .cat-finance     { background: #dff0d8; color: #2d6a4f; }
+    .cat-gaming      { background: #fde8d8; color: #a84300; }
+    .cat-tools       { background: #dce8fd; color: #1a3a6e; }
+    .cat-web         { background: #ede8fd; color: #5a1a8a; }
+    .cat-data        { background: #fef3cd; color: #7a5200; }
+    .cat-ml          { background: #d8f0ef; color: #1a5c5a; }
+    .cat-ai          { background: #fce4ec; color: #880e4f; }
+    .cat-mathematics { background: #e8f5e9; color: #1b5e20; }
+    .cat-gpu         { background: #f3e5f5; color: #4a148c; }
+    .stripe-finance     { background: #52b788; }
+    .stripe-gaming      { background: #f4845f; }
+    .stripe-tools       { background: #4895ef; }
+    .stripe-web         { background: #9b72cf; }
+    .stripe-data        { background: #f4a261; }
+    .stripe-ml          { background: #26a69a; }
+    .stripe-ai          { background: #e91e8c; }
+    .stripe-mathematics { background: #43a047; }
+    .stripe-gpu         { background: #8e24aa; }
 
     /* ── Empty state ────────────────────────────────────────────── */
     #empty-state {
@@ -268,10 +275,14 @@
   <div class="cats" id="cat-buttons">
     <button class="active" data-cat="all">All</button>
     <button data-cat="finance">Finance</button>
+    <button data-cat="ml">ML</button>
+    <button data-cat="ai">AI</button>
+    <button data-cat="mathematics">Math</button>
     <button data-cat="gaming">Gaming</button>
     <button data-cat="tools">Tools</button>
     <button data-cat="web">Web</button>
     <button data-cat="data">Data</button>
+    <button data-cat="gpu">GPU</button>
   </div>
   <div class="sort-wrap">
     <label for="sort-select">Sort:</label>
@@ -326,10 +337,12 @@
   const CAT_STRIPE = {
     finance: 'stripe-finance', gaming: 'stripe-gaming',
     tools: 'stripe-tools', web: 'stripe-web', data: 'stripe-data',
+    ml: 'stripe-ml', ai: 'stripe-ai', mathematics: 'stripe-mathematics', gpu: 'stripe-gpu',
   };
   const CAT_BADGE = {
     finance: 'cat-finance', gaming: 'cat-gaming',
     tools: 'cat-tools', web: 'cat-web', data: 'cat-data',
+    ml: 'cat-ml', ai: 'cat-ai', mathematics: 'cat-mathematics', gpu: 'cat-gpu',
   };
 
   function buildCard(route) {
