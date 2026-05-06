@@ -231,7 +231,8 @@
     <h2><i class="fa fa-route"></i> Route Fingerprints</h2>
     <p style="color:#555; font-size:.9rem; margin-bottom:1rem;">
       Every route in <code>routes.json</code> has a stable SHA-256 fingerprint
-      derived from its <code>path</code> and <code>name</code> fields.
+      derived from its <code>path</code> and <code>name</code> fields
+      (both lower-cased, serialised as <code>JSON.stringify({path, name})</code>).
       Hover a digest cell to see the full hex string.
     </p>
     <div class="search-wrap">

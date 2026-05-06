@@ -43,8 +43,9 @@ const hex = await hashContent(someArrayBuffer);
 ### `hashRoute(route)` → `Promise<string>`
 
 Generate a stable fingerprint for a route entry.  The digest is derived from
-the route's `path` and `name` fields only (both lower-cased), so it is
-independent of mutable metadata like `lastUpdated`.
+the route's `path` and `name` fields (both lower-cased and serialised via
+`JSON.stringify`), so it is independent of mutable metadata like `lastUpdated`
+and unambiguous regardless of the characters present in path or name.
 
 ```js
 const hex = await hashRoute({ path: '/best/', name: 'best' });

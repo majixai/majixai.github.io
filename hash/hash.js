@@ -104,7 +104,10 @@ export async function hashRoute(route) {
       '[hash.js] hashRoute expects an object with string path and name fields.'
     );
   }
-  const canonical = `path:${route.path.toLowerCase()}|name:${route.name.toLowerCase()}`;
+  const canonical = JSON.stringify({
+    path: route.path.toLowerCase(),
+    name: route.name.toLowerCase(),
+  });
   return sha256(canonical);
 }
 
