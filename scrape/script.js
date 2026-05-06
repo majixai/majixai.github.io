@@ -421,12 +421,22 @@ function estimateOU(values, dt = 1) {
 }
 
 /**
+ * Compute simple period-over-period returns: (v[i] - v[i-1]) / |v[i-1]|.
+ * Uses the absolute value of the denominator to handle negative price series
+ * (e.g., spread or synthetic data) while still producing a signed return.
+ * An epsilon guard prevents division by zero for near-zero values.
+ */
+function computeReturns(values) {
+    return values.slice(1).map((v, i) => (v - values[i]) / (Math.abs(values[i]) + 1e-10));
+}
+
+/**
  * Compute Shannon entropy of the binned returns distribution.
  * Uses MajixInformation if available, otherwise computes inline.
  */
 function returnsEntropy(values) {
     if (values.length < 5) return null;
-    const returns = values.slice(1).map((v, i) => (v - values[i]) / (Math.abs(values[i]) + 1e-10));
+    const returns = computeReturns(values);
     if (!returns.length) return null;
     const mn  = Math.min(...returns);
     const mx  = Math.max(...returns);
@@ -447,7 +457,7 @@ function returnsEntropy(values) {
 /** Daily returns statistics using MajixProbability where available. */
 function computeVolatility(values) {
     if (values.length < 2) return null;
-    const returns = values.slice(1).map((v, i) => (v - values[i]) / (Math.abs(values[i]) + 1e-10));
+    const returns = computeReturns(values);
     let mu, sigma;
     if (typeof MajixProbability !== 'undefined') {
         mu    = MajixProbability.mean(returns);
@@ -853,7 +863,7 @@ function selectTicker(ticker) {
     try {
         selectedTicker = ticker;
         SEL_TICKER.textContent = ticker;
-        CHART_TITLE.textContent = `${ticker} — full history`;
+        CHART_TITLE.textContent = `${ticker} - full history`;
 
         const { columns, rows } = getTickerData(ticker);
         selectedColumns = columns;
