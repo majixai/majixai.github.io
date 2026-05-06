@@ -1,0 +1,306 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © notprofessorgreen
+
+//@version=6
+indicator("Session Raid Stats", shorttitle = "SRS", overlay=true, max_boxes_count=500, max_lines_count=500, max_labels_count=500)
+
+// -------------------------------------------------- Inputs --------------------------------------------------
+var g_GLOBAL = "Global Settings"
+label_size_input   = input.string("Small", "Label Size", options = ["Tiny", "Small", "Normal", "Large"], group = g_GLOBAL)
+label_text_color   = input.color(color.black, "Label Text Color", group = g_GLOBAL)
+
+// Raid bucket inputs — these drive BOTH the RE lines on the chart AND the stat table buckets
+var g_BUCKETS = "Range Extension / Raid Levels"
+i_bucket_start = input.float(20.0, "Level Start (pts)", minval = 0.25, step = 0.25, group = g_BUCKETS,
+     tooltip = "The first level in points beyond the range high/low. Used for both chart lines and raid stat buckets.")
+i_bucket_step  = input.float(10.0, "Level Step (pts)",  minval = 0.25, step = 0.25, group = g_BUCKETS,
+     tooltip = "Distance between each subsequent level.")
+use_level_1    = input.bool(true, "Level 1", inline = "L1", group = g_BUCKETS)
+use_level_2    = input.bool(true, "Level 2", inline = "L2", group = g_BUCKETS)
+use_level_3    = input.bool(true, "Level 3", inline = "L3", group = g_BUCKETS)
+use_level_4    = input.bool(true, "Level 4", inline = "L4", group = g_BUCKETS)
+use_level_5    = input.bool(true, "Level 5", inline = "L5", group = g_BUCKETS)
+use_level_6    = input.bool(true, "Level 6", inline = "L6", group = g_BUCKETS)
+
+// Range 1 Settings
+var g_RANGE_1 = "Range 1 Settings"
+session        = input.session("0200-0215", "Session 1", group = g_RANGE_1)
+horiz_lines    = input.bool(true, "Show Range Extension Lines", group = g_RANGE_1)
+show_box_1     = input.bool(true, "Show Range Box", group = g_RANGE_1)
+range_box_color_1 = input.color(color.new(color.yellow, 70), "Box colour", group = g_RANGE_1)
+line_color_1      = input.color(color.black, "Line colour", group = g_RANGE_1)
+line_style_1      = input.string("Dotted", "Line style", options = ["Solid", "Dotted", "Dashed"], group = g_RANGE_1)
+
+// Range 1 Raid Settings
+var g_RAID_1 = "Range 1 — Raid Detection"
+i_min_raid_1   = input.float(5.0, "Min Raid Size (pts)", minval = 0.1, step = 0.25, group = g_RAID_1)
+i_cut_1        = input.int(120, "Cutoff (mins after range close)", minval = 0, group = g_RAID_1, tooltip = "0 = no cutoff")
+
+// Range 2 Settings
+var g_RANGE_2 = "Range 2 Settings"
+session_2      = input.session("0900-0915", "Session 2", group = g_RANGE_2)
+horiz_lines_2  = input.bool(true, "Show Range Extension Lines", group = g_RANGE_2)
+show_box_2     = input.bool(true, "Show Range Box", group = g_RANGE_2)
+range_box_color_2 = input.color(color.new(color.fuchsia, 70), "Box colour", group = g_RANGE_2)
+line_color_2      = input.color(color.black, "Line colour", group = g_RANGE_2)
+line_style_2      = input.string("Dotted", "Line style", options = ["Solid", "Dotted", "Dashed"], group = g_RANGE_2)
+
+var g_RAID_2 = "Range 2 — Raid Detection"
+i_min_raid_2   = input.float(5.0, "Min Raid Size (pts)", minval = 0.1, step = 0.25, group = g_RAID_2)
+i_cut_2        = input.int(120, "Cutoff (mins after range close)", minval = 0, group = g_RAID_2)
+
+// Range 3 Settings
+var g_RANGE_3 = "Range 3 Settings"
+session_3      = input.session("1300-1315", "Session 3", group = g_RANGE_3)
+horiz_lines_3  = input.bool(true, "Show Range Extension Lines", group = g_RANGE_3)
+show_box_3     = input.bool(true, "Show Range Box", group = g_RANGE_3)
+range_box_color_3 = input.color(color.new(color.teal, 70), "Box colour", group = g_RANGE_3)
+line_color_3      = input.color(color.black, "Line colour", group = g_RANGE_3)
+line_style_3      = input.string("Dotted", "Line style", options = ["Solid", "Dotted", "Dashed"], group = g_RANGE_3)
+
+var g_RAID_3 = "Range 3 — Raid Detection"
+i_min_raid_3   = input.float(5.0, "Min Raid Size (pts)", minval = 0.1, step = 0.25, group = g_RAID_3)
+i_cut_3        = input.int(120, "Cutoff (mins after range close)", minval = 0, group = g_RAID_3)
+
+// Raid table display
+var g_RTABLE = "Raid Statistics — Table"
+i_table_pos    = input.string("Top right", "Position", options = ["Top right", "Top left", "Top center", "Bottom right", "Bottom left"], group = g_RTABLE)
+i_text_size    = input.string("Small", "Text Size", options = ["Tiny", "Small", "Normal", "Large"], group = g_RTABLE)
+i_show_all     = input.bool(true, "Show All 3 Panels", group = g_RTABLE)
+i_max_days     = input.int(500, "Max Historical Sessions", minval = 10, group = g_RTABLE)
+
+// Cutoff line display
+var g_CUTOFF = "Cutoff Line Display"
+i_cutoff_label_size  = input.string("Tiny", "Cutoff Label Size", options = ["Tiny", "Small", "Normal", "Large"], group = g_CUTOFF)
+i_cutoff_label_color = input.color(color.new(#aaaaaa, 0), "Cutoff Label Colour", group = g_CUTOFF)
+i_cutoff_line_color  = input.color(color.new(#aaaaaa, 30), "Cutoff Line Colour", group = g_CUTOFF)
+i_cutoff_line_style  = input.string("Dashed", "Cutoff Line Style", options = ["Solid", "Dotted", "Dashed"], group = g_CUTOFF)
+
+// -------------------------------------------------- Functions --------------------------------------------------
+get_line_style(i) =>
+    switch i
+        "Solid"  => line.style_solid
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+
+get_label_size(i) =>
+    switch i
+        "Tiny"   => size.tiny
+        "Small"  => size.small
+        "Normal" => size.normal
+        "Large"  => size.large
+
+f_tablePos(string s) =>
+    switch s
+        "Top right"    => position.top_right
+        "Top left"     => position.top_left
+        "Top center"   => position.top_center
+        "Bottom right" => position.bottom_right
+        "Bottom left"  => position.bottom_left
+        => position.top_right
+
+f_textSize(string s) =>
+    switch s
+        "Tiny"   => size.tiny
+        "Small"  => size.small
+        "Normal" => size.normal
+        "Large"  => size.large
+        => size.small
+
+line_style_1 := get_line_style(line_style_1)
+line_style_2 := get_line_style(line_style_2)
+line_style_3 := get_line_style(line_style_3)
+
+// -------------------------------------------------- Constants & Variables --------------------------------------------------
+t  = not na(time("", session,   "America/New_York"))
+t2 = not na(time("", session_2, "America/New_York"))
+t3 = not na(time("", session_3, "America/New_York"))
+label_size = get_label_size(label_size_input)
+
+MAX_BUCKETS = 6   // matches 6 configurable levels
+MS_PER_MIN  = 60000
+
+// Level offsets in points — shared across all ranges and the stat table
+// level_pts(n) = i_bucket_start + (n-1) * i_bucket_step  for n = 1..6
+level_pts_1 = i_bucket_start
+level_pts_2 = i_bucket_start + i_bucket_step
+level_pts_3 = i_bucket_start + i_bucket_step * 2
+level_pts_4 = i_bucket_start + i_bucket_step * 3
+level_pts_5 = i_bucket_start + i_bucket_step * 4
+level_pts_6 = i_bucket_start + i_bucket_step * 5
+
+// Raid bucket helpers — buckets are exactly the 6 levels above
+// bucket i (0-based) covers [level_pts_i, level_pts_(i+1))
+// overflow bucket 6 covers anything beyond level_pts_6
+int BC = MAX_BUCKETS + 1  // 7 buckets: levels 1-6 plus overflow
+
+f_bucketIndex(float value) =>
+    int idx = MAX_BUCKETS  // overflow
+    if value < level_pts_2
+        idx := 0
+    else if value < level_pts_3
+        idx := 1
+    else if value < level_pts_4
+        idx := 2
+    else if value < level_pts_5
+        idx := 3
+    else if value < level_pts_6
+        idx := 4
+    else if value < level_pts_6 + i_bucket_step
+        idx := 5
+    idx
+
+f_cumulative(int[] counts) =>
+    int[] cum = array.new_int(array.size(counts), 0)
+    int running = 0
+    for i = array.size(counts) - 1 to 0
+        running += array.get(counts, i)
+        array.set(cum, i, running)
+    cum
+
+f_withinCutoff(int range_end_ms, int cutoff_mins) =>
+    if cutoff_mins == 0
+        true
+    else
+        (time - range_end_ms) <= cutoff_mins * MS_PER_MIN
+
+f_updateProbCache(int[] hi_counts, int[] lo_counts, int day_count, float[] cache_hi, float[] cache_lo) =>
+    if day_count > 0
+        int[] cum_h = f_cumulative(hi_counts)
+        int[] cum_l = f_cumulative(lo_counts)
+        for i = 0 to array.size(cache_hi) - 1
+            array.set(cache_hi, i, array.get(cum_h, i) / float(day_count) * 100)
+            array.set(cache_lo, i, array.get(cum_l, i) / float(day_count) * 100)
+
+f_drawCutoff(int bi, string lbl) =>
+    line.new(bi, low - 999999, bi, high + 999999,
+         xloc = xloc.bar_index,
+         color = i_cutoff_line_color,
+         style = get_line_style(i_cutoff_line_style),
+         width = 1,
+         extend = extend.both)
+    label.new(bi, high + (high - low) * 2, lbl + "\ncutoff",
+         style = label.style_none,
+         textcolor = i_cutoff_label_color,
+         size = get_label_size(i_cutoff_label_size),
+         text_font_family = font.family_monospace)
+
+// Range 1 box/line variables
+var box   range_box    = na
+var box   body_box     = na
+var int   start        = 0
+var int   end_bar      = 0
+var float session_open = na
+var line line_p1 = na
+var line line_p2 = na
+var line line_p3 = na
+var line line_p4 = na
+var line line_p5 = na
+var line line_p6 = na
+var line line_m1 = na
+var line line_m2 = na
+var line line_m3 = na
+var line line_m4 = na
+var line line_m5 = na
+var line line_m6 = na
+
+// Range 2 box/line variables
+var box   range_box_2    = na
+var box   body_box_2     = na
+var int   start_2        = 0
+var int   end_bar_2      = 0
+var float session_open_2 = na
+var line line_p1_2 = na
+var line line_p2_2 = na
+var line line_p3_2 = na
+var line line_p4_2 = na
+var line line_p5_2 = na
+var line line_p6_2 = na
+var line line_m1_2 = na
+var line line_m2_2 = na
+var line line_m3_2 = na
+var line line_m4_2 = na
+var line line_m5_2 = na
+var line line_m6_2 = na
+
+// Range 3 box/line variables
+var box   range_box_3    = na
+var box   body_box_3     = na
+var int   start_3        = 0
+var int   end_bar_3      = 0
+var float session_open_3 = na
+var line line_p1_3 = na
+var line line_p2_3 = na
+var line line_p3_3 = na
+var line line_p4_3 = na
+var line line_p5_3 = na
+var line line_p6_3 = na
+var line line_m1_3 = na
+var line line_m2_3 = na
+var line line_m3_3 = na
+var line line_m4_3 = na
+var line line_m5_3 = na
+var line line_m6_3 = na
+
+// Raid state — Range 1
+var float r1_hi        = na
+var float r1_lo        = na
+var int   r1_end_ms    = na
+var bool  r1_active    = false
+var float r1_hi_max    = na
+var bool  r1_hi_touch  = false
+var bool  r1_hi_conf   = false
+var float r1_hi_pts    = na
+var float r1_lo_min    = na
+var bool  r1_lo_touch  = false
+var bool  r1_lo_conf   = false
+var float r1_lo_pts    = na
+var bool  r1_cut_exp   = false
+var bool  r1_cut_drawn = false
+var int   cnt_r1       = 0
+var int[] h_r1_hi      = array.new_int(BC, 0)
+var int[] h_r1_lo      = array.new_int(BC, 0)
+var float[] prob_r1_hi = array.new_float(BC, 0.0)
+var float[] prob_r1_lo = array.new_float(BC, 0.0)
+
+// Raid state — Range 2
+var float r2_hi        = na
+var float r2_lo        = na
+var int   r2_end_ms    = na
+var bool  r2_active    = false
+var float r2_hi_max    = na
+var bool  r2_hi_touch  = false
+var bool  r2_hi_conf   = false
+var float r2_hi_pts    = na
+var float r2_lo_min    = na
+var bool  r2_lo_touch  = false
+var bool  r2_lo_conf   = false
+var float r2_lo_pts    = na
+var bool  r2_cut_exp   = false
+var bool  r2_cut_drawn = false
+var int   cnt_r2       = 0
+var int[] h_r2_hi      = array.new_int(BC, 0)
+var int[] h_r2_lo      = array.new_int(BC, 0)
+var float[] prob_r2_hi = array.new_float(BC, 0.0)
+var float[] prob_r2_lo = array.new_float(BC, 0.0)
+
+// Raid state — Range 3
+var float r3_hi        = na
+var float r3_lo        = na
+var int   r3_end_ms    = na
+var bool  r3_active    = false
+var float r3_hi_max    = na
+var bool  r3_hi_touch  = false
+var bool  r3_hi_conf   = false
+var float r3_hi_pts    = na
+var float r3_lo_min    = na
+var bool  r3_lo_touch  = false
+var bool  r3_lo_conf   = false
+var float r3_lo_pts    = na
+var bool  r3_cut_exp   = false
+var bool  r3_cut_drawn = false
+var int   cnt_r3       = 0
+var int[] h_r3_hi      = array.new_int(BC, 0)
+var int[] h_r3_lo      = array.new_int(BC, 0)
+var float[] prob_r3_hi = array.new_float(BC, 0.0)
+var float[] prob_r3_lo = array.new_float(BC, 0.0)
