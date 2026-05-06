@@ -2,23 +2,33 @@
  * ai/script.js
  * Handles prompt submission, AI response, and markdown rendering.
  * Uses Google GenAI (Gemini) via ESM import map – same SDK as chat/.
+ *
+ * All root directories participate in each request via PacketRouter:
+ * the router scores every registered dir against the prompt and injects
+ * relevant directory context into the AI request, increasing throughput
+ * of data packets through the full directory graph.
  */
 
 import { GoogleGenAI } from '@google/genai';
 import * as marked from 'marked';
+import { PacketRouter } from './packet-router.js';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 const MODEL_NAME = 'gemini-1.5-flash-latest';
 
+// Initialise the packet router (loads routes.json in background)
+const packetRouter = new PacketRouter();
+
 // ---------------------------------------------------------------------------
 // UI helpers
 // ---------------------------------------------------------------------------
-const chatContainer = document.getElementById('chat-container');
-const promptInput   = document.getElementById('prompt-input');
-const sendBtn       = document.getElementById('send-btn');
-const apiKeyInput   = document.getElementById('api-key-input');
+const chatContainer   = document.getElementById('chat-container');
+const promptInput     = document.getElementById('prompt-input');
+const sendBtn         = document.getElementById('send-btn');
+const apiKeyInput     = document.getElementById('api-key-input');
+const routingDisplay  = document.getElementById('routing-display');
 
 function scrollBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -43,6 +53,40 @@ function appendText(text, role) {
   scrollBottom();
   return div;
 }
+
+/** Show which directories were routed for this packet. */
+function showRoutingPipeline(nodes) {
+  if (!routingDisplay) return;
+  if (nodes.length === 0) {
+    routingDisplay.style.display = 'none';
+    return;
+  }
+  routingDisplay.style.display = 'block';
+  routingDisplay.innerHTML = '';
+
+  const label = document.createElement('span');
+  label.className = 'routing-label';
+  label.textContent = 'Routing through: ';
+  routingDisplay.appendChild(label);
+
+  nodes.forEach((node, i) => {
+    const chip = document.createElement('a');
+    chip.className = `routing-chip routing-cat-${node.category}`;
+    chip.href = `https://majixai.github.io${node.path}`;
+    chip.target = '_blank';
+    chip.rel = 'noopener';
+    chip.textContent = node.name;
+    chip.title = node.desc ? node.desc.slice(0, 120) : node.name;
+    routingDisplay.appendChild(chip);
+    if (i < nodes.length - 1) {
+      const arrow = document.createElement('span');
+      arrow.className = 'routing-arrow';
+      arrow.textContent = ' → ';
+      routingDisplay.appendChild(arrow);
+    }
+  });
+}
+
 
 async function renderMarkdown(text) {
   try {
@@ -70,6 +114,11 @@ async function handleSend() {
   promptInput.value = '';
   sendBtn.disabled = true;
 
+  // Route the prompt packet through all root directories
+  await packetRouter.ready();
+  const { nodes, contextHeader } = packetRouter.route(prompt);
+  showRoutingPipeline(nodes);
+
   // Thinking indicator
   const thinkingEl = appendHtml('<em>Thinking…</em>', 'thinking');
 
@@ -79,7 +128,10 @@ async function handleSend() {
     // prompt solving where no conversation history needs to be preserved.
     const chat = ai.startChat({ model: MODEL_NAME, history: [] });
 
-    const result       = await chat.sendMessage(prompt);
+    // Prepend routing context from all matched directories to enrich the answer
+    const enrichedPrompt = contextHeader ? `${contextHeader}\n${prompt}` : prompt;
+
+    const result       = await chat.sendMessage(enrichedPrompt);
     const responseText = await result.response.text();
 
     const responseEl = document.createElement('div');
