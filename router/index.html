@@ -257,6 +257,33 @@
     }
     #jump-bar span { font-size: .9rem; flex: 1; }
     #jump-bar a.btn { font-size: .8rem; }
+
+    /* ── Category stats bar ─────────────────────────────────────────────── */
+    #cat-stats {
+      background: rgba(0,0,0,.2);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+    .cat-stat {
+      padding: .45rem 1.1rem;
+      font-size: .78rem;
+      cursor: pointer;
+      border-right: 1px solid rgba(255,255,255,.12);
+      transition: background .2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      gap: .05rem;
+    }
+    .cat-stat:last-child { border-right: none; }
+    .cat-stat:hover { background: rgba(255,255,255,.1); color: #fff; text-decoration: none; }
+    .cat-stat-num { font-size: 1.1rem; font-weight: 700; line-height: 1; color: #06d6a0; }
+    .cat-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; opacity: .8; }
   </style>
 </head>
 <body>
@@ -265,6 +292,7 @@
   <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
   <h1><i class="fa fa-route"></i> MajixAI Router</h1>
   <p>Central routing hub — navigate to any of the <strong id="total-count">…</strong> projects instantly (supports <code>?go=/path/</code> deep links)</p>
+  <div id="cat-stats" role="region" aria-label="Projects by category"></div>
 </header>
 
 <div class="controls">
@@ -520,7 +548,49 @@
 
     applyFilters();
     handleJump();
+    renderCatStats();
   });
+
+  // ── Category stats bar ──────────────────────────────────────────────────────
+  function renderCatStats() {
+    const statsEl = document.getElementById('cat-stats');
+    if (!statsEl) return;
+
+    const CAT_ICONS = {
+      finance: '💰', tools: '🛠️', web: '🌐', data: '📊',
+      gaming: '🎮', mathematics: '📐', ai: '🤖', ml: '🧠', gpu: '⚡',
+    };
+
+    const counts = {};
+    for (const r of router.routes) {
+      const c = (r.category || 'tools').toLowerCase();
+      counts[c] = (counts[c] || 0) + 1;
+    }
+
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const frag = document.createDocumentFragment();
+
+    for (const [cat, count] of sorted) {
+      const icon = CAT_ICONS[cat] || '📁';
+      const btn = document.createElement('button');
+      btn.className = 'cat-stat';
+      btn.setAttribute('aria-label', `Filter by ${cat} (${count})`);
+      btn.dataset.cat = cat;
+      btn.innerHTML = `
+        <span style="font-size:1.1rem;">${icon}</span>
+        <span class="cat-stat-num">${count}</span>
+        <span class="cat-stat-lbl">${cat}</span>
+      `;
+      btn.addEventListener('click', () => {
+        catButtons.forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+        activeCat = cat;
+        applyFilters();
+        statsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+      frag.appendChild(btn);
+    }
+    statsEl.appendChild(frag);
+  }
 </script>
 </body>
 </html>

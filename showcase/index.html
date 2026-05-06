@@ -3,44 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Showcase Project</title>
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <meta name="description" content="MajixAI Showcase — interactive explorer for every project in this repository">
+    <title>MajixAI Showcase</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
+    <!-- ── Hero ──────────────────────────────────────────────────────────── -->
     <header class="parallax">
-        <h1>Showcase Project</h1>
+        <h1><i class="fa fa-star" aria-hidden="true"></i> MajixAI Showcase</h1>
+        <p class="subtitle">
+            An interactive explorer for every module and project in this repository —
+            finance, ML, trading algorithms, GPU acceleration, mathematics, gaming, and more.
+        </p>
+        <div class="hero-links">
+            <a href="../router/" class="hero-btn primary"><i class="fa fa-route"></i> Router</a>
+            <a href="../latest_commit/" class="hero-btn"><i class="fa fa-code-commit"></i> Commit Timeline</a>
+            <a href="../wiki/" class="hero-btn"><i class="fa fa-book"></i> Wiki</a>
+            <a href="../best/" class="hero-btn"><i class="fa fa-trophy"></i> Best</a>
+        </div>
     </header>
 
-    <main class="container mt-5">
-        <div class="w3-container">
-            <h2>Demonstrating Advanced Concepts</h2>
-            <p>This project showcases a variety of advanced programming concepts and web technologies.</p>
+    <!-- ── Stats Bar ─────────────────────────────────────────────────────── -->
+    <div class="stats-bar" id="stats-bar" role="region" aria-label="Repository statistics">
+        <div class="stat-item">
+            <span class="stat-num" id="stat-total">…</span>
+            <span class="stat-lbl">Total Projects</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-cats">…</span>
+            <span class="stat-lbl">Categories</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-finance">…</span>
+            <span class="stat-lbl">Finance</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-tools">…</span>
+            <span class="stat-lbl">Tools</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-math">…</span>
+            <span class="stat-lbl">Mathematics</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-ml">…</span>
+            <span class="stat-lbl">ML / AI / GPU</span>
+        </div>
+    </div>
 
-            <div class="my-4">
-                <button id="start-animation-btn" class="w3-btn w3-blue">Start Animations</button>
-                <button id="stop-animation-btn" class="w3-btn w3-red">Stop Animations</button>
+    <!-- ── Category Dashboard ────────────────────────────────────────────── -->
+    <section id="section-categories">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-layer-group"></i> Explore by Category</h2>
+            <p class="section-sub">Click a category to filter the project explorer below.</p>
+            <div class="cat-grid" id="cat-grid">
+                <!-- filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Module Spotlights ─────────────────────────────────────────────── -->
+    <section id="section-spotlights">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-rocket"></i> Module Spotlights</h2>
+            <p class="section-sub">Deep dives into the most feature-rich modules in the repository.</p>
+            <div class="spotlight-grid" id="spotlight-grid">
+                <!-- filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Advanced Concepts (original section, now real content) ────────── -->
+    <section id="section-concepts">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-lightbulb"></i> Advanced Concepts Demonstrated</h2>
+            <p class="section-sub">Key engineering patterns and techniques present across this codebase.</p>
+            <div class="mb-3">
+                <button id="start-animation-btn" class="btn btn-sm btn-primary">
+                    <i class="fa fa-play"></i> Animate
+                </button>
+                <button id="stop-animation-btn" class="btn btn-sm btn-outline-secondary ms-2">
+                    <i class="fa fa-stop"></i> Stop
+                </button>
+            </div>
+            <div id="data-container">
+                <!-- filled by JS from assets/data.json -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Project Explorer ──────────────────────────────────────────────── -->
+    <section id="section-explorer">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-compass"></i> Project Explorer</h2>
+            <p class="section-sub">Search and browse all <span id="explorer-total">…</span> projects loaded from <code>projects.json</code>.</p>
+
+            <div class="explorer-controls">
+                <div class="search-box">
+                    <i class="fa fa-magnifying-glass"></i>
+                    <input type="search" id="explorer-search" placeholder="Search by name, description, category…"
+                           aria-label="Search projects" autocomplete="off">
+                </div>
+                <span class="proj-count" id="explorer-count" aria-live="polite"></span>
             </div>
 
-            <div id="data-container" class="row">
-                <!-- Data will be dynamically inserted here -->
-            </div>
-
-            <div class="w3-container mt-5">
-                <h2>Latest Commit Information</h2>
-                <div id="commit-info-container" class="w3-card w3-padding">
-                    <!-- Commit info will be dynamically inserted here -->
+            <div class="project-grid" id="project-grid">
+                <!-- filled by JS -->
+                <div class="empty-state" id="proj-empty" style="display:none;">
+                    <i class="fa fa-circle-xmark"></i>
+                    <p>No projects match your search.</p>
                 </div>
             </div>
         </div>
-    </main>
+    </section>
 
-    <footer class="text-center mt-5 p-3 bg-dark text-white">
-        <p>Showcase Project Footer</p>
+    <!-- ── Recently Updated ──────────────────────────────────────────────── -->
+    <section id="section-recent">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-clock-rotate-left"></i> Recently Updated</h2>
+            <p class="section-sub">The 10 most recently modified projects.</p>
+            <div class="recent-grid" id="recent-grid">
+                <!-- filled by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Latest Commit Info ─────────────────────────────────────────────── -->
+    <section id="section-commit">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-code-branch"></i> Latest Commit Information</h2>
+            <p class="section-sub">Most recent recorded commit metadata.</p>
+            <div id="commit-info-container" class="w3-card w3-padding" style="max-width:680px;">
+                <p class="text-muted">Loading commit info…</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────────────────────── -->
+    <footer>
+        <p style="margin:0 0 .25rem;">
+            <strong>MajixAI</strong> &mdash; 158+ projects across finance, ML, mathematics, gaming, and tools.
+        </p>
+        <nav class="footer-links" aria-label="Site navigation">
+            <a href="../"><i class="fa fa-house"></i> Home</a>
+            <a href="../router/"><i class="fa fa-route"></i> Router</a>
+            <a href="../latest_commit/"><i class="fa fa-code-commit"></i> Commit Timeline</a>
+            <a href="../wiki/"><i class="fa fa-book"></i> Wiki</a>
+            <a href="../best/"><i class="fa fa-trophy"></i> Best Performers</a>
+            <a href="../yfinance/"><i class="fa fa-chart-line"></i> yFinance</a>
+            <a href="../tradingview_integration/"><i class="fa fa-chart-bar"></i> TradingView</a>
+        </nav>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
     <script src="js/main.js" type="module" defer></script>
 </body>
 </html>
