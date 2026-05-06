@@ -24,6 +24,11 @@ from ixic_lstm_forecast.framework.interfaces import IStorageEngine
 
 log = logging.getLogger(__name__)
 
+# Bitwise left-shift applied to the base flag (0b00000001) when computing the
+# binary signature.  A shift of 3 places the marker at bit position 3
+# (0b00001000), OR'd with the high-bit mask (0b10000000) → 0b10001000 (136).
+_BINARY_SHIFT_VAL: int = 3
+
 
 def reporting_worker(queue: Queue, storage: IStorageEngine) -> None:  # type: ignore[type-arg]
     """
@@ -56,7 +61,7 @@ def reporting_worker(queue: Queue, storage: IStorageEngine) -> None:  # type: ig
         )
 
         # ── Object mapping: dict → Tickers struct ─────────────────────────
-        binary_sig = QuantFrameworkBase.calculate_binary_flag(shift_val=3)
+        binary_sig = QuantFrameworkBase.calculate_binary_flag(shift_val=_BINARY_SHIFT_VAL)
         ticker_struct = Tickers(
             symbol=payload["symbol"],
             recent_close=payload["recent"],

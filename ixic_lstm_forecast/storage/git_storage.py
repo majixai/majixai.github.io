@@ -47,6 +47,22 @@ class GitDatabaseStorage:
         )
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _safe_filename(symbol: str) -> str:
+        """
+        Return a filesystem-safe version of *symbol*.
+
+        Strips or replaces any character that is not alphanumeric, a dash,
+        or an underscore.  This guards against path-traversal and OS-level
+        filename restrictions on all major platforms.
+        """
+        import re
+        safe = re.sub(r"[^\w\-]", "_", symbol)
+        safe = safe.strip("_") or "unknown"
+        log.debug("[GitDatabaseStorage] _safe_filename(%r) → %r", symbol, safe)
+        return safe
+
+    # ------------------------------------------------------------------
     def commit(self, data: Any) -> None:
         """
         Serialise *data* with pickle and write as a Gzip file.
@@ -59,7 +75,7 @@ class GitDatabaseStorage:
         data:
             Any picklable object; typically a ``Tickers`` dataclass instance.
         """
-        symbol = getattr(data, "symbol", "unknown").replace("^", "").replace("/", "-")
+        symbol = self._safe_filename(getattr(data, "symbol", "unknown"))
         ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         filename = self.output_dir / f"{symbol}_tickers_payload_{ts}.dat.gz"
 
