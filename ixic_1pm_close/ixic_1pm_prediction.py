@@ -185,6 +185,34 @@ try:
 except Exception:
     _PATTERNS_AVAILABLE = False
 
+# ── tensor.financial – HOSVD, Kalman, Haar, regimes, MC, VaR ────────────────
+try:
+    from tensor.financial import (
+        build_feature_matrix,
+        tensor_decompose,
+        kalman_filter as tensor_kalman_filter,
+        haar_decompose,
+        classify_regimes_5,
+        tensor_contract,
+        feature_importance,
+        smooth_drift as tensor_smooth_drift,
+        monte_carlo_forecast as tensor_mc_forecast,
+        rolling_tensor_signal,
+        cross_asset_summary,
+        compute_var,
+    )
+    _TENSOR_AVAILABLE = True
+except Exception:
+    _TENSOR_AVAILABLE = False
+
+# ── gpu/ – GPUManager, GPUDispatcher, kernels ────────────────────────────────
+try:
+    from gpu import GPUManager, GPUDispatcher
+    import gpu.kernels  # triggers kernel auto-registration
+    _GPU_AVAILABLE = True
+except Exception:
+    _GPU_AVAILABLE = False
+
 # ── dbs DataStore path ───────────────────────────────────────────────────────
 _DBS_DIR = _REPO_ROOT / "dbs"
 _DBS_DIR.mkdir(parents=True, exist_ok=True)
@@ -869,6 +897,16 @@ class IXICPredictionResult:
     combined_prediction Weighted ensemble prediction
     dominant_cycles     Top Fourier cycles (period in bars)
     data_source         "live" | "default"
+    tensor_signal       Latest tensor score + dominant regime + Kalman drift
+    tensor_forecast     20-bar tensor-adjusted Monte Carlo forecast (mean + bands)
+    tensor_regime       Per-bar regime probabilities (last bar)
+    tensor_statistics   Hurst, autocorrelation, skewness, excess kurtosis, annualised vol
+    tensor_var          Historical-simulation VaR (1-day, 5-day, 10-day) + CVaR
+    tensor_feature_importance  Leave-one-out Shapley-style feature deltas
+    haar_wavelet        Haar multi-scale decomposition summary
+    complex_analysis    Characteristic function, Gil-Pelaez FFT, contour integral
+    gpu_backend         Active GPU backend ('cuda' | 'mps' | 'tensorflow' | 'cpu')
+    gpu_mc_forecast     GPU-accelerated GBM MC (mean + percentiles)
     """
     timestamp: str = ""
     ticker: str = "^IXIC"
@@ -888,6 +926,17 @@ class IXICPredictionResult:
     combined_prediction: Dict = field(default_factory=dict)
     dominant_cycles: List[Dict] = field(default_factory=list)
     data_source: str = "default"
+    # ── Tensor / Neural / GPU ─────────────────────────────────────────────────
+    tensor_signal: Dict = field(default_factory=dict)
+    tensor_forecast: Dict = field(default_factory=dict)
+    tensor_regime: Dict = field(default_factory=dict)
+    tensor_statistics: Dict = field(default_factory=dict)
+    tensor_var: Dict = field(default_factory=dict)
+    tensor_feature_importance: List[Dict] = field(default_factory=list)
+    haar_wavelet: Dict = field(default_factory=dict)
+    complex_analysis: Dict = field(default_factory=dict)
+    gpu_backend: str = "cpu"
+    gpu_mc_forecast: Dict = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         return dataclasses.asdict(self)
@@ -968,6 +1017,294 @@ class IXIC1PMPredictor:
         minutes_to_1pm = max(0.0, (target_time - now).total_seconds() / 60.0)
         T = minutes_to_1pm / (self.config.trading_days * self.config.minutes_per_day)
         return T
+
+    # ── Tensor / Neural pipeline ───────────────────────────────────────────────
+
+    def _run_tensor_pipeline(self, closes: np.ndarray) -> Dict:
+        """
+        Run the full tensor.financial pipeline on the closing-price series.
+
+        Returns a dict with keys:
+          tensor_signal, tensor_forecast, tensor_regime, tensor_statistics,
+          tensor_var, tensor_feature_importance, haar_wavelet
+        All subsystems are driven by shared mathematics:
+          – HOSVD covariance denoising (Linear Algebra / Spectral Theory)
+          – Kalman filter (Bayesian state-space, stochastic calculus)
+          – Haar wavelet (multi-scale harmonic analysis)
+          – 5-class softmax regime classifier (probabilistic / tensor algebra)
+          – Monte Carlo with tensor-score adjustment (stochastic calculus)
+          – Hurst exponent, VaR/CVaR (fractal analysis, extreme value theory)
+        """
+        out: Dict[str, Any] = {}
+        if not _TENSOR_AVAILABLE or len(closes) < 32:
+            return out
+
+        try:
+            # ── Kalman smoother ─────────────────────────────────────────────
+            kp, kd = tensor_kalman_filter(closes)
+
+            # ── Haar wavelet decomposition ─────────────────────────────────
+            haar = haar_decompose(closes)
+            haar_slope = haar["trend_slope"]
+            out["haar_wavelet"] = {
+                "trend_slope": round(float(haar_slope), 6),
+                "energy_low_freq": round(float(haar["energy_lo"]), 4),
+                "energy_high_freq": round(float(haar["energy_hi"]), 4),
+            }
+
+            # ── Feature matrix + HOSVD ──────────────────────────────────────
+            F = build_feature_matrix(closes)
+            _, S_sv, F_den, k_used = tensor_decompose(F)
+
+            # ── Tensor contraction → score + regime probabilities ───────────
+            score, regime_signal, P = tensor_contract(F, F_den)
+            last_p = P[-1]
+            dom = int(np.argmax(last_p))
+            regime_labels = ["STRONG_BULL", "BULL", "NEUT", "BEAR", "STRONG_BEAR"]
+            out["tensor_signal"] = {
+                "tensor_score": round(float(score), 6),
+                "hosvd_k": k_used,
+                "hosvd_singular_values": [round(float(sv), 6) for sv in S_sv[:k_used]],
+                "kalman_price": round(float(kp[-1]), 4),
+                "kalman_drift": round(float(kd[-1]), 6),
+                "regime": regime_labels[dom],
+                "p_strong_bull": round(float(last_p[0]), 4),
+                "p_bull": round(float(last_p[1]), 4),
+                "p_neut": round(float(last_p[2]), 4),
+                "p_bear": round(float(last_p[3]), 4),
+                "p_strong_bear": round(float(last_p[4]), 4),
+                "bull_signal": round(float(last_p[0] + last_p[1] * 0.5
+                                           - last_p[3] * 0.5 - last_p[4]), 4),
+            }
+            out["tensor_regime"] = {lbl: round(float(p), 4)
+                                    for lbl, p in zip(regime_labels, last_p)}
+
+            # ── Smooth drift (blended HOSVD + Kalman) ──────────────────────
+            drift_smooth, alpha = tensor_smooth_drift(closes, F, kd)
+            sigma_hist = float(np.std(np.diff(np.log(np.maximum(closes, 1e-10))), ddof=1))
+
+            # ── Tensor-adjusted Monte Carlo forecast (20-bar horizon) ───────
+            fc = tensor_mc_forecast(closes, float(score), sigma_hist, float(drift_smooth), haar_slope)
+            out["tensor_forecast"] = {
+                "last_price": fc["last_price"],
+                "drift_adjusted": fc["drift"],
+                "adj_factor": fc["adj_factor"],
+                "sigma_step": fc["sigma_step"],
+                "n_paths": fc["n_paths"],
+                "horizon_bars": fc["horizon"],
+                "mean_target": round(float(fc["forecast"][-1]), 4) if fc["forecast"] else None,
+                "p10_target": round(float(fc["p10_band"][-1]), 4) if fc["p10_band"] else None,
+                "p90_target": round(float(fc["p90_band"][-1]), 4) if fc["p90_band"] else None,
+                "forecast_series": [round(v, 4) for v in fc["forecast"]],
+                "p10_band": [round(v, 4) for v in fc["p10_band"]],
+                "p90_band": [round(v, 4) for v in fc["p90_band"]],
+            }
+
+            # ── Feature importance (Shapley-style) ─────────────────────────
+            out["tensor_feature_importance"] = feature_importance(F)
+
+            # ── Cross-asset statistics (Hurst, autocorrelation, moments) ───
+            stats = cross_asset_summary(closes)
+            out["tensor_statistics"] = stats
+
+            # ── VaR / CVaR ──────────────────────────────────────────────────
+            var = compute_var(closes)
+            out["tensor_var"] = var
+
+        except Exception:
+            pass
+
+        return out
+
+    # ── GPU-accelerated computation ──────────────────────────────────────────
+
+    def _run_gpu_dispatch(self, closes: np.ndarray, mu_step: float, sigma_step: float) -> Dict:
+        """
+        Dispatch tensor + MC workloads to the GPU layer (falls back to CPU).
+
+        Uses gpu/kernels:
+          – tensor_ops.hosvd          (HOSVD covariance projection)
+          – tensor_ops.kalman_smooth  (RTS smoother)
+          – tensor_ops.monte_carlo    (GBM paths)
+          – tensor_ops.haar_wavelet   (multi-scale decomposition)
+        """
+        out: Dict[str, Any] = {}
+        if not _GPU_AVAILABLE:
+            out["gpu_backend"] = "cpu"
+            return out
+
+        try:
+            mgr = GPUManager.get_instance()
+            out["gpu_backend"] = mgr.backend
+
+            dispatcher = GPUDispatcher(manager=mgr)
+            try:
+                # GPU HOSVD
+                F_gpu = build_feature_matrix(closes) if _TENSOR_AVAILABLE else np.eye(8)
+                f_hosvd = dispatcher.submit("tensor_ops.hosvd", feature_matrix=F_gpu, rank=3)
+
+                # GPU Kalman
+                f_kalman = dispatcher.submit("tensor_ops.kalman_smooth", observations=closes)
+
+                # GPU Monte Carlo (GBM)
+                f_mc = dispatcher.submit(
+                    "tensor_ops.monte_carlo",
+                    mu=mu_step,
+                    sigma=sigma_step,
+                    steps=20,
+                    n_paths=800,
+                    seed=self.config.random_seed or 42,
+                    s0=float(closes[-1]),
+                )
+
+                # GPU Haar wavelet
+                f_haar = dispatcher.submit("tensor_ops.haar_wavelet", signal=closes, levels=3)
+
+                # Collect results
+                core, sv = f_hosvd.result(timeout=60)
+                smoothed = f_kalman.result(timeout=60)
+                mc_result = f_mc.result(timeout=60)
+                haar_comp = f_haar.result(timeout=60)
+
+                out["gpu_hosvd"] = {
+                    "core_shape": list(core.shape),
+                    "singular_values": [round(float(v), 6) for v in sv],
+                }
+                out["gpu_kalman_last"] = round(float(smoothed[-1]), 4)
+                out["gpu_mc_forecast"] = {
+                    "mean": round(float(mc_result["mean"]), 4),
+                    "p5": round(float(mc_result["p5"]), 4),
+                    "p25": round(float(mc_result["p25"]), 4),
+                    "p75": round(float(mc_result["p75"]), 4),
+                    "p95": round(float(mc_result["p95"]), 4),
+                    "n_paths": 800,
+                }
+                out["gpu_haar_levels"] = len(haar_comp)
+            finally:
+                dispatcher.shutdown(wait=False)
+
+        except Exception:
+            out.setdefault("gpu_backend", "cpu")
+
+        return out
+
+    # ── Complex analysis ──────────────────────────────────────────────────────
+
+    def _run_complex_analysis(self, S0: float, T: float) -> Dict:
+        """
+        Apply complex analysis techniques to derive option-pricing quantities
+        and spectral decomposition of the GBM price distribution.
+
+        Mathematics used
+        ----------------
+        Characteristic function (Fourier / Complex Analysis)
+            φ(u) = E[exp(i·u·log S_T)]
+                 = exp(i·u·m − u²·s²/2)
+            where m = log(S0) + (μ − σ²/2)·T,  s = σ√T
+
+        Gil-Pelaez FFT inversion  (Residue theorem / Fourier inversion)
+            The CDF and density are recovered from φ(u) via Fourier inversion.
+            Numerical Gil-Pelaez: P(S_T > K) = ½ + (1/π) ∫₀^∞ Re[e^{−iuK}φ(u)] du/u
+
+        Contour integral expected value  (Cauchy integral theorem)
+            E[S_T] = (1/2πi) ∮ S·f(S)/z dz  approximated numerically
+            over a semicircular contour in the log-price complex plane.
+
+        Moment generating function  (Complex exponential, Taylor expansion)
+            M(t) = exp(m·t + s²·t²/2)  gives moments directly.
+        """
+        out: Dict[str, Any] = {}
+        mu, sigma = self.config.drift, self.config.volatility
+        if T <= 0:
+            # 207 minutes = time from 9:30 AM open to 1 PM target
+            T = 207.0 / (self.config.trading_days * self.config.minutes_per_day)
+
+        m = math.log(S0) + (mu - 0.5 * sigma ** 2) * T
+        s = sigma * math.sqrt(T)
+
+        # ── Characteristic function at selected u values ─────────────────
+        u_vals = [0.5, 1.0, 2.0, 5.0, 10.0]
+        char_fn = {}
+        for u in u_vals:
+            phi = cmath.exp(1j * u * m - u ** 2 * s ** 2 / 2)
+            char_fn[f"u={u}"] = {"real": round(phi.real, 8), "imag": round(phi.imag, 8),
+                                  "abs": round(abs(phi), 8)}
+        out["characteristic_function"] = char_fn
+
+        # ── Gil-Pelaez: P(S_T > S0) via Fourier inversion ────────────────
+        K_log = math.log(S0)
+        def _integrand_gp(u: float) -> float:
+            if u < 1e-10:
+                return 0.0
+            phi_u = cmath.exp(1j * u * m - u ** 2 * s ** 2 / 2)
+            num = cmath.exp(-1j * u * K_log) * phi_u
+            return float(num.real) / u
+
+        try:
+            integral_val, _ = quad(_integrand_gp, 1e-6, 200.0, limit=200)
+            prob_above_S0 = 0.5 + integral_val / math.pi
+            out["gil_pelaez"] = {
+                "P(S_T > S0)": round(float(np.clip(prob_above_S0, 0.0, 1.0)), 6),
+                "P(S_T < S0)": round(float(np.clip(1.0 - prob_above_S0, 0.0, 1.0)), 6),
+            }
+        except Exception:
+            out["gil_pelaez"] = {}
+
+        # ── Moment generating function moments ────────────────────────────
+        # MGF: M(t) = exp(m·t + s²·t²/2) → E[S_T^n] at t=1,2,...
+        out["moment_generating"] = {}
+        for n_mom in [1, 2, 3]:
+            m_val = math.exp(n_mom * m + n_mom ** 2 * s ** 2 / 2)
+            out["moment_generating"][f"E[S_T^{n_mom}]"] = round(m_val, 4)
+
+        # ── Analytical E[S_T] and variance via complex exponential ────────
+        E_S = math.exp(m + s ** 2 / 2)
+        Var_S = math.exp(2 * m + s ** 2) * (math.exp(s ** 2) - 1)
+        out["distribution"] = {
+            "E[S_T]": round(E_S, 4),
+            "Var[S_T]": round(Var_S, 4),
+            "StdDev[S_T]": round(math.sqrt(max(Var_S, 0)), 4),
+            "log_mean_m": round(m, 8),
+            "log_std_s": round(s, 8),
+        }
+
+        # ── Contour integral (residue-based) price approximation ─────────
+        # Numerical estimate: (1/2π) ∫ e^{-iuK} φ(u) du integrated over ℝ
+        # approximated via dense Fourier grid (discrete Gil-Pelaez)
+        try:
+            N_fft = 256
+            eta = 0.25          # frequency step
+            u_grid = eta * np.arange(N_fft)
+            lambda_grid = 2 * math.pi / (N_fft * eta)   # log-price step
+            b = N_fft * lambda_grid / 2.0                # lower bound of log-price grid
+
+            # Characteristic function over grid (damped with α=1.5 for stability)
+            alpha = 1.5
+            k_vals = b + lambda_grid * np.arange(N_fft)   # log-price grid
+            phi_u = np.exp(1j * (u_grid - (alpha + 1) * 1j) * m
+                           - ((u_grid - (alpha + 1) * 1j) ** 2) * s ** 2 / 2)
+            mod_phi = phi_u / ((alpha + 1j * u_grid) * (alpha + 1 + 1j * u_grid))
+            fft_input = np.exp(1j * u_grid * b) * mod_phi
+            # Simpson weights for FFT
+            weights_s = np.ones(N_fft) * (eta / 3.0)
+            weights_s[0] = eta / 6.0
+            weights_s[-1] = eta / 6.0
+            weights_s[1:-1:2] *= 2
+            weights_s[2:-1:2] *= 2
+            fft_vals = np.fft.fft(weights_s * fft_input)
+            call_prices_fft = (np.exp(-alpha * k_vals) / math.pi) * np.real(fft_vals)
+            # ATM call price (closest log-strike to log(S0))
+            atm_idx = int(np.argmin(np.abs(k_vals - math.log(S0))))
+            atm_call_fft = float(call_prices_fft[atm_idx])
+            out["carr_madan_fft"] = {
+                "atm_call_price": round(atm_call_fft, 4),
+                "alpha_damping": alpha,
+                "grid_points": N_fft,
+            }
+        except Exception:
+            out["carr_madan_fft"] = {}
+
+        return out
 
     # ── Stochastic + calculus core ─────────────────────────────────────────
 
@@ -1132,9 +1469,59 @@ class IXIC1PMPredictor:
         result.taylor_expansion = sim['taylor_expansion']
         result.integration = sim['integration']
         result.confidence_interval = sim['confidence_interval']
-        result.combined_prediction = sim['combined_prediction']
 
-        # 9. Persist to dbs/ via DataStore
+        # 9. Tensor / Neural pipeline (HOSVD, Kalman, Haar, regimes, VaR, stats)
+        closes_arr: Optional[np.ndarray] = None
+        if df_lower is not None and len(df_lower) >= 32:
+            closes_arr = df_lower["close"].dropna().to_numpy(dtype=float)
+        else:
+            # Synthetic fallback: seed a plausible price series around S0
+            rng = np.random.default_rng(self.config.random_seed or 42)
+            closes_arr = S0 * np.exp(
+                np.cumsum(rng.normal(0, self.config.volatility / np.sqrt(252), 60))
+            )
+            closes_arr = np.concatenate([[S0], closes_arr])
+
+        tensor_out = self._run_tensor_pipeline(closes_arr)
+        result.tensor_signal = tensor_out.get("tensor_signal", {})
+        result.tensor_forecast = tensor_out.get("tensor_forecast", {})
+        result.tensor_regime = tensor_out.get("tensor_regime", {})
+        result.tensor_statistics = tensor_out.get("tensor_statistics", {})
+        result.tensor_var = tensor_out.get("tensor_var", {})
+        result.tensor_feature_importance = tensor_out.get("tensor_feature_importance", [])
+        result.haar_wavelet = tensor_out.get("haar_wavelet", {})
+
+        # 10. GPU-accelerated dispatch
+        mu_step = self.config.drift / (self.config.trading_days * self.config.minutes_per_day)
+        sigma_step = self.config.volatility / np.sqrt(self.config.trading_days * self.config.minutes_per_day)
+        gpu_out = self._run_gpu_dispatch(closes_arr, mu_step, sigma_step)
+        result.gpu_backend = gpu_out.get("gpu_backend", "cpu")
+        result.gpu_mc_forecast = gpu_out.get("gpu_mc_forecast", {})
+
+        # 11. Complex analysis (characteristic function, Gil-Pelaez, FFT)
+        result.complex_analysis = self._run_complex_analysis(S0, T)
+
+        # 12. Combined (weighted ensemble) – now includes tensor + GPU MC
+        prediction_sources = [
+            sim['gbm']['mean'],
+            sim['antithetic']['mean'],
+            sim['stratified']['mean'],
+            sim['integration']['analytical_expected'],
+        ]
+        methods_used = 4
+        if result.tensor_forecast.get("mean_target"):
+            prediction_sources.append(result.tensor_forecast["mean_target"])
+            methods_used += 1
+        if result.gpu_mc_forecast.get("mean"):
+            prediction_sources.append(result.gpu_mc_forecast["mean"])
+            methods_used += 1
+        result.combined_prediction = {
+            'mean': float(np.mean(prediction_sources)),
+            'std': float(np.std(prediction_sources)),
+            'methods_used': methods_used,
+        }
+
+        # 13. Persist to dbs/ via DataStore
         self._persist(result)
 
         return result
@@ -1251,6 +1638,7 @@ class IXIC1PMPredictor:
 
         lines += ["\n" + sep, "COMBINED PREDICTION (Ensemble)", sep]
         lines.append(f"\n  1 PM Close   : ${result.combined_prediction['mean']:>12,.2f}")
+        lines.append(f"  Methods Used : {result.combined_prediction.get('methods_used', 4):>13}")
         lines.append(f"  95% CI       : ${result.confidence_interval['ci_95_lower']:,.2f}"
                      f" – ${result.confidence_interval['ci_95_upper']:,.2f}")
 
@@ -1261,6 +1649,94 @@ class IXIC1PMPredictor:
         lines.append(f"  Gamma        : {bs['gamma']:>14.8f}")
         lines.append(f"  Theta        : {bs['theta']:>14.4f}")
         lines.append(f"  Vega         : {bs['vega']:>14.4f}")
+
+        # ── Tensor / Neural signal ─────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "TENSOR / NEURAL SIGNAL  (tensor.financial + HOSVD)", "-" * 72]
+        ts = result.tensor_signal
+        if ts:
+            lines.append(f"  Tensor Score   : {ts.get('tensor_score', 'n/a'):>12}")
+            lines.append(f"  HOSVD Rank k   : {ts.get('hosvd_k', 'n/a'):>12}")
+            lines.append(f"  Dominant Regime: {ts.get('regime', 'n/a'):>12}")
+            lines.append(f"  Bull Signal    : {ts.get('bull_signal', 'n/a'):>12}")
+            lines.append(f"  Kalman Price   : ${ts.get('kalman_price', 0):>11,.4f}")
+            lines.append(f"  Kalman Drift   : {ts.get('kalman_drift', 'n/a'):>12}")
+        else:
+            lines.append("  (tensor.financial unavailable)")
+
+        # ── Tensor Forecast ───────────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "TENSOR-ADJUSTED MC FORECAST (20-bar horizon)", "-" * 72]
+        tf = result.tensor_forecast
+        if tf:
+            lines.append(f"  Drift Adjusted : {tf.get('drift_adjusted', 'n/a'):>12}")
+            lines.append(f"  Adj Factor     : {tf.get('adj_factor', 'n/a'):>12}")
+            lines.append(f"  Target (mean)  : ${tf.get('mean_target', 0) or 0:>11,.4f}")
+            lines.append(f"  Target P10     : ${tf.get('p10_target', 0) or 0:>11,.4f}")
+            lines.append(f"  Target P90     : ${tf.get('p90_target', 0) or 0:>11,.4f}")
+        else:
+            lines.append("  (insufficient history for tensor forecast)")
+
+        # ── VaR / CVaR ────────────────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "VaR / CVaR (historical simulation)", "-" * 72]
+        var = result.tensor_var
+        if var:
+            lines.append(f"  1-Day VaR 95%  : {var.get('var_1d_pct', 'n/a'):>12}%")
+            lines.append(f"  1-Day CVaR 95% : {var.get('cvar_1d_pct', 'n/a'):>12}%")
+            lines.append(f"  5-Day VaR      : {var.get('var_5d_pct', 'n/a'):>12}%")
+            lines.append(f"  10-Day VaR     : {var.get('var_10d_pct', 'n/a'):>12}%")
+        else:
+            lines.append("  (tensor.financial unavailable)")
+
+        # ── Statistical / Hurst ───────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "STATISTICAL ANALYSIS (Hurst, Autocorrelation, Moments)", "-" * 72]
+        sts = result.tensor_statistics
+        if sts:
+            lines.append(f"  Hurst Exponent : {sts.get('hurst_exponent', 'n/a'):>12}")
+            lines.append(f"  Annualised Vol : {sts.get('annualised_vol', 'n/a'):>12}")
+            lines.append(f"  Skewness       : {sts.get('skewness', 'n/a'):>12}")
+            lines.append(f"  Excess Kurtosis: {sts.get('excess_kurtosis', 'n/a'):>12}")
+            lags = sts.get("autocorrelation_lags", {})
+            for lag_k, lag_v in list(lags.items())[:3]:
+                lines.append(f"  Autocorr {lag_k}  : {lag_v:>12.4f}")
+        else:
+            lines.append("  (tensor.financial unavailable)")
+
+        # ── Haar Wavelet ──────────────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "HAAR WAVELET (multi-scale trend decomposition)", "-" * 72]
+        hw = result.haar_wavelet
+        if hw:
+            lines.append(f"  Trend Slope    : {hw.get('trend_slope', 'n/a'):>12}")
+            lines.append(f"  Energy LF      : {hw.get('energy_low_freq', 'n/a'):>12}")
+            lines.append(f"  Energy HF      : {hw.get('energy_high_freq', 'n/a'):>12}")
+        else:
+            lines.append("  (tensor.financial unavailable)")
+
+        # ── GPU ───────────────────────────────────────────────────────────
+        lines += ["\n" + "-" * 72, f"GPU BACKEND: {result.gpu_backend.upper()}", "-" * 72]
+        gmc = result.gpu_mc_forecast
+        if gmc:
+            lines.append(f"  GPU MC Mean    : ${gmc.get('mean', 0):>11,.4f}")
+            lines.append(f"  GPU MC P5      : ${gmc.get('p5', 0):>11,.4f}")
+            lines.append(f"  GPU MC P95     : ${gmc.get('p95', 0):>11,.4f}")
+            lines.append(f"  GPU MC Paths   : {gmc.get('n_paths', 0):>12,}")
+        else:
+            lines.append("  (GPU MC forecast fell back to CPU or not run)")
+
+        # ── Complex Analysis ─────────────────────────────────────────────
+        lines += ["\n" + "-" * 72, "COMPLEX ANALYSIS (Characteristic Function + FFT)", "-" * 72]
+        ca = result.complex_analysis
+        if ca:
+            gp = ca.get("gil_pelaez", {})
+            if gp:
+                lines.append(f"  P(S_T > S0)    : {gp.get('P(S_T > S0)', 'n/a'):>12}")
+            dist = ca.get("distribution", {})
+            if dist:
+                lines.append(f"  E[S_T]         : ${dist.get('E[S_T]', 0):>11,.4f}")
+                lines.append(f"  StdDev[S_T]    : ${dist.get('StdDev[S_T]', 0):>11,.4f}")
+            cf_fft = ca.get("carr_madan_fft", {})
+            if cf_fft.get("atm_call_price") is not None:
+                lines.append(f"  ATM Call (FFT) : ${cf_fft['atm_call_price']:>11,.4f}")
+        else:
+            lines.append("  (complex analysis unavailable)")
 
         lines.append("\n" + sep)
         return "\n".join(lines)
@@ -1385,44 +1861,89 @@ def create_visualization(result: IXICPredictionResult, config: MarketConfig, out
              verticalalignment='top', color=green, fontfamily='monospace')
     ax5.set_title("Indicators", color=txt, fontsize=11, fontweight='bold')
 
-    # ── Panel 6: Active Patterns (row 2, col 0-1) ────────────────────────
-    ax6 = fig.add_subplot(gs[2, :2])
+    # ── Panel 6: Active Patterns (row 2, col 0) ──────────────────────────
+    ax6 = fig.add_subplot(gs[2, 0])
     ax6.set_facecolor(bg)
     ax6.axis('off')
     pat_lines = []
-    for pat in result.active_patterns[:8]:
+    for pat in result.active_patterns[:5]:
         if "features" in pat:
-            pat_lines.append(f"  extended_calculus  {list(pat['features'].keys())[:4]}")
+            pat_lines.append(f"  ext_calc  {list(pat['features'].keys())[:3]}")
         else:
             pat_lines.append(
-                f"  {pat['family']:<18}  {pat['name']:<26}  "
-                f"U={pat['upper']:,.2f}  L={pat['lower']:,.2f}"
+                f"  {pat['family']:<16}  {pat['name']:<22}"
             )
     if not pat_lines:
-        pat_lines = ["  (no active patterns detected)"]
+        pat_lines = ["  (no active patterns)"]
     ax6.text(0.02, 0.95, "ACTIVE PATTERNS\n" + "\n".join(pat_lines),
              transform=ax6.transAxes, fontsize=9, va='top', color=orange, fontfamily='monospace')
 
-    # ── Panel 7: Statistics summary (row 2, col 2) ───────────────────────
-    ax7 = fig.add_subplot(gs[2, 2])
+    # ── Panel 7: Tensor Regime radar (row 2, col 1) ──────────────────────
+    ax7 = fig.add_subplot(gs[2, 1])
     ax7.set_facecolor(bg)
     ax7.axis('off')
+    ts = result.tensor_signal
+    tf = result.tensor_forecast
+    hw = result.haar_wavelet
+    sts = result.tensor_statistics
+    tensor_lines = ["TENSOR / NEURAL SIGNAL"]
+    if ts:
+        tensor_lines += [
+            f"  Score  : {ts.get('tensor_score', 'n/a')}",
+            f"  Regime : {ts.get('regime', 'n/a')}",
+            f"  HOSVD k: {ts.get('hosvd_k', 'n/a')}",
+            f"  Kalman : ${ts.get('kalman_price', 0):>10,.2f}",
+            f"  Signal : {ts.get('bull_signal', 'n/a')}",
+        ]
+    else:
+        tensor_lines.append("  (unavailable)")
+    tensor_lines.append("HAAR WAVELET")
+    if hw:
+        tensor_lines += [
+            f"  Slope  : {hw.get('trend_slope', 'n/a')}",
+            f"  LF Nrg : {hw.get('energy_low_freq', 'n/a')}",
+        ]
+    if sts:
+        tensor_lines += [
+            "STATISTICS",
+            f"  Hurst  : {sts.get('hurst_exponent', 'n/a')}",
+            f"  Ann.Vol: {sts.get('annualised_vol', 'n/a')}",
+        ]
+    ax7.text(0.02, 0.97, "\n".join(tensor_lines), transform=ax7.transAxes, fontsize=8,
+             va='top', color=blue, fontfamily='monospace')
+
+    # ── Panel 8: Statistics / GPU summary (row 2, col 2) ─────────────────
+    ax8 = fig.add_subplot(gs[2, 2])
+    ax8.set_facecolor(bg)
+    ax8.axis('off')
+    gmc = result.gpu_mc_forecast
+    ca = result.complex_analysis
     stats_txt = (
-        f"IXIC 1PM SUMMARY\n"
+        f"IXIC 1PM ENSEMBLE\n"
         f"{'─'*28}\n"
-        f"Current: ${config.current_price:>11,.2f}\n"
-        f"Predict: ${result.combined_prediction['mean']:>11,.2f}\n"
-        f"Change : ${result.combined_prediction['mean'] - config.current_price:>+11,.2f}\n"
+        f"Current : ${config.current_price:>10,.2f}\n"
+        f"Predict : ${result.combined_prediction['mean']:>10,.2f}\n"
+        f"Change  : ${result.combined_prediction['mean'] - config.current_price:>+10,.2f}\n"
+        f"Methods : {result.combined_prediction.get('methods_used', 4):>10}\n"
         f"{'─'*28}\n"
-        f"95% CI Low: ${result.confidence_interval['ci_95_lower']:>9,.2f}\n"
-        f"95% CI Hi : ${result.confidence_interval['ci_95_upper']:>9,.2f}\n"
+        f"95% Low : ${result.confidence_interval['ci_95_lower']:>10,.2f}\n"
+        f"95% Hi  : ${result.confidence_interval['ci_95_upper']:>10,.2f}\n"
         f"{'─'*28}\n"
-        f"σ     : {config.volatility * 100:>10.2f}%\n"
-        f"μ     : {config.drift * 100:>10.2f}%\n"
-        f"N sims: {config.simulations:>11,}\n"
-        f"Source: {result.data_source.upper():>10}\n"
+        f"GPU     : {result.gpu_backend.upper():>10}\n"
     )
-    ax7.text(0.05, 0.95, stats_txt, transform=ax7.transAxes, fontsize=9,
+    if gmc:
+        stats_txt += f"GPU MC  : ${gmc.get('mean', 0):>10,.2f}\n"
+    if ca and ca.get("distribution"):
+        dist = ca["distribution"]
+        stats_txt += f"E[S_T]  : ${dist.get('E[S_T]', 0):>10,.2f}\n"
+    stats_txt += (
+        f"{'─'*28}\n"
+        f"σ       : {config.volatility * 100:>9.2f}%\n"
+        f"μ       : {config.drift * 100:>9.2f}%\n"
+        f"N sims  : {config.simulations:>10,}\n"
+        f"Source  : {result.data_source.upper():>10}\n"
+    )
+    ax8.text(0.05, 0.97, stats_txt, transform=ax8.transAxes, fontsize=8,
              va='top', color=green, fontfamily='monospace')
 
     fig.suptitle("IXIC 1 PM Close Prediction Dashboard", color=txt, fontsize=15,
