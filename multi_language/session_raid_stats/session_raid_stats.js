@@ -158,16 +158,17 @@ class RaidEngine {
 
   onBar(timeMs, open, high, low, close) {
     const cfg = this.cfg;
-    const s   = this._s;
     const inS = inSession(timeMs, cfg);
 
     // Session open
     if (inS && !this._prevInS) {
-      this._s = this._freshState();
+      this._s    = this._freshState();
       this._s.hi = high;
       this._s.lo = low;
-      Object.assign(s, this._s); // rebind local ref
     }
+
+    // Use a local alias that always points at the current state object
+    const s = this._s;
 
     // Expand range
     if (inS && s.hi !== null) {

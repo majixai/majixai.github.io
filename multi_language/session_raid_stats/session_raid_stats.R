@@ -141,12 +141,12 @@ raid_engine <- function(cfg, max_days = 500L) {
 
     # Session open — reset state
     if (in_s && !prev_in_s) {
-      st$hi      <<- high;  st$lo <- low
-      st$end_ms  <<- NA;    st$active <- FALSE
-      st$hi_max  <<- NA;    st$hi_touch <- FALSE
-      st$hi_conf <<- FALSE; st$hi_pts <- NA
-      st$lo_min  <<- NA;    st$lo_touch <- FALSE
-      st$lo_conf <<- FALSE; st$lo_pts <- NA
+      st$hi      <<- high;  st$lo      <<- low
+      st$end_ms  <<- NA;    st$active  <<- FALSE
+      st$hi_max  <<- NA;    st$hi_touch <<- FALSE
+      st$hi_conf <<- FALSE; st$hi_pts  <<- NA
+      st$lo_min  <<- NA;    st$lo_touch <<- FALSE
+      st$lo_conf <<- FALSE; st$lo_pts  <<- NA
       st$cut_exp <<- FALSE
     }
 
