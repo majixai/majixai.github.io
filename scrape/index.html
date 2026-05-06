@@ -9,7 +9,10 @@
 <body>
   <header class="app-header">
     <div class="header-row">
-      <h1>Scraped Financial Data</h1>
+      <div class="breadcrumb-group">
+        <a id="back-link" class="back-link" href="/" title="Back to home" aria-label="Back to home">&#8592; Home</a>
+        <h1>Scraped Financial Data</h1>
+      </div>
       <div class="header-actions">
         <button id="theme-toggle" class="btn" type="button" title="Toggle theme">Theme</button>
       </div>
@@ -47,11 +50,7 @@
       <div class="field">
         <label for="y-field">Y-axis</label>
         <select id="y-field">
-          <option value="price" selected>price</option>
-          <option value="change">change</option>
-          <option value="change_percent">change_percent</option>
-          <option value="volume">volume</option>
-          <option value="market_cap">market_cap</option>
+          <option value="" disabled selected>— auto —</option>
         </select>
       </div>
 
@@ -76,29 +75,42 @@
       </div>
 
       <div class="field checkbox">
-        <label>
-          <input id="show-points" type="checkbox" />
-          Points
-        </label>
+        <label><input id="show-points" type="checkbox" /> Points</label>
       </div>
 
       <div class="field checkbox">
-        <label>
-          <input id="normalize" type="checkbox" />
-          Normalize (start=100)
-        </label>
+        <label><input id="normalize" type="checkbox" /> Normalize (start=100)</label>
       </div>
 
       <div class="field checkbox">
-        <label>
-          <input id="log-scale" type="checkbox" />
-          Log scale
-        </label>
+        <label><input id="log-scale" type="checkbox" /> Log scale</label>
       </div>
 
       <div class="field buttons">
         <button id="export-csv" class="btn" type="button">Export CSV</button>
         <button id="reset-zoom" class="btn" type="button">Reset zoom</button>
+      </div>
+    </div>
+
+    <div class="toolbar toolbar-overlays">
+      <span class="toolbar-label">Overlays:</span>
+      <div class="field checkbox">
+        <label><input id="overlay-sma20" type="checkbox" /> SMA 20</label>
+      </div>
+      <div class="field checkbox">
+        <label><input id="overlay-sma50" type="checkbox" /> SMA 50</label>
+      </div>
+      <div class="field checkbox">
+        <label><input id="overlay-ema20" type="checkbox" /> EMA 20</label>
+      </div>
+      <div class="field checkbox">
+        <label><input id="overlay-bb" type="checkbox" /> Bollinger Bands</label>
+      </div>
+      <div class="field checkbox">
+        <label><input id="overlay-trend" type="checkbox" /> Trend Line</label>
+      </div>
+      <div class="field checkbox">
+        <label><input id="multi-field" type="checkbox" /> All numeric fields</label>
       </div>
     </div>
   </header>
@@ -126,6 +138,13 @@
         <canvas id="price-chart"></canvas>
       </div>
 
+      <details class="details" id="analytics-details">
+        <summary>Analytics &amp; Math Indicators</summary>
+        <div id="analytics-panel" class="analytics-panel">
+          <div class="analytics-empty">Select a ticker to compute analytics.</div>
+        </div>
+      </details>
+
       <details class="details" open>
         <summary>Selected ticker raw DB rows</summary>
         <div id="ticker-rows" class="ticker-rows"></div>
@@ -134,15 +153,21 @@
   </main>
 
   <footer class="app-footer">
-    <div>Tip: Click a row (or the ticker cell) to load its full DB history into the chart.</div>
+    <div>Tip: Click a row to load its full DB history. Use overlays for SMA/EMA/Bollinger Bands. Analytics powered by MajixProbability &amp; MajixInformation.</div>
     <div class="muted">Data source: <code>scrape/finance.db.gz</code> (loaded client-side via sql.js + pako).</div>
   </footer>
 
+  <!-- Core chart/DB libs -->
   <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
-  <script src="script.js"></script>
+  <!-- Mathematics libraries from root directories -->
+  <script src="../probability/probability-core.js"></script>
+  <script src="../information_theory/information-core.js"></script>
+  <script src="../optimization/optimization-core.js"></script>
+  <!-- Main engine (ES module, uses router) -->
+  <script type="module" src="script.js"></script>
 </body>
 </html>

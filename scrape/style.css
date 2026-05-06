@@ -60,6 +60,45 @@ h1 {
     font-size: 1.5rem;
 }
 
+/* ── Breadcrumb / back link ─────────────────────────────────── */
+.breadcrumb-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.back-link {
+    font-size: 0.88rem;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 0.45rem;
+    padding: 0.2rem 0.6rem;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.back-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ── Overlay toolbar ────────────────────────────────────────── */
+.toolbar-overlays {
+    margin-top: 0.5rem;
+    align-items: center;
+    grid-template-columns: auto repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.toolbar-label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    align-self: center;
+    margin-top: 0;
+}
+
 .btn,
 select,
 input[type='search'] {
@@ -264,6 +303,45 @@ tbody tr.selected {
     cursor: pointer;
     font-weight: 600;
     margin-bottom: 0.55rem;
+}
+
+/* ── Analytics panel ────────────────────────────────────────── */
+.analytics-panel {
+    padding: 0.5rem 0;
+}
+
+.analytics-empty {
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 0.4rem 0;
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.35rem 1.2rem;
+}
+
+.analytics-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.28rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.analytics-label {
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.analytics-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--accent);
+    text-align: right;
 }
 
 .ticker-rows .table-wrap {
