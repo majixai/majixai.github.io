@@ -21,6 +21,9 @@ const MODEL_NAME = 'gemini-1.5-flash-latest';
 // Initialise the packet router (loads routes.json in background)
 const packetRouter = new PacketRouter();
 
+/** Maximum characters of a route description shown in chip tooltips. */
+const MAX_DESC_LENGTH = 120;
+
 // ---------------------------------------------------------------------------
 // UI helpers
 // ---------------------------------------------------------------------------
@@ -76,7 +79,7 @@ function showRoutingPipeline(nodes) {
     chip.target = '_blank';
     chip.rel = 'noopener';
     chip.textContent = node.name;
-    chip.title = node.desc ? node.desc.slice(0, 120) : node.name;
+    chip.title = node.desc ? node.desc.slice(0, MAX_DESC_LENGTH) : node.name;
     routingDisplay.appendChild(chip);
     if (i < nodes.length - 1) {
       const arrow = document.createElement('span');
@@ -123,10 +126,10 @@ async function handleSend() {
   const thinkingEl = appendHtml('<em>Thinking…</em>', 'thinking');
 
   try {
-    const ai   = new GoogleGenAI({ apiKey });
+    const genAI = new GoogleGenAI({ apiKey });
     // A new chat session is created per send – this is intentional for single-turn
     // prompt solving where no conversation history needs to be preserved.
-    const chat = ai.startChat({ model: MODEL_NAME, history: [] });
+    const chat = genAI.startChat({ model: MODEL_NAME, history: [] });
 
     // Prepend routing context from all matched directories to enrich the answer
     const enrichedPrompt = contextHeader ? `${contextHeader}\n${prompt}` : prompt;

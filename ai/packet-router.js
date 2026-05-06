@@ -22,6 +22,9 @@ const ROUTES_URL = new URL('../router/routes.json', import.meta.url).href;
 /** Maximum number of routing nodes included per packet. */
 const MAX_NODES = 8;
 
+/** Maximum characters of a route description shown in routing context/UI. */
+const MAX_DESC_LENGTH = 120;
+
 /**
  * Per-category keyword banks used for keyword scoring.
  * Each category maps to an array of lower-case token strings.
@@ -190,7 +193,7 @@ export class PacketRouter {
           'for this prompt. Use them as background knowledge when answering:',
           '',
           ...nodes.map(n =>
-            `• [${n.name}] (${n.category}) – ${(n.desc || '').slice(0, 120).replace(/\n/g, ' ')}`
+            `• [${n.name}] (${n.category}) – ${(n.desc || '').slice(0, MAX_DESC_LENGTH).replace(/\n/g, ' ')}`
           ),
           '=== END ROUTING CONTEXT ===',
           '',
