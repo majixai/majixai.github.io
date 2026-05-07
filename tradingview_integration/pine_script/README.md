@@ -506,6 +506,77 @@ Patterns below the configurable **Min Confidence Filter** (default 25 %) are sup
 
 ---
 
+# XRP Breakout Matrix Bayesian GC — Pine Script v6
+
+**File:** `xrp_breakout_matrix_bayesian.pine`  
+**Language:** Pine Script v6  
+**Type:** Indicator (overlay)
+
+---
+
+## Overview
+
+A breakout-focused XRP indicator that combines **cup-and-handle geometry**, **Bayesian posterior scoring**, **multi-timeframe squeeze confluence**, and **garbage-collection clustering** for drawing management. The script uses nested UDTs to keep pivots, execution levels, drawings, and Bayesian metadata isolated but linked inside a single pattern state object.
+
+---
+
+## Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| `Swing` | Rolling pivot stream for rim / bowl / handle discovery |
+| `PatternPivots` | Nested storage for left rim, bottom, right rim, and handle swings |
+| `PatternLevels` | Entry structure: rim, invalidation, and target prices |
+| `PatternDrawings` | Cup polyline, handle polyline, target line, target box, stop box, and label |
+| `BayesianIntel` | Posterior probability, MTF confluence score, confidence state |
+| `BrewPattern` | Master state object joining pivots, levels, drawings, Bayesian state, side, lifecycle, and cluster id |
+| `GarbageCollector` | Pattern pool manager that sweeps invalidated drawings while preserving stronger clusters |
+
+---
+
+## Engines
+
+### 1. Volatility Matrix
+
+- Bollinger-band squeeze detection on the active chart.
+- Gradient shading between upper/lower bands to visualise compression intensity.
+- Additional gradient fill weighted by MTF Bayesian confluence.
+
+### 2. Multi-Timeframe Bayesian Matrix
+
+- Dynamic hierarchy: lower, mid-1, mid-2, and upper timeframes.
+- `request.security()` squeeze checks for each layer.
+- 4×2 matrix stores squeeze states and timeframe durations for dashboard rendering.
+- Posterior probability rises as cross-timeframe squeeze agreement improves.
+
+### 3. GC Clustering
+
+- Patterns are assigned to cluster buckets.
+- A cluster matrix tracks total, active, validated, and cumulative-posterior values.
+- Invalidated patterns are swept once the pool exceeds the GC trigger, while the strongest cluster is retained longer.
+
+### 4. Dynamic Alert Pipeline
+
+- Entry alerts use `alert()` instead of static `alertcondition()`.
+- JSON payloads include action, pattern, posterior, MTF score, rim price, stop, target, cluster id, and `log_sheet: "Tickers"`.
+
+---
+
+## Visual Elements
+
+| Element | Description |
+|---------|-------------|
+| Curved cup polyline | Structural cup mapping |
+| Curved handle polyline | Handle recovery / rejection path |
+| Target line | Measured-move projection |
+| Target box | Target zone band |
+| Stop box | Invalidation zone band |
+| Pattern label | Pattern name + posterior + MTF score |
+| Bollinger fill | Compression gradient |
+| Dashboard table | Four timeframe squeeze states + posterior + GC status |
+
+---
+
 <!-- AUTO-UPDATE-START -->
 _Last updated: 2026-05-07 20:39 UTC_
 
