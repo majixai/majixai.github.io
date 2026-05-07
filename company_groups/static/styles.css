@@ -1,0 +1,142 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.logo {
+    animation: slideIn 1s ease-in-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+.parallax {
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 300px;
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    position: relative;
+}
+
+.caption {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    text-align: center;
+    color: #000;
+    transform: translateY(-50%);
+}
+
+.caption span.border {
+    background-color: #111;
+    color: #fff;
+    padding: 18px;
+    font-size: 25px;
+    letter-spacing: 10px;
+}
+
+.company-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.company-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.member-item:hover,
+.schedule-item:hover,
+.incentive-item:hover,
+.stock-item:hover,
+.event-item:hover {
+    background-color: #f8f9fa;
+}
+
+.features .badge {
+    margin-right: 5px;
+}
+
+/* Form styling */
+.card-header {
+    font-weight: bold;
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+
+/* Modal tabs */
+.nav-tabs .nav-link.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.nav-tabs .nav-link {
+    color: #007bff;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .caption span.border {
+        font-size: 18px;
+        letter-spacing: 5px;
+        padding: 12px;
+    }
+    
+    .parallax {
+        min-height: 200px;
+    }
+}
+
+/* Badge colors for roles */
+.badge-professor {
+    background-color: #007bff;
+}
+
+.badge-leader {
+    background-color: #28a745;
+}
+
+.badge-assistant {
+    background-color: #17a2b8;
+}
+
+.badge-guest_speaker {
+    background-color: #ffc107;
+    color: #000;
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Incentive links */
+.incentive-item .links {
+    margin-top: 8px;
+}
+
+/* Stock recommendation colors */
+.stock-item .badge-success {
+    background-color: #28a745;
+}
+
+.stock-item .badge-danger {
+    background-color: #dc3545;
+}
+
+.stock-item .badge-warning {
+    background-color: #ffc107;
+    color: #000;
+}
