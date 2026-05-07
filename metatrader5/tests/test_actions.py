@@ -399,6 +399,20 @@ class TestMT5RegistryActions(unittest.TestCase):
         self.assertIn("result", result)
         self.assertAlmostEqual(result["result"], 0.3989422804014327, places=10)
 
+    def test_action_math_execute_invalid_directory_raises(self):
+        with self.assertRaises(KeyError):
+            self.reg.dispatch("math_execute", {
+                "directory": "not_a_math_dir",
+                "function": "normal_pdf",
+            })
+
+    def test_action_math_execute_invalid_function_raises(self):
+        with self.assertRaises(KeyError):
+            self.reg.dispatch("math_execute", {
+                "directory": "probability",
+                "function": "not_a_real_function",
+            })
+
     def test_all_actions_registered(self):
         expected = {
             "initialize", "login", "shutdown", "version", "last_error",

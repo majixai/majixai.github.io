@@ -106,7 +106,6 @@ class ActionRegistry:
 
 _default_registry = ActionRegistry()
 _default_router   = Router()
-_REPO_ROOT = Path(__file__).resolve().parents[1]
 _MATH_DIRECTORIES = (
     "calculus",
     "measure_theory",
@@ -129,6 +128,25 @@ _MATH_DIRECTORIES = (
     "complexity_theory",
     "cryptography",
 )
+
+
+def _find_repo_root() -> Path:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "math_index.md").exists():
+            return parent
+    return current.parents[1]
+
+
+_REPO_ROOT = _find_repo_root()
+
+
+def _is_within_repo(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(_REPO_ROOT.resolve())
+        return True
+    except ValueError:
+        return False
 
 
 def _python_core_path(directory: str) -> Optional[Path]:
@@ -173,6 +191,8 @@ def _math_catalog() -> Dict[str, Any]:
 
 
 def _load_python_core_module(core_path: Path):
+    if not _is_within_repo(core_path):
+        raise ValueError(f"Refusing to load module outside repository root: {core_path}")
     module_key = f"majix_math_{core_path.parent.name}"
     spec = importlib.util.spec_from_file_location(module_key, core_path)
     if spec is None or spec.loader is None:
@@ -479,25 +499,35 @@ def _action_math_execute(ctx: Dict[str, Any]):
         raise ValueError("math_execute requires 'directory' and 'function'")
     if directory not in _MATH_DIRECTORIES:
         raise KeyError(f"Unknown math directory '{directory}'")
+    if not isinstance(args, list):
+        raise ValueError("'args' must be a list")
+    if not isinstance(kwargs, dict):
+        raise ValueError("'kwargs' must be a dict")
 
     core_path = _python_core_path(directory)
     if core_path is None:
         raise KeyError(f"No python core module found for '{directory}'")
 
     module = _load_python_core_module(core_path)
-    fn = getattr(module, function_name, None)
-    if fn is None or not callable(fn):
-        raise KeyError(f"Function '{function_name}' not found in '{directory}' core module")
+    allowed_functions = {
+        name for name, obj in inspect.getmembers(module, inspect.isfunction)
+        if not name.startswith("_") and getattr(obj, "__module__", "") == module.__name__
+    }
+    if function_name not in allowed_functions:
+        raise KeyError(f"Function '{function_name}' not available in '{directory}' core module")
 
-    result = fn(*args, **kwargs)
-    exports = [
-        name for name, obj in inspect.getmembers(module)
-        if callable(obj) and not name.startswith("_")
-    ]
+    fn = getattr(module, function_name, None)
+    try:
+        result = fn(*args, **kwargs)
+    except Exception as exc:
+        raise RuntimeError(
+            f"math_execute failed for directory='{directory}', function='{function_name}'"
+        ) from exc
+
     return {
         "directory": directory,
         "python_core": str(core_path),
         "function": function_name,
-        "available_exports": sorted(exports),
+        "available_exports": sorted(allowed_functions),
         "result": result,
     }

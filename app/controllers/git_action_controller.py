@@ -6,22 +6,24 @@ from typing import Any, Dict
 from metatrader5.actions import get_mt5_registry, get_mt5_router
 
 
-def _to_jsonable(value: Any) -> Any:
+def _to_jsonable(value: Any, depth: int = 0, max_depth: int = 20) -> Any:
+    if depth > max_depth:
+        return "<max-depth-exceeded>"
     if value is None or isinstance(value, (bool, int, float, str)):
         return value
     if isinstance(value, (datetime, date)):
         return value.isoformat()
     if isinstance(value, dict):
-        return {str(k): _to_jsonable(v) for k, v in value.items()}
+        return {str(k): _to_jsonable(v, depth + 1, max_depth) for k, v in value.items()}
     if isinstance(value, (list, tuple, set)):
-        return [_to_jsonable(v) for v in value]
+        return [_to_jsonable(v, depth + 1, max_depth) for v in value]
     if hasattr(value, "_asdict"):
-        return _to_jsonable(value._asdict())
+        return _to_jsonable(value._asdict(), depth + 1, max_depth)
     if hasattr(value, "tolist") and callable(value.tolist):
-        return _to_jsonable(value.tolist())
+        return _to_jsonable(value.tolist(), depth + 1, max_depth)
     if hasattr(value, "item") and callable(value.item):
         try:
-            return _to_jsonable(value.item())
+            return _to_jsonable(value.item(), depth + 1, max_depth)
         except Exception:
             pass
     return str(value)
@@ -32,7 +34,9 @@ def run_git_action(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
     Dispatch a git-action payload into the MT5 action registry/router.
     """
     payload = payload or {}
-    action = payload.get("action") or payload.get("type") or payload.get("name")
+    action = payload.get("action")
+    if not action:
+        action = payload.get("type") or payload.get("name")
     dispatcher = payload.get("dispatcher", "registry")
     ctx = payload.get("context")
     if ctx is None:
@@ -46,6 +50,8 @@ def run_git_action(payload: Dict[str, Any] | None = None) -> Dict[str, Any]:
         }
 
     try:
+        if dispatcher not in {"registry", "router"}:
+            raise ValueError("dispatcher must be one of: registry, router")
         if dispatcher == "router":
             raw = get_mt5_router().dispatch(action, ctx or {})
         else:
