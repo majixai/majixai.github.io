@@ -224,7 +224,7 @@ f_isDuplicate(int rimIdx, float rimPx) =>
 
 f_bucket(float rimPrice, int side) =>
     tick = syminfo.mintick > 0 ? syminfo.mintick : 0.0001
-    clusterPrime = 13 // Prime multiplier helps spread bucket assignments more evenly.
+    clusterPrime = 13 // A small prime reduces repeated modulo collisions when adjacent price buckets and bullish/bearish sides are mixed.
     int(math.abs(math.round(rimPrice / tick) + side * clusterPrime)) % gcBuckets
 
 f_confLabel(float posterior) =>
