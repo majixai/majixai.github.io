@@ -381,6 +381,24 @@ class TestMT5RegistryActions(unittest.TestCase):
         })
         self.assertIsInstance(result, tuple)
 
+    def test_action_math_directories_catalog(self):
+        result = self.reg.dispatch("math_directories_catalog")
+        self.assertIsInstance(result, dict)
+        self.assertIn("directories", result)
+        names = {entry["name"] for entry in result["directories"]}
+        self.assertIn("probability", names)
+
+    def test_action_math_execute(self):
+        result = self.reg.dispatch("math_execute", {
+            "directory": "probability",
+            "function": "normal_pdf",
+            "args": [0.0],
+            "kwargs": {"mu": 0.0, "sigma": 1.0},
+        })
+        self.assertIsInstance(result, dict)
+        self.assertIn("result", result)
+        self.assertAlmostEqual(result["result"], 0.3989422804014327, places=10)
+
     def test_all_actions_registered(self):
         expected = {
             "initialize", "login", "shutdown", "version", "last_error",
@@ -395,6 +413,7 @@ class TestMT5RegistryActions(unittest.TestCase):
             "positions_total", "positions_get",
             "history_orders_total", "history_orders_get",
             "history_deals_total", "history_deals_get",
+            "math_directories_catalog", "math_execute",
         }
         registered = set(self.reg.list_actions())
         self.assertTrue(expected.issubset(registered), expected - registered)
@@ -436,6 +455,7 @@ class TestMT5RouterActions(unittest.TestCase):
             "positions_total", "positions_get",
             "history_orders_total", "history_orders_get",
             "history_deals_total", "history_deals_get",
+            "math_directories_catalog", "math_execute",
         }
         registered = set(self.router.registered_actions())
         self.assertTrue(expected.issubset(registered), expected - registered)

@@ -16,9 +16,12 @@ Usage
 
 from __future__ import annotations
 
+import importlib.util
+import inspect
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import metatrader5 as mt5
@@ -103,6 +106,80 @@ class ActionRegistry:
 
 _default_registry = ActionRegistry()
 _default_router   = Router()
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_MATH_DIRECTORIES = (
+    "calculus",
+    "measure_theory",
+    "functional_analysis",
+    "algebra",
+    "topology",
+    "manifolds",
+    "category_theory",
+    "regression",
+    "bayes",
+    "differential_equations",
+    "transformations",
+    "matrix",
+    "optimization",
+    "probability",
+    "numerical_methods",
+    "quantum_mechanics",
+    "statistical_mechanics",
+    "information_theory",
+    "complexity_theory",
+    "cryptography",
+)
+
+
+def _python_core_path(directory: str) -> Optional[Path]:
+    d = _REPO_ROOT / directory
+    if not d.is_dir():
+        return None
+    candidate = d / f"{directory}_core.py"
+    if candidate.exists():
+        return candidate
+    py_cores = sorted(d.glob("*_core.py"))
+    return py_cores[0] if py_cores else None
+
+
+def _js_core_path(directory: str) -> Optional[Path]:
+    d = _REPO_ROOT / directory
+    if not d.is_dir():
+        return None
+    candidate = d / f"{directory}-core.js"
+    if candidate.exists():
+        return candidate
+    js_cores = sorted(d.glob("*-core.js"))
+    return js_cores[0] if js_cores else None
+
+
+def _math_catalog() -> Dict[str, Any]:
+    directories = []
+    for name in _MATH_DIRECTORIES:
+        d = _REPO_ROOT / name
+        if not d.is_dir():
+            continue
+        py_core = _python_core_path(name)
+        js_core = _js_core_path(name)
+        readme = d / "README.md"
+        directories.append({
+            "name": name,
+            "path": str(d),
+            "python_core": str(py_core) if py_core else None,
+            "javascript_core": str(js_core) if js_core else None,
+            "readme": str(readme) if readme.exists() else None,
+        })
+    return {"root": str(_REPO_ROOT), "directories": directories}
+
+
+def _load_python_core_module(core_path: Path):
+    module_key = f"majix_math_{core_path.parent.name}"
+    spec = importlib.util.spec_from_file_location(module_key, core_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to create import spec for {core_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def get_mt5_registry() -> ActionRegistry:
@@ -372,3 +449,55 @@ def _action_history_deals_get(ctx: Dict[str, Any]):
         ticket=ctx.get("ticket", 0),
         position=ctx.get("position", 0),
     )
+
+
+# ── Root mathematics integration actions ──────────────────────────────────────
+
+@_default_registry.register("math_directories_catalog")
+@_default_router.route("math_directories_catalog")
+def _action_math_directories_catalog(ctx: Dict[str, Any]):
+    return _math_catalog()
+
+
+@_default_registry.register("math_execute")
+@_default_router.route("math_execute")
+def _action_math_execute(ctx: Dict[str, Any]):
+    """
+    Execute a callable from a root mathematical directory python core file.
+
+    ctx:
+      directory: str   (e.g. "probability")
+      function:  str   (e.g. "normal_pdf")
+      args:      list  (optional positional args)
+      kwargs:    dict  (optional keyword args)
+    """
+    directory = ctx.get("directory")
+    function_name = ctx.get("function")
+    args = ctx.get("args", [])
+    kwargs = ctx.get("kwargs", {})
+    if not directory or not function_name:
+        raise ValueError("math_execute requires 'directory' and 'function'")
+    if directory not in _MATH_DIRECTORIES:
+        raise KeyError(f"Unknown math directory '{directory}'")
+
+    core_path = _python_core_path(directory)
+    if core_path is None:
+        raise KeyError(f"No python core module found for '{directory}'")
+
+    module = _load_python_core_module(core_path)
+    fn = getattr(module, function_name, None)
+    if fn is None or not callable(fn):
+        raise KeyError(f"Function '{function_name}' not found in '{directory}' core module")
+
+    result = fn(*args, **kwargs)
+    exports = [
+        name for name, obj in inspect.getmembers(module)
+        if callable(obj) and not name.startswith("_")
+    ]
+    return {
+        "directory": directory,
+        "python_core": str(core_path),
+        "function": function_name,
+        "available_exports": sorted(exports),
+        "result": result,
+    }
