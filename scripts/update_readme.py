@@ -13,6 +13,7 @@ Then rewrites the corresponding <!-- marker --> sections in README.md.
 
 import os
 import re
+import json
 import subprocess
 from datetime import datetime, timezone, timedelta
 
@@ -291,6 +292,67 @@ def main():
         f.write(content)
 
     print("README.md updated.")
+
+    # Generate latest_commit/data.json so the web page can detect new commits.
+    update_latest_commit_dir()
+
+
+def _get_latest_commit_info():
+    """Return a dict with metadata about HEAD, or None on failure."""
+    log = run([
+        "git", "log", "-1",
+        "--format=%H|%h|%aI|%an|%s",
+    ])
+    if not log:
+        return None
+    parts = log.split("|", 4)
+    if len(parts) != 5:
+        return None
+    sha, short_sha, date, author, subject = parts
+    return {
+        "latestSha": sha,
+        "shortSha": short_sha,
+        "latestDate": date,
+        "latestAuthor": author,
+        "latestMessage": subject,
+        "latestSite": commit_site_url(sha),
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def update_latest_commit_dir():
+    """Write latest_commit/data.json and latest_commit/README.md."""
+    info = _get_latest_commit_info()
+    if not info:
+        print("Could not determine latest commit info; skipping latest_commit/ update.")
+        return
+
+    data_json_path = os.path.join("latest_commit", "data.json")
+    with open(data_json_path, "w", encoding="utf-8") as f:
+        json.dump(info, f, indent=2)
+    print(f"latest_commit/data.json updated (sha={info['shortSha']}).")
+
+    readme_path = os.path.join("latest_commit", "README.md")
+    readme_lines = [
+        "# Latest Commit\n",
+        "\n",
+        "This directory hosts a reactive commit-history timeline viewer.\n",
+        "\n",
+        "## Most Recently Updated Site\n",
+        "\n",
+        f"| Field | Value |\n",
+        f"|-------|-------|\n",
+        f"| SHA | `{info['shortSha']}` |\n",
+        f"| Date | {info['latestDate']} |\n",
+        f"| Author | {info['latestAuthor']} |\n",
+        f"| Message | {info['latestMessage']} |\n",
+        f"| Site | [{info['latestSite']}]({info['latestSite']}) |\n",
+        "\n",
+        f"_Auto-generated on {info['updatedAt']}_\n",
+    ]
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.writelines(readme_lines)
+    print("latest_commit/README.md updated.")
 
 
 if __name__ == "__main__":

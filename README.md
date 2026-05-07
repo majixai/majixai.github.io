@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-04 04:59 UTC_
+_Last updated: 2026-05-05 16:39 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -11,32 +11,29 @@ _Last updated: 2026-05-04 04:59 UTC_
 <!-- START_REPO_STATS -->
 | Metric | Value |
 |--------|-------|
-| 📁 Project Directories | 159 |
-| ⚙️ GitHub Actions Workflows | 64 |
-| 📝 Total Commits | 124580 |
+| 📁 Project Directories | 160 |
+| ⚙️ GitHub Actions Workflows | 66 |
+| 📝 Total Commits | 2 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`41c8dc564a`](https://github.com/majixai/majixai.github.io/commit/41c8dc564a64821dea29cc9b8333bf30d7b0e515) -- 2026-05-04 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-04 04:52:27 UTC -- [Open page](https://majixai.github.io/router/)
-- [`1983ca9f26`](https://github.com/majixai/majixai.github.io/commit/1983ca9f269717cfe158178fb7e2757633e54e24) -- 2026-05-04 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-04 04:50:35 UTC -- [Open page](https://majixai.github.io/data/)
-- [`0dff9458ed`](https://github.com/majixai/majixai.github.io/commit/0dff9458ede98609343085b2571ac89baf72646e) -- 2026-05-04 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-04 04:49:45 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`9eae7df50a`](https://github.com/majixai/majixai.github.io/commit/9eae7df50af45a373042e0027721d4c4fd4ff659) -- 2026-05-04 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-04 04:49:44 UTC -- [Open page](https://majixai.github.io/data/)
-- [`11de2e3045`](https://github.com/majixai/majixai.github.io/commit/11de2e3045ee2479f41833511bfe1cfd3ec5edad) -- 2026-05-04 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-04 04:49:43 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`60fb6b3`](https://github.com/majixai/majixai.github.io/commit/60fb6b325eda39e49c79fa0bfee1e293d7163aef) -- 2026-05-05 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`8307661`](https://github.com/majixai/majixai.github.io/commit/8307661663fce0d80faebe77711bd2adad17da01) -- 2026-05-05 -- majixai -- Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close -- [Open page](https://majixai.github.io/7t/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `b53718e` — 2026-05-04 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-05-04 00:37:47 UTC  
-  _440 lines changed (240+ / 200-)_
-- **Biggest update this week:** `b53718e` — 2026-05-04 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-05-04 00:37:47 UTC  
-  _440 lines changed (240+ / 200-)_
-- **Biggest update this month:** `101c1c8` — 2026-05-01 — **majixai** — Merge branch 'main' into copilot/add-provenance-helper-and-db-manager  
-  _154142 lines changed (151240+ / 2902-)_
-- **Biggest update this quarter:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
-  _383440 lines changed (379676+ / 3764-)_
-- **Biggest update this year:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
-  _383440 lines changed (379676+ / 3764-)_
+- **Biggest update today:** `8307661` — 2026-05-05 — **majixai** — Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close  
+  _4866730 lines changed (4866730+ / 0-)_
+- **Biggest update this week:** `8307661` — 2026-05-05 — **majixai** — Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close  
+  _4866730 lines changed (4866730+ / 0-)_
+- **Biggest update this month:** `8307661` — 2026-05-05 — **majixai** — Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close  
+  _4866730 lines changed (4866730+ / 0-)_
+- **Biggest update this quarter:** `8307661` — 2026-05-05 — **majixai** — Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close  
+  _4866730 lines changed (4866730+ / 0-)_
+- **Biggest update this year:** `8307661` — 2026-05-05 — **majixai** — Merge pull request #449 from majixai/copilot/calculate-dji-open-high-low-close  
+  _4866730 lines changed (4866730+ / 0-)_
 <!-- END_BIGGEST_UPDATES -->
 
 
@@ -130,7 +127,7 @@ A stock projection analysis application built with TypeScript and esbuild.
 
 A simple Texas Hold'em game written in Python, which can be run locally or with Docker.
 
-### [Latest Commits](redirect.html?url=https://majixai.github.io/latest_commit/) (`latest_commit/`)
+### [Latest Commits](latest_commit/) (`latest_commit/`)
 
 A UI showcase that demonstrates advanced JavaScript and modern UI techniques. It fetches and displays the latest commits from this repository.
 
