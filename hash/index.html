@@ -4,374 +4,1188 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#2c3e50">
-  <meta name="description" content="MajixAI SHA-256 Hash Tool — compute and verify SHA-256 digests, and browse route fingerprints">
-  <title>MajixAI Hash</title>
+  <meta name="description" content="MajixAI Hash Suite — advanced SHA-256 calculator, canonical JSON hashing, file hashing, manifests, and router integrity tools.">
+  <title>MajixAI Hash Suite</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
     :root {
       --primary: #2c3e50;
-      --accent:  #06d6a0;
-      --bg:      #e8f0fe;
+      --primary-dark: #1a252f;
+      --accent: #06d6a0;
+      --accent-2: #4895ef;
+      --bg: #e8f0fe;
+      --card: #ffffff;
+      --muted: #6a7280;
+      --line: #d8e1ec;
+      --ok: #1b8a5a;
+      --bad: #c62828;
+      --warn: #8a6d1b;
     }
-    *, *::before, *::after { box-sizing: border-box; }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #1a222b;
+      background: linear-gradient(180deg, #e8f0fe 0%, #f5f9ff 55%, #ffffff 100%);
       min-height: 100vh;
     }
 
-    /* ── Header ─────────────────────────────────────────────────────────── */
     header {
-      background: linear-gradient(135deg, var(--primary) 0%, #1a252f 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       color: #fff;
-      padding: 2.5rem 1.5rem 2rem;
-      text-align: center;
+      padding: 2.2rem 1.25rem 1.8rem;
       position: relative;
+      box-shadow: 0 6px 20px rgba(0,0,0,.18);
     }
-    header h1 { font-size: 2.1rem; font-weight: 700; letter-spacing: .1em; margin: 0 0 .4rem; }
-    header p  { opacity: .85; margin: 0; font-size: 1.05rem; }
-    header a.back-link {
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+      letter-spacing: .05em;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+
+    header p {
+      margin: .55rem 0 0;
+      opacity: .9;
+      max-width: 900px;
+      line-height: 1.45;
+    }
+
+    .back-link {
       position: absolute;
-      top: 1.1rem; left: 1.2rem;
-      color: rgba(255,255,255,.75);
+      left: 1rem;
+      top: 1rem;
+      color: rgba(255,255,255,.85);
       text-decoration: none;
       font-size: .9rem;
     }
-    header a.back-link:hover { color: #fff; }
 
-    /* ── Main layout ─────────────────────────────────────────────────────── */
-    main {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 2rem 1.25rem 4rem;
-    }
+    .back-link:hover { color: #fff; }
 
-    /* ── Hash tool card ──────────────────────────────────────────────────── */
-    .hash-card {
-      background: #fff;
-      border-radius: 1rem;
-      box-shadow: 0 4px 18px rgba(0,0,0,.09);
-      padding: 1.75rem 2rem;
-      margin-bottom: 2rem;
-    }
-    .hash-card h2 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 1rem;
-    }
-    textarea#input-text {
-      width: 100%;
-      min-height: 110px;
-      border: 2px solid #cdd8e3;
-      border-radius: .6rem;
-      padding: .7rem 1rem;
-      font-size: .95rem;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      resize: vertical;
-      outline: none;
-      transition: border-color .2s;
-    }
-    textarea#input-text:focus { border-color: var(--accent); }
-
-    .digest-box {
-      background: #f4f8fb;
-      border: 1px solid #dce8f0;
-      border-radius: .6rem;
-      padding: .75rem 1rem;
-      font-family: 'Courier New', monospace;
-      font-size: .88rem;
-      word-break: break-all;
-      color: #1a3a6e;
-      min-height: 2.8rem;
-      margin-top: 1rem;
-      position: relative;
-    }
-    .digest-box .copy-btn {
-      position: absolute;
-      top: .45rem; right: .6rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #888;
-      font-size: 1rem;
-      transition: color .2s;
-    }
-    .digest-box .copy-btn:hover { color: var(--accent); }
-
-    .verify-row {
+    .top-meta {
+      margin-top: .75rem;
       display: flex;
-      gap: .6rem;
-      margin-top: .85rem;
       flex-wrap: wrap;
+      gap: .55rem;
+    }
+
+    .chip {
+      display: inline-flex;
       align-items: center;
-    }
-    .verify-row input {
-      flex: 1 1 300px;
-      padding: .45rem .9rem;
-      border: 2px solid #cdd8e3;
-      border-radius: .6rem;
-      font-size: .88rem;
-      font-family: 'Courier New', monospace;
-      outline: none;
-      transition: border-color .2s;
-    }
-    .verify-row input:focus { border-color: var(--accent); }
-    #verify-result {
-      font-weight: 600;
-      font-size: .9rem;
-    }
-    #verify-result.ok   { color: #2d6a4f; }
-    #verify-result.fail { color: #c62828; }
-
-    /* ── Route fingerprints table ────────────────────────────────────────── */
-    #routes-section h2 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 1rem;
-    }
-    .search-wrap {
-      position: relative;
-      max-width: 360px;
-      margin-bottom: 1rem;
-    }
-    .search-wrap input {
-      width: 100%;
-      padding: .45rem 1rem .45rem 2.2rem;
-      border: 2px solid #cdd8e3;
+      gap: .35rem;
       border-radius: 999px;
-      font-size: .9rem;
-      outline: none;
-      transition: border-color .2s;
-    }
-    .search-wrap input:focus { border-color: var(--accent); }
-    .search-wrap .fa-magnifying-glass {
-      position: absolute;
-      left: .8rem; top: 50%;
-      transform: translateY(-50%);
-      color: #888;
-      pointer-events: none;
+      padding: .18rem .68rem;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .03em;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.13);
     }
 
-    #routes-table-wrap {
-      overflow-x: auto;
-      border-radius: .7rem;
-      box-shadow: 0 3px 12px rgba(0,0,0,.07);
+    .layout {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3.5rem;
+      display: grid;
+      grid-template-columns: 260px minmax(0,1fr);
+      gap: 1rem;
     }
+
+    .side {
+      position: sticky;
+      top: .75rem;
+      align-self: start;
+      background: rgba(255,255,255,.95);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+
+    .side h2 {
+      margin: 0;
+      padding: .75rem .85rem;
+      font-size: .85rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #334155;
+      background: #f2f6fc;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-list { list-style: none; margin: 0; padding: .45rem; }
+
+    .nav-list a {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .5rem .6rem;
+      border-radius: 10px;
+      color: #1f2937;
+      text-decoration: none;
+      font-size: .88rem;
+      font-weight: 600;
+    }
+
+    .nav-list a:hover,
+    .nav-list a.active {
+      background: #e8f6f1;
+      color: #0f5132;
+    }
+
+    .content {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 5px 18px rgba(0,0,0,.06);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: .95rem 1rem;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .panel-head h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #1f2f44;
+      font-weight: 800;
+      letter-spacing: .02em;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .row2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: .8rem;
+    }
+
+    .row3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: .8rem;
+    }
+
+    label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      color: #334155;
+      margin-bottom: .32rem;
+      text-transform: uppercase;
+    }
+
+    input[type="text"],
+    input[type="search"],
+    select,
+    textarea {
+      width: 100%;
+      border: 2px solid #cfdae7;
+      border-radius: 10px;
+      background: #fff;
+      color: #111827;
+      padding: .55rem .7rem;
+      font-size: .9rem;
+      line-height: 1.35;
+      outline: none;
+      transition: border-color .15s ease;
+    }
+
+    textarea { min-height: 110px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .stack { display: grid; gap: .75rem; }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-top: .2rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: .5rem .8rem;
+      font-size: .84rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      text-decoration: none;
+    }
+
+    .btn-main { background: var(--primary); color: #fff; }
+    .btn-main:hover { background: #223040; }
+
+    .btn-accent { background: var(--accent); color: #073b2b; }
+    .btn-accent:hover { background: #0bd8aa; }
+
+    .btn-soft { background: #edf3fb; color: #24496b; }
+    .btn-soft:hover { background: #dfeaf8; }
+
+    .btn-warn { background: #fff6dd; color: #6d4c00; }
+    .btn-warn:hover { background: #ffefc2; }
+
+    .output {
+      background: #f4f8fb;
+      border: 1px solid #dbe5f0;
+      border-radius: 10px;
+      padding: .7rem .75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .78rem;
+      line-height: 1.45;
+      word-break: break-word;
+      min-height: 2.4rem;
+      white-space: pre-wrap;
+    }
+
+    .status {
+      font-size: .83rem;
+      font-weight: 700;
+    }
+
+    .status.ok { color: var(--ok); }
+    .status.bad { color: var(--bad); }
+    .status.warn { color: var(--warn); }
+
+    .tiny { font-size: .75rem; color: var(--muted); }
+
+    .table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 400px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      background: #fff;
-      font-size: .85rem;
+      font-size: .81rem;
     }
-    thead th {
-      background: var(--primary);
-      color: #fff;
-      padding: .7rem 1rem;
+
+    th, td {
+      padding: .52rem .6rem;
+      border-bottom: 1px solid #ecf1f7;
       text-align: left;
-      font-weight: 600;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f6fd;
+      color: #1f3349;
+      position: sticky;
+      top: 0;
+      z-index: 1;
       white-space: nowrap;
     }
-    tbody tr:nth-child(even) { background: #f7f9fc; }
-    tbody tr:hover { background: #e8f5ef; }
-    tbody td {
-      padding: .6rem 1rem;
-      vertical-align: middle;
-      border-bottom: 1px solid #eef2f7;
-    }
-    td.path-cell { font-family: monospace; color: #1a3a6e; }
-    td.hash-cell {
-      font-family: 'Courier New', monospace;
-      font-size: .78rem;
-      color: #555;
-      word-break: break-all;
-    }
-    td.hash-cell span.short { display: inline; }
-    td.hash-cell span.full  { display: none; }
-    td.hash-cell:hover span.short { display: none; }
-    td.hash-cell:hover span.full  { display: inline; }
 
-    #loading-msg { text-align: center; padding: 2rem; color: #888; }
+    tr:nth-child(even) td { background: #fcfdff; }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: .12rem .52rem;
+      font-size: .72rem;
+      font-weight: 700;
+    }
+
+    .pill.ok { background: #e4f8ef; color: #0f6d47; }
+    .pill.bad { background: #ffe8e8; color: #9b1b1b; }
+
+    .hint {
+      border-left: 4px solid var(--accent-2);
+      background: #f0f7ff;
+      color: #23415d;
+      padding: .65rem .75rem;
+      border-radius: 8px;
+      font-size: .83rem;
+    }
+
+    .spacer { height: .25rem; }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      .side {
+        position: static;
+      }
+      .row2,
+      .row3 {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-
 <header>
   <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
-  <h1><i class="fa fa-fingerprint"></i> MajixAI Hash</h1>
-  <p>SHA-256 utility — compute digests, verify integrity, and browse route fingerprints</p>
+  <div class="header-inner">
+    <h1><i class="fa fa-fingerprint"></i> MajixAI Hash Suite</h1>
+    <p>
+      Comprehensive SHA-256 workspace built on <code>/hash/hash.js</code>: text hashing,
+      canonical JSON hashing, file + batch hashing, digest manifest workflows,
+      and route integrity verification through the router.
+    </p>
+    <div class="top-meta">
+      <span class="chip"><i class="fa fa-lock"></i> SHA-256 / Web Crypto</span>
+      <span class="chip"><i class="fa fa-route"></i> Router-integrated</span>
+      <span class="chip"><i class="fa fa-layer-group"></i> Canonical JSON</span>
+      <span class="chip"><i class="fa fa-file-shield"></i> Manifest Verify</span>
+    </div>
+  </div>
 </header>
 
-<main>
+<div class="layout">
+  <aside class="side" aria-label="Hash suite navigation">
+    <h2>Tools</h2>
+    <ul class="nav-list" id="tool-nav">
+      <li><a href="#text-tool" class="active"><i class="fa fa-hashtag"></i> Text</a></li>
+      <li><a href="#json-tool"><i class="fa fa-code"></i> Canonical JSON</a></li>
+      <li><a href="#file-tool"><i class="fa fa-file"></i> Files</a></li>
+      <li><a href="#batch-tool"><i class="fa fa-list-check"></i> Batch</a></li>
+      <li><a href="#routes-tool"><i class="fa fa-route"></i> Router Integrity</a></li>
+      <li><a href="#manifest-tool"><i class="fa fa-sheet-plastic"></i> Manifest Verify</a></li>
+    </ul>
+  </aside>
 
-  <!-- ── Hash tool ──────────────────────────────────────────────────────── -->
-  <section class="hash-card" aria-label="SHA-256 calculator">
-    <h2><i class="fa fa-hashtag"></i> SHA-256 Calculator</h2>
-    <textarea id="input-text" placeholder="Type or paste any text here…" aria-label="Input text to hash" autofocus></textarea>
+  <main class="content">
+    <!-- TEXT TOOL -->
+    <section class="panel" id="text-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-hashtag"></i> Text SHA-256</h3>
+          <p>Hash text with output format and normalization controls.</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="row3">
+          <div>
+            <label for="text-format">Output format</label>
+            <select id="text-format">
+              <option value="hex">hex</option>
+              <option value="base64">base64</option>
+              <option value="base64url">base64url</option>
+            </select>
+          </div>
+          <div>
+            <label for="text-unicode">Unicode normalization</label>
+            <select id="text-unicode">
+              <option value="NFC">NFC</option>
+              <option value="NFD">NFD</option>
+              <option value="NFKC">NFKC</option>
+              <option value="NFKD">NFKD</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+          <div>
+            <label for="text-line-endings">Line endings</label>
+            <select id="text-line-endings">
+              <option value="preserve">preserve</option>
+              <option value="lf">lf</option>
+              <option value="crlf">crlf</option>
+            </select>
+          </div>
+        </div>
 
-    <div class="digest-box" id="digest-out" aria-live="polite">
-      <span id="digest-text" style="color:#aaa">— digest will appear here —</span>
-      <button class="copy-btn" id="copy-btn" title="Copy to clipboard" aria-label="Copy digest">
-        <i class="fa fa-copy"></i>
-      </button>
-    </div>
+        <div>
+          <label for="text-input">Input text</label>
+          <textarea id="text-input" placeholder="Type or paste any text here..."></textarea>
+        </div>
 
-    <!-- Verify panel -->
-    <div class="verify-row">
-      <input type="text" id="verify-input" placeholder="Paste an expected digest to verify…" aria-label="Expected hash digest">
-      <span id="verify-result"></span>
-    </div>
-  </section>
+        <div class="row2">
+          <div>
+            <label for="text-expected">Expected digest (optional verify)</label>
+            <input id="text-expected" type="text" placeholder="Paste expected digest to verify">
+          </div>
+          <div>
+            <label><input id="text-trim" type="checkbox"> Trim input before hashing</label>
+            <div class="tiny">When enabled, leading/trailing whitespace is removed before digest calculation.</div>
+          </div>
+        </div>
 
-  <!-- ── Route fingerprints ─────────────────────────────────────────────── -->
-  <section id="routes-section" aria-label="Route fingerprints">
-    <h2><i class="fa fa-route"></i> Route Fingerprints</h2>
-    <p style="color:#555; font-size:.9rem; margin-bottom:1rem;">
-      Every route in <code>routes.json</code> has a stable SHA-256 fingerprint
-      derived from its <code>path</code> and <code>name</code> fields
-      (both lower-cased, serialised as <code>JSON.stringify({path, name})</code>).
-      Hover a digest cell to see the full hex string.
-    </p>
-    <div class="search-wrap">
-      <i class="fa fa-magnifying-glass"></i>
-      <input type="search" id="route-search" placeholder="Filter routes…" aria-label="Filter route table">
-    </div>
-    <div id="loading-msg"><i class="fa fa-spinner fa-spin"></i> Loading routes…</div>
-    <div id="routes-table-wrap" style="display:none">
-      <table aria-label="Route fingerprints">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Path</th>
-            <th>Category</th>
-            <th>SHA-256 Fingerprint</th>
-          </tr>
-        </thead>
-        <tbody id="routes-tbody"></tbody>
-      </table>
-    </div>
-  </section>
+        <div class="btn-row">
+          <button id="text-hash-btn" class="btn btn-main"><i class="fa fa-bolt"></i> Hash text</button>
+          <button id="text-copy-btn" class="btn btn-soft"><i class="fa fa-copy"></i> Copy digest</button>
+          <button id="text-clear-btn" class="btn btn-soft"><i class="fa fa-eraser"></i> Clear</button>
+        </div>
 
-</main>
+        <div>
+          <label>Digest output</label>
+          <div id="text-output" class="output">—</div>
+        </div>
+
+        <div id="text-verify-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- JSON TOOL -->
+    <section class="panel" id="json-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-code"></i> Canonical JSON Hash</h3>
+          <p>Stable hash independent of key order and object layout.</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="hint">
+          Uses <code>toCanonicalJson()</code> from <code>/hash/hash.js</code>, then SHA-256 hashing.
+          This is ideal for deterministic signatures across systems.
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="json-format">Output format</label>
+            <select id="json-format">
+              <option value="hex">hex</option>
+              <option value="base64">base64</option>
+              <option value="base64url">base64url</option>
+            </select>
+          </div>
+          <div>
+            <label for="json-space">Pretty canonical JSON spacing</label>
+            <select id="json-space">
+              <option value="0">compact</option>
+              <option value="2">2 spaces</option>
+              <option value="4">4 spaces</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="json-input">Raw JSON input</label>
+          <textarea id="json-input" placeholder='{"b":2,"a":1}'></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button id="json-hash-btn" class="btn btn-main"><i class="fa fa-bolt"></i> Hash JSON</button>
+          <button id="json-copy-btn" class="btn btn-soft"><i class="fa fa-copy"></i> Copy digest</button>
+          <button id="json-example-btn" class="btn btn-soft"><i class="fa fa-flask"></i> Load example</button>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label>Canonical JSON</label>
+            <div id="json-canonical" class="output">—</div>
+          </div>
+          <div>
+            <label>Digest output</label>
+            <div id="json-output" class="output">—</div>
+          </div>
+        </div>
+
+        <div id="json-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- FILE TOOL -->
+    <section class="panel" id="file-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-file"></i> File Hashing</h3>
+          <p>Compute SHA-256 for uploaded files and export a digest manifest.</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="row3">
+          <div>
+            <label for="file-format">Output format</label>
+            <select id="file-format">
+              <option value="hex">hex</option>
+              <option value="base64">base64</option>
+              <option value="base64url">base64url</option>
+            </select>
+          </div>
+          <div>
+            <label for="file-concurrency">Concurrency</label>
+            <select id="file-concurrency">
+              <option>1</option><option selected>2</option><option>4</option><option>8</option>
+            </select>
+          </div>
+          <div>
+            <label for="file-input">Select files</label>
+            <input type="file" id="file-input" multiple>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="file-hash-btn" class="btn btn-main"><i class="fa fa-bolt"></i> Hash files</button>
+          <button id="file-manifest-btn" class="btn btn-accent"><i class="fa fa-download"></i> Export manifest JSON</button>
+          <button id="file-clear-btn" class="btn btn-soft"><i class="fa fa-trash"></i> Clear results</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Size</th>
+                <th>Digest</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="file-table-body"></tbody>
+          </table>
+        </div>
+
+        <div id="file-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- BATCH TOOL -->
+    <section class="panel" id="batch-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-list-check"></i> Batch Text Hashing</h3>
+          <p>Hash many lines at once. Format: <code>key|value</code> (or plain line for auto key).</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="row3">
+          <div>
+            <label for="batch-format">Output format</label>
+            <select id="batch-format">
+              <option value="hex">hex</option>
+              <option value="base64">base64</option>
+              <option value="base64url">base64url</option>
+            </select>
+          </div>
+          <div>
+            <label for="batch-concurrency">Concurrency</label>
+            <select id="batch-concurrency">
+              <option>1</option><option>2</option><option selected>4</option><option>8</option><option>16</option>
+            </select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="batch-example-btn" class="btn btn-soft"><i class="fa fa-flask"></i> Load sample lines</button>
+          </div>
+        </div>
+
+        <div>
+          <label for="batch-input">Batch input</label>
+          <textarea id="batch-input" placeholder="item-a|hello world\nitem-b|majixai\nplain line without key"></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button id="batch-run-btn" class="btn btn-main"><i class="fa fa-bolt"></i> Hash batch</button>
+          <button id="batch-copy-btn" class="btn btn-soft"><i class="fa fa-copy"></i> Copy JSON output</button>
+        </div>
+
+        <div>
+          <label>Batch result JSON</label>
+          <div id="batch-output" class="output">—</div>
+        </div>
+
+        <div id="batch-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- ROUTES TOOL -->
+    <section class="panel" id="routes-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-route"></i> Router Route Integrity</h3>
+          <p>View all route fingerprints, verify integrity, and export router manifest.</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="row2">
+          <div>
+            <label for="route-filter">Route filter</label>
+            <input id="route-filter" type="search" placeholder="Filter by name/path/category/hash prefix">
+          </div>
+          <div>
+            <label for="route-limit">Row limit</label>
+            <select id="route-limit">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="1000">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="routes-refresh-btn" class="btn btn-main"><i class="fa fa-rotate"></i> Refresh route hashes</button>
+          <button id="routes-verify-btn" class="btn btn-accent"><i class="fa fa-shield-check"></i> Verify integrity</button>
+          <button id="routes-manifest-btn" class="btn btn-soft"><i class="fa fa-download"></i> Export router manifest</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Path</th>
+                <th>Category</th>
+                <th>SHA-256</th>
+              </tr>
+            </thead>
+            <tbody id="route-table-body"></tbody>
+          </table>
+        </div>
+
+        <div id="routes-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- MANIFEST TOOL -->
+    <section class="panel" id="manifest-tool">
+      <div class="panel-head">
+        <div>
+          <h3><i class="fa fa-sheet-plastic"></i> Manifest Verification (Text Resolver)</h3>
+          <p>Paste a manifest and resolver map to verify digests using <code>verifyManifest()</code>.</p>
+        </div>
+      </div>
+      <div class="panel-body stack">
+        <div class="hint">
+          Resolver map format is JSON object where keys match manifest entries and values are live text inputs.
+          This tool is useful for quick deterministic validation and demos.
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="manifest-input">Manifest JSON</label>
+            <textarea id="manifest-input" placeholder='{"format":"hex","entries":{"a":"..."}}'></textarea>
+          </div>
+          <div>
+            <label for="resolver-input">Resolver JSON</label>
+            <textarea id="resolver-input" placeholder='{"a":"hello"}'></textarea>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button id="manifest-verify-btn" class="btn btn-main"><i class="fa fa-shield-check"></i> Verify manifest</button>
+          <button id="manifest-example-btn" class="btn btn-soft"><i class="fa fa-flask"></i> Load sample</button>
+        </div>
+
+        <div>
+          <label>Verification result</label>
+          <div id="manifest-output" class="output">—</div>
+        </div>
+
+        <div id="manifest-status" class="status"></div>
+      </div>
+    </section>
+  </main>
+</div>
 
 <script type="module">
-  import { sha256 }     from './hash.js';
-  import router         from '../router/router.js';
+  import router from '../router/router.js';
+  import {
+    sha256,
+    hashJson,
+    hashBatch,
+    hashFile,
+    verifyHash,
+    createManifest,
+    verifyManifest,
+    toCanonicalJson,
+  } from './hash.js';
 
-  // ── SHA-256 calculator ──────────────────────────────────────────────────────
-  const inputEl    = document.getElementById('input-text');
-  const digestText = document.getElementById('digest-text');
-  const digestOut  = document.getElementById('digest-out');
-  const copyBtn    = document.getElementById('copy-btn');
-  const verifyInp  = document.getElementById('verify-input');
-  const verifyRes  = document.getElementById('verify-result');
+  // ───────────────────────────────────────────────────────────────────────────
+  // Utilities
+  // ───────────────────────────────────────────────────────────────────────────
 
-  let currentDigest = '';
+  const $ = (id) => document.getElementById(id);
 
-  async function updateDigest() {
-    const val = inputEl.value;
-    if (!val) {
-      digestText.textContent = '— digest will appear here —';
-      digestText.style.color = '#aaa';
-      currentDigest = '';
-      verifyRes.textContent = '';
-      return;
-    }
-    try {
-      currentDigest = await sha256(val);
-      digestText.textContent = currentDigest;
-      digestText.style.color = '#1a3a6e';
-    } catch (err) {
-      digestText.textContent = `Error: ${err.message}`;
-      digestText.style.color = '#c62828';
-    }
-    checkVerify();
+  function setText(id, value) {
+    const el = $(id);
+    if (el) el.textContent = value;
   }
 
-  function checkVerify() {
-    const expected = verifyInp.value.trim().toLowerCase();
-    if (!expected || !currentDigest) {
-      verifyRes.textContent = '';
-      verifyRes.className = '';
-      return;
-    }
-    if (currentDigest === expected) {
-      verifyRes.textContent = '✓ Match';
-      verifyRes.className = 'ok';
-    } else {
-      verifyRes.textContent = '✗ Mismatch';
-      verifyRes.className = 'fail';
-    }
+  function setStatus(id, text, kind = '') {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = `status ${kind}`.trim();
   }
-
-  inputEl.addEventListener('input', updateDigest);
-  verifyInp.addEventListener('input', checkVerify);
-
-  copyBtn.addEventListener('click', () => {
-    if (!currentDigest) return;
-    navigator.clipboard.writeText(currentDigest).then(() => {
-      copyBtn.innerHTML = '<i class="fa fa-check"></i>';
-      setTimeout(() => { copyBtn.innerHTML = '<i class="fa fa-copy"></i>'; }, 1500);
-    });
-  });
-
-  // ── Route fingerprints table ────────────────────────────────────────────────
-  const loadingMsg  = document.getElementById('loading-msg');
-  const tableWrap   = document.getElementById('routes-table-wrap');
-  const tbody       = document.getElementById('routes-tbody');
-  const routeSearch = document.getElementById('route-search');
 
   function escHtml(s) {
     return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
-  let allRows = [];
+  function downloadJson(filename, obj) {
+    const text = JSON.stringify(obj, null, 2);
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
-  function renderRows(rows) {
+  async function copyText(text) {
+    await navigator.clipboard.writeText(String(text || ''));
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Sidebar active state
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const navLinks = Array.from(document.querySelectorAll('#tool-nav a'));
+
+  function refreshActiveNav() {
+    const y = window.scrollY + 140;
+    let activeId = navLinks[0]?.getAttribute('href')?.slice(1);
+    for (const link of navLinks) {
+      const id = link.getAttribute('href').slice(1);
+      const section = $(id);
+      if (section && section.offsetTop <= y) activeId = id;
+    }
+    for (const link of navLinks) {
+      const id = link.getAttribute('href').slice(1);
+      link.classList.toggle('active', id === activeId);
+    }
+  }
+
+  window.addEventListener('scroll', refreshActiveNav, { passive: true });
+  refreshActiveNav();
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Text tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const textInput = $('text-input');
+  const textOutput = $('text-output');
+  const textExpected = $('text-expected');
+
+  async function runTextHash() {
+    const format = $('text-format').value;
+    const unicode = $('text-unicode').value;
+    const lineEndings = $('text-line-endings').value;
+    const trim = $('text-trim').checked;
+    const input = textInput.value;
+
+    try {
+      const digest = await sha256(input, {
+        output: format,
+        normalize: { unicode, lineEndings, trim },
+      });
+      textOutput.textContent = String(digest);
+
+      const expected = textExpected.value.trim();
+      if (expected) {
+        const ok = await verifyHash(input, expected, {
+          format,
+          normalize: { unicode, lineEndings, trim },
+          timingSafe: true,
+        });
+        setStatus('text-verify-status', ok ? 'Match ✓' : 'Mismatch ✗', ok ? 'ok' : 'bad');
+      } else {
+        setStatus('text-verify-status', 'Digest computed.', 'ok');
+      }
+    } catch (err) {
+      textOutput.textContent = `Error: ${err.message}`;
+      setStatus('text-verify-status', `Error: ${err.message}`, 'bad');
+    }
+  }
+
+  $('text-hash-btn').addEventListener('click', runTextHash);
+  $('text-copy-btn').addEventListener('click', async () => {
+    try {
+      await copyText(textOutput.textContent === '—' ? '' : textOutput.textContent);
+      setStatus('text-verify-status', 'Digest copied to clipboard.', 'ok');
+    } catch (err) {
+      setStatus('text-verify-status', `Copy failed: ${err.message}`, 'bad');
+    }
+  });
+  $('text-clear-btn').addEventListener('click', () => {
+    textInput.value = '';
+    textExpected.value = '';
+    textOutput.textContent = '—';
+    setStatus('text-verify-status', '', '');
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // JSON tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  const jsonInput = $('json-input');
+
+  async function runJsonHash() {
+    const format = $('json-format').value;
+    const space = Number($('json-space').value || 0);
+
+    try {
+      const parsed = JSON.parse(jsonInput.value);
+      const canonical = toCanonicalJson(parsed, space);
+      const digest = await hashJson(parsed, { output: format });
+      setText('json-canonical', canonical);
+      setText('json-output', String(digest));
+      setStatus('json-status', 'Canonical JSON hash computed.', 'ok');
+    } catch (err) {
+      setText('json-canonical', `Error: ${err.message}`);
+      setText('json-output', '—');
+      setStatus('json-status', `Error: ${err.message}`, 'bad');
+    }
+  }
+
+  $('json-hash-btn').addEventListener('click', runJsonHash);
+  $('json-copy-btn').addEventListener('click', async () => {
+    try {
+      await copyText($('json-output').textContent === '—' ? '' : $('json-output').textContent);
+      setStatus('json-status', 'Digest copied to clipboard.', 'ok');
+    } catch (err) {
+      setStatus('json-status', `Copy failed: ${err.message}`, 'bad');
+    }
+  });
+
+  $('json-example-btn').addEventListener('click', () => {
+    jsonInput.value = JSON.stringify({
+      portfolio: {
+        name: 'MajixAI',
+        assets: ['BTC', 'ETH', 'SPY'],
+      },
+      settings: {
+        rebalance: true,
+        interval: '1d',
+      },
+      risk: {
+        maxDrawdown: 0.12,
+        var95: 0.03,
+      },
+    }, null, 2);
+    runJsonHash();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // File tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  let lastFileManifest = null;
+
+  function bytesToHuman(n) {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let v = Number(n);
+    let i = 0;
+    while (v >= 1024 && i < units.length - 1) {
+      v /= 1024;
+      i += 1;
+    }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  async function runFileHash() {
+    const format = $('file-format').value;
+    const concurrency = Number($('file-concurrency').value || 2);
+    const files = Array.from($('file-input').files || []);
+    const tbody = $('file-table-body');
     tbody.innerHTML = '';
-    const frag = document.createDocumentFragment();
-    for (const { route, hash } of rows) {
+
+    if (!files.length) {
+      setStatus('file-status', 'Select one or more files first.', 'warn');
+      return;
+    }
+
+    try {
+      // Use hashBatch with file inputs for bounded parallelism
+      const items = files.map(f => ({ key: f.name, input: f }));
+      const results = await hashBatch(items, { output: format, concurrency });
+
+      for (let i = 0; i < files.length; i += 1) {
+        const file = files[i];
+        const row = results[i];
+        const tr = document.createElement('tr');
+        if (row.ok) {
+          tr.innerHTML = `
+            <td>${escHtml(file.name)}</td>
+            <td>${escHtml(bytesToHuman(file.size))}</td>
+            <td class="mono">${escHtml(row.digest || '')}</td>
+            <td><span class="pill ok">ok</span></td>`;
+        } else {
+          tr.innerHTML = `
+            <td>${escHtml(file.name)}</td>
+            <td>${escHtml(bytesToHuman(file.size))}</td>
+            <td class="mono">${escHtml(row.error || 'error')}</td>
+            <td><span class="pill bad">error</span></td>`;
+        }
+        tbody.appendChild(tr);
+      }
+
+      lastFileManifest = await createManifest(items, { format, concurrency });
+      setStatus('file-status', `Hashed ${files.length} file(s).`, 'ok');
+    } catch (err) {
+      setStatus('file-status', `Hashing failed: ${err.message}`, 'bad');
+    }
+  }
+
+  $('file-hash-btn').addEventListener('click', runFileHash);
+  $('file-clear-btn').addEventListener('click', () => {
+    $('file-table-body').innerHTML = '';
+    $('file-input').value = '';
+    lastFileManifest = null;
+    setStatus('file-status', 'Cleared.', '');
+  });
+
+  $('file-manifest-btn').addEventListener('click', () => {
+    if (!lastFileManifest) {
+      setStatus('file-status', 'No manifest yet. Hash files first.', 'warn');
+      return;
+    }
+    downloadJson('hash-file-manifest.json', lastFileManifest);
+    setStatus('file-status', 'Manifest exported.', 'ok');
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Batch tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  let lastBatchResult = null;
+
+  function parseBatchLines(raw) {
+    const lines = String(raw || '')
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const items = [];
+    let auto = 1;
+    for (const line of lines) {
+      const idx = line.indexOf('|');
+      if (idx >= 0) {
+        const key = line.slice(0, idx).trim() || `item-${auto++}`;
+        const value = line.slice(idx + 1);
+        items.push({ key, input: value });
+      } else {
+        items.push({ key: `item-${auto++}`, input: line });
+      }
+    }
+    return items;
+  }
+
+  async function runBatchHash() {
+    const format = $('batch-format').value;
+    const concurrency = Number($('batch-concurrency').value || 4);
+    const raw = $('batch-input').value;
+
+    const items = parseBatchLines(raw);
+    if (!items.length) {
+      setStatus('batch-status', 'Provide at least one line.', 'warn');
+      $('batch-output').textContent = '—';
+      return;
+    }
+
+    try {
+      const result = await hashBatch(items, { output: format, concurrency });
+      lastBatchResult = result;
+      $('batch-output').textContent = JSON.stringify(result, null, 2);
+      const okCount = result.filter(r => r.ok).length;
+      setStatus('batch-status', `Hashed ${okCount}/${result.length} items.`, okCount === result.length ? 'ok' : 'warn');
+    } catch (err) {
+      $('batch-output').textContent = `Error: ${err.message}`;
+      setStatus('batch-status', `Error: ${err.message}`, 'bad');
+    }
+  }
+
+  $('batch-run-btn').addEventListener('click', runBatchHash);
+  $('batch-copy-btn').addEventListener('click', async () => {
+    try {
+      await copyText($('batch-output').textContent === '—' ? '' : $('batch-output').textContent);
+      setStatus('batch-status', 'Batch result copied.', 'ok');
+    } catch (err) {
+      setStatus('batch-status', `Copy failed: ${err.message}`, 'bad');
+    }
+  });
+
+  $('batch-example-btn').addEventListener('click', () => {
+    $('batch-input').value = [
+      'alpha|hello world',
+      'beta|majixai hash suite',
+      'gamma|deterministic sha256',
+      'delta|router integrity',
+      'plain text without explicit key'
+    ].join('\n');
+    runBatchHash();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Routes tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  let allRouteRows = [];
+
+  function renderRouteRows() {
+    const tbody = $('route-table-body');
+    const q = $('route-filter').value.trim().toLowerCase();
+    const limitRaw = $('route-limit').value;
+    const limit = limitRaw === '1000' ? Number.MAX_SAFE_INTEGER : Number(limitRaw || 50);
+
+    const filtered = allRouteRows.filter(({ route, hash }) => {
+      if (!q) return true;
+      return (
+        route.name.toLowerCase().includes(q) ||
+        route.path.toLowerCase().includes(q) ||
+        String(route.category || '').toLowerCase().includes(q) ||
+        String(hash || '').toLowerCase().startsWith(q)
+      );
+    }).slice(0, limit);
+
+    tbody.innerHTML = '';
+    for (const { route, hash } of filtered) {
       const tr = document.createElement('tr');
-      const short = hash ? hash.slice(0, 16) + '…' : '';
       tr.innerHTML = `
         <td>${escHtml(route.name)}</td>
-        <td class="path-cell">${escHtml(route.path)}</td>
+        <td class="mono">${escHtml(route.path)}</td>
         <td>${escHtml(route.category || '')}</td>
-        <td class="hash-cell" title="${escHtml(hash || '')}">
-          <span class="short">${escHtml(short)}</span>
-          <span class="full">${escHtml(hash || '')}</span>
-        </td>`;
-      frag.appendChild(tr);
+        <td class="mono">${escHtml(hash || '')}</td>`;
+      tbody.appendChild(tr);
     }
-    tbody.appendChild(frag);
+
+    setStatus('routes-status', `Showing ${filtered.length} of ${allRouteRows.length} routes.`, 'ok');
   }
 
-  routeSearch.addEventListener('input', () => {
-    const q = routeSearch.value.trim().toLowerCase();
-    if (!q) { renderRows(allRows); return; }
-    renderRows(allRows.filter(({ route, hash }) =>
-      route.name.toLowerCase().includes(q) ||
-      route.path.toLowerCase().includes(q) ||
-      (route.category || '').toLowerCase().includes(q) ||
-      (hash || '').startsWith(q)
-    ));
+  async function refreshRoutes() {
+    try {
+      await router.ready();
+      allRouteRows = router.routes.map(route => ({
+        route,
+        hash: router.getRouteHash(route.path),
+      }));
+      renderRouteRows();
+    } catch (err) {
+      setStatus('routes-status', `Failed to load routes: ${err.message}`, 'bad');
+    }
+  }
+
+  $('route-filter').addEventListener('input', renderRouteRows);
+  $('route-limit').addEventListener('change', renderRouteRows);
+  $('routes-refresh-btn').addEventListener('click', refreshRoutes);
+
+  $('routes-manifest-btn').addEventListener('click', () => {
+    try {
+      const manifest = router.exportRouteHashManifest();
+      downloadJson('router-route-hash-manifest.json', manifest);
+      setStatus('routes-status', `Exported manifest with ${manifest.count} entries.`, 'ok');
+    } catch (err) {
+      setStatus('routes-status', `Manifest export failed: ${err.message}`, 'bad');
+    }
   });
 
-  router.ready().then(async () => {
-    const routes = router.routes;
-    allRows = routes.map(route => ({
-      route,
-      hash: router.getRouteHash(route.path),
-    }));
-    renderRows(allRows);
-    loadingMsg.style.display = 'none';
-    tableWrap.style.display  = '';
+  $('routes-verify-btn').addEventListener('click', async () => {
+    try {
+      const result = await router.verifyRouteIntegrity();
+      if (result.ok) {
+        setStatus('routes-status', `Integrity OK: ${result.verified}/${result.total} verified.`, 'ok');
+      } else {
+        const msg = [
+          `Integrity issues detected.`,
+          `verified=${result.verified}/${result.total}`,
+          `missing=${result.missing.length}`,
+          `mismatched=${result.mismatched.length}`,
+          `errors=${Object.keys(result.errors).length}`,
+        ].join(' ');
+        setStatus('routes-status', msg, 'bad');
+      }
+    } catch (err) {
+      setStatus('routes-status', `Integrity verification failed: ${err.message}`, 'bad');
+    }
   });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Manifest verification tool
+  // ───────────────────────────────────────────────────────────────────────────
+
+  $('manifest-example-btn').addEventListener('click', async () => {
+    const sample = {
+      format: 'hex',
+      entries: {
+        alpha: await sha256('hello'),
+        beta: await sha256('world'),
+      }
+    };
+    $('manifest-input').value = JSON.stringify(sample, null, 2);
+    $('resolver-input').value = JSON.stringify({ alpha: 'hello', beta: 'world' }, null, 2);
+    setStatus('manifest-status', 'Loaded sample manifest and resolver map.', 'ok');
+  });
+
+  $('manifest-verify-btn').addEventListener('click', async () => {
+    try {
+      const manifest = JSON.parse($('manifest-input').value);
+      const resolverMap = JSON.parse($('resolver-input').value);
+
+      const result = await verifyManifest(manifest, async (key) => {
+        if (!(key in resolverMap)) {
+          throw new Error(`No resolver value provided for key: ${key}`);
+        }
+        return String(resolverMap[key]);
+      }, { concurrency: 4 });
+
+      $('manifest-output').textContent = JSON.stringify(result, null, 2);
+      setStatus('manifest-status', result.ok ? 'Manifest verification passed.' : 'Manifest verification completed with issues.', result.ok ? 'ok' : 'warn');
+    } catch (err) {
+      $('manifest-output').textContent = `Error: ${err.message}`;
+      setStatus('manifest-status', `Error: ${err.message}`, 'bad');
+    }
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Bootstrap
+  // ───────────────────────────────────────────────────────────────────────────
+
+  (async function init() {
+    try {
+      await refreshRoutes();
+      $('text-input').value = 'MajixAI Hash Suite';
+      await runTextHash();
+    } catch (_) {
+      // non-fatal
+    }
+  })();
 </script>
 </body>
 </html>

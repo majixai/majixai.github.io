@@ -17,7 +17,7 @@
  *   window.addEventListener('route:change', handler);
  */
 
-import { hashRoute } from '../hash/hash.js';
+import { hashRoute, verifyRouteHash } from '../hash/hash.js';
 
 const ROUTES_URL = new URL('./routes.json', import.meta.url).href;
 
@@ -264,6 +264,84 @@ class Router extends EventTarget {
     const route = this.resolve(input);
     if (!route) return null;
     return this.#hashes.get(route.path.toLowerCase()) ?? null;
+  }
+
+  /**
+   * Return a plain-object copy of all route hashes keyed by route path.
+   * Useful for diagnostics, exports, and integrity auditing UIs.
+   *
+   * @returns {Record<string, string>}
+   */
+  getRouteHashes() {
+    return Object.fromEntries(
+      [...this.#hashes.entries()].sort(([a], [b]) => a.localeCompare(b))
+    );
+  }
+
+  /**
+   * Export a route hash manifest suitable for persistence or transport.
+   *
+   * @returns {{
+   *   version: string,
+   *   algorithm: string,
+   *   generatedAt: string,
+   *   count: number,
+   *   entries: Record<string, string>
+   * }}
+   */
+  exportRouteHashManifest() {
+    const entries = this.getRouteHashes();
+    return {
+      version: 'route-hash-manifest:v1',
+      algorithm: 'SHA-256',
+      generatedAt: new Date().toISOString(),
+      count: Object.keys(entries).length,
+      entries,
+    };
+  }
+
+  /**
+   * Verify in-memory route objects against currently stored hashes.
+   *
+   * @returns {Promise<{
+   *   ok: boolean,
+   *   total: number,
+   *   verified: number,
+   *   missing: string[],
+   *   mismatched: string[],
+   *   errors: Record<string, string>
+   * }>}
+   */
+  async verifyRouteIntegrity() {
+    const missing = [];
+    const mismatched = [];
+    const errors = {};
+    let verified = 0;
+
+    for (const route of this.#routes) {
+      const key = route.path.toLowerCase();
+      const expected = this.#hashes.get(key);
+      if (!expected) {
+        missing.push(route.path);
+        continue;
+      }
+      try {
+        const ok = await verifyRouteHash(route, expected);
+        if (ok) verified += 1;
+        else mismatched.push(route.path);
+      } catch (err) {
+        errors[route.path] = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    return {
+      ok: missing.length === 0 && mismatched.length === 0 && Object.keys(errors).length === 0,
+      total: this.#routes.length,
+      verified,
+      missing: missing.sort((a, b) => a.localeCompare(b)),
+      mismatched: mismatched.sort((a, b) => a.localeCompare(b)),
+      errors,
+    };
   }
 
   /**
