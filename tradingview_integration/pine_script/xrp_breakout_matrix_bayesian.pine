@@ -93,7 +93,7 @@ f_tfSqueeze(string tf) =>
     tfUpper = tfBasis + bbMult * tfDev
     tfLower = tfBasis - bbMult * tfDev
     tfBw = f_safeDiv(tfUpper - tfLower, tfBasis, 0.0)
-    tfLow = request.security(syminfo.tickerid, tf, ta.lowest(f_safeDiv((ta.sma(close, bbLength) + bbMult * ta.stdev(close, bbLength)) - (ta.sma(close, bbLength) - bbMult * ta.stdev(close, bbLength)), ta.sma(close, bbLength), 0.0), 100), lookahead=barmerge.lookahead_off)
+    tfLow = request.security(syminfo.tickerid, tf, ta.lowest(f_safeDiv(2.0 * bbMult * ta.stdev(close, bbLength), ta.sma(close, bbLength), 0.0), 100), lookahead=barmerge.lookahead_off)
     tfBw <= tfLow
 
 [tfLower, tfMid1, tfMid2, tfUpper] = f_getTfHierarchy()
@@ -195,7 +195,8 @@ var table mtfTable = table.new(position.top_right, 3, 7, bgcolor=color.new(color
 // 5. HELPERS
 // ==============================================================================
 f_near(float a, float b, float tolPct) =>
-    a == 0.0 or b == 0.0 ? false : math.abs(a - b) / math.abs(a) <= tolPct / 100.0
+    denom = math.max(math.abs(a), math.abs(b))
+    denom == 0.0 ? false : math.abs(a - b) / denom <= tolPct / 100.0
 
 f_depth(float rim, float bowl) =>
     math.abs(rim - bowl)
@@ -223,7 +224,8 @@ f_isDuplicate(int rimIdx, float rimPx) =>
 
 f_bucket(float rimPrice, int side) =>
     tick = syminfo.mintick > 0 ? syminfo.mintick : 0.0001
-    int(math.abs(math.round(rimPrice / tick) + side * 13)) % gcBuckets
+    clusterPrime = 13 // Prime multiplier helps spread bucket assignments more evenly.
+    int(math.abs(math.round(rimPrice / tick) + side * clusterPrime)) % gcBuckets
 
 f_confLabel(float posterior) =>
     posterior >= 0.75 ? "HIGH" : posterior >= probThresh ? "MED" : "LOW"
@@ -380,7 +382,7 @@ f_performGC()
 // ==============================================================================
 // 7. DASHBOARD
 // ==============================================================================
-fill(plot(upperBB, color=na), plot(lowerBB, color=na), color=color.from_gradient(mtfScore, 0.0, 1.0, color.new(color.navy, 92), color.new(color.yellow, 72)), title="MTF Bayesian Gradient")
+fill(pUpper, pLower, color=color.from_gradient(mtfScore, 0.0, 1.0, color.new(color.navy, 92), color.new(color.yellow, 72)), title="MTF Bayesian Gradient")
 
 if showTable and barstate.islast
     topCluster = f_bestCluster()
