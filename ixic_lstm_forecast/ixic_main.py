@@ -225,19 +225,21 @@ async def main_controller() -> dict:
     predicted_scaled = forecaster.predict_sequence(X_test)
     predicted_price = float(scaler.inverse_transform(predicted_scaled)[0][0])
     recent_close = float(close_prices[-1][0])
+    delta_value = predicted_price - recent_close
+    delta_pct_value = delta_value / recent_close * 100
 
     log.info(
         "[main_controller] forecast — recent_close=%.4f  predicted_next=%.4f  "
         "delta=%.4f  delta_pct=%.4f%%",
         recent_close,
         predicted_price,
-        predicted_price - recent_close,
-        (predicted_price - recent_close) / recent_close * 100,
+        delta_value,
+        delta_pct_value,
     )
     _console_line(
         "STEP 5/6 complete: "
         f"recent={recent_close:.4f}, projected={predicted_price:.4f}, "
-        f"delta={predicted_price - recent_close:+.4f} ({(predicted_price - recent_close) / recent_close * 100:+.4f}%)."
+        f"delta={delta_value:+.4f} ({delta_pct_value:+.4f}%)."
     )
 
     # ── 6. Distributed worker — reporting + storage ───────────────────────
@@ -303,10 +305,8 @@ async def main_controller() -> dict:
         "batch_size": BATCH_SIZE,
         "recent_close": round(recent_close, 4),
         "projected_close": round(predicted_price, 4),
-        "delta": round(predicted_price - recent_close, 4),
-        "delta_pct": round(
-            (predicted_price - recent_close) / recent_close * 100, 4
-        ),
+        "delta": round(delta_value, 4),
+        "delta_pct": round(delta_pct_value, 4),
     }
 
     summary_path = _OUTPUT_DIR / "ixic_summary.json"
