@@ -330,8 +330,8 @@ if n >= 4
         confirmOk = not needConfirm or (side == +1 ? close > rimPrice : close < rimPrice)
         posterior = f_calculateBayes(isSqueeze, mtfScore)
         isProbable = posterior >= probThresh
-        ok = rimOk and handleOk and sideOk and confirmOk
-        if ok and not f_isDuplicate(Li, rimPrice)
+        isValidPattern = rimOk and handleOk and sideOk and confirmOk
+        if isValidPattern and not f_isDuplicate(Li, rimPrice)
             midBar = Ri - (Ri - Li) / 2
             clusterId = f_bucket(rimPrice, side)
             cupPts = array.new<chart.point>()
@@ -360,7 +360,8 @@ if n >= 4
                     stopBx := box.new(Ri, invPrice + zonePad, Hi + extendBars, invPrice - zonePad, bgcolor=color.new(color.gray, 88), border_color=color.new(color.gray, 35))
             label tag = na
             if showName
-                txt = (side == +1 ? "Cup+Handle" : "Inv Cup+Handle") + "\nP(H|E): " + str.tostring(posterior, "#.##") + " | MTF: " + str.tostring(mtfScore, "#.##")
+                patternName = side == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+                txt = patternName + "\nP(H|E): " + str.tostring(posterior, "#.##") + " | MTF: " + str.tostring(mtfScore, "#.##")
                 tagColor = side == +1 ? color.new(color.lime, 72) : color.new(color.red, 72)
                 tag := label.new(midBar, rimPrice, txt, style=label.style_label_center, textcolor=color.white, color=tagColor, size=size.small)
             pivots = PatternPivots.new(s0, s1, s2, s3)

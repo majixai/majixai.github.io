@@ -518,6 +518,11 @@ Patterns below the configurable **Min Confidence Filter** (default 25 %) are sup
 
 A breakout-focused XRP indicator that combines **cup-and-handle geometry**, **Bayesian posterior scoring**, **multi-timeframe squeeze confluence**, and **garbage-collection clustering** for drawing management. The script uses nested UDTs to keep pivots, execution levels, drawings, and Bayesian metadata isolated but linked inside a single pattern state object.
 
+**Prerequisites**
+
+- Pine Script **v6** support in the TradingView editor.
+- Enough object headroom for scripts using high drawing limits (`max_lines_count=500`, `max_labels_count=500`, `max_boxes_count=300`, `max_polylines_count=100`).
+
 ---
 
 ## Core Components
