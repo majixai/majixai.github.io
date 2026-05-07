@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MajixAI – AI Prompt Solver</title>
+  <title>MajixAI – Self-Aware Structure Prompt Solver</title>
 
   <!-- W3.CSS -->
   <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
@@ -17,7 +17,7 @@
   {
     "imports": {
       "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
-      "marked":        "https://esm.sh/marked@^15.0.7"
+      "marked": "https://esm.sh/marked@^15.0.7"
     }
   }
   </script>
@@ -32,44 +32,74 @@
       <i class="fa fa-arrow-left"></i> Home
     </a>
     <span class="w3-bar-item w3-padding-16" style="font-weight:600; letter-spacing:.5px;">
-      <i class="fa fa-robot w3-text-blue"></i>&nbsp; MajixAI – AI Prompt Solver
+      <i class="fa fa-brain w3-text-blue"></i>&nbsp; MajixAI – Self-Aware Structure Prompt Solver
     </span>
   </div>
 
-  <!-- Main content -->
-  <div class="container" style="max-width:860px; padding-top:80px; padding-bottom:40px;">
+  <div class="container" style="max-width:1000px; padding-top:80px; padding-bottom:40px;">
 
-    <!-- API key input -->
+    <!-- API + control panel -->
     <div class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom">
-      <label for="api-key-input" class="w3-text-dark-grey" style="font-size:.85rem; font-weight:600;">
-        <i class="fa fa-key"></i>&nbsp; Gemini API Key
-        <span class="w3-text-grey" style="font-weight:400;">
-          (get one free at
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a>)
-        </span>
-      </label>
-      <input
-        id="api-key-input"
-        type="password"
-        class="w3-input w3-border w3-round"
-        placeholder="AIza…"
-        autocomplete="off"
-        style="margin-top:6px;"
-      >
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-5">
+          <label for="api-key-input" class="w3-text-dark-grey form-label" style="font-size:.85rem; font-weight:600;">
+            <i class="fa fa-key"></i>&nbsp; Gemini API Key
+          </label>
+          <input
+            id="api-key-input"
+            type="password"
+            class="w3-input w3-border w3-round"
+            placeholder="AIza…"
+            autocomplete="off"
+          >
+          <small class="text-muted">Local commands work without an API key.</small>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <label for="response-profile" class="form-label control-label">Response profile</label>
+          <select id="response-profile" class="form-select form-select-sm">
+            <option value="concise">Concise</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="deep">Deep</option>
+            <option value="strategist">Strategist</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <label for="routing-budget" class="form-label control-label">Routing budget</label>
+          <select id="routing-budget" class="form-select form-select-sm">
+            <option value="8">8 nodes</option>
+            <option value="12" selected>12 nodes</option>
+            <option value="16">16 nodes</option>
+            <option value="24">24 nodes</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 col-lg-3">
+          <div class="toggle-grid">
+            <label class="toggle-item"><input type="checkbox" id="self-aware-toggle" checked> self-aware</label>
+            <label class="toggle-item"><input type="checkbox" id="structure-scan-toggle" checked> structure scan</label>
+            <label class="toggle-item"><input type="checkbox" id="memory-toggle" checked> memory</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="self-aware-status" class="status-wrap" aria-live="polite"></div>
     </div>
 
-    <!-- Routing pipeline display -->
+    <!-- Routing panels -->
     <div id="routing-display" style="display:none;" aria-live="polite"></div>
+    <div id="routing-diagnostics" style="display:none;" aria-live="polite"></div>
 
     <!-- Chat history -->
     <div
       id="chat-container"
       class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom"
-      style="min-height:200px;"
+      style="min-height:220px;"
     >
-      <p class="w3-text-grey w3-center" style="margin:40px 0;">
+      <p class="w3-text-grey w3-center" style="margin:36px 0;">
         <i class="fa fa-comments fa-2x"></i><br>
-        Ask anything — the AI will solve and respond.
+        Ask anything — responses can use self-aware mode + current structure routing.
       </p>
     </div>
 
@@ -81,21 +111,21 @@
       <textarea
         id="prompt-input"
         class="w3-input w3-border w3-round"
-        rows="3"
-        placeholder="Enter your prompt here… (Ctrl+Enter to send)"
+        rows="4"
+        placeholder="Prompt or local command (/help, /self, /scan finance market)…"
         style="margin-top:6px; font-size:.95rem;"
       ></textarea>
-      <div class="w3-margin-top" style="display:flex; justify-content:flex-end; gap:10px; align-items:center;">
+      <div class="w3-margin-top" style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
         <span class="w3-text-grey" style="font-size:.8rem;">
-          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send · local commands: <code>/help</code> <code>/self</code> <code>/scan &lt;query&gt;</code>
         </span>
-        <button id="send-btn" class="w3-button w3-blue w3-round" style="min-width:110px;">
+        <button id="send-btn" class="w3-button w3-blue w3-round" style="min-width:130px;">
           <i class="fa fa-paper-plane"></i>&nbsp; Send
         </button>
       </div>
     </div>
 
-  </div><!-- /container -->
+  </div>
 
   <script type="module" src="script.js"></script>
 </body>
