@@ -1,0 +1,424 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © Zeiierman-inspired XRP Breakout Matrix (Bayesian + MTF + GC)
+
+//@version=6
+indicator("XRP Breakout Matrix Bayesian GC", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=300, max_polylines_count=100)
+
+// ==============================================================================
+// 1. INPUTS
+// ==============================================================================
+grpCH = "Cup & Handle"
+grpBY = "Bayesian Engine"
+grpMT = "Multi-Timeframe"
+grpGC = "Garbage Collection"
+grpST = "Style"
+
+pivotSpan   = input.int(10, "Pivot span", minval=2, step=1, group=grpCH)
+rimTolPct   = input.int(18, "Rim similarity tolerance (%)", minval=0, maxval=50, step=1, group=grpCH)
+hMin        = input.float(0.12, "Handle retrace min", minval=0.01, step=0.01, group=grpCH)
+hMax        = input.float(0.55, "Handle retrace max", minval=0.05, step=0.01, group=grpCH)
+killAtFib   = input.float(61.8, "Invalidation retrace (%)", minval=10, maxval=100, step=0.1, group=grpCH) / 100.0
+needConfirm = input.bool(false, "Require breakout confirmation", group=grpCH)
+targetMult  = input.float(0.75, "Target multiplier (× cup depth)", minval=0.1, maxval=4.0, step=0.05, group=grpCH)
+
+pPrior      = input.float(0.35, "Prior probability P(H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+pSqueezeLik = input.float(0.75, "Likelihood P(E|H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+pNoiseLik   = input.float(0.40, "Likelihood P(E|¬H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+probThresh  = input.float(0.60, "Posterior threshold", minval=0.10, maxval=0.95, step=0.01, group=grpBY)
+
+bbLength    = input.int(20, "Bollinger length", minval=5, group=grpMT)
+bbMult      = input.float(2.0, "Bollinger deviation", minval=0.5, step=0.1, group=grpMT)
+showTable   = input.bool(true, "Show MTF dashboard", group=grpMT)
+
+gcThreshold = input.int(6, "GC sweep trigger", minval=2, maxval=50, group=grpGC)
+gcKeep      = input.int(20, "Max retained patterns", minval=5, maxval=100, group=grpGC)
+gcBuckets   = input.int(8, "Cluster buckets", minval=4, maxval=20, group=grpGC)
+
+showName    = input.bool(true, "Show pattern label", group=grpST)
+showTarget  = input.bool(true, "Show target line/boxes", group=grpST)
+showZones   = input.bool(true, "Show target/stop boxes", group=grpST)
+bgBull      = input.color(color.new(color.lime, 84), "Bull fill", group=grpST, inline="bull")
+lnBull      = input.color(color.new(color.lime, 15), "Bull line", group=grpST, inline="bull")
+bgBear      = input.color(color.new(color.red, 84), "Bear fill", group=grpST, inline="bear")
+lnBear      = input.color(color.new(color.red, 15), "Bear line", group=grpST, inline="bear")
+wOk         = input.int(2, "Pattern width", minval=1, group=grpST, inline="w1")
+stOk        = input.string("Solid", "Pattern style", options=["Solid", "Dashed", "Dotted"], group=grpST, inline="w1")
+targetWidth = input.int(2, "Target width", minval=1, group=grpST, inline="w2")
+targetStyle = input.string("Dashed", "Target style", options=["Solid", "Dashed", "Dotted"], group=grpST, inline="w2")
+
+// ==============================================================================
+// 2. VOLATILITY + MTF MATRIX
+// ==============================================================================
+f_safeDiv(float n, float d, float fallback) =>
+    d == 0.0 ? fallback : n / d
+
+f_lineStyle(string s) =>
+    switch s
+        "Solid"  => line.style_solid
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        => line.style_solid
+
+f_getTfHierarchy() =>
+    string tfL = ""
+    string tfM1 = ""
+    string tfM2 = ""
+    string tfU = ""
+    if timeframe.isdaily
+        tfL := "240"
+        tfM1 := "720"
+        tfM2 := "W"
+        tfU := "M"
+    else if timeframe.isweekly
+        tfL := "D"
+        tfM1 := "3D"
+        tfM2 := "2W"
+        tfU := "M"
+    else if timeframe.isintraday and timeframe.multiplier >= 60
+        tfL := "15"
+        tfM1 := "30"
+        tfM2 := "240"
+        tfU := "D"
+    else
+        tfL := "1"
+        tfM1 := "5"
+        tfM2 := "15"
+        tfU := "60"
+    [tfL, tfM1, tfM2, tfU]
+
+f_tfSqueeze(string tf) =>
+    tfBasis = request.security(syminfo.tickerid, tf, ta.sma(close, bbLength), lookahead=barmerge.lookahead_off)
+    tfDev = request.security(syminfo.tickerid, tf, ta.stdev(close, bbLength), lookahead=barmerge.lookahead_off)
+    tfUpper = tfBasis + bbMult * tfDev
+    tfLower = tfBasis - bbMult * tfDev
+    tfBw = f_safeDiv(tfUpper - tfLower, tfBasis, 0.0)
+    tfLow = request.security(syminfo.tickerid, tf, ta.lowest(f_safeDiv(2.0 * bbMult * ta.stdev(close, bbLength), ta.sma(close, bbLength), 0.0), 100), lookahead=barmerge.lookahead_off)
+    tfBw <= tfLow
+
+[tfLower, tfMid1, tfMid2, tfUpper] = f_getTfHierarchy()
+
+basis = ta.sma(close, bbLength)
+dev = bbMult * ta.stdev(close, bbLength)
+upperBB = basis + dev
+lowerBB = basis - dev
+bandwidth = f_safeDiv(upperBB - lowerBB, basis, 0.0)
+isSqueeze = bandwidth <= ta.lowest(bandwidth, 100)
+bbGradient = color.from_gradient(bandwidth, ta.lowest(bandwidth, 100), ta.highest(bandwidth, 100), color.new(color.yellow, 75), color.new(color.navy, 88))
+pUpper = plot(upperBB, color=color.new(color.gray, 80), title="Upper BB")
+pLower = plot(lowerBB, color=color.new(color.gray, 80), title="Lower BB")
+fill(pUpper, pLower, color=bbGradient, title="Compression Gradient")
+
+sqLower = f_tfSqueeze(tfLower)
+sqMid1 = f_tfSqueeze(tfMid1)
+sqMid2 = f_tfSqueeze(tfMid2)
+sqUpper = f_tfSqueeze(tfUpper)
+mtfScore = ((sqLower ? 1.0 : 0.0) + (sqMid1 ? 1.0 : 0.0) + (sqMid2 ? 1.0 : 0.0) + (sqUpper ? 1.0 : 0.0)) / 4.0
+
+var matrix<float> mtfMatrix = matrix.new<float>(4, 2, 0.0)
+matrix.set(mtfMatrix, 0, 0, sqLower ? 1.0 : 0.0)
+matrix.set(mtfMatrix, 1, 0, sqMid1 ? 1.0 : 0.0)
+matrix.set(mtfMatrix, 2, 0, sqMid2 ? 1.0 : 0.0)
+matrix.set(mtfMatrix, 3, 0, sqUpper ? 1.0 : 0.0)
+matrix.set(mtfMatrix, 0, 1, timeframe.in_seconds(tfLower))
+matrix.set(mtfMatrix, 1, 1, timeframe.in_seconds(tfMid1))
+matrix.set(mtfMatrix, 2, 1, timeframe.in_seconds(tfMid2))
+matrix.set(mtfMatrix, 3, 1, timeframe.in_seconds(tfUpper))
+
+// ==============================================================================
+// 3. BAYESIAN ENGINE
+// ==============================================================================
+f_calculateBayes(bool evidence, float mtfConfluence) =>
+    priorH = pPrior
+    priorNotH = 1.0 - pPrior
+    effLikH = evidence ? math.max(0.05, pSqueezeLik * math.max(0.25, mtfConfluence)) : (1.0 - pSqueezeLik)
+    effLikNotH = evidence ? math.max(0.05, pNoiseLik * math.max(0.10, 1.0 - mtfConfluence * 0.5)) : (1.0 - pNoiseLik)
+    denom = effLikH * priorH + effLikNotH * priorNotH
+    denom == 0.0 ? 0.5 : (effLikH * priorH) / denom
+
+currentPosterior = f_calculateBayes(isSqueeze, mtfScore)
+
+// ==============================================================================
+// 4. NESTED TYPES + REGISTRIES
+// ==============================================================================
+type Swing
+    float p
+    int i
+    int d
+
+type PatternPivots
+    Swing leftRim
+    Swing bottom
+    Swing rightRim
+    Swing handle
+
+type PatternLevels
+    float rimPrice
+    float invPrice
+    float tgtPrice
+
+type PatternDrawings
+    polyline cupPL
+    polyline hdlPL
+    line tgtLn
+    box tgtBx
+    box stopBx
+    label tag
+
+type BayesianIntel
+    float posteriorProb
+    float mtfConfluence
+    bool isSignificant
+    string confidenceLabel
+
+type BrewPattern
+    PatternPivots pivots
+    PatternLevels levels
+    PatternDrawings drawings
+    BayesianIntel intel
+    int side
+    int state
+    int rimBar
+    int clusterId
+
+type GarbageCollector
+    int clusterCount
+    int sweepIndex
+    BrewPattern[] pool
+
+var Swing[] swings = array.new<Swing>()
+var GarbageCollector gc = GarbageCollector.new(0, 0, array.new<BrewPattern>())
+var matrix<float> clusterMatrix = matrix.new<float>(20, 4, 0.0)
+var table mtfTable = table.new(position.top_right, 3, 7, bgcolor=color.new(color.black, 75), border_width=1)
+
+// ==============================================================================
+// 5. HELPERS
+// ==============================================================================
+f_near(float a, float b, float tolPct) =>
+    denom = math.max(math.abs(a), math.abs(b))
+    denom == 0.0 ? false : math.abs(a - b) / denom <= tolPct / 100.0
+
+f_depth(float rim, float bowl) =>
+    math.abs(rim - bowl)
+
+f_pushSwing(float price, int idx, int dir) =>
+    if array.size(swings) == 0
+        array.push(swings, Swing.new(price, idx, dir))
+    else
+        last = array.get(swings, array.size(swings) - 1)
+        if last.d == dir
+            better = dir == 1 ? price > last.p : price < last.p
+            if better
+                array.set(swings, array.size(swings) - 1, Swing.new(price, idx, dir))
+        else
+            array.push(swings, Swing.new(price, idx, dir))
+    if array.size(swings) > 12
+        array.shift(swings)
+
+f_isDuplicate(int rimIdx, float rimPx) =>
+    if array.size(gc.pool) == 0
+        false
+    else
+        last = array.get(gc.pool, array.size(gc.pool) - 1)
+        rimIdx == last.rimBar or f_near(rimPx, last.levels.rimPrice, 0.15)
+
+f_bucket(float rimPrice, int side) =>
+    tick = syminfo.mintick > 0 ? syminfo.mintick : 0.0001
+    clusterPrime = 13 // A small prime reduces repeated modulo collisions when adjacent price buckets and bullish/bearish sides are mixed.
+    int(math.abs(math.round(rimPrice / tick) + side * clusterPrime)) % gcBuckets
+
+f_confLabel(float posterior) =>
+    posterior >= 0.75 ? "HIGH" : posterior >= probThresh ? "MED" : "LOW"
+
+f_deleteDrawings(PatternDrawings dr) =>
+    if not na(dr.cupPL)
+        polyline.delete(dr.cupPL)
+    if not na(dr.hdlPL)
+        polyline.delete(dr.hdlPL)
+    if not na(dr.tgtLn)
+        line.delete(dr.tgtLn)
+    if not na(dr.tgtBx)
+        box.delete(dr.tgtBx)
+    if not na(dr.stopBx)
+        box.delete(dr.stopBx)
+    if not na(dr.tag)
+        label.delete(dr.tag)
+
+f_bestCluster() =>
+    bestBucket = 0
+    bestScore = matrix.get(clusterMatrix, 0, 3)
+    for b = 1 to gcBuckets - 1
+        score = matrix.get(clusterMatrix, b, 3)
+        if score > bestScore
+            bestScore := score
+            bestBucket := b
+    bestBucket
+
+f_performGC() =>
+    bestBucket = f_bestCluster()
+    if array.size(gc.pool) > gcThreshold
+        i = array.size(gc.pool) - 1
+        while i >= 0
+            pat = array.get(gc.pool, i)
+            activeInBucket = matrix.get(clusterMatrix, pat.clusterId, 1)
+            keepCluster = pat.clusterId == bestBucket and activeInBucket > 0
+            if pat.state == 0 and not keepCluster
+                f_deleteDrawings(pat.drawings)
+                array.remove(gc.pool, i)
+            i -= 1
+    while array.size(gc.pool) > gcKeep
+        oldest = array.shift(gc.pool)
+        f_deleteDrawings(oldest.drawings)
+
+// ==============================================================================
+// 6. PATTERN DETECTION
+// ==============================================================================
+ph = ta.pivothigh(high, pivotSpan, pivotSpan)
+pl = ta.pivotlow(low, pivotSpan, pivotSpan)
+
+if not na(ph)
+    f_pushSwing(ph, bar_index - pivotSpan, +1)
+if not na(pl)
+    f_pushSwing(pl, bar_index - pivotSpan, -1)
+
+if array.size(gc.pool) > 0
+    i = 0
+    while i < array.size(gc.pool)
+        pat = array.get(gc.pool, i)
+        if pat.state == 1
+            invalid = pat.side == 1 ? low < pat.levels.invPrice : high > pat.levels.invPrice
+            if invalid
+                pat.state := 0
+                matrix.set(clusterMatrix, pat.clusterId, 1, math.max(0.0, matrix.get(clusterMatrix, pat.clusterId, 1) - 1.0))
+                array.set(gc.pool, i, pat)
+        i += 1
+
+Swing s0 = na
+Swing s1 = na
+Swing s2 = na
+Swing s3 = na
+n = array.size(swings)
+if n >= 4
+    s0 := array.get(swings, n - 4)
+    s1 := array.get(swings, n - 3)
+    s2 := array.get(swings, n - 2)
+    s3 := array.get(swings, n - 1)
+
+bool newSignal = false
+int newSide = 0
+
+if n >= 4
+    isSeqNorm = s0.d == +1 and s1.d == -1 and s2.d == +1 and s3.d == -1
+    isSeqInv = s0.d == -1 and s1.d == +1 and s2.d == -1 and s3.d == +1
+    if isSeqNorm or isSeqInv
+        side = isSeqNorm ? +1 : -1
+        Lp = s0.p
+        Li = s0.i
+        Bp = s1.p
+        Rp = s2.p
+        Ri = s2.i
+        Hp = s3.p
+        Hi = s3.i
+        rimPrice = side == +1 ? math.min(Lp, Rp) : math.max(Lp, Rp)
+        depth = f_depth(rimPrice, Bp)
+        rimOk = f_near(Lp, Rp, rimTolPct)
+        hRet = depth == 0.0 ? 10.0 : math.abs(rimPrice - Hp) / depth
+        handleOk = hRet >= hMin and hRet <= hMax
+        sideOk = side == +1 ? Hp < rimPrice : Hp > rimPrice
+        invPrice = side == +1 ? Rp - depth * killAtFib : Rp + depth * killAtFib
+        tgtPrice = side == +1 ? Rp + depth * targetMult : Rp - depth * targetMult
+        confirmOk = not needConfirm or (side == +1 ? close > rimPrice : close < rimPrice)
+        posterior = f_calculateBayes(isSqueeze, mtfScore)
+        isProbable = posterior >= probThresh
+        isValidPattern = rimOk and handleOk and sideOk and confirmOk
+        if isValidPattern and not f_isDuplicate(Li, rimPrice)
+            midBar = Ri - (Ri - Li) / 2
+            clusterId = f_bucket(rimPrice, side)
+            cupPts = array.new<chart.point>()
+            array.push(cupPts, chart.point.from_index(Li, rimPrice))
+            array.push(cupPts, chart.point.from_index(midBar, Bp))
+            array.push(cupPts, chart.point.from_index(Ri, rimPrice))
+            hdlPts = array.new<chart.point>()
+            projBar = Hi + (Hi - Ri)
+            array.push(hdlPts, chart.point.from_index(Ri, rimPrice))
+            array.push(hdlPts, chart.point.from_index(Hi, Hp))
+            array.push(hdlPts, chart.point.from_index(projBar, rimPrice))
+            useFill = side == +1 ? bgBull : bgBear
+            useLine = side == +1 ? lnBull : lnBear
+            cupPL = polyline.new(cupPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            hdlPL = polyline.new(hdlPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            line tgtLn = na
+            box tgtBx = na
+            box stopBx = na
+            extendBars = 25
+            zonePad = math.max(syminfo.mintick * 30.0, depth * 0.08)
+            if showTarget
+                tgtColor = side == +1 ? color.new(color.lime, 0) : color.new(color.red, 0)
+                tgtLn := line.new(Ri, tgtPrice, Hi + extendBars, tgtPrice, color=tgtColor, width=targetWidth, style=f_lineStyle(targetStyle))
+                if showZones
+                    tgtBx := box.new(Ri, tgtPrice + zonePad, Hi + extendBars, tgtPrice - zonePad, bgcolor=color.new(tgtColor, 85), border_color=color.new(tgtColor, 20))
+                    stopBx := box.new(Ri, invPrice + zonePad, Hi + extendBars, invPrice - zonePad, bgcolor=color.new(color.gray, 88), border_color=color.new(color.gray, 35))
+            label tag = na
+            if showName
+                patternName = side == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+                txt = patternName + "\nP(H|E): " + str.tostring(posterior, "#.##") + " | MTF: " + str.tostring(mtfScore, "#.##")
+                tagColor = side == +1 ? color.new(color.lime, 72) : color.new(color.red, 72)
+                tag := label.new(midBar, rimPrice, txt, style=label.style_label_center, textcolor=color.white, color=tagColor, size=size.small)
+            pivots = PatternPivots.new(s0, s1, s2, s3)
+            levels = PatternLevels.new(rimPrice, invPrice, tgtPrice)
+            intel = BayesianIntel.new(posterior, mtfScore, isProbable, f_confLabel(posterior))
+            drawings = PatternDrawings.new(cupPL, hdlPL, tgtLn, tgtBx, stopBx, tag)
+            rec = BrewPattern.new(pivots, levels, drawings, intel, side, 1, Li, clusterId)
+            array.push(gc.pool, rec)
+            matrix.set(clusterMatrix, clusterId, 0, matrix.get(clusterMatrix, clusterId, 0) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 1, matrix.get(clusterMatrix, clusterId, 1) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 2, matrix.get(clusterMatrix, clusterId, 2) + (isProbable ? 1.0 : 0.0))
+            matrix.set(clusterMatrix, clusterId, 3, matrix.get(clusterMatrix, clusterId, 3) + posterior)
+            gc.clusterCount += 1
+            newSignal := true
+            newSide := side
+
+f_performGC()
+
+// ==============================================================================
+// 7. DASHBOARD
+// ==============================================================================
+fill(pUpper, pLower, color=color.from_gradient(mtfScore, 0.0, 1.0, color.new(color.navy, 92), color.new(color.yellow, 72)), title="MTF Bayesian Gradient")
+
+if showTable and barstate.islast
+    topCluster = f_bestCluster()
+    table.cell(mtfTable, 0, 0, "TF", text_color=color.white)
+    table.cell(mtfTable, 1, 0, "Sqz", text_color=color.white)
+    table.cell(mtfTable, 2, 0, "Sec", text_color=color.white)
+    table.cell(mtfTable, 0, 1, tfLower, text_color=color.silver)
+    table.cell(mtfTable, 1, 1, sqLower ? "YES" : "NO", bgcolor=sqLower ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 1, str.tostring(matrix.get(mtfMatrix, 0, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 2, tfMid1, text_color=color.silver)
+    table.cell(mtfTable, 1, 2, sqMid1 ? "YES" : "NO", bgcolor=sqMid1 ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 2, str.tostring(matrix.get(mtfMatrix, 1, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 3, tfMid2, text_color=color.silver)
+    table.cell(mtfTable, 1, 3, sqMid2 ? "YES" : "NO", bgcolor=sqMid2 ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 3, str.tostring(matrix.get(mtfMatrix, 2, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 4, tfUpper, text_color=color.silver)
+    table.cell(mtfTable, 1, 4, sqUpper ? "YES" : "NO", bgcolor=sqUpper ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 4, str.tostring(matrix.get(mtfMatrix, 3, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 5, "Posterior", text_color=color.white)
+    table.cell(mtfTable, 1, 5, str.tostring(currentPosterior, "#.##"), bgcolor=currentPosterior >= probThresh ? color.new(color.lime, 70) : color.new(color.orange, 75))
+    table.cell(mtfTable, 2, 5, "MTF " + str.tostring(mtfScore, "#.##"), text_color=color.white)
+    table.cell(mtfTable, 0, 6, "GC", text_color=color.white)
+    table.cell(mtfTable, 1, 6, str.tostring(array.size(gc.pool)) + " / " + str.tostring(gcKeep), text_color=color.white)
+    table.cell(mtfTable, 2, 6, "C" + str.tostring(topCluster), text_color=color.white)
+
+// ==============================================================================
+// 8. ALERTS
+// ==============================================================================
+if newSignal
+    lastPat = array.get(gc.pool, array.size(gc.pool) - 1)
+    if lastPat.intel.isSignificant
+        actionStr = newSide == +1 ? "ENTRY_LONG" : "ENTRY_SHORT"
+        patternStr = newSide == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+        jsonPayload = '{"action":"' + actionStr + '","pattern":"' + patternStr + '","posterior":' + str.tostring(lastPat.intel.posteriorProb) + ',"mtf_score":' + str.tostring(lastPat.intel.mtfConfluence) + ',"rim_price":' + str.tostring(lastPat.levels.rimPrice) + ',"target":' + str.tostring(lastPat.levels.tgtPrice) + ',"stop":' + str.tostring(lastPat.levels.invPrice) + ',"cluster":' + str.tostring(lastPat.clusterId) + ',"log_sheet":"Tickers"}'
+        alert(jsonPayload, alert.freq_once_per_bar)
+
+if isSqueeze
+    alert('{"action":"SQUEEZE_DETECTED","posterior":' + str.tostring(currentPosterior) + ',"mtf_score":' + str.tostring(mtfScore) + ',"log_sheet":"Tickers"}', alert.freq_once_per_bar_close)
