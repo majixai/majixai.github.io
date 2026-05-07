@@ -58,6 +58,8 @@ Environment overrides:
 | `IXIC_SEQ_LENGTH` | `60` | LSTM look-back window |
 | `IXIC_EPOCHS` | `3` | Training epochs |
 | `IXIC_BATCH_SIZE` | `256` | Generator batch size |
+| `IXIC_LOG_LEVEL` | `INFO` | IXIC pipeline logger level |
+| `IXIC_TRAIN_VERBOSE` | `2` | Keras fit verbosity (console epoch progress) |
 | `IXIC_OUTPUT_DIR` | `output/` | Artifact output directory |
 
 ### GitHub Actions
