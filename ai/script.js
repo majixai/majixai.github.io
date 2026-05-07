@@ -12,7 +12,6 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import * as marked from 'marked';
 import { PacketRouter } from './packet-router.js';
 
 const MODEL_NAME = 'gemini-1.5-flash-latest';
@@ -58,15 +57,6 @@ function scrollBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function appendHtml(html, role) {
-  const div = document.createElement('div');
-  div.className = `${role}-message w3-margin-bottom`;
-  div.innerHTML = html;
-  chatContainer.appendChild(div);
-  scrollBottom();
-  return div;
-}
-
 function appendText(text, role) {
   const div = document.createElement('div');
   div.className = `${role}-message w3-margin-bottom`;
@@ -74,14 +64,6 @@ function appendText(text, role) {
   chatContainer.appendChild(div);
   scrollBottom();
   return div;
-}
-
-async function renderMarkdown(text) {
-  try {
-    return await marked.parse(text || '');
-  } catch (_) {
-    return text || '';
-  }
 }
 
 function updateSelfAwareStatus(routing) {
@@ -245,8 +227,7 @@ async function handleLocalCommand(rawPrompt) {
       ...profile.capabilities.map((c) => `- ${c}`),
     ];
 
-    const html = await renderMarkdown(lines.join('\n'));
-    appendHtml(html, 'model');
+    appendText(lines.join('\n'), 'model');
     return true;
   }
 
@@ -275,8 +256,7 @@ async function handleLocalCommand(rawPrompt) {
       ),
     ];
 
-    const html = await renderMarkdown(lines.join('\n'));
-    appendHtml(html, 'model');
+    appendText(lines.join('\n'), 'model');
     return true;
   }
 
@@ -386,7 +366,7 @@ async function handleSend() {
   }
 
   sendBtn.disabled = true;
-  const thinkingEl = appendHtml('<em>Thinking with structure-aware routing…</em>', 'thinking');
+  const thinkingEl = appendText('Thinking with structure-aware routing…', 'thinking');
 
   try {
     const { enrichedPrompt, routing } = await buildEnrichedPrompt(prompt);
@@ -394,11 +374,10 @@ async function handleSend() {
     rememberTurn('user', prompt);
 
     const responseText = await requestModelResponse(apiKey, enrichedPrompt);
-    const html = await renderMarkdown(responseText);
 
     const responseEl = document.createElement('div');
     responseEl.className = 'model-message w3-margin-bottom';
-    responseEl.innerHTML = html;
+    responseEl.textContent = responseText;
 
     chatContainer.replaceChild(responseEl, thinkingEl);
     rememberTurn('model', responseText);
