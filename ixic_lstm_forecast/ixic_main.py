@@ -67,6 +67,7 @@ _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 _LOG_FILE = _OUTPUT_DIR / "ixic_forecast.log"
 _LOG_LEVEL = os.environ.get("IXIC_LOG_LEVEL", "INFO").upper()
+_SUPPRESSED_LOGGERS = ("tensorflow", "yfinance", "peewee", "h5py", "urllib3")
 
 _log_fmt = "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
 _date_fmt = "%Y-%m-%dT%H:%M:%S"
@@ -82,7 +83,7 @@ logging.basicConfig(
 )
 
 log = logging.getLogger("ixic_main")
-for _noisy_logger in ("tensorflow", "yfinance", "peewee", "h5py", "urllib3"):
+for _noisy_logger in _SUPPRESSED_LOGGERS:
     logging.getLogger(_noisy_logger).setLevel(logging.WARNING)
 
 
@@ -226,7 +227,7 @@ async def main_controller() -> dict:
     predicted_price = float(scaler.inverse_transform(predicted_scaled)[0][0])
     recent_close = float(close_prices[-1][0])
     delta_value = predicted_price - recent_close
-    delta_pct_value = delta_value / recent_close * 100
+    delta_pct_value = (delta_value / recent_close * 100) if recent_close else 0.0
 
     log.info(
         "[main_controller] forecast — recent_close=%.4f  predicted_next=%.4f  "
