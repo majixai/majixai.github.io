@@ -227,7 +227,7 @@ async def main_controller() -> dict:
     predicted_price = float(scaler.inverse_transform(predicted_scaled)[0][0])
     recent_close = float(close_prices[-1][0])
     delta_value = predicted_price - recent_close
-    delta_pct_value = (delta_value / recent_close * 100) if recent_close else 0.0
+    delta_pct_value = (delta_value / recent_close * 100) if recent_close != 0.0 else 0.0
 
     log.info(
         "[main_controller] forecast — recent_close=%.4f  predicted_next=%.4f  "
