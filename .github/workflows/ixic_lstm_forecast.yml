@@ -56,6 +56,8 @@ jobs:
       IXIC_SEQ_LENGTH: ${{ github.event.inputs.seq_length || '60'    }}
       IXIC_EPOCHS:     ${{ github.event.inputs.epochs     || '3'     }}
       IXIC_BATCH_SIZE: ${{ github.event.inputs.batch_size || '256'   }}
+      IXIC_LOG_LEVEL: "INFO"
+      IXIC_TRAIN_VERBOSE: "2"
 
     steps:
 
@@ -154,6 +156,8 @@ jobs:
           echo "IXIC_SEQ_LENGTH : ${{ env.IXIC_SEQ_LENGTH }}"
           echo "IXIC_EPOCHS     : ${{ env.IXIC_EPOCHS }}"
           echo "IXIC_BATCH_SIZE : ${{ env.IXIC_BATCH_SIZE }}"
+          echo "IXIC_LOG_LEVEL  : ${{ env.IXIC_LOG_LEVEL }}"
+          echo "IXIC_TRAIN_VERBOSE : ${{ env.IXIC_TRAIN_VERBOSE }}"
           echo "Output dir      : ixic_lstm_forecast/output/"
           echo "::endgroup::"
 

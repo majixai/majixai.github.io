@@ -112,12 +112,22 @@ class LSTMCore(QuantFrameworkBase):
             y.shape,
             epochs,
         )
-        history = self._model.fit(X, y, epochs=epochs, verbose=0)
+        fit_verbose = int(os.environ.get("IXIC_TRAIN_VERBOSE", "2"))
+        print(
+            f"[IXIC] Model training started: epochs={epochs}, "
+            f"samples={len(X)}, seq_length={self.seq_length}",
+            flush=True,
+        )
+        history = self._model.fit(X, y, epochs=epochs, verbose=fit_verbose)
         final_loss = history.history["loss"][-1]
         log.info(
             "[LSTMCore] training complete — final_loss=%.6f  epoch_losses=%s",
             final_loss,
             [f"{v:.6f}" for v in history.history["loss"]],
+        )
+        print(
+            f"[IXIC] Model training complete: final_loss={final_loss:.6f}",
+            flush=True,
         )
 
     # ------------------------------------------------------------------

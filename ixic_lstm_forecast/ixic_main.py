@@ -66,12 +66,14 @@ _OUTPUT_DIR = Path(
 _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 _LOG_FILE = _OUTPUT_DIR / "ixic_forecast.log"
+_LOG_LEVEL = os.environ.get("IXIC_LOG_LEVEL", "INFO").upper()
+_SUPPRESSED_LOGGERS = ("tensorflow", "yfinance", "peewee", "h5py", "urllib3")
 
 _log_fmt = "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
 _date_fmt = "%Y-%m-%dT%H:%M:%S"
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=getattr(logging, _LOG_LEVEL, logging.INFO),
     format=_log_fmt,
     datefmt=_date_fmt,
     handlers=[
@@ -81,10 +83,20 @@ logging.basicConfig(
 )
 
 log = logging.getLogger("ixic_main")
+for _noisy_logger in _SUPPRESSED_LOGGERS:
+    logging.getLogger(_noisy_logger).setLevel(logging.WARNING)
+
+
+def _console_line(message: str) -> None:
+    ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    print(f"[IXIC][{ts}] {message}", flush=True)
+
+
 log.info("=" * 70)
 log.info("[ixic_main] IXIC LSTM Forecast pipeline initialising...")
 log.info("[ixic_main] log file → %s", _LOG_FILE)
 log.info("[ixic_main] repo root → %s", _REPO_ROOT)
+log.info("[ixic_main] log level → %s", _LOG_LEVEL)
 log.info("=" * 70)
 
 # ---------------------------------------------------------------------------
@@ -132,15 +144,18 @@ async def main_controller() -> dict:
     """
     run_start = datetime.now(tz=timezone.utc)
     log.info("[main_controller] run_start=%s", run_start.isoformat())
+    _console_line("Run started.")
 
     # ── 1. Fetch data asynchronously ─────────────────────────────────────
     log.info("[main_controller] STEP 1 — async data acquisition")
+    _console_line(f"STEP 1/6: Fetching 1y daily close data for {SYMBOL}...")
     close_prices = await async_data_pipeline(SYMBOL)
     log.info(
         "[main_controller] acquired %d close-price samples for %s",
         len(close_prices),
         SYMBOL,
     )
+    _console_line(f"STEP 1/6 complete: fetched {len(close_prices)} close samples.")
 
     if len(close_prices) < SEQ_LENGTH + 1:
         msg = (
@@ -148,10 +163,12 @@ async def main_controller() -> dict:
             f"need at least {SEQ_LENGTH + 1}."
         )
         log.error("[main_controller] %s", msg)
+        _console_line(f"Run failed early: {msg}")
         raise ValueError(msg)
 
     # ── 2. Preprocessing — MinMax scaling ────────────────────────────────
     log.info("[main_controller] STEP 2 — MinMax scaling")
+    _console_line("STEP 2/6: Scaling close-price series...")
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(close_prices)
     log.info(
@@ -162,6 +179,7 @@ async def main_controller() -> dict:
 
     # ── 3. Build dataset via iterator + generator ─────────────────────────
     log.info("[main_controller] STEP 3 — dataset construction (iterator + generator)")
+    _console_line("STEP 3/6: Building model-ready sequence dataset...")
     iterator = TimeSeriesIterator(scaled_data, SEQ_LENGTH)
     log.info(
         "[main_controller] TimeSeriesIterator ready — estimated_samples=%d",
@@ -181,9 +199,13 @@ async def main_controller() -> dict:
         X_full_np.shape,
         y_full_np.shape,
     )
+    _console_line(
+        f"STEP 3/6 complete: training tensor shape={X_full_np.shape}, target shape={y_full_np.shape}."
+    )
 
     # ── 4. Initialise and train LSTM model ────────────────────────────────
     log.info("[main_controller] STEP 4 — LSTM model initialisation and training")
+    _console_line("STEP 4/6: Training LSTM model...")
     forecaster = LSTMCore(SEQ_LENGTH)
     log.info(
         "[main_controller] LSTMCore created — cache_status=%s",
@@ -192,9 +214,11 @@ async def main_controller() -> dict:
 
     forecaster.train(X_full_np, y_full_np, epochs=EPOCHS)
     log.info("[main_controller] model training complete")
+    _console_line("STEP 4/6 complete: training finished.")
 
     # ── 5. Forecast next close ────────────────────────────────────────────
     log.info("[main_controller] STEP 5 — generating next-close forecast")
+    _console_line("STEP 5/6: Generating next-close forecast...")
     last_sequence = scaled_data[-SEQ_LENGTH:]
     X_test = np.reshape(last_sequence, (1, SEQ_LENGTH, 1))
     log.debug("[main_controller] X_test.shape=%s", X_test.shape)
@@ -202,18 +226,26 @@ async def main_controller() -> dict:
     predicted_scaled = forecaster.predict_sequence(X_test)
     predicted_price = float(scaler.inverse_transform(predicted_scaled)[0][0])
     recent_close = float(close_prices[-1][0])
+    delta_value = predicted_price - recent_close
+    delta_pct_value = (delta_value / recent_close * 100) if recent_close != 0.0 else 0.0
 
     log.info(
         "[main_controller] forecast — recent_close=%.4f  predicted_next=%.4f  "
         "delta=%.4f  delta_pct=%.4f%%",
         recent_close,
         predicted_price,
-        predicted_price - recent_close,
-        (predicted_price - recent_close) / recent_close * 100,
+        delta_value,
+        delta_pct_value,
+    )
+    _console_line(
+        "STEP 5/6 complete: "
+        f"recent={recent_close:.4f}, projected={predicted_price:.4f}, "
+        f"delta={delta_value:+.4f} ({delta_pct_value:+.4f}%)."
     )
 
     # ── 6. Distributed worker — reporting + storage ───────────────────────
     log.info("[main_controller] STEP 6 — distributed worker architecture")
+    _console_line("STEP 6/6: Sending payload to distributed reporting/storage worker...")
     worker_queue: Queue = Queue()
     storage_engine = GitDatabaseStorage(output_dir=_OUTPUT_DIR)
 
@@ -250,11 +282,13 @@ async def main_controller() -> dict:
         )
         worker_process.terminate()
         worker_process.join()
+        _console_line("Worker timeout reached; child process terminated.")
     else:
         log.info(
             "[main_controller] worker exited — exit_code=%d",
             worker_process.exitcode or 0,
         )
+        _console_line(f"STEP 6/6 complete: worker exit_code={worker_process.exitcode or 0}.")
 
     # ── 7. Write summary JSON ─────────────────────────────────────────────
     run_end = datetime.now(tz=timezone.utc)
@@ -272,10 +306,8 @@ async def main_controller() -> dict:
         "batch_size": BATCH_SIZE,
         "recent_close": round(recent_close, 4),
         "projected_close": round(predicted_price, 4),
-        "delta": round(predicted_price - recent_close, 4),
-        "delta_pct": round(
-            (predicted_price - recent_close) / recent_close * 100, 4
-        ),
+        "delta": round(delta_value, 4),
+        "delta_pct": round(delta_pct_value, 4),
     }
 
     summary_path = _OUTPUT_DIR / "ixic_summary.json"
@@ -300,6 +332,7 @@ async def main_controller() -> dict:
     print(sep)
 
     log.info("[main_controller] pipeline complete — elapsed=%.2fs", elapsed)
+    _console_line(f"Run complete in {elapsed:.2f}s.")
     return summary
 
 
