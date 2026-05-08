@@ -6,10 +6,10 @@ This directory hosts a reactive commit-history timeline viewer.
 
 | Field | Value |
 |-------|-------|
-| SHA | `60fb6b3` |
-| Date | 2026-05-05T16:23:42Z |
-| Author | github-actions[bot] |
-| Message | data: update menu links + wire MajixActions into menu |
-| Site | [https://majixai.github.io/menu/](https://majixai.github.io/menu/) |
+| SHA | `eb520f6106` |
+| Date | 2026-05-08T13:35:22Z |
+| Author | AI-Forecaster-Bot |
+| Message | AI Forecast & Ledger Sync [skip ci] |
+| Site | [https://majixai.github.io/fintst/](https://majixai.github.io/fintst/) |
 
-_Auto-generated on 2026-05-05T16:39:31.626733+00:00_
+_Auto-generated on 2026-05-08T13:52:20.369950+00:00_
