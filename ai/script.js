@@ -28,6 +28,7 @@ const apiKeyInput = document.getElementById('api-key-input');
 const routingDisplay = document.getElementById('routing-display');
 const routingDiagnostics = document.getElementById('routing-diagnostics');
 const selfAwareStatus = document.getElementById('self-aware-status');
+const explainabilityDisplay = document.getElementById('routing-explainability');
 
 const selfAwareToggle = document.getElementById('self-aware-toggle');
 const structureScanToggle = document.getElementById('structure-scan-toggle');
@@ -38,6 +39,7 @@ const routingBudgetSelect = document.getElementById('routing-budget');
 const appState = {
   turns: [],
   lastRouting: null,
+  commandHistory: [],
 };
 
 function safe(value) {
@@ -75,6 +77,8 @@ function updateSelfAwareStatus(routing) {
   const routeCount = routing?.diagnostics?.routeCount ?? 0;
   const structureCount = routing?.diagnostics?.structureEntryCount ?? 0;
   const confidence = routing?.diagnostics?.confidence ?? 0;
+  const taxonomyVersion = routing?.diagnostics?.taxonomyVersion ?? 'n/a';
+  const taxonomyCategories = routing?.diagnostics?.taxonomyCategories ?? 0;
 
   selfAwareStatus.innerHTML = '';
 
@@ -85,6 +89,8 @@ function updateSelfAwareStatus(routing) {
     { label: `Routes ${routeCount}`, cls: 'status-neutral' },
     { label: `Entries ${structureCount}`, cls: 'status-neutral' },
     { label: `Confidence ${confidence}%`, cls: 'status-neutral' },
+    { label: `Taxonomy v${taxonomyVersion}`, cls: 'status-neutral' },
+    { label: `Taxonomy Categories ${taxonomyCategories}`, cls: 'status-neutral' },
   ];
 
   badges.forEach((item) => {
@@ -92,6 +98,31 @@ function updateSelfAwareStatus(routing) {
     chip.className = `status-chip ${item.cls}`;
     chip.textContent = item.label;
     selfAwareStatus.appendChild(chip);
+  });
+}
+
+function showExplainability(routing) {
+  if (!explainabilityDisplay) return;
+  if (!routing?.nodes?.length) {
+    explainabilityDisplay.style.display = 'none';
+    return;
+  }
+
+  explainabilityDisplay.style.display = 'block';
+  explainabilityDisplay.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'diag-row';
+  title.textContent = 'routing_explainability:';
+  explainabilityDisplay.appendChild(title);
+
+  routing.nodes.slice(0, 8).forEach((node, idx) => {
+    const line = document.createElement('div');
+    line.className = 'diag-row';
+    const reasons = (node.explain?.reasons || []).slice(0, 4).join('|') || 'n/a';
+    const intents = (node.explain?.matchedIntents || []).slice(0, 4).join(',') || 'none';
+    line.textContent = `${idx + 1}. ${node.category}/${node.name} score=${node.score} reasons=${reasons} intents=${intents}`;
+    explainabilityDisplay.appendChild(line);
   });
 }
 
@@ -153,9 +184,19 @@ function showRoutingDiagnostics(routing) {
   row3.className = 'diag-row';
   row3.textContent = `categories=${(d.uniqueCategories || []).join(', ') || 'none'}`;
 
+  const row4 = document.createElement('div');
+  row4.className = 'diag-row';
+  row4.textContent = `taxonomyVersion=${safe(d.taxonomyVersion || 'n/a')} · taxonomyCategories=${safe(d.taxonomyCategories || 0)}`;
+
+  const row5 = document.createElement('div');
+  row5.className = 'diag-row';
+  row5.textContent = `detectedIntents=${(d.topIntents || []).join(', ') || 'none'}`;
+
   routingDiagnostics.appendChild(row1);
   routingDiagnostics.appendChild(row2);
   routingDiagnostics.appendChild(row3);
+  routingDiagnostics.appendChild(row4);
+  routingDiagnostics.appendChild(row5);
 }
 
 function responseGuidance(profile) {
@@ -193,7 +234,12 @@ function localHelpText() {
     '/self                     show router self-profile',
     '/scan <terms>             search current structure metadata',
     '/routes <terms>           alias of /scan',
+    '/taxonomy [query]         search taxonomy categories and entities',
+    '/taxonomy stats           summarize taxonomy row sizes',
+    '/explain <prompt>         explain why routing selected specific nodes',
+    '/browse [category]        list structure entries (optionally filtered by category)',
     '/memory clear             clear local short-term memory',
+    '/history                  show local command history',
   ].join('\n');
 }
 
@@ -205,6 +251,10 @@ async function handleLocalCommand(rawPrompt) {
 
   const [cmd, ...rest] = prompt.split(/\s+/);
   const query = rest.join(' ').trim();
+  appState.commandHistory.push({ cmd, query, ts: nowIso() });
+  if (appState.commandHistory.length > 100) {
+    appState.commandHistory = appState.commandHistory.slice(-100);
+  }
 
   if (cmd === '/help') {
     appendText(localHelpText(), 'model');
@@ -260,6 +310,118 @@ async function handleLocalCommand(rawPrompt) {
     return true;
   }
 
+  if (cmd === '/taxonomy') {
+    if (!query) {
+      const profile = packetRouter.getSelfProfile();
+      appendText(
+        [
+          '# Taxonomy quick view',
+          `Version: ${profile.taxonomyVersion}`,
+          `Category rows: ${profile.taxonomyCategories}`,
+          'Use /taxonomy stats for aggregate counts or /taxonomy <query> for lookup.',
+        ].join('\n'),
+        'model',
+      );
+      return true;
+    }
+
+    if (query.toLowerCase() === 'stats') {
+      const stats = packetRouter.getTaxonomyStats();
+      const lines = [
+        '# Taxonomy stats',
+        ...stats.map((row) =>
+          `- ${row.category}: synonyms=${row.synonyms}, bigrams=${row.bigrams}, intents=${row.intents}, intentPhrases=${row.intentPhrases}, entities=${row.entities}, hints=${row.routingHints}`,
+        ),
+      ];
+      appendText(lines.join('\n'), 'model');
+      return true;
+    }
+
+    const explanation = packetRouter.explainRouting(query, 8);
+    const matches = explanation.taxonomyMatches || [];
+    if (!matches.length) {
+      appendText(`No taxonomy match for: ${query}`, 'model');
+      return true;
+    }
+    appendText(
+      [
+        `# Taxonomy matches for "${query}"`,
+        ...matches.map((m, idx) => `${idx + 1}. ${m.category} score=${m.score} entities=${(m.topEntities || []).join(', ')}`),
+      ].join('\n'),
+      'model',
+    );
+    return true;
+  }
+
+  if (cmd === '/explain') {
+    if (!query) {
+      appendText('Usage: /explain <prompt>', 'error');
+      return true;
+    }
+
+    const explanation = packetRouter.explainRouting(query, 8);
+    const routed = explanation.routed || {};
+    showRoutingPipeline((routed.nodes || []).slice(0, MAX_STRUCTURE_PREVIEW));
+    showRoutingDiagnostics(routed);
+    showExplainability(routed);
+    updateSelfAwareStatus(routed);
+
+    const lines = [
+      `# Routing explanation for "${query}"`,
+      `- confidence: ${routed.diagnostics?.confidence ?? 0}`,
+      `- categories: ${(routed.diagnostics?.uniqueCategories || []).join(', ') || 'none'}`,
+      '',
+      '## top routed nodes',
+      ...(routed.nodes || []).slice(0, 8).map((node, i) => {
+        const reasons = (node.explain?.reasons || []).slice(0, 6).join(', ') || 'none';
+        const intents = (node.explain?.matchedIntents || []).slice(0, 6).join(', ') || 'none';
+        return `${i + 1}. ${node.category}/${node.name} score=${node.score} reasons=[${reasons}] intents=[${intents}]`;
+      }),
+      '',
+      '## taxonomy matches',
+      ...(explanation.taxonomyMatches || []).slice(0, 8).map(
+        (m, i) => `${i + 1}. ${m.category} score=${m.score} entities=${(m.topEntities || []).join(', ')}`,
+      ),
+    ];
+    appendText(lines.join('\n'), 'model');
+    return true;
+  }
+
+  if (cmd === '/browse') {
+    const filter = query.toLowerCase();
+    const entries = packetRouter.structureEntries
+      .filter((entry) => !filter || safe(entry.category).toLowerCase() === filter)
+      .slice(0, 120);
+    if (!entries.length) {
+      appendText(filter ? `No structure entries found for category: ${filter}` : 'No structure entries found.', 'model');
+      return true;
+    }
+    appendText(
+      [
+        `# Structure browser${filter ? ` (${filter})` : ''}`,
+        ...entries.map((entry, idx) => `${idx + 1}. ${entry.type}:${entry.name} (${entry.category}) path=${entry.path}`),
+      ].join('\n'),
+      'model',
+    );
+    return true;
+  }
+
+  if (cmd === '/history') {
+    const rows = appState.commandHistory.slice(-25);
+    if (!rows.length) {
+      appendText('No command history yet.', 'model');
+      return true;
+    }
+    appendText(
+      [
+        '# Recent local commands',
+        ...rows.map((row, idx) => `${idx + 1}. ${row.ts} ${row.cmd} ${row.query}`),
+      ].join('\n'),
+      'model',
+    );
+    return true;
+  }
+
   appendText(`Unknown command: ${cmd}. Try /help`, 'error');
   return true;
 }
@@ -296,6 +458,9 @@ function buildSelfAwarePreamble(prompt, routing) {
       `routingConfidence=${d.confidence}`,
       `routingNodeCount=${d.routedNodeCount}`,
       `routingCategories=${(d.uniqueCategories || []).join(',')}`,
+      `routingTopIntents=${(d.topIntents || []).join(',')}`,
+      `taxonomyVersion=${d.taxonomyVersion}`,
+      `taxonomyCategoryCount=${d.taxonomyCategories}`,
     );
   }
 
@@ -325,6 +490,7 @@ async function buildEnrichedPrompt(prompt) {
   appState.lastRouting = routing;
   showRoutingPipeline(routing.nodes.slice(0, MAX_STRUCTURE_PREVIEW));
   showRoutingDiagnostics(routing);
+  showExplainability(routing);
   updateSelfAwareStatus(routing);
 
   const selfAwarePreamble = buildSelfAwarePreamble(prompt, routing);

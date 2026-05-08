@@ -72,6 +72,7 @@
             <option value="12" selected>12 nodes</option>
             <option value="16">16 nodes</option>
             <option value="24">24 nodes</option>
+            <option value="32">32 nodes</option>
           </select>
         </div>
 
@@ -85,11 +86,23 @@
       </div>
 
       <div id="self-aware-status" class="status-wrap" aria-live="polite"></div>
+      <div class="command-hints">
+        <span class="hint-label">Local commands:</span>
+        <code>/help</code>
+        <code>/self</code>
+        <code>/scan query</code>
+        <code>/taxonomy query</code>
+        <code>/taxonomy stats</code>
+        <code>/explain prompt</code>
+        <code>/browse [category]</code>
+        <code>/history</code>
+      </div>
     </div>
 
     <!-- Routing panels -->
     <div id="routing-display" style="display:none;" aria-live="polite"></div>
     <div id="routing-diagnostics" style="display:none;" aria-live="polite"></div>
+    <div id="routing-explainability" style="display:none;" aria-live="polite"></div>
 
     <!-- Chat history -->
     <div
@@ -117,7 +130,7 @@
       ></textarea>
       <div class="w3-margin-top" style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
         <span class="w3-text-grey" style="font-size:.8rem;">
-          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send · local commands: <code>/help</code> <code>/self</code> <code>/scan &lt;query&gt;</code>
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send · local commands: <code>/help</code> <code>/scan &lt;query&gt;</code> <code>/taxonomy &lt;query&gt;</code> <code>/explain &lt;prompt&gt;</code>
         </span>
         <button id="send-btn" class="w3-button w3-blue w3-round" style="min-width:130px;">
           <i class="fa fa-paper-plane"></i>&nbsp; Send

@@ -9,6 +9,14 @@
  * 3) Build rich context blocks and diagnostics for self-aware prompting.
  */
 
+import {
+  STRUCTURE_TAXONOMY,
+  TAXONOMY_META,
+  taxonomyByCategory,
+  taxonomySearch,
+  taxonomyStats,
+} from './structure-taxonomy.js';
+
 const ROUTES_URL = new URL('../router/routes.json', import.meta.url).href;
 const PROJECTS_URL = new URL('../projects.json', import.meta.url).href;
 
@@ -19,6 +27,8 @@ const DEFAULT_MAX_NODES = 12;
 const DEFAULT_MAX_STRUCTURE_MATCHES = 10;
 const MAX_DESC_LENGTH = 140;
 const MIN_TOKEN_LENGTH = 3;
+const TAXONOMY_MATCH_WEIGHT = 2;
+const INTENT_MATCH_WEIGHT = 2;
 
 const CATEGORY_KEYWORDS = {
   finance: [
@@ -123,6 +133,9 @@ export class PacketRouter {
   #routes = [];
   #projects = [];
   #structureEntries = [];
+  #taxonomyRows = STRUCTURE_TAXONOMY;
+  #taxonomyIndex = new Map();
+  #taxonomyHintsByToken = new Map();
   #loadedAt = null;
   #readyPromise;
 
@@ -150,6 +163,7 @@ export class PacketRouter {
         }
       }
 
+      this.#buildTaxonomyIndex();
       this.#structureEntries = this.#buildStructureEntries();
       this.#loadedAt = new Date().toISOString();
     } catch (err) {
@@ -157,7 +171,24 @@ export class PacketRouter {
       this.#routes = [];
       this.#projects = [];
       this.#structureEntries = [];
+      this.#buildTaxonomyIndex();
       this.#loadedAt = new Date().toISOString();
+    }
+  }
+
+  #buildTaxonomyIndex() {
+    this.#taxonomyIndex = new Map();
+    this.#taxonomyHintsByToken = new Map();
+    for (const row of this.#taxonomyRows) {
+      const category = safeLower(row.category);
+      this.#taxonomyIndex.set(category, row);
+      for (const hint of row.routingHints || []) {
+        const token = safeLower(hint.token);
+        if (!token) continue;
+        const list = this.#taxonomyHintsByToken.get(token) || [];
+        list.push({ ...hint, category });
+        this.#taxonomyHintsByToken.set(token, list);
+      }
     }
   }
 
@@ -220,6 +251,10 @@ export class PacketRouter {
 
   #scoreEntry(entry, tokens, tokenSet) {
     let score = 0;
+    const reasons = [];
+    const matchedTokens = [];
+    const matchedHints = [];
+    const matchedIntents = [];
 
     const name = safeLower(entry.name);
     const path = safeLower(entry.path);
@@ -229,20 +264,84 @@ export class PacketRouter {
 
     const categoryKeywords = CATEGORY_KEYWORDS[category] ?? [];
     for (const token of tokens) {
-      if (categoryKeywords.includes(token)) score += 1;
-      if (name.includes(token)) score += 6;
-      if (path.includes(token)) score += 5;
-      if (description.includes(token)) score += 2;
-      if (commitMessage.includes(token)) score += 1;
-      if (entry.tokens.includes(token)) score += 2;
+      if (categoryKeywords.includes(token)) {
+        score += 1;
+        reasons.push('category-keyword');
+      }
+      if (name.includes(token)) {
+        score += 6;
+        reasons.push('name-hit');
+        matchedTokens.push(token);
+      }
+      if (path.includes(token)) {
+        score += 5;
+        reasons.push('path-hit');
+        matchedTokens.push(token);
+      }
+      if (description.includes(token)) {
+        score += 2;
+        reasons.push('description-hit');
+      }
+      if (commitMessage.includes(token)) {
+        score += 1;
+        reasons.push('commit-hit');
+      }
+      if (entry.tokens.includes(token)) {
+        score += 2;
+        reasons.push('entry-token-hit');
+      }
     }
 
     // Exact category match boost if prompt references a category keyword directly.
     if (tokenSet.has(category)) {
       score += 4;
+      reasons.push('category-exact');
     }
 
-    return score;
+    const taxonomy = this.#taxonomyIndex.get(category);
+    if (taxonomy) {
+      for (const token of tokens) {
+        if (taxonomy.synonyms?.includes(token)) {
+          score += TAXONOMY_MATCH_WEIGHT;
+          reasons.push('taxonomy-synonym-hit');
+        }
+        if (taxonomy.bigrams?.includes(token)) {
+          score += TAXONOMY_MATCH_WEIGHT + 1;
+          reasons.push('taxonomy-bigram-hit');
+        }
+        if (taxonomy.intents?.includes(token)) {
+          score += INTENT_MATCH_WEIGHT;
+          matchedIntents.push(token);
+          reasons.push('taxonomy-intent-hit');
+        }
+      }
+    }
+
+    for (const token of tokens) {
+      const hints = this.#taxonomyHintsByToken.get(token);
+      if (!hints || hints.length === 0) continue;
+      for (const hint of hints) {
+        if (hint.category !== category) continue;
+        score += Number(hint.boost || 1);
+        matchedHints.push({
+          token,
+          boost: Number(hint.boost || 1),
+          reason: hint.reason || 'taxonomy-hint',
+          pathHints: hint.pathHints || [],
+        });
+        reasons.push('taxonomy-routing-hint');
+      }
+    }
+
+    return {
+      score,
+      explain: {
+        reasons: unique(reasons),
+        matchedTokens: unique(matchedTokens),
+        matchedIntents: unique(matchedIntents),
+        matchedHints: matchedHints.slice(0, 10),
+      },
+    };
   }
 
   searchStructure(query, maxMatches = DEFAULT_MAX_STRUCTURE_MATCHES) {
@@ -252,11 +351,18 @@ export class PacketRouter {
     const tokenSet = new Set(tokens);
 
     return this.#structureEntries
-      .map(entry => ({ entry, score: this.#scoreEntry(entry, tokens, tokenSet) }))
+      .map(entry => {
+        const scored = this.#scoreEntry(entry, tokens, tokenSet);
+        return {
+          entry,
+          score: scored.score,
+          explain: scored.explain,
+        };
+      })
       .filter(row => row.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, clamp(maxMatches, 1, 60))
-      .map(row => ({ ...row.entry, score: row.score }));
+      .map(row => ({ ...row.entry, score: row.score, explain: row.explain }));
   }
 
   routeWithStructure(prompt, options = {}) {
@@ -280,14 +386,23 @@ export class PacketRouter {
     const tokenSet = new Set(tokens);
 
     const scored = this.#structureEntries
-      .map(entry => ({ entry, score: this.#scoreEntry(entry, tokens, tokenSet) }))
+      .map(entry => {
+        const scoredEntry = this.#scoreEntry(entry, tokens, tokenSet);
+        return {
+          entry,
+          score: scoredEntry.score,
+          explain: scoredEntry.explain,
+        };
+      })
       .filter(row => row.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    const nodes = scored.slice(0, maxNodes).map(row => ({ ...row.entry, score: row.score }));
+    const nodes = scored
+      .slice(0, maxNodes)
+      .map(row => ({ ...row.entry, score: row.score, explain: row.explain }));
     const structureMatches = scored
       .slice(0, maxStructureMatches)
-      .map(row => ({ ...row.entry, score: row.score }));
+      .map(row => ({ ...row.entry, score: row.score, explain: row.explain }));
 
     const diagnostics = this.#buildDiagnostics(prompt, tokens, nodes);
     const contextHeader = this.#buildContextHeader(nodes, structureMatches, diagnostics, options);
@@ -314,6 +429,9 @@ export class PacketRouter {
       loadedAt: this.#loadedAt,
       routeCount: this.#routes.length,
       structureEntryCount: this.#structureEntries.length,
+      taxonomyVersion: TAXONOMY_META.version,
+      taxonomyCategories: this.#taxonomyRows.length,
+      topIntents: [],
     };
   }
 
@@ -324,6 +442,9 @@ export class PacketRouter {
       : 0;
 
     const confidence = clamp(Math.round(avgScore * 3), 0, 100);
+    const topIntents = unique(
+      nodes.flatMap(node => node.explain?.matchedIntents || []),
+    ).slice(0, 10);
 
     return {
       promptLength: (prompt ?? '').length,
@@ -334,6 +455,9 @@ export class PacketRouter {
       loadedAt: this.#loadedAt,
       routeCount: this.#routes.length,
       structureEntryCount: this.#structureEntries.length,
+      taxonomyVersion: TAXONOMY_META.version,
+      taxonomyCategories: this.#taxonomyRows.length,
+      topIntents,
     };
   }
 
@@ -356,8 +480,9 @@ export class PacketRouter {
     if (includeStructureDetails) {
       lines.push('', 'Additional structure matches:');
       for (const match of structureMatches.slice(0, 12)) {
+        const explainTag = (match.explain?.reasons || []).slice(0, 3).join('|');
         lines.push(
-          `- ${match.type}:${match.name} (${match.category}) score=${match.score} path=${match.path}`,
+          `- ${match.type}:${match.name} (${match.category}) score=${match.score} path=${match.path} explain=${explainTag || 'n/a'}`,
         );
       }
     }
@@ -365,7 +490,8 @@ export class PacketRouter {
     if (includeDiagnostics) {
       lines.push(
         '',
-        `Diagnostics: confidence=${diagnostics.confidence} tokenCount=${diagnostics.tokenCount} routedNodes=${diagnostics.routedNodeCount} routeCount=${diagnostics.routeCount} structureEntries=${diagnostics.structureEntryCount}`,
+        `Diagnostics: confidence=${diagnostics.confidence} tokenCount=${diagnostics.tokenCount} routedNodes=${diagnostics.routedNodeCount} routeCount=${diagnostics.routeCount} structureEntries=${diagnostics.structureEntryCount} taxonomyVersion=${diagnostics.taxonomyVersion} taxonomyCategories=${diagnostics.taxonomyCategories}`,
+        `Detected intents: ${(diagnostics.topIntents || []).join(', ') || 'none'}`,
       );
     }
 
@@ -381,13 +507,38 @@ export class PacketRouter {
       routeCount: this.#routes.length,
       projectCount: this.#projects.length,
       structureEntryCount: this.#structureEntries.length,
+      taxonomyVersion: TAXONOMY_META.version,
+      taxonomyCategories: this.#taxonomyRows.length,
       supportedCategories: unique(this.#structureEntries.map(e => safeLower(e.category)).filter(Boolean)),
       capabilities: [
         'Directory relevance scoring',
         'Structure search by prompt tokens',
+        'Taxonomy-driven intent matching and hint boosts',
         'Context header generation',
         'Routing diagnostics/confidence estimation',
       ],
+    };
+  }
+
+  getTaxonomyStats() {
+    return taxonomyStats();
+  }
+
+  explainRouting(prompt, maxMatches = 8) {
+    const routed = this.routeWithStructure(prompt, {
+      maxNodes: maxMatches,
+      maxStructureMatches: maxMatches * 2,
+      includeStructureDetails: true,
+      includeDiagnostics: true,
+    });
+    const taxonomyMatches = taxonomySearch(prompt, maxMatches);
+    return {
+      prompt,
+      routed,
+      taxonomyMatches,
+      taxonomyCategoryDetails: unique(
+        taxonomyMatches.map(m => taxonomyByCategory(m.category)).filter(Boolean),
+      ),
     };
   }
 
