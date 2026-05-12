@@ -63,7 +63,7 @@ def build_repo_integration_snapshot(repo_root: Path) -> dict[str, Any]:
 
     featured_roots = []
     for name in FEATURED_ROOT_DIRS:
-        route_path = f"/{name.strip('/')}/"
+        route_path = f"/{name}/"
         project = project_by_name.get(name, {})
         route = route_by_path.get(route_path.lower(), {})
         local_dir = repo_root / name

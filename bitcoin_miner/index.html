@@ -6,6 +6,8 @@
   <title>Bitcoin Miner &#8212; Real Network Data &middot; GPU/ML Engine</title>
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -302,8 +304,12 @@ async function nativeDoubleSha256(input) {
 async function doubleSha256Hex(input) {
   const hashApi = await getHashApi();
   if (hashApi?.sha256Bytes && hashApi?.sha256Hex) {
-    const first = await hashApi.sha256Bytes(input);
-    return hashApi.sha256Hex(first);
+    try {
+      const first = await hashApi.sha256Bytes(input);
+      return await hashApi.sha256Hex(first);
+    } catch (error) {
+      console.warn('[bitcoin_miner] Shared hash API failed, falling back to native double SHA-256.', error);
+    }
   }
   return nativeDoubleSha256(input);
 }
@@ -330,6 +336,15 @@ function normalizeRootPath(root) {
   if (directPath) return directPath;
   const name = String(root && root.name ? root.name : '').trim().replace(/^\/+|\/+$/g, '');
   return '/' + name + '/';
+}
+function safeHref(url) {
+  try {
+    const resolved = new URL(String(url || ''), window.location.origin);
+    if (resolved.protocol === 'http:' || resolved.protocol === 'https:') {
+      return resolved.href;
+    }
+  } catch (_) {}
+  return '#';
 }
 
 /* ── SHA-256 (main thread) ───────────────────────────────────────────────── */
@@ -753,8 +768,10 @@ async function updateRepoIntegrationsPanel() {
   if (routerState.integrity) {
     const i = routerState.integrity;
     statusEl.textContent = i.ok ? 'Verified' : 'Attention';
-    detailEl.textContent = i.verified + '/' + i.total + ' route hashes verified'
-      + (i.missing.length || i.mismatched.length ? ' · missing=' + i.missing.length + ' mismatched=' + i.mismatched.length : '');
+    const issues = (i.missing.length || i.mismatched.length)
+      ? ` · missing=${i.missing.length} mismatched=${i.mismatched.length}`
+      : '';
+    detailEl.textContent = `${i.verified}/${i.total} route hashes verified${issues}`;
   } else if (routerState.error) {
     statusEl.textContent = 'Unavailable';
     detailEl.textContent = 'Router diagnostics unavailable in this session.';
@@ -771,8 +788,8 @@ async function updateRepoIntegrationsPanel() {
   const router = routerState.router;
   grid.innerHTML = featured.map(root => {
     const path = normalizeRootPath(root);
-    const siteUrl = router ? router.toSiteUrl(path) : path;
-    const routerUrl = router ? router.toRouterUrl(path) : path;
+    const siteUrl = safeHref(router ? router.toSiteUrl(path) : path);
+    const routerUrl = safeHref(router ? router.toRouterUrl(path) : path);
     const routeHash = router ? router.getRouteHash(path) : '';
     const chips = [
       '<span class="repo-chip">' + esc(root.category || 'root') + '</span>',
@@ -981,7 +998,9 @@ async function detectGPU() {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker.register('./sw.js').catch((error) => {
+        console.warn('[bitcoin_miner] Service worker registration failed.', error);
+      });
     });
   }
 </script>
