@@ -84,18 +84,8 @@ conic_classify() {
 # conic_center A B C D E — print "cx cy" or "SINGULAR"
 conic_center() {
     local -F A=$1 B=$2 C=$3 D=$4 E=$5
-    local -F det2
-    (( det2 = 4.0 * A * C - B * B ))
-    if (( ${det2#-} < _DET2_TOL && ${det2#-} >= 0 || det2 == 0 )); then
-        # Use fabs if available; fall back to arithmetic negation check
-        local -F abs_det2
-        (( abs_det2 = det2 < 0.0 ? -det2 : det2 ))
-        if (( abs_det2 < _DET2_TOL )); then
-            echo "SINGULAR"
-            return
-        fi
-    fi
-    local -F abs_det2
+    local -F det2 abs_det2
+    (( det2     = 4.0 * A * C - B * B ))
     (( abs_det2 = det2 < 0.0 ? -det2 : det2 ))
     if (( abs_det2 < _DET2_TOL )); then
         echo "SINGULAR"
