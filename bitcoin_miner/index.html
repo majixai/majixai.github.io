@@ -1006,8 +1006,10 @@ async function detectGPU() {
 </script>
 <script>
   window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'bitcoin-miner' };
-  if (typeof MajixActions !== 'undefined') MajixActions.init();
 </script>
 <script src="/actions/actions-core.js"></script>
+<script>
+  if (typeof MajixActions !== 'undefined') MajixActions.init();
+</script>
 </body>
 </html>
