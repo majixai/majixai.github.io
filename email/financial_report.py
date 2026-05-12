@@ -6,8 +6,9 @@ Builds HTML financial-report payloads used by send_email.py.
 
 Report modes
 ------------
+  nightly_ixic_forecast — 10 PM ET : IXIC next-session OHLCV + multi-timeframe pattern brief.
   weekday_open   — 6 AM  : Pre-market bull screener for stocks & crypto,
-                            today + 3-day forecast, most-bullish at open.
+                             today + 3-day forecast, most-bullish at open.
   weekday_9am    — 9 AM  : Refreshed bull list + indices 1-PM projection.
   weekday_10am   — 10 AM : Mid-morning snapshot, indices + top movers.
   weekday_1pm    — 1 PM  : Indices 1 PM close summary + afternoon outlook.
@@ -31,9 +32,14 @@ Charts
 
 from __future__ import annotations
 
+import gzip
+import html as html_lib
 import json
 import math
+import os
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -64,6 +70,8 @@ except ImportError:
 # ── GitHub Pages base URL ─────────────────────────────────────────────────────
 REPO_PAGES_BASE = "https://majixai.github.io/majixai.github.io"
 REPO_RAW_BASE   = "https://raw.githubusercontent.com/majixai/majixai.github.io/main"
+IXIC_TARGET     = "^IXIC"
+_DEFAULT_GEMINI_RATE_LIMIT_PATH = _HERE / "state" / "gemini_rate_limit.dat.gz"
 
 # ── Ticker universe ───────────────────────────────────────────────────────────
 INDEX_TICKERS = ["^GSPC", "^DJI", "^IXIC", "^RUT", "^VIX"]
@@ -550,8 +558,8 @@ def _crypto_table(snaps: Dict[str, Any]) -> str:
 
 
 def _weekly_summary_section(index_snaps: Dict[str, Any],
-                             bull_stocks: List[Dict[str, Any]],
-                             bull_crypto: List[Dict[str, Any]]) -> str:
+                            bull_stocks: List[Dict[str, Any]],
+                            bull_crypto: List[Dict[str, Any]]) -> str:
     html = "<div class='card'><h2>📅 Weekly Market Summary</h2>"
     # Build short performance bar
     for tkr, label in [("^GSPC","S&P 500"),("^DJI","DOW"),("^IXIC","NASDAQ"),("BTC-USD","BTC")]:
@@ -583,6 +591,551 @@ def _weekly_summary_section(index_snaps: Dict[str, Any],
         html += "</ul>"
     html += "</div>"
     return html
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IXIC nightly forecast helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _format_number(val: Any, digits: int = 2) -> str:
+    if val is None:
+        return "—"
+    if isinstance(val, float) and math.isnan(val):
+        return "—"
+    return f"{float(val):,.{digits}f}"
+
+
+def _format_volume(val: Any) -> str:
+    if val is None:
+        return "—"
+    if isinstance(val, float) and math.isnan(val):
+        return "—"
+    return f"{int(round(float(val))):,}"
+
+
+def _resolve_gemini_rate_limit_path(path: Optional[Path | str] = None) -> Path:
+    if path is not None:
+        return Path(path)
+    env_path = os.environ.get("GEMINI_RATE_LIMIT_PATH", "").strip()
+    return Path(env_path) if env_path else _DEFAULT_GEMINI_RATE_LIMIT_PATH
+
+
+def _load_gemini_rate_limit_state(path: Optional[Path | str] = None) -> Dict[str, Dict[str, int]]:
+    state_path = _resolve_gemini_rate_limit_path(path)
+    if not state_path.exists():
+        return {"daily": {}, "monthly": {}}
+    try:
+        with gzip.open(state_path, "rt", encoding="utf-8") as fh:
+            data = json.load(fh)
+            return {
+                "daily": dict(data.get("daily", {})),
+                "monthly": dict(data.get("monthly", {})),
+            }
+    except Exception:
+        return {"daily": {}, "monthly": {}}
+
+
+def _write_gemini_rate_limit_state(
+    state: Dict[str, Dict[str, int]],
+    path: Optional[Path | str] = None,
+) -> Path:
+    state_path = _resolve_gemini_rate_limit_path(path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = state_path.with_suffix(state_path.suffix + ".tmp")
+    with gzip.open(tmp_path, "wt", encoding="utf-8") as fh:
+        json.dump(state, fh, indent=2, sort_keys=True)
+    tmp_path.replace(state_path)
+    return state_path
+
+
+def _consume_gemini_rate_limit(
+    now: datetime,
+    *,
+    path: Optional[Path | str] = None,
+    daily_limit: Optional[int] = None,
+    monthly_limit: Optional[int] = None,
+) -> Tuple[bool, Dict[str, Any]]:
+    state_path = _resolve_gemini_rate_limit_path(path)
+    limits = {
+        "daily": int(daily_limit or os.environ.get("GEMINI_DAILY_LIMIT", "20")),
+        "monthly": int(monthly_limit or os.environ.get("GEMINI_MONTHLY_LIMIT", "400")),
+    }
+    state = _load_gemini_rate_limit_state(state_path)
+    day_key = now.strftime("%Y-%m-%d")
+    month_key = now.strftime("%Y-%m")
+    day_count = int(state["daily"].get(day_key, 0))
+    month_count = int(state["monthly"].get(month_key, 0))
+
+    if day_count >= limits["daily"]:
+        return False, {
+            "reason": f"Daily Gemini budget exhausted ({day_count}/{limits['daily']}).",
+            "path": str(state_path),
+        }
+    if month_count >= limits["monthly"]:
+        return False, {
+            "reason": f"Monthly Gemini budget exhausted ({month_count}/{limits['monthly']}).",
+            "path": str(state_path),
+        }
+
+    state["daily"][day_key] = day_count + 1
+    state["monthly"][month_key] = month_count + 1
+    _write_gemini_rate_limit_state(state, state_path)
+    return True, {
+        "daily_count": state["daily"][day_key],
+        "monthly_count": state["monthly"][month_key],
+        "daily_limit": limits["daily"],
+        "monthly_limit": limits["monthly"],
+        "path": str(state_path),
+    }
+
+
+def _is_next_us_equities_open(now: datetime) -> bool:
+    tomorrow = now + timedelta(days=1)
+    return tomorrow.weekday() < 5
+
+
+def _ema_values(values: List[float], period: int) -> float:
+    if len(values) < period:
+        return float("nan")
+    alpha = 2 / (period + 1)
+    ema = values[-period]
+    for value in values[-period + 1 :]:
+        ema = value * alpha + ema * (1 - alpha)
+    return float(ema)
+
+
+def _rsi_values(values: List[float], period: int = 14) -> float:
+    if len(values) <= period:
+        return float("nan")
+    gains = []
+    losses = []
+    for idx in range(len(values) - period, len(values)):
+        change = values[idx] - values[idx - 1]
+        if change >= 0:
+            gains.append(change)
+            losses.append(0.0)
+        else:
+            gains.append(0.0)
+            losses.append(abs(change))
+    avg_gain = sum(gains) / period
+    avg_loss = sum(losses) / period
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return float(100 - (100 / (1 + rs)))
+
+
+def _macd_values(values: List[float]) -> Tuple[float, float]:
+    if len(values) < 26:
+        return float("nan"), float("nan")
+    ema12 = _ema_values(values, 12)
+    ema26 = _ema_values(values, 26)
+    if math.isnan(ema12) or math.isnan(ema26):
+        return float("nan"), float("nan")
+    macd_line = ema12 - ema26
+    macd_history = []
+    for idx in range(26, len(values) + 1):
+        short = _ema_values(values[:idx], 12)
+        long = _ema_values(values[:idx], 26)
+        if not (math.isnan(short) or math.isnan(long)):
+            macd_history.append(short - long)
+    signal = _ema_values(macd_history, 9)
+    return float(macd_line), float(signal if not math.isnan(signal) else macd_line)
+
+
+def _detect_patterns(rows: List[Dict[str, float]]) -> List[str]:
+    if len(rows) < 2:
+        return []
+    last = rows[-1]
+    prev = rows[-2]
+    patterns: List[str] = []
+    body = abs(last["close"] - last["open"])
+    spread = max(last["high"] - last["low"], 1e-6)
+    upper_wick = last["high"] - max(last["open"], last["close"])
+    lower_wick = min(last["open"], last["close"]) - last["low"]
+    if body / spread < 0.2:
+        patterns.append("doji")
+    if lower_wick > body * 2 and upper_wick <= body:
+        patterns.append("hammer")
+    if upper_wick > body * 2 and lower_wick <= body:
+        patterns.append("shooting_star")
+    if (
+        prev["close"] < prev["open"]
+        and last["close"] > last["open"]
+        and last["open"] <= prev["close"]
+        and last["close"] >= prev["open"]
+    ):
+        patterns.append("bullish_engulfing")
+    if (
+        prev["close"] > prev["open"]
+        and last["close"] < last["open"]
+        and last["open"] >= prev["close"]
+        and last["close"] <= prev["open"]
+    ):
+        patterns.append("bearish_engulfing")
+    return patterns
+
+
+def _build_ixic_timeframe_summary(frame: "pd.DataFrame", timeframe: str, persistence: str) -> Dict[str, Any]:
+    if frame is None or frame.empty:
+        return {
+            "timeframe": timeframe,
+            "persistence": persistence,
+            "latest": {},
+            "indicators": {},
+            "patterns": [],
+            "trend": "unknown",
+            "regime": "insufficient_data",
+            "volume_trend": "unknown",
+            "support": None,
+            "resistance": None,
+        }
+
+    clean = frame.dropna(subset=["Open", "High", "Low", "Close"]).copy()
+    latest = clean.iloc[-1]
+    closes = [float(v) for v in clean["Close"].tail(60)]
+    volumes = [float(v) for v in clean["Volume"].fillna(0).tail(20)]
+    rows = [
+        {
+            "open": float(row["Open"]),
+            "high": float(row["High"]),
+            "low": float(row["Low"]),
+            "close": float(row["Close"]),
+            "volume": float(row.get("Volume", 0) or 0),
+        }
+        for _, row in clean.tail(5).iterrows()
+    ]
+    recent = closes[-5:]
+    prior = closes[-10:-5] if len(closes) >= 10 else closes[:-5]
+    recent_avg = sum(recent) / len(recent) if recent else float("nan")
+    prior_avg = sum(prior) / len(prior) if prior else recent_avg
+    trend = "sideways"
+    if prior_avg and not math.isnan(prior_avg):
+        if recent_avg > prior_avg * 1.01:
+            trend = "up"
+        elif recent_avg < prior_avg * 0.99:
+            trend = "down"
+    support = min(recent) if recent else None
+    resistance = max(recent) if recent else None
+    compression = float("nan")
+    if recent and recent_avg and not math.isnan(recent_avg):
+        compression = (resistance - support) / recent_avg
+    recent_vol = sum(volumes[-5:]) / len(volumes[-5:]) if len(volumes) >= 5 else float("nan")
+    prior_vol = sum(volumes[-10:-5]) / len(volumes[-10:-5]) if len(volumes) >= 10 else recent_vol
+    if prior_vol and not math.isnan(prior_vol) and recent_vol > prior_vol * 1.1:
+        volume_trend = "rising"
+    elif prior_vol and not math.isnan(prior_vol) and recent_vol < prior_vol * 0.9:
+        volume_trend = "falling"
+    else:
+        volume_trend = "stable"
+
+    trs = []
+    for idx in range(max(1, len(clean) - 14), len(clean)):
+        curr = clean.iloc[idx]
+        prev_close = float(clean.iloc[idx - 1]["Close"])
+        trs.append(
+            max(
+                float(curr["High"] - curr["Low"]),
+                abs(float(curr["High"]) - prev_close),
+                abs(float(curr["Low"]) - prev_close),
+            )
+        )
+    atr14 = float(sum(trs) / len(trs)) if trs else float("nan")
+    macd_line, macd_signal = _macd_values(closes)
+
+    return {
+        "timeframe": timeframe,
+        "persistence": persistence,
+        "latest": {
+            "open": float(latest["Open"]),
+            "high": float(latest["High"]),
+            "low": float(latest["Low"]),
+            "close": float(latest["Close"]),
+            "volume": float(latest.get("Volume", 0) or 0),
+        },
+        "indicators": {
+            "SMA20": float(sum(closes[-20:]) / 20) if len(closes) >= 20 else float("nan"),
+            "EMA9": _ema_values(closes, 9),
+            "EMA21": _ema_values(closes, 21),
+            "RSI14": _rsi_values(closes, 14),
+            "MACD": macd_line,
+            "MACD_SIGNAL": macd_signal,
+            "ATR14": atr14,
+        },
+        "patterns": _detect_patterns(rows),
+        "trend": trend,
+        "regime": "compression" if not math.isnan(compression) and compression < 0.015 else "expansion",
+        "volume_trend": volume_trend,
+        "support": support,
+        "resistance": resistance,
+    }
+
+
+def _fetch_ixic_multi_timeframe_bundle() -> Dict[str, Dict[str, Any]]:
+    bundle: Dict[str, Dict[str, Any]] = {}
+    if not _HAS_YF:
+        return bundle
+    configs = {
+        "weekly": ("2y", "1wk", "multiday"),
+        "daily": ("6mo", "1d", "multiday"),
+        "hourly": ("60d", "60m", "session-fresh"),
+        "15m": ("30d", "15m", "session-fresh"),
+    }
+    ticker = yf.Ticker(IXIC_TARGET)
+    for name, (period, interval, persistence) in configs.items():
+        try:
+            frame = ticker.history(period=period, interval=interval, auto_adjust=False)
+            bundle[name] = _build_ixic_timeframe_summary(frame, name, persistence)
+        except Exception:
+            bundle[name] = _build_ixic_timeframe_summary(None, name, persistence)
+    return bundle
+
+
+def _derive_ixic_ohlcv_forecast(bundle: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+    daily = bundle.get("daily", {})
+    hourly = bundle.get("hourly", {})
+    m15 = bundle.get("15m", {})
+    recent_close_raw = daily.get("latest", {}).get("close")
+    if recent_close_raw in (None, ""):
+        return {
+            "open": None,
+            "high": None,
+            "low": None,
+            "close": None,
+            "volume_bias": "unknown",
+            "bias": "neutral",
+        }
+    recent_close = float(recent_close_raw)
+    atr14 = float(daily.get("indicators", {}).get("ATR14") or 0.0)
+    hourly_last = hourly.get("latest", {})
+    intraday_delta = float(hourly_last.get("close") or recent_close) - float(hourly_last.get("open") or recent_close)
+    m15_last = m15.get("latest", {})
+    micro_delta = float(m15_last.get("close") or recent_close) - float(m15_last.get("open") or recent_close)
+    trend_score = 0
+    for tf in ("weekly", "daily", "hourly", "15m"):
+        trend = bundle.get(tf, {}).get("trend")
+        if trend == "up":
+            trend_score += 1
+        elif trend == "down":
+            trend_score -= 1
+
+    open_bias = recent_close + (intraday_delta * 0.25)
+    close_bias = recent_close + (trend_score * atr14 * 0.12) + (micro_delta * 0.35)
+    high_bias = max(open_bias, close_bias, recent_close) + max(atr14 * 0.55, abs(intraday_delta) * 0.5)
+    low_bias = min(open_bias, close_bias, recent_close) - max(atr14 * 0.45, abs(micro_delta) * 0.5)
+    return {
+        "open": round(open_bias, 2),
+        "high": round(high_bias, 2),
+        "low": round(low_bias, 2),
+        "close": round(close_bias, 2),
+        "volume_bias": m15.get("volume_trend") or hourly.get("volume_trend") or "stable",
+        "bias": "bullish" if trend_score > 0 else "bearish" if trend_score < 0 else "neutral",
+    }
+
+
+def _detect_ixic_repetitions(bundle: Dict[str, Dict[str, Any]]) -> List[str]:
+    repetitions: List[str] = []
+    names = list(bundle.keys())
+    for idx, left_name in enumerate(names):
+        left = bundle[left_name]
+        left_patterns = set(left.get("patterns", []))
+        for right_name in names[idx + 1 :]:
+            right = bundle[right_name]
+            if left.get("trend") == right.get("trend") and left.get("trend") not in (None, "unknown"):
+                repetitions.append(f"{left_name}/{right_name}: shared trend = {left['trend']}")
+            if left.get("volume_trend") == right.get("volume_trend") and left.get("volume_trend") != "unknown":
+                repetitions.append(
+                    f"{left_name}/{right_name}: shared volume posture = {left['volume_trend']}"
+                )
+            common = sorted(left_patterns.intersection(right.get("patterns", [])))
+            if common:
+                repetitions.append(
+                    f"{left_name}/{right_name}: repeated patterns = {', '.join(common)}"
+                )
+    return repetitions
+
+
+def _build_ixic_prompt_payload(
+    bundle: Dict[str, Dict[str, Any]],
+    forecast: Dict[str, Any],
+    repetitions: List[str],
+    now: datetime,
+) -> Dict[str, Any]:
+    return {
+        "symbol": IXIC_TARGET,
+        "generated_at": now.isoformat(),
+        "market_open_next_morning": _is_next_us_equities_open(now),
+        "forecast_ohlcv": forecast,
+        "timeframes": bundle,
+        "repetitions": repetitions,
+    }
+
+
+def _build_ixic_gemini_prompt(payload: Dict[str, Any]) -> str:
+    return (
+        "You are a market-structure assistant producing an IXIC-only nightly forecast.\n"
+        "Requirements:\n"
+        "- Analyse weekly, daily, hourly, and 15-minute structure.\n"
+        "- Treat weekly/daily patterns as multiday; treat hourly/15-minute patterns as fresh each day unless repetition persists.\n"
+        "- Forecast next-session OHLCV probabilistically and mention important indicators only when relevant.\n"
+        "- Call out repetitions, cross-timeframe echoes, invalidation levels, compression/expansion, and volume posture.\n"
+        "- Keep the answer concise, HTML-friendly, and avoid overstating certainty.\n\n"
+        f"Structured payload:\n{json.dumps(payload, indent=2)}"
+    )
+
+
+def _call_gemini_generate_content(prompt: str) -> str:
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not configured.")
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent"
+    )
+    request_payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.35,
+            "topP": 0.9,
+            "maxOutputTokens": 2048,
+        },
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(request_payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "X-goog-api-key": api_key,
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        body = json.loads(resp.read().decode("utf-8"))
+    candidates = body.get("candidates", [])
+    if not candidates:
+        return "Gemini returned no candidates."
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text = "\n".join(part.get("text", "") for part in parts if part.get("text"))
+    return text.strip() or "Gemini returned an empty response."
+
+
+def _maybe_generate_gemini_ixic_commentary(
+    payload: Dict[str, Any],
+    now: datetime,
+    *,
+    path: Optional[Path | str] = None,
+) -> Dict[str, str]:
+    if not os.environ.get("GEMINI_API_KEY", "").strip():
+        return {
+            "title": "Gemini commentary skipped",
+            "body": (
+                "Set the optional <code>GEMINI_API_KEY</code> secret (GitHub Actions) "
+                "or secure Script Property equivalent to enable the AI commentary block."
+            ),
+        }
+
+    allowed, info = _consume_gemini_rate_limit(now, path=path)
+    if not allowed:
+        return {
+            "title": "Gemini commentary rate-limited",
+            "body": info["reason"],
+        }
+
+    try:
+        commentary = _call_gemini_generate_content(_build_ixic_gemini_prompt(payload))
+        return {
+            "title": "Gemini commentary",
+            "body": commentary,
+        }
+    except Exception as exc:
+        return {
+            "title": "Gemini commentary unavailable",
+            "body": f"{type(exc).__name__}: {exc}",
+        }
+
+
+def _ixic_timeframe_card(summary: Dict[str, Any]) -> str:
+    latest = summary.get("latest", {})
+    indicators = summary.get("indicators", {})
+    patterns = summary.get("patterns") or ["none detected"]
+    return f"""<div class='card'>
+      <h2>⏱️ {summary.get("timeframe", "").title()} ({summary.get("persistence", "n/a")})</h2>
+      <div class='metric-row'>
+        <div class='metric'><div class='metric-label'>Trend</div><div class='metric-value'>{summary.get("trend", "unknown")}</div></div>
+        <div class='metric'><div class='metric-label'>Regime</div><div class='metric-value'>{summary.get("regime", "unknown")}</div></div>
+        <div class='metric'><div class='metric-label'>Volume</div><div class='metric-value'>{summary.get("volume_trend", "unknown")}</div></div>
+      </div>
+      <p><strong>Latest OHLCV:</strong>
+        O {_format_number(latest.get("open"))} ·
+        H {_format_number(latest.get("high"))} ·
+        L {_format_number(latest.get("low"))} ·
+        C {_format_number(latest.get("close"))} ·
+        V {_format_volume(latest.get("volume"))}
+      </p>
+      <p><strong>Patterns:</strong> {', '.join(patterns)}</p>
+      <p><strong>Indicators:</strong>
+        SMA20 {_format_number(indicators.get("SMA20"))} ·
+        EMA9 {_format_number(indicators.get("EMA9"))} ·
+        EMA21 {_format_number(indicators.get("EMA21"))} ·
+        RSI14 {_format_number(indicators.get("RSI14"))} ·
+        MACD {_format_number(indicators.get("MACD"))} ·
+        ATR14 {_format_number(indicators.get("ATR14"))}
+      </p>
+      <p><strong>Range levels:</strong> support {_format_number(summary.get("support"))} · resistance {_format_number(summary.get("resistance"))}</p>
+    </div>"""
+
+
+def build_nightly_ixic_forecast_report(now: Optional[datetime] = None) -> Tuple[str, str]:
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ts = now.strftime("%Y-%m-%d %H:%M UTC")
+    date_str = now.strftime("%A, %B %d %Y").replace(" 0", " ")
+
+    bundle = _fetch_ixic_multi_timeframe_bundle()
+    forecast = _derive_ixic_ohlcv_forecast(bundle)
+    repetitions = _detect_ixic_repetitions(bundle)
+    payload = _build_ixic_prompt_payload(bundle, forecast, repetitions, now)
+    gemini = _maybe_generate_gemini_ixic_commentary(payload, now)
+    next_open = _is_next_us_equities_open(now)
+    status_line = (
+        "Next US equities session is expected to open tomorrow morning."
+        if next_open
+        else "Next morning is not a regular US equities open; treat the forecast as reference only."
+    )
+
+    subject = f"🌙 IXIC Nightly Market Forecast — {date_str}"
+    html = _html_header(
+        "IXIC Nightly Market Forecast",
+        f"10 PM ET brief for {IXIC_TARGET} · {status_line} · {date_str}",
+        ts,
+    )
+    html += f"""<div class='card'>
+      <h2>📈 Next-Session OHLCV Forecast ({IXIC_TARGET})</h2>
+      <div class='metric-row'>
+        <div class='metric'><div class='metric-label'>Open</div><div class='metric-value'>{_format_number(forecast.get("open"))}</div></div>
+        <div class='metric'><div class='metric-label'>High</div><div class='metric-value'>{_format_number(forecast.get("high"))}</div></div>
+        <div class='metric'><div class='metric-label'>Low</div><div class='metric-value'>{_format_number(forecast.get("low"))}</div></div>
+        <div class='metric'><div class='metric-label'>Close</div><div class='metric-value'>{_format_number(forecast.get("close"))}</div></div>
+      </div>
+      <p><strong>Bias:</strong> {forecast.get("bias", "neutral")} · <strong>Volume posture:</strong> {forecast.get("volume_bias", "stable")}</p>
+      <p><strong>Scope:</strong> Weekly and daily structures are treated as multiday; hourly and 15-minute structures are reset daily unless repetition clearly persists.</p>
+    </div>"""
+    for key in ("weekly", "daily", "hourly", "15m"):
+        if key in bundle:
+            html += _ixic_timeframe_card(bundle[key])
+    html += f"""<div class='card'>
+      <h2>🔁 Cross-Timeframe Repetitions</h2>
+      <ul style='padding-left:20px;line-height:1.8'>
+        {''.join(f'<li>{item}</li>' for item in repetitions) if repetitions else '<li>No strong repetitions detected.</li>'}
+      </ul>
+    </div>"""
+    html += f"""<div class='card'>
+      <h2>🤖 {gemini['title']}</h2>
+      <pre style='white-space:pre-wrap;font-family:Arial,sans-serif;margin:0'>{html_lib.escape(gemini['body'])}</pre>
+    </div>"""
+    html += _html_footer()
+    return subject, html
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1152,6 +1705,7 @@ _ALL_MODES = [
     "overnight_day_plan", "overnight_bull_pick", "overnight_project",
     "premarket_1pm_proj", "premarket_followup", "premarket_extra",
     "market_bullnews", "market_midday", "market_1pm_et",
+    "nightly_ixic_forecast",
 ]
 
 if __name__ == "__main__":
@@ -1183,6 +1737,7 @@ if __name__ == "__main__":
         "market_bullnews":    lambda: build_market_bullnews_report(now),
         "market_midday":      lambda: build_market_midday_report(now),
         "market_1pm_et":      lambda: build_market_1pm_et_report(now),
+        "nightly_ixic_forecast": lambda: build_nightly_ixic_forecast_report(now),
     }
     subject, html = dispatch[args.mode]()
     print(f"Subject: {subject}", file=sys.stderr)

@@ -4,6 +4,7 @@ name: Financial Email Reports
 # Schedule summary (all times ET → UTC cron offset uses EDT = UTC-4)
 #
 # OVERNIGHT  (10 PM – 6 AM ET)
+#   02:00 UTC (10 PM ET prior evening) — nightly_ixic_forecast (IXIC next-session forecast)
 #   03:00 UTC (11 PM ET)  — overnight_day_plan   (trading day ahead management)
 #   05:00 UTC ( 1 AM ET)  — overnight_bull_pick   (most bullish stock/crypto)
 #   07:00 UTC ( 3 AM ET)  — overnight_project     (project overview)
@@ -35,6 +36,7 @@ name: Financial Email Reports
 
 on:
   schedule:
+    - cron: '0 2 * * 1-5'    # nightly_ixic_forecast (10 PM ET prior evening)
     # ── OVERNIGHT (weekday ET nights, cron days +1 to cover next-calendar-day UTC) ──
     - cron: '0 3 * * 2-6'    # overnight_day_plan  (11 PM ET Mon-Fri)
     - cron: '0 5 * * 2-6'    # overnight_bull_pick  ( 1 AM ET Tue-Sat run)
@@ -65,6 +67,7 @@ on:
           Report mode to send manually:
           weekday_open | weekday_9am | weekday_10am | weekday_1pm |
           weekend_9am  | weekend_10pm |
+          nightly_ixic_forecast |
           overnight_day_plan | overnight_bull_pick | overnight_project |
           premarket_1pm_proj | premarket_followup | premarket_extra |
           market_bullnews | market_midday | market_1pm_et
@@ -83,7 +86,7 @@ on:
         default: 'false'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: financial-email-${{ github.ref }}
@@ -140,7 +143,9 @@ jobs:
             else
               # Weekday — match by hour and minute
               # Overnight trading-prompt agent slots (ET times, UTC-4 offset)
-              if   [ "$HOUR" -eq 3  ] && [ "$MIN" -lt 30 ]; then
+              if   [ "$HOUR" -eq 2  ] && [ "$MIN" -lt 30 ]; then
+                MODE="nightly_ixic_forecast"
+              elif [ "$HOUR" -eq 3  ] && [ "$MIN" -lt 30 ]; then
                 MODE="overnight_day_plan"
               elif [ "$HOUR" -eq 5  ] && [ "$MIN" -lt 30 ]; then
                 MODE="overnight_bull_pick"
@@ -185,6 +190,11 @@ jobs:
           EMAIL_GAS_WEBHOOK_URL: ${{ secrets.GAS_WEBHOOK_URL }}
           EMAIL_GAS_SECRET:      ${{ secrets.GAS_WEBHOOK_SECRET }}
           RECIPIENT_EMAILS:      ${{ secrets.RECIPIENT_EMAILS }}
+          GEMINI_API_KEY:        ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL:          ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          GEMINI_DAILY_LIMIT:    ${{ vars.GEMINI_DAILY_LIMIT || '20' }}
+          GEMINI_MONTHLY_LIMIT:  ${{ vars.GEMINI_MONTHLY_LIMIT || '400' }}
+          GEMINI_RATE_LIMIT_PATH: email/state/gemini_rate_limit.dat.gz
 
           # ── SMTP transport (opt-in) ───────────
           SMTP_SERVER:           ${{ secrets.SMTP_SERVER }}
@@ -218,6 +228,24 @@ jobs:
           path: /tmp/report_latest.html
           retention-days: 14
           if-no-files-found: ignore
+
+      - name: Persist Gemini rate-limit state
+        if: success()
+        run: |
+          STATE_FILE="email/state/gemini_rate_limit.dat.gz"
+          if [ -f "$STATE_FILE" ]; then
+            git config --global user.name "financial-email[bot]"
+            git config --global user.email "financial-email[bot]@users.noreply.github.com"
+            git add "$STATE_FILE"
+            if ! git diff --staged --quiet; then
+              git commit -m "email: update Gemini rate-limit state"
+              git push
+            else
+              echo "Gemini rate-limit state unchanged."
+            fi
+          else
+            echo "Gemini rate-limit state file not created."
+          fi
 
       # ── 7. Optional: dispatch a GitHub repository_dispatch event back to repo ─
       - name: Notify GitHub (repository_dispatch)

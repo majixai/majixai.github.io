@@ -26,7 +26,7 @@ Transport options (--transport / EMAIL_TRANSPORT env var)
 Required argument
 -----------------
   --mode   weekday_open | weekday_9am | weekday_10am | weekday_1pm |
-           weekend_9am  | weekend_10pm
+           weekend_9am  | weekend_10pm | nightly_ixic_forecast
 
 Optional flags
 --------------
@@ -80,6 +80,7 @@ build_premarket_extra_report     = _fr_mod.build_premarket_extra_report
 build_market_bullnews_report     = _fr_mod.build_market_bullnews_report
 build_market_midday_report       = _fr_mod.build_market_midday_report
 build_market_1pm_et_report       = _fr_mod.build_market_1pm_et_report
+build_nightly_ixic_forecast_report = _fr_mod.build_nightly_ixic_forecast_report
 
 
 # ── Report builder dispatch ───────────────────────────────────────────────────
@@ -102,6 +103,7 @@ def _build(mode: str, now: datetime):
         "market_bullnews":     lambda: build_market_bullnews_report(now),
         "market_midday":       lambda: build_market_midday_report(now),
         "market_1pm_et":       lambda: build_market_1pm_et_report(now),
+        "nightly_ixic_forecast": lambda: build_nightly_ixic_forecast_report(now),
     }
     fn = dispatch.get(mode)
     if fn is None:
@@ -260,6 +262,7 @@ def _parse() -> argparse.Namespace:
             "overnight_day_plan", "overnight_bull_pick", "overnight_project",
             "premarket_1pm_proj", "premarket_followup", "premarket_extra",
             "market_bullnews", "market_midday", "market_1pm_et",
+            "nightly_ixic_forecast",
         ],
         help="Report mode / schedule slot to generate",
     )
