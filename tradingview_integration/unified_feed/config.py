@@ -52,11 +52,86 @@ ANOMALY_ZSCORE  = 2.5   # Z-score threshold for anomaly flagging
 # Thread pool size for async I/O executors
 THREAD_POOL_WORKERS = 8
 
-# Root directories scanned by root_directives
-ROOT_SCAN_DIRS = ["dbs", "actions", "finance", "mathematics"]
+# ── Root directory catalogs ───────────────────────────────────────────────────
+# Mathematics / scientific computing directories at repo root
+MATH_ROOT_DIRS: list[str] = [
+    "algebra",
+    "bayes",
+    "calculus",
+    "category_theory",
+    "complexity_theory",
+    "cos",
+    "cryptography",
+    "differential_equations",
+    "functional_analysis",
+    "gpu",
+    "information_theory",
+    "manifolds",
+    "matrix",
+    "measure_theory",
+    "neural_tensor_network",
+    "numerical_methods",
+    "optimization",
+    "probability",
+    "quantum_mechanics",
+    "regression",
+    "statistical_mechanics",
+    "tensor",
+    "topology",
+    "transformations",
+    "mathematics",   # explicit mathematics/ if present
+]
+
+# Finance / market data directories at repo root
+FINANCE_ROOT_DIRS: list[str] = [
+    "commit_advisor",
+    "dji_1pm_close",
+    "dji_monte_carlo",
+    "etrade_client",
+    "finance",
+    "gas_stock_ticker_fetcher",
+    "investing_blog",
+    "market",
+    "market_prediction",
+    "option",
+    "options",
+    "predictive_ledger",
+    "QuantumMarket",
+    "quantix",
+    "reit_company",
+    "reit_company_static",
+    "sp_closing_projection",
+    "sp_monte_carlo",
+    "spx",
+    "stock",
+    "stock_analyzer",
+    "stock_fetcher",
+    "ticker",
+    "tickerlaunch",
+    "tickers",
+    "tradingview_integration",
+    "yfinance",
+    "yfinance_chart",
+    "yfinance_data",
+]
+
+# Infrastructure / data store directories at repo root
+INFRA_ROOT_DIRS: list[str] = [
+    "actions",
+    "dbs",
+    "github_data",
+    "index",
+    "router",
+    "scripts",
+]
 
 # Root Python files that are treated as directives whitelist
-ROOT_PYTHON_WHITELIST = [
-    "config.py", "app.py", "engine.py", "run.py", "fetch_data.py",
-    "database.py", "data_to_db.py",
+ROOT_PYTHON_WHITELIST: list[str] = [
+    "app.py",
+    "config.py",
+    "data_to_db.py",
+    "database.py",
+    "engine.py",
+    "fetch_data.py",
+    "run.py",
 ]

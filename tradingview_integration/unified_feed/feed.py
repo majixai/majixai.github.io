@@ -61,14 +61,21 @@ from .engine.runner import (
     run_all,
 )
 
-# Backward-compat alias
-process_ticker = FeedEngine().process_ticker
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
 # Ensure seeds directory exists (previously done at module level)
 SEEDS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def process_ticker(ticker: str):
+    """
+    Backward-compatible coroutine alias for ``FeedEngine().process_ticker``.
+
+    Creates a new ``FeedEngine`` instance on each call to avoid module-level
+    side-effects.  Use ``FeedEngine`` directly for production code.
+    """
+    return FeedEngine().process_ticker(ticker)
 
 if __name__ == "__main__":
     asyncio.run(run_all())

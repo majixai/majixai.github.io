@@ -5,8 +5,10 @@ Public API
 ----------
 run_all()        : run the full pipeline (async coroutine)
 FeedEngine       : configurable async engine class
-RootDirectives   : root-directory scanner
+RootDirectives   : root-directory scanner (dbs, actions, math, finance, infra)
 DatabaseManager  : atomic dbs/files.json registry
+DirectiveCatalog : result of RootDirectives.scan()
+DirectiveEntry   : single entry in a DirectiveCatalog
 
 Sub-packages
 ------------
@@ -19,6 +21,7 @@ engine           : async engine (FeedEngine, run_all)
 """
 
 from .adapters import RootDirectives
+from .adapters.root_directives import DirectiveCatalog, DirectiveEntry
 from .db import DatabaseManager
 from .engine import FeedEngine, run_all
 from .indicators import compute_ta
@@ -34,6 +37,8 @@ __all__ = [
     "run_all",
     "FeedEngine",
     "RootDirectives",
+    "DirectiveCatalog",
+    "DirectiveEntry",
     "DatabaseManager",
     "compute_ta",
     "detect_anomalies",

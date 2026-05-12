@@ -84,6 +84,26 @@ class TestConfig(unittest.TestCase):
         for key in ("sp", "mp", "yf", "gf", "gh", "idx"):
             self.assertIn(key, DATA_DIRS)
 
+    def test_math_root_dirs_non_empty(self):
+        from tradingview_integration.unified_feed.config import MATH_ROOT_DIRS
+        self.assertIsInstance(MATH_ROOT_DIRS, list)
+        self.assertGreater(len(MATH_ROOT_DIRS), 0)
+
+    def test_finance_root_dirs_non_empty(self):
+        from tradingview_integration.unified_feed.config import FINANCE_ROOT_DIRS
+        self.assertIsInstance(FINANCE_ROOT_DIRS, list)
+        self.assertGreater(len(FINANCE_ROOT_DIRS), 0)
+
+    def test_infra_root_dirs_non_empty(self):
+        from tradingview_integration.unified_feed.config import INFRA_ROOT_DIRS
+        self.assertIsInstance(INFRA_ROOT_DIRS, list)
+        self.assertGreater(len(INFRA_ROOT_DIRS), 0)
+
+    def test_root_python_whitelist_non_empty(self):
+        from tradingview_integration.unified_feed.config import ROOT_PYTHON_WHITELIST
+        self.assertIsInstance(ROOT_PYTHON_WHITELIST, list)
+        self.assertGreater(len(ROOT_PYTHON_WHITELIST), 0)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DatabaseManager
@@ -166,8 +186,15 @@ class TestRootDirectives(unittest.TestCase):
         (self.root / "dbs" / "files.json").write_text('["database.db"]')
         (self.root / "actions").mkdir()
         (self.root / "actions" / "core.js").touch()
+        # Finance dir (used by FINANCE_ROOT_DIRS list via "finance" entry)
         (self.root / "finance").mkdir()
         (self.root / "finance" / "manifest.json").touch()
+        # Math dir (bayes is in MATH_ROOT_DIRS)
+        (self.root / "bayes").mkdir()
+        (self.root / "bayes" / "bayes_core.py").touch()
+        # Infra dir (scripts is in INFRA_ROOT_DIRS)
+        (self.root / "scripts").mkdir()
+        (self.root / "scripts" / "deploy.sh").touch()
         (self.root / "config.py").touch()
 
     def tearDown(self):
@@ -193,27 +220,36 @@ class TestRootDirectives(unittest.TestCase):
         cat = rd.scan()
         self.assertGreater(len(cat.finance_files), 0)
 
+    def test_math_files_detected(self):
+        rd = RootDirectives(root=self.root)
+        cat = rd.scan()
+        self.assertGreater(len(cat.math_files), 0)
+
+    def test_infra_files_present_or_absent(self):
+        """infra scan should not raise even when most infra dirs are missing."""
+        rd = RootDirectives(root=self.root)
+        cat = rd.scan()
+        self.assertIsInstance(cat.infra_files, list)
+
     def test_root_python_whitelist(self):
         rd = RootDirectives(root=self.root)
         cat = rd.scan()
         names = [e.path.name for e in cat.root_python_files]
         self.assertIn("config.py", names)
 
-    def test_mathematics_missing_ok(self):
-        """mathematics/ not existing should not raise."""
+    def test_missing_dirs_ok(self):
+        """Directories not present in root should not raise."""
         rd = RootDirectives(root=self.root)
         cat = rd.scan()
-        self.assertEqual(cat.math_files, [])
+        # algebra and most math dirs won't exist — should still return catalog
+        self.assertIsInstance(cat, DirectiveCatalog)
 
-    def test_as_dict(self):
+    def test_as_dict_keys(self):
         rd = RootDirectives(root=self.root)
         d  = rd.scan_dict()
-        self.assertIn("total", d)
-        self.assertIn("dbs_files", d)
-        self.assertIn("action_files", d)
-        self.assertIn("finance_files", d)
-        self.assertIn("math_files", d)
-        self.assertIn("root_python_files", d)
+        for key in ("total", "dbs_files", "action_files", "finance_files",
+                    "math_files", "infra_files", "root_python_files", "dir_summary"):
+            self.assertIn(key, d)
 
     def test_get_by_category(self):
         rd  = RootDirectives(root=self.root)
@@ -221,11 +257,34 @@ class TestRootDirectives(unittest.TestCase):
         dbs = cat.get_by_category("dbs")
         self.assertTrue(all(e.category == "dbs" for e in dbs))
 
-    def test_has_category(self):
+    def test_has_category_actions(self):
         rd  = RootDirectives(root=self.root)
         cat = rd.scan()
         self.assertTrue(cat.has_category("actions"))
-        self.assertFalse(cat.has_category("mathematics"))
+
+    def test_has_category_math(self):
+        rd  = RootDirectives(root=self.root)
+        cat = rd.scan()
+        self.assertTrue(cat.has_category("math"))
+
+    def test_has_source_dir(self):
+        rd  = RootDirectives(root=self.root)
+        cat = rd.scan()
+        self.assertTrue(cat.has_source_dir("bayes"))
+
+    def test_get_by_source_dir(self):
+        rd  = RootDirectives(root=self.root)
+        cat = rd.scan()
+        entries = cat.get_by_source_dir("bayes")
+        self.assertTrue(all(e.source_dir == "bayes" for e in entries))
+        names = [e.path.name for e in entries]
+        self.assertIn("bayes_core.py", names)
+
+    def test_dir_summary_populated(self):
+        rd  = RootDirectives(root=self.root)
+        cat = rd.scan()
+        self.assertIn("bayes", cat.dir_summary)
+        self.assertGreater(cat.dir_summary["bayes"], 0)
 
     def test_entry_kind_data(self):
         rd  = RootDirectives(root=self.root)
@@ -238,6 +297,33 @@ class TestRootDirectives(unittest.TestCase):
         cat = rd.scan()
         action_entry = cat.action_files[0]
         self.assertEqual(action_entry.kind, "code")
+
+    def test_entry_source_dir_set(self):
+        rd  = RootDirectives(root=self.root)
+        cat = rd.scan()
+        for e in cat.entries:
+            self.assertNotEqual(e.source_dir, "",
+                msg=f"source_dir should be set on {e.path}")
+
+    def test_deep_scan_finds_nested_files(self):
+        """deep=True should recurse one level into sub-directories."""
+        nested = self.root / "bayes" / "submod"
+        nested.mkdir()
+        (nested / "nested.py").touch()
+        rd = RootDirectives(root=self.root, deep=True)
+        cat = rd.scan()
+        names = [e.path.name for e in cat.math_files]
+        self.assertIn("nested.py", names)
+
+    def test_shallow_scan_ignores_nested_files(self):
+        """deep=False should not recurse into sub-directories."""
+        nested = self.root / "bayes" / "submod"
+        nested.mkdir()
+        (nested / "nested.py").touch()
+        rd = RootDirectives(root=self.root, deep=False)
+        cat = rd.scan()
+        names = [e.path.name for e in cat.math_files]
+        self.assertNotIn("nested.py", names)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -548,6 +634,8 @@ class TestPackageImports(unittest.TestCase):
     def test_top_level_imports(self):
         from tradingview_integration.unified_feed import (
             DatabaseManager,
+            DirectiveCatalog,
+            DirectiveEntry,
             FeedEngine,
             RootDirectives,
             build_corr_matrix,
@@ -563,6 +651,38 @@ class TestPackageImports(unittest.TestCase):
         self.assertTrue(callable(compute_ta))
         self.assertTrue(callable(detect_anomalies))
         self.assertTrue(callable(fuse_signals))
+        self.assertTrue(callable(RootDirectives))
+        self.assertTrue(callable(DatabaseManager))
+
+    def test_config_exports(self):
+        from tradingview_integration.unified_feed.config import (
+            FINANCE_ROOT_DIRS,
+            INFRA_ROOT_DIRS,
+            MATH_ROOT_DIRS,
+            ROOT_PYTHON_WHITELIST,
+        )
+        self.assertIsInstance(MATH_ROOT_DIRS, list)
+        self.assertGreater(len(MATH_ROOT_DIRS), 0)
+        self.assertIsInstance(FINANCE_ROOT_DIRS, list)
+        self.assertGreater(len(FINANCE_ROOT_DIRS), 0)
+        self.assertIsInstance(INFRA_ROOT_DIRS, list)
+        self.assertGreater(len(INFRA_ROOT_DIRS), 0)
+        self.assertIn("algebra", MATH_ROOT_DIRS)
+        self.assertIn("yfinance", FINANCE_ROOT_DIRS)
+        self.assertIn("tensor", MATH_ROOT_DIRS)
+        self.assertIn("market_prediction", FINANCE_ROOT_DIRS)
+        self.assertIn("actions", INFRA_ROOT_DIRS)
+
+    def test_live_scan_finds_real_root_dirs(self):
+        """Sanity check: scanning the real repo root finds real directories."""
+        from tradingview_integration.unified_feed import RootDirectives
+        rd  = RootDirectives()
+        cat = rd.scan()
+        # The real repo has algebra/, bayes/ etc.
+        # At minimum we expect > 0 total entries
+        self.assertGreater(len(cat.entries), 0)
+        # dir_summary must be populated
+        self.assertIsInstance(cat.dir_summary, dict)
 
 
 if __name__ == "__main__":
