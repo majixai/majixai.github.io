@@ -449,7 +449,7 @@ if barstate.islast and bar_index >= i_len
     float yNowNorm = (yNow - yMu) / ySig
     int   currentBranch = yNowNorm >= 0.0 ? 0 : 1
     if cb.ok
-        cb := ConicBranch.new(cb.kind, currentBranch, cb.cx, cb.cy, cb.semiA, cb.semiB, cb.theta, cb.ok)
+        cb.branch := currentBranch
 
     // ── 8g  Build three surface slice FlatPolylines ───────────────────────────
     // Slice at y_fixed = 0  (mean 2nd axis)   → mean curve
