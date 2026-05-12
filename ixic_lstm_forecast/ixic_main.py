@@ -102,7 +102,10 @@ log.info("=" * 70)
 # ---------------------------------------------------------------------------
 # Runtime settings + sub-module imports (after logging is configured)
 # ---------------------------------------------------------------------------
-from runtime_settings import load_runtime_settings
+try:
+    from ixic_lstm_forecast.runtime_settings import load_runtime_settings
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from runtime_settings import load_runtime_settings
 from ixic_lstm_forecast.framework import (
     TimeSeriesIterator,
     batch_generator,
