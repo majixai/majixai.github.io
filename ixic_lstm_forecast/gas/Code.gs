@@ -414,12 +414,13 @@ function selectSymbolsFromCatalog_(catalog, primarySymbol, explicitSymbols, cate
   explicitSymbols.forEach(function (symbol) {
     if (selected.length < maxSymbols && selected.indexOf(symbol) === -1) selected.push(symbol);
   });
-  catalog.forEach(function (record) {
-    if (selected.length >= maxSymbols) return;
+  for (var i = 0; i < catalog.length; i++) {
+    const record = catalog[i];
+    if (selected.length >= maxSymbols) break;
     if (!categories.length || categorySet[String(record.category).toLowerCase()]) {
       if (selected.indexOf(record.symbol) === -1) selected.push(record.symbol);
     }
-  });
+  }
   return selected;
 }
 
