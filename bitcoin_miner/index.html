@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bitcoin Miner &#8212; Real Network Data &middot; GPU/ML Engine</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#1a1a2e">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -75,6 +77,20 @@
     .fee-bar{height:6px;border-radius:3px;margin-top:3px}
     .data-age{font-size:.68rem;color:#888}
     #difficulty-display{font-family:monospace;font-size:.9rem;color:var(--btc-orange)}
+    .repo-root-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .repo-root-card{background:rgba(255,255,255,.05);border:1px solid rgba(116,185,255,.18);
+                    border-radius:10px;padding:14px}
+    .repo-root-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+    .repo-root-path,.repo-hash{font-family:monospace;word-break:break-all}
+    .repo-root-path{font-size:.68rem;color:var(--hash-color);margin-top:6px}
+    .repo-hash{font-size:.68rem;color:#9fb3c8;margin-top:8px}
+    .repo-root-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+    .repo-root-links a{color:var(--btc-orange);font-size:.75rem;text-decoration:none}
+    .repo-root-links a:hover{text-decoration:underline}
+    .repo-chip{display:inline-block;font-size:.65rem;padding:3px 8px;border-radius:999px;
+               border:1px solid rgba(255,255,255,.16);color:#d9e2ef;margin-right:4px}
+    .repo-integrity-box{background:rgba(255,255,255,.05);border-radius:10px;padding:14px;height:100%}
+    .repo-empty{font-size:.78rem;color:#888;padding:6px 0}
   </style>
 </head>
 <body>
@@ -166,6 +182,32 @@
     </div>
   </div>
 
+  <div class="panel">
+    <div class="panel-title"><i class="fa fa-folder-tree me-1"></i> Repository Root Integrations</div>
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" id="repo-project-count">—</div><div class="stat-label">Projects Indexed</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" id="repo-route-count">—</div><div class="stat-label">Router Routes</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" id="repo-category-count">—</div><div class="stat-label">Categories</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" id="repo-featured-count">—</div><div class="stat-label">Featured Roots</div></div></div>
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="repo-integrity-box">
+          <div style="font-size:.74rem;color:#aaa;text-transform:uppercase;letter-spacing:1px">Shared route integrity</div>
+          <div id="repo-router-status" class="stat-value" style="font-size:1.35rem;margin-top:6px">Loading…</div>
+          <div id="repo-router-detail" style="font-size:.76rem;color:#9fb3c8;margin-top:8px">
+            Waiting for /router and /hash diagnostics.
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div id="repo-root-grid" class="repo-root-grid">
+          <div class="repo-empty">Loading root-directory catalog…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Mining Controls -->
   <div class="panel">
     <div class="panel-title"><i class="fa fa-sliders me-1"></i> Mining Controls</div>
@@ -244,16 +286,57 @@ function esc(s) {
   return d.innerHTML;
 }
 
+let hashApiPromise = null;
+let repoRouterStatePromise = null;
+function getHashApi() {
+  if (!hashApiPromise) {
+    hashApiPromise = import('/hash/hash.js').catch(() => null);
+  }
+  return hashApiPromise;
+}
+async function nativeDoubleSha256(input) {
+  const bytes = input instanceof Uint8Array ? input : new TextEncoder().encode(String(input));
+  const first = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return buf2hex(await crypto.subtle.digest('SHA-256', first));
+}
+async function doubleSha256Hex(input) {
+  const hashApi = await getHashApi();
+  if (hashApi?.sha256Bytes && hashApi?.sha256Hex) {
+    const first = await hashApi.sha256Bytes(input);
+    return hashApi.sha256Hex(first);
+  }
+  return nativeDoubleSha256(input);
+}
+async function getRepoRouterState() {
+  if (!repoRouterStatePromise) {
+    repoRouterStatePromise = (async () => {
+      try {
+        const mod = await import('/router/router.js');
+        const router = mod.default || mod.router;
+        await router.ready();
+        return {
+          router,
+          integrity: await router.verifyRouteIntegrity(),
+        };
+      } catch (error) {
+        return {router: null, integrity: null, error};
+      }
+    })();
+  }
+  return repoRouterStatePromise;
+}
+
 /* ── SHA-256 (main thread) ───────────────────────────────────────────────── */
 const buf2hex = b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2,'0')).join('');
-async function sha256(msg) {
-  return buf2hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg)));
-}
 
 /* ── Web Worker source (inlined as Blob) ─────────────────────────────────── */
 const WORKER_SRC = `
 const b2h=b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
-async function sha256w(m){return b2h(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(m)));}
+const enc=new TextEncoder();
+async function dsha256w(m){
+  const first=new Uint8Array(await crypto.subtle.digest('SHA-256',enc.encode(m)));
+  return b2h(await crypto.subtle.digest('SHA-256',first));
+}
 let running=false;
 self.onmessage=async({data})=>{
   if(data.cmd==='stop'){running=false;return;}
@@ -263,13 +346,13 @@ self.onmessage=async({data})=>{
     let nonce=nonceStart,count=0,t0=performance.now();
     while(running){
       for(let i=0;i<150;i++){
-        const h=await sha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+nonce);
+        const h=await dsha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+nonce);
         count++;
         if(h.startsWith(target)){self.postMessage({type:'found',nonce,hash:h});running=false;return;}
         nonce+=step;
       }
       const el=(performance.now()-t0)/1000;
-      const lh=await sha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+(nonce-step));
+      const lh=await dsha256w(prevHash+'|'+blockNum+'|'+blockData+'|'+(nonce-step));
       self.postMessage({type:'progress',count,nonce,hashrate:el>0?count/el:0,lastHash:lh});
       await new Promise(r=>setTimeout(r,0));
     }
@@ -349,7 +432,7 @@ async function fetchLiveData() {
       fetch('https://mempool.space/api/v1/blocks').then(r => r.json()),
       fetch('https://mempool.space/api/v1/prices').then(r => r.json()),
     ]);
-    if (!liveData) liveData = {network:{},latest_block:{},fees_recommended:{},mempool_sample_txs:[],ml_analysis:{},price:{},rewards:{}};
+    if (!liveData) liveData = {network:{},latest_block:{},fees_recommended:{},mempool_sample_txs:[],ml_analysis:{},price:{},rewards:{},repo_integrations:{}};
     if (fR.status === 'fulfilled') liveData.fees_recommended = fR.value;
     if (mR.status === 'fulfilled') {
       const m = mR.value;
@@ -384,7 +467,13 @@ async function fetchLiveData() {
     }
   } catch(_) {}
 
-  if (liveData) { updateNetworkPanel(); updateBlockData(); updateRewardsPanel(); await updateMLPanel(); }
+  if (liveData) {
+    updateNetworkPanel();
+    updateBlockData();
+    updateRewardsPanel();
+    await updateMLPanel();
+    await updateRepoIntegrationsPanel();
+  }
   await fetchNiceHashBalance();
 }
 
@@ -633,9 +722,80 @@ function formatRewardStr(subsidyBtc) {
     + (btcPrice ? ' ≈ $' + Math.round(subsidyBtc * btcPrice).toLocaleString() : '');
 }
 
+async function updateRepoIntegrationsPanel() {
+  const info = liveData.repo_integrations || {};
+  const featured = Array.isArray(info.featured_roots) ? info.featured_roots : [];
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  set('repo-project-count', info.project_count ? info.project_count.toLocaleString() : '—');
+  set('repo-route-count', info.route_count ? info.route_count.toLocaleString() : '—');
+  set('repo-category-count', info.category_count ? info.category_count.toLocaleString() : '—');
+  set('repo-featured-count', info.featured_count ? info.featured_count.toLocaleString() : '—');
+
+  const statusEl = document.getElementById('repo-router-status');
+  const detailEl = document.getElementById('repo-router-detail');
+  const grid = document.getElementById('repo-root-grid');
+  if (!grid) return;
+
+  let routerState = {router: null, integrity: null, error: null};
+  try {
+    routerState = await getRepoRouterState();
+  } catch (_) {}
+
+  if (routerState.integrity) {
+    const i = routerState.integrity;
+    statusEl.textContent = i.ok ? 'Verified' : 'Attention';
+    detailEl.textContent = i.verified + '/' + i.total + ' route hashes verified'
+      + (i.missing.length || i.mismatched.length ? ' · missing=' + i.missing.length + ' mismatched=' + i.mismatched.length : '');
+  } else if (routerState.error) {
+    statusEl.textContent = 'Unavailable';
+    detailEl.textContent = 'Router diagnostics unavailable in this session.';
+  } else {
+    statusEl.textContent = 'Loading…';
+    detailEl.textContent = 'Waiting for router diagnostics.';
+  }
+
+  if (!featured.length) {
+    grid.innerHTML = '<div class="repo-empty">No root-directory metadata found in the live miner snapshot.</div>';
+    return;
+  }
+
+  const router = routerState.router;
+  grid.innerHTML = featured.map(root => {
+    const path = root.path || ('/' + String(root.name || '').replace(/^\/+|\/+$/g, '') + '/');
+    const siteUrl = router ? router.toSiteUrl(path) : path;
+    const routerUrl = router ? router.toRouterUrl(path) : path;
+    const routeHash = router ? router.getRouteHash(path) : '';
+    const chips = [
+      '<span class="repo-chip">' + esc(root.category || 'root') + '</span>',
+      '<span class="repo-chip">' + (root.has_index ? 'index.html' : 'no index') + '</span>',
+      '<span class="repo-chip">' + (root.has_readme ? 'README' : 'no README') + '</span>',
+      '<span class="repo-chip">' + (root.has_route ? 'route linked' : 'route pending') + '</span>',
+    ].join('');
+    const hashHtml = routeHash
+      ? '<div class="repo-hash">route-hash ' + esc(routeHash.slice(0, 24)) + '…</div>'
+      : '<div class="repo-hash">route-hash pending</div>';
+    return '<div class="repo-root-card">'
+      + '<div class="repo-root-head"><div>'
+      + '<div style="font-weight:700;color:var(--btc-orange)">' + esc(root.name || 'root') + '</div>'
+      + '<div class="repo-root-path">' + esc(path) + '</div>'
+      + '</div></div>'
+      + '<div style="font-size:.76rem;color:#c8d0db;margin-top:8px">' + esc(root.desc || 'Shared repository root directory.') + '</div>'
+      + '<div style="margin-top:10px">' + chips + '</div>'
+      + hashHtml
+      + '<div class="repo-root-links">'
+      + '<a href="' + esc(siteUrl) + '">Open</a>'
+      + '<a href="' + esc(routerUrl) + '">Router</a>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
 /* Genesis */
 (async () => {
-  const h = await sha256('Genesis Block — majixai bitcoin mining demo');
+  const h = await doubleSha256Hex('Genesis Block — majixai bitcoin mining demo');
   prevHash = h;
   document.getElementById('genesis-hash-val').textContent = h.slice(0,20) + '…';
 })();
@@ -811,6 +971,13 @@ async function detectGPU() {
   }, 60000);
   updateDifficultyDisplay();
 })();
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
 </script>
 <script>
   window.ACTIONS_CONFIG = window.ACTIONS_CONFIG || { namespace: 'bitcoin-miner' };
