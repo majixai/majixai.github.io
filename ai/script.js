@@ -147,7 +147,10 @@ function createMessageElement(text, role) {
       navigator.clipboard.writeText(text).then(() => {
         copyBtn.innerHTML = '<i class="fa fa-check"></i> Copied';
         setTimeout(() => { copyBtn.innerHTML = '<i class="fa fa-copy"></i> Copy'; }, 1800);
-      }).catch(() => {});
+      }).catch(() => {
+        copyBtn.innerHTML = '<i class="fa fa-times"></i> Failed';
+        setTimeout(() => { copyBtn.innerHTML = '<i class="fa fa-copy"></i> Copy'; }, 1800);
+      });
     });
 
     actions.appendChild(copyBtn);
@@ -681,7 +684,7 @@ async function handleSend() {
 function updateCharCounter() {
   if (!charCounter || !promptInput) return;
   const len = promptInput.value.length;
-  charCounter.textContent = len.toLocaleString();
+  charCounter.textContent = `${len.toLocaleString()} chars`;
   charCounter.classList.toggle('warn', len >= CHAR_WARN_THRESHOLD);
 }
 
