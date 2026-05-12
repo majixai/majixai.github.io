@@ -58,6 +58,9 @@ jobs:
       IXIC_BATCH_SIZE: ${{ github.event.inputs.batch_size || '256'   }}
       IXIC_LOG_LEVEL: "INFO"
       IXIC_TRAIN_VERBOSE: "2"
+      IXIC_SYMBOLS_CSV: ${{ github.workspace }}/actions/symbols.csv
+      IXIC_SYMBOL_CATEGORIES: "indices,tech_mega"
+      IXIC_MAX_SYMBOLS: "12"
 
     steps:
 
@@ -77,6 +80,13 @@ jobs:
           echo "run_id     : ${{ github.run_id }}"
           echo "run_number : ${{ github.run_number }}"
           echo "workspace  : ${{ github.workspace }}"
+          echo "::endgroup::"
+
+      - name: Export IXIC runtime settings from symbols CSV
+        run: |
+          bash ixic_lstm_forecast/bash/export_runtime_env.sh "$GITHUB_ENV"
+          echo "::group::Runtime settings"
+          cat ixic_lstm_forecast/output/runtime/ixic_runtime_settings.json
           echo "::endgroup::"
 
       # ── 2. Python setup ───────────────────────────────────────────────────
@@ -158,6 +168,9 @@ jobs:
           echo "IXIC_BATCH_SIZE : ${{ env.IXIC_BATCH_SIZE }}"
           echo "IXIC_LOG_LEVEL  : ${{ env.IXIC_LOG_LEVEL }}"
           echo "IXIC_TRAIN_VERBOSE : ${{ env.IXIC_TRAIN_VERBOSE }}"
+          echo "IXIC_SYMBOLS    : ${{ env.IXIC_SYMBOLS }}"
+          echo "IXIC_SYMBOLS_CSV: ${{ env.IXIC_SYMBOLS_CSV }}"
+          echo "IXIC_MAX_SYMBOLS: ${{ env.IXIC_MAX_SYMBOLS }}"
           echo "Output dir      : ixic_lstm_forecast/output/"
           echo "::endgroup::"
 
@@ -168,7 +181,7 @@ jobs:
           echo "::group::IXIC LSTM Forecast — full run log"
           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Starting IXIC LSTM pipeline..."
 
-          python ixic_lstm_forecast/ixic_main.py
+          bash ixic_lstm_forecast/bash/run_nightly_pipeline.sh
 
           EXIT_CODE=$?
           echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Pipeline exited with code: ${EXIT_CODE}"
@@ -241,8 +254,11 @@ jobs:
           name: ixic-forecast-${{ github.run_number }}
           path: |
             ixic_lstm_forecast/output/ixic_summary.json
+            ixic_lstm_forecast/output/*.dat
             ixic_lstm_forecast/output/*.dat.gz
             ixic_lstm_forecast/output/*.json
+            ixic_lstm_forecast/output/runtime/
+            ixic_lstm_forecast/output/webhooks/
             ixic_lstm_forecast/output/ixic_forecast.log
           retention-days: 30
 
@@ -255,8 +271,11 @@ jobs:
 
           git add \
             ixic_lstm_forecast/output/ixic_summary.json \
+            ixic_lstm_forecast/output/*.dat \
             ixic_lstm_forecast/output/*.dat.gz \
             ixic_lstm_forecast/output/*.json \
+            ixic_lstm_forecast/output/runtime/ \
+            ixic_lstm_forecast/output/webhooks/ \
             ixic_lstm_forecast/output/ixic_forecast.log \
             || true
 
@@ -303,6 +322,7 @@ jobs:
             echo "| **Time (UTC)**     | $(date -u +'%Y-%m-%d %H:%M:%S') |"
             echo "| **Symbol**         | \`${IXIC_SYMBOL}\` |"
             echo "| **Pipeline status**| ${RUN_STATUS} |"
+            echo "| **Symbols CSV**    | \`${{ env.IXIC_SYMBOLS_CSV }}\` |"
             echo ""
 
             if [ -f "ixic_lstm_forecast/output/ixic_summary.json" ]; then
@@ -334,6 +354,9 @@ jobs:
             echo "├── models/       — LSTMCore (TF Keras LSTM + Dense)"
             echo "├── storage/      — GitDatabaseStorage (gzip pickle + JSON sidecar)"
             echo "├── workers/      — Async pipeline + multiprocessing reporter"
+            echo "├── bash/         — Bash automation for runtime export + nightly execution"
+            echo "├── gas/          — Google Apps Script nightly scheduler + webhook handler"
+            echo "├── scaffolding/  — yfinance/neural/ml/ai/gpu/routing project map"
             echo "└── ixic_main.py  — Main orchestrator (asyncio entry point)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

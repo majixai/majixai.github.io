@@ -100,8 +100,12 @@ log.info("[ixic_main] log level → %s", _LOG_LEVEL)
 log.info("=" * 70)
 
 # ---------------------------------------------------------------------------
-# Sub-module imports (after logging is configured)
+# Runtime settings + sub-module imports (after logging is configured)
 # ---------------------------------------------------------------------------
+try:
+    from ixic_lstm_forecast.runtime_settings import load_runtime_settings
+except ImportError:  # pragma: no cover - direct script execution fallback
+    from runtime_settings import load_runtime_settings
 from ixic_lstm_forecast.framework import (
     TimeSeriesIterator,
     batch_generator,
@@ -114,19 +118,24 @@ log.info("[ixic_main] all sub-modules imported successfully.")
 
 
 # ---------------------------------------------------------------------------
-# Configuration (resolved from environment)
+# Configuration (resolved from environment + symbols CSV manifest)
 # ---------------------------------------------------------------------------
-SYMBOL: str = os.environ.get("IXIC_SYMBOL", "^IXIC")
+RUNTIME_SETTINGS = load_runtime_settings()
+SYMBOL: str = RUNTIME_SETTINGS["primary_symbol"]
+SELECTED_SYMBOLS: list[str] = RUNTIME_SETTINGS["selected_symbols"]
+SYMBOLS_CSV_PATH: str = RUNTIME_SETTINGS["symbols_csv_path"]
 SEQ_LENGTH: int = int(os.environ.get("IXIC_SEQ_LENGTH", "60"))
 EPOCHS: int = int(os.environ.get("IXIC_EPOCHS", "3"))
 BATCH_SIZE: int = int(os.environ.get("IXIC_BATCH_SIZE", "256"))
 
 log.info(
-    "[ixic_main] config — SYMBOL=%s  SEQ_LENGTH=%d  EPOCHS=%d  BATCH_SIZE=%d",
+    "[ixic_main] config — SYMBOL=%s  SEQ_LENGTH=%d  EPOCHS=%d  BATCH_SIZE=%d  SELECTED_SYMBOLS=%s  SYMBOLS_CSV=%s",
     SYMBOL,
     SEQ_LENGTH,
     EPOCHS,
     BATCH_SIZE,
+    SELECTED_SYMBOLS,
+    SYMBOLS_CSV_PATH,
 )
 
 
@@ -263,6 +272,8 @@ async def main_controller() -> dict:
     # Send forecast payload to worker
     payload = {
         "symbol": SYMBOL,
+        "selected_symbols": SELECTED_SYMBOLS,
+        "symbols_csv_path": SYMBOLS_CSV_PATH,
         "recent": recent_close,
         "projected": predicted_price,
     }
@@ -296,6 +307,8 @@ async def main_controller() -> dict:
 
     summary = {
         "symbol": SYMBOL,
+        "selected_symbols": SELECTED_SYMBOLS,
+        "symbols_csv_path": SYMBOLS_CSV_PATH,
         "run_start": run_start.isoformat(),
         "run_end": run_end.isoformat(),
         "elapsed_seconds": round(elapsed, 2),
@@ -320,6 +333,7 @@ async def main_controller() -> dict:
     print("  IXIC LSTM FORECAST — RUN SUMMARY")
     print(sep)
     print(f"  Symbol           : {summary['symbol']}")
+    print(f"  Selected symbols : {', '.join(summary['selected_symbols'])}")
     print(f"  Run start (UTC)  : {summary['run_start']}")
     print(f"  Elapsed (s)      : {summary['elapsed_seconds']}")
     print(f"  Samples fetched  : {summary['samples_fetched']}")
