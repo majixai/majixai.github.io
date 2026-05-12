@@ -286,13 +286,13 @@ function esc(s) {
   return d.innerHTML;
 }
 
-let hashApiPromise = null;
-let repoRouterStatePromise = null;
+let minerHashApiPromise = null;
+let minerRouterStatePromise = null;
 function getHashApi() {
-  if (!hashApiPromise) {
-    hashApiPromise = import('/hash/hash.js').catch(() => null);
+  if (!minerHashApiPromise) {
+    minerHashApiPromise = import('/hash/hash.js').catch(() => null);
   }
-  return hashApiPromise;
+  return minerHashApiPromise;
 }
 async function nativeDoubleSha256(input) {
   const bytes = input instanceof Uint8Array ? input : new TextEncoder().encode(String(input));
@@ -308,8 +308,8 @@ async function doubleSha256Hex(input) {
   return nativeDoubleSha256(input);
 }
 async function getRepoRouterState() {
-  if (!repoRouterStatePromise) {
-    repoRouterStatePromise = (async () => {
+  if (!minerRouterStatePromise) {
+    minerRouterStatePromise = (async () => {
       try {
         const mod = await import('/router/router.js');
         const router = mod.default || mod.router;
@@ -323,7 +323,13 @@ async function getRepoRouterState() {
       }
     })();
   }
-  return repoRouterStatePromise;
+  return minerRouterStatePromise;
+}
+function normalizeRootPath(root) {
+  const directPath = String(root && root.path ? root.path : '').trim();
+  if (directPath) return directPath;
+  const name = String(root && root.name ? root.name : '').trim().replace(/^\/+|\/+$/g, '');
+  return '/' + name + '/';
 }
 
 /* ── SHA-256 (main thread) ───────────────────────────────────────────────── */
@@ -764,7 +770,7 @@ async function updateRepoIntegrationsPanel() {
 
   const router = routerState.router;
   grid.innerHTML = featured.map(root => {
-    const path = root.path || ('/' + String(root.name || '').replace(/^\/+|\/+$/g, '') + '/');
+    const path = normalizeRootPath(root);
     const siteUrl = router ? router.toSiteUrl(path) : path;
     const routerUrl = router ? router.toRouterUrl(path) : path;
     const routeHash = router ? router.getRouteHash(path) : '';

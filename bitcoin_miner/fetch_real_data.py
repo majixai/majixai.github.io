@@ -43,6 +43,9 @@ import urllib.error
 import concurrent.futures
 from datetime import datetime, timezone
 from argparse import ArgumentParser
+from pathlib import Path
+
+from bitcoin_miner.root_integrations import build_repo_integration_snapshot
 
 # ==============================================================================
 # SECTION 1 - Configuration
@@ -75,18 +78,6 @@ API_BASE             = "https://mempool.space/api"
 BLOCKSTREAM_BASE     = "https://blockstream.info/api"
 BLOCKCHAIN_INFO_BASE = "https://blockchain.info"
 COINDESK_PRICE_URL   = "https://api.coindesk.com/v1/bpi/currentprice/USD.json"
-FEATURED_ROOT_DIRS   = (
-    "actions",
-    "ai",
-    "hash",
-    "pwa",
-    "router",
-    "tensor",
-    "yfinance_data",
-    "gpu",
-    "metatrader5",
-    "tradingview_integration",
-)
 
 NN_INPUTS_V1         = 6
 NN_HIDDEN_V1         = 12
@@ -96,75 +87,6 @@ NN_INPUTS_V2         = 10
 NN_HIDDEN1_V2        = 32
 NN_HIDDEN2_V2        = 16
 NN_TRAINING_ITERS_V2 = 400
-
-
-def _load_json_file(path: str, default):
-    try:
-        with open(path, "r", encoding="utf-8") as fh:
-            return json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return default
-
-
-def build_repo_integration_snapshot() -> dict:
-    projects = _load_json_file(os.path.join(REPO_ROOT, "projects.json"), [])
-    routes_raw = _load_json_file(os.path.join(REPO_ROOT, "router", "routes.json"), {})
-
-    if not isinstance(projects, list):
-        projects = []
-    routes = routes_raw.get("routes", routes_raw) if isinstance(routes_raw, dict) else routes_raw
-    if not isinstance(routes, list):
-        routes = []
-
-    project_by_name = {
-        str(project.get("name", "")).strip(): project
-        for project in projects
-        if isinstance(project, dict) and project.get("name")
-    }
-    route_by_path = {
-        str(route.get("path", "")).strip().lower(): route
-        for route in routes
-        if isinstance(route, dict) and route.get("path")
-    }
-    categories = sorted({
-        str(project.get("category", "")).strip()
-        for project in projects
-        if isinstance(project, dict) and project.get("category")
-    })
-
-    featured_roots = []
-    for name in FEATURED_ROOT_DIRS:
-        route_path = f"/{name.strip('/')}/"
-        project = project_by_name.get(name, {})
-        route = route_by_path.get(route_path.lower(), {})
-        local_dir = os.path.join(REPO_ROOT, name)
-        featured_roots.append({
-            "name": name,
-            "path": route_path,
-            "category": project.get("category") or route.get("category") or "root",
-            "desc": project.get("desc") or route.get("desc") or "",
-            "has_index": os.path.exists(os.path.join(local_dir, "index.html")),
-            "has_readme": os.path.exists(os.path.join(local_dir, "README.md")),
-            "has_route": bool(route),
-        })
-
-    try:
-        root_dir_count = sum(
-            1 for entry in os.scandir(REPO_ROOT)
-            if entry.is_dir() and not entry.name.startswith(".")
-        )
-    except OSError:
-        root_dir_count = 0
-
-    return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "project_count": len(projects),
-        "route_count": len(routes),
-        "category_count": len(categories),
-        "root_dir_count": root_dir_count,
-        "featured_count": len(featured_roots),
-        "featured_roots": featured_roots,
-    }
 
 # ==============================================================================
 # SECTION 2 - HTTP helpers
@@ -1901,7 +1823,10 @@ async def collect(
             "power_watts":   power_watts,
             "elec_cost_kwh": elec_cost,
         },
-        "repo_integrations":   build_repo_integration_snapshot(),
+        "repo_integrations":   {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            **build_repo_integration_snapshot(Path(REPO_ROOT)),
+        },
     }
 
 

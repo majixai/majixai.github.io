@@ -18,73 +18,12 @@ from hashlib import sha256
 from argparse import ArgumentParser
 from pathlib import Path
 
+from bitcoin_miner.root_integrations import build_root_directory_summary
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MINER_BIN = REPO_ROOT / "bitcoin_miner" / "miner"
 HASHRATE_RE = re.compile(r"([0-9]+(?:\.[0-9]+)?)\s*H/s", re.IGNORECASE)
-FEATURED_ROOT_DIRS = (
-    "actions",
-    "ai",
-    "hash",
-    "pwa",
-    "router",
-    "tensor",
-    "yfinance_data",
-    "gpu",
-    "metatrader5",
-    "tradingview_integration",
-)
-
-
-def _load_json_file(path: Path, default):
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            return json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return default
-
-
-def _summarize_root_directories() -> dict:
-    projects = _load_json_file(REPO_ROOT / "projects.json", [])
-    routes_raw = _load_json_file(REPO_ROOT / "router" / "routes.json", {})
-    routes = routes_raw.get("routes", routes_raw) if isinstance(routes_raw, dict) else routes_raw
-
-    if not isinstance(projects, list):
-        projects = []
-    if not isinstance(routes, list):
-        routes = []
-
-    project_by_name = {
-        str(project.get("name", "")).strip(): project
-        for project in projects
-        if isinstance(project, dict) and project.get("name")
-    }
-    route_paths = {
-        str(route.get("path", "")).strip().lower()
-        for route in routes
-        if isinstance(route, dict) and route.get("path")
-    }
-
-    featured = []
-    for name in FEATURED_ROOT_DIRS:
-        local_dir = REPO_ROOT / name
-        route_path = f"/{name.strip('/')}/"
-        project = project_by_name.get(name, {})
-        featured.append({
-            "name": name,
-            "path": route_path,
-            "category": project.get("category") or "root",
-            "has_route": route_path.lower() in route_paths,
-            "has_index": (local_dir / "index.html").exists(),
-            "has_readme": (local_dir / "README.md").exists(),
-        })
-
-    return {
-        "project_count": len(projects),
-        "route_count": len(routes),
-        "featured_count": len(featured),
-        "featured_roots": featured,
-    }
 
 
 def _load_integrations() -> dict:
@@ -152,7 +91,7 @@ def _load_integrations() -> dict:
     ) as exc:  # pragma: no cover - best-effort import path
         status["details"]["neural_forecaster_error"] = str(exc)
 
-    status["root_directories"] = _summarize_root_directories()
+    status["root_directories"] = build_root_directory_summary(REPO_ROOT)
     return status
 
 
