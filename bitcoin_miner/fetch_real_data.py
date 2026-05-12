@@ -43,6 +43,9 @@ import urllib.error
 import concurrent.futures
 from datetime import datetime, timezone
 from argparse import ArgumentParser
+from pathlib import Path
+
+from bitcoin_miner.root_integrations import build_repo_integration_snapshot
 
 # ==============================================================================
 # SECTION 1 - Configuration
@@ -67,6 +70,7 @@ HTTP_POOL_BASE_WORKERS = DEFAULT_HTTP_POOL_BASE_WORKERS
 HTTP_POOL_WORKERS = HTTP_POOL_BASE_WORKERS * PARALLEL_FACTOR
 
 _DIR           = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT      = os.path.abspath(os.path.join(_DIR, os.pardir))
 OUTPUT_FILE    = os.path.join(_DIR, "data", "live_data.json")
 HISTORY_FILE   = os.path.join(_DIR, "data", "history.json")
 
@@ -1818,6 +1822,10 @@ async def collect(
             "hashrate_ths":  hashrate_ths,
             "power_watts":   power_watts,
             "elec_cost_kwh": elec_cost,
+        },
+        "repo_integrations":   {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            **build_repo_integration_snapshot(Path(REPO_ROOT)),
         },
     }
 

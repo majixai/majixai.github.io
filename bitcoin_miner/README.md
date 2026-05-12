@@ -4,7 +4,8 @@
 
 - a high-performance C proof-of-work miner (`miner.c`)
 - a live Bitcoin network data + analytics pipeline (`fetch_real_data.py`)
-- a browser UI with worker-based mining simulation and TensorFlow.js neural fee analysis (`index.html`)
+- a browser UI with worker-based mining simulation, shared route/hash integrations, and TensorFlow.js neural fee analysis (`index.html`)
+- shared PWA wiring (`manifest.json`, `sw.js`) via the repository `/pwa` infrastructure
 
 The directory is designed to run as a standalone app while also integrating with repository automation.
 
@@ -17,7 +18,8 @@ The directory is designed to run as a standalone app while also integrating with
 | `miner_scalar` | Prebuilt Linux binary artifact |
 | `fetch_real_data.py` | Pulls live network/fee/price data and writes analytics JSON |
 | `data/live_data.json` | Frontend-consumed live data snapshot |
-| `index.html` | Dashboard UI, mining controls, worker engine, TensorFlow.js fee model |
+| `index.html` | Dashboard UI, double-SHA miner demo, root-directory cards, TensorFlow.js fee model |
+| `manifest.json`, `sw.js` | PWA manifest + service worker powered by `/pwa/sw-core.js` |
 | `login.html`, `login.js`, `login.css`, `login-config.json` | Optional local login gate for the app |
 
 ## Data + analytics pipeline
@@ -29,6 +31,7 @@ The directory is designed to run as a standalone app while also integrating with
 - BTC/USD pricing
 - Reward and halving metrics
 - ML/neural signals (priority score, fee-rate guidance, trend/forecast fields)
+- Repository integration snapshot sourced from root-level `projects.json` and `router/routes.json`
 
 Output is persisted to:
 
@@ -69,6 +72,9 @@ python bitcoin_miner/fetch_real_data.py --runtime 180
 Serve the repo root with any static web server and open:
 
 `/bitcoin_miner/index.html`
+
+The page now also registers a service worker and exposes shared root-directory links
+through the repository router + hash infrastructure when served over HTTPS/localhost.
 
 ### NiceHash integration
 

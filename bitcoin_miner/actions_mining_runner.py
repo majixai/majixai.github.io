@@ -18,6 +18,8 @@ from hashlib import sha256
 from argparse import ArgumentParser
 from pathlib import Path
 
+from bitcoin_miner.root_integrations import build_root_directory_summary
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MINER_BIN = REPO_ROOT / "bitcoin_miner" / "miner"
@@ -89,6 +91,7 @@ def _load_integrations() -> dict:
     ) as exc:  # pragma: no cover - best-effort import path
         status["details"]["neural_forecaster_error"] = str(exc)
 
+    status["root_directories"] = build_root_directory_summary(REPO_ROOT)
     return status
 
 
