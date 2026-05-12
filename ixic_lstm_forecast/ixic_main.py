@@ -25,6 +25,8 @@ IXIC_SEQ_LENGTH    Look-back window in bars    (default: ``60``)
 IXIC_EPOCHS        LSTM training epochs        (default: ``3``)
 IXIC_BATCH_SIZE    Generator batch size        (default: ``256``)
 IXIC_OUTPUT_DIR    Override output directory   (default: ``output/``)
+IXIC_RUNTIME_SETTINGS_JSON  Optional JSON runtime overrides
+IXIC_RUNTIME_SETTINGS_PATH  Optional path to a JSON settings file
 """
 
 from __future__ import annotations
@@ -56,17 +58,21 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from ixic_lstm_forecast.runtime_settings import load_runtime_settings
+
+_SETTINGS = load_runtime_settings(os.environ)
+
 # ---------------------------------------------------------------------------
 # Logging setup — must happen before importing sub-modules so their loggers
 # inherit the root configuration.
 # ---------------------------------------------------------------------------
 _OUTPUT_DIR = Path(
-    os.environ.get("IXIC_OUTPUT_DIR", Path(__file__).resolve().parent / "output")
+    _SETTINGS["output_dir"] or Path(__file__).resolve().parent / "output"
 )
 _OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 _LOG_FILE = _OUTPUT_DIR / "ixic_forecast.log"
-_LOG_LEVEL = os.environ.get("IXIC_LOG_LEVEL", "INFO").upper()
+_LOG_LEVEL = _SETTINGS["log_level"].upper()
 _SUPPRESSED_LOGGERS = ("tensorflow", "yfinance", "peewee", "h5py", "urllib3")
 
 _log_fmt = "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
@@ -116,17 +122,18 @@ log.info("[ixic_main] all sub-modules imported successfully.")
 # ---------------------------------------------------------------------------
 # Configuration (resolved from environment)
 # ---------------------------------------------------------------------------
-SYMBOL: str = os.environ.get("IXIC_SYMBOL", "^IXIC")
-SEQ_LENGTH: int = int(os.environ.get("IXIC_SEQ_LENGTH", "60"))
-EPOCHS: int = int(os.environ.get("IXIC_EPOCHS", "3"))
-BATCH_SIZE: int = int(os.environ.get("IXIC_BATCH_SIZE", "256"))
+SYMBOL: str = _SETTINGS["symbol"]
+SEQ_LENGTH: int = _SETTINGS["seq_length"]
+EPOCHS: int = _SETTINGS["epochs"]
+BATCH_SIZE: int = _SETTINGS["batch_size"]
 
 log.info(
-    "[ixic_main] config — SYMBOL=%s  SEQ_LENGTH=%d  EPOCHS=%d  BATCH_SIZE=%d",
+    "[ixic_main] config — SYMBOL=%s  SEQ_LENGTH=%d  EPOCHS=%d  BATCH_SIZE=%d  source=%s",
     SYMBOL,
     SEQ_LENGTH,
     EPOCHS,
     BATCH_SIZE,
+    _SETTINGS["settings_source"],
 )
 
 
@@ -304,6 +311,7 @@ async def main_controller() -> dict:
         "seq_length": SEQ_LENGTH,
         "epochs": EPOCHS,
         "batch_size": BATCH_SIZE,
+        "settings_source": _SETTINGS["settings_source"],
         "recent_close": round(recent_close, 4),
         "projected_close": round(predicted_price, 4),
         "delta": round(delta_value, 4),

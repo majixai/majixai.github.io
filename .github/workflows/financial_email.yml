@@ -81,6 +81,10 @@ on:
         description: 'Print report without sending email (true/false)'
         required: false
         default: 'false'
+      runtime_settings_json:
+        description: 'Optional JSON config for recipients/transport/webhook settings'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -181,6 +185,7 @@ jobs:
       # ── 5. Generate & send report ─────────────────────────────────────────────
       - name: Send financial email report
         env:
+          EMAIL_RUNTIME_SETTINGS_JSON: ${{ github.event.inputs.runtime_settings_json || vars.EMAIL_RUNTIME_SETTINGS_JSON || secrets.EMAIL_RUNTIME_SETTINGS_JSON }}
           # ── GAS webhook transport (default) ──
           EMAIL_GAS_WEBHOOK_URL: ${{ secrets.GAS_WEBHOOK_URL }}
           EMAIL_GAS_SECRET:      ${{ secrets.GAS_WEBHOOK_SECRET }}

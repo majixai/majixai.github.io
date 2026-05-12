@@ -42,6 +42,10 @@
  *   GAS_WEBHOOK_SECRET   — shared secret validated on every doPost call
  *   RECIPIENT_EMAILS     — comma-separated fallback recipient list
  *   GITHUB_WEBHOOK_URL   — (optional) URL to notify GitHub after sending
+ *   FINANCIAL_EMAIL_SETTINGS_JSON — optional non-secret runtime settings JSON
+ *                                   (recipients, reportPagesBase, calendarId,
+ *                                   githubWebhookUrl, chartLinks,
+ *                                   subjectPrefixes, scheduleSlots)
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -50,12 +54,13 @@ const PROP_SECRET        = 'GAS_WEBHOOK_SECRET';
 const PROP_RECIPIENTS    = 'RECIPIENT_EMAILS';
 const PROP_GITHUB_WH     = 'GITHUB_WEBHOOK_URL';
 const PROP_CALENDAR_ID   = 'TRADING_CALENDAR_ID';   // Google Calendar ID for trading events
-const REPORT_PAGES_BASE  = 'https://majixai.github.io/majixai.github.io';
+const PROP_SETTINGS_JSON = 'FINANCIAL_EMAIL_SETTINGS_JSON';
+const DEFAULT_REPORT_PAGES_BASE = 'https://majixai.github.io/majixai.github.io';
 
 // Schedule slots → { dayOfWeek[], hour (24h), minute, fn, calendarTitle }
 // dayOfWeek: 0=Sunday … 6=Saturday  (same as JS Date.getDay())
 // All times in America/New_York (ET).
-const SCHEDULE_SLOTS = [
+const DEFAULT_SCHEDULE_SLOTS = [
   // ── Legacy UTC-aligned slots (preserved for backward compatibility) ──────
   { name: 'weekday_open',  days: [1,2,3,4,5], hour:  6, minute:  0, fn: 'sendWeekdayOpen',      calendarTitle: '🌅 Pre-Market Bull Alert'         },
   { name: 'weekday_9am',   days: [1,2,3,4,5], hour:  9, minute:  0, fn: 'sendWeekday9am',        calendarTitle: '📊 9 AM Market Snapshot'           },
@@ -74,6 +79,105 @@ const SCHEDULE_SLOTS = [
   { name: 'market_midday',       days: [1,2,3,4,5], hour: 11, minute: 59, fn: 'sendMarketMidday',       calendarTitle: '⏱️ Midday Market Follow-Up (11:59 AM)'},
   { name: 'market_1pm_et',       days: [1,2,3,4,5], hour: 13, minute:  0, fn: 'sendMarket1pmET',        calendarTitle: '🏦 1 PM ET Index Feedback + Next Day Plan'},
 ];
+
+const DEFAULT_SUBJECT_PREFIXES = {
+  weekday_open:       '🌅 Pre-Market Bull Alert',
+  weekday_9am:        '📊 9 AM Market Snapshot',
+  weekday_10am:       '🔔 10 AM Mid-Morning Report',
+  weekday_1pm:        '🏦 1 PM Indices Close Report',
+  weekend_9am:        '🌅 Weekend Market Morning Digest',
+  weekend_10pm:       '🌙 Weekend Market Evening Digest',
+  overnight_day_plan: '🌙 Trading Day Ahead Plan',
+  overnight_bull_pick:'⚡ Most Bullish Pick Alert',
+  overnight_project:  '🛠️ Overnight Project Brief',
+  premarket_1pm_proj: '📐 Projected 1 PM Close',
+  premarket_followup: '📊 Pre-Market Follow-Up (5:30 AM)',
+  premarket_extra:    '🔔 Pre-Market Final Brief (6:30 AM)',
+  market_bullnews:    '⚡ Bull Momentum / News Alert (10 AM)',
+  market_midday:      '⏱️ Midday Market Follow-Up (11:59 AM)',
+  market_1pm_et:      '🏦 1 PM ET Index Feedback + Next Day Plan',
+};
+
+const DEFAULT_CHART_LINKS = [
+  ['/dji_1pm_close/dji_1pm_prediction.png', 'DJI 1PM Prediction'],
+  ['/dji_monte_carlo/dji_simulation_output.png', 'DJI Monte Carlo'],
+  ['/sp_closing_projection/sp_closing_projection_output.png', 'S&P 500 Projection'],
+  ['/yfinance_chart/index.html', 'Interactive Charts'],
+  ['/yfinance/index.html', 'Live Dashboard'],
+];
+
+function _getRuntimeSettings() {
+  const raw = PropertiesService.getScriptProperties().getProperty(PROP_SETTINGS_JSON);
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (err) {
+    console.error('[gas_mailer] Invalid FINANCIAL_EMAIL_SETTINGS_JSON:', err.message);
+    return {};
+  }
+}
+
+function getFinancialEmailSettings() {
+  return _getRuntimeSettings();
+}
+
+function updateFinancialEmailSettings(settings) {
+  const value = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
+  JSON.parse(value);
+  PropertiesService.getScriptProperties().setProperty(PROP_SETTINGS_JSON, value);
+}
+
+function _getScheduleSlots() {
+  const settings = _getRuntimeSettings();
+  return Array.isArray(settings.scheduleSlots) && settings.scheduleSlots.length
+    ? settings.scheduleSlots
+    : DEFAULT_SCHEDULE_SLOTS;
+}
+
+function _getSubjectPrefixes() {
+  const settings = _getRuntimeSettings();
+  const overrides = settings.subjectPrefixes || {};
+  return Object.assign({}, DEFAULT_SUBJECT_PREFIXES, overrides);
+}
+
+function _getReportPagesBase() {
+  const settings = _getRuntimeSettings();
+  return settings.reportPagesBase || DEFAULT_REPORT_PAGES_BASE;
+}
+
+function _getChartLinks() {
+  const settings = _getRuntimeSettings();
+  if (Array.isArray(settings.chartLinks) && settings.chartLinks.length) {
+    return settings.chartLinks;
+  }
+  const base = _getReportPagesBase();
+  return DEFAULT_CHART_LINKS.map(function (pair) {
+    return [base + pair[0], pair[1]];
+  });
+}
+
+function _getRecipientsSetting() {
+  const settings = _getRuntimeSettings();
+  return settings.recipients
+    || settings.recipientEmails
+    || PropertiesService.getScriptProperties().getProperty(PROP_RECIPIENTS)
+    || '';
+}
+
+function _getCalendarId() {
+  const settings = _getRuntimeSettings();
+  return settings.calendarId
+    || PropertiesService.getScriptProperties().getProperty(PROP_CALENDAR_ID)
+    || '';
+}
+
+function _getGitHubWebhookUrl() {
+  const settings = _getRuntimeSettings();
+  return settings.githubWebhookUrl
+    || PropertiesService.getScriptProperties().getProperty(PROP_GITHUB_WH)
+    || '';
+}
 
 
 // ── Webhook entry point ───────────────────────────────────────────────────────
@@ -102,7 +206,7 @@ function doPost(e) {
     const subject    = payload.subject    || '(no subject)';
     const html       = payload.html       || '';
     const plain      = payload.plain      || _htmlToPlain(html);
-    const recipients = _parseRecipients(payload.recipients);
+    const recipients = _parseRecipients(payload.recipients || _getRecipientsSetting());
     const mode       = payload.mode       || 'unknown';
 
     if (!html) {
@@ -115,7 +219,7 @@ function doPost(e) {
     const sent = _sendEmails(subject, html, plain, recipients);
 
     // Create a Google Calendar event for this report slot
-    const slot = SCHEDULE_SLOTS.find(function (s) { return s.name === mode; });
+    const slot = _getScheduleSlots().find(function (s) { return s.name === mode; });
     _createCalendarEvent(
       (slot && slot.calendarTitle) ? slot.calendarTitle : subject,
       mode,
@@ -185,9 +289,9 @@ function _sendEmails(subject, html, plain, recipients) {
 
 // Set of exact handler function names managed by this script.
 // Used to avoid accidentally deleting unrelated triggers.
-const _MANAGED_FN_NAMES = new Set(
-  SCHEDULE_SLOTS.map(function (s) { return s.fn; })
-);
+function _getManagedFunctionNames() {
+  return new Set(_getScheduleSlots().map(function (s) { return s.fn; }));
+}
 
 /**
  * Install all time-based triggers.
@@ -195,14 +299,15 @@ const _MANAGED_FN_NAMES = new Set(
  * It will delete existing MajixAI triggers before recreating them.
  */
 function installFinancialEmailTriggers() {
+  const managedFnNames = _getManagedFunctionNames();
   // Remove only the triggers created by this script (exact function-name match)
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (_MANAGED_FN_NAMES.has(t.getHandlerFunction())) {
+    if (managedFnNames.has(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });
 
-  SCHEDULE_SLOTS.forEach(function (slot) {
+  _getScheduleSlots().forEach(function (slot) {
     // GAS time-based triggers only support daily/weekly, not "weekdays only".
     // We therefore create a single daily trigger per slot-function and let
     // the slot function itself check the day-of-week at runtime.
@@ -224,8 +329,9 @@ function installFinancialEmailTriggers() {
  * Remove all MajixAI financial email triggers.
  */
 function removeFinancialEmailTriggers() {
+  const managedFnNames = _getManagedFunctionNames();
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (_MANAGED_FN_NAMES.has(t.getHandlerFunction())) {
+    if (managedFnNames.has(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -270,7 +376,7 @@ function _dispatchSlot(modeName, allowedDays) {
   }
 
   const recipients = _parseRecipients(
-    PropertiesService.getScriptProperties().getProperty(PROP_RECIPIENTS) || ''
+    _getRecipientsSetting()
   );
   if (recipients.length === 0) {
     console.error('[gas_mailer] No recipients configured in Script Properties.');
@@ -285,7 +391,7 @@ function _dispatchSlot(modeName, allowedDays) {
   console.log('[gas_mailer] Slot', modeName, '→ sent', sent, 'email(s)');
 
   // Create a Google Calendar event for this report slot
-  const slot = SCHEDULE_SLOTS.find(function (s) { return s.name === modeName; });
+  const slot = _getScheduleSlots().find(function (s) { return s.name === modeName; });
   if (slot) {
     _createCalendarEvent(slot.calendarTitle || subject, modeName, now);
   }
@@ -301,23 +407,7 @@ function _dispatchSlot(modeName, allowedDays) {
 
 function _buildGasSubject(mode, now) {
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'EEEE, MMMM d yyyy');
-  const prefixes = {
-    weekday_open:       '🌅 Pre-Market Bull Alert',
-    weekday_9am:        '📊 9 AM Market Snapshot',
-    weekday_10am:       '🔔 10 AM Mid-Morning Report',
-    weekday_1pm:        '🏦 1 PM Indices Close Report',
-    weekend_9am:        '🌅 Weekend Market Morning Digest',
-    weekend_10pm:       '🌙 Weekend Market Evening Digest',
-    overnight_day_plan: '🌙 Trading Day Ahead Plan',
-    overnight_bull_pick:'⚡ Most Bullish Pick Alert',
-    overnight_project:  '🛠️ Overnight Project Brief',
-    premarket_1pm_proj: '📐 Projected 1 PM Close',
-    premarket_followup: '📊 Pre-Market Follow-Up (5:30 AM)',
-    premarket_extra:    '🔔 Pre-Market Final Brief (6:30 AM)',
-    market_bullnews:    '⚡ Bull Momentum / News Alert (10 AM)',
-    market_midday:      '⏱️ Midday Market Follow-Up (11:59 AM)',
-    market_1pm_et:      '🏦 1 PM ET Index Feedback + Next Day Plan',
-  };
+  const prefixes = _getSubjectPrefixes();
   return (prefixes[mode] || '📈 Financial Report') + ' — ' + dateStr;
 }
 
@@ -340,13 +430,7 @@ function _buildGasHtml(mode, now) {
       + '</tr>';
   });
 
-  const chartLinks = [
-    [REPORT_PAGES_BASE + '/dji_1pm_close/dji_1pm_prediction.png',            'DJI 1PM Prediction'],
-    [REPORT_PAGES_BASE + '/dji_monte_carlo/dji_simulation_output.png',        'DJI Monte Carlo'],
-    [REPORT_PAGES_BASE + '/sp_closing_projection/sp_closing_projection_output.png', 'S&P 500 Projection'],
-    [REPORT_PAGES_BASE + '/yfinance_chart/index.html',                        'Interactive Charts'],
-    [REPORT_PAGES_BASE + '/yfinance/index.html',                              'Live Dashboard'],
-  ].map(function (pair) {
+  const chartLinks = _getChartLinks().map(function (pair) {
     return '<li><a href="' + pair[0] + '">' + pair[1] + '</a></li>';
   }).join('');
 
@@ -501,7 +585,7 @@ function _fetchIndicesGas() {
  */
 function _createCalendarEvent(title, modeName, now) {
   try {
-    const calId = PropertiesService.getScriptProperties().getProperty(PROP_CALENDAR_ID);
+    const calId = _getCalendarId();
     const cal   = calId
       ? CalendarApp.getCalendarById(calId)
       : CalendarApp.getDefaultCalendar();
@@ -519,7 +603,7 @@ function _createCalendarEvent(title, modeName, now) {
       + 'Mode: ' + modeName + '\n'
       + 'Generated: ' + now.toISOString() + '\n\n'
       + 'Open the email report for full index data, GBM forecasts, and trading prompts.\n'
-      + 'Dashboard: ' + REPORT_PAGES_BASE + '/yfinance/index.html';
+      + 'Dashboard: ' + _getReportPagesBase() + '/yfinance/index.html';
 
     // Check for a duplicate event on the same calendar day with the same title
     const dayStart = new Date(start);
@@ -556,7 +640,7 @@ function _createCalendarEvent(title, modeName, now) {
  * @param {Object} info  { mode, sent, subject }
  */
 function _notifyGitHub(info) {
-  const url = PropertiesService.getScriptProperties().getProperty(PROP_GITHUB_WH);
+  const url = _getGitHubWebhookUrl();
   if (!url) return; // Not configured — skip silently
   try {
     UrlFetchApp.fetch(url, {
