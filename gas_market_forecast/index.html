@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nightly Market Forecast Directory</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px auto; max-width: 900px; padding: 0 16px; color: #1f2933; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #d9e2ec; border-radius: 12px; padding: 16px; background: #fff; }
+    code { background: #f0f4f8; padding: 2px 6px; border-radius: 6px; }
+    a { color: #0b6efd; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Nightly Market Forecast</h1>
+  <p>This directory is the GitHub-hosted source of truth for the Google Apps Script nightly forecast workflow.</p>
+  <div class="grid">
+    <div class="card">
+      <h2>Runtime</h2>
+      <p>Google Apps Script sends the nightly 10 PM ET forecast email after checking whether the next morning is a US equities trading session.</p>
+    </div>
+    <div class="card">
+      <h2>Prompt + Manifest</h2>
+      <p>Both the project manifest and the Gemini prompt are versioned in this repo so GitHub stays authoritative.</p>
+    </div>
+    <div class="card">
+      <h2>Artifacts</h2>
+      <p>Compressed <code>.dat.gz</code> artifacts live in <code>gas_market_forecast/artifacts/</code> and are maintained with Bash helpers.</p>
+    </div>
+  </div>
+  <h2>Key files</h2>
+  <ul>
+    <li><a href="README.md">README.md</a></li>
+    <li><a href="artifacts/project-directory.dat">artifacts/project-directory.dat</a></li>
+    <li><a href="prompts/gemini-market-brief.md">prompts/gemini-market-brief.md</a></li>
+  </ul>
+</body>
+</html>
