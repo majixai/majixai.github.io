@@ -65,6 +65,13 @@ _fr_spec = _ilu.spec_from_file_location(
 _fr_mod = _ilu.module_from_spec(_fr_spec)
 _fr_spec.loader.exec_module(_fr_mod)
 
+_cfg_spec = _ilu.spec_from_file_location(
+    "majix_email_runtime_config",
+    _HERE / "runtime_config.py",
+)
+_cfg_mod = _ilu.module_from_spec(_cfg_spec)
+_cfg_spec.loader.exec_module(_cfg_mod)
+
 build_weekday_open_report      = _fr_mod.build_weekday_open_report
 build_weekday_9am_report       = _fr_mod.build_weekday_9am_report
 build_weekday_10am_report      = _fr_mod.build_weekday_10am_report
@@ -80,6 +87,8 @@ build_premarket_extra_report     = _fr_mod.build_premarket_extra_report
 build_market_bullnews_report     = _fr_mod.build_market_bullnews_report
 build_market_midday_report       = _fr_mod.build_market_midday_report
 build_market_1pm_et_report       = _fr_mod.build_market_1pm_et_report
+load_email_runtime_config        = _cfg_mod.load_email_runtime_config
+get_runtime_value                = _cfg_mod.get_runtime_value
 
 
 # ── Report builder dispatch ───────────────────────────────────────────────────
@@ -130,8 +139,27 @@ def _send_via_gas(
     EMAIL_GAS_WEBHOOK_URL  — Required.  Deployed GAS Web App URL.
     EMAIL_GAS_SECRET       — Optional.  Shared secret validated by GAS.
     """
-    webhook_url = os.environ.get("EMAIL_GAS_WEBHOOK_URL", "").strip()
-    secret      = os.environ.get("EMAIL_GAS_SECRET", "").strip()
+    runtime_config = load_email_runtime_config(os.environ)
+    webhook_url = str(
+        get_runtime_value(
+            runtime_config,
+            "gasWebhookUrl",
+            "emailGasWebhookUrl",
+            env=os.environ,
+            env_key="EMAIL_GAS_WEBHOOK_URL",
+            default="",
+        )
+    ).strip()
+    secret = str(
+        get_runtime_value(
+            runtime_config,
+            "gasSecret",
+            "emailGasSecret",
+            env=os.environ,
+            env_key="EMAIL_GAS_SECRET",
+            default="",
+        )
+    ).strip()
 
     payload = {
         "subject":    subject,
@@ -201,11 +229,22 @@ def _send_via_smtp(
     SMTP_PASSWORD    — Required.  SMTP password / app-password.
     SENDER_EMAIL     — Optional.  From address (falls back to SMTP_USERNAME).
     """
-    server   = os.environ.get("SMTP_SERVER", "")
-    port     = int(os.environ.get("SMTP_PORT", "587"))
-    username = os.environ.get("SMTP_USERNAME", "")
-    password = os.environ.get("SMTP_PASSWORD", "")
-    sender   = os.environ.get("SENDER_EMAIL", "") or username
+    runtime_config = load_email_runtime_config(os.environ)
+    server = str(
+        get_runtime_value(runtime_config, "smtpServer", env=os.environ, env_key="SMTP_SERVER", default="")
+    )
+    port = int(
+        get_runtime_value(runtime_config, "smtpPort", env=os.environ, env_key="SMTP_PORT", default="587")
+    )
+    username = str(
+        get_runtime_value(runtime_config, "smtpUsername", env=os.environ, env_key="SMTP_USERNAME", default="")
+    )
+    password = str(
+        get_runtime_value(runtime_config, "smtpPassword", env=os.environ, env_key="SMTP_PASSWORD", default="")
+    )
+    sender = str(
+        get_runtime_value(runtime_config, "senderEmail", env=os.environ, env_key="SENDER_EMAIL", default="")
+    ) or username
 
     if dry_run:
         print("=" * 70)
@@ -266,7 +305,10 @@ def _parse() -> argparse.Namespace:
     p.add_argument(
         "--transport",
         choices=["gas", "smtp"],
-        default=os.environ.get("EMAIL_TRANSPORT", "gas"),
+        default=(
+            os.environ.get("EMAIL_TRANSPORT")
+            or str(load_email_runtime_config(os.environ).get("transport", "gas"))
+        ),
         help=(
             "Email transport: 'gas' (default) uses the GAS webhook; "
             "'smtp' uses Python smtplib directly"
@@ -288,6 +330,7 @@ def _parse() -> argparse.Namespace:
 def main() -> int:
     args = _parse()
     now  = datetime.now(timezone.utc)
+    runtime_config = load_email_runtime_config(os.environ)
 
     subject, html = _build(args.mode, now)
 
@@ -295,7 +338,16 @@ def main() -> int:
         Path(args.out).write_text(html, encoding="utf-8")
         print(f"[send_email] HTML written to {args.out}", file=sys.stderr)
 
-    recipients_raw = os.environ.get("RECIPIENT_EMAILS", "")
+    recipients_raw = str(
+        get_runtime_value(
+            runtime_config,
+            "recipients",
+            "recipientEmails",
+            env=os.environ,
+            env_key="RECIPIENT_EMAILS",
+            default="",
+        )
+    )
     recipients     = [r.strip() for r in recipients_raw.split(",") if r.strip()]
 
     transport = args.transport

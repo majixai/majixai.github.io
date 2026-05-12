@@ -263,3 +263,28 @@ MajixEmail.send({
   body:    'Hello, I have a question…',
 });
 ```
+## Runtime settings for GitHub Actions + GAS
+
+`email/send_email.py` can now read an `EMAIL_RUNTIME_SETTINGS_JSON` object at
+runtime, which is useful when you want GitHub Actions settings to be updated in
+one place without changing the workflow file. Supported keys include:
+
+```json
+{
+  "transport": "gas",
+  "recipients": "alice@example.com,bob@example.com",
+  "gasWebhookUrl": "https://script.google.com/macros/s/...",
+  "gasSecret": "stored-in-a-secret",
+  "smtpServer": "smtp.example.com",
+  "smtpPort": 587,
+  "smtpUsername": "mailer",
+  "smtpPassword": "secret",
+  "senderEmail": "alerts@example.com"
+}
+```
+
+For the Apps Script side, `email/gas_mailer.gs` supports a
+`FINANCIAL_EMAIL_SETTINGS_JSON` Script Property for non-secret runtime settings
+such as recipients, calendar ID, chart base URLs, and schedule overrides. Keep
+secrets like `GAS_WEBHOOK_SECRET` in dedicated Script Properties instead of
+hardcoding them.
