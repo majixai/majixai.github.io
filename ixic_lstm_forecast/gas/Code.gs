@@ -2,6 +2,7 @@ const IXIC_DEFAULTS = {
   PRIMARY_SYMBOL: '^IXIC',
   SYMBOL_CATEGORIES: 'indices,tech_mega',
   SYMBOLS_CSV_URL: 'https://raw.githubusercontent.com/majixai/majixai.github.io/main/actions/symbols.csv',
+  MAX_SYMBOLS: 12,
   TIMEZONE: Session.getScriptTimeZone() || 'America/New_York',
   SEND_HOUR_LOCAL: 22,
   GEMINI_MODEL: 'gemini-2.5-flash',
@@ -84,8 +85,9 @@ function getIxicSettings() {
   const primarySymbol = props.getProperty('IXIC_PRIMARY_SYMBOL') || IXIC_DEFAULTS.PRIMARY_SYMBOL;
   const symbolCategories = splitCsv_(props.getProperty('IXIC_SYMBOL_CATEGORIES') || IXIC_DEFAULTS.SYMBOL_CATEGORIES);
   const explicitSymbols = splitCsv_(props.getProperty('IXIC_SYMBOLS') || '');
+  const maxSymbols = parseInt(props.getProperty('IXIC_MAX_SYMBOLS') || IXIC_DEFAULTS.MAX_SYMBOLS, 10);
   const symbolCatalog = loadSymbolsCatalog_(props.getProperty('IXIC_SYMBOLS_CSV_URL') || IXIC_DEFAULTS.SYMBOLS_CSV_URL);
-  const selectedSymbols = selectSymbolsFromCatalog_(symbolCatalog, primarySymbol, explicitSymbols, symbolCategories);
+  const selectedSymbols = selectSymbolsFromCatalog_(symbolCatalog, primarySymbol, explicitSymbols, symbolCategories, maxSymbols);
 
   return {
     timezone: timezone,
@@ -93,6 +95,7 @@ function getIxicSettings() {
     marketCalendar: props.getProperty('IXIC_MARKET_CALENDAR') || IXIC_DEFAULTS.MARKET_CALENDAR,
     primarySymbol: primarySymbol,
     selectedSymbols: selectedSymbols,
+    maxSymbols: maxSymbols,
     recipientEmails: splitCsv_(props.getProperty('RECIPIENT_EMAILS') || IXIC_DEFAULTS.RECIPIENT_EMAILS),
     geminiApiKey: props.getProperty('GEMINI_API_KEY') || '',
     geminiModel: props.getProperty('IXIC_GEMINI_MODEL') || IXIC_DEFAULTS.GEMINI_MODEL,
@@ -110,6 +113,9 @@ function applyWebhookSettings_(payload) {
   if (payload.symbols && payload.symbols.length) props.setProperty('IXIC_SYMBOLS', payload.symbols.join(','));
   if (payload.symbolSource && payload.symbolSource.categories) {
     props.setProperty('IXIC_SYMBOL_CATEGORIES', payload.symbolSource.categories.join(','));
+  }
+  if (payload.symbolSource && payload.symbolSource.maxSymbols != null) {
+    props.setProperty('IXIC_MAX_SYMBOLS', String(payload.symbolSource.maxSymbols));
   }
   if (payload.symbolSource && (payload.symbolSource.csvUrl || payload.symbolSource.csvPath)) {
     props.setProperty('IXIC_SYMBOLS_CSV_URL', payload.symbolSource.csvUrl || payload.symbolSource.csvPath);
@@ -161,6 +167,7 @@ function buildSymbolReport_(symbol, settings) {
 }
 
 function fetchOhlcv_(symbol, interval, range) {
+  const requiredFields = ['open', 'high', 'low', 'close', 'volume'];
   const url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol)
     + '?interval=' + encodeURIComponent(interval)
     + '&range=' + encodeURIComponent(range)
@@ -175,7 +182,7 @@ function fetchOhlcv_(symbol, interval, range) {
   const timestamps = result.timestamp || [];
   const out = [];
   for (var i = 0; i < timestamps.length; i++) {
-    if ([quote.open, quote.high, quote.low, quote.close, quote.volume].some(function (series) { return !series || series[i] == null; })) {
+    if (requiredFields.some(function (field) { return !quote[field] || quote[field][i] == null; })) {
       continue;
     }
     out.push({
@@ -399,15 +406,16 @@ function loadSymbolsCatalog_(csvUrl) {
   }).filter(function (row) { return row.symbol; });
 }
 
-function selectSymbolsFromCatalog_(catalog, primarySymbol, explicitSymbols, categories) {
+function selectSymbolsFromCatalog_(catalog, primarySymbol, explicitSymbols, categories, maxSymbols) {
   const selected = [primarySymbol];
+  maxSymbols = Math.max(1, maxSymbols || IXIC_DEFAULTS.MAX_SYMBOLS);
   const categorySet = {};
   categories.forEach(function (category) { categorySet[String(category).toLowerCase()] = true; });
   explicitSymbols.forEach(function (symbol) {
-    if (selected.indexOf(symbol) === -1) selected.push(symbol);
+    if (selected.length < maxSymbols && selected.indexOf(symbol) === -1) selected.push(symbol);
   });
   catalog.forEach(function (record) {
-    if (selected.length >= 12) return;
+    if (selected.length >= maxSymbols) return;
     if (!categories.length || categorySet[String(record.category).toLowerCase()]) {
       if (selected.indexOf(record.symbol) === -1) selected.push(record.symbol);
     }

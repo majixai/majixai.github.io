@@ -26,6 +26,7 @@ SETTING_PROPS = {
     'geminiModel': 'IXIC_GEMINI_MODEL',
     'maxDailyCalls': 'IXIC_GEMINI_DAILY_LIMIT',
     'maxMonthlyCalls': 'IXIC_GEMINI_MONTHLY_LIMIT',
+    'maxSymbols': 'IXIC_MAX_SYMBOLS',
     'sendHourLocal': 'IXIC_SEND_HOUR_LOCAL',
     'marketCalendar': 'IXIC_MARKET_CALENDAR',
     'timezone': 'IXIC_TIMEZONE',
@@ -125,7 +126,9 @@ def select_symbols(
     catalog_by_symbol = {record.symbol: record for record in records}
 
     for symbol in explicit_symbols:
-        if symbol == primary_symbol or symbol in catalog_by_symbol:
+        if symbol == primary_symbol:
+            continue
+        if symbol in catalog_by_symbol:
             selected.append(symbol)
 
     for record in records:
@@ -174,7 +177,7 @@ def load_runtime_settings(env: dict[str, str] | None = None) -> dict:
     records = load_symbol_records(symbols_csv_path)
     primary_symbol = (env.get('IXIC_SYMBOL') or env.get('IXIC_PRIMARY_SYMBOL') or '^IXIC').strip() or '^IXIC'
     explicit_symbols = _split_csv(env.get('IXIC_SYMBOLS'))
-    categories = _split_csv(env.get('IXIC_SYMBOL_CATEGORIES', ','.join(DEFAULT_CATEGORY_LIST)))
+    categories = _split_csv(env.get('IXIC_SYMBOL_CATEGORIES') or ','.join(DEFAULT_CATEGORY_LIST))
     max_symbols = max(1, int(env.get('IXIC_MAX_SYMBOLS', str(DEFAULT_MAX_SYMBOLS))))
     selected_symbols, selected_categories = select_symbols(
         records,
@@ -198,6 +201,7 @@ def load_runtime_settings(env: dict[str, str] | None = None) -> dict:
         'symbols_csv_path': str(symbols_csv_path),
         'symbols_csv_url': env.get('IXIC_SYMBOLS_CSV_URL', default_symbols_csv_url(env)),
         'symbols_in_catalog': len(records),
+        'max_symbols': max_symbols,
         'schedule': {
             'send_hour_local': int(env.get('IXIC_SEND_HOUR_LOCAL', '22')),
             'timezone': env.get('IXIC_TIMEZONE', 'America/New_York'),
@@ -251,6 +255,7 @@ def build_webhook_payload(settings: dict) -> dict:
             'csvPath': settings['symbols_csv_path'],
             'csvUrl': settings['symbols_csv_url'],
             'categories': settings['selected_categories'],
+            'maxSymbols': settings['max_symbols'],
         },
         'schedule': settings['schedule'],
         'gemini': settings['gemini'],
@@ -273,6 +278,7 @@ def env_lines(settings: dict) -> list[str]:
         f"IXIC_SYMBOLS={','.join(settings['selected_symbols'])}",
         f"IXIC_SYMBOLS_CSV={settings['symbols_csv_path']}",
         f"IXIC_SYMBOL_CATEGORIES={','.join(settings['selected_categories'])}",
+        f"IXIC_MAX_SYMBOLS={settings['max_symbols']}",
         f"IXIC_RUNTIME_SETTINGS_JSON={settings['output']['runtime_settings_json']}",
         f"IXIC_DIRECTORY_SCAFFOLD_JSON={settings['output']['directory_scaffold_json']}",
         f"IXIC_GAS_WEBHOOK_PAYLOAD_JSON={settings['output']['webhook_payload_json']}",

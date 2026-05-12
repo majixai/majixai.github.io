@@ -60,6 +60,7 @@ jobs:
       IXIC_TRAIN_VERBOSE: "2"
       IXIC_SYMBOLS_CSV: ${{ github.workspace }}/actions/symbols.csv
       IXIC_SYMBOL_CATEGORIES: "indices,tech_mega"
+      IXIC_MAX_SYMBOLS: "12"
 
     steps:
 
@@ -169,6 +170,7 @@ jobs:
           echo "IXIC_TRAIN_VERBOSE : ${{ env.IXIC_TRAIN_VERBOSE }}"
           echo "IXIC_SYMBOLS    : ${{ env.IXIC_SYMBOLS }}"
           echo "IXIC_SYMBOLS_CSV: ${{ env.IXIC_SYMBOLS_CSV }}"
+          echo "IXIC_MAX_SYMBOLS: ${{ env.IXIC_MAX_SYMBOLS }}"
           echo "Output dir      : ixic_lstm_forecast/output/"
           echo "::endgroup::"
 

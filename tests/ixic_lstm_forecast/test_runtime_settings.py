@@ -50,6 +50,13 @@ class TestRuntimeSettings(unittest.TestCase):
         self.assertEqual(payload['security']['gemini_api_key'], 'SET_IN_GAS_SCRIPT_PROPERTIES')
         self.assertEqual(payload['security']['github_token'], 'SET_IN_GITHUB_ACTIONS_OR_GAS_SECRETS')
 
+    def test_empty_category_override_falls_back_to_defaults(self):
+        settings = self.runtime_settings.load_runtime_settings({
+            'IXIC_SYMBOL_CATEGORIES': '',
+            'IXIC_OUTPUT_DIR': str(REPO_ROOT / 'ixic_lstm_forecast' / 'output'),
+        })
+        self.assertEqual(settings['selected_categories'], ['indices', 'tech_mega'])
+
     def test_bash_export_script_generates_json_and_gzip_artifacts(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             env_file = Path(tmpdir) / 'github.env'
@@ -64,6 +71,7 @@ class TestRuntimeSettings(unittest.TestCase):
             self.assertTrue(runtime_json.exists())
             self.assertTrue(scaffold_gz.exists())
             self.assertTrue(webhook_json.exists())
+            self.assertTrue(env_file.exists())
             self.assertIn('IXIC_SYMBOLS=', env_file.read_text(encoding='utf-8'))
 
             payload = json.loads(runtime_json.read_text(encoding='utf-8'))
