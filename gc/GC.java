@@ -6,7 +6,7 @@
  *   1. Mark-and-Sweep  — DFS mark pass + sweep pass
  *   2. Reference Counting — immediate reclamation (no cycle detection)
  *
- * Compile &amp; run:
+ * Compile & run:
  *   javac GC.java && java GC
  */
 

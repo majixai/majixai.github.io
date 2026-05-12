@@ -5,7 +5,7 @@
 //   1. Mark-and-Sweep  — DFS mark pass + sweep pass
 //   2. Reference Counting — immediate reclamation (no cycle detection)
 //
-// Build &amp; run:
+// Build & run:
 //   go run gc.go
 
 package main
