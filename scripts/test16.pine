@@ -367,8 +367,7 @@ cb_extract(QuadSurface qs) =>
 
         // ── Eigenvalues of the 2×2 quadratic-form matrix ─────────────────
         float tr    = A + C
-        float hb    = B / 2.0
-        float ediff = math.sqrt(math.max(0.0, (A - C) * (A - C) + hb * hb))
+        float ediff = 0.5 * math.sqrt(math.max(0.0, (A - C) * (A - C) + B * B))
         float kap1  = tr / 2.0 + ediff   // larger eigenvalue
         float kap2  = tr / 2.0 - ediff   // smaller eigenvalue
 
@@ -449,6 +448,8 @@ if barstate.islast and bar_index >= i_len
          : ta.rsi(i_src, i_rlen)
     float yNowNorm = (yNow - yMu) / ySig
     int   currentBranch = yNowNorm >= 0.0 ? 0 : 1
+    if cb.ok
+        cb := ConicBranch.new(cb.kind, currentBranch, cb.cx, cb.cy, cb.semiA, cb.semiB, cb.theta, cb.ok)
 
     // ── 8g  Build three surface slice FlatPolylines ───────────────────────────
     // Slice at y_fixed = 0  (mean 2nd axis)   → mean curve
