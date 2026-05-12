@@ -50,9 +50,9 @@ def _coerce_value(key: str, value: Any) -> Any:
         return None if key == "output_dir" else DEFAULT_RUNTIME_SETTINGS.get(key)
     if key in {"seq_length", "epochs", "batch_size"}:
         return int(value)
-    if key in {"log_level", "train_verbose", "symbol"}:
-        return str(value)
     if key == "output_dir":
+        return str(value)
+    if key in {"log_level", "train_verbose", "symbol"}:
         return str(value)
     return value
 

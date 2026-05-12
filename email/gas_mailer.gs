@@ -123,12 +123,13 @@ function getFinancialEmailSettings() {
 }
 
 function updateFinancialEmailSettings(settings) {
-  const value = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
-  const parsed = JSON.parse(value);
+  const parsed = (typeof settings === 'string')
+    ? JSON.parse(settings)
+    : (settings || {});
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('FINANCIAL_EMAIL_SETTINGS_JSON must be a JSON object.');
   }
-  PropertiesService.getScriptProperties().setProperty(PROP_SETTINGS_JSON, value);
+  PropertiesService.getScriptProperties().setProperty(PROP_SETTINGS_JSON, JSON.stringify(parsed));
 }
 
 function _getScheduleSlots() {
