@@ -124,7 +124,10 @@ function getFinancialEmailSettings() {
 
 function updateFinancialEmailSettings(settings) {
   const value = typeof settings === 'string' ? settings : JSON.stringify(settings || {});
-  JSON.parse(value);
+  const parsed = JSON.parse(value);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('FINANCIAL_EMAIL_SETTINGS_JSON must be a JSON object.');
+  }
   PropertiesService.getScriptProperties().setProperty(PROP_SETTINGS_JSON, value);
 }
 

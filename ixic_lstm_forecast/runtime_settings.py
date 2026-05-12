@@ -47,7 +47,7 @@ _ENV_KEY_MAP = {
 
 def _coerce_value(key: str, value: Any) -> Any:
     if value in ("", None):
-        return None if key == "output_dir" else DEFAULT_RUNTIME_SETTINGS[key]
+        return None if key == "output_dir" else DEFAULT_RUNTIME_SETTINGS.get(key)
     if key in {"seq_length", "epochs", "batch_size"}:
         return int(value)
     if key in {"log_level", "train_verbose", "symbol"}:
