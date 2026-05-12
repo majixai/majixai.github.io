@@ -531,3 +531,47 @@ def _action_math_execute(ctx: Dict[str, Any]):
         "available_exports": sorted(allowed_functions),
         "result": result,
     }
+
+
+# ── Extended router + neural math integration actions ────────────────────────
+
+@_default_registry.register("math_router_neural_catalog")
+@_default_router.route("math_router_neural_catalog")
+def _action_math_router_neural_catalog(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("catalog", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_exports")
+@_default_router.route("math_router_neural_exports")
+def _action_math_router_neural_exports(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("exports", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_execute")
+@_default_router.route("math_router_neural_execute")
+def _action_math_router_neural_execute(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("execute", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_pipeline")
+@_default_router.route("math_router_neural_pipeline")
+def _action_math_router_neural_pipeline(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("pipeline", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_dispatch")
+@_default_router.route("math_router_neural_dispatch")
+def _action_math_router_neural_dispatch(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    action = ctx.get("action")
+    if not action:
+        raise ValueError("math_router_neural_dispatch requires 'action'")
+    mode = ctx.get("dispatch_mode", "registry")
+    nested_ctx = ctx.get("context", {})
+    if not isinstance(nested_ctx, dict):
+        raise ValueError("'context' must be a dict")
+    return run_math_router_neural_action(action, nested_ctx, dispatch_mode=mode)

@@ -413,6 +413,24 @@ class TestMT5RegistryActions(unittest.TestCase):
                 "function": "not_a_real_function",
             })
 
+    def test_action_math_router_neural_catalog(self):
+        result = self.reg.dispatch("math_router_neural_catalog")
+        self.assertIsInstance(result, dict)
+        self.assertIn("directories", result)
+        self.assertGreater(result.get("count", 0), 0)
+
+    def test_action_math_router_neural_pipeline(self):
+        result = self.reg.dispatch("math_router_neural_pipeline", {
+            "directory": "probability",
+            "function": "normal_cdf",
+            "args": [0.0],
+            "kwargs": {},
+        })
+        self.assertIsInstance(result, dict)
+        self.assertIn("execution", result)
+        self.assertIn("enrichment", result)
+        self.assertIn("neural", result["enrichment"])
+
     def test_all_actions_registered(self):
         expected = {
             "initialize", "login", "shutdown", "version", "last_error",
@@ -428,6 +446,9 @@ class TestMT5RegistryActions(unittest.TestCase):
             "history_orders_total", "history_orders_get",
             "history_deals_total", "history_deals_get",
             "math_directories_catalog", "math_execute",
+            "math_router_neural_catalog", "math_router_neural_exports",
+            "math_router_neural_execute", "math_router_neural_pipeline",
+            "math_router_neural_dispatch",
         }
         registered = set(self.reg.list_actions())
         self.assertTrue(expected.issubset(registered), expected - registered)
@@ -470,6 +491,9 @@ class TestMT5RouterActions(unittest.TestCase):
             "history_orders_total", "history_orders_get",
             "history_deals_total", "history_deals_get",
             "math_directories_catalog", "math_execute",
+            "math_router_neural_catalog", "math_router_neural_exports",
+            "math_router_neural_execute", "math_router_neural_pipeline",
+            "math_router_neural_dispatch",
         }
         registered = set(self.router.registered_actions())
         self.assertTrue(expected.issubset(registered), expected - registered)
