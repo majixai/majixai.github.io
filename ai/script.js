@@ -9,17 +9,51 @@
  * - Local slash commands for structure inspection without API usage
  * - Optional short-term memory across prompt turns
  * - Routing diagnostics and confidence UI
+ * - Markdown rendering with syntax highlighting (marked + highlight.js)
+ * - Message timestamps and copy-to-clipboard on AI responses
+ * - Collapsible routing/diagnostics panel
+ * - Character counter and model selector
  */
 
 import { GoogleGenAI } from '@google/genai';
+import { marked } from 'marked';
 import { PacketRouter } from './packet-router.js';
 
-const MODEL_NAME = 'gemini-1.5-flash-latest';
 const MAX_DESC_LENGTH = 120;
 const MAX_HISTORY_TURNS = 6;
 const MAX_STRUCTURE_PREVIEW = 12;
+const CHAR_WARN_THRESHOLD = 3000;
+
+// ── Markdown renderer ────────────────────────────────────────────────────────
+
+/**
+ * Render markdown text to sanitized HTML, with optional syntax highlighting.
+ * Falls back to raw escaped text if marked is unavailable.
+ */
+function renderMarkdown(text) {
+  const raw = marked.parse(String(text ?? ''));
+  const clean = (typeof DOMPurify !== 'undefined')
+    ? DOMPurify.sanitize(raw)
+    : raw;
+
+  // Apply syntax highlighting to fenced code blocks in a temporary DOM node
+  if (typeof hljs !== 'undefined') {
+    const temp = document.createElement('div');
+    temp.innerHTML = clean;
+    temp.querySelectorAll('pre code').forEach((block) => {
+      hljs.highlightElement(block);
+    });
+    return temp.innerHTML;
+  }
+
+  return clean;
+}
+
+// ── Router ───────────────────────────────────────────────────────────────────
 
 const packetRouter = new PacketRouter();
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
 
 const chatContainer = document.getElementById('chat-container');
 const promptInput = document.getElementById('prompt-input');
@@ -29,18 +63,27 @@ const routingDisplay = document.getElementById('routing-display');
 const routingDiagnostics = document.getElementById('routing-diagnostics');
 const selfAwareStatus = document.getElementById('self-aware-status');
 const explainabilityDisplay = document.getElementById('routing-explainability');
+const routingCard = document.getElementById('routing-card');
+const routingCardToggle = document.getElementById('routing-card-toggle');
+const routingCardDetails = document.getElementById('routing-card-details');
+const routingChevron = document.getElementById('routing-chevron');
+const clearChatBtn = document.getElementById('clear-chat-btn');
+const charCounter = document.getElementById('char-counter');
 
 const selfAwareToggle = document.getElementById('self-aware-toggle');
 const structureScanToggle = document.getElementById('structure-scan-toggle');
 const memoryToggle = document.getElementById('memory-toggle');
 const responseProfileSelect = document.getElementById('response-profile');
 const routingBudgetSelect = document.getElementById('routing-budget');
+const modelSelect = document.getElementById('model-select');
 
 const appState = {
   turns: [],
   lastRouting: null,
   commandHistory: [],
 };
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
 function safe(value) {
   return (value ?? '').toString();
@@ -55,18 +98,74 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function nowTime() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getModelName() {
+  return safe(modelSelect?.value || 'gemini-1.5-flash-latest');
+}
+
 function scrollBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-function appendText(text, role) {
-  const div = document.createElement('div');
-  div.className = `${role}-message w3-margin-bottom`;
-  div.textContent = text;
-  chatContainer.appendChild(div);
-  scrollBottom();
-  return div;
+// ── Message rendering ─────────────────────────────────────────────────────────
+
+/**
+ * Create a styled chat message element.
+ * Model messages render markdown with a copy-to-clipboard button.
+ */
+function createMessageElement(text, role) {
+  const wrapper = document.createElement('div');
+  wrapper.className = `${role}-message w3-margin-bottom chat-message`;
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  if (role === 'model') {
+    content.innerHTML = renderMarkdown(text);
+  } else {
+    content.textContent = text;
+  }
+
+  wrapper.appendChild(content);
+
+  if (role === 'model') {
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.title = 'Copy to clipboard';
+    copyBtn.innerHTML = '<i class="fa fa-copy"></i> Copy';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.innerHTML = '<i class="fa fa-check"></i> Copied';
+        setTimeout(() => { copyBtn.innerHTML = '<i class="fa fa-copy"></i> Copy'; }, 1800);
+      }).catch(() => {});
+    });
+
+    actions.appendChild(copyBtn);
+    wrapper.appendChild(actions);
+  }
+
+  const ts = document.createElement('div');
+  ts.className = 'msg-time';
+  ts.textContent = nowTime();
+  wrapper.appendChild(ts);
+
+  return wrapper;
 }
+
+function appendText(text, role) {
+  const el = createMessageElement(text, role);
+  chatContainer.appendChild(el);
+  scrollBottom();
+  return el;
+}
+
+// ── Self-aware status ─────────────────────────────────────────────────────────
 
 function updateSelfAwareStatus(routing) {
   if (!selfAwareStatus) return;
@@ -101,14 +200,15 @@ function updateSelfAwareStatus(routing) {
   });
 }
 
+// ── Routing panel ─────────────────────────────────────────────────────────────
+
 function showExplainability(routing) {
   if (!explainabilityDisplay) return;
   if (!routing?.nodes?.length) {
-    explainabilityDisplay.style.display = 'none';
+    explainabilityDisplay.innerHTML = '';
     return;
   }
 
-  explainabilityDisplay.style.display = 'block';
   explainabilityDisplay.innerHTML = '';
 
   const title = document.createElement('div');
@@ -127,18 +227,19 @@ function showExplainability(routing) {
 }
 
 function showRoutingPipeline(nodes) {
-  if (!routingDisplay) return;
+  if (!routingDisplay || !routingCard) return;
   if (!nodes || nodes.length === 0) {
-    routingDisplay.style.display = 'none';
+    routingCard.style.display = 'none';
+    routingDisplay.innerHTML = '';
     return;
   }
 
-  routingDisplay.style.display = 'block';
+  routingCard.style.display = '';
   routingDisplay.innerHTML = '';
 
   const label = document.createElement('span');
   label.className = 'routing-label';
-  label.textContent = 'Routing through: ';
+  label.textContent = 'Routing: ';
   routingDisplay.appendChild(label);
 
   nodes.forEach((node, i) => {
@@ -164,12 +265,11 @@ function showRoutingPipeline(nodes) {
 function showRoutingDiagnostics(routing) {
   if (!routingDiagnostics) return;
   if (!routing?.diagnostics) {
-    routingDiagnostics.style.display = 'none';
+    routingDiagnostics.innerHTML = '';
     return;
   }
 
   const d = routing.diagnostics;
-  routingDiagnostics.style.display = 'block';
   routingDiagnostics.innerHTML = '';
 
   const row1 = document.createElement('div');
@@ -199,6 +299,8 @@ function showRoutingDiagnostics(routing) {
   routingDiagnostics.appendChild(row5);
 }
 
+// ── Response guidance ─────────────────────────────────────────────────────────
+
 function responseGuidance(profile) {
   const map = {
     concise: 'Respond in concise format with direct actionable points only.',
@@ -208,6 +310,8 @@ function responseGuidance(profile) {
   };
   return map[profile] ?? map.balanced;
 }
+
+// ── Memory ────────────────────────────────────────────────────────────────────
 
 function getChatHistoryForModel() {
   if (!memoryToggle?.checked) return [];
@@ -226,6 +330,8 @@ function rememberTurn(role, text) {
     appState.turns = appState.turns.slice(-MAX_HISTORY_TURNS * 2);
   }
 }
+
+// ── Local commands ────────────────────────────────────────────────────────────
 
 function localHelpText() {
   return [
@@ -426,6 +532,8 @@ async function handleLocalCommand(rawPrompt) {
   return true;
 }
 
+// ── Self-aware preamble ───────────────────────────────────────────────────────
+
 function buildSelfAwarePreamble(prompt, routing) {
   const selfAwareEnabled = !!selfAwareToggle?.checked;
   const profile = safe(responseProfileSelect?.value || 'balanced');
@@ -433,7 +541,7 @@ function buildSelfAwarePreamble(prompt, routing) {
   const preambleLines = [
     '=== MAJIXAI SELF-AWARE DIRECTIVE ===',
     `timestamp=${nowIso()}`,
-    `model=${MODEL_NAME}`,
+    `model=${getModelName()}`,
     `responseProfile=${profile}`,
     `guidance=${responseGuidance(profile)}`,
   ];
@@ -474,6 +582,8 @@ function buildSelfAwarePreamble(prompt, routing) {
   return preambleLines.join('\n');
 }
 
+// ── Prompt enrichment ─────────────────────────────────────────────────────────
+
 async function buildEnrichedPrompt(prompt) {
   await packetRouter.ready();
 
@@ -502,10 +612,12 @@ async function buildEnrichedPrompt(prompt) {
   };
 }
 
+// ── Model request ─────────────────────────────────────────────────────────────
+
 async function requestModelResponse(apiKey, enrichedPrompt) {
   const genAI = new GoogleGenAI({ apiKey });
   const chat = genAI.startChat({
-    model: MODEL_NAME,
+    model: getModelName(),
     history: getChatHistoryForModel(),
   });
 
@@ -513,12 +625,15 @@ async function requestModelResponse(apiKey, enrichedPrompt) {
   return result.response.text();
 }
 
+// ── Send handler ──────────────────────────────────────────────────────────────
+
 async function handleSend() {
   const prompt = safe(promptInput?.value).trim();
   if (!prompt) return;
 
   appendText(prompt, 'user');
   promptInput.value = '';
+  updateCharCounter();
 
   if (await handleLocalCommand(prompt)) {
     scrollBottom();
@@ -541,19 +656,14 @@ async function handleSend() {
 
     const responseText = await requestModelResponse(apiKey, enrichedPrompt);
 
-    const responseEl = document.createElement('div');
-    responseEl.className = 'model-message w3-margin-bottom';
-    responseEl.textContent = responseText;
-
+    const responseEl = createMessageElement(responseText, 'model');
     chatContainer.replaceChild(responseEl, thinkingEl);
     rememberTurn('model', responseText);
 
     updateSelfAwareStatus(routing);
     scrollBottom();
   } catch (err) {
-    const errEl = document.createElement('div');
-    errEl.className = 'error-message w3-margin-bottom';
-    errEl.textContent = 'Error: ' + (err?.message || String(err));
+    const errEl = createMessageElement('Error: ' + (err?.message || String(err)), 'error');
     chatContainer.replaceChild(errEl, thinkingEl);
     console.error('AI request failed:', err);
   } finally {
@@ -561,6 +671,41 @@ async function handleSend() {
     promptInput.focus();
   }
 }
+
+// ── Character counter ─────────────────────────────────────────────────────────
+
+function updateCharCounter() {
+  if (!charCounter || !promptInput) return;
+  const len = promptInput.value.length;
+  charCounter.textContent = len.toLocaleString();
+  charCounter.classList.toggle('warn', len >= CHAR_WARN_THRESHOLD);
+}
+
+// ── Clear chat ────────────────────────────────────────────────────────────────
+
+function clearChat() {
+  chatContainer.innerHTML = '';
+  const hint = document.createElement('p');
+  hint.className = 'chat-empty-hint w3-text-grey w3-center';
+  hint.style.margin = '36px 0';
+  hint.innerHTML = '<i class="fa fa-comments fa-2x"></i><br>Ask anything — responses use self-aware mode + structure routing.';
+  chatContainer.appendChild(hint);
+  appState.turns = [];
+}
+
+// ── Routing panel collapse ────────────────────────────────────────────────────
+
+function toggleRoutingDetails() {
+  if (!routingCardDetails || !routingChevron) return;
+  const isOpen = routingCardDetails.style.display !== 'none';
+  routingCardDetails.style.display = isOpen ? 'none' : '';
+  routingChevron.classList.toggle('open', !isOpen);
+  if (routingCardToggle) {
+    routingCardToggle.setAttribute('aria-expanded', String(!isOpen));
+  }
+}
+
+// ── Wire UI ───────────────────────────────────────────────────────────────────
 
 function wireUI() {
   sendBtn.addEventListener('click', handleSend);
@@ -571,17 +716,36 @@ function wireUI() {
     }
   });
 
-  [selfAwareToggle, structureScanToggle, memoryToggle, responseProfileSelect, routingBudgetSelect]
+  promptInput.addEventListener('input', updateCharCounter);
+
+  if (clearChatBtn) {
+    clearChatBtn.addEventListener('click', clearChat);
+  }
+
+  if (routingCardToggle) {
+    routingCardToggle.addEventListener('click', toggleRoutingDetails);
+    routingCardToggle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleRoutingDetails();
+      }
+    });
+  }
+
+  [selfAwareToggle, structureScanToggle, memoryToggle, responseProfileSelect, routingBudgetSelect, modelSelect]
     .filter(Boolean)
     .forEach((el) => {
       el.addEventListener('change', () => updateSelfAwareStatus(appState.lastRouting));
     });
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
+
 async function initialize() {
   await packetRouter.ready();
   updateSelfAwareStatus({ diagnostics: packetRouter.route('', 1).diagnostics });
   appendText('Type /help to view local self-aware commands.', 'thinking');
+  updateCharCounter();
   wireUI();
 }
 
