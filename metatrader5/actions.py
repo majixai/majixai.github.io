@@ -16,9 +16,12 @@ Usage
 
 from __future__ import annotations
 
+import importlib.util
+import inspect
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 import metatrader5 as mt5
@@ -103,6 +106,100 @@ class ActionRegistry:
 
 _default_registry = ActionRegistry()
 _default_router   = Router()
+_MATH_DIRECTORIES = (
+    "calculus",
+    "measure_theory",
+    "functional_analysis",
+    "algebra",
+    "topology",
+    "manifolds",
+    "category_theory",
+    "regression",
+    "bayes",
+    "differential_equations",
+    "transformations",
+    "matrix",
+    "optimization",
+    "probability",
+    "numerical_methods",
+    "quantum_mechanics",
+    "statistical_mechanics",
+    "information_theory",
+    "complexity_theory",
+    "cryptography",
+)
+
+
+def _find_repo_root() -> Path:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "math_index.md").exists():
+            return parent
+    return current.parents[1]
+
+
+_REPO_ROOT = _find_repo_root()
+
+
+def _is_within_repo(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(_REPO_ROOT.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _python_core_path(directory: str) -> Optional[Path]:
+    d = _REPO_ROOT / directory
+    if not d.is_dir():
+        return None
+    candidate = d / f"{directory}_core.py"
+    if candidate.exists():
+        return candidate
+    py_cores = sorted(d.glob("*_core.py"))
+    return py_cores[0] if py_cores else None
+
+
+def _js_core_path(directory: str) -> Optional[Path]:
+    d = _REPO_ROOT / directory
+    if not d.is_dir():
+        return None
+    candidate = d / f"{directory}-core.js"
+    if candidate.exists():
+        return candidate
+    js_cores = sorted(d.glob("*-core.js"))
+    return js_cores[0] if js_cores else None
+
+
+def _math_catalog() -> Dict[str, Any]:
+    directories = []
+    for name in _MATH_DIRECTORIES:
+        d = _REPO_ROOT / name
+        if not d.is_dir():
+            continue
+        py_core = _python_core_path(name)
+        js_core = _js_core_path(name)
+        readme = d / "README.md"
+        directories.append({
+            "name": name,
+            "path": str(d),
+            "python_core": str(py_core) if py_core else None,
+            "javascript_core": str(js_core) if js_core else None,
+            "readme": str(readme) if readme.exists() else None,
+        })
+    return {"root": str(_REPO_ROOT), "directories": directories}
+
+
+def _load_python_core_module(core_path: Path):
+    if not _is_within_repo(core_path):
+        raise ValueError(f"Refusing to load module outside repository root: {core_path}")
+    module_key = f"majix_math_{core_path.parent.name}"
+    spec = importlib.util.spec_from_file_location(module_key, core_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to create import spec for {core_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def get_mt5_registry() -> ActionRegistry:
@@ -372,3 +469,109 @@ def _action_history_deals_get(ctx: Dict[str, Any]):
         ticket=ctx.get("ticket", 0),
         position=ctx.get("position", 0),
     )
+
+
+# ── Root mathematics integration actions ──────────────────────────────────────
+
+@_default_registry.register("math_directories_catalog")
+@_default_router.route("math_directories_catalog")
+def _action_math_directories_catalog(ctx: Dict[str, Any]):
+    return _math_catalog()
+
+
+@_default_registry.register("math_execute")
+@_default_router.route("math_execute")
+def _action_math_execute(ctx: Dict[str, Any]):
+    """
+    Execute a callable from a root mathematical directory python core file.
+
+    ctx:
+      directory: str   (e.g. "probability")
+      function:  str   (e.g. "normal_pdf")
+      args:      list  (optional positional args)
+      kwargs:    dict  (optional keyword args)
+    """
+    directory = ctx.get("directory")
+    function_name = ctx.get("function")
+    args = ctx.get("args", [])
+    kwargs = ctx.get("kwargs", {})
+    if not directory or not function_name:
+        raise ValueError("math_execute requires 'directory' and 'function'")
+    if directory not in _MATH_DIRECTORIES:
+        raise KeyError(f"Unknown math directory '{directory}'")
+    if not isinstance(args, list):
+        raise ValueError("'args' must be a list")
+    if not isinstance(kwargs, dict):
+        raise ValueError("'kwargs' must be a dict")
+
+    core_path = _python_core_path(directory)
+    if core_path is None:
+        raise KeyError(f"No python core module found for '{directory}'")
+
+    module = _load_python_core_module(core_path)
+    allowed_functions = {
+        name for name, obj in inspect.getmembers(module, inspect.isfunction)
+        if not name.startswith("_") and getattr(obj, "__module__", "") == module.__name__
+    }
+    if function_name not in allowed_functions:
+        raise KeyError(f"Function '{function_name}' not available in '{directory}' core module")
+
+    fn = getattr(module, function_name, None)
+    try:
+        result = fn(*args, **kwargs)
+    except Exception as exc:
+        raise RuntimeError(
+            f"math_execute failed for directory='{directory}', function='{function_name}'"
+        ) from exc
+
+    return {
+        "directory": directory,
+        "python_core": str(core_path),
+        "function": function_name,
+        "available_exports": sorted(allowed_functions),
+        "result": result,
+    }
+
+
+# ── Extended router + neural math integration actions ────────────────────────
+
+@_default_registry.register("math_router_neural_catalog")
+@_default_router.route("math_router_neural_catalog")
+def _action_math_router_neural_catalog(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("catalog", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_exports")
+@_default_router.route("math_router_neural_exports")
+def _action_math_router_neural_exports(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("exports", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_execute")
+@_default_router.route("math_router_neural_execute")
+def _action_math_router_neural_execute(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("execute", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_pipeline")
+@_default_router.route("math_router_neural_pipeline")
+def _action_math_router_neural_pipeline(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    return run_math_router_neural_action("pipeline", ctx, dispatch_mode=ctx.get("dispatch_mode", "registry"))
+
+
+@_default_registry.register("math_router_neural_dispatch")
+@_default_router.route("math_router_neural_dispatch")
+def _action_math_router_neural_dispatch(ctx: Dict[str, Any]):
+    from metatrader5.math_router_neural_pipeline import run_math_router_neural_action
+    action = ctx.get("action")
+    if not action:
+        raise ValueError("math_router_neural_dispatch requires 'action'")
+    mode = ctx.get("dispatch_mode", "registry")
+    nested_ctx = ctx.get("context", {})
+    if not isinstance(nested_ctx, dict):
+        raise ValueError("'context' must be a dict")
+    return run_math_router_neural_action(action, nested_ctx, dispatch_mode=mode)
