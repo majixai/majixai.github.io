@@ -17,6 +17,8 @@
 
 import { GoogleGenAI } from '@google/genai';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
 import { PacketRouter } from './packet-router.js';
 
 const MAX_DESC_LENGTH = 120;
@@ -28,25 +30,27 @@ const CHAR_WARN_THRESHOLD = 3000;
 
 /**
  * Render markdown text to sanitized HTML, with optional syntax highlighting.
- * Falls back to raw escaped text if marked is unavailable.
+ * Falls back to escaped plain text if parsing fails.
  */
 function renderMarkdown(text) {
-  const raw = marked.parse(String(text ?? ''));
-  const clean = (typeof DOMPurify !== 'undefined')
-    ? DOMPurify.sanitize(raw)
-    : raw;
+  try {
+    const raw = marked.parse(String(text ?? ''));
+    const clean = DOMPurify.sanitize(raw);
 
-  // Apply syntax highlighting to fenced code blocks in a temporary DOM node
-  if (typeof hljs !== 'undefined') {
+    // Apply syntax highlighting to fenced code blocks in a temporary DOM node
     const temp = document.createElement('div');
     temp.innerHTML = clean;
     temp.querySelectorAll('pre code').forEach((block) => {
       hljs.highlightElement(block);
     });
     return temp.innerHTML;
+  } catch (err) {
+    console.warn('renderMarkdown: falling back to plain text', err);
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
-
-  return clean;
 }
 
 // ── Router ───────────────────────────────────────────────────────────────────
