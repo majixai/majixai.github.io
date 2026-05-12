@@ -66,6 +66,7 @@ const SCHEDULE_SLOTS = [
   { name: 'weekend_9am',   days: [0,6],        hour:  9, minute:  0, fn: 'sendWeekendMorning',    calendarTitle: '🌅 Weekend Market Morning Digest'  },
   { name: 'weekend_10pm',  days: [0,6],        hour: 22, minute:  0, fn: 'sendWeekendEvening',    calendarTitle: '🌙 Weekend Market Evening Digest'  },
   // ── Trading-Prompt Agent slots (ET times) ────────────────────────────────
+  // Includes Sunday night so Monday's regular session has a 10 PM ET forecast.
   { name: 'nightly_ixic_forecast', days: [0,1,2,3,4], hour: 22, minute:  0, fn: 'sendNightlyIXICForecast', calendarTitle: '🌙 IXIC Nightly Forecast' },
   { name: 'overnight_day_plan',  days: [1,2,3,4,5], hour: 23, minute:  0, fn: 'sendOvernightDayPlan',   calendarTitle: '🌙 Trading Day Ahead Plan'         },
   { name: 'overnight_bull_pick', days: [1,2,3,4,5], hour:  1, minute:  0, fn: 'sendOvernightBullPick',  calendarTitle: '⚡ Most Bullish Pick Alert'        },

@@ -85,6 +85,8 @@ on:
         required: false
         default: 'false'
 
+# contents: write is required only so the workflow can persist the gzip-backed
+# Gemini rate-limit state file under email/state/ when the optional AI block runs.
 permissions:
   contents: write
 
@@ -234,8 +236,8 @@ jobs:
         run: |
           STATE_FILE="email/state/gemini_rate_limit.dat.gz"
           if [ -f "$STATE_FILE" ]; then
-            git config --global user.name "financial-email[bot]"
-            git config --global user.email "financial-email[bot]@users.noreply.github.com"
+            git config --local user.name "financial-email[bot]"
+            git config --local user.email "financial-email[bot]@users.noreply.github.com"
             git add "$STATE_FILE"
             if ! git diff --staged --quiet; then
               git commit -m "email: update Gemini rate-limit state"

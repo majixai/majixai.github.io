@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-REPO_ROOT = Path("/home/runner/work/majixai.github.io/majixai.github.io")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = REPO_ROOT / "email" / "financial_report.py"
 
 _SPEC = importlib.util.spec_from_file_location("majix_financial_report_test", MODULE_PATH)
@@ -47,7 +47,7 @@ class TestNightlyIxicReport(unittest.TestCase):
                 "timeframe": "weekly",
                 "persistence": "multiday",
                 "latest": {"open": 18000, "high": 18200, "low": 17950, "close": 18150, "volume": 1000},
-                "indicators": {"SMA20": 17500, "EMA9": 18020, "EMA21": 17890, "RSI14": 61.2, "MACD": 22.1, "ATR14": 180.0},
+                "indicators": {"SMA20": 17500, "EMA9": 18020, "EMA21": 17890, "RSI14": 61.2, "MACD_LINE": 22.1, "ATR14": 180.0},
                 "patterns": ["bullish_engulfing"],
                 "trend": "up",
                 "regime": "expansion",
@@ -59,7 +59,7 @@ class TestNightlyIxicReport(unittest.TestCase):
                 "timeframe": "daily",
                 "persistence": "multiday",
                 "latest": {"open": 18100, "high": 18210, "low": 18040, "close": 18180, "volume": 2000},
-                "indicators": {"SMA20": 17990, "EMA9": 18110, "EMA21": 18010, "RSI14": 63.4, "MACD": 18.2, "ATR14": 120.0},
+                "indicators": {"SMA20": 17990, "EMA9": 18110, "EMA21": 18010, "RSI14": 63.4, "MACD_LINE": 18.2, "ATR14": 120.0},
                 "patterns": ["bullish_engulfing"],
                 "trend": "up",
                 "regime": "compression",
@@ -71,7 +71,7 @@ class TestNightlyIxicReport(unittest.TestCase):
                 "timeframe": "hourly",
                 "persistence": "session-fresh",
                 "latest": {"open": 18120, "high": 18190, "low": 18100, "close": 18170, "volume": 3000},
-                "indicators": {"SMA20": 18100, "EMA9": 18140, "EMA21": 18110, "RSI14": 58.1, "MACD": 7.2, "ATR14": 42.0},
+                "indicators": {"SMA20": 18100, "EMA9": 18140, "EMA21": 18110, "RSI14": 58.1, "MACD_LINE": 7.2, "ATR14": 42.0},
                 "patterns": ["doji"],
                 "trend": "up",
                 "regime": "compression",
@@ -83,7 +83,7 @@ class TestNightlyIxicReport(unittest.TestCase):
                 "timeframe": "15m",
                 "persistence": "session-fresh",
                 "latest": {"open": 18160, "high": 18188, "low": 18142, "close": 18174, "volume": 4000},
-                "indicators": {"SMA20": 18155, "EMA9": 18168, "EMA21": 18157, "RSI14": 55.9, "MACD": 3.8, "ATR14": 18.0},
+                "indicators": {"SMA20": 18155, "EMA9": 18168, "EMA21": 18157, "RSI14": 55.9, "MACD_LINE": 3.8, "ATR14": 18.0},
                 "patterns": ["doji"],
                 "trend": "up",
                 "regime": "compression",

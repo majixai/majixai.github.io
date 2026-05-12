@@ -858,7 +858,7 @@ def _build_ixic_timeframe_summary(frame: "pd.DataFrame", timeframe: str, persist
             "EMA9": _ema_values(closes, 9),
             "EMA21": _ema_values(closes, 21),
             "RSI14": _rsi_values(closes, 14),
-            "MACD": macd_line,
+            "MACD_LINE": macd_line,
             "MACD_SIGNAL": macd_signal,
             "ATR14": atr14,
         },
@@ -1079,7 +1079,7 @@ def _ixic_timeframe_card(summary: Dict[str, Any]) -> str:
         EMA9 {_format_number(indicators.get("EMA9"))} ·
         EMA21 {_format_number(indicators.get("EMA21"))} ·
         RSI14 {_format_number(indicators.get("RSI14"))} ·
-        MACD {_format_number(indicators.get("MACD"))} ·
+        MACD {_format_number(indicators.get("MACD_LINE"))} ·
         ATR14 {_format_number(indicators.get("ATR14"))}
       </p>
       <p><strong>Range levels:</strong> support {_format_number(summary.get("support"))} · resistance {_format_number(summary.get("resistance"))}</p>
