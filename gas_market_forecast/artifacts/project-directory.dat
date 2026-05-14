@@ -1,0 +1,33 @@
+{
+  "project": {
+    "id": "nightly-market-forecast",
+    "name": "Nightly Market Forecast",
+    "sourceOfTruth": "github",
+    "repository": "majixai/majixai.github.io"
+  },
+  "defaults": {
+    "symbols": ["SPY"],
+    "market": "US_EQUITIES",
+    "timezone": "America/New_York",
+    "jobHourLocal": 22,
+    "marketDataProvider": "alphavantage",
+    "marketDataDelayMs": 15000,
+    "geminiModel": "gemini-2.5-flash",
+    "geminiDailyLimit": 5,
+    "geminiMonthlyLimit": 60
+  },
+  "prompt": {
+    "path": "gas_market_forecast/prompts/gemini-market-brief.md"
+  },
+  "artifacts": {
+    "sampleContext": "gas_market_forecast/artifacts/sample-forecast-context.dat",
+    "sampleContextCompressed": "gas_market_forecast/artifacts/sample-forecast-context.dat.gz"
+  },
+  "automation": {
+    "workflow": ".github/workflows/gas_market_forecast.yml",
+    "validateScript": "scripts/gas_market_forecast_validate.sh",
+    "packageScript": "scripts/gas_market_forecast_package.sh",
+    "refreshScript": "scripts/gas_market_forecast_refresh_samples.sh",
+    "deployScript": "scripts/gas_market_forecast_deploy.sh"
+  }
+}
