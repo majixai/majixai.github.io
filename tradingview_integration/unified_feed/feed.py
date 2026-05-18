@@ -32,8 +32,21 @@ DIRS = {
 }
 
 TICKERS = [
-    "spy", "qqq", "dia", "iwm", "aapl", "msft", "nvda", "tsla", "btc-usd",
-    "meta", "amzn", "gld", "slv", "tlt", "xom",
+    # Core index and broad-market ETFs
+    "spy", "qqq", "dia", "iwm", "gld", "slv", "tlt", "hyg", "lqd",
+    "eem", "efa", "vt", "voo", "vti", "schd", "arkk", "xlk", "xlf",
+    "xlv", "xle", "xli", "xlu", "vnq",
+    # Mega-cap technology and communication
+    "aapl", "msft", "nvda", "tsla", "meta", "amzn", "goog", "googl",
+    "amd", "intc", "qcom", "csco", "avgo", "orcl", "crm", "adbe",
+    "ibm", "tsm",
+    # Financials, healthcare, and consumer
+    "jpm", "bac", "gs", "ms", "v", "ma", "unh", "jnj", "ko", "pg",
+    "mcd", "wmt", "cost", "hd", "nke",
+    # Energy, industrials, and materials
+    "xom", "cvx", "cop", "cat", "unp", "ba", "lmt", "nue", "fcx",
+    # Digital assets
+    "btc-usd", "eth-usd", "sol-usd",
 ]
 
 SEED_HEADER = (
