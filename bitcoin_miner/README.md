@@ -4,7 +4,7 @@
 
 - a high-performance C proof-of-work miner (`miner.c`)
 - a live Bitcoin network data + analytics pipeline (`fetch_real_data.py`)
-- a browser UI with worker-based mining simulation, shared route/hash integrations, and TensorFlow.js neural fee analysis (`index.html`)
+- a browser UI with worker-based mining simulation, shared route/hash integrations, and TensorFlow.js neural fee analysis accelerated with WebGPU/WebGL when available (`index.html`)
 - shared PWA wiring (`manifest.json`, `sw.js`) via the repository `/pwa` infrastructure
 
 The directory is designed to run as a standalone app while also integrating with repository automation.

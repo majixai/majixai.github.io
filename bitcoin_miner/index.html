@@ -962,30 +962,39 @@ function mineNextBlock() {
   });
 }
 
-/* ── WebGPU detection (TF.js backend switch) ─────────────────────────────── */
-async function detectGPU() {
+/* ── Accelerated backend detection (WebGPU/WebGL) ───────────────────────── */
+async function detectAcceleratedBackend() {
   if (navigator.gpu) {
     try {
       const adapter = await navigator.gpu.requestAdapter();
       if (adapter) {
-        document.getElementById('badge-tfback').textContent = 'WebGPU ✓';
-        appendLog('<span class="log-ml">&#x26A1; WebGPU detected — TF.js will use GPU compute</span>');
-        return true;
+        if (await tf.setBackend('webgpu')) {
+          return 'webgpu';
+        }
       }
     } catch(_) {}
   }
-  document.getElementById('badge-tfback').textContent = 'WebGL';
-  return false;
+  try {
+    if (await tf.setBackend('webgl')) {
+      return 'webgl';
+    }
+  } catch(_) {}
+  return tf.getBackend() || 'cpu';
 }
 
 /* ── Boot ────────────────────────────────────────────────────────────────── */
 (async () => {
-  const hasWebGPU = await detectGPU();
-  if (hasWebGPU) { try { await tf.setBackend('webgpu'); } catch(_) {} }
+  const backend = await detectAcceleratedBackend();
   await tf.ready();
-  document.getElementById('badge-tfback').textContent = (tf.getBackend() || 'cpu').toUpperCase();
+  const activeBackend = (tf.getBackend() || backend || 'cpu').toUpperCase();
+  document.getElementById('badge-tfback').textContent = activeBackend;
+  if (activeBackend === 'WEBGPU') {
+    appendLog('<span class="log-ml">&#x26A1; WebGPU detected — TF.js will use GPU compute</span>');
+  } else if (activeBackend === 'WEBGL') {
+    appendLog('<span class="log-ml">&#x26A1; WebGL backend enabled — TF.js is GPU accelerated</span>');
+  }
   await buildTFModel();
-  appendLog('<span class="log-ml">&#x1F9E0; TF.js model ready (' + (tf.getBackend()||'cpu').toUpperCase() + ' backend)</span>');
+  appendLog('<span class="log-ml">&#x1F9E0; TF.js model ready (' + activeBackend + ' backend)</span>');
   appendLog('<span class="log-net">&#x1F310; Fetching live Bitcoin network data…</span>');
   await fetchLiveData();
   setInterval(async () => {
