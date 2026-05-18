@@ -56,6 +56,10 @@ A quantitative finance library providing portfolio management, market data analy
 
 A neural network implementation for tensor-based financial forecasting and market pattern recognition.
 
+### [DUET Channel Clustering Demo](redirect.html?url=https://majixai.github.io/neural/duet-channel-clustering/) (`neural/duet-channel-clustering/`)
+
+A client-side DUET channel clustering web demo using TensorFlow.js (WebGL), pako.js, and Bootstrap, running fully in-browser with no server-side compute.
+
 ### [Predictive Ledger](redirect.html?url=https://majixai.github.io/predictive_ledger/) (`predictive_ledger/`)
 
 A predictive financial ledger application leveraging AI to forecast transaction patterns and account balances.

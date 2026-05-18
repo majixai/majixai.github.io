@@ -39,6 +39,22 @@ Override via `config.json → backends.priority`, or pass `backend="cpu"` to `GP
 
 ---
 
+## TFJS / WebGL (Browser note)
+
+For browser demos that use TensorFlow.js (such as DUET channel clustering), TFJS should be configured to prefer WebGL:
+
+```js
+await tf.setBackend('webgl'); // falls back to 'cpu' if unavailable
+await tf.ready();
+console.log('Using backend:', tf.getBackend());
+```
+
+- On Android Chrome, WebGL-capable devices typically run TFJS tensor ops on GPU automatically when `webgl` is active.
+- If WebGL is unavailable/blocked, TFJS falls back to CPU and functionality remains client-side.
+- Use Chrome hardware acceleration and avoid blocked WebGL contexts for best performance.
+
+---
+
 ## Quick start
 
 ### From any subdirectory
