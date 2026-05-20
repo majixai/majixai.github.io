@@ -15,6 +15,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from yfinance_data.tickers import get_unique_tickers
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
@@ -31,23 +33,15 @@ DIRS = {
     "idx": ROOT / "index" / "csv",
 }
 
-TICKERS = [
-    # Core index and broad-market ETFs
-    "spy", "qqq", "dia", "iwm", "gld", "slv", "tlt", "hyg", "lqd",
-    "eem", "efa", "vt", "voo", "vti", "schd", "arkk", "xlk", "xlf",
-    "xlv", "xle", "xli", "xlu", "vnq",
-    # Mega-cap technology and communication
-    "aapl", "msft", "nvda", "tsla", "meta", "amzn", "goog", "googl",
-    "amd", "intc", "qcom", "csco", "avgo", "orcl", "crm", "adbe",
-    "ibm", "tsm",
-    # Financials, healthcare, and consumer
-    "jpm", "bac", "gs", "ms", "v", "ma", "unh", "jnj", "ko", "pg",
-    "mcd", "wmt", "cost", "hd", "nke",
-    # Energy, industrials, and materials
-    "xom", "cvx", "cop", "cat", "unp", "ba", "lmt", "nue", "fcx",
-    # Digital assets
-    "btc-usd", "eth-usd", "sol-usd",
-]
+_TICKER_EXTRAS = ["BTC-USD", "ETH-USD", "SOL-USD"]
+
+TICKERS = []
+_seen_tickers = set()
+for _ticker in [*get_unique_tickers(), *_TICKER_EXTRAS]:
+    _normalized = _ticker.strip().lower()
+    if _normalized and _normalized not in _seen_tickers:
+        _seen_tickers.add(_normalized)
+        TICKERS.append(_normalized)
 
 SEED_HEADER = (
     "#syminfo.type=index\n"
