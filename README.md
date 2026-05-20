@@ -48,6 +48,10 @@ This repository is a collection of diverse projects, including web applications,
 
 A suite of server-side financial analytics tools including a 3D tensor pipeline (`tensor_engine.py`) producing market forecasts, Pine Script indicators, a unified financial feed, and GenAI-powered analysis. Forecasts are auto-updated every 6 hours via GitHub Actions.
 
+### [Quantitative AI](quantitative_ai/) (`quantitative_ai/`)
+
+An umbrella directory that groups the repository's yfinance, GPU, neural, ML, and mathematics layers into a single pipeline-oriented workspace.
+
 ### [Quantix](redirect.html?url=https://majixai.github.io/quantix/) (`quantix/`)
 
 A quantitative finance library providing portfolio management, market data analysis, risk calculations, and financial computations following an MVC architecture.
