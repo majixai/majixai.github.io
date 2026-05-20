@@ -156,6 +156,9 @@ This directory now includes an automated compressed image datastore pipeline:
     - GitHub Actions `concurrency` group prevents workflow overlap.
     - Script-level file lock (`best/dbs/.performer_images.lock`) prevents local overlap.
     - Atomic compressed DB replacement avoids partial writes.
+- Background orchestration:
+    - `best/scripts/parallel_background_ops.sh` runs diagnostics and verification steps in parallel with per-task logs.
+    - The workflow now fans out system checks and artifact verification into background bash jobs before collecting their logs.
 
 ### What gets stored
 

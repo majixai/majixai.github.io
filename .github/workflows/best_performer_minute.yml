@@ -134,28 +134,20 @@ jobs:
           echo "Current system time: $(date)"
           echo "Timezone configured as: $TZ"
 
-      - name: Check Disk Space
+      - name: Run Parallel System Diagnostics
         run: |
-          echo "Checking available disk space on runner..."
-          df -h
-          FREE_SPACE=$(df -k / | awk 'NR==2 {print $4}')
-          if [ "$FREE_SPACE" -lt 1048576 ]; then
-            echo "WARNING: Less than 1GB of disk space remaining!"
-          else
-            echo "Disk space is adequate."
-          fi
+          bash best/scripts/parallel_background_ops.sh "$LOG_DIR/diagnostics" <<'EOF'
+          disk::df -h && FREE_SPACE=$(df -k / | awk 'NR==2 {print $4}'); if [ "$FREE_SPACE" -lt 1048576 ]; then echo "WARNING: Less than 1GB of disk space remaining!"; else echo "Disk space is adequate."; fi
+          cpu::lscpu || echo "lscpu not available"
+          memory::free -m || echo "free not available"
+          network::curl -I --max-time 15 https://api.github.com
+          EOF
 
-      - name: Check CPU and Memory Availability
-        run: |
-          echo "CPU Information:"
-          lscpu || echo "lscpu not available"
-          echo "Memory Information:"
-          free -m || echo "free not available"
-
-      - name: Verify Network Connectivity
-        run: |
-          echo "Pinging GitHub API to ensure connectivity..."
-          curl -I https://api.github.com || exit 1
+          for log_file in "$LOG_DIR"/diagnostics/*.log; do
+            [ -f "$log_file" ] || continue
+            echo "=== ${log_file} ==="
+            cat "$log_file"
+          done
 
   ##############################################################################
   # JOB 2: CORE PIPELINE EXECUTION
@@ -261,14 +253,18 @@ jobs:
 
       - name: Verify Output Files (DB Manifests)
         run: |
-          echo "Verifying generated database files..."
-          ls -lah $BASE_DIR/dbs/ || echo "No files found in DBS directory."
-          if [ -f "$DB_FILE" ]; then
-            echo "$DB_FILE successfully generated/updated."
-            file $DB_FILE
-          else
-            echo "WARNING: $DB_FILE not found after run."
-          fi
+          bash best/scripts/parallel_background_ops.sh "$LOG_DIR/verification" <<'EOF'
+          db_listing::ls -lah best/dbs/ || echo "No files found in DBS directory."
+          db_file::if [ -f "$DB_FILE" ]; then echo "$DB_FILE successfully generated/updated."; file "$DB_FILE"; else echo "WARNING: $DB_FILE not found after run."; fi
+          history_listing::if [ -d best/history ]; then find best/history -maxdepth 1 -type f -name '*.dat' | sort | tail -n 20; else echo "No history directory present."; fi
+          git_state::git status --short best/
+          EOF
+
+          for log_file in "$LOG_DIR"/verification/*.log; do
+            [ -f "$log_file" ] || continue
+            echo "=== ${log_file} ==="
+            cat "$log_file"
+          done
 
       # --- 5. GPU Recognition Pipeline ---
       - name: Check GPU Availability (Diagnostic)
