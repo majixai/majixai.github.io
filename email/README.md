@@ -8,8 +8,28 @@ This directory is the single source of truth for email handling across every Maj
 |------|---------|
 | `email-core.js` | Unified email library — compose, validate, send, template, history |
 | `index.html` | Live demo and full API documentation |
+| `financial_report.py` | Scheduled market-report builder, including the nightly IXIC forecast mode |
+| `send_email.py` | CLI/automation entrypoint for GitHub Actions or GAS webhook delivery |
+| `gas_mailer.gs` | Google Apps Script webhook + native trigger sender |
 
 ---
+
+## Nightly IXIC forecast mode
+
+The repository includes a dedicated `nightly_ixic_forecast` mode for the IXIC use case:
+
+- **Target symbol:** `^IXIC`
+- **Schedule:** 10 PM ET on nights before a regular US equities session
+- **Delivery path:** GitHub Actions → `email/send_email.py` → GAS webhook (`email/gas_mailer.gs`) or SMTP
+- **Content:** next-session OHLCV bias, weekly/daily/hourly/15-minute pattern summaries, repetition checks, and indicators
+- **Optional AI block:** Gemini commentary can be enabled with secure secret storage and repo-backed gzip rate-limit state
+
+### Secure setup
+
+- Put webhook/email credentials in **GitHub Actions secrets** (`GAS_WEBHOOK_URL`, `GAS_WEBHOOK_SECRET`, `RECIPIENT_EMAILS`)
+- Put the optional Gemini key in **GitHub Actions secrets** as `GEMINI_API_KEY`
+- For GAS-native use, store values in **Script Properties**
+- Do **not** hardcode PATs, API keys, or webhook secrets in tracked files
 
 ## Quick start — adding email to any directory
 
