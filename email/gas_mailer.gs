@@ -46,6 +46,8 @@
  *                                   (recipients, reportPagesBase, calendarId,
  *                                   githubWebhookUrl, chartLinks,
  *                                   subjectPrefixes, scheduleSlots)
+ * Store secrets only in Script Properties / GitHub Actions secrets. Do not
+ * paste PATs or API keys into source files.
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -69,6 +71,8 @@ const DEFAULT_SCHEDULE_SLOTS = [
   { name: 'weekend_9am',   days: [0,6],        hour:  9, minute:  0, fn: 'sendWeekendMorning',    calendarTitle: '🌅 Weekend Market Morning Digest'  },
   { name: 'weekend_10pm',  days: [0,6],        hour: 22, minute:  0, fn: 'sendWeekendEvening',    calendarTitle: '🌙 Weekend Market Evening Digest'  },
   // ── Trading-Prompt Agent slots (ET times) ────────────────────────────────
+  // Includes Sunday night so Monday's regular session has a 10 PM ET forecast.
+  { name: 'nightly_ixic_forecast', days: [0,1,2,3,4], hour: 22, minute:  0, fn: 'sendNightlyIXICForecast', calendarTitle: '🌙 IXIC Nightly Forecast' },
   { name: 'overnight_day_plan',  days: [1,2,3,4,5], hour: 23, minute:  0, fn: 'sendOvernightDayPlan',   calendarTitle: '🌙 Trading Day Ahead Plan'         },
   { name: 'overnight_bull_pick', days: [1,2,3,4,5], hour:  1, minute:  0, fn: 'sendOvernightBullPick',  calendarTitle: '⚡ Most Bullish Pick Alert'        },
   { name: 'overnight_project',   days: [1,2,3,4,5], hour:  3, minute:  0, fn: 'sendOvernightProject',   calendarTitle: '🛠️ Overnight Project Brief'       },
@@ -353,6 +357,7 @@ function sendWeekday1pm()     { _dispatchSlot('weekday_1pm',        [1,2,3,4,5])
 function sendWeekendMorning() { _dispatchSlot('weekend_9am',        [0,6]);        }
 function sendWeekendEvening() { _dispatchSlot('weekend_10pm',       [0,6]);        }
 // Trading-Prompt Agent slots
+function sendNightlyIXICForecast() { _dispatchSlot('nightly_ixic_forecast', [0,1,2,3,4]); }
 function sendOvernightDayPlan()  { _dispatchSlot('overnight_day_plan',  [1,2,3,4,5]); }
 function sendOvernightBullPick() { _dispatchSlot('overnight_bull_pick', [1,2,3,4,5]); }
 function sendOvernightProject()  { _dispatchSlot('overnight_project',   [1,2,3,4,5]); }
@@ -412,6 +417,24 @@ function _dispatchSlot(modeName, allowedDays) {
 function _buildGasSubject(mode, now) {
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'EEEE, MMMM d yyyy');
   const prefixes = _getSubjectPrefixes();
+  const prefixes = {
+    weekday_open:       '🌅 Pre-Market Bull Alert',
+    weekday_9am:        '📊 9 AM Market Snapshot',
+    weekday_10am:       '🔔 10 AM Mid-Morning Report',
+    weekday_1pm:        '🏦 1 PM Indices Close Report',
+    weekend_9am:        '🌅 Weekend Market Morning Digest',
+    weekend_10pm:       '🌙 Weekend Market Evening Digest',
+    nightly_ixic_forecast: '🌙 IXIC Nightly Market Forecast',
+    overnight_day_plan: '🌙 Trading Day Ahead Plan',
+    overnight_bull_pick:'⚡ Most Bullish Pick Alert',
+    overnight_project:  '🛠️ Overnight Project Brief',
+    premarket_1pm_proj: '📐 Projected 1 PM Close',
+    premarket_followup: '📊 Pre-Market Follow-Up (5:30 AM)',
+    premarket_extra:    '🔔 Pre-Market Final Brief (6:30 AM)',
+    market_bullnews:    '⚡ Bull Momentum / News Alert (10 AM)',
+    market_midday:      '⏱️ Midday Market Follow-Up (11:59 AM)',
+    market_1pm_et:      '🏦 1 PM ET Index Feedback + Next Day Plan',
+  };
   return (prefixes[mode] || '📈 Financial Report') + ' — ' + dateStr;
 }
 
@@ -435,11 +458,24 @@ function _buildGasHtml(mode, now) {
   });
 
   const chartLinks = _getChartLinks().map(function (pair) {
+  const chartLinks = [
+    [REPORT_PAGES_BASE + '/ixic_lstm_forecast/output/ixic_summary.json',        'IXIC Forecast Summary JSON'],
+    [REPORT_PAGES_BASE + '/dji_1pm_close/dji_1pm_prediction.png',            'DJI 1PM Prediction'],
+    [REPORT_PAGES_BASE + '/dji_monte_carlo/dji_simulation_output.png',        'DJI Monte Carlo'],
+    [REPORT_PAGES_BASE + '/sp_closing_projection/sp_closing_projection_output.png', 'S&P 500 Projection'],
+    [REPORT_PAGES_BASE + '/yfinance_chart/index.html',                        'Interactive Charts'],
+    [REPORT_PAGES_BASE + '/yfinance/index.html',                              'Live Dashboard'],
+  ].map(function (pair) {
     return '<li><a href="' + pair[0] + '">' + pair[1] + '</a></li>';
   }).join('');
 
   // Trading-prompt agent: additional prompt cards for new slots
   const tradingPromptCards = {
+    nightly_ixic_forecast: [
+      'Forecast the next IXIC session OHLCV using weekly, daily, hourly, and 15-minute structure.',
+      'Highlight repeated patterns across weekly/daily vs hourly/15-minute behaviour and note invalidation levels.',
+      'If Gemini augmentation is enabled elsewhere, keep it rate-limited and sourced from secure secret storage only.',
+    ],
     overnight_day_plan: [
       'Summarise macro drivers for the next session and suggest 3 entry setups.',
       'Outline the bull vs bear open scenarios for S&P 500 based on overnight futures.',

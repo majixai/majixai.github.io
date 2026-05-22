@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Autonomous Scooter Telemetry Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#08111f;
+      --panel:#101c31;
+      --panel-2:#162644;
+      --line:#263d67;
+      --text:#e8f0ff;
+      --muted:#95a7c8;
+      --accent:#59d4ff;
+      --good:#2ee59d;
+      --warn:#ffcc66;
+      --bad:#ff6b7a;
+    }
+    *{box-sizing:border-box}
+    body{
+      background:
+        radial-gradient(circle at top left, rgba(89,212,255,.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(46,229,157,.10), transparent 24%),
+        linear-gradient(180deg, #07101d 0%, #0b1629 100%);
+      color:var(--text);
+      min-height:100vh;
+    }
+    .app-shell{max-width:1400px}
+    .hero{
+      background:linear-gradient(135deg, rgba(89,212,255,.18), rgba(46,229,157,.10) 50%, rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+    }
+    .panel{
+      background:rgba(16,28,49,.92);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      box-shadow:0 14px 30px rgba(0,0,0,.22);
+    }
+    .panel h2,.panel h3,.panel h4{color:#fff}
+    .kpi{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;
+      padding:16px;
+      height:100%;
+    }
+    .kpi-label{color:var(--muted);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase}
+    .kpi-value{font-size:1.7rem;font-weight:800;line-height:1.1}
+    .subtle{color:var(--muted)}
+    .badge-soft{
+      background:rgba(89,212,255,.14);
+      color:#d8f7ff;
+      border:1px solid rgba(89,212,255,.22);
+    }
+    .badge-good{background:rgba(46,229,157,.14);color:#c9ffe9;border:1px solid rgba(46,229,157,.24)}
+    .badge-warn{background:rgba(255,204,102,.14);color:#fff1ca;border:1px solid rgba(255,204,102,.24)}
+    .badge-bad{background:rgba(255,107,122,.14);color:#ffd5da;border:1px solid rgba(255,107,122,.24)}
+    .mini-chart{
+      width:100%;
+      height:220px;
+      border-radius:18px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .metric-track{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,.08);
+      overflow:hidden;
+    }
+    .metric-fill{height:100%;border-radius:inherit}
+    .list-log{
+      max-height:280px;
+      overflow:auto;
+      background:rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:16px;
+    }
+    .log-item{
+      border-bottom:1px solid rgba(255,255,255,.05);
+      padding:.7rem .9rem;
+      font-size:.9rem;
+    }
+    .log-item:last-child{border-bottom:0}
+    .log-time{color:var(--muted);font-size:.75rem}
+    .form-range::-webkit-slider-thumb{background:var(--accent)}
+    .form-range::-moz-range-thumb{background:var(--accent)}
+    .sticky-controls{position:sticky;top:1rem}
+    .table-darkish{--bs-table-bg:transparent;--bs-table-border-color:rgba(255,255,255,.08);color:var(--text)}
+    .canvas-wrap{padding:14px}
+    .small-pill{
+      display:inline-flex;align-items:center;gap:.4rem;
+      border-radius:999px;padding:.38rem .7rem;font-size:.78rem
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid app-shell py-4 py-lg-5">
+    <div class="hero p-4 p-lg-5 mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <p class="text-uppercase text-info mb-1 fw-semibold">Cloud telemetry + onboard safety loop</p>
+          <h1 class="display-6 fw-bold mb-2">Autonomous Scooter Operator Dashboard</h1>
+          <p class="lead text-light-emphasis mb-0">
+            Live fleet monitoring, path updates, passenger-weight adaptation, and emergency override in one console.
+          </p>
+        </div>
+        <div class="text-end">
+          <div class="small-pill badge-soft mb-2"><span id="connDot" class="rounded-circle bg-success" style="width:10px;height:10px;display:inline-block"></span><span id="connState">Connected</span></div><br>
+          <div class="small-pill badge-good"><span>AI confidence</span><strong id="confidenceTop">97%</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-12 col-xl-8">
+        <div class="panel p-4 mb-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h4 mb-0">Realtime Fleet Telemetry</h2>
+            <div class="d-flex flex-wrap gap-2">
+              <span class="badge badge-soft rounded-pill px-3 py-2" id="modeBadge">Mode: Autonomous</span>
+              <span class="badge badge-good rounded-pill px-3 py-2" id="safetyBadge">Safety: Nominal</span>
+              <span class="badge badge-warn rounded-pill px-3 py-2" id="overrideBadge">Override: Armed</span>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Speed</div><div class="kpi-value" id="speedValue">0 km/h</div><div class="subtle">Target <span id="targetSpeedText">18 km/h</span></div></div></div>
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Tilt</div><div class="kpi-value" id="tiltValue">0.0°</div><div class="subtle">Balance controller</div></div></div>
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Obstacle</div><div class="kpi-value" id="obstacleValue">-- m</div><div class="subtle">Closest object</div></div></div>
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Passenger</div><div class="kpi-value" id="weightValue">-- kg</div><div class="subtle">Center-of-mass estimate</div></div></div>
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Battery</div><div class="kpi-value" id="batteryValue">--%</div><div class="subtle">Range <span id="rangeValue">-- km</span></div></div></div>
+            <div class="col-6 col-md-4 col-xxl-2"><div class="kpi"><div class="kpi-label">Latency</div><div class="kpi-value" id="latencyValue">-- ms</div><div class="subtle">Cloud link</div></div></div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-lg-6">
+              <div class="canvas-wrap panel h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h3 class="h6 mb-0 text-uppercase text-info">Balance stability</h3>
+                  <small class="subtle">Roll + correction loop</small>
+                </div>
+                <canvas id="stabilityChart" class="mini-chart" width="640" height="220"></canvas>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="canvas-wrap panel h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h3 class="h6 mb-0 text-uppercase text-info">AI confidence & obstacle score</h3>
+                  <small class="subtle">Edge inference stream</small>
+                </div>
+                <canvas id="aiChart" class="mini-chart" width="640" height="220"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel p-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h4 mb-0">Telemetry event stream</h2>
+            <button class="btn btn-sm btn-outline-info" id="clearLogBtn">Clear log</button>
+          </div>
+          <div class="list-log" id="eventLog"></div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <div class="panel p-4 sticky-controls mb-4">
+          <h2 class="h4 mb-3">Remote Control Room</h2>
+
+          <div class="mb-3">
+            <label class="form-label text-uppercase text-info small">Operating mode</label>
+            <select class="form-select bg-dark text-light border-secondary" id="modeSelect">
+              <option>Autonomous</option>
+              <option>Assisted</option>
+              <option>Manual Override</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-uppercase text-info small d-flex justify-content-between">
+              <span>Target speed</span><span id="targetSpeedLabel">18 km/h</span>
+            </label>
+            <input type="range" class="form-range" id="targetSpeed" min="0" max="35" value="18">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-uppercase text-info small d-flex justify-content-between">
+              <span>Safety margin</span><span id="safetyMarginLabel">3.0 m</span>
+            </label>
+            <input type="range" class="form-range" id="safetyMargin" min="1" max="8" step="0.5" value="3">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label text-uppercase text-info small">Planned route update</label>
+            <textarea class="form-control bg-dark text-light border-secondary" id="routeUpdate" rows="4" placeholder="Re-route through zone B, avoid pedestrian crossing, reroute to depot..."></textarea>
+          </div>
+
+          <div class="d-grid gap-2 mb-3">
+            <button class="btn btn-info fw-semibold" id="sendRouteBtn">Send path update</button>
+            <button class="btn btn-outline-warning fw-semibold" id="toggleOverrideBtn">Arm manual override</button>
+            <button class="btn btn-outline-danger fw-semibold" id="eStopBtn">Emergency stop</button>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-6"><div class="kpi"><div class="kpi-label">Motor temp</div><div class="kpi-value" id="tempValue">--°C</div><div class="metric-track mt-2"><div class="metric-fill bg-warning" id="tempBar" style="width:0%"></div></div></div></div>
+            <div class="col-6"><div class="kpi"><div class="kpi-label">Route ETA</div><div class="kpi-value" id="etaValue">-- min</div><div class="subtle">Fleet planner</div></div></div>
+          </div>
+        </div>
+
+        <div class="panel p-4">
+          <h2 class="h4 mb-3">Fleet status</h2>
+          <table class="table table-sm table-darkish mb-0 align-middle">
+            <tbody>
+              <tr><td>Edge AI health</td><td class="text-end" id="edgeHealth">Nominal</td></tr>
+              <tr><td>LiDAR stream</td><td class="text-end" id="lidarHealth">Stable</td></tr>
+              <tr><td>WebSocket link</td><td class="text-end" id="wsHealth">Replaying sim</td></tr>
+              <tr><td>Last command</td><td class="text-end" id="lastCommand">Auto cruise</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      mode: 'Autonomous',
+      connected: true,
+      overrideArmed: true,
+      targetSpeed: 18,
+      safetyMargin: 3,
+      speed: 14.2,
+      tilt: 1.6,
+      obstacle: 12.4,
+      weight: 74,
+      battery: 88,
+      latency: 42,
+      temperature: 36,
+      eta: 18,
+      confidence: 96,
+      safety: 94,
+      history: {
+        stability: Array.from({length: 42}, () => 0),
+        ai: Array.from({length: 42}, () => 0)
+      }
+    };
+
+    const el = (id) => document.getElementById(id);
+    const fmt = (v, d = 0) => Number(v).toFixed(d);
+    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+    const logBox = el('eventLog');
+    function logEvent(type, message){
+      const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      const color = type === 'danger' ? 'text-danger' : type === 'warn' ? 'text-warning' : type === 'good' ? 'text-success' : 'text-info';
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `<div class="d-flex justify-content-between gap-2"><strong class="${color}">${type.toUpperCase()}</strong><span class="log-time">${time}</span></div><div>${message}</div>`;
+      logBox.prepend(item);
+    }
+
+    function drawChart(canvas, values, accent, baseline){
+      const ctx = canvas.getContext('2d');
+      const {width, height} = canvas;
+      ctx.clearRect(0,0,width,height);
+
+      ctx.fillStyle = 'rgba(255,255,255,.02)';
+      ctx.fillRect(0,0,width,height);
+
+      ctx.strokeStyle = 'rgba(255,255,255,.08)';
+      ctx.lineWidth = 1;
+      for(let i=1;i<4;i++){
+        const y = (height / 4) * i;
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(width,y); ctx.stroke();
+      }
+
+      const min = Math.min(...values, baseline);
+      const max = Math.max(...values, baseline);
+      const pad = (max - min) * 0.18 || 1;
+      const low = min - pad;
+      const high = max + pad;
+      const toY = v => height - ((v - low) / (high - low)) * (height - 30) - 15;
+      const step = width / (values.length - 1);
+
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = i * step;
+        const y = toY(v);
+        if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,255,255,.22)';
+      ctx.setLineDash([6,6]);
+      ctx.beginPath();
+      ctx.moveTo(0, toY(baseline));
+      ctx.lineTo(width, toY(baseline));
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = accent;
+      const last = values[values.length - 1];
+      const lx = width - 12;
+      const ly = toY(last);
+      ctx.beginPath(); ctx.arc(lx, ly, 5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function refreshUI(){
+      el('modeBadge').textContent = `Mode: ${state.mode}`;
+      el('overrideBadge').textContent = `Override: ${state.overrideArmed ? 'Armed' : 'Disarmed'}`;
+      el('overrideBadge').className = `badge rounded-pill px-3 py-2 ${state.overrideArmed ? 'badge-warn' : 'badge-bad'}`;
+      el('safetyBadge').textContent = `Safety: ${state.safety > 80 ? 'Nominal' : state.safety > 55 ? 'Caution' : 'Critical'}`;
+      el('safetyBadge').className = `badge rounded-pill px-3 py-2 ${state.safety > 80 ? 'badge-good' : state.safety > 55 ? 'badge-warn' : 'badge-bad'}`;
+
+      el('connState').textContent = state.connected ? 'Connected' : 'Offline';
+      el('connDot').className = `rounded-circle ${state.connected ? 'bg-success' : 'bg-danger'}`;
+      el('wsHealth').textContent = state.connected ? 'Live cloud stream' : 'Reconnect required';
+
+      el('speedValue').textContent = `${fmt(state.speed, 1)} km/h`;
+      el('tiltValue').textContent = `${fmt(state.tilt, 1)}°`;
+      el('obstacleValue').textContent = `${fmt(state.obstacle, 1)} m`;
+      el('weightValue').textContent = `${fmt(state.weight, 0)} kg`;
+      el('batteryValue').textContent = `${fmt(state.battery, 0)}%`;
+      el('rangeValue').textContent = `${fmt(state.battery * 0.32, 1)} km`;
+      el('latencyValue').textContent = `${fmt(state.latency, 0)} ms`;
+      el('tempValue').textContent = `${fmt(state.temperature, 0)}°C`;
+      el('etaValue').textContent = `${fmt(state.eta, 0)} min`;
+      el('confidenceTop').textContent = `${fmt(state.confidence, 0)}%`;
+
+      el('targetSpeedText').textContent = `${state.targetSpeed} km/h`;
+      el('targetSpeedLabel').textContent = `${state.targetSpeed} km/h`;
+      el('safetyMarginLabel').textContent = `${fmt(state.safetyMargin, 1)} m`;
+      el('tempBar').style.width = `${clamp((state.temperature - 20) * 4, 0, 100)}%`;
+
+      const safetyText = state.tilt < 3 && state.obstacle > state.safetyMargin ? 'Nominal' : state.obstacle < state.safetyMargin ? 'Obstacle proximity' : 'Balance trim active';
+      el('edgeHealth').textContent = state.confidence > 90 ? 'Nominal' : 'Watch';
+      el('lidarHealth').textContent = state.obstacle > state.safetyMargin ? 'Stable' : 'Close hazard';
+      el('lastCommand').textContent = state.mode === 'Manual Override' ? 'Manual steering armed' : state.mode === 'Assisted' ? 'Assist vector correction' : 'Auto cruise';
+      el('modeBadge').textContent = `Mode: ${state.mode}`;
+      el('modeBadge').className = 'badge badge-soft rounded-pill px-3 py-2';
+      el('modeSelect').value = state.mode;
+      el('routeUpdate').placeholder = state.mode === 'Manual Override'
+        ? 'Manual route lock: publish operator command here...'
+        : 'Re-route through zone B, avoid pedestrian crossing, reroute to depot...';
+
+      document.querySelector('#statusSummary')?.remove();
+      const summary = document.createElement('div');
+      summary.id = 'statusSummary';
+      summary.className = 'mt-3 subtle';
+      summary.textContent = `System ${safetyText.toLowerCase()} • ${state.connected ? 'cloud telemetry replay active' : 'cloud telemetry paused'}`;
+      const hero = document.querySelector('.hero');
+      hero.appendChild(summary);
+
+      drawChart(el('stabilityChart'), state.history.stability, '#59d4ff', 0);
+      drawChart(el('aiChart'), state.history.ai, '#2ee59d', 88);
+    }
+
+    function step(){
+      const target = state.targetSpeed;
+      state.speed += (target - state.speed) * 0.12 + (Math.random() - 0.5) * 0.4;
+      state.tilt = clamp(state.tilt + (Math.random() - 0.5) * 0.6 + (state.speed - target) * 0.03, -8, 8);
+      state.obstacle = clamp(state.obstacle + (Math.random() - 0.5) * 1.6, 0.7, 30);
+      state.weight = clamp(state.weight + (Math.random() - 0.5) * 0.9, 45, 120);
+      state.battery = clamp(state.battery - 0.03 - Math.max(0, state.speed - 10) * 0.002, 12, 100);
+      state.latency = clamp(state.latency + (Math.random() - 0.5) * 7, 24, 120);
+      state.temperature = clamp(state.temperature + (Math.random() - 0.5) * 0.8 + (state.speed > 22 ? 0.25 : -0.05), 28, 76);
+      state.eta = clamp(state.eta + (Math.random() - 0.5) * 0.8 - (state.speed - target) * 0.06, 2, 38);
+      state.confidence = clamp(state.confidence + (Math.random() - 0.5) * 3 - (state.obstacle < state.safetyMargin ? 1.2 : 0), 52, 99);
+      state.safety = clamp(100 - Math.abs(state.tilt) * 6 - Math.max(0, (state.safetyMargin - state.obstacle) * 10) - (state.temperature - 28) * 0.35, 18, 99);
+
+      const stability = 100 - Math.abs(state.tilt) * 8 - Math.max(0, state.targetSpeed - state.speed) * 1.1;
+      const aiScore = state.confidence - Math.max(0, state.safetyMargin - state.obstacle) * 9;
+      state.history.stability.push(stability);
+      state.history.ai.push(aiScore);
+      state.history.stability.splice(0, state.history.stability.length - 42);
+      state.history.ai.splice(0, state.history.ai.length - 42);
+
+      if(state.obstacle < state.safetyMargin){
+        logEvent('warn', `Obstacle at ${fmt(state.obstacle, 1)} m; planner widening corridor to ${fmt(state.safetyMargin, 1)} m.`);
+      } else if(Math.random() < 0.16){
+        logEvent('good', `Balance stable at ${fmt(state.tilt, 1)}° and confidence ${fmt(state.confidence, 0)}%.`);
+      }
+
+      if(state.temperature > 58){
+        logEvent('danger', `Motor temperature elevated to ${fmt(state.temperature, 0)}°C.`);
+      }
+
+      refreshUI();
+    }
+
+    el('modeSelect').addEventListener('change', (e) => {
+      state.mode = e.target.value;
+      logEvent('info', `Operator switched to ${state.mode}.`);
+      refreshUI();
+    });
+
+    el('targetSpeed').addEventListener('input', (e) => {
+      state.targetSpeed = Number(e.target.value);
+      el('targetSpeedLabel').textContent = `${state.targetSpeed} km/h`;
+      el('targetSpeedText').textContent = `${state.targetSpeed} km/h`;
+      logEvent('info', `Target speed updated to ${state.targetSpeed} km/h.`);
+      refreshUI();
+    });
+
+    el('safetyMargin').addEventListener('input', (e) => {
+      state.safetyMargin = Number(e.target.value);
+      el('safetyMarginLabel').textContent = `${fmt(state.safetyMargin, 1)} m`;
+      logEvent('info', `Safety margin set to ${fmt(state.safetyMargin, 1)} m.`);
+      refreshUI();
+    });
+
+    el('sendRouteBtn').addEventListener('click', () => {
+      const text = el('routeUpdate').value.trim();
+      logEvent('good', text ? `Route update dispatched: ${text}` : 'Route update dispatched with current corridor constraints.');
+      el('lastCommand').textContent = 'Path update sent';
+    });
+
+    el('toggleOverrideBtn').addEventListener('click', () => {
+      state.overrideArmed = !state.overrideArmed;
+      el('toggleOverrideBtn').textContent = state.overrideArmed ? 'Disarm manual override' : 'Arm manual override';
+      logEvent(state.overrideArmed ? 'warn' : 'info', state.overrideArmed ? 'Manual override armed.' : 'Manual override disarmed.');
+      refreshUI();
+    });
+
+    el('eStopBtn').addEventListener('click', () => {
+      state.speed = 0;
+      state.targetSpeed = 0;
+      el('targetSpeed').value = 0;
+      logEvent('danger', 'Emergency stop engaged; drive motors set to zero.');
+      refreshUI();
+    });
+
+    el('clearLogBtn').addEventListener('click', () => { logBox.innerHTML = ''; logEvent('info', 'Event stream cleared.'); });
+
+    logEvent('good', 'Dashboard initialized with simulated WebSocket telemetry.');
+    logEvent('info', 'Edge AI perception loop online.');
+    refreshUI();
+    setInterval(step, 1200);
+  </script>
+</body>
+</html>
