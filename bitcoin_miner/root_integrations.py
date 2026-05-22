@@ -8,6 +8,8 @@ from typing import Any
 
 FEATURED_ROOT_DIRS = (
     "actions",
+    "esp32_bitcoin_pool_miner",
+    "Integrated_circuit",
     "ai",
     "hash",
     "pwa",
@@ -17,6 +19,10 @@ FEATURED_ROOT_DIRS = (
     "gpu",
     "metatrader5",
     "tradingview_integration",
+    "compiler",
+    "algebra",
+    "calculus",
+    "category_theory",
 )
 
 

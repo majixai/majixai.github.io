@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Bitcoin Pool Miner</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    :root { --bg:#0f172a; --panel:#111c33; --accent:#f7931a; --muted:#a8b3c7; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:'Segoe UI',system-ui,sans-serif;
+      background:linear-gradient(135deg,#020617 0%,#0f172a 100%);
+      color:#e5eefb;
+      min-height:100vh;
+    }
+    .wrap { max-width:1100px; margin:0 auto; padding:2rem 1rem 3rem; }
+    .hero {
+      background:rgba(17,28,51,.92);
+      border:1px solid rgba(247,147,26,.18);
+      border-radius:18px;
+      padding:1.6rem;
+      box-shadow:0 14px 40px rgba(0,0,0,.24);
+    }
+    .title { color:var(--accent); letter-spacing:.04em; }
+    .sub { color:var(--muted); }
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:1rem;
+      margin-top:1rem;
+    }
+    .cardx {
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:1rem;
+      height:100%;
+    }
+    .cardx h2 { font-size:1rem; margin:0 0 .6rem; color:#fff; }
+    a.link-btn {
+      display:inline-block;
+      margin:.25rem .45rem .25rem 0;
+      padding:.45rem .8rem;
+      border-radius:999px;
+      text-decoration:none;
+      color:#fff;
+      background:rgba(247,147,26,.15);
+      border:1px solid rgba(247,147,26,.32);
+      font-size:.82rem;
+    }
+    a.link-btn:hover { background:rgba(247,147,26,.25); color:#fff; }
+    .mini { font-size:.84rem; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h1 class="title mb-1"><i class="fa-brands fa-bitcoin me-2"></i>ESP32 Bitcoin Pool Miner</h1>
+          <p class="sub mb-0">Hardware-linked miner concept for pool mining, circuit integration, and repository automation.</p>
+        </div>
+        <div class="text-end mini">Router-linked · hash-aware · GitHub Pages ready</div>
+      </div>
+
+      <div class="grid">
+        <div class="cardx">
+          <h2><i class="fa fa-link me-1"></i>Core integration</h2>
+          <div><a class="link-btn" href="../bitcoin_miner/">bitcoin_miner</a></div>
+          <div><a class="link-btn" href="../Integrated_circuit/">Integrated_circuit</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-gears me-1"></i>Automation</h2>
+          <div><a class="link-btn" href="../actions/">actions</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-microchip me-1"></i>C / firmware</h2>
+          <div><a class="link-btn" href="../compiler/">compiler</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-square-root-variable me-1"></i>Mathematics</h2>
+          <div><a class="link-btn" href="../algebra/">algebra</a><a class="link-btn" href="../calculus/">calculus</a><a class="link-btn" href="../category_theory/">category_theory</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
