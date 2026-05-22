@@ -39,6 +39,10 @@ on:
         description: 'Generator batch size (default: 256)'
         required: false
         default: '256'
+      runtime_settings_json:
+        description: 'Optional JSON overrides for IXIC runtime settings (can also come from repo vars/secrets)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -58,6 +62,7 @@ jobs:
       IXIC_BATCH_SIZE: ${{ github.event.inputs.batch_size || '256'   }}
       IXIC_LOG_LEVEL: "INFO"
       IXIC_TRAIN_VERBOSE: "2"
+      IXIC_RUNTIME_SETTINGS_JSON: ${{ github.event.inputs.runtime_settings_json || vars.IXIC_RUNTIME_SETTINGS_JSON || secrets.IXIC_RUNTIME_SETTINGS_JSON }}
 
     steps:
 
@@ -158,6 +163,11 @@ jobs:
           echo "IXIC_BATCH_SIZE : ${{ env.IXIC_BATCH_SIZE }}"
           echo "IXIC_LOG_LEVEL  : ${{ env.IXIC_LOG_LEVEL }}"
           echo "IXIC_TRAIN_VERBOSE : ${{ env.IXIC_TRAIN_VERBOSE }}"
+          if [ -n "${IXIC_RUNTIME_SETTINGS_JSON}" ]; then
+            echo "IXIC_RUNTIME_SETTINGS_JSON: configured"
+          else
+            echo "IXIC_RUNTIME_SETTINGS_JSON: not configured"
+          fi
           echo "Output dir      : ixic_lstm_forecast/output/"
           echo "::endgroup::"
 

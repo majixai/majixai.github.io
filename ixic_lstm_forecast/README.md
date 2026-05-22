@@ -61,12 +61,34 @@ Environment overrides:
 | `IXIC_LOG_LEVEL` | `INFO` | IXIC pipeline logger level |
 | `IXIC_TRAIN_VERBOSE` | `2` | Keras fit verbosity (console epoch progress) |
 | `IXIC_OUTPUT_DIR` | `output/` | Artifact output directory |
+| `IXIC_RUNTIME_SETTINGS_JSON` | unset | JSON object of runtime overrides (see below) |
+| `IXIC_RUNTIME_SETTINGS_PATH` | unset | Path to a JSON settings file with the same keys |
+
+Dynamic runtime settings example:
+
+```json
+{
+  "symbol": "^IXIC",
+  "seq_length": 80,
+  "epochs": 5,
+  "batch_size": 128,
+  "log_level": "INFO",
+  "train_verbose": "2",
+  "output_dir": "ixic_lstm_forecast/output"
+}
+```
+
+When `IXIC_RUNTIME_SETTINGS_JSON` or `IXIC_RUNTIME_SETTINGS_PATH` is provided, the
+pipeline reads those values at runtime without changing the code or workflow.
+Explicit `IXIC_*` environment variables still win when you need a one-off override.
 
 ### GitHub Actions
 
 The workflow `.github/workflows/ixic_lstm_forecast.yml` runs automatically:
 - **Scheduled**: Mon–Fri at 21:45 UTC (after US market close)
 - **Manual**: via *workflow_dispatch* with configurable symbol/epochs
+- **Dynamic settings**: via the `runtime_settings_json` workflow input or the
+  `IXIC_RUNTIME_SETTINGS_JSON` repository variable / secret
 
 ## Outputs
 
