@@ -32,6 +32,7 @@ The directory is designed to run as a standalone app while also integrating with
 - Reward and halving metrics
 - ML/neural signals (priority score, fee-rate guidance, trend/forecast fields)
 - Repository integration snapshot sourced from root-level `projects.json` and `router/routes.json`
+- Featured root integrations now include `esp32_bitcoin_pool_miner/` and `Integrated_circuit/`
 
 Output is persisted to:
 
