@@ -178,6 +178,79 @@
       </div>
 
       <div class="section">
+        <h3><i class="fa fa-bolt me-1"></i>400GHz protocol paradigm</h3>
+        <p class="mb-2">The 400GHz protocol paradigm is treated here as a conceptual ultra-fast control plane that sits beside the mining workflow and favors tight timing, compact frames, and deterministic retries.</p>
+        <table class="meta">
+          <tr><th>Carrier model</th><td>Short-range, high-frequency link semantics for lab-only coordination between miner, controller, and diagnostics surfaces.</td></tr>
+          <tr><th>Frame model</th><td>Nanoframes with a minimal header, payload hints, and integrity tags that can be hashed for route validation.</td></tr>
+          <tr><th>Timing model</th><td>Clock-aware exchange windows, periodic sync pulses, and fast timeout handling for noisy environments.</td></tr>
+          <tr><th>Fallback model</th><td>Drop to classic Wi-Fi or local console paths whenever the conceptual 400GHz channel is unavailable.</td></tr>
+        </table>
+        <div class="grid" style="margin-top:1rem">
+          <div class="cardx">
+            <h2>Session bootstrap</h2>
+            <p>Use a small handshake that identifies the board, locks the control window, and announces the active job state.</p>
+          </div>
+          <div class="cardx">
+            <h2>Integrity lane</h2>
+            <p>Hash the session metadata and compare route fingerprints before any mining command is accepted.</p>
+          </div>
+          <div class="cardx">
+            <h2>Retry lane</h2>
+            <p>Apply bounded retries with backoff jitter so the protocol remains predictable under contention.</p>
+          </div>
+          <div class="cardx">
+            <h2>Telemetry lane</h2>
+            <p>Carry live counters, temperature hints, and job acknowledgements as compact control echoes.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-wave-square me-1"></i>Protocol stack</h3>
+        <ul class="mb-0">
+          <li><strong>Physical:</strong> conceptual 400GHz signaling with rigid timing and short burst semantics.</li>
+          <li><strong>Link:</strong> acknowledge-only exchanges, burst windows, and deterministic congestion handling.</li>
+          <li><strong>Session:</strong> board identity, miner profile, and job authorization tokens.</li>
+          <li><strong>Application:</strong> mining job request, share submit, telemetry publish, and diagnostics sync.</li>
+          <li><strong>Governance:</strong> route/hash checks, actions automation, and cross-directory provenance.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-shield-halved me-1"></i>Safety and fallback rules</h3>
+        <ul class="mb-0">
+          <li>Prefer safe defaults when the 400GHz paradigm is only partially supported.</li>
+          <li>Clamp burst durations so debug and recovery paths always remain available.</li>
+          <li>Expose a manual override that drops the board back to classic web and serial interfaces.</li>
+          <li>Keep all control frames hash-checkable so the same integrity logic can audit the transport.</li>
+          <li>Mirror status to the Integrated_circuit page so hardware and transport stay aligned.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-diagram-project me-1"></i>400GHz use cases</h3>
+        <div class="grid" style="margin-top:0">
+          <div class="cardx">
+            <h2>Lab backplane</h2>
+            <p>Stress-test the control model without changing the public mining UI.</p>
+          </div>
+          <div class="cardx">
+            <h2>Board sync</h2>
+            <p>Drive tightly bounded synchronization between the miner and circuit companion.</p>
+          </div>
+          <div class="cardx">
+            <h2>Telemetry tunnel</h2>
+            <p>Move status and health counters through a compact, hash-verified channel.</p>
+          </div>
+          <div class="cardx">
+            <h2>Route audit</h2>
+            <p>Compare transport fingerprints against the repository's router and hash system.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
         <h3><i class="fa fa-square-root-variable me-1"></i>Math anchors</h3>
         <p class="mb-2">This page intentionally keeps the math references visible so the new directory remains tied to the repository's mathematical roots.</p>
         <div>
@@ -196,6 +269,9 @@
           <li>Add a Stratum transport comparison table.</li>
           <li>Wire in hash validation examples and route fingerprints.</li>
           <li>Document pool-safe failure modes and reconnect logic.</li>
+          <li>Sketch a 400GHz protocol test harness with fallback semantics.</li>
+          <li>Define a compact frame grammar for control and telemetry messages.</li>
+          <li>Add a protocol compliance matrix for router and hash integration.</li>
         </ul>
       </div>
     </div>

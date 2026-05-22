@@ -179,6 +179,79 @@
       </div>
 
       <div class="section">
+        <h3><i class="fa fa-bolt me-1"></i>400GHz protocol paradigm</h3>
+        <p class="mb-2">On the circuit side, the 400GHz protocol paradigm is framed as a tiny, timing-critical control surface that favors deterministic edges, short verification spans, and clean fallback paths.</p>
+        <table class="meta">
+          <tr><th>Signal role</th><td>Carry board intents, status words, and protocol counters between logic blocks.</td></tr>
+          <tr><th>Timing role</th><td>Provide a high-rate cadence for sync pulses, retries, and safe transitions.</td></tr>
+          <tr><th>Verification role</th><td>Bind each burst to a route/hash fingerprint so hardware and repository state stay aligned.</td></tr>
+          <tr><th>Fallback role</th><td>Allow the board to degrade gracefully to UART, Wi-Fi, or local debug panels.</td></tr>
+        </table>
+        <div class="grid" style="margin-top:1rem">
+          <div class="cardx">
+            <h2>Clock discipline</h2>
+            <p>Keep oscillator assumptions explicit and treat every protocol hop as time-bounded.</p>
+          </div>
+          <div class="cardx">
+            <h2>Frame shaping</h2>
+            <p>Use compact headers with hashable metadata and tiny payloads for control exchange.</p>
+          </div>
+          <div class="cardx">
+            <h2>Error recovery</h2>
+            <p>Move quickly to a known-safe mode if sync or verification drifts out of bounds.</p>
+          </div>
+          <div class="cardx">
+            <h2>Board telemetry</h2>
+            <p>Expose link health, temperature, and current draw as first-class protocol outputs.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-wave-square me-1"></i>Hardware interpretation</h3>
+        <ul class="mb-0">
+          <li><strong>Analog layer:</strong> a conceptual 400GHz lane for ultra-fast signaling semantics.</li>
+          <li><strong>Digital layer:</strong> board state, acknowledgements, and route-verified payloads.</li>
+          <li><strong>Control layer:</strong> power gating, LED status, and job lifecycle commands.</li>
+          <li><strong>Audit layer:</strong> hash-manifest validation and router provenance checking.</li>
+          <li><strong>Recovery layer:</strong> UART console, local storage, and Wi-Fi rescue paths.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-shield-halved me-1"></i>Design rules</h3>
+        <ul class="mb-0">
+          <li>Never let the protocol outrun the ability to verify or log a frame.</li>
+          <li>Keep all unsafe state transitions behind a manual confirmation point.</li>
+          <li>Prefer visible diagnostics over opaque acceleration.</li>
+          <li>Mirror the same transport vocabulary on the ESP32 page for consistency.</li>
+          <li>Use router/hash integration as the canonical authority for newly added pages.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-diagram-project me-1"></i>Circuit use cases</h3>
+        <div class="grid" style="margin-top:0">
+          <div class="cardx">
+            <h2>Timing lab</h2>
+            <p>Validate whether a control path can survive short, tightly scheduled exchanges.</p>
+          </div>
+          <div class="cardx">
+            <h2>Protocol shim</h2>
+            <p>Bridge the 400GHz concept to conventional UART and Wi-Fi diagnostics.</p>
+          </div>
+          <div class="cardx">
+            <h2>Power monitor</h2>
+            <p>Use the board to watch thermal and current impacts from high-rate signaling.</p>
+          </div>
+          <div class="cardx">
+            <h2>Hash audit</h2>
+            <p>Match frame fingerprints to router manifests so the circuit page remains trustworthy.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
         <h3><i class="fa fa-square-root-variable me-1"></i>Math + verification</h3>
         <p class="mb-2">Circuit work benefits from the repository's math roots because electrical timing, target difficulty, and packet validation all involve quantitative reasoning.</p>
         <div>
@@ -197,6 +270,9 @@
           <li>Add a troubleshooting page for network, power, and thermal issues.</li>
           <li>Add a router/hash integrity section for new hardware subpages.</li>
           <li>Add links to actions workflows and C compiler notes.</li>
+          <li>Document how the 400GHz protocol paradigm maps to hardware blocks.</li>
+          <li>Add a timing budget table for high-rate control exchanges.</li>
+          <li>Add a fallback matrix for safe operation under degraded conditions.</li>
         </ul>
       </div>
     </div>

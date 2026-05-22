@@ -18,6 +18,32 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 - Designed as an educational circuit/hardware companion.
 - Linked into the site router and repository hash system.
 
+## 400GHz protocol paradigm
+
+The 400GHz protocol paradigm describes the board-side interpretation of a fast, deterministic control channel. It emphasizes tiny bursts, explicit timing, and a clear path back to serial or Wi-Fi when the high-rate concept is unavailable.
+
+### Principles
+
+1. Prefer short, verified frames.
+2. Make clock assumptions visible.
+3. Keep fallback modes easy to reach.
+4. Tie each transaction to repository provenance.
+5. Use the same terminology across hardware and miner pages.
+
+### Conceptual layers
+
+| Layer | Meaning |
+|-------|---------|
+| Analog | Fast signaling and board timing |
+| Digital | Frame parsing and control words |
+| Control | Power, LEDs, and job state |
+| Audit | Hash and router integrity checks |
+| Recovery | UART, Wi-Fi, and local diagnostics |
+
+### Why it exists here
+
+The circuit page is the right place to explain how a high-rate protocol maps onto actual components, because hardware design needs the same discipline as the mining workflow: tiny state, clear recovery, and visible metrics.
+
 ## What lives here
 
 - A home for circuit-level reasoning, board layout notes, and embedded control descriptions.
@@ -31,6 +57,7 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 3. Pinout reference tables for common ESP32 boards.
 4. Thermal and power constraints for sustained operation.
 5. Linkable examples that show how circuit timing relates to mining throughput.
+6. A 400GHz transport interpretation for control and telemetry.
 
 ## Source organization
 
@@ -40,10 +67,13 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 | `README.md` | High-level documentation and integration guide |
 | `../esp32_bitcoin_pool_miner/` | ESP32 mining concept page |
 | `../bitcoin_miner/` | Main mining demo and live data dashboard |
+| 400GHz protocol notes | Circuit-side transport vocabulary |
 
 ## Relationship to repository systems
 
 The circuit page should remain visible to the same systems that power the rest of the site: router routes, hash-based integrity checks, and the actions layer. That keeps the hardware notes easy to discover and makes it simple to extend the directory later with diagrams, calculators, or embedded demos.
+
+The 400GHz protocol paradigm belongs here because it gives the circuit page a structured way to talk about speed, determinism, and safe degradation without departing from repository conventions.
 
 ## Checklist
 
@@ -51,5 +81,7 @@ The circuit page should remain visible to the same systems that power the rest o
 - [x] Link to the ESP32 mining directory
 - [x] Link to the main mining demo
 - [x] Keep math references visible
+- [x] Add 400GHz protocol paradigm language
 - [ ] Add schematics
 - [ ] Add a BOM table
+- [ ] Add a frame timing budget
