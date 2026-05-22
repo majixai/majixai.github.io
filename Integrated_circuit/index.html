@@ -53,6 +53,44 @@
     }
     a.link-btn:hover { background:rgba(6,214,160,.24); color:#fff; }
     .mini { font-size:.84rem; color:var(--muted); }
+    .section {
+      margin-top:1rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:1rem;
+    }
+    .section h3 {
+      font-size:.98rem;
+      margin:0 0 .7rem;
+      color:#fff;
+    }
+    .section p,.section li {
+      color:#d7e3f3;
+      font-size:.9rem;
+      line-height:1.55;
+    }
+    .inline-kbd {
+      display:inline-block;
+      padding:.12rem .4rem;
+      border-radius:6px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      font-family:monospace;
+      font-size:.78rem;
+    }
+    table.meta {
+      width:100%;
+      border-collapse:collapse;
+      font-size:.86rem;
+    }
+    table.meta th, table.meta td {
+      text-align:left;
+      padding:.45rem .5rem;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      vertical-align:top;
+    }
+    table.meta th { color:#fff; width:160px; }
   </style>
 </head>
 <body>
@@ -84,6 +122,82 @@
           <h2><i class="fa fa-square-root-variable me-1"></i>Mathematics</h2>
           <div><a class="link-btn" href="../algebra/">algebra</a><a class="link-btn" href="../calculus/">calculus</a></div>
         </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-diagram-project me-1"></i>Circuit model</h3>
+        <table class="meta">
+          <tr><th>Goal</th><td>Describe the circuit-side companion to the ESP32 Bitcoin pool miner, with emphasis on control, indicators, and hardware boundaries.</td></tr>
+          <tr><th>Primary audience</th><td>Embedded developers, electrical hobbyists, and repo contributors who need a hardware landing page.</td></tr>
+          <tr><th>Runtime shape</th><td>Static documentation first, with room for wiring diagrams, BOMs, and firmware reference tables.</td></tr>
+          <tr><th>Key dependencies</th><td><span class="inline-kbd">esp32_bitcoin_pool_miner</span> <span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">actions</span> <span class="inline-kbd">compiler</span></td></tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-wave-square me-1"></i>Hardware blocks</h3>
+        <div class="grid" style="margin-top:0">
+          <div class="cardx">
+            <h2>Power block</h2>
+            <p>Voltage regulation, current safety, and brownout-aware design for small embedded miners and sensors.</p>
+          </div>
+          <div class="cardx">
+            <h2>IO block</h2>
+            <p>Status LEDs, UART console, and a compact control surface for configuration and debug output.</p>
+          </div>
+          <div class="cardx">
+            <h2>Network block</h2>
+            <p>Wi-Fi setup, pool credential storage, and lightweight transport handling for job polling.</p>
+          </div>
+          <div class="cardx">
+            <h2>Telemetry block</h2>
+            <p>Share counts, temperatures, reconnect counters, and timing data for operations visibility.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-cubes me-1"></i>Signal map</h3>
+        <ul class="mb-0">
+          <li><strong>GPIO:</strong> route LEDs, button inputs, and optional buzzer feedback.</li>
+          <li><strong>UART:</strong> serial debug and flash-time logging.</li>
+          <li><strong>I2C/SPI:</strong> optional sensors for temperature, power, or fan control.</li>
+          <li><strong>Wi-Fi:</strong> pool job fetch and result submission.</li>
+          <li><strong>Timer:</strong> periodic status sampling and watchdog-safe housekeeping.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-gears me-1"></i>Workflow</h3>
+        <ul class="mb-0">
+          <li>Boot into a safe mode that confirms power, network, and storage readiness.</li>
+          <li>Load the miner profile and sync configuration with the ESP32 control plane.</li>
+          <li>Connect to the pool, decode incoming work, and prepare the nonce window.</li>
+          <li>Track hashes, shares, and rejects while keeping the UI responsive.</li>
+          <li>Surface metrics back to the repository dashboard via linked pages and reports.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-square-root-variable me-1"></i>Math + verification</h3>
+        <p class="mb-2">Circuit work benefits from the repository's math roots because electrical timing, target difficulty, and packet validation all involve quantitative reasoning.</p>
+        <div>
+          <a class="link-btn" href="../algebra/">Algebra</a>
+          <a class="link-btn" href="../calculus/">Calculus</a>
+          <a class="link-btn" href="../category_theory/">Category theory</a>
+          <a class="link-btn" href="../numerical_methods/">Numerical methods</a>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-road me-1"></i>Documentation expansion ideas</h3>
+        <ul class="mb-0">
+          <li>Add component-level notes for regulators, MCU, and indicators.</li>
+          <li>Add a simple block diagram for pool, control, and telemetry paths.</li>
+          <li>Add a troubleshooting page for network, power, and thermal issues.</li>
+          <li>Add a router/hash integrity section for new hardware subpages.</li>
+          <li>Add links to actions workflows and C compiler notes.</li>
+        </ul>
       </div>
     </div>
   </div>
