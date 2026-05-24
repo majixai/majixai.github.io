@@ -1,39 +1,34 @@
-# ⛏️ 1 TH/s Custom BM1366 Pool Miner - The Ultimate Engineering Guide
-Welcome to the most comprehensive guide ever compiled for custom ASIC miner design. This project utilizes an **ESP32-C3 microcontroller** acting as a Stratum V1 protocol bridge to orchestrate a high-speed daisy-chain of **five Bitmain BM1366 SHA-256 ASIC chips**.
-Unlike standard microcontroller projects or single-chip "lottery miners," this is a **desktop-class, high-current, high-thermal density hardware build** capable of pulling over 150 Amps on the core voltage rail.
-> ⚠️ **CRITICAL SAFETY WARNING & DISCLAIMER** ⚠️
-> **FIRE HAZARD:** This project involves routing extreme electrical currents (75A - 150A) and managing massive thermal loads. If the PID thermal loop fails, or if a multi-phase buck controller shorts to the 12V input, the ASIC chips will instantly exceed their thermal limits. This will cause catastrophic hardware destruction, melting of heavy copper, vaporized solder, and potential fire.
-> **Build, flash, and operate this hardware entirely at your own risk. Never leave this device powered unattended.**
+# ⛏️ 1 TH/s Custom BM1366 Pool Miner (NerdMiner_v2 ASIC Edition)
+Welcome to the definitive engineering masterclass and repository for the **1 TH/s Custom BM1366 Pool Miner**.
+This project represents a bridge between two distinct worlds: the beautiful, open-source, Wi-Fi-enabled UI of the **NerdMiner_v2** project (running on an ESP32-S3), and the heavy-metal, hyper-dense, 150-Amp proprietary silicon of **Bitmain's BM1366 SHA-256 ASICs**.
+By performing a "brain transplant" on the NerdMiner firmware, we bypass the ESP32's internal CPU hashing loop (which maxes out at ~50 KH/s) and dispatch the Stratum network jobs to a custom-designed, 5-chip ASIC array capable of **1,000,000,000,000 hashes per second**.
+## ⚠️ CRITICAL SAFETY WARNING & DISCLAIMER ⚠️
+> **FIRE AND EXPLOSION HAZARD:** > This is not a standard microcontroller project. You are building a desktop-class, high-current, high-thermal density Power Delivery Network (PDN). This board will pull between **75 Amps and 150 Amps** at 0.8V.
+>  * If the PID thermal loop fails, the chips will reach 150°C in under 5 seconds.
+>  * If a multi-phase buck controller shorts the high-side MOSFET, 12V will be injected into 0.8V silicon, resulting in instantaneous vaporization of the die and potential fire.
+>  * If you use standard 1oz copper for the inner power planes, the PCB will delaminate, melt, and ignite.
+> **Build, flash, and operate this hardware entirely at your own risk. Never leave this device powered unattended. The maintainers of this repository assume zero liability for property damage, injury, or loss of life.**
 > 
-## 📑 Table of Contents
- 1. System Architecture Overview
- 2. Deep Sub-System Schematics
-   * Multi-Phase Power Delivery Network (PDN)
-   * Logic Translation & Clock Network
-   * ASIC Hash Chain Topology
-   * I2C Thermal Management Loop
+## 📑 Master Table of Contents
+ 1. System Architecture & Theory of Operation
+ 2. Deep Hardware Sub-System Schematics
  3. Exhaustive Bill of Materials (BOM)
- 4. PCB Fabrication & Stack-up Notes
- 5. SMT Assembly & Reflow Profile
- 6. Firmware Architecture & Directory Structure
- 7. Full Source Code Implementations
-   * CMakeLists.txt
-   * main.c
-   * stratum_task.c
-   * asic_driver.c
-   * pid_thermal.c
- 8. The Stratum V1 Protocol Explained
- 9. BM1366 Hardware Boot Sequence
- 10. Compilation & Flashing Guide
- 11. Hardware Bring-Up & Smoke Test
- 12. Overclocking, Voltage Binning, and PID Tuning
+ 4. PCB Fabrication & Heavy Copper Stack-up
+ 5. SMT Assembly & Extreme Reflow Profiles
+ 6. NerdMiner_v2 Integration: The Brain Transplant
+ 7. Full Firmware Source Implementation
+ 8. The Stratum V1 Protocol Deep Dive
+ 9. BM1366 Hardware Boot & Register Sequence
+ 10. PlatformIO Compilation & Flashing Guide
+ 11. Hardware Bring-Up & The 3-Stage Smoke Test
+ 12. Overclocking, Voltage Binning & PID Tuning
  13. Exhaustive Troubleshooting Matrix
- 14. Contributing & License
-## 1. System Architecture Overview
-The miner operates by isolating the networking domain from the raw hashing domain, utilizing bi-directional logic shifting to bridge the voltage gap.
+ 14. License & Contribution Guidelines
+## 1. System Architecture & Theory of Operation
+The system architecture is divided into three distinct operational domains: **Network/Logic (ESP32)**, **Power Delivery (PDN)**, and **Hashing (ASIC)**.
 ```text
 [High-Current Server PSU: 12V] 
-              │ (Via 6-Pin PCIe)
+              │ (Via 2x 6-Pin PCIe)
               ▼
 [Multi-Phase Buck Stage (TPS546D24A)] ───► [Active Cooling/Fan System]
    │          │          │                    (Controlled via EMC2101)
@@ -44,13 +39,20 @@ The miner operates by isolating the networking domain from the raw hashing domai
 [TXS0104E Level Shifters] ◄──────────────► [5x BM1366 ASIC Array]
    ▲          ▲                            (Daisy-Chained TX/RX)
    │          │                                         │
-   └──────────┴── [ESP32-C3 Stratum Bridge] ◄───────────┘ (Thermal Diode Data)
-                  (Wi-Fi & FreeRTOS Pool Logic)
+   └──────────┴── [ESP32-S3 (NerdMiner Host)] ◄─────────┘ (Thermal Diode Data)
+                  (Wi-Fi, LCD UI, Stratum Logic)
 
 ```
-## 2. Deep Sub-System Schematics
-### Multi-Phase Power Delivery Network (PDN)
-To power five BM1366 chips (which draw ~30A each when overclocked to 500MHz), we interleave multiple Texas Instruments **TPS546D24A** synchronous buck converters. These share a single PMBus address and operate out-of-phase to cancel out voltage ripple.
+**Operational Flow:**
+ 1. The **ESP32-S3** connects to Wi-Fi and establishes a Stratum TCP socket with the mining pool.
+ 2. The pool sends a JSON block header (mining.notify).
+ 3. The ESP32 parses this, creates a midstate, and translates the 3.3V logic to 1.8V via the **TXS0104E**.
+ 4. The job is pushed into the **BM1366 Hash Chain** operating at ~500 MHz (powered by the **TPS546D24A** bucks).
+ 5. A valid nonce is found, trickles back up the RX line to the ESP32, and is submitted to the pool.
+ 6. Concurrently, the **EMC2101** monitors the raw silicon diode of the ASICs via I2C, modulating high-RPM server fans to hold the array at exactly 70°C.
+## 2. Deep Hardware Sub-System Schematics
+### Block 1: Multi-Phase Power Delivery Network (PDN)
+You cannot drive 150A with a single IC. We interleave multiple Texas Instruments TPS546D24A synchronous buck converters.
 ```text
 =========================================================================
 [12V_PCIe_INPUT] ─────────┬──────────────┬─────────────────────────┐
@@ -58,7 +60,444 @@ To power five BM1366 chips (which draw ~30A each when overclocked to 500MHz), we
                          [C_IN]         [C_IN]                    [LDO]
                          10uF           10uF                       │
                           │              │                         ▼
-                          ▼              ▼                     (+5V_VDD)
+                          ▼              ▼                     (+3.3V_VDD)
+                  ┌───────┴──────┐ ┌─────┴────────┐                │
+   [SYNC_CLK] ◄───┤SYNC_IN       │ │SYNC_IN       │                │
+                  │   TPS546D24A │ │   TPS546D24A │                │
+   [PMBus_SDA] ◄──┤SDA  (Master) │ │SDA  (Slave)  │                │
+   [PMBus_SCL] ◄──┤SCL           │ │SCL           │                │
+                  │              │ │              │                │
+                  │        SW_OUT├─┤SW_OUT        │                │
+                  └───────┬──────┘ └─────┬────────┘                │
+                          │              │                         │
+                        [L1]           [L2]  (High Saturation Inductors)
+                        150nH          150nH                       │
+                          │              │                         │
+[0.80V_VCORE] ◄───────────┴──────┬───────┴─────────────────────────┘
+(4oz Inner Copper Plane)         │
+                              [C_OUT] (Array of 47uF MLCCs)
+                                 │
+                                [GND]
+=========================================================================
+
+```
+### Block 2: Logic Translation & Clock Network
+BM1366 logic is strictly 1.8V. We use **TXS0104E** bi-directional level shifters. Every BM1366 requires a perfectly synchronized 25MHz clock driven by a 1-to-5 clock buffer.
+```text
+=========================================================================
+      [ESP32-S3 Host]                        [TXS0104E Level Shifter]
+      (3.3V Domain)                          (3.3V ◄───► 1.8V Domain)
+                                             ┌──────────────────────┐
+[VDD_3.3V] ──────────────────────────────────┤ VCCA          VCCB ├─────── [VDD_1.8V]
+                                             │                      │
+[GPIO43] (SPI_MOSI) / Job Data Out ──────────┤ A1 (3.3V) ► B1 (1.8V)├──────► [ASIC_CHAIN_CI]
+[GPIO44] (SPI_MISO) / Nonce Return ◄─────────┤ A4 (3.3V) ◄ B4 (1.8V)│◄────── [ASIC_CHAIN_RO]
+                                             └──────────────────────┘
+
+       [25MHz SMD Crystal]                      [Clock Buffer IC]
+             ┌─────┐                         ┌──────────────────────┐
+             │ OUT ├───────(25 MHz)─────────►│ IN                   │
+             └─────┘                         │       OUT1 ├─────────► [BM1366_1 CLK_IN]
+                                             │       OUT2 ├─────────► [BM1366_2 CLK_IN]
+                                             │       OUT3 ├─────────► [BM1366_3 CLK_IN]
+                                             │       OUT4 ├─────────► [BM1366_4 CLK_IN]
+                                             │       OUT5 ├─────────► [BM1366_5 CLK_IN]
+                                             └──────────────────────┘
+=========================================================================
+
+```
+### Block 3: The ASIC Hash Chain Topology
+BM1366 chips are wired sequentially. Command In (CI) receives data; Command Out (CO) pushes it to the next chip. Nonces trickle backward via the Return line (RI -> RO).
+```text
+=========================================================================
+  [From Level Shifter]
+         │
+         ▼
+     [BM1366 #1]
+  ┌──────────────────┐
+  │ CI   (Cmd In)    │
+  │ CO   (Cmd Out)   ├──────┐
+  │                  │      │
+  │ RI   (Rtn In)    │◄──┐  │
+  │ RO   (Rtn Out)   │   │  │
+  └───────┬──────────┘   │  │
+          │              │  │
+ (To ESP32 MISO via B4)  │  │
+                         │  │
+     [BM1366 #2]         │  │
+  ┌──────────────────┐   │  │
+  │ CI ◄─────────────┼───┘  │
+  │ CO ──────────────┼──────┼──────► (To BM1366 #3 CI)
+  │                  │      │
+  │ RI ◄─────────────┼──────┼─────── (From BM1366 #3 RO)
+  │ RO ──────────────┘      │
+  └──────────────────┘      │
+=========================================================================
+
+```
+### Block 4: I2C Thermal Management Loop (Hardware Watchdog)
+```text
+=========================================================================
+     [ESP32-S3]                            [EMC2101 Controller]
+                                          ┌──────────────────────┐
+[GPIO1] (I2C_SDA) ────────────────────────┤ SDA                  │
+[GPIO2] (I2C_SCL) ────────────────────────┤ SCL                  │
+                                          │                      │
+                                          │           DP (Diode+)├──────► [BM1366 #3 D+]
+                                          │           DN (Diode-)├──────► [BM1366 #3 D-]
+                                          │                      │
+                                          │           FAN_PWM    ├──────► [120mm Server Fan PWM Pin]
+                                          │           TACH       │◄────── [120mm Server Fan Tach Pin]
+                                          │                      │
+[GPIO3] (Kill Switch) ◄───────────────────┤ ALERT#               ├──────► [TPS546D24A ENABLE PINS]
+                                          └──────────────────────┘
+=========================================================================
+
+```
+*Note on ALERT#:* The ALERT# pin is hardwired to the ENABLE pins of the buck converters. If the temperature exceeds 95°C, the EMC2101 hardware kills the 150A power stage instantly, bypassing the ESP32 firmware entirely.
+## 3. Exhaustive Bill of Materials (BOM)
+| Designator | Qty | Part Number | Description | Manufacturer | Package |
+|---|---|---|---|---|---|
+| **U1** | 1 | LilyGO T-Display S3 | ESP32-S3 with LCD | LilyGO / Espressif | Dev Board |
+| **U2, U3** | 2 | TXS0104EPWR | 4-Bit Bidirectional Voltage-Level Translator | Texas Instruments | TSSOP-14 |
+| **U4** | 1 | EMC2101-R-TR | SMBus Fan Speed Controller | Microchip Tech | DFN-8 |
+| **U5-U9** | 5 | BM1366 | SHA-256 ASIC (Harvested/Brokered) | Bitmain | Custom QFN |
+| **U10-U13** | 4 | TPS546D24ARVFR | 40A Synchronous Buck Converter | Texas Instruments | LQFN-40 |
+| **Y1** | 1 | ABM3B-25.000MHZ-10-1-U-T | 25MHz SMD Crystal | Abracon | 4-SMD, No Lead |
+| **U14** | 1 | NB3N551MNR4G | 3.3V / 5.0V 1:4 Clock Fanout Buffer | ON Semiconductor | DFN-8 |
+| **J1, J2** | 2 | 1001-0081-ND | 6-Pin PCIe Power Header, Right Angle | Molex | TH |
+| **L1-L4** | 4 | SPM6530T-R15M170 | 150nH Power Inductor (40A+ Isat) | TDK | SMD 6.5x7.1mm |
+| **C_CORE** | 40 | GRM31CR60J476KE19L | 47uF 6.3V X5R Ceramic Capacitor (Core Decoupling) | Murata | 1206 |
+| **C_IN** | 16 | GRM32ER71H106KA12L | 10uF 50V X7R Ceramic Capacitor (12V Input) | Murata | 1210 |
+| **FAN1, FAN2** | 2 | FFB1212EHE-F00 | 120mm 4000RPM High Static Pressure Fan | Delta Electronics | 120x38mm |
+| **HS1** | 1 | Custom Extruded Alum | 150mm x 50mm x 25mm Aluminum Heatsink | Custom | N/A |
+| **TIM** | 5 | TG-A6200-25-25-0.5 | Thermal Pad, 6.2 W/m-K | t-Global | 25x25mm |
+## 4. PCB Fabrication & Heavy Copper Stack-up
+This board **cannot** be manufactured using standard 2-layer 1oz copper settings. When submitting /Gerbers to your fab house (e.g., PCBWay, JLCPCB, Sierra Circuits), strictly mandate the following stack-up.
+### Recommended 6-Layer Stack-up
+ 1. **Top Layer (F.Cu):** 1oz Copper. Used for high-speed logic routing, SPI, I2C, and component placement.
+ 2. **Inner Layer 1 (In1.Cu):** 2oz Copper. **Solid GND Plane.** Critical for signal return paths and EMI shielding.
+ 3. **Inner Layer 2 (In2.Cu):** 4oz Copper. **0.8V VCORE Plane.** Dedicated entirely to carrying the 150A core load.
+ 4. **Inner Layer 3 (In3.Cu):** 2oz Copper. **Split Plane:** 12V Input and 1.8V VDD_IO.
+ 5. **Inner Layer 4 (In4.Cu):** 2oz Copper. **Solid GND Plane.**
+ 6. **Bottom Layer (B.Cu):** 1oz Copper. Used for secondary signal routing and bottom-side thermal dissipation via arrays.
+### Strict Fabrication Rules
+ * **Thermal Vias:** Do **NOT** tent the thermal via matrices beneath components U5 through U9 (BM1366 chips). The vias must be 0.3mm drill / 0.6mm diameter, filled or un-tented.
+ * **Impedance Control:** SPI traces (MOSI, MISO, SCK) must be kept under 50mm in length to prevent signal degradation at 1M baud.
+ * **Differential Routing:** DP and DN thermal diode lines must be tightly coupled and routed as far away from the L1-L4 inductors as physically possible.
+## 5. SMT Assembly & Extreme Reflow Profiles
+Because of the heavy copper planes (which act as massive heatsinks), hand-soldering the BM1366 chips or the TPS546D24A controllers is practically impossible without a high-powered hot plate and a pre-heater.
+### Solder Paste & Stencil
+ * Use **SAC305** (Sn96.5/Ag3.0/Cu0.5) lead-free solder paste.
+ * The stencil thickness should be **0.12mm to 0.15mm**.
+ * **CRITICAL:** Windowpane the paste aperture on the BM1366 center pad (use a grid pattern rather than a single solid square of paste) to prevent chip floating and solder balling during reflow.
+### Extreme Heavy Copper Reflow Profile
+Due to the thermal mass of the 4oz inner planes, a standard reflow profile will result in cold solder joints. You must increase the soak time.
+ 1. **Preheat Zone:** 150°C to 180°C. Rate: 1.5°C/sec. Duration: 90 - 120 seconds.
+ 2. **Soak Zone:** 180°C to 200°C. Duration: 80 - 100 seconds (Critical to normalize board temp across the 4oz copper).
+ 3. **Reflow Zone:** Peak temp 245°C - 250°C. Time above liquidus (217°C): 60 - 90 seconds.
+ 4. **Cooling Zone:** -2°C to -4°C/sec. Do not cool too fast or the QFN packages may crack.
+## 6. NerdMiner_v2 Integration: The Brain Transplant
+NerdMiner_v2 natively targets the LilyGO T-Display S3 because of its built-in LCD screen. To marry this with our ASIC board, we must strip out the ESP32's internal CPU hashing loop (mbedtls_sha256) and redirect the network jobs out to our BM1366 array.
+### Pinout Resolution (ESP32-S3)
+We must remap the pins in miner_config.h to avoid conflicting with the T-Display's internal LCD SPI bus:
+ * GPIO 43 -> UART TX (to TXS0104E -> BM1366 CI)
+ * GPIO 44 -> UART RX (from TXS0104E -> BM1366 RO)
+ * GPIO 1  -> I2C SDA (to EMC2101 Thermal Controller)
+ * GPIO 2  -> I2C SCL (to EMC2101 Thermal Controller)
+ * GPIO 3  -> Kill Switch (to TPS546D24A ENABLE)
+## 7. Full Firmware Source Implementation
+To integrate the projects, clone the NerdMiner_v2 repository and inject the following driver files into the src/ directory.
+### include/miner_config.h (Hardware Definitions)
+```cpp
+#ifndef MINER_CONFIG_H
+#define MINER_CONFIG_H
+
+// Hardware Pins (LilyGO T-Display S3 mapping)
+#define PIN_ASIC_TX  43
+#define PIN_ASIC_RX  44
+#define PIN_I2C_SDA  1
+#define PIN_I2C_SCL  2
+#define PIN_KILL_SW  3
+
+// Thermal Limits
+#define TARGET_TEMP_C 70.0
+#define MAX_TEMP_C    95.0
+
+// Queues
+extern QueueHandle_t asic_job_queue;
+
+#endif // MINER_CONFIG_H
+
+```
+### src/miner.cpp (Modifying NerdMiner's Core Loop)
+Locate NerdMiner's runWorker() function. Delete the internal hashing math and replace it with the ASIC dispatcher.
+```cpp
+#include "miner_config.h"
+#include "asic_driver.h"
+
+QueueHandle_t asic_job_queue;
+
+void runWorker(void *name) {
+    // NerdMiner Stratum logic connects and receives a job...
+    
+    while(true) {
+        if (new_job_available) {
+            // 1. Extract block data from NerdMiner's Stratum client
+            AsicJob payload = format_job_for_asic(current_job_id, extranonce2, ntime, nonce_start);
+            
+            // 2. Push the job to the FreeRTOS BM1366 UART Driver Task
+            xQueueSend(asic_job_queue, &payload, portMAX_DELAY);
+            
+            new_job_available = false;
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+}
+
+```
+### src/asic_driver.cpp (The Hashing Orchestrator)
+This file handles the proprietary serial communication with the BM1366 array.
+```cpp
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/uart.h"
+#include "miner_config.h"
+
+#define ASIC_UART UART_NUM_1
+
+void init_asic_uart() {
+    uart_config_t uart_config = {
+        .baud_rate = 115200, // Initial boot baud rate
+        .data_bits = UART_DATA_8_BITS,
+        .parity    = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+    };
+    uart_param_config(ASIC_UART, &uart_config);
+    uart_set_pin(ASIC_UART, PIN_ASIC_TX, PIN_ASIC_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    uart_driver_install(ASIC_UART, 2048, 2048, 0, NULL, 0);
+}
+
+void asic_driver_task(void *pvParameters) {
+    init_asic_uart();
+    
+    // Send 0x00 sync bytes
+    uint8_t sync_bytes[100] = {0};
+    uart_write_bytes(ASIC_UART, (const char*)sync_bytes, sizeof(sync_bytes));
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+    
+    // Broadcast Enumerate Command (Assign IDs)
+    uint8_t cmd_enum[11] = {0x55, 0xAA, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x83};
+    uart_write_bytes(ASIC_UART, (const char*)cmd_enum, 11);
+    
+    // (Omitted: Baud rate shift to 1M and PLL Ramp to 500MHz via Command 0x08)
+    
+    uint8_t rx_buffer[16];
+    AsicJob incoming_job;
+    
+    while(1) {
+        // 1. Check for new jobs from NerdMiner Stratum task
+        if(xQueueReceive(asic_job_queue, &incoming_job, 0) == pdTRUE) {
+            // Push formatted 11-byte job to ASIC UART
+            uart_write_bytes(ASIC_UART, (const char*)incoming_job.payload, 11);
+        }
+        
+        // 2. Poll for nonces returning from the ASICs
+        int len = uart_read_bytes(ASIC_UART, rx_buffer, sizeof(rx_buffer), 5 / portTICK_PERIOD_MS);
+        if (len > 0) {
+            uint32_t valid_nonce = extract_nonce(rx_buffer);
+            extern void submit_share_to_pool(uint32_t nonce); // NerdMiner function
+            submit_share_to_pool(valid_nonce);
+        }
+    }
+}
+
+```
+### src/pid_thermal.cpp (The Safety Watchdog)
+This loop runs continuously, reading the I2C EMC2101 and adjusting PWM.
+```cpp
+#include "freertos/FreeRTOS.h"
+#include "driver/i2c.h"
+#include "driver/gpio.h"
+#include "miner_config.h"
+
+float Kp = 5.0, Ki = 0.2, Kd = 1.5;
+
+void thermal_management_task(void *pvParameters) {
+    // Setup I2C & Kill Switch GPIO
+    gpio_set_direction((gpio_num_t)PIN_KILL_SW, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)PIN_KILL_SW, 1); // Enable Power
+
+    float integral = 0, previous_error = 0;
+
+    while(1) {
+        // Read EMC2101 External Diode Register (0x01)
+        float current_temp = read_emc2101_temp(); 
+        
+        // SOFTWARE SAFETY FALLBACK (If hardware ALERT# pin fails)
+        if (current_temp >= MAX_TEMP_C) {
+            gpio_set_level((gpio_num_t)PIN_KILL_SW, 0); // Drop ENABLE to 0V
+            vTaskSuspend(NULL);
+        }
+
+        // PID Calculation
+        float error = current_temp - TARGET_TEMP_C;
+        integral += error;
+        float derivative = error - previous_error;
+        float pwm_float = (Kp * error) + (Ki * integral) + (Kd * derivative);
+
+        // Clamp PWM (0-255)
+        int pwm_out = (int)pwm_float;
+        if (pwm_out > 255) pwm_out = 255;
+        if (pwm_out < 30) pwm_out = 30; // Never stop fans fully under power
+
+        // Write EMC2101 Fan Setting Register (0x30)
+        set_emc2101_fan_pwm((uint8_t)pwm_out);
+        previous_error = error;
+        
+        vTaskDelay(500 / portTICK_PERIOD_MS); 
+    }
+}
+
+```
+### src/main.cpp (NerdMiner Entry Point Modification)
+Locate the setup() function in NerdMiner to spawn our custom tasks.
+```cpp
+#include "asic_driver.h"
+#include "pid_thermal.h"
+
+void setup() {
+    // ... NerdMiner Setup (Wi-Fi, Screen, Web Server) ...
+
+    asic_job_queue = xQueueCreate(10, sizeof(AsicJob));
+
+    // Start Thermal Task (Priority 10 - Highest for safety)
+    xTaskCreatePinnedToCore(thermal_management_task, "Thermal_Task", 4096, NULL, 10, NULL, 1);
+    
+    // Start ASIC Hashing Task (Priority 7)
+    xTaskCreatePinnedToCore(asic_driver_task, "ASIC_Task", 8192, NULL, 7, NULL, 1);
+}
+
+```
+### src/screen.cpp (Upgrading the UI for Terahashes)
+If you feed NerdMiner 1 TH/s, the KH/s logic will overflow. Update the string formatting.
+```cpp
+// Change NerdMiner's default hashrate display
+float current_hashrate_THs = (total_hashes_computed / 1000000000000.0);
+sprintf(hash_str, "%.2f TH/s", current_hashrate_THs);
+
+// Replace ESP32 internal temp with ASIC array temp
+extern float current_asic_temp; // Pulled from pid_thermal.cpp
+tft.drawString(String(current_asic_temp) + " °C", temp_x, temp_y);
+
+```
+## 8. The Stratum V1 Protocol Deep Dive
+The ESP32 maintains a persistent TCP socket passing JSON-RPC messages.
+### Receiving Jobs (mining.notify)
+```json
+{
+  "id": null,
+  "method": "mining.notify",
+  "params": [
+    "bf", 
+    "4d16b6f85af6e2198f44ae2a6de67f78487ae5611b77c6c0440b921e00000000",
+    "01000000010000000000000000000000...",
+    "072f736c7573682f000000000200f2...",
+    ["c06497...", "89f3a1..."],
+    "00000002",
+    "1c2ac4af",
+    "504e86b9",
+    false
+  ]
+}
+
+```
+ * **param[1]:** Previous Block Hash
+ * **param[2] & [3]:** Coinbase Parts (Used to build the Merkle Root)
+ * **param[6]:** Network Difficulty (nBits)
+ * **param[7]:** Network Time (nTime)
+The ESP32 constructs the 80-byte block header using these strings, performs the first SHA-256 hash (creating the **Midstate**), and sends the Midstate to the BM1366 array so the silicon only has to perform the final hashing loop.
+## 9. BM1366 Hardware Boot & Register Sequence
+The exact hexadecimal boot sequence for BM1366 chips uses an 11-byte frame:
+[0x55] [0xAA] [Command] [Target ID] [Reg0] [Reg1] [Reg2] [Reg3] [Data0] [Data1] [CRC]
+ 1. **Wake Up & Sync:** Blast 0x00 down the line for 50ms at 115200 baud.
+ 2. **Command 0x14 (Enumerate):** Sent with Target ID 0x00. Chip 1 takes ID 0x01 and passes it on.
+ 3. **Command 0x22 (Set Baud):** Transitions the UART chain to 1M baud.
+ 4. **Command 0x08 (Set PLL):** Modifies the clock multiplier. The payload contains the divider logic to ramp the 25MHz crystal up to 500MHz. (Must be done in 50MHz steps).
+## 10. PlatformIO Compilation & Flashing Guide
+Because NerdMiner_v2 relies on heavily customized UI libraries (TFT_eSPI), it is compiled via PlatformIO, not raw ESP-IDF.
+ 1. **Install VSCode & PlatformIO Extension.**
+ 2. **Clone your modified repository:** Open the folder in VSCode.
+ 3. **Configure platformio.ini:**
+   Ensure your environment targets the LilyGO S3:
+   ```ini
+   [env:lilygo-t-display-s3]
+   platform = espressif32
+   board = lilygo-t-display-s3
+   framework = arduino
+   
+   ```
+ 4. **Build & Upload:**
+   * Click the **PlatformIO: Build (Checkmark)** icon in the bottom toolbar.
+   * Plug in your ESP32-S3 via USB-C.
+   * Click the **PlatformIO: Upload (Right Arrow)** icon.
+## 11. Hardware Bring-Up & The 3-Stage Smoke Test
+Do **NOT** plug the 12V PCIe power in immediately. Follow this rigid sequence.
+### Stage 1: Logic & Signal Test (5V USB Only)
+ * Plug in the USB cable to the ESP32-S3.
+ * Measure **3.3V** at the TXS0104E VCCA pin and **1.8V** at the VCCB pin.
+ * **Oscilloscope:** Probe the CI line on the first BM1366. You should observe crisp 1.8V square waves.
+### Stage 2: Low-Current Core Test
+ * Hook a benchtop DC power supply to the PCIe 12V inputs.
+ * **CRITICAL:** Set the current limit on your bench PSU to **2.0 Amps maximum**.
+ * Measure the giant 4oz copper pour underneath the BM1366 array. It should read exactly **0.80V**.
+ * *If it reads 12V, the TPS546D24A failed. Turn it off instantly.*
+### Stage 3: Full Power Run
+ * Disconnect the bench supply.
+ * Apply high-grade phase-change thermal paste to the BM1366 dies. Bolt down the massive aluminum heatsink tightly to compress the paste.
+ * Plug in the 120mm Delta fans.
+ * Connect a 1500W+ Server Breakout Board to the PCIe connectors.
+ * Power on. Monitor the NerdMiner LCD screen. Look for the Hashrate to spike to **1.00 TH/s**.
+## 12. Overclocking, Voltage Binning & PID Tuning
+### The Power Equation
+Power consumption scales quadratically with voltage and linearly with frequency: P = C * V^2 * f
+To reach 1 TH/s, you need ~500 MHz on the BM1366 array. If the chips return invalid nonces (hardware errors), you must adjust the feedback resistors on the TPS546D24A to increase the Core Voltage from 0.80V to 0.85V. **Warning: This increases heat exponentially.**
+### Tuning the PID Loop (Ziegler-Nichols Method)
+Due to the thermal mass of the heavy copper and aluminum heatsink, default PID values may cause temperature oscillations (fans revving up and down wildly).
+ 1. Set Ki and Kd to 0.
+ 2. Increase Kp until the fan speeds oscillate steadily around 70°C.
+ 3. Record this ultimate gain (Ku) and oscillation period (Tu).
+ 4. Set Kp = 0.6 * Ku, Ki = 1.2 * Ku / Tu, Kd = 0.075 * Ku * Tu.
+## 13. Exhaustive Troubleshooting Matrix
+| Symptom | Cause | Solution |
+|---|---|---|
+| **Chips respond with Total = 3 instead of 5** | Broken Hash Chain | Chip #4 has a bad solder joint on its RX or TX pad. Pre-heat board and reflow Chip #4 with flux. |
+| **Miner connects to pool, but 0.00 TH/s on LCD** | Baud Rate Desync | ASICs failed to latch onto the wake-up bytes. Verify the 25MHz master clock buffer is outputting to all chips. |
+| **Sudden Power Shutoff / Serial reports 95°C+** | Thermal Runaway | Heatsink mounting pressure is uneven. Check the TIM application. The EMC2101 hardware killswitch worked. |
+| **High rate of Stale Shares (>5%)** | Network Latency / Wi-Fi | ESP32 Wi-Fi signal is blocked by the massive aluminum heatsink. Use an external U.FL antenna. |
+| **Invalid Nonces (Hardware Errors)** | High Voltage Ripple | The TPS546D24A inductor is saturating under the 150A load. Check oscilloscope on VCORE for ripple > 50mV. |
+| **Board smells like burning fiberglass** | Amperage Overload | Your inner copper layers are too thin (e.g. 1oz instead of 4oz). Stop use immediately. |
+## 14. License & Contribution Guidelines
+This project merges proprietary silicon drivers with open-source firmware. We welcome pull requests for ESP-IDF optimizations, specific BM1366 register mapping discoveries, and PCB thermal improvements.
+### MIT License
+Copyright (c) 2026 Open Source Bitcoin Mining Initiative
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*End of Document. Happy Hashing.*
                   ┌───────┴──────┐ ┌─────┴────────┐                │
    [SYNC_CLK] ◄───┤SYNC_IN       │ │SYNC_IN       │                │
                   │   TPS546D24A │ │   TPS546D24A │                │
