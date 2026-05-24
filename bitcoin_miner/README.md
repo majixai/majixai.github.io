@@ -21,6 +21,7 @@ The directory is designed to run as a standalone app while also integrating with
 | `index.html` | Dashboard UI, double-SHA miner demo, root-directory cards, TensorFlow.js fee model |
 | `manifest.json`, `sw.js` | PWA manifest + service worker powered by `/pwa/sw-core.js` |
 | `login.html`, `login.js`, `login.css`, `login-config.json` | Optional local login gate for the app |
+| `kicad/` | KiCad netlist assets for the 1 TH/s pool miner hardware concept |
 
 ## Data + analytics pipeline
 
@@ -76,6 +77,11 @@ Serve the repo root with any static web server and open:
 
 The page now also registers a service worker and exposes shared root-directory links
 through the repository router + hash infrastructure when served over HTTPS/localhost.
+
+### Hardware schematic assets
+
+- `bitcoin_miner/kicad/1TH_Miner.net` contains the imported KiCad netlist for the ESP32-C3, TXS0104E, EMC2101, TPS546D24A, and BM1366 chain layout concept.
+- `bitcoin_miner/kicad/README.md` explains how the netlist is organized and imported.
 
 ### NiceHash integration
 
