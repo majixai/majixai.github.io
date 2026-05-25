@@ -233,6 +233,118 @@ ltf_s  = input.timeframe("1", "LTF for Intra-Bar Noise",                      gr
 // 3. GLOBAL OBJECT INITIALIZATION
 // ============================================================================
 
+var KinematicModel  kin_s  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var KinematicModel  kin_m  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var KinematicModel  kin_l  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+
+var UncertaintyZone uz_s   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+var UncertaintyZone uz_m   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+var UncertaintyZone uz_l   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+
+var PinnedForecast  pf_s   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+var PinnedForecast  pf_m   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+var PinnedForecast  pf_l   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
+
+var AccuracyEngine  acc_s  = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
+var AccuracyEngine  acc_m  = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
+var AccuracyEngine  acc_l  = AccuracyEngine.new(0, 0, 0.5, 0.5, 1.0)
+
+var BreakoutSynergy brk_s  = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
+var BreakoutSynergy brk_m  = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
+var BreakoutSynergy brk_l  = BreakoutSynergy.new(false, "NONE", 0.0, 0.0, 1.0, 0.0)
+
+var PatternEngine   pe_s   = PatternEngine.new("NONE","NONE",0,na,false,false,50.0,"None",33.3,33.3,33.3,0.0,0.0)
+var PatternEngine   pe_m   = PatternEngine.new("NONE","NONE",0,na,false,false,50.0,"None",33.3,33.3,33.3,0.0,0.0)
+var PatternEngine   pe_l   = PatternEngine.new("NONE","NONE",0,na,false,false,50.0,"None",33.3,33.3,33.3,0.0,0.0)
+
+var ProjectionMetrics PM_s = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+var ProjectionMetrics PM_m = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+var ProjectionMetrics PM_l = ProjectionMetrics.new(0, 0, 0, na, na, 0.0)
+
+var BayesianInference Bayes_s = BayesianInference.new(0, 0, 0, 0, 0)
+var BayesianInference Bayes_m = BayesianInference.new(0, 0, 0, 0, 0)
+var BayesianInference Bayes_l = BayesianInference.new(0, 0, 0, 0, 0)
+
+var float feedbackBias_s = 0.0
+var float feedbackBias_m = 0.0
+var float feedbackBias_l = 0.0
+
+tf_to_minutes() =>
+    timeframe.isseconds ? timeframe.multiplier / 60.0 :
+     timeframe.isminutes ? timeframe.multiplier :
+     timeframe.ishours   ? timeframe.multiplier * 60.0 :
+     timeframe.isdaily   ? 1440.0 :
+     timeframe.isweekly  ? 10080.0 :
+     timeframe.ismonthly ? 43200.0 : 60.0
+
+bars_for_minutes(float targetMin) =>
+    int(math.max(2, math.round(targetMin / tf_to_minutes())))
+
+int hz_s = bars_for_minutes(60.0)     // next hour
+int hz_m = bars_for_minutes(240.0)    // next 4 hours
+int hz_l = bars_for_minutes(1440.0)   // next day
+
+int kin_lb_s = math.max(12, hz_s)
+int kin_lb_m = math.max(20, hz_m)
+int kin_lb_l = math.max(30, math.min(200, hz_l))
+
+if closeBufCount >= kin_lb_s
+    kin_s := c_kn_ring(closeBuf, closeBufHead, closeBufCount, kin_lb_s)
+    uz_s.standardError := kin_s.errorTerm
+
+if closeBufCount >= kin_lb_m
+    kin_m := c_kn_ring(closeBuf, closeBufHead, closeBufCount, kin_lb_m)
+    uz_m.standardError := kin_m.errorTerm
+
+if closeBufCount >= kin_lb_l
+    kin_l := c_kn_ring(closeBuf, closeBufHead, closeBufCount, kin_lb_l)
+    uz_l.standardError := kin_l.errorTerm
+
+uz_s.adaptiveCoeff := math.max(1.0, math.min(2.2, b_cf + (kin_s.errorTerm / close * 100) + trigFactor))
+uz_m.adaptiveCoeff := math.max(1.2, math.min(2.8, b_cf + (kin_m.errorTerm / close * 100) + trigFactor))
+uz_l.adaptiveCoeff := math.max(1.4, math.min(3.5, b_cf + (kin_l.errorTerm / close * 100) + trigFactor))
+
+build_forecast(PinnedForecast pfIn, KinematicModel kinIn, UncertaintyZone uzIn, BayesianInference byIn, int hz, string src) =>
+    pfIn.anchorBar   := bar_index
+    pfIn.anchorTime  := time
+    pfIn.anchorPrice := close
+    pfIn.horizonBars := hz
+    pfIn.isActive    := true
+    pfIn.triggerSource := src
+
+    array.clear(pfIn.targetPoints)
+    array.clear(pfIn.targetOpen)
+    array.clear(pfIn.targetClose)
+    array.clear(pfIn.confUpper)
+    array.clear(pfIn.confLower)
+
+    float prev = close
+    for i = 1 to hz
+        float drift = kinIn.velocity * i + 0.5 * kinIn.acceleration * i * i
+        float rawTarget = close + drift
+        float curved = b_tc(rawTarget, prev, math.max(kinIn.errorTerm, 1e-6), i, uzIn.adaptiveCoeff)
+        float cone = uzIn.standardError * uzIn.adaptiveCoeff * math.sqrt(i)
+
+        array.push(pfIn.targetPoints, curved)
+        array.push(pfIn.targetOpen, prev)
+        array.push(pfIn.targetClose, curved)
+        array.push(pfIn.confUpper, curved + cone)
+        array.push(pfIn.confLower, curved - cone)
+
+        prev := curved
+
+if triggerShort
+    build_forecast(pf_s, kin_s, uz_s, Bayes_s, hz_s, "S")
+
+if triggerMedium
+    build_forecast(pf_m, kin_m, uz_m, Bayes_m, hz_m, "M")
+
+if triggerLong
+    build_forecast(pf_l, kin_l, uz_l, Bayes_l, hz_l, "L")
+
+
+
+
 var KinematicModel  kin  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
 var UncertaintyZone uz   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
 var PinnedForecast  pf   = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
@@ -920,6 +1032,9 @@ else if isDoji
     candleScore := 0
     candleName := "Doji"
 
+pe_s.activeCandlePat := candleName
+pe_m.activeCandlePat := candleName
+pe_l.activeCandlePat := candleName
 
 pe.activeCandlePat := candleName
 if sh_cp and candleName != "NONE"
@@ -1345,6 +1460,13 @@ float probBearR = math.sum(AlphaTrend<=AlphaTrend[2] and low<nz(targetDn[fc_hz])
 
 Bayes.probBull   := math.max(0, math.min(100, probBRaw  + (feedbackBias*5) + (pe.patternScore*2)))
 Bayes.probBear   := math.max(0, math.min(100, probBearR - (feedbackBias*5) - (pe.patternScore*2)))
+
+// ============================================================================
+Bayes_s.probBull := math.max(0, math.min(100, Bayes_s.probBull + feedbackBias_s))
+Bayes_m.probBull := math.max(0, math.min(100, Bayes_m.probBull + feedbackBias_m))
+Bayes_l.probBull := math.max(0, math.min(100, Bayes_l.probBull + feedbackBias_l))
+// ============================================================================
+
 Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
 
 // Ensure PM object fields and atrVal/lr_rt are defined before this block
