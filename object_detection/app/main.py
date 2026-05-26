@@ -48,7 +48,9 @@ def _decode_frame(frame_payload: str) -> np.ndarray:
 
 
 def _encode_frame(frame: np.ndarray) -> str:
-    ok, encoded = cv2.imencode(".jpg", frame)
+    ok, encoded = cv2.imencode(
+        ".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+    )
     if not ok:
         return ""
     return base64.b64encode(encoded.tobytes()).decode("utf-8")
