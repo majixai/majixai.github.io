@@ -4,7 +4,7 @@
 
 - a high-performance C proof-of-work miner (`miner.c`)
 - a live Bitcoin network data + analytics pipeline (`fetch_real_data.py`)
-- a browser UI with worker-based mining simulation, shared route/hash integrations, and TensorFlow.js neural fee analysis (`index.html`)
+- a browser UI with worker-based mining simulation, shared route/hash integrations, and TensorFlow.js neural fee analysis accelerated with WebGPU/WebGL when available (`index.html`)
 - shared PWA wiring (`manifest.json`, `sw.js`) via the repository `/pwa` infrastructure
 
 The directory is designed to run as a standalone app while also integrating with repository automation.
@@ -22,6 +22,7 @@ The directory is designed to run as a standalone app while also integrating with
 | `manifest.json`, `sw.js` | PWA manifest + service worker powered by `/pwa/sw-core.js` |
 | `login.html`, `login.js`, `login.css`, `login-config.json` | Optional local login gate for the app |
 | `3d_files/*.stl` | Local NerdMiner enclosure assets for the browser 3D viewer |
+| `kicad/` | KiCad netlist assets for the 1 TH/s pool miner hardware concept |
 
 ## Data + analytics pipeline
 
@@ -79,6 +80,11 @@ The dashboard now includes a browser-based 3D STL viewer that loads the copied N
 
 The page now also registers a service worker and exposes shared root-directory links
 through the repository router + hash infrastructure when served over HTTPS/localhost.
+
+### Hardware schematic assets
+
+- `bitcoin_miner/kicad/1TH_Miner.net` contains the imported KiCad netlist for the ESP32-C3, TXS0104E, EMC2101, TPS546D24A, and BM1366 chain layout concept.
+- `bitcoin_miner/kicad/README.md` explains how the netlist is organized and imported.
 
 ### NiceHash integration
 
