@@ -5,6 +5,13 @@ indicator("Dynamic Anchor Intra-Bar StDev Bands", overlay=true)
 // ============================================================================
 // TIMEFRAME PRESET PROFILES
 // ============================================================================
+type HTFBar
+    float o = open
+    float h = high
+    float l = low
+    float c = close
+    int   t = time
+
 string grp_mtf = "Multi-Timeframe Engine"
 
 // 1. Define the 10 Preset String Constants (plus a Custom option)
@@ -48,9 +55,7 @@ manual_tf_l = input.timeframe("15", title="Manual Long TF",   inline="tf_l", gro
 
 
 // Lookback Settings
-lengthInputs = input.int(20, title="StDev Lookback Period")
-lengthInputm = input.int(20, title="StDev Lookback Period Redundant")
-lengthInputl = input.int(20, title="StDev Lookback Period Redundant")
+lengthInput = input.int(20, title="StDev Lookback Period")
 multInput = input.float(1.0, title="StDev Multiplier")
 
 // Visibility Toggles
@@ -63,23 +68,77 @@ showLC = input.bool(true, title="Show LC (Low/Close Bands)", group="Visibility T
 showCO = input.bool(true, title="Show CO (Close/Open Bands)", group="Visibility Toggles")
 showHL = input.bool(true, title="Show HL (High/Low Bands)", group="Visibility Toggles")
 
-timeframeInputBox = input.timeframe("W")
-timeframeInputs = input.timeframe("15")
-timeframeInputm = input.timeframe("60")
-timeframeInputl = input.timeframe("D")
+// Draw lifecycle caps
+const int MAX_GC_BOXES = 220
+const int MAX_GC_LINES = 320
+const int MAX_GC_LABELS = 260
+const int MAX_GC_POLYLINES = 80
+const int GC_BATCH = 50
 
-type bar
-    float o = open
-    float h = high
-    float l = low
-    float c = close
-    int t = time
+var box[] gc_boxes = array.new_box()
+var line[] gc_lines = array.new_line()
+var label[] gc_labels = array.new_label()
+var polyline[] gc_polylines = array.new<polyline>()
 
-drawBox(bar b, int right) =>
+track_box(box obj) =>
+    if not na(obj)
+        array.push(gc_boxes, obj)
+
+track_line(line obj) =>
+    if not na(obj)
+        array.push(gc_lines, obj)
+
+track_label(label obj) =>
+    if not na(obj)
+        array.push(gc_labels, obj)
+
+track_polyline(polyline obj) =>
+    if not na(obj)
+        array.push(gc_polylines, obj)
+
+trim_boxes(box[] arr, int cap, int maxOps) =>
+    int ops = 0
+    while array.size(arr) > cap and ops < maxOps
+        box oldObj = array.shift(arr)
+        if not na(oldObj)
+            box.delete(oldObj)
+        ops += 1
+
+trim_lines(line[] arr, int cap, int maxOps) =>
+    int ops = 0
+    while array.size(arr) > cap and ops < maxOps
+        line oldObj = array.shift(arr)
+        if not na(oldObj)
+            line.delete(oldObj)
+        ops += 1
+
+trim_labels(label[] arr, int cap, int maxOps) =>
+    int ops = 0
+    while array.size(arr) > cap and ops < maxOps
+        label oldObj = array.shift(arr)
+        if not na(oldObj)
+            label.delete(oldObj)
+        ops += 1
+
+trim_polylines(polyline[] arr, int cap, int maxOps) =>
+    int ops = 0
+    while array.size(arr) > cap and ops < maxOps
+        polyline oldObj = array.shift(arr)
+        if not na(oldObj)
+            polyline.delete(oldObj)
+        ops += 1
+
+run_gc() =>
+    trim_boxes(gc_boxes, MAX_GC_BOXES, GC_BATCH)
+    trim_lines(gc_lines, MAX_GC_LINES, GC_BATCH)
+    trim_labels(gc_labels, MAX_GC_LABELS, GC_BATCH)
+    trim_polylines(gc_polylines, MAX_GC_POLYLINES, GC_BATCH)
+
+drawBox(HTFBar b, int right) =>
     color boxColor = b.c >= b.o ? color.green : color.red
     box.new(b.t, b.h, right, b.l, boxColor, xloc = xloc.bar_time, bgcolor = color.new(boxColor, 90))
 
-updateBox(box boxId, bar b, bool j = true, int len = 4) =>
+updateBox(box boxId, HTFBar b, bool j = true, int len = 4) =>
     color boxColor = b.c >= b.o ? color.green : color.red
     box.set_border_color(boxId, boxColor)
     box.set_bgcolor(boxId, color.new(boxColor, 90))
@@ -87,16 +146,19 @@ updateBox(box boxId, bar b, bool j = true, int len = 4) =>
     box.set_bottom(boxId, math.min(b.o, b.c))
     box.set_right(boxId, time)
 
-secBarBox = request.security(syminfo.tickerid, timeframeInputBox, bar.new())
+getHTF(string tf) =>
+    request.security(syminfo.tickerid, tf, HTFBar.new(open, high, low, close, time), gaps=barmerge.gaps_on)
+
+secBarBox = getHTF(active_tf_l)
 
 
 // ============================================================================
 // SECURITY CALLS (Using the dynamically assigned variables)
 // ============================================================================
-// Note: Use 'active_tf_s' instead of 'timeframeInputs' in your security calls
-secBars = request.security(syminfo.tickerid, active_tf_s, bar.new())
-secBarm = request.security(syminfo.tickerid, active_tf_m, bar.new())
-secBarl = request.security(syminfo.tickerid, active_tf_l, bar.new())
+// Note: Profile-resolved active timeframes are shared across both stdev and HTF engines.
+secBars = getHTF(active_tf_s)
+secBarm = getHTF(active_tf_m)
+secBarl = getHTF(active_tf_l)
 
 
 
@@ -104,58 +166,20 @@ bool showT = input.bool(false, "Show Boxes")
 if not na(secBarBox) and showT
     // To avoid a runtime error, only process data when an object exists.
     if not barstate.islast
-        if timeframe.change(timeframeInputBox) and not na(time[1])
+        if timeframe.change(active_tf_l) and not na(time[1])
             // On historical bars, draw a new box in the past when the HTF closes.
-            drawBox(secBarBox, time[1])
+            track_box(drawBox(secBarBox, time[1]))
     else
         var box lastBox = na
-        if na(lastBox) or timeframe.change(timeframeInputBox)
+        if na(lastBox)
+            lastBox := drawBox(secBarBox, time)
+        else if timeframe.change(active_tf_l)
+            track_box(lastBox)
             // On the last bar, only draw a new current box the first time we get there or when HTF changes.
             lastBox := drawBox(secBarBox, time)
         else
             // On other chart updates, use setters to modify the current box.
             updateBox(lastBox, secBarBox)
-
-// Safe Variable Extraction to prevent "Cannot access field of na object" errors
-float sec_os = not na(secBars) ? secBars.o : na
-float sec_om = not na(secBarm) ? secBarm.o : na
-float sec_ol = not na(secBarl) ? secBarl.o : na
-float sec_hs = not na(secBars) ? secBars.h : na
-float sec_hm = not na(secBarm) ? secBarm.h : na
-float sec_hl = not na(secBarl) ? secBarl.h : na
-float sec_ls = not na(secBars) ? secBars.l : na
-float sec_lm = not na(secBarm) ? secBarm.l : na
-float sec_ll = not na(secBarl) ? secBarl.l : na
-float sec_cs = not na(secBars) ? secBars.c : na
-float sec_cm = not na(secBarm) ? secBarm.c : na
-float sec_cl = not na(secBarl) ? secBarl.c : na
-
-// 1. Calculate Absolute Spreads
-oc_diffs = math.abs(sec_cs - sec_os)
-oc_diffm = math.abs(sec_cm - sec_om)
-oc_diffl = math.abs(sec_cl - sec_ol)
-oh_diffs = math.abs(sec_hs - sec_os)
-oh_diffm = math.abs(sec_hm - sec_om)
-oh_diffl = math.abs(sec_hl - sec_ol)
-ol_diffs = math.abs(sec_os - sec_ls)
-ol_diffm = math.abs(sec_om - sec_lm)
-ol_diffl = math.abs(sec_ol - sec_ll)
-lh_diffs = math.abs(sec_hs - sec_ls)
-lh_diffm = math.abs(sec_hm - sec_lm)
-lh_diffl = math.abs(sec_hl - sec_ll)
-hc_diffs = math.abs(sec_hs - sec_cs)
-hc_diffm = math.abs(sec_hm - sec_cm)
-hc_diffl = math.abs(sec_hl - sec_cl)
-lc_diffs = math.abs(sec_cs - sec_ls)
-lc_diffm = math.abs(sec_cm - sec_lm)
-lc_diffl = math.abs(sec_cl - sec_ll)
-co_diffs = math.abs(sec_os - sec_cs)
-co_diffm = math.abs(sec_om - sec_cm)
-co_diffl = math.abs(sec_ol - sec_cl)
-hl_diffs = math.abs(sec_hs - sec_ls)
-hl_diffm = math.abs(sec_hm - sec_lm)
-hl_diffl = math.abs(sec_hl - sec_ll)
-
 
 // Custom function to omit overnight differentials
 f_gapless_stdev(src, length) =>
@@ -173,31 +197,46 @@ f_gapless_stdev(src, length) =>
     ta.stdev(gaplessPrice, length)
 
 
+spread_for_pair(HTFBar b, string pair) =>
+    pair == "OC" ? math.abs(b.c - b.o) :
+     pair == "OH" ? math.abs(b.h - b.o) :
+     pair == "OL" ? math.abs(b.o - b.l) :
+     pair == "LH" ? math.abs(b.h - b.l) :
+     pair == "HC" ? math.abs(b.h - b.c) :
+     pair == "LC" ? math.abs(b.c - b.l) :
+     pair == "CO" ? math.abs(b.o - b.c) :
+     pair == "HL" ? math.abs(b.h - b.l) :
+     na
+
+tf_pair_stdev(HTFBar b, string pair, int length, float multiplier) =>
+    not na(b) ? f_gapless_stdev(spread_for_pair(b, pair), length) * multiplier : na
+
+pair_stdev_triplet(string pair, int length, float multiplier) =>
+    [tf_pair_stdev(secBars, pair, length, multiplier), tf_pair_stdev(secBarm, pair, length, multiplier), tf_pair_stdev(secBarl, pair, length, multiplier)]
+
+// Safe Variable Extraction to prevent "Cannot access field of na object" errors
+float sec_os = not na(secBars) ? secBars.o : na
+float sec_om = not na(secBarm) ? secBarm.o : na
+float sec_ol = not na(secBarl) ? secBarl.o : na
+float sec_hs = not na(secBars) ? secBars.h : na
+float sec_hm = not na(secBarm) ? secBarm.h : na
+float sec_hl = not na(secBarl) ? secBarl.h : na
+float sec_ls = not na(secBars) ? secBars.l : na
+float sec_lm = not na(secBarm) ? secBarm.l : na
+float sec_ll = not na(secBarl) ? secBarl.l : na
+float sec_cs = not na(secBars) ? secBars.c : na
+float sec_cm = not na(secBarm) ? secBarm.c : na
+float sec_cl = not na(secBarl) ? secBarl.c : na
+
 // 2. Calculate Standard Deviations
-oc_stdevs = f_gapless_stdev(oc_diffs, lengthInputs) * multInput
-oc_stdevm = f_gapless_stdev(oc_diffm, lengthInputm) * multInput
-oc_stdevl = f_gapless_stdev(oc_diffl, lengthInputl) * multInput
-oh_stdevs = f_gapless_stdev(oh_diffs, lengthInputs) * multInput
-oh_stdevm = f_gapless_stdev(oh_diffm, lengthInputm) * multInput
-oh_stdevl = f_gapless_stdev(oh_diffl, lengthInputl) * multInput
-ol_stdevs = f_gapless_stdev(ol_diffs, lengthInputs) * multInput
-ol_stdevm = f_gapless_stdev(ol_diffm, lengthInputm) * multInput
-ol_stdevl = f_gapless_stdev(ol_diffl, lengthInputl) * multInput
-lh_stdevs = f_gapless_stdev(lh_diffs, lengthInputs) * multInput
-lh_stdevm = f_gapless_stdev(lh_diffm, lengthInputm) * multInput
-lh_stdevl = f_gapless_stdev(lh_diffl, lengthInputl) * multInput
-hc_stdevs = f_gapless_stdev(hc_diffs, lengthInputs) * multInput
-hc_stdevm = f_gapless_stdev(hc_diffm, lengthInputm) * multInput
-hc_stdevl = f_gapless_stdev(hc_diffl, lengthInputl) * multInput
-lc_stdevs = f_gapless_stdev(lc_diffs, lengthInputs) * multInput
-lc_stdevm = f_gapless_stdev(lc_diffm, lengthInputm) * multInput
-lc_stdevl = f_gapless_stdev(lc_diffl, lengthInputl) * multInput
-co_stdevs = f_gapless_stdev(co_diffs, lengthInputs) * multInput
-co_stdevm = f_gapless_stdev(co_diffm, lengthInputm) * multInput
-co_stdevl = f_gapless_stdev(co_diffl, lengthInputl) * multInput
-hl_stdevs = f_gapless_stdev(hl_diffs, lengthInputs) * multInput // Added HL
-hl_stdevm = f_gapless_stdev(hl_diffm, lengthInputm) * multInput // Added HL
-hl_stdevl = f_gapless_stdev(hl_diffl, lengthInputl) * multInput // Added HL
+[oc_stdevs, oc_stdevm, oc_stdevl] = pair_stdev_triplet("OC", lengthInput, multInput)
+[oh_stdevs, oh_stdevm, oh_stdevl] = pair_stdev_triplet("OH", lengthInput, multInput)
+[ol_stdevs, ol_stdevm, ol_stdevl] = pair_stdev_triplet("OL", lengthInput, multInput)
+[lh_stdevs, lh_stdevm, lh_stdevl] = pair_stdev_triplet("LH", lengthInput, multInput)
+[hc_stdevs, hc_stdevm, hc_stdevl] = pair_stdev_triplet("HC", lengthInput, multInput)
+[lc_stdevs, lc_stdevm, lc_stdevl] = pair_stdev_triplet("LC", lengthInput, multInput)
+[co_stdevs, co_stdevm, co_stdevl] = pair_stdev_triplet("CO", lengthInput, multInput)
+[hl_stdevs, hl_stdevm, hl_stdevl] = pair_stdev_triplet("HL", lengthInput, multInput)
 
 // 3. Plot Upper/Lower Bands Anchored to Relevant Structural Prices
 
@@ -343,13 +382,6 @@ plot(l_)
 // ============================================================================
 // 1. ADVANCED TYPE TAXONOMY (OOP ARCHITECTURE)
 // ============================================================================
-
-type HTFBar
-    float o = open
-    float h = high
-    float l = low
-    float c = close
-    int   t = time
 
 var HTFBar lastKnownHTF = na
 
@@ -638,6 +670,45 @@ var polyline pl_mean = na, var polyline pl_upper = na, var polyline pl_lower = n
 var polyline pl_mc1 = na, var polyline pl_mc2 = na, var polyline pl_mc3 = na
 var box arrival_box = na, var line baseline_ray = na
 
+clear_zone_drawings(ConsolidationZone z) =>
+    if not na(z.boxId)
+        box.delete(z.boxId)
+        z.boxId := na
+    if not na(z.pocLineId)
+        line.delete(z.pocLineId)
+        z.pocLineId := na
+    if not na(z.tooltipLabel)
+        label.delete(z.tooltipLabel)
+        z.tooltipLabel := na
+
+cleanup_legacy_drawings() =>
+    if not curvP
+        if not na(pl_mean)
+            polyline.delete(pl_mean)
+            pl_mean := na
+        if not na(pl_upper)
+            polyline.delete(pl_upper)
+            pl_upper := na
+        if not na(pl_lower)
+            polyline.delete(pl_lower)
+            pl_lower := na
+    if not sh_mc
+        if not na(pl_mc1)
+            polyline.delete(pl_mc1)
+            pl_mc1 := na
+        if not na(pl_mc2)
+            polyline.delete(pl_mc2)
+            pl_mc2 := na
+        if not na(pl_mc3)
+            polyline.delete(pl_mc3)
+            pl_mc3 := na
+    if not sh_co and not na(arrival_box)
+        box.delete(arrival_box)
+        arrival_box := na
+    if not sh_gb and not na(baseline_ray)
+        line.delete(baseline_ray)
+        baseline_ray := na
+
 // Arrays for Pivot Tracking (Geometry Engine)
 var PivotNode[] pivotsHigh = array.new<PivotNode>()
 var PivotNode[] pivotsLow = array.new<PivotNode>()
@@ -649,18 +720,22 @@ max_bars_back(close, 4000)
 // 4. MULTI-TIMEFRAME STRUCTURE BOX RENDERING
 // ============================================================================
 
-// --- 1. Global Security Calls (Must be at the top level) ---
-// We create a helper function to wrap the data request
-getHTF(string tf) =>
-    request.security(syminfo.tickerid, tf, HTFBar.new(open, high, low, close, time), gaps=barmerge.gaps_on)
-
-// Manually request data for up to 6 timeframes
-HTFBar data1 = getHTF("3")
-HTFBar data2 = getHTF("15")
-HTFBar data3 = getHTF("60")
-HTFBar data4 = getHTF("240")
+// --- 1. Global Security Calls (shared with profile-driven MTF stdev engine) ---
+HTFBar data1 = getHTF(active_tf_s)
+HTFBar data2 = getHTF(active_tf_m)
+HTFBar data3 = getHTF(active_tf_l)
+HTFBar data4 = getHTF(hf_in)
 HTFBar data5 = getHTF("D")
 HTFBar data6 = getHTF("W")
+
+getPrefetchedHTF(string tf) =>
+    tf == active_tf_s ? data1 :
+     tf == active_tf_m ? data2 :
+     tf == active_tf_l ? data3 :
+     tf == hf_in ? data4 :
+     tf == "D" ? data5 :
+     tf == "W" ? data6 :
+     na
 
 // --- 2. Box Functions ---
 drawHTFBox(HTFBar b, int right_time) =>
@@ -679,11 +754,21 @@ updateHTFBox(box boxId, HTFBar b) =>
     box.set_bottom(boxId, b.l)
     box.set_right(boxId, time)
 
+add_tf_once(string[] arr, string tf) =>
+    if not array.includes(arr, tf)
+        array.push(arr, tf)
+
 // --- 3. Configuration & Initialization ---
-var string[] tf_configs = array.from("3", "15", "60", "240", "D", "W")
+var string[] tf_configs = array.new_string()
 var HTFContext[] htf_layers = array.new<HTFContext>(0)
 
 if barstate.isfirst
+    add_tf_once(tf_configs, active_tf_s)
+    add_tf_once(tf_configs, active_tf_m)
+    add_tf_once(tf_configs, active_tf_l)
+    add_tf_once(tf_configs, hf_in)
+    add_tf_once(tf_configs, "D")
+    add_tf_once(tf_configs, "W")
     for i = 0 to array.size(tf_configs) - 1
         htf_layers.push(HTFContext.new(array.get(tf_configs, i), na))
 
@@ -692,14 +777,7 @@ for i = 0 to array.size(htf_layers) - 1
     HTFContext ctx = htf_layers.get(i)
     
     // Assign the pre-fetched global data to the loop logic
-    HTFBar currentData = switch i
-        0 => data1
-        1 => data2
-        2 => data3
-        3 => data4
-        4 => data5
-        5 => data6
-        => na
+    HTFBar currentData = getPrefetchedHTF(ctx.tf)
 
     if not na(currentData)
         // Check for TF change using the string from our type
@@ -707,10 +785,12 @@ for i = 0 to array.size(htf_layers) - 1
         
         // Logic for Historical (Closed) Boxes
         if isNewCandle and not barstate.islast
-            drawHTFBox(currentData, time)
+            track_box(drawHTFBox(currentData, time))
 
         // Logic for the Active ("Live") Box
         if isNewCandle or na(ctx.displayBox)
+            if not na(ctx.displayBox)
+                track_box(ctx.displayBox)
             ctx.displayBox := drawHTFBox(currentData, time)
         else
             updateHTFBox(ctx.displayBox, currentData)
@@ -765,6 +845,7 @@ method process(ConsolidationZone z, bool isSqueezing, float highest, float lowes
 
     if isSqueezing
         if not z.isActive
+            clear_zone_drawings(z)
             z.isActive := true
             z.startBar := bar_index
             z.duration := 1
@@ -824,8 +905,7 @@ method process(ConsolidationZone z, bool isSqueezing, float highest, float lowes
                 vMult := 1.0 + (z.duration / 50.0)
                 bPOC := z.pointOfControl
                 z.isActive := false
-                if not na(z.tooltipLabel)
-                    label.delete(z.tooltipLabel)
+                clear_zone_drawings(z)
     
     // RETURN TUPLE
     [bBull, bBear, expTarg, vMult, bPOC]
@@ -1147,7 +1227,7 @@ pe.activeCandlePattern := cName
 
 if sh_cp and cName != "NONE"
     color patColor = cScore > 0 ? p_clB : (cScore < 0 ? p_clR : color.gray)
-    label.new(bar_index, cScore > 0 ? low - ta.tr : high + ta.tr, cName, color=#00000000, textcolor=patColor, style=cScore >= 0 ? label.style_label_up : label.style_label_down, size=size.tiny)
+    track_label(label.new(bar_index, cScore > 0 ? low - ta.tr : high + ta.tr, cName, color=#00000000, textcolor=patColor, style=cScore >= 0 ? label.style_label_up : label.style_label_down, size=size.tiny))
 
 // ============================================================================
 // 8. ADVANCED GEOMETRIC, HARMONIC & MACRO CHART PATTERNS (86 PATTERNS)
@@ -1181,13 +1261,13 @@ dist(float a, float b) => math.abs(a - b) / a
 fibRatio(float move1, float move2) => move1 == 0 ? 0 : math.abs(move2 / move1)
 
 drawGeometricLines(int x1, float y1, int x2, float y2, int x3, float y3, color c) =>
-    if sh_cp
-        line.new(x1, y1, x2, y2, color=c, width=2)
-        line.new(x2, y2, x3, y3, color=c, width=2)
+    if sh_mp
+        track_line(line.new(x1, y1, x2, y2, color=c, width=2))
+        track_line(line.new(x2, y2, x3, y3, color=c, width=2))
 
 drawMacroLine(int x1, float y1, int x2, float y2, color c, int w=2, string s=line.style_solid) =>
-    if sh_cp
-        line.new(x1, y1, x2, y2, color=c, width=w, style=s)
+    if sh_mp
+        track_line(line.new(x1, y1, x2, y2, color=c, width=w, style=s))
 
 // ============================================================================
 // LEVEL 0: 6+ PIVOT MEGA-STRUCTURES (Elliott Waves, Expanding Megaphones)
@@ -1797,35 +1877,35 @@ if mScore != 0 and mScore != mScore[1]
     string direction = isBull ? "BULLISH" : "BEARISH"
 
     // 1. "Outer Glow" / Context Box (Slightly larger, high transparency for depth)
-    box.new(left=leftBar-2, top=topPrice + (patHeight*0.05), right=rightBar+2, bottom=botPrice - (patHeight*0.05), 
+    track_box(box.new(left=leftBar-2, top=topPrice + (patHeight*0.05), right=rightBar+2, bottom=botPrice - (patHeight*0.05), 
              border_color=color.new(c_border, 70), border_width=1, border_style=line.style_dotted, 
-             bgcolor=c_glowBg)
+             bgcolor=c_glowBg))
 
     // 2. Core Pattern Box (Standard bounds, deeper distinct shading)
-    box.new(left=leftBar, top=topPrice, right=rightBar, bottom=botPrice, 
+    track_box(box.new(left=leftBar, top=topPrice, right=rightBar, bottom=botPrice, 
              border_color=c_border, border_width=2, border_style=line.style_solid, 
-             bgcolor=c_coreBg)
+             bgcolor=c_coreBg))
 
     // 3. Target Projection Box (Projects forward in time into the anticipated zone)
     int projRight = rightBar + 15 // Extend 15 bars into the future
     float tBoxTop = isBull ? mTarget : entryPrice
     float tBoxBot = isBull ? entryPrice : mTarget
     
-    box.new(left=rightBar, top=tBoxTop, right=projRight, bottom=tBoxBot, 
+    track_box(box.new(left=rightBar, top=tBoxTop, right=projRight, bottom=tBoxBot, 
              border_color=c_tborder, border_width=1, border_style=line.style_dashed, 
-             bgcolor=c_targBg)
+             bgcolor=c_targBg))
 
     // 4. Invalidation / Stop Loss Zone Box (Projects forward, inverse colors)
     float sBoxTop = isBull ? entryPrice : invalidation
     float sBoxBot = isBull ? invalidation : entryPrice
 
-    box.new(left=rightBar, top=sBoxTop, right=projRight, bottom=sBoxBot, 
+    track_box(box.new(left=rightBar, top=sBoxTop, right=projRight, bottom=sBoxBot, 
              border_color=c_sborder, border_width=1, border_style=line.style_dotted, 
-             bgcolor=c_stopBg)
+             bgcolor=c_stopBg))
 
     // Dynamic Hardlines for clarity at the exact levels
-    line.new(x1=rightBar, y1=mTarget, x2=projRight, y2=mTarget, color=c_tborder, width=2, style=line.style_solid)
-    line.new(x1=rightBar, y1=invalidation, x2=projRight, y2=invalidation, color=c_sborder, width=2, style=line.style_solid)
+    track_line(line.new(x1=rightBar, y1=mTarget, x2=projRight, y2=mTarget, color=c_tborder, width=2, style=line.style_solid))
+    track_line(line.new(x1=rightBar, y1=invalidation, x2=projRight, y2=invalidation, color=c_sborder, width=2, style=line.style_solid))
 
     // Calculate Risk/Reward Ratio for the UI
     float risk = math.abs(entryPrice - invalidation)
@@ -1836,10 +1916,10 @@ if mScore != 0 and mScore != mScore[1]
     string labelData = "🔥 " + mName + "\n" +  "──────────────\n" + "Bias: " + direction + " (Score: " + str.tostring(mScore) + ")\n" + "Entry: " + str.tostring(entryPrice, format.mintick) + "\n" + "Target: " + str.tostring(mTarget, format.mintick) + "\n" +  "Stop Loss: " + str.tostring(invalidation, format.mintick) + "\n" + "R:R Ratio: " + str.tostring(rrRatio, "#.##") + "x\n" + "TF: " + timeframe.period
 
     // Draw Master Label anchored at the nexus of the boxes (the breakout/breakdown point)
-    label.new(x=rightBar, y=isBull ? botPrice : topPrice, 
+    track_label(label.new(x=rightBar, y=isBull ? botPrice : topPrice, 
               text=labelData, color=color.new(c_border, 55), textcolor=color.white, 
               style=isBull ? label.style_label_up : label.style_label_down, 
-              size=size.normal, textalign=text.align_left)
+              size=size.normal, textalign=text.align_left))
 
 
 
@@ -1964,3 +2044,5 @@ pe.probNextRev       := probRev
 pe.probNextCons      := probCons
 pe.currentSkew       := skewness
 pe.currentStdev      := std_dev
+cleanup_legacy_drawings()
+run_gc()
