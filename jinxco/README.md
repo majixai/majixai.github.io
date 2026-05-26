@@ -16,8 +16,8 @@ This document provides the final step-by-step instructions to synthesize the **A
 2.  **Paste Files:** Create 5 script files (`.gs`) and paste the code from Files 1 through 5.
 3.  **Authentication:** 
     *   Open `Core_Config.gs`.
-    *   Ensure your **GitHub PAT** (`github_pat_11BPNLTWA0VZO...`) is in the `initializeEnvironment` function.
-    *   **Run** the function `initializeEnvironment()` in the GAS editor once. This stores your credentials securely in the Project Properties.
+    *   Update `initializeEnvironment()` so it reads your GitHub token from a secure placeholder or setup flow only.
+    *   **Run** the function `initializeEnvironment()` in the GAS editor once so credentials are stored in Project Properties rather than hardcoded in source.
 4.  **Deploy:**
     *   Click **Deploy > New Deployment**.
     *   Select **Web App**.

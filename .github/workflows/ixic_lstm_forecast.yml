@@ -5,21 +5,11 @@ name: IXIC LSTM Forecast Engine
 #
 # Schedule: Mon–Fri at 21:45 UTC (≈ 5:45 PM EDT — ~15 min after US market
 #           close), so the model trains on a full day's data.
-#
-# The pipeline is split across several root-level sub-directories:
-#
-#   ixic_lstm_forecast/framework/  — Protocols, base classes, decorators,
-#                                    iterators
-#   ixic_lstm_forecast/models/     — LSTMCore (TF Keras LSTM + Dense)
-#   ixic_lstm_forecast/storage/    — GitDatabaseStorage (gzip pickle)
-#   ixic_lstm_forecast/workers/    — Async data pipeline + multiprocessing
-#                                    distributed reporter
-#   ixic_lstm_forecast/ixic_main.py — Main orchestrator (entry point)
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
   schedule:
-    - cron: '45 21 * * 1-5'   # Mon–Fri 21:45 UTC (after US market close)
+    - cron: '45 21 * * 1-5'
 
   workflow_dispatch:
     inputs:
@@ -39,6 +29,10 @@ on:
         description: 'Generator batch size (default: 256)'
         required: false
         default: '256'
+      runtime_settings_json:
+        description: 'Optional JSON overrides for IXIC runtime settings (can also come from repo vars/secrets)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -52,19 +46,18 @@ jobs:
       TF_CPP_MIN_LOG_LEVEL: "3"
       TF_ENABLE_ONEDNN_OPTS: "0"
       PYTHONUNBUFFERED: "1"
-      IXIC_SYMBOL:     ${{ github.event.inputs.symbol     || '^IXIC' }}
-      IXIC_SEQ_LENGTH: ${{ github.event.inputs.seq_length || '60'    }}
-      IXIC_EPOCHS:     ${{ github.event.inputs.epochs     || '3'     }}
-      IXIC_BATCH_SIZE: ${{ github.event.inputs.batch_size || '256'   }}
+      IXIC_SYMBOL: ${{ github.event.inputs.symbol || '^IXIC' }}
+      IXIC_SEQ_LENGTH: ${{ github.event.inputs.seq_length || '60' }}
+      IXIC_EPOCHS: ${{ github.event.inputs.epochs || '3' }}
+      IXIC_BATCH_SIZE: ${{ github.event.inputs.batch_size || '256' }}
       IXIC_LOG_LEVEL: "INFO"
       IXIC_TRAIN_VERBOSE: "2"
       IXIC_SYMBOLS_CSV: ${{ github.workspace }}/actions/symbols.csv
       IXIC_SYMBOL_CATEGORIES: "indices,tech_mega"
       IXIC_MAX_SYMBOLS: "12"
+      IXIC_RUNTIME_SETTINGS_JSON: ${{ github.event.inputs.runtime_settings_json || vars.IXIC_RUNTIME_SETTINGS_JSON || secrets.IXIC_RUNTIME_SETTINGS_JSON }}
 
     steps:
-
-      # ── 1. Checkout ───────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -89,7 +82,6 @@ jobs:
           cat ixic_lstm_forecast/output/runtime/ixic_runtime_settings.json
           echo "::endgroup::"
 
-      # ── 2. Python setup ───────────────────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -106,7 +98,6 @@ jobs:
           python -c "import sys; [print(' ', p) for p in sys.path[:8]]"
           echo "::endgroup::"
 
-      # ── 3. Install dependencies ───────────────────────────────────────────
       - name: Install dependencies
         run: |
           echo "::group::pip install"
@@ -123,22 +114,23 @@ jobs:
             || echo "(some packages not found)"
           echo "::endgroup::"
 
-      # ── 4. Validate sub-module imports ────────────────────────────────────
       - name: Validate framework sub-module imports
         run: |
           echo "::group::Import validation"
           python - <<'PYEOF'
-          import sys, os
+          import os
+          import sys
+
           sys.path.insert(0, os.getcwd())
 
           checks = [
               ("ixic_lstm_forecast.framework.interfaces", ["IModelForecaster", "IStorageEngine"]),
-              ("ixic_lstm_forecast.framework.base",       ["QuantFrameworkBase", "Tickers", "_global_tensor_cache"]),
+              ("ixic_lstm_forecast.framework.base", ["QuantFrameworkBase", "Tickers", "_global_tensor_cache"]),
               ("ixic_lstm_forecast.framework.decorators", ["lifecycle_hook", "log_event"]),
-              ("ixic_lstm_forecast.framework.iterators",  ["TimeSeriesIterator", "batch_generator"]),
-              ("ixic_lstm_forecast.storage.git_storage",  ["GitDatabaseStorage"]),
-              ("ixic_lstm_forecast.workers.pipeline",     ["async_data_pipeline"]),
-              ("ixic_lstm_forecast.workers.reporter",     ["reporting_worker"]),
+              ("ixic_lstm_forecast.framework.iterators", ["TimeSeriesIterator", "batch_generator"]),
+              ("ixic_lstm_forecast.storage.git_storage", ["GitDatabaseStorage"]),
+              ("ixic_lstm_forecast.workers.pipeline", ["async_data_pipeline"]),
+              ("ixic_lstm_forecast.workers.reporter", ["reporting_worker"]),
           ]
 
           all_ok = True
@@ -148,8 +140,8 @@ jobs:
                   for sym in symbols:
                       assert hasattr(mod, sym), f"missing symbol: {sym}"
                   print(f"  [OK]  {module_path}")
-              except Exception as e:
-                  print(f"  [FAIL] {module_path} — {e}")
+              except Exception as exc:
+                  print(f"  [FAIL] {module_path} — {exc}")
                   all_ok = False
 
           if not all_ok:
@@ -158,7 +150,6 @@ jobs:
           PYEOF
           echo "::endgroup::"
 
-      # ── 5. Log pipeline configuration ─────────────────────────────────────
       - name: Log — pipeline configuration
         run: |
           echo "::group::Pipeline configuration"
@@ -171,10 +162,14 @@ jobs:
           echo "IXIC_SYMBOLS    : ${{ env.IXIC_SYMBOLS }}"
           echo "IXIC_SYMBOLS_CSV: ${{ env.IXIC_SYMBOLS_CSV }}"
           echo "IXIC_MAX_SYMBOLS: ${{ env.IXIC_MAX_SYMBOLS }}"
+          if [ -n "${IXIC_RUNTIME_SETTINGS_JSON}" ]; then
+            echo "IXIC_RUNTIME_SETTINGS_JSON: configured"
+          else
+            echo "IXIC_RUNTIME_SETTINGS_JSON: not configured"
+          fi
           echo "Output dir      : ixic_lstm_forecast/output/"
           echo "::endgroup::"
 
-      # ── 6. Run the LSTM forecast pipeline ─────────────────────────────────
       - name: Run IXIC LSTM Forecast pipeline
         id: run_forecast
         run: |
@@ -188,7 +183,6 @@ jobs:
           echo "::endgroup::"
           exit $EXIT_CODE
 
-      # ── 7. Parse and log summary JSON ──────────────────────────────────────
       - name: Log — parse run summary
         if: always()
         run: |
@@ -208,7 +202,8 @@ jobs:
           SUMMARY_FILE="ixic_lstm_forecast/output/ixic_summary.json"
           if [ -f "$SUMMARY_FILE" ]; then
             python - <<'PYEOF'
-          import json, os
+          import json
+          import os
 
           with open("ixic_lstm_forecast/output/ixic_summary.json") as f:
               s = json.load(f)
@@ -233,7 +228,6 @@ jobs:
             echo "  (no summary file)"
           fi
 
-      # ── 8. Log the full run log file ───────────────────────────────────────
       - name: Log — ixic_forecast.log (tail)
         if: always()
         run: |
@@ -246,7 +240,6 @@ jobs:
             echo "::warning title=Log::Log file not found at ${LOG_FILE}"
           fi
 
-      # ── 9. Upload artifacts ────────────────────────────────────────────────
       - name: Upload forecast artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -262,7 +255,6 @@ jobs:
             ixic_lstm_forecast/output/ixic_forecast.log
           retention-days: 30
 
-      # ── 10. Commit results back to repository ──────────────────────────────
       - name: Commit forecast outputs
         if: success()
         run: |
@@ -298,18 +290,17 @@ jobs:
             echo "No changes to commit."
           fi
 
-      # ── 11. Write GitHub Step Summary ─────────────────────────────────────
       - name: Write job summary
         if: always()
         env:
-          IXIC_SYMBOL:     ${{ env.IXIC_SYMBOL }}
-          SYMBOL_OUT:      ${{ steps.metrics.outputs.symbol }}
-          RECENT_CLOSE:    ${{ steps.metrics.outputs.recent_close }}
+          IXIC_SYMBOL: ${{ env.IXIC_SYMBOL }}
+          SYMBOL_OUT: ${{ steps.metrics.outputs.symbol }}
+          RECENT_CLOSE: ${{ steps.metrics.outputs.recent_close }}
           PROJECTED_CLOSE: ${{ steps.metrics.outputs.projected_close }}
-          DELTA:           ${{ steps.metrics.outputs.delta }}
-          DELTA_PCT:       ${{ steps.metrics.outputs.delta_pct }}
-          ELAPSED:         ${{ steps.metrics.outputs.elapsed_seconds }}
-          RUN_STATUS:      ${{ steps.run_forecast.outcome }}
+          DELTA: ${{ steps.metrics.outputs.delta }}
+          DELTA_PCT: ${{ steps.metrics.outputs.delta_pct }}
+          ELAPSED: ${{ steps.metrics.outputs.elapsed_seconds }}
+          RUN_STATUS: ${{ steps.run_forecast.outcome }}
         run: |
           {
             echo "## 📈 IXIC LSTM Forecast — Run Summary"

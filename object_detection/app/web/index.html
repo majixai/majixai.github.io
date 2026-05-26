@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Object Detection Web UI</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 1rem; }
+      .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+      video, img { max-width: 480px; border: 1px solid #ccc; border-radius: 8px; }
+      ul { padding-left: 1.2rem; }
+      .status { margin: 0.5rem 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Object Detection (WebSocket)</h1>
+    <div class="status" id="status">Disconnected</div>
+    <button id="startBtn" type="button">Start Camera</button>
+    <button id="stopBtn" type="button">Stop</button>
+
+    <div class="row">
+      <div>
+        <h3>Camera</h3>
+        <video id="video" autoplay playsinline muted></video>
+      </div>
+      <div>
+        <h3>Annotated Preview</h3>
+        <img id="annotated" alt="Annotated frame preview" />
+      </div>
+    </div>
+
+    <h3>Detections</h3>
+    <ul id="detections"></ul>
+
+    <script src="/web/app.js"></script>
+  </body>
+</html>

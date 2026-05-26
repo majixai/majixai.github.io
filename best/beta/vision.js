@@ -32,6 +32,10 @@ class VisionScorer {
     #_analysisInterval = 30_000;
     /** Max cache entries (LRU eviction when exceeded) */
     #_maxCache = 400;
+    /** Concurrent cards scored per analysis cycle */
+    #_analysisConcurrency = 6;
+    /** Prevent overlapping analysis cycles */
+    #_analysisInFlight = false;
 
     /**
      * Domain feature map: each entry matches label fragments from MobileNet's
@@ -180,22 +184,33 @@ class VisionScorer {
         this.stopBackgroundAnalysis();
         const analyse = async () => {
             if (!this.#_isActive) return;
-            const cards = typeof getCardElements === 'function' ? getCardElements() : [];
-            for (const card of cards) {
-                const imgEl = card.querySelector('img.slide-img');
-                if (!imgEl) continue;
-                const src = imgEl.dataset.src || imgEl.src;
-                if (!src || src.startsWith('data:')) continue; // skip placeholder
-                try {
-                    const result = await this.scoreImage(src);
-                    if (!result) continue;
-                    card.dataset.featureScore = result.featureScore;
-                    const visionEl = card.querySelector('.card-vision');
-                    if (visionEl) {
-                        visionEl.textContent = `🔍 ${result.label} ${result.confidence}%`;
-                        visionEl.style.display = '';
+            if (this.#_analysisInFlight) return;
+            this.#_analysisInFlight = true;
+            try {
+                const cards = Array.from(typeof getCardElements === 'function' ? getCardElements() : []);
+                await this.#_runConcurrent(cards, this.#_analysisConcurrency, async (card, idx) => {
+                    const imgEl = card.querySelector('img.slide-img');
+                    if (!imgEl) return;
+                    const src = imgEl.dataset.currentImageUrl || imgEl.dataset.src || imgEl.src;
+                    if (!src || src.startsWith('data:')) return;
+                    try {
+                        const result = await this.scoreImage(src);
+                        if (!result) return;
+                        card.dataset.featureScore = result.featureScore;
+                        const visionEl = card.querySelector('.card-vision');
+                        if (visionEl) {
+                            visionEl.textContent = `🔍 ${result.label} ${result.confidence}%`;
+                            visionEl.style.display = '';
+                        }
+                    } catch (err) {
+                        console.warn('VisionScorer: background analysis error for card', err);
                     }
-                } catch (err) { console.warn('VisionScorer: background analysis error for card', err); }
+                    if (idx % 6 === 0) {
+                        await this.#_yieldToMainThread();
+                    }
+                });
+            } finally {
+                this.#_analysisInFlight = false;
             }
         };
         // Run once immediately, then on interval
@@ -238,5 +253,35 @@ class VisionScorer {
             const firstKey = this.#_cache.keys().next().value;
             this.#_cache.delete(firstKey);
         }
+    }
+
+    /**
+     * Concurrent runner with bounded worker count.
+     * @private
+     * @template T
+     * @param {T[]} items
+     * @param {number} limit
+     * @param {(item:T, index:number)=>Promise<void>|void} worker
+     * @returns {Promise<void>}
+     */
+    async #_runConcurrent(items, limit, worker) {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const concurrency = Math.max(1, Math.min(limit || 1, items.length));
+        let nextIndex = 0;
+        const runners = Array.from({ length: concurrency }, async () => {
+            while (nextIndex < items.length) {
+                const idx = nextIndex++;
+                await worker(items[idx], idx);
+            }
+        });
+        await Promise.all(runners);
+    }
+
+    /**
+     * Yield to the event loop during heavy scoring workloads.
+     * @private
+     */
+    async #_yieldToMainThread() {
+        await new Promise(resolve => setTimeout(resolve, 0));
     }
 }

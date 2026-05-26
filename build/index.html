@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1 TH/s ASIC Schematic Editor</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --panel-bg: #1e1e24;
+            --accent: #f7931a; /* Bitcoin Orange */
+            --accent-glow: rgba(247, 147, 26, 0.5);
+            --text-light: #e0e0e0;
+            --grid-color: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Header & Animations --- */
+        header {
+            background-color: var(--panel-bg);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--accent);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 5px var(--accent-glow); }
+            100% { text-shadow: 0 0 20px var(--accent), 0 0 30px var(--accent); }
+        }
+
+        /* --- Toolbar --- */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: #2a2a35;
+            color: var(--text-light);
+            border: 1px solid #444;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px var(--accent-glow);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* --- Tabs System for Multiple Schematics --- */
+        .tabs-container {
+            display: flex;
+            background-color: #1a1a1a;
+            padding: 10px 20px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background-color: #2a2a35;
+            border-radius: 8px 8px 0 0;
+            margin-right: 5px;
+            cursor: pointer;
+            border: 1px solid #333;
+            border-bottom: none;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tab.active {
+            background-color: var(--panel-bg);
+            color: var(--accent);
+            border-color: var(--accent);
+            border-top: 3px solid var(--accent);
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #3a3a45;
+        }
+
+        .add-tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 10px;
+            font-size: 1.2rem;
+            transition: color 0.3s ease;
+        }
+
+        .add-tab-btn:hover {
+            color: var(--accent);
+        }
+
+        /* --- Canvas Area with Grid --- */
+        .workspace {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--panel-bg);
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+            overflow: hidden;
+            animation: fade-in 0.5s ease-out;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        canvas-container {
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <i class="fa-solid fa-microchip"></i> ASIC schematic Studio
+        </div>
+        <div class="toolbar">
+            <button class="btn" onclick="addController()"><i class="fa-solid fa-server"></i> ESP32-S3</button>
+            <button class="btn" onclick="addASIC()"><i class="fa-solid fa-memory"></i> BM1366 ASIC</button>
+            <button class="btn" onclick="addBuckConverter()"><i class="fa-solid fa-bolt"></i> TPS546D24A</button>
+            <button class="btn" onclick="addWire()"><i class="fa-solid fa-arrow-right-long"></i> Add Wire</button>
+            <button class="btn" onclick="addLabel()"><i class="fa-solid fa-font"></i> Text</button>
+            <button class="btn" onclick="clearCanvas()" style="margin-left: 20px; background-color: #5a2a2a;"><i class="fa-solid fa-trash"></i> Clear</button>
+        </div>
+    </header>
+
+    <div class="tabs-container" id="tabs">
+        <button class="add-tab-btn" onclick="createNewTab()"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <div class="workspace" id="workspace">
+        <canvas id="c"></canvas>
+    </div>
+
+    <script>
+        // --- Canvas & State Management ---
+        let canvas;
+        let schematics = {}; // Stores JSON state of each tab
+        let currentTabId = null;
+        let tabCounter = 0;
+
+        // Initialize Fabric Canvas
+        function initCanvas() {
+            const workspace = document.getElementById('workspace');
+            canvas = new fabric.Canvas('c', {
+                width: workspace.clientWidth - 40,
+                height: workspace.clientHeight - 40,
+                selection: true
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.setWidth(workspace.clientWidth - 40);
+                canvas.setHeight(workspace.clientHeight - 40);
+                canvas.renderAll();
+            });
+
+            // Delete object on pressing 'Delete' key
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    const activeObjects = canvas.getActiveObjects();
+                    if (activeObjects.length) {
+                        canvas.discardActiveObject();
+                        activeObjects.forEach(obj => canvas.remove(obj));
+                    }
+                }
+            });
+
+            // Start with one tab
+            createNewTab();
+        }
+
+        // --- Multi-Schematic Tab Logic ---
+        function createNewTab() {
+            tabCounter++;
+            const tabId = 'tab-' + tabCounter;
+            
+            // Save current canvas state before creating new
+            if (currentTabId) saveCurrentTabState();
+
+            // Initialize empty state for new tab
+            schematics[tabId] = null; 
+
+            // Create Tab UI
+            const tabsContainer = document.getElementById('tabs');
+            const addBtn = document.querySelector('.add-tab-btn');
+            
+            const tab = document.createElement('div');
+            tab.className = 'tab';
+            tab.id = tabId;
+            tab.innerHTML = `<i class="fa-solid fa-diagram-project"></i> Schematic ${tabCounter}`;
+            tab.onclick = () => switchTab(tabId);
+            
+            tabsContainer.insertBefore(tab, addBtn);
+            switchTab(tabId);
+        }
+
+        function switchTab(tabId) {
+            if (currentTabId === tabId) return;
+
+            // Save old state
+            if (currentTabId) {
+                saveCurrentTabState();
+                document.getElementById(currentTabId).classList.remove('active');
+            }
+
+            // Load new state
+            currentTabId = tabId;
+            document.getElementById(tabId).classList.add('active');
+            
+            canvas.clear();
+            
+            if (schematics[tabId]) {
+                canvas.loadFromJSON(schematics[tabId], canvas.renderAll.bind(canvas));
+            }
+
+            // Trigger CSS animation for smooth transition
+            const workspace = document.getElementById('workspace');
+            workspace.style.animation = 'none';
+            workspace.offsetHeight; /* trigger reflow */
+            workspace.style.animation = 'fade-in 0.4s ease-out';
+        }
+
+        function saveCurrentTabState() {
+            if (currentTabId) {
+                schematics[currentTabId] = JSON.stringify(canvas.toJSON());
+            }
+        }
+
+        // --- Component Creation Functions ---
+        
+        // Helper to create grouping
+        function createComponent(title, bgColor, width, height) {
+            const rect = new fabric.Rect({
+                width: width, height: height, fill: bgColor, rx: 8, ry: 8,
+                stroke: '#f7931a', strokeWidth: 2, shadow: new fabric.Shadow({
+                    color: 'rgba(0,0,0,0.6)', blur: 10, offsetX: 5, offsetY: 5
+                })
+            });
+
+            const text = new fabric.Text(title, {
+                fontSize: 16, fill: '#fff', fontFamily: 'Segoe UI',
+                originX: 'center', originY: 'center',
+                left: width / 2, top: height / 2
+            });
+
+            const group = new fabric.Group([rect, text], {
+                left: canvas.width / 2 - width / 2,
+                top: canvas.height / 2 - height / 2,
+                hasControls: true,
+                borderColor: '#f7931a',
+                cornerColor: '#f7931a'
+            });
+
+            canvas.add(group);
+            canvas.setActiveObject(group);
+        }
+
+        function addController() {
+            createComponent('ESP32-S3\n(Host)', '#1a1a24', 140, 100);
+        }
+
+        function addASIC() {
+            createComponent('BM1366', '#2a2a2a', 100, 100);
+        }
+
+        function addBuckConverter() {
+            createComponent('TPS546D24A\n(150A Buck)', '#2a1a1a', 140, 80);
+        }
+
+        function addWire() {
+            const line = new fabric.Line([50, 50, 200, 50], {
+                fill: '#f7931a',
+                stroke: '#f7931a',
+                strokeWidth: 4,
+                selectable: true,
+                hasControls: true,
+                hasBorders: true,
+                hasRotatingPoint: true,
+                borderColor: '#ffffff',
+                cornerColor: '#ffffff',
+                left: canvas.width / 2 - 75,
+                top: canvas.height / 2
+            });
+            canvas.add(line);
+            canvas.setActiveObject(line);
+        }
+
+        function addLabel() {
+            const text = new fabric.IText('Double click to edit', {
+                fontFamily: 'Segoe UI',
+                fontSize: 18,
+                fill: '#e0e0e0',
+                left: canvas.width / 2 - 50,
+                top: canvas.height / 2 - 50,
+                borderColor: '#f7931a',
+                cornerColor: '#f7931a'
+            });
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        }
+
+        function clearCanvas() {
+            if(confirm("Are you sure you want to clear this schematic?")) {
+                canvas.clear();
+            }
+        }
+
+        // Initialize App
+        window.onload = initCanvas;
+    </script>
+</body>
+</html>

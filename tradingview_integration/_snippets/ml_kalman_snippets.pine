@@ -1,0 +1,165 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_ml_indicator.pine#L22-L49
+type FeatureVector
+    float rsi_z       // z-scored RSI
+    float macd_z      // z-scored MACD histogram
+    float bb_z        // BB position z-score
+    float atr_z       // normalised ATR
+    float stoch_z     // z-scored stoch-K
+    float obv_z       // z-scored OBV delta
+    float adx_z       // z-scored ADX
+    float vwap_z      // z-scored VWAP deviation
+
+type RegimeState
+    float p_strong_bull
+    float p_bull
+    float p_neut
+    float p_bear
+    float p_strong_bear
+    string label
+    color  col
+
+type MLSignal
+    float  raw_score
+    float  smooth_score
+    bool   buy
+    bool   sell
+    int    cooldown_remaining
+    string regime
+    color  regime_color
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_ml_indicator.pine#L53-L89
+var GRP_CORE = "Core Settings"
+int  lookback      = input.int(20,   "Z-Score Lookback",    minval=5,  maxval=100, group=GRP_CORE)
+int  rsiLen        = input.int(14,   "RSI Period",          minval=2,  maxval=50,  group=GRP_CORE)
+int  macdFast      = input.int(12,   "MACD Fast",           minval=2,  maxval=50,  group=GRP_CORE)
+int  macdSlow      = input.int(26,   "MACD Slow",           minval=5,  maxval=100, group=GRP_CORE)
+int  macdSig       = input.int(9,    "MACD Signal",         minval=2,  maxval=30,  group=GRP_CORE)
+int  bbLen         = input.int(20,   "BB Length",           minval=2,  maxval=100, group=GRP_CORE)
+float bbMult       = input.float(2.0,"BB Std Dev",          minval=0.5,maxval=5.0, group=GRP_CORE)
+int  stochK        = input.int(14,   "Stoch %K",            minval=2,  maxval=50,  group=GRP_CORE)
+int  stochD        = input.int(3,    "Stoch %D",            minval=1,  maxval=10,  group=GRP_CORE)
+int  adxLen        = input.int(14,   "ADX Length",          minval=2,  maxval=50,  group=GRP_CORE)
+int  obvLookback   = input.int(10,   "OBV Delta Bars",      minval=2,  maxval=30,  group=GRP_CORE)
+
+var GRP_WEIGHTS = "Feature Weights"
+float wRsi   = input.float(0.20,"w RSI",          minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wMacd  = input.float(0.18,"w MACD Hist",    minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wBb    = input.float(0.14,"w BB Position",  minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wAtr   = input.float(0.10,"w ATR",          minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wStoch = input.float(0.12,"w Stochastic",   minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wObv   = input.float(0.12,"w OBV Delta",    minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wAdx   = input.float(0.08,"w ADX",          minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+float wVwap  = input.float(0.06,"w VWAP Dev",     minval=0.0,maxval=1.0,step=0.05,group=GRP_WEIGHTS)
+
+var GRP_SIGNAL = "Signal Thresholds"
+float buyThr   = input.float( 1.5, "Buy  Score Threshold",  minval=0.5, maxval=5.0, step=0.1, group=GRP_SIGNAL)
+float sellThr  = input.float(-1.5, "Sell Score Threshold",  minval=-5.0,maxval=-0.5,step=0.1, group=GRP_SIGNAL)
+int   cooldown = input.int(3,      "Signal Cooldown (bars)", minval=1,   maxval=20,            group=GRP_SIGNAL)
+
+var GRP_KALMAN = "Kalman Smoother"
+float kQ = input.float(0.0001,"Process Noise Q",   minval=1e-6, maxval=0.1, step=0.0001, group=GRP_KALMAN)
+float kR = input.float(0.01,  "Observation Noise R",minval=1e-4, maxval=1.0, step=0.001,  group=GRP_KALMAN)
+
+var GRP_VIZ = "Visualisation"
+bool showTable  = input.bool(true, "Show Summary Table",    group=GRP_VIZ)
+bool showLabels = input.bool(true, "Show Buy/Sell Labels",  group=GRP_VIZ)
+bool showScore  = input.bool(true, "Plot Smooth Score Line", group=GRP_VIZ)
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_ml_indicator.pine#L126-L214
+_zscore(src, len) =>
+    mu  = ta.sma(src, len)
+    sig = ta.stdev(src, len) + 1e-9
+    (src - mu) / sig
+
+float zRsi   = _zscore(rsiVal,    lookback)
+float zMacd  = _zscore(macdHist,  lookback)
+float zBb    = _zscore(bbPos,     lookback)
+float zAtr   = _zscore(atrVal,    lookback)
+float zStoch = _zscore(stochKVal, lookback)
+float zObv   = _zscore(obvDelta,  lookback)
+float zAdx   = _zscore(adxVal,    lookback)
+float zVwap  = _zscore(vwapDev,   lookback)
+
+// Instantiate FeatureVector UDT
+FeatureVector fv = FeatureVector.new(
+    rsi_z  = zRsi,
+    macd_z = zMacd,
+    bb_z   = zBb,
+    atr_z  = zAtr,
+    stoch_z= zStoch,
+    obv_z  = zObv,
+    adx_z  = zAdx,
+    vwap_z = zVwap
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYER 3 — WEIGHTED COMPOSITE SCORE
+// ─────────────────────────────────────────────────────────────────────────────
+
+float wSum = wRsi + wMacd + wBb + wAtr + wStoch + wObv + wAdx + wVwap + 1e-9
+float rawScore =
+    (wRsi   * fv.rsi_z
+   + wMacd  * fv.macd_z
+   + wBb    * fv.bb_z
+   + wAtr   * fv.atr_z
+   + wStoch * fv.stoch_z
+   + wObv   * fv.obv_z
+   + wAdx   * fv.adx_z
+   + wVwap  * fv.vwap_z) / wSum
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYER 4 — KALMAN SMOOTHER  (scalar 1-D state-space)
+// ─────────────────────────────────────────────────────────────────────────────
+
+var float kState = rawScore
+var float kP     = 1.0
+
+kP     := kP + kQ
+float kK = kP / (kP + kR)
+kState := kState + kK * (rawScore - kState)
+kP     := (1.0 - kK) * kP
+
+float smoothScore = kState
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYER 5 — 5-CLASS REGIME CLASSIFICATION  (sigmoid-based softmax proxy)
+// ─────────────────────────────────────────────────────────────────────────────
+
+_sigmoid(x) => 1.0 / (1.0 + math.exp(-x))
+
+float pBullStrong = _sigmoid(smoothScore * 2.0 - 1.5)
+float pBull       = _sigmoid(smoothScore * 2.0 - 0.5)
+float pBear       = 1.0 - _sigmoid(smoothScore * 2.0 + 0.5)
+float pBearStrong = 1.0 - _sigmoid(smoothScore * 2.0 + 1.5)
+float pNeut       = math.max(0.0, 1.0 - pBull - pBear)
+
+RegimeState regime = RegimeState.new()
+regime.p_strong_bull := pBullStrong
+regime.p_bull        := pBull
+regime.p_neut        := pNeut
+regime.p_bear        := pBear
+regime.p_strong_bear := pBearStrong
+
+if smoothScore > 1.5
+    regime.label := "STRONG BULL"
+    regime.col   := color.new(#00e676, 0)
+else if smoothScore > 0.5
+    regime.label := "BULL"
+    regime.col   := color.new(color.green, 20)
+else if smoothScore < -1.5
+    regime.label := "STRONG BEAR"
+    regime.col   := color.new(#ff1744, 0)
+else if smoothScore < -0.5
+    regime.label := "BEAR"
+    regime.col   := color.new(color.red, 20)
+else
+    regime.label := "NEUTRAL"
+    regime.col   := color.new(color.gray, 40)

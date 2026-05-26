@@ -68,6 +68,14 @@ if [ "$BULL_COUNT" -gt 0 ]; then
 fi
 ```
 
+## IXIC timeframe export
+
+```bash
+python fetch_ixic_timeframes.py
+```
+
+This writes timestamped CSV files for ^IXIC at 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 1wk, 1mo, and 3mo intervals into the repository root.
+
 ## Report structure
 
 | Section | Content |
@@ -90,4 +98,3 @@ fi
 python -m unittest yfinance/tests/test_zones.py
 python -m unittest yfinance/tests/test_report.py
 ```
-

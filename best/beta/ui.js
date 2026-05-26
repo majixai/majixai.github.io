@@ -141,7 +141,9 @@ class UIManager {
                 return;
             }
             event.preventDefault();
-            handleUserClickCallback(user);
+            const currentImg = userElement.querySelector('.slide-img');
+            const clickedImageUrl = currentImg?.dataset?.currentImageUrl || currentImg?.getAttribute('src') || user.image_url;
+            handleUserClickCallback(user, clickedImageUrl);
         });
 
         // const toggleBtn = userElement.querySelector('.toggle-view-btn');
@@ -314,6 +316,21 @@ class UIManager {
         if (carousel._slideshowTimer) clearInterval(carousel._slideshowTimer);
         let idx = 0;
         const duration = 3500;
+        const scoreCurrentImage = (imageUrl) => {
+            if (!imageUrl || typeof window.visionScorer === 'undefined') return;
+            scheduleIdleTask(async () => {
+                const result = await window.visionScorer.scoreImage(imageUrl).catch(() => null);
+                if (!result) return;
+                const card = carousel.closest('.user-info');
+                if (card) card.dataset.featureScore = result.featureScore;
+                const visionEl = carousel.querySelector('.card-vision') || card?.querySelector('.card-vision');
+                if (visionEl) {
+                    visionEl.textContent = `🔍 ${result.label} ${result.confidence}%`;
+                    visionEl.style.display = '';
+                }
+            }, { timeout: 8000 });
+        };
+
         const step = () => {
             idx = (idx + 1) % urls.length;
             if (progressBar) {
@@ -324,10 +341,14 @@ class UIManager {
             imgEl.style.opacity = '0.4';
             setTimeout(() => {
                 imgEl.src = urls[idx];
+                imgEl.dataset.currentImageUrl = urls[idx];
                 imgEl.style.opacity = '1';
                 if (counterEl) counterEl.textContent = `${idx + 1}/${urls.length}`;
+                scoreCurrentImage(urls[idx]);
             }, 280);
         };
+        imgEl.dataset.currentImageUrl = urls[0] || imgEl.dataset.src || imgEl.src || '';
+        scoreCurrentImage(imgEl.dataset.currentImageUrl);
         if (progressBar) {
             progressBar.style.transition = `width ${duration}ms linear`; progressBar.style.width = '100%';
         }
@@ -401,22 +422,27 @@ class UIManager {
             if (img && !e.target.closest('.image-zoom-overlay')) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.openImageZoom(img.src, img.alt);
+                const bestSrc = img.dataset.currentImageUrl || img.currentSrc || img.src || img.dataset.src || '';
+                this.openImageZoom(bestSrc, img.alt);
             }
         });
     }
 
     /**
-     * Opens a fullscreen overlay with the zoomed image.
+     * Opens a constrained overlay with the zoomed image inside the favorites pane.
      * @param {string} src - Image source URL
      * @param {string} alt - Image alt text
      */
     openImageZoom(src, alt) {
+        if (!src) return;
         // Remove any existing overlay
         document.querySelectorAll('.image-zoom-overlay').forEach(overlay => overlay.remove());
 
+        const favoritesPane = document.querySelector('#previousUsers .user-list') || document.getElementById('previousUsers');
+        if (!favoritesPane) return;
+
         const overlay = document.createElement('div');
-        overlay.className = 'image-zoom-overlay';
+        overlay.className = 'image-zoom-overlay in-favorites-pane';
         
         // Create image element programmatically to avoid XSS
         const img = document.createElement('img');
@@ -428,7 +454,7 @@ class UIManager {
             overlay.remove();
         });
 
-        document.body.appendChild(overlay);
+        favoritesPane.appendChild(overlay);
     }
 }
 

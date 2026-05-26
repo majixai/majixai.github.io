@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-11 09:23 UTC_
+_Last updated: 2026-05-26 15:42 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -11,32 +11,32 @@ _Last updated: 2026-05-11 09:23 UTC_
 <!-- START_REPO_STATS -->
 | Metric | Value |
 |--------|-------|
-| 📁 Project Directories | 164 |
-| ⚙️ GitHub Actions Workflows | 67 |
-| 📝 Total Commits | 127055 |
+| 📁 Project Directories | 174 |
+| ⚙️ GitHub Actions Workflows | 71 |
+| 📝 Total Commits | 130383 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`46ed2c4ae4`](https://github.com/majixai/majixai.github.io/commit/46ed2c4ae4437bde5fb58a6c8022316156f6e55b) -- 2026-05-11 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-05-11 09:13:04 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
-- [`d63b804611`](https://github.com/majixai/majixai.github.io/commit/d63b804611756a69e7abb6c5926e1c84a21def12) -- 2026-05-11 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-05-11 08:48:04 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`f69d30f774`](https://github.com/majixai/majixai.github.io/commit/f69d30f7749ea4da75da3de4a11a400c1f97219e) -- 2026-05-11 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-11 08:45:44 UTC -- [Open page](https://majixai.github.io/data/)
-- [`947da4276e`](https://github.com/majixai/majixai.github.io/commit/947da4276e73484fe054996abcf5f78c8b4f654a) -- 2026-05-11 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-11 08:45:32 UTC -- [Open page](https://majixai.github.io/data/)
-- [`b9677e0b17`](https://github.com/majixai/majixai.github.io/commit/b9677e0b178fef1926eefd0b0d74f52a6bb0be06) -- 2026-05-11 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-11 08:44:52 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`c86b38b47c`](https://github.com/majixai/majixai.github.io/commit/c86b38b47cc63146cdf00f570da40813b4bbe336) -- 2026-05-26 -- github-actions[bot] -- [AI Tensor Bot] Update Titan Matrix ML Forecasts -- [Open page](https://majixai.github.io/router/)
+- [`3431f6c5fb`](https://github.com/majixai/majixai.github.io/commit/3431f6c5fb14cecfde5fba31287207b0e4703003) -- 2026-05-26 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-05-26 15:00:09 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
+- [`f0ad6c9dc6`](https://github.com/majixai/majixai.github.io/commit/f0ad6c9dc6ca96e80aca2e6176864913e6291d6d) -- 2026-05-26 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
+- [`3ecdf8ce8f`](https://github.com/majixai/majixai.github.io/commit/3ecdf8ce8fb63805e114e289bf9cddabf41021a5) -- 2026-05-26 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-26 14:21:58 UTC -- [Open page](https://majixai.github.io/router/)
+- [`ed26bec915`](https://github.com/majixai/majixai.github.io/commit/ed26bec9153429897555122bb33cfd2376b4fc89) -- 2026-05-26 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-26 14:20:51 UTC -- [Open page](https://majixai.github.io/data/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `46ed2c4` — 2026-05-11 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-05-11 09:13:04 UTC  
-  _428 lines changed (226+ / 202-)_
-- **Biggest update this week:** `46ed2c4` — 2026-05-11 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-05-11 09:13:04 UTC  
-  _428 lines changed (226+ / 202-)_
-- **Biggest update this month:** `df6e9c2` — 2026-05-09 — **github-actions[bot]** — data: Update index data - 2026-05-09 01:47:21 UTC  
-  _154732 lines changed (153620+ / 1112-)_
-- **Biggest update this quarter:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
-  _383440 lines changed (379676+ / 3764-)_
-- **Biggest update this year:** `e793f34` — 2026-04-15 — **majixai** — Merge branch 'main' into copilot/create-new-dir-for-action-processing  
-  _383440 lines changed (379676+ / 3764-)_
+- **Biggest update today:** `acb8a7c` — 2026-05-25 — **majixai** — Merge branch 'main' into copilot/tradingview-conics-three-timeframes  
+  _29145 lines changed (27058+ / 2087-)_
+- **Biggest update this week:** `acb8a7c` — 2026-05-25 — **majixai** — Merge branch 'main' into copilot/tradingview-conics-three-timeframes  
+  _29145 lines changed (27058+ / 2087-)_
+- **Biggest update this month:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
+  _489139 lines changed (485331+ / 3808-)_
+- **Biggest update this quarter:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
+  _489139 lines changed (485331+ / 3808-)_
+- **Biggest update this year:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
+  _489139 lines changed (485331+ / 3808-)_
 <!-- END_BIGGEST_UPDATES -->
 
 
@@ -48,6 +48,10 @@ This repository is a collection of diverse projects, including web applications,
 
 A suite of server-side financial analytics tools including a 3D tensor pipeline (`tensor_engine.py`) producing market forecasts, Pine Script indicators, a unified financial feed, and GenAI-powered analysis. Forecasts are auto-updated every 6 hours via GitHub Actions.
 
+### [Quantitative AI](quantitative_ai/) (`quantitative_ai/`)
+
+An umbrella directory that groups the repository's yfinance, GPU, neural, ML, and mathematics layers into a single pipeline-oriented workspace.
+
 ### [Quantix](redirect.html?url=https://majixai.github.io/quantix/) (`quantix/`)
 
 A quantitative finance library providing portfolio management, market data analysis, risk calculations, and financial computations following an MVC architecture.
@@ -55,6 +59,10 @@ A quantitative finance library providing portfolio management, market data analy
 ### [Neural Tensor Network](neural_tensor_network/) (`neural_tensor_network/`)
 
 A neural network implementation for tensor-based financial forecasting and market pattern recognition.
+
+### [DUET Channel Clustering Demo](redirect.html?url=https://majixai.github.io/neural/duet-channel-clustering/) (`neural/duet-channel-clustering/`)
+
+A client-side DUET channel clustering web demo using TensorFlow.js (WebGL), pako.js, and Bootstrap, running fully in-browser with no server-side compute.
 
 ### [Predictive Ledger](redirect.html?url=https://majixai.github.io/predictive_ledger/) (`predictive_ledger/`)
 

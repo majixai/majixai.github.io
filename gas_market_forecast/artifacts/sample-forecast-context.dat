@@ -1,0 +1,30 @@
+{
+  "session": {
+    "today": "2026-05-12",
+    "nextSessionDate": "2026-05-13",
+    "isOpen": true
+  },
+  "reports": [
+    {
+      "symbol": "SPY",
+      "forecast": {
+        "nextOpen": 523.14,
+        "nextHigh": 527.05,
+        "nextLow": 519.88,
+        "nextClose": 525.42,
+        "nextVolumeBias": "rising_volume",
+        "biasScore": 0.46
+      },
+      "patterns": {
+        "weekly": { "structure": "up trend, expansion, rising volume", "tags": ["trend_up", "macd_bullish"] },
+        "daily": { "structure": "up trend, compression, stable volume", "tags": ["trend_up", "inside_bar", "rsi_bullish"] },
+        "hourly": { "structure": "sideways trend, compression, rising volume", "tags": ["compression", "price_above_ema21"] },
+        "m15": { "structure": "up trend, expansion, rising volume", "tags": ["trend_up", "macd_bullish", "rsi_bullish"] }
+      },
+      "repetitions": [
+        { "tag": "trend_up", "timeframes": ["weekly", "daily", "15m"] },
+        { "tag": "macd_bullish", "timeframes": ["weekly", "15m"] }
+      ]
+    }
+  ]
+}

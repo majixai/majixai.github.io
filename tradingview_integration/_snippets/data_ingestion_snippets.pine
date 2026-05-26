@@ -1,0 +1,152 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/data_reader.pine#L25-L39
+var GRP_DATA  = "Data Source"
+dataUrl       = input.string(
+                    "https://raw.githubusercontent.com/your-username/your-repository/main/data/my_data.dat",
+                    "Seed Data URL",
+                    tooltip="URL to the .dat / .csv file published via Pine Seeds (GitHub raw).",
+                    group=GRP_DATA)
+dateCol       = input.int(0,  "Date Column Index (0-based)",  minval=0, maxval=9, group=GRP_DATA)
+closeCol      = input.int(4,  "Close Column Index (0-based)", minval=0, maxval=9, group=GRP_DATA)
+openCol       = input.int(1,  "Open Column Index (0-based)",  minval=0, maxval=9, group=GRP_DATA)
+highCol       = input.int(2,  "High Column Index (0-based)",  minval=0, maxval=9, group=GRP_DATA)
+lowCol        = input.int(3,  "Low Column Index (0-based)",   minval=0, maxval=9, group=GRP_DATA)
+volCol        = input.int(5,  "Volume Column Index (0-based)",minval=0, maxval=9, group=GRP_DATA)
+hasHeader     = input.bool(true, "First Row is Header",       group=GRP_DATA)
+delimiter     = input.string(",","Delimiter", options=[",","\t",";","|"], group=GRP_DATA)
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/data_reader.pine#L63-L105
+var string rawData = request.seed(dataUrl, "")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PARSE CSV INTO ARRAYS
+// ─────────────────────────────────────────────────────────────────────────────
+var float[] extOpen   = array.new_float(0)
+var float[] extHigh   = array.new_float(0)
+var float[] extLow    = array.new_float(0)
+var float[] extClose  = array.new_float(0)
+var float[] extVol    = array.new_float(0)
+var string[] extDates = array.new_string(0)
+var bool parsed       = false
+
+if not parsed and not na(rawData) and str.length(rawData) > 0
+    parsed := true
+    string[] lines = str.split(rawData, "\n")
+    int startRow   = hasHeader ? 1 : 0
+    int nLines     = array.size(lines)
+    if nLines > startRow
+        for i = startRow to nLines - 1
+            string ln = array.get(lines, i)
+            if str.endswith(ln, "\r")
+                ln := str.substring(ln, 0, str.length(ln) - 1)
+            if str.length(ln) < 3
+                continue
+            string[] cols = str.split(ln, delimiter)
+            int nc = array.size(cols)
+            if nc <= closeCol
+                continue
+            float c = str.tonumber(array.get(cols, closeCol))
+            if na(c)
+                continue
+            float o  = nc > openCol  ? nz(str.tonumber(array.get(cols, openCol)),  c) : c
+            float h  = nc > highCol  ? nz(str.tonumber(array.get(cols, highCol)),  c) : c
+            float l  = nc > lowCol   ? nz(str.tonumber(array.get(cols, lowCol)),   c) : c
+            float v  = nc > volCol   ? nz(str.tonumber(array.get(cols, volCol)),   0) : 0
+            string d = nc > dateCol  ? array.get(cols, dateCol) : ""
+            array.push(extClose, c)
+            array.push(extOpen,  o)
+            array.push(extHigh,  h)
+            array.push(extLow,   l)
+            array.push(extVol,   v)
+            array.push(extDates, d)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/data_reader.pine#L138-L220
+// Deviation of chart close vs. ext close
+float deviation = not na(extLastC) and extLastC != 0 ?
+                  (close - extLastC) / extLastC * 100 : na
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OLS LINEAR REGRESSION  on last regLen bars of ext close
+// ─────────────────────────────────────────────────────────────────────────────
+// Manual OLS: slope, intercept, R², std-error
+float regSlope     = na
+float regIntercept = na
+float regR2        = na
+float regStdErr    = na
+float regLineVal   = na
+float regUpper     = na
+float regLower     = na
+
+if nRows >= regLen
+    int   n_reg = math.min(regLen, nRows)
+    float sx    = 0.0
+    float sy    = 0.0
+    float sxy   = 0.0
+    float sxx   = 0.0
+    float syy   = 0.0
+    for j = 0 to n_reg - 1
+        float xj = float(j)
+        float yj = array.get(extClose, nRows - n_reg + j)
+        sx  += xj
+        sy  += yj
+        sxy += xj * yj
+        sxx += xj * xj
+        syy += yj * yj
+    float denom = n_reg * sxx - sx * sx + 1e-9
+    regSlope     := (n_reg * sxy - sx * sy) / denom
+    regIntercept := (sy - regSlope * sx) / n_reg
+
+    // R² and std-error
+    float ss_res = 0.0
+    float ss_tot = 0.0
+    float ymean  = sy / n_reg
+    for j = 0 to n_reg - 1
+        float xj   = float(j)
+        float yj   = array.get(extClose, nRows - n_reg + j)
+        float y_hat = regSlope * xj + regIntercept
+        ss_res += math.pow(yj - y_hat, 2)
+        ss_tot += math.pow(yj - ymean, 2)
+    regR2     := ss_tot > 0 ? 1.0 - ss_res / ss_tot : 0.0
+    regStdErr := n_reg > 2 ? math.sqrt(ss_res / (n_reg - 2)) : 0.0
+
+    // Projected line value at last bar
+    regLineVal := regSlope * float(n_reg - 1) + regIntercept
+    regUpper   := regLineVal + regBandMult * regStdErr
+    regLower   := regLineVal - regBandMult * regStdErr
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POLYNOMIAL CURVATURE  (2nd and 3rd order differences via linreg)
+// ─────────────────────────────────────────────────────────────────────────────
+float lrNow  = not na(extLastC) ? extLastC : close
+float lrPrev = nRows > 1 ? array.get(extClose, nRows - 2) : lrNow
+float lrPrev2= nRows > 2 ? array.get(extClose, nRows - 3) : lrPrev
+float accel  = (lrNow - lrPrev) - (lrPrev - lrPrev2)        // 2nd order
+float jerk   = nRows > 3
+    ? accel - ((lrPrev - lrPrev2) - (lrPrev2 - array.get(extClose, nRows - 4)))
+    : 0.0                                                     // 3rd order
+float atrExt = ta.atr(14) + 1e-9
+float accelN = accel / atrExt    // ATR-normalised
+float jerkN  = jerk  / atrExt
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RSI PROXY  on ext close series (Wilder's method, last N bars)
+// ─────────────────────────────────────────────────────────────────────────────
+float extRsi = na
+if nRows >= 16
+    int   np   = 14
+    float avgG = 0.0
+    float avgL = 0.0
+    for j = nRows - np - 1 to nRows - 2
+        float d = array.get(extClose, j + 1) - array.get(extClose, j)
+        if d > 0
+            avgG += d
+        else
+            avgL -= d
+    avgG /= np
+    avgL /= np
