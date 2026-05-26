@@ -60,6 +60,10 @@
             <fieldset>
                 <legend>Text Snippet Manager</legend>
                 <div class="control-group">
+                    <label for="snippetSearchInput">Search Saved Text:</label>
+                    <input id="snippetSearchInput" type="text" placeholder="Start typing to search...">
+                </div>
+                <div class="control-group">
                     <label for="newSnippetInput">Add New Snippet:</label>
                     <textarea id="newSnippetInput" rows="3"></textarea>
                 </div>
@@ -119,6 +123,7 @@
                         <label>Target:</label>
                         <select id="targetSlot" class="form-select form-select-sm" style="display:inline-block; width:auto; margin-left:4px;"></select>
                     </div>
+                    <button id="iframeSearchButton" class="iframe-search-btn" type="button" title="Search performers and favorites">🔎 Search</button>
                 </div>
                 <!-- Dynamic iframe grid - populated by JS -->
                 <div class="iframe-grid" id="iframeGrid"></div>
@@ -212,6 +217,34 @@
                 <span class="close-button" id="closeBigTipperAppModal">&times;</span>
                 <h2>Big Tipper App</h2>
                 <iframe id="bigTipperAppIframe" src="about:blank"></iframe>
+            </div>
+        </div>
+
+        <!-- Iframe Search Modal -->
+        <div id="iframeSearchModal" class="modal" style="display:none;">
+            <div class="modal-content iframe-search-modal-content">
+                <span class="close-button" id="closeIframeSearchModal">&times;</span>
+                <h2>Iframe Search</h2>
+                <div class="iframe-search-controls">
+                    <div class="control-group">
+                        <label for="iframeSearchUsername">Username</label>
+                        <input id="iframeSearchUsername" type="text" placeholder="Search username...">
+                    </div>
+                    <div class="control-group">
+                        <label for="iframeSearchTag">Tag</label>
+                        <input id="iframeSearchTag" type="text" placeholder="Filter by tag...">
+                    </div>
+                    <div class="control-group">
+                        <label for="iframeSearchGpuMin">Min GPU</label>
+                        <input id="iframeSearchGpuMin" type="number" min="0" step="0.1" value="0">
+                    </div>
+                    <div class="iframe-search-flags">
+                        <label><input id="iframeSearchIncludePerformers" type="checkbox" checked> Performers</label>
+                        <label><input id="iframeSearchIncludeFavorites" type="checkbox" checked> Favorites</label>
+                    </div>
+                </div>
+                <div id="iframeSearchStats" class="iframe-search-stats"></div>
+                <div id="iframeSearchResults" class="iframe-search-results"></div>
             </div>
         </div>
 

@@ -105,16 +105,8 @@ static int use_color = 1;
  * The "+r" constraint means val is both read and written in-place.
  * "c"(n) places the shift count into the CL register as required by RORL.
  */
-#if defined(__x86_64__) || defined(__i386__)
-static inline uint32_t ror32(uint32_t val, uint32_t n)
-{
-    __asm__("rorl %%cl, %0" : "+r"(val) : "c"(n));
-    return val;
-}
-#else
 static inline uint32_t ror32(uint32_t val, uint32_t n)
 { return (val >> n) | (val << (32u - n)); }
-#endif
 
 static const uint32_t K[64] = {
     0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
@@ -189,9 +181,9 @@ static int sha256_selftest(void)
     static const uint8_t IN[]={'a','b','c'};
     static const uint8_t EX[]={
         0xba,0x78,0x16,0xbf,0x8f,0x01,0xcf,0xea,
-        0x41,0x41,0x40,0xde,0x5d,0xae,0x2e,0xc7,
-        0x3b,0x33,0x8c,0x43,0x2d,0x5d,0x4c,0xcd,
-        0x6c,0xf6,0xaf,0x13,0xb2,0x8e,0x8b,0x57};
+        0x41,0x41,0x40,0xde,0x5d,0xae,0x22,0x23,
+        0xb0,0x03,0x61,0xa3,0x96,0x17,0x7a,0x9c,
+        0xb4,0x10,0xff,0x61,0xf2,0x00,0x15,0xad};
     uint8_t g[32]; sha256_full(IN,3,g);
     return memcmp(g,EX,32)==0?0:-1;
 }
@@ -1092,22 +1084,48 @@ done:
 }
 
 /* §17 Stats thread */
-typedef struct{WorkerState*ws;int nw;}StatsArg;
+typedef struct{
+    WorkerState   *ws;
+    int            nw;
+    struct timespec start;
+    bool           tty;
+} StatsArg;
 static void*stats_thread(void*arg){
-    StatsArg*sa=(StatsArg*)arg; uint64_t prev=0;
-    struct timespec pt,ct; clock_gettime(CLOCK_MONOTONIC,&pt);
+    StatsArg*sa=(StatsArg*)arg; uint64_t prev_total=0;
+    uint64_t*prev_worker=(uint64_t*)calloc((size_t)sa->nw,sizeof(uint64_t));
+    struct timespec now; if(!prev_worker) return NULL;
     while(!atomic_load_explicit(&g_stop,memory_order_relaxed)){
         sleep(STATS_INTERVAL_SEC);
         if(atomic_load_explicit(&g_stop,memory_order_relaxed)) break;
-        clock_gettime(CLOCK_MONOTONIC,&ct);
-        double dt=(ct.tv_sec-pt.tv_sec)+(ct.tv_nsec-pt.tv_nsec)/1e9;
-        uint64_t cur=atomic_load_explicit(&g_total_hashes,memory_order_relaxed);
-        double mhs=dt>0?(double)(cur-prev)/1e6/dt:0;
-        printf("%s[stats]%s %.2f MH/s |",CCYAN,CRESET,mhs);
-        for(int i=0;i<sa->nw;i++)
-            printf(" T%d:%lluM",i,(unsigned long long)(sa->ws[i].hashes_done/1000000));
-        printf("\n"); fflush(stdout); prev=cur; pt=ct;
-    } return NULL;
+        clock_gettime(CLOCK_MONOTONIC,&now);
+        double elapsed=(now.tv_sec-sa->start.tv_sec)+(now.tv_nsec-sa->start.tv_nsec)/1e9;
+        double tick=(double)STATS_INTERVAL_SEC;
+        uint64_t cur_total=atomic_load_explicit(&g_total_hashes,memory_order_relaxed);
+        double total_mhs=elapsed>0?(double)cur_total/1e6/elapsed:0.0;
+
+        if(sa->tty) printf("\033[H\033[J");
+        printf("%sBitcoin Miner Live Hash Dashboard%s\n",CBOLD,CRESET);
+        printf("Elapsed : %.1fs | Total : %llu hashes | Rate : %.2f MH/s\n",
+               elapsed,(unsigned long long)cur_total,total_mhs);
+        printf("Workers : %d\n",sa->nw);
+        printf("%-6s %-8s %-14s %-14s\n","TID","CORE","HASHES","RATE");
+
+        for(int i=0;i<sa->nw;i++){
+            uint64_t cur=sa->ws[i].hashes_done;
+            double mhz=tick>0?(double)(cur-prev_worker[i])/1e6/tick:0.0;
+            printf("%-6d %-8d %-14llu %-14.2f\n",
+                   i,sa->ws[i].cpu_id,(unsigned long long)cur,mhz);
+            prev_worker[i]=cur;
+        }
+        if(sa->tty) fflush(stdout);
+        else {
+            printf("\n"); fflush(stdout);
+        }
+        prev_total=cur_total;
+    }
+    free(prev_worker);
+    (void)prev_total;
+    return NULL;
 }
 
 /* §16 Stratum V1 JSON-RPC */
@@ -1280,10 +1298,10 @@ int main(int argc,char*argv[])
     if(pool_host) pthread_create(&mgr_tid,NULL,manager_thread,&ma);
     WdArg wda={job_notify};
     if(job_notify>0) pthread_create(&wd_tid,NULL,watchdog_thread,&wda);
-    StatsArg sa={ws,nthreads}; pthread_create(&stats_tid,NULL,stats_thread,&sa);
 
     printf("%sMining…%s  (Ctrl-C to abort)\n\n",CCYAN,CRESET);
     struct timespec w0,w1; clock_gettime(CLOCK_MONOTONIC,&w0);
+    StatsArg sa={ws,nthreads,w0,isatty(STDOUT_FILENO)}; pthread_create(&stats_tid,NULL,stats_thread,&sa);
     for(int i=0;i<nthreads;i++){
         if(pthread_create(&tids[i],NULL,worker_thread,&wa[i])!=0){
             perror("pthread_create"); atomic_store(&g_stop,1);
