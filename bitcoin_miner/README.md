@@ -21,6 +21,7 @@ The directory is designed to run as a standalone app while also integrating with
 | `index.html` | Dashboard UI, double-SHA miner demo, root-directory cards, TensorFlow.js fee model |
 | `manifest.json`, `sw.js` | PWA manifest + service worker powered by `/pwa/sw-core.js` |
 | `login.html`, `login.js`, `login.css`, `login-config.json` | Optional local login gate for the app |
+| `3d_files/*.stl` | Local NerdMiner enclosure assets for the browser 3D viewer |
 
 ## Data + analytics pipeline
 
@@ -73,6 +74,8 @@ python bitcoin_miner/fetch_real_data.py --runtime 180
 Serve the repo root with any static web server and open:
 
 `/bitcoin_miner/index.html`
+
+The dashboard now includes a browser-based 3D STL viewer that loads the copied NerdMiner case assets directly from `bitcoin_miner/3d_files/`, so it runs locally without an ESP32.
 
 The page now also registers a service worker and exposes shared root-directory links
 through the repository router + hash infrastructure when served over HTTPS/localhost.

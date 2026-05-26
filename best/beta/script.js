@@ -33,6 +33,7 @@
         filterTagsSelect;
         filterAgeSelect;
         sendReportButton;
+        snippetSearchInput;
         newSnippetInput;
         saveSnippetButton;
         currentSnippetDisplay;
@@ -67,6 +68,7 @@
         // Pagination state for online users list
         #onlinePage = 0;
         #onlinePagedUsers = []; // current filtered set held for page navigation
+        #onlinePageStorageKey = 'beta_online_page';
 
         // IntersectionObserver for previous users (history) list sentinel
         #prevSentinelObserver = null;
@@ -79,6 +81,10 @@
         #previousUsersPageSize = 25; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
+        #snippetCache = [];
+        #textherImportFlagKey = 'beta_texther_import_done_v1';
+        #backgroundOps = new Set();
+        #gpuWarmupToken = 0;
         
         constructor() {
             // Instantiate services and managers
@@ -102,6 +108,7 @@
             this.filterAgeSelect = document.getElementById("filterAge");
             this.sendReportButton = document.getElementById("sendReportButton");
             
+            this.snippetSearchInput = document.getElementById('snippetSearchInput');
             this.newSnippetInput = document.getElementById('newSnippetInput');
             this.saveSnippetButton = document.getElementById('saveSnippetButton');
             this.currentSnippetDisplay = document.getElementById('currentSnippetDisplay');
@@ -132,6 +139,9 @@
             // Initialize storageType and sync with window (for StorageManager)
             this.#storageType = this.storageTypeSelector?.value || 'local';
             window.storageType = this.#storageType; 
+
+            const savedPage = parseInt(sessionStorage.getItem(this.#onlinePageStorageKey) || '0', 10);
+            this.#onlinePage = Number.isInteger(savedPage) && savedPage >= 0 ? savedPage : 0;
         }
 
         #isBirthday(birthday) {
@@ -282,10 +292,39 @@
             }, 3000);
         }
 
+        #runBackground(label, taskFactory) {
+            const op = Promise.resolve()
+                .then(() => taskFactory())
+                .catch((error) => console.warn(`Background task '${label}' failed:`, error))
+                .finally(() => this.#backgroundOps.delete(op));
+            this.#backgroundOps.add(op);
+        }
+
+        #warmGpuScoresInBackground(users) {
+            const scorer = window.visionScorer;
+            if (!scorer?.isActive || !Array.isArray(users) || users.length === 0) return;
+            const token = ++this.#gpuWarmupToken;
+            this.#runBackground('gpu-warmup', async () => {
+                const candidates = users.filter(u => u?.image_url).slice(0, 80);
+                const batchSize = 8;
+                for (let i = 0; i < candidates.length; i += batchSize) {
+                    if (token !== this.#gpuWarmupToken) return;
+                    const batch = candidates.slice(i, i + batchSize);
+                    await Promise.allSettled(batch.map(u => scorer.scoreImage(u.image_url)));
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+                if (token === this.#gpuWarmupToken) {
+                    this.#displayOnlineUsersList(this.#lastFilteredUsers);
+                }
+            });
+        }
+
         async #fetchDataAndUpdateUI() {
             console.log("App: Executing fetchDataAndUpdateUI...");
             this.uiManager.showOnlineLoadingIndicator("Loading online users...");
             this.uiManager.clearOnlineErrorDisplay();
+            // Bump refresh token so newly rendered performer images fetch fresh bytes.
+            window.__betaPerformerRefreshToken = Date.now();
 
             // Reset pagination state for initial load
             this.#currentOnlineUsersOffset = 0;
@@ -306,15 +345,16 @@
                     }
                     scheduleIdleTask(() => this.#populateFilters(this.#allOnlineUsersData)); // Populate filters with initial data
                     this.#applyFiltersAndDisplay(); // This will call displayOnlineUsersList which clears and renders
-                    await this.#displayPreviousUsers();
+                    this.#runBackground('display-previous-users', () => this.#displayPreviousUsers());
+                    this.#warmGpuScoresInBackground(this.#allOnlineUsersData);
                     if (!this.#initialIframesSet) {
-                        this.#setDefaultIframes();
+                        this.#runBackground('set-default-iframes', async () => this.#setDefaultIframes());
                     }
                 } else {
                     if (this.onlineUsersDiv) this.onlineUsersDiv.innerHTML = '<p class="text-muted w3-center">No online users found or failed to fetch.</p>';
                     scheduleIdleTask(() => this.#populateFilters([]));
                     this.#applyFiltersAndDisplay(); // Will show "No online users match filters"
-                    await this.#displayPreviousUsers();
+                    this.#runBackground('display-previous-users', () => this.#displayPreviousUsers());
                 }
             } catch (error) {
                 console.error("Error in fetchDataAndUpdateUI (App):", error);
@@ -322,7 +362,7 @@
             } finally {
                 this.uiManager.hideOnlineLoadingIndicator();
                 // Refresh slideshows for currently-loaded cards
-                this.uiManager.refreshSlideshows();
+                this.#runBackground('refresh-slideshows', () => this.uiManager.refreshSlideshows());
                 console.log("App: fetchDataAndUpdateUI execution finished.");
             }
         }
@@ -372,6 +412,15 @@
         }
 
         #displaySnippetsList(snippetsArray) {
+            this.#snippetCache = Array.isArray(snippetsArray) ? snippetsArray : [];
+            const query = this.snippetSearchInput?.value?.trim().toLowerCase() || '';
+            const filtered = query
+                ? this.#snippetCache.filter((s) => typeof s === 'string' && s.toLowerCase().includes(query))
+                : this.#snippetCache;
+            this.#renderSnippetResults(filtered);
+        }
+
+        #renderSnippetResults(snippetsArray) {
             if (!this.currentSnippetDisplay) return;
             this.currentSnippetDisplay.innerHTML = '';
             if (!snippetsArray || snippetsArray.length === 0) {
@@ -385,7 +434,7 @@
                 const textNode = document.createTextNode(snippetText + " ");
                 snippetElement.appendChild(textNode);
                 snippetElement.addEventListener('click', (e) => {
-                    if (e.target.tagName !== 'BUTTON') {
+                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
                         navigator.clipboard.writeText(snippetText)
                             .then(() => this.#showSnippetStatus('Snippet copied to clipboard!', 'success'))
                             .catch(err => {
@@ -394,6 +443,24 @@
                             });
                     }
                 });
+
+                const copyButton = document.createElement('button');
+                copyButton.textContent = 'Copy';
+                copyButton.style.marginLeft = '10px';
+                copyButton.style.padding = '2px 5px';
+                copyButton.style.fontSize = '0.8em';
+                copyButton.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    try {
+                        await navigator.clipboard.writeText(snippetText);
+                        this.#showSnippetStatus('Snippet copied to clipboard!', 'success');
+                    } catch (err) {
+                        console.error('Failed to copy snippet: ', err);
+                        this.#showSnippetStatus('Failed to copy snippet.', 'error');
+                    }
+                });
+                snippetElement.appendChild(copyButton);
+
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = 'Delete';
                 deleteButton.style.marginLeft = '10px';
@@ -417,6 +484,43 @@
                 fragment.appendChild(snippetElement);
             });
             this.currentSnippetDisplay.appendChild(fragment);
+        }
+
+        async #importTextherStoredTextsIfPresent() {
+            if (localStorage.getItem(this.#textherImportFlagKey) === '1') return;
+            let storedTexts = [];
+            try {
+                const raw = localStorage.getItem('storedTexts');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) storedTexts = parsed;
+                }
+            } catch (error) {
+                console.warn('Failed to read texther storedTexts for import:', error);
+            }
+
+            if (storedTexts.length === 0) {
+                localStorage.setItem(this.#textherImportFlagKey, '1');
+                return;
+            }
+
+            let importedCount = 0;
+            for (const text of storedTexts) {
+                if (typeof text !== 'string') continue;
+                const cleaned = text.trim();
+                if (!cleaned) continue;
+                try {
+                    await this.storageManager.addTextSnippet(cleaned);
+                    importedCount += 1;
+                } catch (error) {
+                    console.warn('Failed importing texther snippet:', cleaned, error);
+                }
+            }
+
+            localStorage.setItem(this.#textherImportFlagKey, '1');
+            if (importedCount > 0) {
+                this.#showSnippetStatus(`Imported ${importedCount} texther text snippet(s).`, 'success');
+            }
         }
 
         #buildIframeGrid(count) {
@@ -450,6 +554,8 @@
                 header.innerHTML = `
                     <span class="slot-number">#${i + 1}</span>
                     <span class="performer-name" id="iframeName${i}">-</span>
+                    <button class="move-iframe-btn" data-slot="${i}" data-dir="prev" type="button" title="Move earlier">◀</button>
+                    <button class="move-iframe-btn" data-slot="${i}" data-dir="next" type="button" title="Move later">▶</button>
                     <button class="pick-perf-btn" data-slot="${i}" type="button" title="Pick from performer slideshow">🖼</button>
                     <button class="close-iframe-btn" data-slot="${i}" title="Clear">&times;</button>
                 `;
@@ -581,6 +687,29 @@
                     e.stopPropagation();
                     const slot = parseInt(btn.dataset.slot, 10) || 0;
                     window.dispatchEvent(new CustomEvent('beta:openArchiveForSlot', { detail: { slot } }));
+                });
+            });
+
+            this.iframeGrid.querySelectorAll('.move-iframe-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const slot = parseInt(btn.dataset.slot, 10);
+                    const dir = btn.dataset.dir;
+                    if (!Number.isInteger(slot) || (dir !== 'prev' && dir !== 'next')) return;
+                    const containers = Array.from(this.iframeGrid.querySelectorAll('.iframe-container'));
+                    const target = dir === 'prev' ? slot - 1 : slot + 1;
+                    if (target < 0 || target >= containers.length) return;
+                    const currentEl = containers[slot];
+                    const targetEl = containers[target];
+                    if (!currentEl || !targetEl) return;
+
+                    if (dir === 'prev') {
+                        this.iframeGrid.insertBefore(currentEl, targetEl);
+                    } else {
+                        this.iframeGrid.insertBefore(targetEl, currentEl);
+                    }
+                    this.#reindexIframes();
                 });
             });
         }
@@ -729,23 +858,26 @@
                 usersToDisplay = [...usersToDisplay].sort((a, b) => {
                     const sA = window.visionScorer.getCachedFeatureScore(a.image_url);
                     const sB = window.visionScorer.getCachedFeatureScore(b.image_url);
-                    a.gpuScore = sA;
-                    b.gpuScore = sB;
-                    a.relevanceScore = (Number(a.num_viewers || 0) * 0.5) + (sA * 10);
-                    b.relevanceScore = (Number(b.num_viewers || 0) * 0.5) + (sB * 10);
-                    return sB - sA;
+                    const boostA = Number(a.gpuSimilarityBoost || 0);
+                    const boostB = Number(b.gpuSimilarityBoost || 0);
+                    a.gpuScore = (sA * 10) + boostA;
+                    b.gpuScore = (sB * 10) + boostB;
+                    a.relevanceScore = (Number(a.num_viewers || 0) * 0.5) + a.gpuScore;
+                    b.relevanceScore = (Number(b.num_viewers || 0) * 0.5) + b.gpuScore;
+                    return b.relevanceScore - a.relevanceScore;
                 });
                 if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: gpu+viewers';
             } else if (usersToDisplay?.length > 0) {
                 usersToDisplay.forEach((user) => {
-                    user.relevanceScore = Number(user.num_viewers || 0);
-                    user.gpuScore = 0;
+                    const boost = Number(user.gpuSimilarityBoost || 0);
+                    user.relevanceScore = Number(user.num_viewers || 0) + boost;
+                    user.gpuScore = boost;
                 });
                 if (this.scoreStatusIndicator) this.scoreStatusIndicator.textContent = 'Score: viewers';
             }
 
             this.#onlinePagedUsers = usersToDisplay || [];
-            this.#renderOnlinePage(this.#onlinePagedUsers, 0);
+            this.#renderOnlinePage(this.#onlinePagedUsers, this.#onlinePage);
         }
 
         #initEnhancementControls() {
@@ -782,7 +914,6 @@
          */
         #renderOnlinePage(usersToDisplay, page) {
             if (!this.onlineUsersDiv) return;
-            this.#onlinePage = page;
 
             const col = document.getElementById('onlineUsers');
             col?.querySelector('.pagination-bar')?.remove();
@@ -797,6 +928,8 @@
             const pageSize = this.#onlineBatchSize;
             const totalPages = Math.ceil(usersToDisplay.length / pageSize);
             const safePage = Math.max(0, Math.min(page, totalPages - 1));
+            this.#onlinePage = safePage;
+            sessionStorage.setItem(this.#onlinePageStorageKey, String(safePage));
             const batch = usersToDisplay.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
             const fragment = document.createDocumentFragment();
@@ -1098,8 +1231,11 @@
             this.#prevSentinelObserver.observe(sentinel);
         }
 
-        #handleUserClick(user) {
+        #handleUserClick(user, clickedImageUrl = null) {
             if (!user || !user.username) return;
+            const selectedImageUrl = (typeof clickedImageUrl === 'string' && clickedImageUrl.trim())
+                ? clickedImageUrl.trim()
+                : user.image_url;
             const targetSlotSelect = document.getElementById('targetSlot');
             const slotIdx = targetSlotSelect ? parseInt(targetSlotSelect.value, 10) : 0;
             const selectedIframe = this.#iframes[slotIdx] || this.#iframes[0];
@@ -1109,16 +1245,25 @@
                 if (nameEl) nameEl.textContent = user.username;
                 // Update thumbnail
                 const thumbEl = document.getElementById(`dynamicIframeThumb${slotIdx}`);
-                if (thumbEl) thumbEl.src = user.image_url || '';
+                if (thumbEl) thumbEl.src = selectedImageUrl || '';
             }
             this.storageManager.incrementUserClickCount(user.username, this.#previousUsers);
             this.#addToPreviousUsers(user).catch(console.error);
 
             const allUsers = this.#allOnlineUsersData.length > 0 ? this.#allOnlineUsersData : this.#previousUsers;
-            this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername) => {
+            this.#tensorEngine.analyzeClick(user, allUsers, (similarUsername, similarityWeight) => {
                 if (allUsers.some(u => u.username === similarUsername)) {
                     this.storageManager.incrementUserClickCount(similarUsername, this.#previousUsers);
+                    const similarUser = allUsers.find(u => u.username === similarUsername);
+                    if (similarUser) {
+                        const boostDelta = Number(similarityWeight || 0) * 10;
+                        similarUser.gpuSimilarityBoost = Number(similarUser.gpuSimilarityBoost || 0) + boostDelta;
+                    }
                 }
+            }, selectedImageUrl).then(() => {
+                this.#runBackground('post-click-resort', async () => {
+                    this.#applyFiltersAndDisplay();
+                });
             }).catch(console.error);
         }
 
@@ -1269,6 +1414,14 @@
                 });
             }
 
+            this.snippetSearchInput?.addEventListener('input', () => {
+                const query = this.snippetSearchInput.value.trim().toLowerCase();
+                const filtered = query
+                    ? this.#snippetCache.filter((s) => typeof s === 'string' && s.toLowerCase().includes(query))
+                    : this.#snippetCache;
+                this.#renderSnippetResults(filtered);
+            });
+
             if (this.mainTextArea && this.autocompleteSuggestionsContainer) {
                 this.mainTextArea.addEventListener('input', (e) => {
                     const text = e.target.value; const triggerPos = text.lastIndexOf('{{');
@@ -1411,6 +1564,7 @@
 
             await this.storageManager.populateStorageOptions();
             this.#storageType = window.storageType; 
+            await this.#importTextherStoredTextsIfPresent();
 
             this.#setupEventListeners(); 
 
