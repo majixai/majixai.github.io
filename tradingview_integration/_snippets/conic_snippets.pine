@@ -1,0 +1,408 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/differentiated_conic_projection_engine.pine#L142-L147
+g_kn   = "Kinematic Ensemble"
+fc_hz  = input.int(20, 'Forecast Horizon (Bars)', minval=2, maxval=100, group=g_kn, tooltip="The number of future bars the Kinematic Engine attempts to project. Longer horizons (40+) are less accurate but show potential cyclical targets.")
+lr_rt  = input.float(0.1, 'Feedback Learn Rate', minval=0.01, maxval=0.5, group=g_kn, tooltip="Bayesian adaptation speed. 0.1 is stable. Use 0.3+ for highly volatile, 'news-driven' markets where the model must pivot its bias quickly.")
+by_lb  = input.int(500, 'Bayesian Lookback', minval=50, group=g_kn, tooltip="The historical sample size for the Bayesian probability engine. 500 bars provides a solid statistical foundation for calculating win-probability distributions.")
+en_mr  = input.bool(true, "Enable Mean Reversion Gravity", group=g_kn, tooltip="When enabled, the forecast will 'pull' price back toward the Kinematic center-line when overextended. Essential for preventing 'chasing' at the top of moves.")
+up_md  = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn, tooltip="Determines how often the forecast paths recalculate. 'Each new bar' is best for performance; 'After target hit/miss' ensures the forecast stays fixed until the trade logic resolves.")
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/differentiated_conic_projection_engine.pine#L423-L450
+update_conic_parameters(matrix<float> mat, float v0, float a, float errTerm, int steps) =>
+    int maxSteps = math.min(steps, matrix.columns(mat))
+    float den = math.max(1.0, maxSteps - 1.0)
+    for i = 0 to maxSteps - 1
+        float x = i
+        float sq = math.sqrt(math.max(1.0, x))
+        float t = i / den
+        // Differentiated conic math:
+        // Path A (Ballistic): amplified acceleration and positive convexity.
+        // Path B (Diffusive): flatter trajectory with reduced curvature and gentler drift.
+        // Path C (Mean-Reverting): counter-curvature plus sinusoidal correction toward equilibrium.
+        // These are separate price equations, not time-shifted copies of one base path.
+        float y_ballistic = (a * 1.35 * math.pow(x, 2)) + (v0 * 1.18 * x) + (errTerm * 1.25 * sq) + (errTerm * 6.0 * t * (1.0 - t))
+        float y_diffusive = (a * 0.90 * math.pow(x, 2)) + (v0 * 0.96 * x) + (errTerm * 0.75 * sq) - (errTerm * 2.2 * t * (1.0 - t))
+        float y_meanRev   = (a * 0.62 * math.pow(x, 2)) + (v0 * 0.78 * x) - (errTerm * 1.05 * sq) + (errTerm * 3.5 * math.sin(math.pi * t))
+        matrix.set(mat, 0, i, y_ballistic)
+        matrix.set(mat, 1, i, y_diffusive)
+        matrix.set(mat, 2, i, y_meanRev)
+        matrix.set(mat, 3, i, y_ballistic + (errTerm * 1.10 * sq))
+        matrix.set(mat, 4, i, y_ballistic - (errTerm * 1.10 * sq))
+        matrix.set(mat, 5, i, y_diffusive + (errTerm * 0.90 * sq))
+        matrix.set(mat, 6, i, y_diffusive - (errTerm * 0.90 * sq))
+        matrix.set(mat, 7, i, y_meanRev + (errTerm * 1.30 * sq))
+        matrix.set(mat, 8, i, y_meanRev - (errTerm * 1.30 * sq))
+
+render_parametric_bounds(matrix<float> mat, int start_x, float start_y, int steps, color col, float stress01) =>
+    int render_step = stress01 > 0.7 ? 4 : (stress01 > 0.4 ? 2 : 1)
+    int maxSteps = math.min(steps, matrix.columns(mat))
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/differentiated_conic_projection_engine.pine#L1488-L1522
+            float ct  = i / den
+            float baseArc = knIn.errorTerm * 10 * volScale * ct * (1 - ct)
+            float dAnchor = warpTP - pfIn.anchorPrice
+            // Differentiated conic families:
+            // 1) Ballistic path: acceleration-amplified convex conic.
+            // 2) Diffusive path: low-curvature drift conic.
+            // 3) Mean-reverting path: concave conic with anchor pullback term.
+            float cyBallistic = pfIn.anchorPrice + dAnchor * (1.20 * ct + 0.20 * ct * ct) + (baseArc * 1.35) + (knIn.acceleration * uzIn.adaptiveCoeff * 14 * ct * ct)
+            float cyDiffusive = pfIn.anchorPrice + dAnchor * (0.92 * ct + 0.04 * ct * ct) + (baseArc * 0.55) + ((rawTP - warpTP) * 0.30 * ct)
+            float cyMeanRev   = pfIn.anchorPrice + dAnchor * (0.68 * ct) - (baseArc * 0.85) + ((pfIn.anchorPrice - warpTP) * 0.55 * ct * ct)
+            array.push(ptsConicBallistic, chart.point.new(tTime, tBar, cyBallistic))
+            array.push(ptsConicDiffusive, chart.point.new(tTime, tBar, cyDiffusive))
+            array.push(ptsConicMeanRev, chart.point.new(tTime, tBar, cyMeanRev))
+            for r = 0 to mcCount - 1
+                float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
+                array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
+            if tBar <= bar_index
+                int off = math.max(0, math.min(bar_index - tBar, 3999))
+                bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
+                string tip = "Warped Mean: " + str.tostring(warpTP,"#.##") +
+                             "\nBounds: [" + str.tostring(rawDn-bayDev,"#.##") + " – " + str.tostring(rawUp+bayDev,"#.##") + "]" +
+                             "\nStatus: " + (isHit ? "HIT ✓" : "MISS ✗")
+                label nodeLbl = label.new(tBar, warpTP, "", color=isHit?color.new(#00FFAA,20):color.new(#FF0055,20),
+                                          style=label.style_circle, size=size.tiny, tooltip=tip)
+                push_label_capped(fcstLabels, nodeLbl, liveCapFcstLabels)
+        array<chart.point> ribbonPts = array.new<chart.point>()
+        for p in ptsUpper
+            array.push(ribbonPts, p)
+        for i = array.size(ptsLower) - 1 to 0
+            array.push(ribbonPts, array.get(ptsLower, i))
+        push_polyline_capped(fcstShapes, polyline.new(ribbonPts, closed=true, fill_color=color.new(tfColor,85), line_color=na, xloc=xloc.bar_time), liveCapFcstShapes)
+        push_polyline_capped(mainPoly, polyline.new(ptsMean,  curved=curvP, line_color=tfColor,                  line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsUpper, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsLower, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mc_lines, polyline.new(ptsConicBallistic, curved=true, line_color=color.new(#00E5FF, 35), line_width=2, xloc=xloc.bar_time), liveCapMcLines)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/jinxAlpha.pine#L1850-L1883
+            // CONICS: Mathematical Parabolic Trajectory (Scaled)
+            float conic_t = i / horizon_size
+            float conic_y = pf.anchorPrice + (warped_tp - pf.anchorPrice) * conic_t + (kin.errorTerm * 10 * vol_scale * conic_t * (1 - conic_t))
+            array.push(pts_conic, chart.point.new(tTime, tBar, conic_y))
+
+            for r = 0 to mc_count - 1
+                float mc_val = warped_tp + (matrix.get(mcMatrix, r, i) * noiseMult)
+                array.push(array.get(mc_pts_matrix, r).pts, chart.point.new(tTime, tBar, mc_val))
+
+            if tBar <= bar_index
+                int offset = math.max(0, math.min(bar_index - tBar, 3999))
+                bool is_hit = (close[offset] <= adjusted_up and close[offset] >= adjusted_dn)
+                color hitColor = is_hit ? color.new(#00FFAA, 20) : color.new(#FF0055, 20)
+                
+                string dotTip = "Bayes W-Mean: " + str.tostring(warped_tp, "#.##") + "\nBounds:[" + str.tostring(adjusted_dn, "#.##") + " - " + str.tostring(adjusted_up, "#.##") + "]\nStatus: " + (is_hit ? "CONVERGED" : "DIVERGED")
+                label nodeLbl = label.new(tBar, warped_tp, "", color=hitColor, style=label.style_circle, size=size.tiny, tooltip=dotTip)
+                array.push(forecast_labels, nodeLbl)
+
+        // SHADING: Confidence Ribbon
+        for p in pts_up
+            array.push(pts_poly, p)
+        for i = array.size(pts_dn) - 1 to 0 
+            array.push(pts_poly, array.get(pts_dn, i))
+            
+        polyline ribbon = polyline.new(pts_poly, closed=true, fill_color=color.new(tf_color, 85), line_color=na, xloc=xloc.bar_time)
+        array.push(forecast_shapes, ribbon)
+
+        // CONSTRUCTING POLYLINES & CONICS
+        array.push(main_polylines, polyline.new(pts_mean, curved=curvePath, line_color=tf_color, line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_up, curved=curvePath, line_color=color.new(tf_color, 40), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_dn, curved=curvePath, line_color=color.new(tf_color, 40), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        
+        polyline conic_pl = polyline.new(pts_conic, curved=true, line_color=color.new(#B200FF, 50), line_width=2, xloc=xloc.bar_time)
+        array.push(mc_lines, conic_pl)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/jinx.pine#L142-L147
+g_kn   = "Kinematic Ensemble"
+fc_hz  = input.int(20, 'Forecast Horizon (Bars)', minval=2, maxval=100, group=g_kn, tooltip="The number of future bars the Kinematic Engine attempts to project. Longer horizons (40+) are less accurate but show potential cyclical targets.")
+lr_rt  = input.float(0.1, 'Feedback Learn Rate', minval=0.01, maxval=0.5, group=g_kn, tooltip="Bayesian adaptation speed. 0.1 is stable. Use 0.3+ for highly volatile, 'news-driven' markets where the model must pivot its bias quickly.")
+by_lb  = input.int(500, 'Bayesian Lookback', minval=50, group=g_kn, tooltip="The historical sample size for the Bayesian probability engine. 500 bars provides a solid statistical foundation for calculating win-probability distributions.")
+en_mr  = input.bool(true, "Enable Mean Reversion Gravity", group=g_kn, tooltip="When enabled, the forecast will 'pull' price back toward the Kinematic center-line when overextended. Essential for preventing 'chasing' at the top of moves.")
+up_md  = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn, tooltip="Determines how often the forecast paths recalculate. 'Each new bar' is best for performance; 'After target hit/miss' ensures the forecast stays fixed until the trade logic resolves.")
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/jinx.pine#L423-L450
+update_conic_parameters(matrix<float> mat, float v0, float a, float errTerm, int steps) =>
+    int maxSteps = math.min(steps, matrix.columns(mat))
+    for i = 0 to maxSteps - 1
+        float x = i
+        float sq = math.sqrt(math.max(1.0, x))
+        float y_center = (a * math.pow(x, 2)) + (v0 * x)
+        float y_upper = y_center + (errTerm * sq)
+        float y_lower = y_center - (errTerm * sq)
+        matrix.set(mat, 0, i, a)
+        matrix.set(mat, 1, i, v0)
+        matrix.set(mat, 2, i, y_upper)
+        matrix.set(mat, 3, i, a)
+        matrix.set(mat, 4, i, v0)
+        matrix.set(mat, 5, i, y_lower)
+
+render_parametric_bounds(matrix<float> mat, int start_x, float start_y, int steps, color col, float stress01) =>
+    int render_step = stress01 > 0.7 ? 4 : (stress01 > 0.4 ? 2 : 1)
+    int maxSteps = math.min(steps, matrix.columns(mat))
+    array<chart.point> upper_pts = array.new<chart.point>()
+    array<chart.point> lower_pts = array.new<chart.point>()
+    for i = 0 to maxSteps - 1 by render_step
+        float upper_val = start_y + matrix.get(mat, 2, i)
+        float lower_val = start_y + matrix.get(mat, 5, i)
+        array.push(upper_pts, chart.point.from_index(start_x + i, upper_val))
+        array.push(lower_pts, chart.point.from_index(start_x + i, lower_val))
+    if array.size(upper_pts) > 1
+        push_polyline_capped(fcstShapes, polyline.new(upper_pts, curved=curvP, line_color=col, line_width=2, xloc=xloc.bar_index), liveCapFcstShapes)
+        push_polyline_capped(fcstShapes, polyline.new(lower_pts, curved=curvP, line_color=col, line_width=2, xloc=xloc.bar_index), liveCapFcstShapes)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/unified_strategy.pine#L1880-L1913
+            // CONICS: Mathematical Parabolic Trajectory (Scaled)
+            float conic_t = i / horizon_size
+            float conic_y = pf.anchorPrice + (warped_tp - pf.anchorPrice) * conic_t + (kin.errorTerm * 10 * vol_scale * conic_t * (1 - conic_t))
+            array.push(pts_conic, chart.point.new(tTime, tBar, conic_y))
+
+            for r = 0 to mc_count - 1
+                float mc_val = warped_tp + (matrix.get(mcMatrix, r, i) * noiseMult)
+                array.push(array.get(mc_pts_matrix, r).pts, chart.point.new(tTime, tBar, mc_val))
+
+            if tBar <= bar_index
+                int offset = math.max(0, math.min(bar_index - tBar, 3999))
+                bool is_hit = (close[offset] <= adjusted_up and close[offset] >= adjusted_dn)
+                color hitColor = is_hit ? color.new(#00FFAA, 20) : color.new(#FF0055, 20)
+                
+                string dotTip = "Bayes W-Mean: " + str.tostring(warped_tp, "#.##") + "\nBounds:[" + str.tostring(adjusted_dn, "#.##") + " - " + str.tostring(adjusted_up, "#.##") + "]\nStatus: " + (is_hit ? "CONVERGED" : "DIVERGED")
+                label nodeLbl = label.new(tBar, warped_tp, "", color=hitColor, style=label.style_circle, size=size.tiny, tooltip=dotTip)
+                array.push(forecast_labels, nodeLbl)
+
+        // SHADING: Confidence Ribbon
+        for p in pts_up
+            array.push(pts_poly, p)
+        for i = array.size(pts_dn) - 1 to 0 
+            array.push(pts_poly, array.get(pts_dn, i))
+            
+        polyline ribbon = polyline.new(pts_poly, closed=true, fill_color=color.new(tf_color, 85), line_color=na, xloc=xloc.bar_time)
+        array.push(forecast_shapes, ribbon)
+
+        // CONSTRUCTING POLYLINES & CONICS
+        array.push(main_polylines, polyline.new(pts_mean, curved=curvePath, line_color=tf_color, line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_up, curved=curvePath, line_color=color.new(tf_color, 40), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_dn, curved=curvePath, line_color=color.new(tf_color, 40), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        
+        polyline conic_pl = polyline.new(pts_conic, curved=true, line_color=color.new(#B200FF, 50), line_width=2, xloc=xloc.bar_time)
+        array.push(mc_lines, conic_pl)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test013.pine#L1820-L1854
+            // CONICS: Mathematical Parabolic Trajectory (Scaled)
+            float conic_t = i / horizon_size
+            float conic_y = pf.anchorPrice + (warped_tp - pf.anchorPrice) * conic_t + (kin.errorTerm * 10 * vol_scale * conic_t * (1 - conic_t))
+            array.push(pts_conic, chart.point.new(tTime, tBar, conic_y))
+            
+            for r = 0 to mc_count - 1
+                float mc_val = warped_tp + (matrix.get(mcMatrix, r, i) * noiseMult)
+                array.push(array.get(mc_pts_matrix, r).pts, chart.point.new(tTime, tBar, mc_val))
+
+            if tBar <= bar_index
+                int offset = math.max(0, math.min(bar_index - tBar, 3999))
+                bool is_hit = (close[offset] <= adjusted_up and close[offset] >= adjusted_dn)
+                color hitColor = is_hit ? color.new(#00FFAA, 60) : color.new(#FF0055, 60)
+                
+                string dotTip = "Bayes W-Mean: " + str.tostring(warped_tp, "#.##") + "\nBounds:[" + str.tostring(adjusted_dn, "#.##") + " - " + str.tostring(adjusted_up, "#.##") + "]\nStatus: " + (is_hit ? "CONVERGED" : "DIVERGED")
+                
+                label nodeLbl = label.new(tBar, warped_tp, "", color=hitColor, style=label.style_circle, size=size.tiny, tooltip=dotTip)
+                array.push(forecast_labels, nodeLbl)
+
+        // SHADING: Confidence Ribbon
+        for p in pts_up
+            array.push(pts_poly, p)
+        for i = array.size(pts_dn) - 1 to 0 
+            array.push(pts_poly, array.get(pts_dn, i))
+            
+        polyline ribbon = polyline.new(pts_poly, closed=true, fill_color=color.new(tf_color, 85), line_color=na, xloc=xloc.bar_time)
+        array.push(forecast_shapes, ribbon)
+
+        // CONSTRUCTING POLYLINES & CONICS
+        array.push(main_polylines, polyline.new(pts_mean, curved=curvP, line_color=tf_color, line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_up, curved=curvP, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        array.push(main_polylines, polyline.new(pts_dn, curved=curvP, line_color=color.new(tf_color, 80), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time))
+        
+        polyline conic_pl = polyline.new(pts_conic, curved=true, line_color=color.new(#B200FF, 50), line_width=2, xloc=xloc.bar_time)
+        array.push(mc_lines, conic_pl)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test003_optimized.pine#L134-L145
+g_kn    = "Kinematic Ensemble"
+tf_sh   = input.timeframe("5",   "Short  Conic TF",   group=g_kn, tooltip="Timeframe for the fast/short-term conic model. Must be ≥ chart TF.")
+tf_md   = input.timeframe("15",  "Medium Conic TF",   group=g_kn, tooltip="Timeframe for the medium-term conic model. Must be ≥ chart TF.")
+tf_lg   = input.timeframe("60",  "Long   Conic TF",   group=g_kn, tooltip="Timeframe for the slow/long-term conic model. Must be ≥ chart TF.")
+kn_lb_s = input.int(10,  "Short  Conic LB",  minval=5,  maxval=50,  group=g_kn, tooltip="OLS regression lookback bars on the short TF.")
+kn_lb_m = input.int(20,  "Medium Conic LB",  minval=5,  maxval=100, group=g_kn, tooltip="OLS regression lookback bars on the medium TF.")
+kn_lb_l = input.int(40,  "Long   Conic LB",  minval=10, maxval=200, group=g_kn, tooltip="OLS regression lookback bars on the long TF.")
+by_hz   = input.int(20,     'Bayesian Horizon Offset', minval=2, maxval=100, group=g_kn, tooltip="Historical bar offset used by Bayesian inference accuracy check.")
+lr_rt   = input.float(0.1,  'Feedback Learn Rate',     minval=0.01, maxval=0.5, group=g_kn, tooltip="Speed at which Bayesian bias adapts to forecast errors.")
+by_lb   = input.int(500,    'Bayesian Lookback',        minval=50,              group=g_kn)
+en_mr   = input.bool(true,  "Enable Mean Reversion Gravity",                    group=g_kn)
+up_md   = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test003.pine#L1264-L1316
+// Staggered multi-timeframe forecast renderer
+f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, AccuracyEngine acIn, matrix<float> mm, float tfMult, color tfColor, float mvi) =>
+    if pfIn.isActive
+        array<chart.point> ptsMean  = array.new<chart.point>()
+        array<chart.point> ptsUpper = array.new<chart.point>()
+        array<chart.point> ptsLower = array.new<chart.point>()
+        array<chart.point> ptsConic = array.new<chart.point>()
+        int mcCount = math.min(matrix.rows(mm), 10)
+        array<PointArray> mcPtsArr = array.new<PointArray>()
+        for r = 0 to mcCount - 1
+            array.push(mcPtsArr, PointArray.new(array.new<chart.point>()))
+
+        chart.point anchorPt = chart.point.new(pfIn.anchorTime, pfIn.anchorBar, pfIn.anchorPrice)
+        array.push(ptsMean,  anchorPt)
+        array.push(ptsUpper, anchorPt)
+        array.push(ptsLower, anchorPt)
+        array.push(ptsConic, anchorPt)
+        for r = 0 to mcCount - 1
+            array.push(array.get(mcPtsArr, r).pts, anchorPt)
+
+        float priorTP    = pfIn.anchorPrice
+        int   horizSize  = array.size(pfIn.targetPoints)
+        int   dtStep     = int(timeframe.multiplier * tfMult * 60 * 1000)
+        int   barStep    = math.max(1, int(tfMult))
+        float baseVS     = math.sqrt(tfMult)
+        float volScale   = baseVS * (1.0 + (mvi * 50))
+        float noiseMult  = knIn.errorTerm * uzIn.adaptiveCoeff * 0.5 * volScale
+
+        for i = 0 to horizSize - 1
+            int   tBar   = pfIn.anchorBar + int(i * barStep) + 1
+            int   tTime  = time + ((tBar - bar_index) * dtStep)
+            float rawTP  = array.get(pfIn.targetPoints, i)
+            float rawUp  = rawTP + ((array.get(pfIn.confUpper, i) - rawTP) * volScale)
+            float rawDn  = rawTP - ((rawTP - array.get(pfIn.confLower, i)) * volScale)
+            float warpTP = b_tc(rawTP, priorTP, knIn.errorTerm, i, uzIn.adaptiveCoeff)
+            float bayDev = math.abs(warpTP - rawTP)
+            priorTP := warpTP
+
+            array.push(ptsMean,  chart.point.new(tTime, tBar, warpTP))
+            array.push(ptsUpper, chart.point.new(tTime, tBar, rawUp + bayDev))
+            array.push(ptsLower, chart.point.new(tTime, tBar, rawDn - bayDev))
+
+            float ct  = i / horizSize
+            float cy  = pfIn.anchorPrice + (warpTP - pfIn.anchorPrice)*ct + (knIn.errorTerm*10*volScale*ct*(1-ct))
+            array.push(ptsConic, chart.point.new(tTime, tBar, cy))
+
+            for r = 0 to mcCount - 1
+                float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
+                array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
+
+            if tBar <= bar_index
+                int off = math.max(0, math.min(bar_index - tBar, 3999))
+                bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test004.txt#L1498-L1529
+            array.push(ptsUpper, chart.point.new(tTime, tBar, rawUp + bayDev))
+            array.push(ptsLower, chart.point.new(tTime, tBar, rawDn - bayDev))
+
+            float ct  = i / horizSize
+            float cy  = pfIn.anchorPrice + (warpTP - pfIn.anchorPrice)*ct + (knIn.errorTerm*10*volScale*ct*(1-ct))
+            array.push(ptsConic, chart.point.new(tTime, tBar, cy))
+
+            for r = 0 to mcCount - 1
+                float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
+                array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
+
+            if tBar <= bar_index
+                int off = math.max(0, math.min(bar_index - tBar, 3999))
+                bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
+                string tip = "Warped Mean: " + str.tostring(warpTP,"#.##") +
+                             "\nBounds: [" + str.tostring(rawDn-bayDev,"#.##") + " – " + str.tostring(rawUp+bayDev,"#.##") + "]" +
+                             "\nStatus: " + (isHit ? "HIT ✓" : "MISS ✗")
+                label nodeLbl = label.new(tBar, warpTP, "", color=isHit?color.new(#00FFAA,20):color.new(#FF0055,20),
+                                          style=label.style_circle, size=size.tiny, tooltip=tip)
+                push_label_capped(fcstLabels, nodeLbl, liveCapFcstLabels)
+
+        array<chart.point> ribbonPts = array.new<chart.point>()
+        for p in ptsUpper
+            array.push(ribbonPts, p)
+        for i = array.size(ptsLower) - 1 to 0
+            array.push(ribbonPts, array.get(ptsLower, i))
+
+        push_polyline_capped(fcstShapes, polyline.new(ribbonPts, closed=true, fill_color=color.new(tfColor,85), line_color=na, xloc=xloc.bar_time), liveCapFcstShapes)
+        push_polyline_capped(mainPoly, polyline.new(ptsMean,  curved=curvP, line_color=tfColor,                  line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsUpper, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsLower, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mc_lines, polyline.new(ptsConic, curved=true,  line_color=color.new(#B200FF,50),    line_width=2, xloc=xloc.bar_time), liveCapMcLines)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test014.pine#L1498-L1529
+            array.push(ptsUpper, chart.point.new(tTime, tBar, rawUp + bayDev))
+            array.push(ptsLower, chart.point.new(tTime, tBar, rawDn - bayDev))
+
+            float ct  = i / horizSize
+            float cy  = pfIn.anchorPrice + (warpTP - pfIn.anchorPrice)*ct + (knIn.errorTerm*10*volScale*ct*(1-ct))
+            array.push(ptsConic, chart.point.new(tTime, tBar, cy))
+
+            for r = 0 to mcCount - 1
+                float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
+                array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
+
+            if tBar <= bar_index
+                int off = math.max(0, math.min(bar_index - tBar, 3999))
+                bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
+                string tip = "Warped Mean: " + str.tostring(warpTP,"#.##") +
+                             "\nBounds: [" + str.tostring(rawDn-bayDev,"#.##") + " – " + str.tostring(rawUp+bayDev,"#.##") + "]" +
+                             "\nStatus: " + (isHit ? "HIT ✓" : "MISS ✗")
+                label nodeLbl = label.new(tBar, warpTP, "", color=isHit?color.new(#00FFAA,20):color.new(#FF0055,20),
+                                          style=label.style_circle, size=size.tiny, tooltip=tip)
+                push_label_capped(fcstLabels, nodeLbl, liveCapFcstLabels)
+
+        array<chart.point> ribbonPts = array.new<chart.point>()
+        for p in ptsUpper
+            array.push(ribbonPts, p)
+        for i = array.size(ptsLower) - 1 to 0
+            array.push(ribbonPts, array.get(ptsLower, i))
+
+        push_polyline_capped(fcstShapes, polyline.new(ribbonPts, closed=true, fill_color=color.new(tfColor,85), line_color=na, xloc=xloc.bar_time), liveCapFcstShapes)
+        push_polyline_capped(mainPoly, polyline.new(ptsMean,  curved=curvP, line_color=tfColor,                  line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsUpper, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsLower, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mc_lines, polyline.new(ptsConic, curved=true,  line_color=color.new(#B200FF,50),    line_width=2, xloc=xloc.bar_time), liveCapMcLines)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/test015.pine#L1400-L1431
+            array.push(ptsUpper, chart.point.new(tTime, tBar, rawUp + bayDev))
+            array.push(ptsLower, chart.point.new(tTime, tBar, rawDn - bayDev))
+
+            float ct  = i / horizSize
+            float cy  = pfIn.anchorPrice + (warpTP - pfIn.anchorPrice)*ct + (knIn.errorTerm*10*volScale*ct*(1-ct))
+            array.push(ptsConic, chart.point.new(tTime, tBar, cy))
+
+            for r = 0 to mcCount - 1
+                float mcVal = warpTP + (matrix.get(mm, r, i) * noiseMult)
+                array.push(array.get(mcPtsArr, r).pts, chart.point.new(tTime, tBar, mcVal))
+
+            if tBar <= bar_index
+                int off = math.max(0, math.min(bar_index - tBar, 3999))
+                bool isHit = (close[off] <= rawUp+bayDev and close[off] >= rawDn-bayDev)
+                string tip = "Warped Mean: " + str.tostring(warpTP,"#.##") +
+                             "\nBounds: [" + str.tostring(rawDn-bayDev,"#.##") + " – " + str.tostring(rawUp+bayDev,"#.##") + "]" +
+                             "\nStatus: " + (isHit ? "HIT ✓" : "MISS ✗")
+                label nodeLbl = label.new(tBar, warpTP, "", color=isHit?color.new(#00FFAA,20):color.new(#FF0055,20),
+                                          style=label.style_circle, size=size.tiny, tooltip=tip)
+                push_label_capped(fcstLabels, nodeLbl, liveCapFcstLabels)
+
+        array<chart.point> ribbonPts = array.new<chart.point>()
+        for p in ptsUpper
+            array.push(ribbonPts, p)
+        for i = array.size(ptsLower) - 1 to 0
+            array.push(ribbonPts, array.get(ptsLower, i))
+
+        push_polyline_capped(fcstShapes, polyline.new(ribbonPts, closed=true, fill_color=color.new(tfColor,85), line_color=na, xloc=xloc.bar_time), liveCapFcstShapes)
+        push_polyline_capped(mainPoly, polyline.new(ptsMean,  curved=curvP, line_color=tfColor,                  line_width=2, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsUpper, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mainPoly, polyline.new(ptsLower, curved=curvP, line_color=color.new(tfColor,40),    line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
+        push_polyline_capped(mc_lines, polyline.new(ptsConic, curved=true,  line_color=color.new(#B200FF,50),    line_width=2, xloc=xloc.bar_time), liveCapMcLines)
