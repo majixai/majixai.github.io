@@ -45,8 +45,14 @@
     ws = new WebSocket(`${scheme}://${window.location.host}/ws`);
 
     ws.onopen = () => setStatus("Connected");
-    ws.onclose = () => setStatus("Disconnected");
-    ws.onerror = () => setStatus("WebSocket error");
+    ws.onclose = () => {
+      awaitingResult = false;
+      setStatus("Disconnected");
+    };
+    ws.onerror = () => {
+      awaitingResult = false;
+      setStatus("WebSocket error");
+    };
     ws.onmessage = (event) => {
       const payload = JSON.parse(event.data);
       if (payload.type !== "result") return;

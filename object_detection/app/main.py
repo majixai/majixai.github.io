@@ -48,7 +48,8 @@ def _decode_frame(frame_payload: str) -> np.ndarray:
 
 
 def _encode_frame(frame: np.ndarray) -> str:
-    ok, encoded = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+    params = [int(cv2.IMWRITE_JPEG_QUALITY), 75]
+    ok, encoded = cv2.imencode(".jpg", frame, params)
     if not ok:
         return ""
     return base64.b64encode(encoded.tobytes()).decode("utf-8")
@@ -56,7 +57,7 @@ def _encode_frame(frame: np.ndarray) -> str:
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    """Receive browser frames and return detections with optional preview frame."""
+    """Receive browser frames and return annotated detections."""
     await websocket.accept()
     try:
         while True:
