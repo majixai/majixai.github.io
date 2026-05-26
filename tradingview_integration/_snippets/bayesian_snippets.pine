@@ -1,0 +1,317 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/pattern_recognition.pine#L54-L57
+var GRP_BY = "Bayesian Predictor"
+showBayes    = input.bool(true,  "Show Bayesian Table",         group=GRP_BY)
+bayAlpha     = input.int(1,      "Laplace Prior α (1–10)",      minval=1, maxval=10, group=GRP_BY)
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/pattern_recognition.pine#L1282-L1415
+// §11  BAYESIAN NEXT-PATTERN CLASS PREDICTOR
+//
+// 5-state Markov chain over pattern classes:
+//   0 = Strong Bull   1 = Mild Bull   2 = Neutral   3 = Mild Bear   4 = Strong Bear
+//
+// Transition matrix T[i,j]  = count of times class-i was followed by class-j
+// Prior: T[i,j] = bayAlpha  (Laplace smoothing — avoids zero probabilities)
+// Posterior: P(next=j | prev=i)  =  T[i,j] / Σ_k T[i,k]
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Class encoding (priority: Strong > Mild > Neutral; bull beats bear on tie) ──
+strongBullPat = p_marubozuBull  or p_bullEngulf    or p_3whiteSol    or p_3outsideUp   or
+                p_mornStar      or p_mornDojiStar   or p_abanBabyBull or p_risingThree  or
+                p_matHold       or p_ihs             or p_dblBot       or p_triBot       or
+                p_rectBull      or p_flatTopBO       or p_gartleyBull  or p_batBull      or
+                p_butterflyBull or p_crabBull        or p_deepCrabBull or p_cypherBull   or
+                p_threedrivesBull
+
+mildBullPat   = p_hammer        or p_invHammer      or p_dfDoji       or p_bullHarami   or
+                p_bullHaramiX   or p_piercing        or p_tweezBot     or p_3insideUp    or
+                p_tasukiGapBull or p_ascTri          or p_fallingWedge or p_bullFlag     or
+                p_bullPennant   or p_cupHandle       or p_roundBot     or p_diamBot      or
+                p_htFlag        or p_chanUp          or p_abcdBull     or p_altBatBull   or
+                p_nenStarBull   or p_fiveZeroBull    or p_xabcdBull    or p_sharkBull
+
+neutralPat    = p_doji          or p_llDoji          or p_spinTop      or p_symTri       or
+                p_expTri        or p_megaphone
+
+mildBearPat   = p_hangMan       or p_shootStar       or p_gsDoji       or p_bearHarami   or
+                p_bearHaramiX   or p_darkCloud        or p_onNeck       or p_inNeck       or
+                p_thrusting     or p_tweezTop         or p_3insideDown  or p_tasukiGapBear or
+                p_dscTri        or p_risingWedge      or p_bearFlag     or p_bearPennant  or
+                p_invCup        or p_chanDown         or p_bumpRun      or p_deadCat      or
+                p_abcdBear      or p_altBatBear       or p_nenStarBear  or p_fiveZeroBear or
+                p_xabcdBear     or p_sharkBear
+
+strongBearPat = p_marubozuBear  or p_bearEngulf      or p_3blackCrow   or p_3outsideDown or
+                p_evenStar      or p_evenDojiStar     or p_abanBabyBear or p_fallingThree or
+                p_ugTwoCrows    or p_hs               or p_dblTop       or p_triTop       or
+                p_rectBear      or p_roundTop         or p_diamTop      or p_gartleyBear  or
+                p_batBear       or p_butterflyBear    or p_crabBear     or p_deepCrabBear or
+                p_cypherBear    or p_threedrivesBear
+
+// Encode current bar (−1 = no pattern)
+int bayCur = strongBullPat ? 0 : mildBullPat ? 1 : neutralPat ? 2 :
+             mildBearPat   ? 3 : strongBearPat ? 4 : -1
+
+// ── Transition matrix (25 cells, persists across bars) ───────────────────────
+var int[]  bayMx       = array.new_int(25, 0)   // init to 0; filled to α on bar 0
+var bool   bayInitDone = false
+var int    bayPrev     = -1                      // class of previous detection
+
+if not bayInitDone
+    for ii = 0 to 24
+        array.set(bayMx, ii, bayAlpha)
+    bayInitDone := true
+
+// Update matrix on each new detection
+if bayCur >= 0
+    if bayPrev >= 0
+        int transIdx = bayPrev * 5 + bayCur
+        array.set(bayMx, transIdx, array.get(bayMx, transIdx) + 1)
+    bayPrev := bayCur
+
+// ── Posterior probabilities for next class ───────────────────────────────────
+var float[] bayPost  = array.new_float(5, 20.0)
+var int     bayBest  = 2
+var float   bayBestP = 20.0
+
+if bayCur >= 0
+    int rTotal = 0
+    for jj = 0 to 4
+        rTotal += array.get(bayMx, bayCur * 5 + jj)
+    float bestP = 0.0
+    int   bestJ = 0
+    for jj = 0 to 4
+        float p = rTotal > 0 ? array.get(bayMx, bayCur * 5 + jj) / float(rTotal) * 100.0 : 20.0
+        array.set(bayPost, jj, p)
+        if p > bestP
+            bestP := p
+            bestJ := jj
+    bayBest  := bestJ
+    bayBestP := bestP
+
+// ── Helper functions ─────────────────────────────────────────────────────────
+bayClassName(c) =>
+    c == 0 ? "Strong Bull" : c == 1 ? "Mild Bull" : c == 2 ? "Neutral" :
+    c == 3 ? "Mild Bear"   : c == 4 ? "Strong Bear" : "—"
+
+bayClassBg(c) =>
+    c == 0 ? color.new(color.lime,   10) :
+    c == 1 ? color.new(color.green,  30) :
+    c == 2 ? color.new(color.silver, 40) :
+    c == 3 ? color.new(color.orange, 20) :
+             color.new(color.red,    10)
+
+probBar(pct) =>
+    int    filled = math.max(0, math.min(10, math.round(pct / 10.0)))
+    string bar    = ""
+    for _b = 1 to 10
+        bar += _b <= filled ? "█" : "░"
+    bar
+
+// ── Bayesian prediction table (bottom-right, 3 cols × 11 rows) ──────────────
+var table bayTbl = table.new(position.bottom_right, 3, 11,
+                             bgcolor=color.new(color.black, 55),
+                             border_color=color.new(color.gray, 50), border_width=1,
+                             frame_color=color.new(color.navy, 30), frame_width=1)
+
+if barstate.islast and showBayes
+    // Row 0 — header
+    table.cell(bayTbl, 0, 0, "Bayesian Predictor",
+               text_color=color.yellow, text_size=size.small,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 1, 0, "P(class)",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 2, 0, "Distribution",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+
+    // Row 1 — current class
+    string curStr = bayCur >= 0 ? bayClassName(bayCur) : "No Pattern"
+    color  curBg  = bayCur >= 0 ? bayClassBg(bayCur)   : color.new(color.gray, 60)
+    table.cell(bayTbl, 0, 1, "Current",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 1, curStr,
+               bgcolor=curBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 1, "B:" + str.tostring(bullSigCount) + " D:" + str.tostring(bearSigCount),
+               text_color=color.gray, text_size=size.tiny)
+
+    // Rows 2–6 — probability for each next class
+    for rr = 0 to 4
+        float pPct = array.get(bayPost, rr)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/omni_architect_pro_unified.pine#L44-L64
+// @type Predictive projection container for Bayesian uncertainty fans.
+// @field paths    Array of divergent probability paths.
+// @field density  Number of fan lines.
+// @field spread   Spread sensitivity.
+// @field fan_col  Rendering colour for the fan.
+type ProjectionFan
+    VectorPath[] paths
+    int density
+    float spread
+    color fan_col
+
+// @type The Bayesian inference core.
+// @field posterior     P(A|B): Updated probability after recent market data.
+// @field success_count Number of trend-aligned outcomes.
+// @field total_events  Total sample size.
+// @field is_validated  True when posterior meets minimum confidence level.
+type BayesianEngine
+    float posterior
+    int success_count
+    int total_events
+    bool is_validated
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/omni_architect_pro_unified.pine#L310-L320
+grp_bay = "Bayesian Fan Configuration"
+l_dens = input.int(12, "Fan Line Density", minval=3, maxval=20, group=grp_bay)
+v_spread = input.float(0.85, "Vector Spread Sensitivity", minval=0.1, group=grp_bay)
+conf_lvl = input.int(60, "Min Confidence %", minval=1, maxval=100, group=grp_bay)
+htf_tf = input.timeframe("D", "HTF Trend Context", group=grp_bay)
+slope_intensity_min = input.float(0.0005, "Slope Intensity Min", minval=0.0, step=0.0001, group=grp_bay)
+
+grp_1bar = "1-Bar Bayesian Forecast"
+stdev_length = input.int(20, "StDev Length", minval=5, group=grp_1bar)
+stdev_mult = input.float(1.5, "StDev Multiplier", minval=0.1, group=grp_1bar)
+show_forecast_label = input.bool(true, "Show Forecast Label", group=grp_1bar)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/omni_architect_pro_unified.pine#L556-L565
+        is_aligned = (htf_bullish and local_bullish) or (not htf_bullish and not local_bullish)
+        intense_enough = slot.metrics.slope_intensity >= slope_intensity_min
+        regime_ok = not use_regime or GM.regime.is_trending
+
+        if intense_enough and regime_ok
+            slot.engine.total_events += 1
+            if is_aligned
+                slot.engine.success_count += 1
+            slot.engine.posterior := f_safe_div(slot.engine.success_count, math.max(slot.engine.total_events, 1), 0.0) * 100.0
+            slot.engine.is_validated := slot.engine.posterior >= conf_lvl
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/differentiated_conic_projection_engine.pine#L14-L19
+type BayesianInference
+    float probBull
+    float probBear
+    float expectedHigh
+    float expectedLow
+    float expectedClose
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/differentiated_conic_projection_engine.pine#L143-L145
+fc_hz  = input.int(20, 'Forecast Horizon (Bars)', minval=2, maxval=100, group=g_kn, tooltip="The number of future bars the Kinematic Engine attempts to project. Longer horizons (40+) are less accurate but show potential cyclical targets.")
+lr_rt  = input.float(0.1, 'Feedback Learn Rate', minval=0.01, maxval=0.5, group=g_kn, tooltip="Bayesian adaptation speed. 0.1 is stable. Use 0.3+ for highly volatile, 'news-driven' markets where the model must pivot its bias quickly.")
+by_lb  = input.int(500, 'Bayesian Lookback', minval=50, group=g_kn, tooltip="The historical sample size for the Bayesian probability engine. 500 bars provides a solid statistical foundation for calculating win-probability distributions.")
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L23-L27
+pPrior      = input.float(0.35, "Prior probability P(H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+pSqueezeLik = input.float(0.75, "Likelihood P(E|H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+pNoiseLik   = input.float(0.40, "Likelihood P(E|¬H)", minval=0.01, maxval=0.99, step=0.01, group=grpBY)
+probThresh  = input.float(0.60, "Posterior threshold", minval=0.10, maxval=0.95, step=0.01, group=grpBY)
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L126-L137
+// ==============================================================================
+// 3. BAYESIAN ENGINE
+// ==============================================================================
+f_calculateBayes(bool evidence, float mtfConfluence) =>
+    priorH = pPrior
+    priorNotH = 1.0 - pPrior
+    effLikH = evidence ? math.max(0.05, pSqueezeLik * math.max(0.25, mtfConfluence)) : (1.0 - pSqueezeLik)
+    effLikNotH = evidence ? math.max(0.05, pNoiseLik * math.max(0.10, 1.0 - mtfConfluence * 0.5)) : (1.0 - pNoiseLik)
+    denom = effLikH * priorH + effLikNotH * priorNotH
+    denom == 0.0 ? 0.5 : (effLikH * priorH) / denom
+
+currentPosterior = f_calculateBayes(isSqueeze, mtfScore)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L166-L170
+type BayesianIntel
+    float posteriorProb
+    float mtfConfluence
+    bool isSignificant
+    string confidenceLabel
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L329-L374
+        posterior = f_calculateBayes(isSqueeze, mtfScore)
+        isProbable = posterior >= probThresh
+        isValidPattern = rimOk and handleOk and sideOk and confirmOk
+        if isValidPattern and not f_isDuplicate(Li, rimPrice)
+            midBar = Ri - (Ri - Li) / 2
+            clusterId = f_bucket(rimPrice, side)
+            cupPts = array.new<chart.point>()
+            array.push(cupPts, chart.point.from_index(Li, rimPrice))
+            array.push(cupPts, chart.point.from_index(midBar, Bp))
+            array.push(cupPts, chart.point.from_index(Ri, rimPrice))
+            hdlPts = array.new<chart.point>()
+            projBar = Hi + (Hi - Ri)
+            array.push(hdlPts, chart.point.from_index(Ri, rimPrice))
+            array.push(hdlPts, chart.point.from_index(Hi, Hp))
+            array.push(hdlPts, chart.point.from_index(projBar, rimPrice))
+            useFill = side == +1 ? bgBull : bgBear
+            useLine = side == +1 ? lnBull : lnBear
+            cupPL = polyline.new(cupPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            hdlPL = polyline.new(hdlPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            line tgtLn = na
+            box tgtBx = na
+            box stopBx = na
+            extendBars = 25
+            zonePad = math.max(syminfo.mintick * 30.0, depth * 0.08)
+            if showTarget
+                tgtColor = side == +1 ? color.new(color.lime, 0) : color.new(color.red, 0)
+                tgtLn := line.new(Ri, tgtPrice, Hi + extendBars, tgtPrice, color=tgtColor, width=targetWidth, style=f_lineStyle(targetStyle))
+                if showZones
+                    tgtBx := box.new(Ri, tgtPrice + zonePad, Hi + extendBars, tgtPrice - zonePad, bgcolor=color.new(tgtColor, 85), border_color=color.new(tgtColor, 20))
+                    stopBx := box.new(Ri, invPrice + zonePad, Hi + extendBars, invPrice - zonePad, bgcolor=color.new(color.gray, 88), border_color=color.new(color.gray, 35))
+            label tag = na
+            if showName
+                patternName = side == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+                txt = patternName + "\nP(H|E): " + str.tostring(posterior, "#.##") + " | MTF: " + str.tostring(mtfScore, "#.##")
+                tagColor = side == +1 ? color.new(color.lime, 72) : color.new(color.red, 72)
+                tag := label.new(midBar, rimPrice, txt, style=label.style_label_center, textcolor=color.white, color=tagColor, size=size.small)
+            pivots = PatternPivots.new(s0, s1, s2, s3)
+            levels = PatternLevels.new(rimPrice, invPrice, tgtPrice)
+            intel = BayesianIntel.new(posterior, mtfScore, isProbable, f_confLabel(posterior))
+            drawings = PatternDrawings.new(cupPL, hdlPL, tgtLn, tgtBx, stopBx, tag)
+            rec = BrewPattern.new(pivots, levels, drawings, intel, side, 1, Li, clusterId)
+            array.push(gc.pool, rec)
+            matrix.set(clusterMatrix, clusterId, 0, matrix.get(clusterMatrix, clusterId, 0) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 1, matrix.get(clusterMatrix, clusterId, 1) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 2, matrix.get(clusterMatrix, clusterId, 2) + (isProbable ? 1.0 : 0.0))
+            matrix.set(clusterMatrix, clusterId, 3, matrix.get(clusterMatrix, clusterId, 3) + posterior)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L384-L405
+fill(pUpper, pLower, color=color.from_gradient(mtfScore, 0.0, 1.0, color.new(color.navy, 92), color.new(color.yellow, 72)), title="MTF Bayesian Gradient")
+
+if showTable and barstate.islast
+    topCluster = f_bestCluster()
+    table.cell(mtfTable, 0, 0, "TF", text_color=color.white)
+    table.cell(mtfTable, 1, 0, "Sqz", text_color=color.white)
+    table.cell(mtfTable, 2, 0, "Sec", text_color=color.white)
+    table.cell(mtfTable, 0, 1, tfLower, text_color=color.silver)
+    table.cell(mtfTable, 1, 1, sqLower ? "YES" : "NO", bgcolor=sqLower ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 1, str.tostring(matrix.get(mtfMatrix, 0, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 2, tfMid1, text_color=color.silver)
+    table.cell(mtfTable, 1, 2, sqMid1 ? "YES" : "NO", bgcolor=sqMid1 ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 2, str.tostring(matrix.get(mtfMatrix, 1, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 3, tfMid2, text_color=color.silver)
+    table.cell(mtfTable, 1, 3, sqMid2 ? "YES" : "NO", bgcolor=sqMid2 ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 3, str.tostring(matrix.get(mtfMatrix, 2, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 4, tfUpper, text_color=color.silver)
+    table.cell(mtfTable, 1, 4, sqUpper ? "YES" : "NO", bgcolor=sqUpper ? color.new(color.yellow, 45) : color.new(color.red, 82))
+    table.cell(mtfTable, 2, 4, str.tostring(matrix.get(mtfMatrix, 3, 1), "#"), text_color=color.silver)
+    table.cell(mtfTable, 0, 5, "Posterior", text_color=color.white)
+    table.cell(mtfTable, 1, 5, str.tostring(currentPosterior, "#.##"), bgcolor=currentPosterior >= probThresh ? color.new(color.lime, 70) : color.new(color.orange, 75))
+    table.cell(mtfTable, 2, 5, "MTF " + str.tostring(mtfScore, "#.##"), text_color=color.white)

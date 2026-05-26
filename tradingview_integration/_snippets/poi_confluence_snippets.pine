@@ -1,0 +1,371 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/scalp_poi_hs_dirac.pine#L3-L76
+iLB=input.int(5,"pivot l",minval=1,group="pivot")
+iRB=input.int(5,"pivot r",minval=1,group="pivot")
+iMP=input.int(12,"max pivots",minval=4,maxval=25,group="pivot")
+iNT=input.float(0.006,"neck tol%",minval=0.001,step=0.001,group="h&s")
+iSS=input.float(0.10,"shoulder sym%",minval=0.01,step=0.01,group="h&s")
+iHW=input.float(2.0,"h&s wt",minval=0.1,step=0.1,group="h&s")
+iRTB=input.int(10,"retest win",minval=1,maxval=50,group="h&s")
+iDTT=input.float(0.008,"dt tol%",minval=0.001,step=0.001,group="dt/db")
+iDMD=input.float(0.015,"valley%",minval=0.005,step=0.001,group="dt/db")
+iDTL=input.int(50,"dt lookback",minval=10,maxval=200,group="dt/db")
+iDTW=input.float(1.5,"dt wt",minval=0.1,step=0.1,group="dt/db")
+iSL=input.int(20,"std len",minval=5,group="stat")
+iAL=input.int(14,"atr len",minval=1,group="stat")
+iRL=input.int(14,"rsi len",minval=2,group="stat")
+iCL=input.int(20,"cmf len",minval=5,group="stat")
+iREL=input.int(50,"reg len",minval=10,maxval=200,group="reg")
+iRBM=input.float(2.0,"reg band mult",minval=0.5,step=0.1,group="reg")
+iR2T=input.float(0.55,"min r2",minval=0.1,step=0.05,group="reg")
+iREW=input.float(1.5,"reg wt",minval=0.1,step=0.1,group="reg")
+iSF=input.bool(true,"slope filt",group="reg")
+iPL=input.int(20,"poly len",minval=5,group="poly")
+iPW=input.float(0.8,"poly wt",minval=0.1,step=0.1,group="poly")
+iJW=input.float(0.4,"jerk wt",minval=0.1,step=0.1,group="poly")
+iDW=input.float(1.0,"dirac w",minval=0.1,step=0.1,group="dirac")
+iDiW=input.float(0.8,"dirac wt",minval=0.1,step=0.1,group="dirac")
+iCS=input.float(2.0,"cosh sc",minval=0.1,step=0.1,group="cosh")
+iCT=input.float(1.05,"cosh thr",minval=1.0,step=0.01,group="cosh")
+iCW=input.float(0.5,"cosh wt",minval=0.1,step=0.1,group="cosh")
+iBSk=input.float(1.3,"bull skew",minval=0.1,step=0.1,group="skew")
+iBRk=input.float(0.7,"bear skew",minval=0.1,step=0.1,group="skew")
+iSKL=input.int(14,"skew len",minval=5,group="skew")
+iSKW=input.float(1.0,"skew wt",minval=0.1,step=0.1,group="skew")
+iDL=input.int(5,"div lb",minval=2,maxval=8,group="div")
+iDVW=input.float(1.2,"div wt",minval=0.1,step=0.1,group="div")
+iCMW=input.float(0.6,"cmf wt",minval=0.1,step=0.1,group="vol")
+iOL=input.int(10,"obv len",minval=3,group="vol")
+iOW=input.float(0.4,"obv wt",minval=0.1,step=0.1,group="vol")
+iUV=input.bool(true,"use vwap",group="vwap")
+iVL=input.int(20,"vwap len",minval=5,group="vwap")
+iVW=input.float(0.6,"vwap wt",minval=0.1,step=0.1,group="vwap")
+iADL=input.int(14,"adx len",minval=2,group="regime")
+iADT=input.float(20.0,"adx thr",minval=5.0,step=1.0,group="regime")
+iMTF=input.timeframe("60","mtf tf",group="regime")
+iMEL=input.int(21,"mtf ema",minval=2,group="regime")
+iUR=input.bool(true,"req trend",group="regime")
+iET=input.float(3.0,"entry thr",minval=0.5,step=0.1,group="entry")
+iED=input.float(1.0,"edge delta",minval=0.1,step=0.1,group="entry")
+iUC=input.bool(true,"adaptive thr",group="entry")
+iCD=input.int(3,"cooldown",minval=0,group="entry")
+iSP=input.float(0.8,"sl%",minval=0.1,step=0.1,group="risk")
+iTP=input.float(1.6,"tp%",minval=0.1,step=0.1,group="risk")
+iUT=input.bool(true,"trail stop",group="risk")
+iTRP=input.float(0.5,"trail%",minval=0.1,step=0.1,group="risk")
+iUVO=input.bool(true,"vol filt",group="filt")
+iVM=input.float(1.5,"vol mult",minval=1.0,step=0.1,group="filt")
+iUA=input.bool(true,"atr filt",group="filt")
+iMAP=input.float(0.25,"min atr%",minval=0.01,step=0.05,group="filt")
+iSPV=input.bool(true,"pivots",group="display")
+iSPO=input.bool(true,"poi lvls",group="display")
+iSBD=input.bool(true,"bands",group="display")
+iSRC=input.bool(true,"reg ch",group="display")
+iSVP=input.bool(true,"vwap",group="display")
+iSLB=input.bool(true,"score lbl",group="display")
+iSTB=input.bool(true,"table",group="display")
+iSDP=input.bool(true,"daily ohlc",group="forecast")
+iS24=input.bool(true,"24h h/l",group="forecast")
+iSFC=input.bool(true,"forecast",group="forecast")
+iBMM=input.float(1.0,"bull mult",minval=0.1,step=0.1,group="forecast")
+iL24=input.int(24,"24h bars",minval=1,maxval=1000,group="forecast")
+iPWT=input.float(0.6,"mpp vwap wt",minval=0.1,maxval=0.9,step=0.1,group="forecast")
+iDYW=input.float(0.8,"daily wt",minval=0.1,step=0.1,group="forecast")
+iFCW=input.float(1.2,"fcast wt",minval=0.1,step=0.1,group="forecast")
+iUML=input.bool(true,"use ml seed",group="ml feed")
+iMLSrc=input.string("majixai/majixai.github.io","ml seed repo",group="ml feed")
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/scalp_poi_hs_dirac.pine#L78-L129
+csh(x,sc)=>
+    ea=math.max(-20.0,math.min(20.0,sc*x))
+    e=math.exp(ea)
+    (e+1.0/e)*0.5
+dlr(x,w)=>
+    w>0.0?1.0/(math.pi*w*(1.0+(x/w)*(x/w))):0.0
+skz(r,bm,rm,ln)=>
+    ag=ta.sma(r,ln)
+    sg=ta.stdev(r,ln)
+    z=sg>MSD?(r-ag)/sg:0.0
+    z>=0.0?z*bm:z*rm
+lrs(src,ln)=>
+    float sx=0.0
+    float sy=0.0
+    float sxy=0.0
+    float sx2=0.0
+    for i=0 to ln-1
+        xi=float(ln-1-i)
+        yi=nz(src[i])
+        sx+=xi
+        sy+=yi
+        sxy+=xi*yi
+        sx2+=xi*xi
+    n=float(ln)
+    det=n*sx2-sx*sx
+    sl=det!=0.0?(n*sxy-sx*sy)/det:0.0
+    ic=(sy-sl*sx)/n
+    ym=sy/n
+    float st=0.0
+    float sr=0.0
+    for i=0 to ln-1
+        xi=float(ln-1-i)
+        yi=nz(src[i])
+        yh=sl*xi+ic
+        st+=(yi-ym)*(yi-ym)
+        sr+=(yi-yh)*(yi-yh)
+    r2=st>MSD?math.max(0.0,1.0-sr/st):0.0
+    se=ln>2?math.sqrt(sr/(n-2.0)):0.0
+    [sl,ic,r2,se]
+pc2(src,ln)=>
+    a=ta.linreg(src,ln,0)
+    b=ta.linreg(src,ln,1)
+    c=ta.linreg(src,ln,2)
+    (a-b)-(b-c)
+pc3(src,ln)=>
+    a=ta.linreg(src,ln,0)
+    b=ta.linreg(src,ln,1)
+    c=ta.linreg(src,ln,2)
+    d=ta.linreg(src,ln,3)
+    ac0=(a-b)-(b-c)
+    ac1=(b-c)-(c-d)
+    ac0-ac1
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/scalp_poi_hs_dirac.pine#L204-L388
+rph=ta.pivothigh(high,iLB,iRB)
+rpl=ta.pivotlow(low,iLB,iRB)
+var float[] pha=array.new_float(0)
+var float[] pla=array.new_float(0)
+var float[] phr=array.new_float(0)
+var float[] plr=array.new_float(0)
+var int[] phb=array.new_int(0)
+var int[] plb=array.new_int(0)
+if not na(rph)
+    array.insert(pha,0,rph)
+    array.insert(phr,0,rv)
+    array.insert(phb,0,bar_index)
+    if array.size(pha)>iMP
+        array.pop(pha)
+        array.pop(phr)
+        array.pop(phb)
+if not na(rpl)
+    array.insert(pla,0,rpl)
+    array.insert(plr,0,rv)
+    array.insert(plb,0,bar_index)
+    if array.size(pla)>iMP
+        array.pop(pla)
+        array.pop(plr)
+        array.pop(plb)
+nr=float(na)
+nr2=float(na)
+ns=float(na)
+ns2=float(na)
+if array.size(pha)>0
+    for i=0 to array.size(pha)-1
+        p=array.get(pha,i)
+        if p>close
+            if na(nr) or p<nr
+                nr2:=nr
+                nr:=p
+            else if na(nr2) or p<nr2
+                nr2:=p
+if array.size(pla)>0
+    for i=0 to array.size(pla)-1
+        p=array.get(pla,i)
+        if p<close
+            if na(ns) or p>ns
+                ns2:=ns
+                ns:=p
+            else if na(ns2) or p>ns2
+                ns2:=p
+pbu=not na(nr) and ta.crossover(close,nr)
+pbd=not na(ns) and ta.crossunder(close,ns)
+var bool hs=false
+var bool ihs=false
+var float hn=na
+var float ihn=na
+var int hbb=na
+var int ibb=na
+hs:=false
+ihs:=false
+if array.size(pha)>=3
+    rs=array.get(pha,0)
+    hd=array.get(pha,1)
+    ls=array.get(pha,2)
+    nk=(ls+rs)*0.5
+    cl=hd>nk*(1.0+iNT)
+    sd=math.max(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close<nk*(1.0-iNT)
+        hs:=true
+        hn:=nk
+        hbb:=bar_index
+if array.size(pla)>=3
+    rs=array.get(pla,0)
+    hd=array.get(pla,1)
+    ls=array.get(pla,2)
+    nk=(ls+rs)*0.5
+    cl=hd<nk*(1.0-iNT)
+    sd=math.min(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close>nk*(1.0+iNT)
+        ihs:=true
+        ihn:=nk
+        ibb:=bar_index
+var bool dts=false
+var bool dbs=false
+var float dtn=na
+var float dbn=na
+dts:=false
+dbs:=false
+if array.size(pha)>=2
+    t1=array.get(pha,0)
+    t2=array.get(pha,1)
+    ta2=(t1+t2)*0.5
+    if ta2>0.0 and math.abs(t1-t2)/ta2<iDTT
+        vlo=ta.lowest(low,iDTL)
+        vd=ta2>0.0?(ta2-vlo)/ta2:0.0
+        if vd>=iDMD and close<vlo*(1.0-iNT)
+            dts:=true
+            dtn:=vlo
+if array.size(pla)>=2
+    b1=array.get(pla,0)
+    b2=array.get(pla,1)
+    ba2=(b1+b2)*0.5
+    if ba2>0.0 and math.abs(b1-b2)/ba2<iDTT
+        phi2=ta.highest(high,iDTL)
+        pd2=ba2>0.0?(phi2-ba2)/ba2:0.0
+        if pd2>=iDMD and close>phi2*(1.0+iNT)
+            dbs:=true
+            dbn:=phi2
+rts=not na(hbb) and (bar_index-hbb)<=iRTB and not na(hn) and close>=hn*(1.0-iNT*2.0) and close<=hn*(1.0+iNT*2.0)
+rtl=not na(ibb) and (bar_index-ibb)<=iRTB and not na(ihn) and close>=ihn*(1.0-iNT*2.0) and close<=ihn*(1.0+iNT*2.0)
+dw=iDW*at
+dre=not na(nr)?dlr(close-nr,dw):0.0
+dsu=not na(ns)?dlr(close-ns,dw):0.0
+dn=dw>0.0?math.pi*dw:1.0
+drn=dre*dn
+dsn=dsu*dn
+ddo=not na(dO)?dlr(close-dO,dw)*dn:0.0
+ddh=not na(dH)?dlr(close-dH,dw)*dn:0.0
+ddl=not na(dL)?dlr(close-dL,dw)*dn:0.0
+dph=not na(pdH)?dlr(close-pdH,dw)*dn:0.0
+dpl=not na(pdL)?dlr(close-pdL,dw)*dn:0.0
+dpc=not na(pdC)?dlr(close-pdC,dw)*dn:0.0
+d2h=dlr(close-h24,dw)*dn
+d2l=dlr(close-l24,dw)*dn
+dmp=not na(mpp)?dlr(close-mpp,dw)*dn:0.0
+dbt=not na(mbt)?dlr(close-mbt,dw)*dn:0.0
+dybr=((not na(dO) and close>=dO)?ddo:0.0)+((not na(dL) and close>=dL)?ddl:0.0)+((not na(pdL) and close>=pdL)?dpl:0.0)+((not na(pdC) and close>=pdC)?dpc:0.0)+(close>=l24?d2l:0.0)+dmp*0.5
+dybr*=iDYW
+dyrr=((not na(dH) and close<=dH)?ddh:0.0)+((not na(pdH) and close<=pdH)?dph:0.0)+(close<=h24?d2h:0.0)+dmp*0.5
+dyrr*=iDYW
+fbr=not na(mbt) and close<mbt?math.min((mbt-close)/math.max(adr,at),1.0)*iFCW:0.0
+fbrr=not na(mbt) and close>=mbt?dbt*iFCW:0.0
+cm=csh(br,iCS)
+cf=cm>iCT
+sz=skz(br,iBSk,iBRk,iSKL)
+var bool rbd=false
+var bool rsd=false
+rbd:=false
+rsd:=false
+if array.size(pla)>=2
+    mx=math.min(iDL,array.size(pla)-1)
+    for i=1 to mx
+        p0=array.get(pla,0)
+        pi=array.get(pla,i)
+        r0=array.get(plr,0)
+        ri=array.get(plr,i)
+        if p0<pi and r0>ri
+            rbd:=true
+if array.size(pha)>=2
+    mx=math.min(iDL,array.size(pha)-1)
+    for i=1 to mx
+        p0=array.get(pha,0)
+        pi=array.get(pha,i)
+        r0=array.get(phr,0)
+        ri=array.get(phr,i)
+        if p0>pi and r0<ri
+            rsd:=true
+cbs=cv>0.1?math.min(cv,1.0)*iCMW:0.0
+cbrs=cv<-0.1?math.min(-cv,1.0)*iCMW:0.0
+obs=os>0.0?math.min(os*10.0,1.0)*iOW:0.0
+obrs=os<0.0?math.min(-os*10.0,1.0)*iOW:0.0
+vbs=iUV and vz>0.0?math.min(vz,2.0)*iVW:0.0
+vrs=iUV and vz<0.0?math.min(-vz,2.0)*iVW:0.0
+rm=it?1.0:0.5
+mbb=mb?0.3:0.0
+mrb=mr?0.3:0.0
+rb=(ihs?iHW:0.0)+(rtl?iHW*0.6:0.0)+(dbs?iDTW:0.0)+rgb+cvbr+(pbu[1]?1.5:0.0)+dsn*iDiW+(cf and br>0?iCW:0.0)+(sz>0.0?sz*iSKW:0.0)+(rbd?iDVW:0.0)+cbs+obs+vbs+mbb+dybr+fbr
+rba=(hs?iHW:0.0)+(rts?iHW*0.6:0.0)+(dts?iDTW:0.0)+rgnb+cvrr+(pbd[1]?1.5:0.0)+drn*iDiW+(cf and br<0?iCW:0.0)+(sz<0.0?math.abs(sz)*iSKW:0.0)+(rsd?iDVW:0.0)+cbrs+obrs+vrs+mrb+dyrr+fbrr
+bs=rb*rm
+brs=rba*rm
+cbu=(ihs?1:0)+(dbs?1:0)+(su?1:0)+(cvbr>0.0?1:0)+(rbd?1:0)+(cv>0.1?1:0)+(os>0?1:0)+(vz>0.0?1:0)+(mb?1:0)+(close<mpp?1:0)
+cbe=(hs?1:0)+(dts?1:0)+(sdn?1:0)+(cvrr>0.0?1:0)+(rsd?1:0)+(cv<-0.1?1:0)+(os<0?1:0)+(vz<0.0?1:0)+(mr?1:0)+(close>mpp?1:0)
+ca=iUC?0.5:0.0
+dtb=iET-(cbu>=5?ca:0.0)
+dtr=iET-(cbe>=5?ca:0.0)
+vok=not iUVO or volume>vs*iVM
+aok=not iUA or atp>=iMAP
+rok=not iUR or it
+sok=not iSF or (bs>brs?su:true) or (brs>bs?sdn:true)
+var int bae=999
+if strategy.position_size==0 and strategy.position_size[1]!=0
+    bae:=0
+else
+    bae+=1
+cok=bae>=iCD
+le=bs>=dtb and bs-brs>=iED and vok and aok and rok and sok and cok
+se=brs>=dtr and brs-bs>=iED and vok and aok and rok and sok and cok
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/scalp_poi_hs_dirac.pine#L415-L460
+alertcondition(le,title="long",message="psv2 long "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(se,title="short",message="psv2 short "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(hs,title="h&s",message="psv2 h&s "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(ihs,title="ih&s",message="psv2 ih&s "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(dts,title="dt",message="psv2 dt "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(dbs,title="db",message="psv2 db "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mbt) and ta.crossover(close,mbt),title="bull tgt",message="psv2 bull tgt "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mpp) and ta.cross(close,mpp),title="mpp",message="psv2 mpp cross "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(pdH) and ta.crossover(close,pdH),title="pdh break",message="psv2 pdh break "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(pdL) and ta.crossunder(close,pdL),title="pdl break",message="psv2 pdl break "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+alertcondition(not na(mlC) and ta.cross(close,mlC),title="ml cross",message="psv2 ml cross "+str.lower(syminfo.ticker)+" @"+str.tostring(close))
+p1u=plot(iSBD?u1:na,"1su",color=color.new(color.teal,70),linewidth=1)
+p1l=plot(iSBD?l1:na,"1sl",color=color.new(color.teal,70),linewidth=1)
+p2u=plot(iSBD?u2:na,"2su",color=color.new(color.orange,70),linewidth=1)
+p2l=plot(iSBD?l2:na,"2sl",color=color.new(color.orange,70),linewidth=1)
+p3u=plot(iSBD?u3:na,"3su",color=color.new(color.red,75),linewidth=1)
+p3l=plot(iSBD?l3:na,"3sl",color=color.new(color.red,75),linewidth=1)
+fill(p1u,p1l,color=color.new(color.teal,92))
+fill(p2u,p2l,color=color.new(color.orange,95))
+fill(p3u,p3l,color=color.new(color.red,97))
+prc=plot(iSRC?lrl:na,"reg",color=color.new(color.blue,20),linewidth=2)
+prcu=plot(iSRC?lru:na,"regu",color=color.new(color.blue,55),linewidth=1)
+prcl=plot(iSRC?lrlo:na,"regl",color=color.new(color.blue,55),linewidth=1)
+fill(prcu,prcl,color=color.new(color.blue,90))
+plot(iSVP?vv:na,"vwap",color=color.new(color.purple,20),linewidth=1,style=plot.style_stepline)
+plot(iSPO and not na(sop)?sop:na,"sess open",color=color.new(color.yellow,40),linewidth=1,style=plot.style_stepline)
+plot(iSPO and not na(nr)?nr:na,"r1",color=color.new(color.red,30),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(nr2)?nr2:na,"r2",color=color.new(color.red,65),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(ns)?ns:na,"s1",color=color.new(color.green,30),style=plot.style_stepline,linewidth=1)
+plot(iSPO and not na(ns2)?ns2:na,"s2",color=color.new(color.green,65),style=plot.style_stepline,linewidth=1)
+plot(not na(hn)?hn:na,"hsnk",color=color.new(color.fuchsia,40),linewidth=1,style=plot.style_dashed)
+plot(not na(ihn)?ihn:na,"ihsnk",color=color.new(color.lime,40),linewidth=1,style=plot.style_dashed)
+plot(not na(dtn)?dtn:na,"dtnk",color=color.new(color.maroon,50),linewidth=1,style=plot.style_dashed)
+plot(not na(dbn)?dbn:na,"dbnk",color=color.new(color.navy,50),linewidth=1,style=plot.style_dashed)
+plot(iUT and not na(tlo)?tlo:na,"trl",color=color.new(color.green,30),linewidth=1,style=plot.style_circles)
+plot(iUT and not na(tsh)?tsh:na,"trs",color=color.new(color.red,30),linewidth=1,style=plot.style_circles)
+plot(iSDP and not na(dO)?dO:na,"day o",color=color.new(color.yellow,20),linewidth=1,style=plot.style_stepline)
+plot(iSDP and not na(dH)?dH:na,"day h",color=color.new(color.lime,40),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(dL)?dL:na,"day l",color=color.new(color.red,40),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdH)?pdH:na,"pdh",color=color.new(color.lime,60),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdL)?pdL:na,"pdl",color=color.new(color.red,60),linewidth=1,style=plot.style_dashed)
+plot(iSDP and not na(pdC)?pdC:na,"pdc",color=color.new(color.silver,40),linewidth=1,style=plot.style_dashed)
+plot(iS24?h24:na,"24h",color=color.new(color.aqua,30),linewidth=1,style=plot.style_stepline)
+plot(iS24?l24:na,"24l",color=color.new(color.aqua,30),linewidth=1,style=plot.style_stepline)
+plot(iSFC and not na(mbt)?mbt:na,"bull tgt",color=color.new(color.green,0),linewidth=2,style=plot.style_dashed)
+plot(iSFC?mpp:na,"mpp",color=color.new(color.orange,0),linewidth=2,style=plot.style_stepline)

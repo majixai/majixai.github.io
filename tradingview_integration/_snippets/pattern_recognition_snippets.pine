@@ -1,0 +1,723 @@
+// Extracted from majixai/majixai.github.io origin/main
+// Each block preserves only the functionality-specific source lines noted below.
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/pattern_recognition.pine#L26-L53
+var GRP_CS = "Candlestick Patterns"
+showSingle   = input.bool(true,  "Single-Bar Candle Patterns",  group=GRP_CS)
+showTwoBar   = input.bool(true,  "Two-Bar Candle Patterns",     group=GRP_CS)
+showMultiBar = input.bool(true,  "Multi-Bar Candle Patterns",   group=GRP_CS)
+
+var GRP_CH = "Classic Chart Patterns"
+showChart    = input.bool(true,  "Classic Chart Patterns",      group=GRP_CH)
+pLeft        = input.int(5,      "Pivot Left Bars",             minval=2, maxval=30, group=GRP_CH)
+pRight       = input.int(5,      "Pivot Right Bars",            minval=2, maxval=30, group=GRP_CH)
+maxPivots    = input.int(10,     "Max Pivot History",           minval=5, maxval=20, group=GRP_CH)
+tolPct       = input.float(0.03, "Pattern Tolerance (0–1)",     minval=0.005, maxval=0.15, step=0.005, group=GRP_CH)
+
+var GRP_HM = "Harmonic Patterns"
+showHarm     = input.bool(true,  "Harmonic Patterns",           group=GRP_HM)
+harmTol      = input.float(0.05, "Fibonacci Tolerance (0–1)",   minval=0.01, maxval=0.20, step=0.005, group=GRP_HM)
+
+var GRP_VZ = "Visualisation"
+lSzStr       = input.string("small", "Label Size",              options=["tiny","small","normal"], group=GRP_VZ)
+showBullLbl  = input.bool(true,  "Show Bullish Labels",         group=GRP_VZ)
+showBearLbl  = input.bool(true,  "Show Bearish Labels",         group=GRP_VZ)
+atrLen       = input.int(14,     "ATR Length",                  minval=2, group=GRP_VZ)
+
+var GRP_CX = "Complex Situations"
+showCplx     = input.bool(true,  "Complex Situation Labels",    group=GRP_CX)
+showTrend    = input.bool(true,  "EMA Trend Lines (20/50/200)", group=GRP_CX)
+hcMinSigs    = input.int(2,      "Min Signals for HC Label",    minval=1, maxval=6, group=GRP_CX)
+showBgShade  = input.bool(true,  "Background Trend Shade",      group=GRP_CX)
+
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/pattern_recognition.pine#L104-L169
+phRaw = ta.pivothigh(high, pLeft, pRight)
+plRaw = ta.pivotlow(low,  pLeft, pRight)
+
+var float[] phP = array.new_float(0)   // pivot-high prices (newest at [0])
+var int[]   phB = array.new_int(0)     // pivot-high bar indices
+var float[] plP = array.new_float(0)   // pivot-low  prices
+var int[]   plB = array.new_int(0)     // pivot-low  bar indices
+
+if not na(phRaw)
+    array.unshift(phP, phRaw)
+    array.unshift(phB, bar_index - pRight)
+    if array.size(phP) > maxPivots
+        array.pop(phP)
+        array.pop(phB)
+
+if not na(plRaw)
+    array.unshift(plP, plRaw)
+    array.unshift(plB, bar_index - pRight)
+    if array.size(plP) > maxPivots
+        array.pop(plP)
+        array.pop(plB)
+
+nPH = array.size(phP)
+nPL = array.size(plP)
+
+// Safe accessors (return na when index out of range)
+getPH(i) => i < nPH ? array.get(phP, i) : na
+getPL(i) => i < nPL ? array.get(plP, i) : na
+getBH(i) => i < nPH ? array.get(phB, i) : na
+getBL(i) => i < nPL ? array.get(plB, i) : na
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §4  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+lSize = lSzStr == "tiny" ? size.tiny : lSzStr == "normal" ? size.normal : size.small
+
+bullLabel(txt, ypos) =>
+    if showBullLbl
+        label.new(bar_index, ypos, txt,
+                  style=label.style_label_up,
+                  color=color.new(color.green, 15),
+                  textcolor=color.white, size=lSize)
+
+bearLabel(txt, ypos) =>
+    if showBearLbl
+        label.new(bar_index, ypos, txt,
+                  style=label.style_label_down,
+                  color=color.new(color.red, 15),
+                  textcolor=color.white, size=lSize)
+
+neutLabel(txt, ypos) =>
+    label.new(bar_index, ypos, txt,
+              style=label.style_label_down,
+              color=color.new(color.gray, 20),
+              textcolor=color.white, size=lSize)
+
+// Is ratio ≈ fib within harmTol?
+fibOk(val, ref, fib) =>
+    not na(val) and not na(ref) and ref != 0 and
+    math.abs(val / ref - fib) <= harmTol
+
+// Are two prices within tolPct of each other?
+pctOk(a, b) =>
+    not na(a) and not na(b) and math.max(a, b) != 0 and
+    math.abs(a - b) / math.max(a, b) <= tolPct
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/pattern_recognition.pine#L520-L744
+p_cupHandle = showChart and newPH and nPH >= 2 and nPL >= 1 and
+              pctOk(ph0, ph1v) and
+              pl0 < math.min(ph0, ph1v) and
+              ph0 - pl0 >= (ph1v - pl0) * 0.20 and             // depth ≥ 20%
+              close > ph0 * (1 - tolPct * 2)                   // approaching breakout
+
+if p_cupHandle
+    bullLabel("CUP", low)
+
+// ── 52. Inverted Cup & Handle ────────────────────────────────────────────────
+p_invCup = showChart and newPL and nPL >= 2 and nPH >= 1 and
+           pctOk(pl0, pl1v) and
+           ph0 > math.max(pl0, pl1v) and
+           pl0 - ph0 >= (ph0 - pl1v) * 0.20 and
+           close < pl0 * (1 + tolPct * 2)
+
+if p_invCup
+    bearLabel("iCUP", high)
+
+// ── 53. Ascending Triangle ───────────────────────────────────────────────────
+// Flat resistance (equal pivot highs) + rising support (rising pivot lows)
+p_ascTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           pctOk(ph0, ph1v) and                                // flat highs
+           pl0 > pl1v and                                      // rising lows
+           close > ph0 * (1 - tolPct)                          // approaching resistance
+
+if p_ascTri
+    bullLabel("ASC△", low)
+
+// ── 54. Descending Triangle ──────────────────────────────────────────────────
+p_dscTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           pctOk(pl0, pl1v) and                                // flat lows
+           ph0 < ph1v and                                      // falling highs
+           close < pl0 * (1 + tolPct)                          // approaching support
+
+if p_dscTri
+    bearLabel("DSC▽", high)
+
+// ── 55. Symmetrical Triangle ─────────────────────────────────────────────────
+// Falling highs + rising lows (convergence)
+p_symTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 < ph1v and pl0 > pl1v and
+           not pctOk(ph0, ph1v) and not pctOk(pl0, pl1v)       // still diverging from flat
+
+if p_symTri
+    neutLabel("SYM△", (ph0 + pl0) / 2)
+
+// ── 56. Expanding Triangle (Broadening) ──────────────────────────────────────
+p_expTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v and pl0 < pl1v                           // expanding highs and lows
+
+if p_expTri
+    neutLabel("EXP△", (ph0 + pl0) / 2)
+
+// ── 57. Rising Wedge (bearish) ────────────────────────────────────────────────
+// Both highs and lows rising, but highs and lows converging
+p_risingWedge = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+                ph0 > ph1v and pl0 > pl1v and
+                (ph0 - pl0) < (ph1v - pl1v) * 0.90             // narrowing range
+
+if p_risingWedge
+    bearLabel("R.WDG↓", high)
+
+// ── 58. Falling Wedge (bullish) ───────────────────────────────────────────────
+p_fallingWedge = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+                 ph0 < ph1v and pl0 < pl1v and
+                 (ph0 - pl0) < (ph1v - pl1v) * 0.90             // narrowing range
+
+if p_fallingWedge
+    bullLabel("F.WDG↑", low)
+
+// ── 59. Bull Flag ─────────────────────────────────────────────────────────────
+// Strong upward pole, then shallow pullback channel
+p_bullFlag = showChart and newPL and nPH >= 2 and nPL >= 2 and
+             ph1v > pl1v * 1.05 and                            // pole exists
+             ph0 < ph1v and pl0 > pl1v and                     // downward drift channel
+             (ph0 - pl0) < (ph1v - pl1v) * 0.60               // channel shallower than pole
+
+if p_bullFlag
+    bullLabel("BULL♦", low)
+
+// ── 60. Bear Flag ─────────────────────────────────────────────────────────────
+p_bearFlag = showChart and newPH and nPH >= 2 and nPL >= 2 and
+             pl1v < ph1v * 0.95 and                            // pole exists
+             pl0 > pl1v and ph0 < ph1v and                     // upward drift channel
+             (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bearFlag
+    bearLabel("BEAR♦", high)
+
+// ── 61. Bull Pennant ──────────────────────────────────────────────────────────
+// Strong pole + symmetrical triangle consolidation
+p_bullPennant = showChart and newPivot and nPH >= 3 and nPL >= 2 and
+                ph2v < ph1v and pl2v < ph2v and                // pole: ph2 rises above pl2
+                ph0 < ph1v and pl0 > pl1v and                  // convergence after pole
+                (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bullPennant
+    bullLabel("B.PNT↑", low)
+
+// ── 62. Bear Pennant ──────────────────────────────────────────────────────────
+p_bearPennant = showChart and newPivot and nPH >= 2 and nPL >= 3 and
+                pl2v > pl1v and ph2v > pl2v and                // pole: pl2 drops below ph2
+                ph0 < ph1v and pl0 > pl1v and
+                (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bearPennant
+    bearLabel("B.PNT↓", high)
+
+// ── 63. Rounding Bottom (Saucer) ─────────────────────────────────────────────
+// Lows form a U-shape: middle low is deepest, sides rising symmetrically
+p_roundBot = showChart and newPL and nPL >= 4 and
+             pl2v < pl3v and pl2v < pl1v and pl2v < pl0 and   // lowest in middle
+             pl0 > pl1v and pl3v > pl2v                        // symmetric rise
+
+if p_roundBot
+    bullLabel("SAUC↑", low)
+
+// ── 64. Rounding Top ──────────────────────────────────────────────────────────
+p_roundTop = showChart and newPH and nPH >= 4 and
+             ph2v > ph3v and ph2v > ph1v and ph2v > ph0 and   // highest in middle
+             ph0 < ph1v and ph3v < ph2v                        // symmetric fall
+
+if p_roundTop
+    bearLabel("RTOP↓", high)
+
+// ── 65. Rectangle Bullish Break ───────────────────────────────────────────────
+// Price contained between flat highs and flat lows, then breaks up
+p_rectBull = showChart and newPH and nPH >= 2 and nPL >= 2 and
+             pctOk(ph0, ph1v) and pctOk(pl0, pl1v) and        // flat bands
+             close > ph0 * (1 + tolPct)                        // upside breakout
+
+if p_rectBull
+    bullLabel("RECT↑", low)
+
+// ── 66. Rectangle Bearish Break ───────────────────────────────────────────────
+p_rectBear = showChart and newPL and nPH >= 2 and nPL >= 2 and
+             pctOk(ph0, ph1v) and pctOk(pl0, pl1v) and
+             close < pl0 * (1 - tolPct)                        // downside breakout
+
+if p_rectBear
+    bearLabel("RECT↓", high)
+
+// ── 67. Diamond Top ───────────────────────────────────────────────────────────
+// Broadening then narrowing price action at a top
+p_diamTop = showChart and newPH and nPH >= 3 and nPL >= 3 and
+            ph1v > ph2v and ph1v > ph0 and                     // head is tallest
+            pl2v > pl1v and pl0 > pl1v and                     // lows V-shape
+            pctOk(ph0, ph2v) and pctOk(pl0, pl2v)              // symmetric shoulders/feet
+
+if p_diamTop
+    bearLabel("DIAM↓", high)
+
+// ── 68. Diamond Bottom ────────────────────────────────────────────────────────
+p_diamBot = showChart and newPL and nPL >= 3 and nPH >= 3 and
+            pl1v < pl2v and pl1v < pl0 and
+            ph2v < ph1v and ph0 < ph1v and
+            pctOk(pl0, pl2v) and pctOk(ph0, ph2v)
+
+if p_diamBot
+    bullLabel("DIAM↑", low)
+
+// ── 69. Bump and Run Reversal Top ─────────────────────────────────────────────
+// Sharp rally (bump) followed by a gradual decline through lead-in trendline
+p_bumpRun = showChart and newPH and nPH >= 2 and nPL >= 2 and
+            ph0 > ph1v * (1 + tolPct*3) and                    // bump: sharp new high
+            close < pl0                                         // price falling below support
+
+if p_bumpRun
+    bearLabel("BUMP↓", high)
+
+// ── 70. Dead Cat Bounce ───────────────────────────────────────────────────────
+// Sharp drop, brief bounce that barely retraces, then continues lower
+p_deadCat = showChart and newPH and nPH >= 2 and nPL >= 2 and
+            pl0 < pl1v and                                      // prior low broken
+            ph0 < ph1v and                                      // bounce doesn't reach prior high
+            ph0 - pl0 < (ph1v - pl1v) * 0.50 and              // bounce < 50% of prior move
+            close < pl0 * (1 + tolPct)                         // price back near lows
+
+if p_deadCat
+    bearLabel("DCB↓", high)
+
+// ── 71. Flag / Pole High-Tight ────────────────────────────────────────────────
+// Very short, tight flag after strong pole — strong continuation
+p_htFlag = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v * (1 + tolPct) and                       // new high pole
+           (ph0 - pl0) < atrV * 3 and                          // tight channel
+           close > ph0 * (1 - tolPct)                          // at top of flag
+
+if p_htFlag
+    bullLabel("HTF↑", low)
+
+// ── 72. Channel Up (Parallel) ────────────────────────────────────────────────
+// Pivot highs and pivot lows both rising in parallel
+p_chanUp = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v and pl0 > pl1v and
+           pctOk(ph0 - pl0, ph1v - pl1v)                       // channel width stable
+
+if p_chanUp
+    bullLabel("CH↑", low)
+
+// ── 73. Channel Down (Parallel) ──────────────────────────────────────────────
+p_chanDown = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+             ph0 < ph1v and pl0 < pl1v and
+             pctOk(ph0 - pl0, ph1v - pl1v)
+
+if p_chanDown
+    bearLabel("CH↓", high)
+
+// ── 74. Megaphone (Broadening Wedge) ─────────────────────────────────────────
+// Highs rising, lows falling — expanding volatility
+p_megaphone = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+              ph0 > ph1v and pl0 < pl1v and
+              (ph0 - pl0) > (ph1v - pl1v) * 1.15               // clearly expanding
+
+if p_megaphone
+    neutLabel("MEGA", (ph0 + pl0) / 2)
+
+// ── 75. Flat Top Breakout ─────────────────────────────────────────────────────
+p_flatTopBO = showChart and newPH and nPH >= 3 and
+              pctOk(ph0, ph1v) and pctOk(ph1v, ph2v) and
+              close > ph0 * (1 + tolPct)                        // breakout above flat top
+
+if p_flatTopBO
+    bullLabel("FLT↑", low)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/omni_architect_pro_unified.pine#L182-L275
+// @function Detect bearish Head & Shoulders using the last three pivot highs.
+// Updates neckline and alert label on the provided HS_Pattern when found.
+// @returns true on the bar when a valid H&S geometry is confirmed.
+f_detect_hs(var HS_Pattern hs_pat, int pivot_left, int pivot_right, float tolerance_pct) =>
+    float ph = ta.pivothigh(high, pivot_left, pivot_right)
+    if not na(ph)
+        f_push_point(hs_pat.pts, bar_index - pivot_right, ph, 7)
+    has_hs = false
+    if hs_pat.pts.size() >= 3
+        p_l = hs_pat.pts.get(hs_pat.pts.size() - 3)
+        p_h = hs_pat.pts.get(hs_pat.pts.size() - 2)
+        p_r = hs_pat.pts.get(hs_pat.pts.size() - 1)
+        ls_ok = p_h.y > p_l.y
+        rs_ok = p_h.y > p_r.y
+        shoulder_diff = math.abs(p_l.y - p_r.y)
+        shoulder_ok = shoulder_diff <= (p_h.y * tolerance_pct * 0.01)
+        has_hs := ls_ok and rs_ok and shoulder_ok
+        if has_hs
+            neck_y = (p_l.y + p_r.y) * 0.5
+            line.set_xy1(hs_pat.neckline, p_l.x, neck_y)
+            line.set_xy2(hs_pat.neckline, p_r.x, neck_y)
+            label.set_x(hs_pat.alert_lbl, p_h.x)
+            label.set_y(hs_pat.alert_lbl, p_h.y)
+            label.set_text(hs_pat.alert_lbl, "H&S")
+            label.set_style(hs_pat.alert_lbl, label.style_label_down)
+    has_hs
+
+// @function Detect bullish Inverse Head & Shoulders using the last three pivot lows.
+// Mirrors f_detect_hs geometry on the low side.
+// @returns true on the bar when a valid iH&S geometry is confirmed.
+f_detect_ihs(var HS_Pattern ihs_pat, int pivot_left, int pivot_right, float tolerance_pct) =>
+    float pl = ta.pivotlow(low, pivot_left, pivot_right)
+    if not na(pl)
+        f_push_point(ihs_pat.pts, bar_index - pivot_right, pl, 7)
+    has_ihs = false
+    if ihs_pat.pts.size() >= 3
+        p_l = ihs_pat.pts.get(ihs_pat.pts.size() - 3)
+        p_h = ihs_pat.pts.get(ihs_pat.pts.size() - 2)
+        p_r = ihs_pat.pts.get(ihs_pat.pts.size() - 1)
+        ls_ok = p_h.y < p_l.y
+        rs_ok = p_h.y < p_r.y
+        shoulder_diff = math.abs(p_l.y - p_r.y)
+        shoulder_ok = shoulder_diff <= (math.abs(p_h.y) * tolerance_pct * 0.01)
+        has_ihs := ls_ok and rs_ok and shoulder_ok
+        if has_ihs
+            neck_y = (p_l.y + p_r.y) * 0.5
+            line.set_xy1(ihs_pat.neckline, p_l.x, neck_y)
+            line.set_xy2(ihs_pat.neckline, p_r.x, neck_y)
+            label.set_x(ihs_pat.alert_lbl, p_h.x)
+            label.set_y(ihs_pat.alert_lbl, p_h.y)
+            label.set_text(ihs_pat.alert_lbl, "iH&S")
+            label.set_style(ihs_pat.alert_lbl, label.style_label_up)
+    has_ihs
+
+// @function Detect Double Top using the last two pivot highs.
+// Peaks within tolerance_pct of each other and a valley >= min_depth_pct below.
+// @returns true when a valid double-top geometry is satisfied.
+f_detect_double_top(var DoublePat dt_pat, int pivot_left, int pivot_right, float tolerance_pct, float min_depth_pct) =>
+    float ph = ta.pivothigh(high, pivot_left, pivot_right)
+    if not na(ph)
+        f_push_point(dt_pat.peaks, bar_index - pivot_right, ph, 4)
+    confirmed = false
+    if dt_pat.peaks.size() >= 2
+        pk1 = dt_pat.peaks.get(dt_pat.peaks.size() - 2)
+        pk2 = dt_pat.peaks.get(dt_pat.peaks.size() - 1)
+        price_diff_pct = math.abs(pk1.y - pk2.y) / math.max(pk1.y, syminfo.mintick) * 100.0
+        valley_low = ta.lowest(low, math.max(1, pk2.x - pk1.x))
+        depth_pct = (math.min(pk1.y, pk2.y) - valley_low) / math.max(math.min(pk1.y, pk2.y), syminfo.mintick) * 100.0
+        confirmed := price_diff_pct <= tolerance_pct and depth_pct >= min_depth_pct
+        if confirmed
+            dt_pat.confirmed := true
+            dt_pat.target := math.min(pk1.y, pk2.y) - (math.min(pk1.y, pk2.y) - valley_low)
+            line.set_xy1(dt_pat.ln_left, pk1.x, pk1.y)
+            line.set_xy2(dt_pat.ln_left, pk1.x, valley_low)
+            line.set_xy1(dt_pat.ln_right, pk2.x, pk2.y)
+            line.set_xy2(dt_pat.ln_right, pk2.x, valley_low)
+            line.set_xy1(dt_pat.ln_neck, pk1.x, valley_low)
+            line.set_xy2(dt_pat.ln_neck, pk2.x, valley_low)
+            label.set_x(dt_pat.lbl, (pk1.x + pk2.x) / 2)
+            label.set_y(dt_pat.lbl, math.max(pk1.y, pk2.y))
+            label.set_text(dt_pat.lbl, "DT")
+            label.set_style(dt_pat.lbl, label.style_label_down)
+    confirmed
+
+// @function Detect Double Bottom using the last two pivot lows.
+// Troughs within tolerance_pct of each other and a peak >= min_depth_pct above.
+// @returns true when a valid double-bottom geometry is satisfied.
+f_detect_double_bottom(var DoublePat db_pat, int pivot_left, int pivot_right, float tolerance_pct, float min_depth_pct) =>
+    float pl = ta.pivotlow(low, pivot_left, pivot_right)
+    if not na(pl)
+        f_push_point(db_pat.peaks, bar_index - pivot_right, pl, 4)
+    confirmed = false
+    if db_pat.peaks.size() >= 2
+        tr1 = db_pat.peaks.get(db_pat.peaks.size() - 2)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/recursive_nested_matrix_engine.pine#L250-L392
+// --- 9A. MEGA-EXPANSION  (higher-highs + lower-lows divergence) ---
+f_detect_expansion(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 3
+        MatrixPoint p0 = array.get(phs, 0)
+        MatrixPoint p1 = array.get(phs, 1)
+        MatrixPoint p2 = array.get(phs, 2)
+        MatrixPoint l0 = array.get(pls, 0)
+        MatrixPoint l1 = array.get(pls, 1)
+        // Condition: two consecutive HH + two consecutive LL
+        if p0.y > p1.y and p1.y > p2.y and l0.y < l1.y
+            VectorSegment[] segs_up   = array.new<VectorSegment>()
+            VectorSegment[] segs_down = array.new<VectorSegment>()
+            segs_up.push(f_make_segment(p2, p1))
+            segs_up.push(f_make_segment(p1, p0))
+            segs_down.push(f_make_segment(l1, l0))
+            SwingPath up_path   = f_make_path(segs_up,   p2.x, p0.x)
+            SwingPath down_path = f_make_path(segs_down, l1.x, l0.x)
+            bool bullish        = close > l0.y
+            float tgt           = p0.y + (p0.y - l0.y) * 1.618
+            float stp           = l0.y - atr_val
+            float inv           = l1.y - atr_val * 2.0
+            float rr            = math.abs(close - stp) != 0 ? math.abs(tgt - close) / math.abs(close - stp) : 0.0
+            float vw            = math.max(0.0, math.min(1.0, (p0.norm_vol + l0.norm_vol) / 4.0 + 0.5))
+            float conf          = f_confidence(matrix.get(GM.corr_matrix, 0, 1), vw, bullish)
+            result := PatternManifest.new("MEGA-EXPANSION", up_path, down_path,
+                         tgt, stp, inv, conf, vw, rr, bullish, true,
+                         bullish ? color.lime : color.red)
+    result
+
+// --- 9B. COMPRESSION  (converging highs and lows → pennant / triangle) ---
+f_detect_compression(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 3
+        MatrixPoint p0 = array.get(phs, 0)
+        MatrixPoint p1 = array.get(phs, 1)
+        MatrixPoint l0 = array.get(pls, 0)
+        MatrixPoint l1 = array.get(pls, 1)
+        // Condition: lower-highs AND higher-lows (wedge / pennant)
+        if p0.y < p1.y and l0.y > l1.y
+            VectorSegment[] segs_res = array.new<VectorSegment>()
+            VectorSegment[] segs_sup = array.new<VectorSegment>()
+            segs_res.push(f_make_segment(p1, p0))
+            segs_sup.push(f_make_segment(l1, l0))
+            SwingPath res_path = f_make_path(segs_res, p1.x, p0.x)
+            SwingPath sup_path = f_make_path(segs_sup, l1.x, l0.x)
+            // Breakout direction biased by volume trend
+            bool bullish   = l0.norm_vol > p0.norm_vol
+            float width    = p0.y - l0.y
+            float tgt      = bullish ? p0.y + width * 0.786 : l0.y - width * 0.786
+            float stp      = bullish ? l0.y - atr_val       : p0.y + atr_val
+            float inv      = bullish ? l1.y - atr_val       : p1.y + atr_val
+            float rr       = math.abs(stp - close) != 0 ? math.abs(tgt - close) / math.abs(stp - close) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (l0.norm_vol - p0.norm_vol) * 0.3 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 1, 1), vw, bullish)
+            result := PatternManifest.new("COMPRESSION", res_path, sup_path,
+                         tgt, stp, inv, conf, vw, rr, bullish, true,
+                         bullish ? color.yellow : color.orange)
+    result
+
+// --- 9C. HEAD-AND-SHOULDERS  (three pivots; middle is tallest) ---
+f_detect_hs(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    if array.size(phs) >= 3 and array.size(pls) >= 2
+        MatrixPoint ls  = array.get(phs, 2)  // left shoulder
+        MatrixPoint hd  = array.get(phs, 1)  // head
+        MatrixPoint rs  = array.get(phs, 0)  // right shoulder
+        MatrixPoint nl  = array.get(pls, 0)  // neckline anchor
+        // Classic H&S: head taller than both shoulders; shoulder symmetry within 1 ATR
+        float shoulder_tol = hd.y != 0 ? atr_val / hd.y : 0.05
+        bool hs_shape = hd.y > ls.y * 1.005 and hd.y > rs.y * 1.005 and
+                        math.abs(ls.y - rs.y) / hd.y < shoulder_tol
+        if hs_shape
+            VectorSegment[] segs_top = array.new<VectorSegment>()
+            VectorSegment[] segs_neck = array.new<VectorSegment>()
+            segs_top.push(f_make_segment(ls, hd))
+            segs_top.push(f_make_segment(hd, rs))
+            segs_neck.push(f_make_segment(nl, f_make_point(rs.x, nl.y, nl.vol)))
+            SwingPath top_path  = f_make_path(segs_top,  ls.x, rs.x)
+            SwingPath neck_path = f_make_path(segs_neck, nl.x, rs.x)
+            float neckline  = nl.y
+            float head_ht   = hd.y - neckline
+            float tgt       = neckline - head_ht           // measured move
+            float stp       = rs.y + atr_val
+            float inv       = hd.y + atr_val
+            float rr        = math.abs(stp - neckline) != 0 ? math.abs(neckline - tgt) / math.abs(stp - neckline) : 0.0
+            float vw        = math.max(0.0, math.min(1.0, (hd.norm_vol - rs.norm_vol) * 0.5 + 0.5))
+            float conf      = f_confidence(matrix.get(GM.corr_matrix, 2, 1), vw, false)
+            result := PatternManifest.new("HEAD-AND-SHOULDERS", top_path, neck_path,
+                         tgt, stp, inv, conf, vw, rr, false, true, color.fuchsia)
+    result
+
+// --- 9D. DOUBLE TOP / DOUBLE BOTTOM ---
+f_detect_double(MatrixPoint[] phs, MatrixPoint[] pls) =>
+    PatternManifest result = na
+    // Double Top: two highs within 0.5% of each other
+    if array.size(phs) >= 2 and array.size(pls) >= 1
+        MatrixPoint t1 = array.get(phs, 1)
+        MatrixPoint t2 = array.get(phs, 0)
+        MatrixPoint vl = array.get(pls, 0)
+        bool dbl_top = t1.y != 0 and math.abs(t1.y - t2.y) / t1.y < 0.005 and t2.x > t1.x
+        if dbl_top
+            VectorSegment[] segs_t = array.new<VectorSegment>()
+            VectorSegment[] segs_v = array.new<VectorSegment>()
+            segs_t.push(f_make_segment(t1, t2))
+            segs_v.push(f_make_segment(t1, vl))
+            SwingPath top_path  = f_make_path(segs_t, t1.x, t2.x)
+            SwingPath val_path  = f_make_path(segs_v, t1.x, vl.x)
+            float neckline = vl.y
+            float height   = t2.y - neckline
+            float tgt      = neckline - height
+            float stp      = t2.y + atr_val
+            float inv      = math.max(t1.y, t2.y) + atr_val * 1.5
+            float rr       = height != 0 ? math.abs(neckline - tgt) / (atr_val + height * 0.1) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (vl.norm_vol - t2.norm_vol) * 0.4 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 3, 1), vw, false)
+            result := PatternManifest.new("DOUBLE-TOP", top_path, val_path,
+                         tgt, stp, inv, conf, vw, rr, false, true, color.red)
+
+    // Double Bottom: two lows within 0.5%
+    if na(result) and array.size(pls) >= 2 and array.size(phs) >= 1
+        MatrixPoint b1 = array.get(pls, 1)
+        MatrixPoint b2 = array.get(pls, 0)
+        MatrixPoint pk = array.get(phs, 0)
+        bool dbl_bot = b1.y != 0 and math.abs(b1.y - b2.y) / b1.y < 0.005 and b2.x > b1.x
+        if dbl_bot
+            VectorSegment[] segs_b = array.new<VectorSegment>()
+            VectorSegment[] segs_p = array.new<VectorSegment>()
+            segs_b.push(f_make_segment(b1, b2))
+            segs_p.push(f_make_segment(b1, pk))
+            SwingPath bot_path  = f_make_path(segs_b, b1.x, b2.x)
+            SwingPath peak_path = f_make_path(segs_p, b1.x, pk.x)
+            float neckline = pk.y
+            float height   = neckline - b2.y
+            float tgt      = neckline + height
+            float stp      = b2.y - atr_val
+            float inv      = math.min(b1.y, b2.y) - atr_val * 1.5
+            float rr       = height != 0 ? math.abs(tgt - neckline) / (atr_val + height * 0.1) : 0.0
+            float vw       = math.max(0.0, math.min(1.0, (b2.norm_vol - pk.norm_vol) * 0.4 + 0.5))
+            float conf     = f_confidence(matrix.get(GM.corr_matrix, 0, 1), vw, true)
+            result := PatternManifest.new("DOUBLE-BOTTOM", bot_path, peak_path,
+                         tgt, stp, inv, conf, vw, rr, true, true, color.aqua)
+    result
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/scalp_poi_hs_dirac.pine#L252-L311
+var bool hs=false
+var bool ihs=false
+var float hn=na
+var float ihn=na
+var int hbb=na
+var int ibb=na
+hs:=false
+ihs:=false
+if array.size(pha)>=3
+    rs=array.get(pha,0)
+    hd=array.get(pha,1)
+    ls=array.get(pha,2)
+    nk=(ls+rs)*0.5
+    cl=hd>nk*(1.0+iNT)
+    sd=math.max(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close<nk*(1.0-iNT)
+        hs:=true
+        hn:=nk
+        hbb:=bar_index
+if array.size(pla)>=3
+    rs=array.get(pla,0)
+    hd=array.get(pla,1)
+    ls=array.get(pla,2)
+    nk=(ls+rs)*0.5
+    cl=hd<nk*(1.0-iNT)
+    sd=math.min(ls,rs)
+    sk=sd>0.0 and math.abs(ls-rs)/sd<iSS
+    if cl and sk and close>nk*(1.0+iNT)
+        ihs:=true
+        ihn:=nk
+        ibb:=bar_index
+var bool dts=false
+var bool dbs=false
+var float dtn=na
+var float dbn=na
+dts:=false
+dbs:=false
+if array.size(pha)>=2
+    t1=array.get(pha,0)
+    t2=array.get(pha,1)
+    ta2=(t1+t2)*0.5
+    if ta2>0.0 and math.abs(t1-t2)/ta2<iDTT
+        vlo=ta.lowest(low,iDTL)
+        vd=ta2>0.0?(ta2-vlo)/ta2:0.0
+        if vd>=iDMD and close<vlo*(1.0-iNT)
+            dts:=true
+            dtn:=vlo
+if array.size(pla)>=2
+    b1=array.get(pla,0)
+    b2=array.get(pla,1)
+    ba2=(b1+b2)*0.5
+    if ba2>0.0 and math.abs(b1-b2)/ba2<iDTT
+        phi2=ta.highest(high,iDTL)
+        pd2=ba2>0.0?(phi2-ba2)/ba2:0.0
+        if pd2>=iDMD and close>phi2*(1.0+iNT)
+            dbs:=true
+            dbn:=phi2
+rts=not na(hbb) and (bar_index-hbb)<=iRTB and not na(hn) and close>=hn*(1.0-iNT*2.0) and close<=hn*(1.0+iNT*2.0)
+rtl=not na(ibb) and (bar_index-ibb)<=iRTB and not na(ihn) and close>=ihn*(1.0-iNT*2.0) and close<=ihn*(1.0+iNT*2.0)
+
+// -----------------------------------------------------------------------------
+// Source (origin/main): tradingview_integration/pine_script/xrp_breakout_matrix_bayesian.pine#L294-L378
+Swing s0 = na
+Swing s1 = na
+Swing s2 = na
+Swing s3 = na
+n = array.size(swings)
+if n >= 4
+    s0 := array.get(swings, n - 4)
+    s1 := array.get(swings, n - 3)
+    s2 := array.get(swings, n - 2)
+    s3 := array.get(swings, n - 1)
+
+bool newSignal = false
+int newSide = 0
+
+if n >= 4
+    isSeqNorm = s0.d == +1 and s1.d == -1 and s2.d == +1 and s3.d == -1
+    isSeqInv = s0.d == -1 and s1.d == +1 and s2.d == -1 and s3.d == +1
+    if isSeqNorm or isSeqInv
+        side = isSeqNorm ? +1 : -1
+        Lp = s0.p
+        Li = s0.i
+        Bp = s1.p
+        Rp = s2.p
+        Ri = s2.i
+        Hp = s3.p
+        Hi = s3.i
+        rimPrice = side == +1 ? math.min(Lp, Rp) : math.max(Lp, Rp)
+        depth = f_depth(rimPrice, Bp)
+        rimOk = f_near(Lp, Rp, rimTolPct)
+        hRet = depth == 0.0 ? 10.0 : math.abs(rimPrice - Hp) / depth
+        handleOk = hRet >= hMin and hRet <= hMax
+        sideOk = side == +1 ? Hp < rimPrice : Hp > rimPrice
+        invPrice = side == +1 ? Rp - depth * killAtFib : Rp + depth * killAtFib
+        tgtPrice = side == +1 ? Rp + depth * targetMult : Rp - depth * targetMult
+        confirmOk = not needConfirm or (side == +1 ? close > rimPrice : close < rimPrice)
+        posterior = f_calculateBayes(isSqueeze, mtfScore)
+        isProbable = posterior >= probThresh
+        isValidPattern = rimOk and handleOk and sideOk and confirmOk
+        if isValidPattern and not f_isDuplicate(Li, rimPrice)
+            midBar = Ri - (Ri - Li) / 2
+            clusterId = f_bucket(rimPrice, side)
+            cupPts = array.new<chart.point>()
+            array.push(cupPts, chart.point.from_index(Li, rimPrice))
+            array.push(cupPts, chart.point.from_index(midBar, Bp))
+            array.push(cupPts, chart.point.from_index(Ri, rimPrice))
+            hdlPts = array.new<chart.point>()
+            projBar = Hi + (Hi - Ri)
+            array.push(hdlPts, chart.point.from_index(Ri, rimPrice))
+            array.push(hdlPts, chart.point.from_index(Hi, Hp))
+            array.push(hdlPts, chart.point.from_index(projBar, rimPrice))
+            useFill = side == +1 ? bgBull : bgBear
+            useLine = side == +1 ? lnBull : lnBear
+            cupPL = polyline.new(cupPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            hdlPL = polyline.new(hdlPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            line tgtLn = na
+            box tgtBx = na
+            box stopBx = na
+            extendBars = 25
+            zonePad = math.max(syminfo.mintick * 30.0, depth * 0.08)
+            if showTarget
+                tgtColor = side == +1 ? color.new(color.lime, 0) : color.new(color.red, 0)
+                tgtLn := line.new(Ri, tgtPrice, Hi + extendBars, tgtPrice, color=tgtColor, width=targetWidth, style=f_lineStyle(targetStyle))
+                if showZones
+                    tgtBx := box.new(Ri, tgtPrice + zonePad, Hi + extendBars, tgtPrice - zonePad, bgcolor=color.new(tgtColor, 85), border_color=color.new(tgtColor, 20))
+                    stopBx := box.new(Ri, invPrice + zonePad, Hi + extendBars, invPrice - zonePad, bgcolor=color.new(color.gray, 88), border_color=color.new(color.gray, 35))
+            label tag = na
+            if showName
+                patternName = side == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+                txt = patternName + "\nP(H|E): " + str.tostring(posterior, "#.##") + " | MTF: " + str.tostring(mtfScore, "#.##")
+                tagColor = side == +1 ? color.new(color.lime, 72) : color.new(color.red, 72)
+                tag := label.new(midBar, rimPrice, txt, style=label.style_label_center, textcolor=color.white, color=tagColor, size=size.small)
+            pivots = PatternPivots.new(s0, s1, s2, s3)
+            levels = PatternLevels.new(rimPrice, invPrice, tgtPrice)
+            intel = BayesianIntel.new(posterior, mtfScore, isProbable, f_confLabel(posterior))
+            drawings = PatternDrawings.new(cupPL, hdlPL, tgtLn, tgtBx, stopBx, tag)
+            rec = BrewPattern.new(pivots, levels, drawings, intel, side, 1, Li, clusterId)
+            array.push(gc.pool, rec)
+            matrix.set(clusterMatrix, clusterId, 0, matrix.get(clusterMatrix, clusterId, 0) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 1, matrix.get(clusterMatrix, clusterId, 1) + 1.0)
+            matrix.set(clusterMatrix, clusterId, 2, matrix.get(clusterMatrix, clusterId, 2) + (isProbable ? 1.0 : 0.0))
+            matrix.set(clusterMatrix, clusterId, 3, matrix.get(clusterMatrix, clusterId, 3) + posterior)
+            gc.clusterCount += 1
+            newSignal := true
+            newSide := side
