@@ -1391,29 +1391,42 @@ class UIManager {
     async reorderPerformersByScore(performers) {
         if (!performers || performers.length === 0) return;
 
-        // Get click statistics for all performers
+        // Get click statistics and ML relevance scores for all performers
         const performersWithScores = await Promise.all(
             performers.map(async (performer) => {
                 try {
                     const stats = await CacheManager.getPerformerStats(performer.username);
+                    const imageRecognitionScore = await this.getRelevanceScore(performer.username);
+                    const clickBoost = Math.min(stats.clickScore / 10, 50);
+                    const rankScore = AppConfig.calculateRankScore(performer, {
+                        imageRecognitionScore
+                    }) + clickBoost;
+
                     return {
                         ...performer,
                         clickScore: stats.clickScore,
-                        totalInteractions: stats.totalClicks + stats.totalViews
+                        totalInteractions: stats.totalClicks + stats.totalViews,
+                        imageRecognitionScore,
+                        rankScore
                     };
                 } catch (error) {
                     return {
                         ...performer,
                         clickScore: 0,
-                        totalInteractions: 0
+                        totalInteractions: 0,
+                        imageRecognitionScore: 0,
+                        rankScore: AppConfig.calculateRankScore(performer, {})
                     };
                 }
             })
         );
 
-        // Sort by click score and interactions
+        // Sort by combined rank, then interaction history, then viewer count
         performersWithScores.sort((a, b) => {
-            // First by click score
+            if (b.rankScore !== a.rankScore) {
+                return b.rankScore - a.rankScore;
+            }
+            // Then by click score
             if (b.clickScore !== a.clickScore) {
                 return b.clickScore - a.clickScore;
             }
@@ -1559,6 +1572,78 @@ class UIManager {
         if (this.#_mlModel) return this.#_mlModel;
         if (this.#_mlModelPromise) return this.#_mlModelPromise;
         return null;
+    }
+
+    /**
+     * Initialize event listeners for shape engine settings controls.
+     * Reads the shape toggle checkboxes, performer mode select, and complexity
+     * slider from the DOM and fires the shape settings change callback on change.
+     * @private
+     */
+    #_initShapeSettingsListeners() {
+        const shapesToggle = document.querySelector('#shapesEnabledToggle');
+        const mlShapesToggle = document.querySelector('#mlShapesToggle');
+        const performerModeSelect = document.querySelector('#performerModeSelect');
+        const complexitySlider = document.querySelector('#shapeComplexity');
+
+        const notify = () => {
+            if (this.#_onShapeSettingsChangeCallback) {
+                this.#_onShapeSettingsChangeCallback({
+                    shapesEnabled: shapesToggle?.checked ?? false,
+                    mlShapesEnabled: mlShapesToggle?.checked ?? false,
+                    performerMode: performerModeSelect?.value ?? 'many',
+                    complexity: parseInt(complexitySlider?.value ?? '3')
+                });
+            }
+        };
+
+        shapesToggle?.addEventListener('change', notify);
+        mlShapesToggle?.addEventListener('change', notify);
+        performerModeSelect?.addEventListener('change', notify);
+        complexitySlider?.addEventListener('input', notify);
+    }
+
+    /**
+     * Infer image label for a given image URL using the GPU-accelerated ML model.
+     * Public wrapper around the private #_inferImageLabel method for use by the
+     * shape engine and other external callers.
+     * @param {string} imageUrl - URL of the image to classify
+     * @returns {Promise<{label: string, confidence: number, predictions: Array}|null>}
+     */
+    async inferImageLabel(imageUrl) {
+        return this.#_inferImageLabel(imageUrl);
+    }
+
+    /**
+     * Get the current viewer slots map (username → slot number).
+     * Used by the shape engine to resolve usernames for GPU-driven overlay shapes.
+     * @returns {Map<string, number>}
+     */
+    getViewerSlots() {
+        return this.#_viewerSlots;
+    }
+
+    /**
+     * Update shape engine UI controls to reflect a saved or restored config.
+     * Syncs the checkboxes, select, and range slider in the DOM with the
+     * provided config object so the UI stays consistent with the engine state.
+     * @param {Object} config - Shape engine config object
+     * @param {boolean} [config.shapesEnabled]
+     * @param {boolean} [config.mlShapesEnabled]
+     * @param {string}  [config.performerMode]
+     * @param {number}  [config.complexity]
+     */
+    updateShapeControls(config) {
+        if (!config) return;
+        const shapesToggle = document.querySelector('#shapesEnabledToggle');
+        const mlShapesToggle = document.querySelector('#mlShapesToggle');
+        const performerModeSelect = document.querySelector('#performerModeSelect');
+        const complexitySlider = document.querySelector('#shapeComplexity');
+
+        if (shapesToggle && config.shapesEnabled !== undefined) shapesToggle.checked = config.shapesEnabled;
+        if (mlShapesToggle && config.mlShapesEnabled !== undefined) mlShapesToggle.checked = config.mlShapesEnabled;
+        if (performerModeSelect && config.performerMode !== undefined) performerModeSelect.value = config.performerMode;
+        if (complexitySlider && config.complexity !== undefined) complexitySlider.value = String(config.complexity);
     }
 }
 
@@ -1876,86 +1961,6 @@ class BackgroundImageAnalyzer {
         } catch (error) {
             return 0;
         }
-     * Initialize event listeners for shape engine settings controls.
-     * Reads the shape toggle checkboxes, performer mode select, and complexity
-     * slider from the DOM and fires the shape settings change callback on change.
-     * @private
-     */
-    #_initShapeSettingsListeners() {
-        const shapesToggle = document.querySelector('#shapesEnabledToggle');
-        const mlShapesToggle = document.querySelector('#mlShapesToggle');
-        const performerModeSelect = document.querySelector('#performerModeSelect');
-        const complexitySlider = document.querySelector('#shapeComplexity');
-
-        const notify = () => {
-            if (this.#_onShapeSettingsChangeCallback) {
-                this.#_onShapeSettingsChangeCallback({
-                    shapesEnabled: shapesToggle?.checked ?? false,
-                    mlShapesEnabled: mlShapesToggle?.checked ?? false,
-                    performerMode: performerModeSelect?.value ?? 'many',
-                    complexity: parseInt(complexitySlider?.value ?? '3')
-                });
-            }
-        };
-
-        shapesToggle?.addEventListener('change', notify);
-        mlShapesToggle?.addEventListener('change', notify);
-        performerModeSelect?.addEventListener('change', notify);
-        complexitySlider?.addEventListener('input', notify);
     }
 
-    /**
-     * Infer image label for a given image URL using the GPU-accelerated ML model.
-     * Public wrapper around the private #_inferImageLabel method for use by the
-     * shape engine and other external callers.
-     * @param {string} imageUrl - URL of the image to classify
-     * @returns {Promise<{label: string, confidence: number, predictions: Array}|null>}
-     */
-    async inferImageLabel(imageUrl) {
-        return this.#_inferImageLabel(imageUrl);
-    }
-
-    /**
-     * Get the current viewer slots map (username → slot number).
-     * Used by the shape engine to resolve usernames for GPU-driven overlay shapes.
-     * @returns {Map<string, number>}
-     */
-    getViewerSlots() {
-        return this.#_viewerSlots;
-    }
-
-    /**
-     * Update shape engine UI controls to reflect a saved or restored config.
-     * Syncs the checkboxes, select, and range slider in the DOM with the
-     * provided config object so the UI stays consistent with the engine state.
-     * @param {Object} config - Shape engine config object
-     * @param {boolean} [config.shapesEnabled]
-     * @param {boolean} [config.mlShapesEnabled]
-     * @param {string}  [config.performerMode]
-     * @param {number}  [config.complexity]
-     */
-    updateShapeControls(config) {
-        if (!config) return;
-        const shapesToggle = document.querySelector('#shapesEnabledToggle');
-        const mlShapesToggle = document.querySelector('#mlShapesToggle');
-        const performerModeSelect = document.querySelector('#performerModeSelect');
-        const complexitySlider = document.querySelector('#shapeComplexity');
-
-        if (shapesToggle && config.shapesEnabled !== undefined) shapesToggle.checked = config.shapesEnabled;
-        if (mlShapesToggle && config.mlShapesEnabled !== undefined) mlShapesToggle.checked = config.mlShapesEnabled;
-        if (performerModeSelect && config.performerMode !== undefined) performerModeSelect.value = config.performerMode;
-        if (complexitySlider && config.complexity !== undefined) complexitySlider.value = String(config.complexity);
-    }
-
-    /**
-     * Get the loaded GPU/ML (MobileNet) model, waiting for it to load if needed.
-     * Allows the shape engine to share the already-loaded model for tensor-based
-     * shape generation without loading it a second time.
-     * @returns {Promise<Object|null>} Resolves to the MobileNet model or null
-     */
-    async getMLModel() {
-        if (this.#_mlModel) return this.#_mlModel;
-        if (this.#_mlModelPromise) return this.#_mlModelPromise;
-        return null;
-    }
 }

@@ -190,7 +190,10 @@ class DataAPI {
         // Calculate rank scores
         filtered = filtered.map(p => ({
             ...p,
-            rankScore: AppConfig.calculateRankScore(p, context)
+            rankScore: AppConfig.calculateRankScore(p, {
+                ...context,
+                imageRecognitionScore: context.imageRecognitionScores.get(p.username) ?? null
+            })
         }));
 
         // Apply sorting
@@ -259,21 +262,51 @@ class DataAPI {
         try {
             const favorites = await this.#_cache.getFavorites();
             const history = await this.#_cache.getHistory();
+            const recognitionResults = await this.#_cache.getAllRecognitionResults(AppConfig.MAX_PERFORMERS_DISPLAY);
             
             // Get recently viewed (last 24 hours)
             const recentThreshold = Date.now() - (24 * 60 * 60 * 1000);
             const recentlyViewed = history
                 .filter(h => h.timestamp > recentThreshold)
                 .map(h => h.username);
+            const imageRecognitionScores = new Map(
+                recognitionResults.map(result => [result.username, this.#_scoreRecognitionResult(result)])
+            );
 
             return {
                 favorites: new Set(favorites),
-                recentlyViewed: new Set(recentlyViewed)
+                recentlyViewed: new Set(recentlyViewed),
+                imageRecognitionScores
             };
         } catch (error) {
             console.error("DataAPI: Error getting ranking context:", error);
-            return { favorites: new Set(), recentlyViewed: new Set() };
+            return { favorites: new Set(), recentlyViewed: new Set(), imageRecognitionScores: new Map() };
         }
+    }
+
+    /**
+     * Convert a stored recognition result into a relevance score for ranking.
+     * @private
+     */
+    #_scoreRecognitionResult(result) {
+        if (!result) return 0;
+
+        let score = 0;
+        score += Math.min(50, (result.feedbackScore || 0) * 5);
+
+        const ageMinutes = (Date.now() - result.analyzedAt) / 60000;
+        if (ageMinutes < 2) {
+            score += 25;
+        } else {
+            score += Math.max(0, 25 - ((ageMinutes - 2) * 0.9));
+        }
+
+        if (result.predictions && result.predictions.length > 0) {
+            const avgConfidence = result.predictions.reduce((sum, p) => sum + p.confidence, 0) / result.predictions.length;
+            score += Math.min(25, avgConfidence / 4);
+        }
+
+        return Math.round(Math.min(100, score));
     }
 
     /**
