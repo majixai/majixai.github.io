@@ -1855,7 +1855,8 @@ color volColor =
    color.new(#FFFFFF, 0)                                          // White (Swan stays solid)
 
 float parkVol = math.sqrt((1.0/(4.0*math.log(2.0))) * math.sum(math.pow(math.log(high/low), 2), 20) / 20) * math.sqrt(252) * 100
-float yzO  = math.log(open / close[1])
+bool  isSessionOpen = ta.change(time("D")) != 0
+float yzO  = isSessionOpen and not na(close[1]) ? -math.log(open / close[1]) : math.log(open / close[1])
 float yzC  = math.log(close / open)
 float yzH  = math.log(high  / open)
 float yzL  = math.log(low   / open)
@@ -1983,7 +1984,7 @@ string fibNote = atFib618 ? "0.618 Retracement" :
 int fibScoreBoost = fibConfl ? (atBull ? 3 : -3) : 0
 var float avwapNumer  = 0.0
 var float avwapDenom  = 0.0
-bool      newSession  = ta.change(time("D")) != 0
+bool      newSession  = isSessionOpen
 if newSession
     avwapNumer := 0.0
     avwapDenom := 0.0
@@ -2189,7 +2190,7 @@ bool  atGannAngl = (not na(gann1x1Hi) and math.abs(close - gann1x1Hi) / close < 
                    (not na(gann1x1Lo) and math.abs(close - gann1x1Lo) / close < 0.003)
 float benchClose   = request.security(s_1, timeframe.period, close)
 float benchRet     = (benchClose - benchClose[1]) / benchClose[1]
-float assetRet     = (close      - close[1])      / close[1]
+float assetRet     = isSessionOpen and not na(close[1]) ? -((open - close[1]) / close[1]) : (close - close[1]) / close[1]
 float betaEst      = ta.correlation(assetRet, benchRet, 20) *
                      (ta.stdev(assetRet, 20) / math.max(ta.stdev(benchRet, 20), 0.0001))
 float alphaEst     = ta.sma(assetRet, 20) - betaEst * ta.sma(benchRet, 20)
@@ -3136,8 +3137,6 @@ plotcandle(barstate.islast ? close : na, barstate.islast ? math.max(close, best.
 // Alerts
 if buySignal or sellSignal
     alert("Bayesian Matrix Signal Triggered", alert.freq_once_per_bar)
-
-
 
 
 
