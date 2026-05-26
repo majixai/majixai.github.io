@@ -38,7 +38,8 @@ def preview():
         model_request = ModelRequest.from_mapping(payload)
         return jsonify(model_request.to_dict())
     except ValueError as exc:
-        return jsonify({"success": False, "message": str(exc)}), 400
+        app.logger.warning("Invalid preview request: %s", exc)
+        return jsonify({"success": False, "message": "Invalid request payload."}), 400
 
 
 @app.route("/api/runs", methods=["GET", "POST"])
@@ -52,7 +53,8 @@ def runs():
         saved = store.append(model_request)
         return jsonify({"success": True, "item": saved, "items": store.recent(limit=12)})
     except ValueError as exc:
-        return jsonify({"success": False, "message": str(exc)}), 400
+        app.logger.warning("Invalid save request: %s", exc)
+        return jsonify({"success": False, "message": "Invalid request payload."}), 400
 
 
 @app.route("/healthz")
@@ -61,4 +63,4 @@ def healthz():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001)
+    app.run(port=5001)
