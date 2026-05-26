@@ -5,7 +5,7 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template, request
 
 from command_store import CommandStore
-from model_request import DEFAULT_REQUEST, ModelRequest
+from model_request import ModelRequest
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -23,9 +23,10 @@ def _payload_from_request() -> dict:
 
 @app.route("/")
 def index():
+    default_request = ModelRequest.default().to_dict()
     return render_template(
         "index.html",
-        default_request=DEFAULT_REQUEST.to_dict(),
+        default_request=default_request,
         history=store.recent(limit=12),
     )
 
@@ -33,8 +34,11 @@ def index():
 @app.route("/api/preview", methods=["POST"])
 def preview():
     payload = _payload_from_request()
-    model_request = ModelRequest.from_mapping(payload)
-    return jsonify(model_request.to_dict())
+    try:
+        model_request = ModelRequest.from_mapping(payload)
+        return jsonify(model_request.to_dict())
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
 
 
 @app.route("/api/runs", methods=["GET", "POST"])
@@ -43,9 +47,12 @@ def runs():
         return jsonify({"items": store.all()})
 
     payload = _payload_from_request()
-    model_request = ModelRequest.from_mapping(payload)
-    saved = store.append(model_request)
-    return jsonify({"success": True, "item": saved, "items": store.recent(limit=12)})
+    try:
+        model_request = ModelRequest.from_mapping(payload)
+        saved = store.append(model_request)
+        return jsonify({"success": True, "item": saved, "items": store.recent(limit=12)})
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
 
 
 @app.route("/healthz")

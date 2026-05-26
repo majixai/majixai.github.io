@@ -30,7 +30,11 @@ def _normalize_decimal(value: object, field_name: str) -> str:
     except (InvalidOperation, AttributeError) as exc:
         raise ValueError(f"{field_name} must be numeric.") from exc
 
-    text = format(decimal_value, "f").rstrip("0").rstrip(".")
+    text = format(decimal_value, "f")
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
+    if not text:
+        text = "0"
     return text if "." in text else f"{text}.0"
 
 
