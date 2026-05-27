@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-26 15:42 UTC_
+_Last updated: 2026-05-27 13:12 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,30 +13,30 @@ _Last updated: 2026-05-26 15:42 UTC_
 |--------|-------|
 | 📁 Project Directories | 174 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 130383 |
+| 📝 Total Commits | 130488 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`c86b38b47c`](https://github.com/majixai/majixai.github.io/commit/c86b38b47cc63146cdf00f570da40813b4bbe336) -- 2026-05-26 -- github-actions[bot] -- [AI Tensor Bot] Update Titan Matrix ML Forecasts -- [Open page](https://majixai.github.io/router/)
-- [`3431f6c5fb`](https://github.com/majixai/majixai.github.io/commit/3431f6c5fb14cecfde5fba31287207b0e4703003) -- 2026-05-26 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-05-26 15:00:09 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
-- [`f0ad6c9dc6`](https://github.com/majixai/majixai.github.io/commit/f0ad6c9dc6ca96e80aca2e6176864913e6291d6d) -- 2026-05-26 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
-- [`3ecdf8ce8f`](https://github.com/majixai/majixai.github.io/commit/3ecdf8ce8fb63805e114e289bf9cddabf41021a5) -- 2026-05-26 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-26 14:21:58 UTC -- [Open page](https://majixai.github.io/router/)
-- [`ed26bec915`](https://github.com/majixai/majixai.github.io/commit/ed26bec9153429897555122bb33cfd2376b4fc89) -- 2026-05-26 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-26 14:20:51 UTC -- [Open page](https://majixai.github.io/data/)
+- [`7542321cae`](https://github.com/majixai/majixai.github.io/commit/7542321cae9561c627b65890d8071e5ac6479a6b) -- 2026-05-27 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`970a9509e6`](https://github.com/majixai/majixai.github.io/commit/970a9509e6b1059f37f813107ba4716ce8d17c3d) -- 2026-05-27 -- majixai -- Merge pull request #484 from majixai/copilot/yfinance-ixic-max-csvs -- [Open page](https://majixai.github.io/router/)
+- [`0fa554523a`](https://github.com/majixai/majixai.github.io/commit/0fa554523a64cd1e1b3a760d5aabb0f50d450ca5) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-27 10:45:46 UTC -- [Open page](https://majixai.github.io/data/)
+- [`af9d51c7e3`](https://github.com/majixai/majixai.github.io/commit/af9d51c7e3e8ecc380d5fb429422cc06ac4cd79e) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-27 10:45:07 UTC -- [Open page](https://majixai.github.io/data/)
+- [`9f55ed25de`](https://github.com/majixai/majixai.github.io/commit/9f55ed25de481d2904e27025b1021fd878ee8adf) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — sp projection 2026-05-27 10:44:58 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `acb8a7c` — 2026-05-25 — **majixai** — Merge branch 'main' into copilot/tradingview-conics-three-timeframes  
-  _29145 lines changed (27058+ / 2087-)_
-- **Biggest update this week:** `acb8a7c` — 2026-05-25 — **majixai** — Merge branch 'main' into copilot/tradingview-conics-three-timeframes  
-  _29145 lines changed (27058+ / 2087-)_
-- **Biggest update this month:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
-  _489139 lines changed (485331+ / 3808-)_
-- **Biggest update this quarter:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
-  _489139 lines changed (485331+ / 3808-)_
-- **Biggest update this year:** `5897d8d` — 2026-05-22 — **majixai** — Merge branch 'main' into copilot/update-settings-for-forecast  
-  _489139 lines changed (485331+ / 3808-)_
+- **Biggest update today:** `4378bbd` — 2026-05-27 — **github-actions[bot]** — data: Update index data - 2026-05-27 05:25:44 UTC  
+  _52504 lines changed (51391+ / 1113-)_
+- **Biggest update this week:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
+  _578160 lines changed (573728+ / 4432-)_
+- **Biggest update this month:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
+  _578160 lines changed (573728+ / 4432-)_
+- **Biggest update this quarter:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
+  _578160 lines changed (573728+ / 4432-)_
+- **Biggest update this year:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
+  _578160 lines changed (573728+ / 4432-)_
 <!-- END_BIGGEST_UPDATES -->
 
 
