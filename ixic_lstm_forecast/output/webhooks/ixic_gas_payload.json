@@ -1,0 +1,135 @@
+{
+  "operation": "upsertForecastSettings",
+  "project": "ixic_lstm_forecast",
+  "primarySymbol": "^IXIC",
+  "symbols": [
+    "^IXIC",
+    "^GSPC",
+    "^DJI",
+    "^RUT",
+    "^VIX",
+    "^FTSE",
+    "^N225",
+    "^HSI",
+    "^GDAXI",
+    "^FCHI",
+    "^STOXX50E",
+    "^BVSP"
+  ],
+  "symbolSource": {
+    "csvPath": "/home/runner/work/majixai.github.io/majixai.github.io/actions/symbols.csv",
+    "csvUrl": "https://raw.githubusercontent.com/majixai/majixai.github.io/main/actions/symbols.csv",
+    "categories": [
+      "indices",
+      "tech_mega"
+    ],
+    "maxSymbols": 12
+  },
+  "runtime": {
+    "symbol": "^IXIC",
+    "seqLength": 60,
+    "epochs": 3,
+    "batchSize": 256,
+    "logLevel": "INFO",
+    "trainVerbose": "2",
+    "outputDir": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output"
+  },
+  "schedule": {
+    "send_hour_local": 22,
+    "timezone": "America/New_York",
+    "market_calendar": "US_EQUITIES",
+    "webhook_event": "ixic-nightly-forecast"
+  },
+  "gemini": {
+    "model": "gemini-2.5-flash",
+    "daily_limit": 20,
+    "monthly_limit": 400
+  },
+  "routing": {
+    "route_namespace": "/ixic_lstm_forecast/",
+    "router_manifest": "/home/runner/work/majixai.github.io/majixai.github.io/router/routes.json",
+    "packet_router_module": "/home/runner/work/majixai.github.io/majixai.github.io/ai/packet-router.js"
+  },
+  "directories": [
+    {
+      "name": "yfinance",
+      "repoPath": "yfinance/",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/yfinance/",
+      "purpose": "Yahoo Finance acquisition and ticker alignment for IXIC symbol context.",
+      "exists": true,
+      "scaffoldExists": true
+    },
+    {
+      "name": "neural",
+      "repoPath": "yfinance_data/models/neural_forecaster.py",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/neural/",
+      "purpose": "Neural inference hand-off for multi-timeframe signal enrichment.",
+      "exists": true,
+      "scaffoldExists": true
+    },
+    {
+      "name": "ml",
+      "repoPath": "ixic_lstm_forecast/",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/ml/",
+      "purpose": "Primary IXIC forecasting model outputs, summaries, and compressed artifacts.",
+      "exists": true,
+      "scaffoldExists": true
+    },
+    {
+      "name": "ai",
+      "repoPath": "ai/",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/ai/",
+      "purpose": "Gemini prompt/routing integration and AI orchestration surfaces.",
+      "exists": true,
+      "scaffoldExists": true
+    },
+    {
+      "name": "gpu",
+      "repoPath": "gpu/",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/gpu/",
+      "purpose": "GPU-aware acceleration entry points for heavier neural retraining.",
+      "exists": true,
+      "scaffoldExists": true
+    },
+    {
+      "name": "routing",
+      "repoPath": "router/",
+      "scaffoldPath": "ixic_lstm_forecast/scaffolding/routing/",
+      "purpose": "Git/GAS webhook payload routing and route namespace coordination.",
+      "exists": true,
+      "scaffoldExists": true
+    }
+  ],
+  "settingProps": {
+    "primarySymbol": "IXIC_PRIMARY_SYMBOL",
+    "symbolsCsv": "IXIC_SYMBOLS_CSV",
+    "symbols": "IXIC_SYMBOLS",
+    "symbolCategories": "IXIC_SYMBOL_CATEGORIES",
+    "recipientEmails": "RECIPIENT_EMAILS",
+    "geminiApiKey": "GEMINI_API_KEY",
+    "geminiModel": "IXIC_GEMINI_MODEL",
+    "maxDailyCalls": "IXIC_GEMINI_DAILY_LIMIT",
+    "maxMonthlyCalls": "IXIC_GEMINI_MONTHLY_LIMIT",
+    "maxSymbols": "IXIC_MAX_SYMBOLS",
+    "sendHourLocal": "IXIC_SEND_HOUR_LOCAL",
+    "marketCalendar": "IXIC_MARKET_CALENDAR",
+    "timezone": "IXIC_TIMEZONE",
+    "webhookSecret": "IXIC_WEBHOOK_SECRET",
+    "gasWebhookUrl": "IXIC_GAS_WEBHOOK_URL"
+  },
+  "git": {
+    "repository": "majixai/majixai.github.io",
+    "ref": "main",
+    "sha": "a6ec8a3f06b3a022445f7910e3cfa54b66245009",
+    "actor": "majixai"
+  },
+  "security": {
+    "gemini_api_key": "SET_IN_GAS_SCRIPT_PROPERTIES",
+    "github_token": "SET_IN_GITHUB_ACTIONS_OR_GAS_SECRETS",
+    "webhook_secret": "SET_IN_GAS_SCRIPT_PROPERTIES"
+  },
+  "notes": [
+    "Populate secret values in Google Apps Script Script Properties or GitHub Actions secrets.",
+    "The webhook payload intentionally contains placeholders only; it never embeds real credentials."
+  ]
+}
