@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-27 13:12 UTC_
+_Last updated: 2026-05-27 22:03 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,16 +13,16 @@ _Last updated: 2026-05-27 13:12 UTC_
 |--------|-------|
 | 📁 Project Directories | 174 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 130488 |
+| 📝 Total Commits | 130534 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`7542321cae`](https://github.com/majixai/majixai.github.io/commit/7542321cae9561c627b65890d8071e5ac6479a6b) -- 2026-05-27 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
-- [`970a9509e6`](https://github.com/majixai/majixai.github.io/commit/970a9509e6b1059f37f813107ba4716ce8d17c3d) -- 2026-05-27 -- majixai -- Merge pull request #484 from majixai/copilot/yfinance-ixic-max-csvs -- [Open page](https://majixai.github.io/router/)
-- [`0fa554523a`](https://github.com/majixai/majixai.github.io/commit/0fa554523a64cd1e1b3a760d5aabb0f50d450ca5) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-27 10:45:46 UTC -- [Open page](https://majixai.github.io/data/)
-- [`af9d51c7e3`](https://github.com/majixai/majixai.github.io/commit/af9d51c7e3e8ecc380d5fb429422cc06ac4cd79e) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-27 10:45:07 UTC -- [Open page](https://majixai.github.io/data/)
-- [`9f55ed25de`](https://github.com/majixai/majixai.github.io/commit/9f55ed25de481d2904e27025b1021fd878ee8adf) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — sp projection 2026-05-27 10:44:58 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
+- [`86c80c7f6c`](https://github.com/majixai/majixai.github.io/commit/86c80c7f6c132d079b915a4e1a20b1075e93d564) -- 2026-05-27 -- github-actions[bot] -- [AI Tensor Bot] Update Titan Matrix ML Forecasts -- [Open page](https://majixai.github.io/router/)
+- [`c056a0fa4c`](https://github.com/majixai/majixai.github.io/commit/c056a0fa4c252e93f956a355677d0477baeda86b) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-27 21:34:48 UTC -- [Open page](https://majixai.github.io/router/)
+- [`66e4a064c7`](https://github.com/majixai/majixai.github.io/commit/66e4a064c73ba1d6dd8a2e8181cae1d625083907) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-27 21:32:21 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`4f3fe759ba`](https://github.com/majixai/majixai.github.io/commit/4f3fe759ba981223ab431cd4dbbf94b03c9f3476) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-27 21:31:47 UTC -- [Open page](https://majixai.github.io/data/)
+- [`34b1383cba`](https://github.com/majixai/majixai.github.io/commit/34b1383cba8338dc5d063e5fe3fe8a60c3debf57) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-27 21:30:57 UTC -- [Open page](https://majixai.github.io/market_prediction/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
