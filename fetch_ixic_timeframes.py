@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
-Download ^IXIC data for multiple yfinance intervals and write timestamped CSVs.
+Download ^IXIC data for the requested yfinance intervals and write separate CSVs.
 
-By default, this script stores each timeframe in the repository root as:
+By default, this script writes stable files into ``index/csv``:
 
-    ixic_<interval>_<UTC timestamp>.csv
+    IXIC_1m.csv
+    IXIC_5m.csv
+    IXIC_15m.csv
+    IXIC_1h.csv
+    IXIC_1d.csv
+    IXIC_1wk.csv
 """
 
 from __future__ import annotations
@@ -13,9 +18,8 @@ import argparse
 import logging
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import List, Sequence
 
 import pandas as pd
 
@@ -23,7 +27,10 @@ _REPO_ROOT = Path(__file__).resolve().parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from yfinance.ops import download  # noqa: E402
+try:
+    from yfinance.ops import download  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - exercised in tests without yfinance installed
+    download = None  # type: ignore[assignment]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,30 +40,22 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_SYMBOL = "^IXIC"
-DEFAULT_OUTPUT_DIR = _REPO_ROOT
+DEFAULT_OUTPUT_DIR = _REPO_ROOT / "index" / "csv"
+MAX_PERIOD = "max"
+SUPPORTED_INTERVALS: Sequence[str] = ("1m", "5m", "15m", "1h", "1d", "1wk")
 
-TIMEFRAME_REQUESTS: Sequence[Tuple[str, str]] = (
-    ("1m", "7d"),
-    ("2m", "60d"),
-    ("5m", "60d"),
-    ("15m", "60d"),
-    ("30m", "60d"),
-    ("60m", "730d"),
-    ("90m", "60d"),
-    ("1h", "730d"),
-    ("1d", "max"),
-    ("1wk", "max"),
-    ("1mo", "max"),
-    ("3mo", "max"),
+TIMEFRAME_REQUESTS: Sequence[str] = (
+    "1m",
+    "5m",
+    "15m",
+    "1h",
+    "1d",
+    "1wk",
 )
 
 
-def _slugify_symbol(symbol: str) -> str:
-    return symbol.replace("^", "").replace("/", "_").replace("=", "_").lower()
-
-
-def _timestamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+def _safe_symbol(symbol: str) -> str:
+    return symbol.replace("^", "").replace("/", "_").replace("=", "_").upper()
 
 
 def _normalize_frame(frame: pd.DataFrame, symbol: str, interval: str) -> pd.DataFrame:
@@ -68,7 +67,13 @@ def _normalize_frame(frame: pd.DataFrame, symbol: str, interval: str) -> pd.Data
     return frame
 
 
+def _output_path(output_dir: Path, symbol: str, interval: str) -> Path:
+    return output_dir / f"{_safe_symbol(symbol)}_{interval}.csv"
+
+
 def _fetch_with_retry(symbol: str, interval: str, period: str, retries: int = 2) -> pd.DataFrame:
+    if download is None:
+        raise RuntimeError("yfinance is not installed; cannot fetch IXIC timeframe data.")
     for attempt in range(retries + 1):
         try:
             frame = download(
@@ -105,13 +110,12 @@ def _fetch_with_retry(symbol: str, interval: str, period: str, retries: int = 2)
     return pd.DataFrame()
 
 
-def _selected_requests(intervals: Iterable[str]) -> List[Tuple[str, str]]:
-    available = {interval: period for interval, period in TIMEFRAME_REQUESTS}
-    selected: List[Tuple[str, str]] = []
+def _selected_requests(intervals: Sequence[str]) -> List[str]:
+    selected: List[str] = []
     for interval in intervals:
-        if interval not in available:
+        if interval not in SUPPORTED_INTERVALS:
             raise ValueError(f"Unsupported interval: {interval}")
-        selected.append((interval, available[interval]))
+        selected.append(interval)
     return selected
 
 
@@ -121,12 +125,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         default=str(DEFAULT_OUTPUT_DIR),
-        help="Directory for timestamped CSV outputs (default: repository root)",
+        help="Directory for the separate CSV outputs (default: index/csv)",
     )
     parser.add_argument(
         "--intervals",
         nargs="*",
-        default=[interval for interval, _ in TIMEFRAME_REQUESTS],
+        default=list(TIMEFRAME_REQUESTS),
         help="Subset of intervals to fetch (default: all supported intervals)",
     )
     return parser.parse_args(argv)
@@ -136,8 +140,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    stamp = _timestamp()
-    slug = _slugify_symbol(args.symbol)
 
     try:
         requests = _selected_requests(args.intervals)
@@ -146,13 +148,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     saved_files: List[Path] = []
-    for interval, period in requests:
-        LOGGER.info("Fetching %s at interval %s (period=%s)", args.symbol, interval, period)
-        frame = _fetch_with_retry(args.symbol, interval, period)
+    for interval in requests:
+        LOGGER.info("Fetching %s at interval %s (period=%s)", args.symbol, interval, MAX_PERIOD)
+        frame = _fetch_with_retry(args.symbol, interval, MAX_PERIOD)
         if frame.empty:
             LOGGER.warning("No data returned for %s @ %s", args.symbol, interval)
             continue
-        output_path = output_dir / f"{slug}_{interval}_{stamp}.csv"
+        output_path = _output_path(output_dir, args.symbol, interval)
         frame.to_csv(output_path, index=False)
         saved_files.append(output_path)
         LOGGER.info("Saved %d rows to %s", len(frame), output_path)
