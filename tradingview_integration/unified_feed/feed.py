@@ -68,14 +68,14 @@ log = logging.getLogger(__name__)
 SEEDS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def process_ticker(ticker: str):
+async def process_ticker(ticker: str):
     """
     Backward-compatible coroutine alias for ``FeedEngine().process_ticker``.
 
     Creates a new ``FeedEngine`` instance on each call to avoid module-level
     side-effects.  Use ``FeedEngine`` directly for production code.
     """
-    return FeedEngine().process_ticker(ticker)
+    return await FeedEngine().process_ticker(ticker)
 
 if __name__ == "__main__":
     asyncio.run(run_all())
