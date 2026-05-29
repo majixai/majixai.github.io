@@ -1,6 +1,6 @@
 # Integrated Circuit
 
-This directory captures circuit-level ideas that complement the Bitcoin miner and ESP32 exploration.
+This directory captures circuit-level ideas that complement the Bitcoin miner and ESP32-P4/8x BM1373 exploration.
 
 ## Integrations
 
@@ -16,6 +16,7 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 ## Notes
 
 - Designed as an educational circuit/hardware companion.
+- Current target concept: an ESP32-P4 control board for eight BM1373 ASICs with Bitaxe-style flashing support and reverse-engineered bring-up notes.
 - Linked into the site router and repository hash system.
 
 ## 400GHz protocol paradigm
@@ -29,6 +30,7 @@ The 400GHz protocol paradigm describes the board-side interpretation of a fast, 
 3. Keep fallback modes easy to reach.
 4. Tie each transaction to repository provenance.
 5. Use the same terminology across hardware and miner pages.
+6. Treat BM1373 integration as schematic-driven reverse engineering unless proven otherwise.
 
 ### Conceptual layers
 

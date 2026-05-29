@@ -128,6 +128,7 @@
         <h3><i class="fa fa-diagram-project me-1"></i>Project model</h3>
         <table class="meta">
           <tr><th>Goal</th><td>Bridge the educational Bitcoin miner with ESP32 hardware, pool-style job handling, and route/hash-aware site navigation.</td></tr>
+          <tr><th>Hardware target</th><td>ESP32-P4 control board driving an 8-chip BM1373 chain with Bitaxe-style flash drivers for bring-up and updates.</td></tr>
           <tr><th>Primary audience</th><td>Firmware tinkerers, browser-based mining demonstrators, and repository automation maintainers.</td></tr>
           <tr><th>Runtime shape</th><td>Static page plus linked docs; can be extended into firmware notes, pool status dashboards, or hardware calculators.</td></tr>
           <tr><th>Key dependencies</th><td><span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">actions</span> <span class="inline-kbd">compiler</span></td></tr>
@@ -159,7 +160,10 @@
       <div class="section">
         <h3><i class="fa fa-microchip me-1"></i>Hardware notes</h3>
         <ul class="mb-0">
-          <li><strong>ESP32 role:</strong> lightweight control plane for job polling, status LEDs, and pool connectivity.</li>
+          <li><strong>ESP32-P4 role:</strong> lightweight control plane for job polling, status LEDs, pool connectivity, and chained ASIC dispatch.</li>
+          <li><strong>BM1373 chain:</strong> model the board as eight BM1373 devices with careful level shifting, power staging, and clock distribution.</li>
+          <li><strong>Flash drivers:</strong> reuse Bitaxe-style flashing and recovery flows so firmware bring-up stays practical on lab hardware.</li>
+          <li><strong>Datasheet caveat:</strong> treat BM1373 control details as reverse-engineering work backed by open-source schematics rather than public vendor docs.</li>
           <li><strong>Mining role:</strong> use the browser miner for simulation and the hardware page as a concept lab for real devices.</li>
           <li><strong>C bridge:</strong> keep firmware-facing logic in the C toolchain so performance-sensitive paths stay compact.</li>
           <li><strong>Routing:</strong> every new hardware page should stay linked from the router and hash modules.</li>
@@ -265,8 +269,10 @@
         <h3><i class="fa fa-road me-1"></i>Roadmap</h3>
         <ul class="mb-0">
           <li>Add a firmware checklist for ESP32 toolchains.</li>
+          <li>Map the ESP32-P4 pinout to the 8-chip BM1373 chain and flash headers.</li>
           <li>Add a pinout map for LEDs, UART, and status inputs.</li>
           <li>Add a Stratum transport comparison table.</li>
+          <li>Document the Bitaxe flash-driver workflow for board bring-up and recovery.</li>
           <li>Wire in hash validation examples and route fingerprints.</li>
           <li>Document pool-safe failure modes and reconnect logic.</li>
           <li>Sketch a 400GHz protocol test harness with fallback semantics.</li>
