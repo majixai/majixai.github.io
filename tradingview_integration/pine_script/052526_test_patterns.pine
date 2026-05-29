@@ -1,0 +1,583 @@
+// ============================================================================
+// 8. CANDLESTICK LEXICON (FULL 40+ PATTERN SET)
+// ============================================================================
+
+float bodySize  = math.abs(close - open)
+float upperWick = high - math.max(open, close)
+float lowerWick = math.min(open, close) - low
+float totalSize = high - low
+float avgSize   = ta.sma(totalSize, 10)
+float avgBody   = ta.sma(bodySize, 10)
+bool  isBull    = close > open
+bool  isBear    = close < open
+
+// Single-bar patterns
+bool isDoji     = bodySize <= (totalSize*0.1) and totalSize > avgSize*0.5
+bool isDragon   = isDoji and lowerWick > totalSize*0.7 and upperWick < totalSize*0.1
+bool isGrave    = isDoji and upperWick > totalSize*0.7 and lowerWick < totalSize*0.1
+bool isBullMaru = isBull and upperWick < totalSize*0.05 and lowerWick < totalSize*0.05 and bodySize > avgBody
+bool isBearMaru = isBear and upperWick < totalSize*0.05 and lowerWick < totalSize*0.05 and bodySize > avgBody
+bool isHammer   = isBear[1] and lowerWick > bodySize*2 and upperWick < bodySize*0.5 and totalSize > avgSize*0.8
+bool isHangMan  = isBull[1] and lowerWick > bodySize*2 and upperWick < bodySize*0.5 and totalSize > avgSize*0.8
+bool isShootStar = isBull[1] and upperWick > bodySize*2 and lowerWick < bodySize*0.5 and totalSize > avgSize*0.8
+bool isInvHam   = isBear[1] and upperWick > bodySize*2 and lowerWick < bodySize*0.5 and totalSize > avgSize*0.8
+bool isBullBelt = isBull and lowerWick < totalSize*0.05 and bodySize > avgBody and upperWick > 0
+bool isBearBelt = isBear and upperWick < totalSize*0.05 and bodySize > avgBody and lowerWick > 0
+bool isShavenH  = isBull and upperWick == 0 and bodySize > avgBody
+bool isShavenB  = isBear and lowerWick == 0 and bodySize > avgBody
+
+// Two-bar patterns
+bool bullEngulf  = isBull and isBear[1] and close >= open[1] and open <= close[1] and bodySize > bodySize[1]
+bool bearEngulf  = isBear and isBull[1] and close <= open[1] and open >= close[1] and bodySize > bodySize[1]
+bool bullHarami  = isBull and isBear[1] and close < open[1] and open > close[1]
+bool bearHarami  = isBear and isBull[1] and close > open[1] and open < close[1]
+bool bullHaramiX = isBear[1] and isDoji and high < open[1] and low > close[1]
+bool bearHaramiX = isBull[1] and isDoji and high < close[1] and low > open[1]
+bool piercing    = isBear[1] and isBull and open < low[1] and close > (open[1]+close[1])/2 and close < open[1]
+bool darkCloud   = isBull[1] and isBear and open > high[1] and close < (open[1]+close[1])/2 and close > open[1]
+bool tweezBot    = math.abs(low - low[1]) < avgSize*0.05 and isBear[1] and isBull
+bool tweezTop    = math.abs(high - high[1]) < avgSize*0.05 and isBull[1] and isBear
+bool bullKicker  = isBear[1] and isBull and open >= high[1] and close > open
+bool bearKicker  = isBull[1] and isBear and open <= low[1] and close < open
+bool bullMeetLn  = isBear[1] and isBull and math.abs(close - close[1]) < avgSize*0.05 and open < close[1]
+bool bearMeetLn  = isBull[1] and isBear and math.abs(close - close[1]) < avgSize*0.05 and open > close[1]
+bool onNeckBull  = isBear[1] and isBull and math.abs(close - low[1]) < avgSize*0.05
+bool onNeckBear  = isBull[1] and isBear and math.abs(close - high[1]) < avgSize*0.05
+bool thrustBull  = isBear[1] and isBull and close > (open[1]+close[1])/2 and close < open[1]
+bool thrustBear  = isBull[1] and isBear and close < (open[1]+close[1])/2 and close > open[1]
+
+// Three-bar patterns
+bool mornStar    = isBear[2] and isBull and bodySize[1] < totalSize[1]*0.3 and close > close[2]+(open[2]-close[2])/2
+bool eveStar     = isBull[2] and isBear and bodySize[1] < totalSize[1]*0.3 and close < close[2]-(close[2]-open[2])/2
+bool mornDojiSt  = isBear[2] and isDoji[1] and isBull and close > close[2]+(open[2]-close[2])/2
+bool eveDojiSt   = isBull[2] and isDoji[1] and isBear and close < close[2]-(close[2]-open[2])/2
+bool abanBabyBl  = isBear[2] and isDoji[1] and isBull and high[1] < low[2] and low > high[1]
+bool abanBabyBr  = isBull[2] and isDoji[1] and isBear and low[1] > high[2] and high < low[1]
+bool threeWhSld  = isBull and isBull[1] and isBull[2] and close>close[1] and close[1]>close[2] and open>open[1] and open[1]>open[2]
+bool threeBkCrw  = isBear and isBear[1] and isBear[2] and close<close[1] and close[1]<close[2] and open<open[1] and open[1]<open[2]
+bool threeInsUp  = bullHarami[1] and isBull and close > close[1]
+bool threeInsDn  = bearHarami[1] and isBear and close < close[1]
+bool threeOutUp  = bullEngulf[1] and isBull and close > close[1]
+bool threeOutDn  = bearEngulf[1] and isBear and close < close[1]
+bool triStarBull = isDoji[2] and isDoji[1] and isDoji and low[1] < low[2] and low[1] < low
+bool triStarBear = isDoji[2] and isDoji[1] and isDoji and high[1] > high[2] and high[1] > high
+bool tasukiUp    = isBull[2] and isBull[1] and isBear and open < close[1] and open > open[1] and close > open[2] and close < close[1]
+bool tasukiDn    = isBear[2] and isBear[1] and isBull and open > close[1] and open < open[1] and close < open[2] and close > close[1]
+
+// Four/Five bar patterns
+bool ls3Strike   = isBull[3] and isBull[2] and isBull[1] and isBear and open > close[1] and close < open[3]
+bool ls3StrkBl   = isBear[3] and isBear[2] and isBear[1] and isBull and open < close[1] and close > open[3]
+bool rising3     = isBull[4] and isBear[3] and isBear[2] and isBear[1] and isBull and close > high[4] and low[1] > low[4] and high[3] < high[4]
+bool falling3    = isBear[4] and isBull[3] and isBull[2] and isBull[1] and isBear and close < low[4] and high[1] < high[4] and low[3] > low[4]
+
+// Declare variables with default values
+int candleScore = 0
+string candleName = "NONE"
+
+// Pattern score computation
+if rising3
+    candleScore := 10
+    candleName := "Rising 3"
+else if falling3
+    candleScore := -10
+    candleName := "Falling 3"
+else if ls3StrkBl
+    candleScore := 8
+    candleName := "3L Strike Bull"
+else if ls3Strike
+    candleScore := -8
+    candleName := "3L Strike Bear"
+else if abanBabyBl
+    candleScore := 7
+    candleName := "Aband Baby Bull"
+else if abanBabyBr
+    candleScore := -7
+    candleName := "Aband Baby Bear"
+else if mornDojiSt
+    candleScore := 7
+    candleName := "Morning Doji Star"
+else if eveDojiSt
+    candleScore := -7
+    candleName := "Evening Doji Star"
+else if triStarBull
+    candleScore := 7
+    candleName := "Tri-Star Bull"
+else if triStarBear
+    candleScore := -7
+    candleName := "Tri-Star Bear"
+else if bullKicker
+    candleScore := 7
+    candleName := "Bull Kicker"
+else if bearKicker
+    candleScore := -7
+    candleName := "Bear Kicker"
+else if threeWhSld
+    candleScore := 6
+    candleName := "3 White Soldiers"
+else if threeBkCrw
+    candleScore := -6
+    candleName := "3 Black Crows"
+else if threeInsUp
+    candleScore := 6
+    candleName := "3 Inside Up"
+else if threeInsDn
+    candleScore := -6
+    candleName := "3 Inside Down"
+else if threeOutUp
+    candleScore := 6
+    candleName := "3 Outside Up"
+else if threeOutDn
+    candleScore := -6
+    candleName := "3 Outside Down"
+else if mornStar
+    candleScore := 5
+    candleName := "Morning Star"
+else if eveStar
+    candleScore := -5
+    candleName := "Evening Star"
+else if tasukiUp
+    candleScore := 4
+    candleName := "Upside Tasuki"
+else if tasukiDn
+    candleScore := -4
+    candleName := "Downside Tasuki"
+else if bullEngulf
+    candleScore := 4
+    candleName := "Bullish Engulfing"
+else if bearEngulf
+    candleScore := -4
+    candleName := "Bearish Engulfing"
+else if piercing
+    candleScore := 4
+    candleName := "Piercing Line"
+else if darkCloud
+    candleScore := -4
+    candleName := "Dark Cloud Cover"
+else if tweezBot
+    candleScore := 4
+    candleName := "Tweezer Bottom"
+else if tweezTop
+    candleScore := -4
+    candleName := "Tweezer Top"
+else if bullHaramiX
+    candleScore := 3
+    candleName := "Bull Harami Cross"
+else if bearHaramiX
+    candleScore := -3
+    candleName := "Bear Harami Cross"
+else if bullMeetLn
+    candleScore := 3
+    candleName := "Bull Meeting Lines"
+else if bearMeetLn
+    candleScore := -3
+    candleName := "Bear Meeting Lines"
+else if thrustBull
+    candleScore := 3
+    candleName := "Bullish Thrust"
+else if thrustBear
+    candleScore := -3
+    candleName := "Bearish Thrust"
+else if bullHarami
+    candleScore := 2
+    candleName := "Bullish Harami"
+else if bearHarami
+    candleScore := -2
+    candleName := "Bearish Harami"
+else if isBullMaru
+    candleScore := 2
+    candleName := "Bull Marubozu"
+else if isBearMaru
+    candleScore := -2
+    candleName := "Bear Marubozu"
+else if isBullBelt
+    candleScore := 2
+    candleName := "Bull Belt Hold"
+else if isBearBelt
+    candleScore := -2
+    candleName := "Bear Belt Hold"
+else if onNeckBull
+    candleScore := 1
+    candleName := "On Neck Bull"
+else if onNeckBear
+    candleScore := -1
+    candleName := "On Neck Bear"
+else if isHammer
+    candleScore := 1
+    candleName := "Hammer"
+else if isShootStar
+    candleScore := -1
+    candleName := "Shooting Star"
+else if isHangMan
+    candleScore := -1
+    candleName := "Hanging Man"
+else if isInvHam
+    candleScore := 1
+    candleName := "Inverted Hammer"
+else if isShavenH
+    candleScore := 1
+    candleName := "Shaven Head"
+else if isShavenB
+    candleScore := -1
+    candleName := "Shaven Bottom"
+else if isDragon
+    candleScore := 1
+    candleName := "Dragonfly Doji"
+else if isGrave
+    candleScore := -1
+    candleName := "Gravestone Doji"
+else if isDoji
+    candleScore := 0
+    candleName := "Doji"
+
+
+pe.activeCandlePat := candleName
+if sh_cp and candleName != "NONE"
+    color patCol = candleScore > 0 ? p_clB : (candleScore < 0 ? p_clR : color.gray)
+    label.new(bar_index, candleScore > 0 ? low - ta.tr : high + ta.tr, candleName,
+              color=#00000000, textcolor=patCol,
+              style=candleScore >= 0 ? label.style_label_up : label.style_label_down, size=size.tiny)
+
+// ============================================================================
+// 9. GEOMETRIC MACRO PATTERN ENGINE (10 LEVELS)
+// ============================================================================
+
+// Track pivot highs and lows in arrays
+float pivHigh = ta.pivothigh(high, pv_lb, 2)
+float pivLow  = ta.pivotlow(low,  pv_lb, 2)
+
+if not na(pivHigh)
+    array.push(pivotsHigh, PivotNode.new(bar_index - 2, pivHigh, true))
+    if array.size(pivotsHigh) > 25
+        array.shift(pivotsHigh)
+if not na(pivLow)
+    array.push(pivotsLow, PivotNode.new(bar_index - 2, pivLow, false))
+    if array.size(pivotsLow) > 25
+        array.shift(pivotsLow)
+
+// Accessor helpers: ph(i) = i-th most recent pivot high price, etc.
+ph(int i)  => array.size(pivotsHigh) > i ? array.get(pivotsHigh, array.size(pivotsHigh)-1-i).price    : na
+phb(int i) => array.size(pivotsHigh) > i ? array.get(pivotsHigh, array.size(pivotsHigh)-1-i).barIndex : na
+pl(int i)  => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivotsLow)-1-i).price      : na
+plb(int i) => array.size(pivotsLow)  > i ? array.get(pivotsLow,  array.size(pivotsLow)-1-i).barIndex   : na
+
+// Relative distance helper and line-draw helper
+distPct(float a, float b) => math.abs(a - b) / a
+fibRatio(float leg1, float leg2) => leg1 == 0 ? 0 : math.abs(leg2 / leg1)
+drawPatLine(int x1, float y1, int x2, float y2, color c, int w=2) =>
+    if sh_mp
+        line.new(x1, y1, x2, y2, color=c, width=w, style=line.style_solid)
+
+int   macroScore  = 0
+string macroName  = "NONE"
+float macroTarget = na
+
+// ---- LEVEL 0: 6-Pivot Mega-Structures ----
+if array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
+    // Elliott Impulse Wave proxy
+    if ph(2)<ph(1) and ph(1)<ph(0) and pl(1)<pl(0) and pl(0)>ph(2) and (ph(1)-pl(1))>(ph(2)-pl(2))
+        macroScore := 25, macroName := "Elliott Impulse Bull"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+        drawPatLine(plb(2), pl(2), phb(0), ph(0), p_clB)
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(1)>ph(0) and ph(0)<pl(2) and (pl(2)-ph(2))>(pl(1)-ph(1))
+        macroScore := -25, macroName := "Elliott Impulse Bear"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+        drawPatLine(phb(2), ph(2), plb(0), pl(0), p_clR)
+    // 6-Point Broadening structures
+    if macroScore == 0
+        if ph(3)<ph(2) and ph(2)<ph(1) and ph(1)<ph(0) and pl(2)>pl(1) and pl(1)>pl(0)
+            macroScore := -22, macroName := "6Pt Broadening Top"
+            macroTarget := pl(0) - (ph(0) - pl(0))
+        else if pl(3)>pl(2) and pl(2)>pl(1) and pl(1)>pl(0) and ph(2)<ph(1) and ph(1)<ph(0)
+            macroScore := 22, macroName := "6Pt Broadening Bottom"
+            macroTarget := ph(0) + (ph(0) - pl(0))
+    // Bump & Run
+    if macroScore == 0
+        if pl(3)<pl(2) and pl(2)<pl(1) and (pl(1)-pl(2))>(pl(2)-pl(3))*2 and ph(0)<ph(1)
+            macroScore := -20, macroName := "Bump & Run Top"
+            macroTarget := pl(3)
+        else if ph(3)>ph(2) and ph(2)>ph(1) and (ph(2)-ph(1))>(ph(3)-ph(2))*2 and pl(0)>pl(1)
+            macroScore := 20, macroName := "Bump & Run Bottom"
+            macroTarget := ph(3)
+
+// ---- LEVEL 1: 5-Pivot XABCD Structures ----
+if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+    // Rounding Top/Bottom
+    if pl(2)>pl(1) and pl(1)<pl(0) and ph(2)>ph(1) and ph(0)>ph(1) and distPct(pl(2),pl(0))<0.2
+        macroScore := 24, macroName := "Rounding Bottom"
+        macroTarget := ph(0) + (ph(0) - pl(1))
+    else if ph(2)<ph(1) and ph(1)>ph(0) and pl(2)<pl(1) and pl(0)<pl(1) and distPct(ph(2),ph(0))<0.2
+        macroScore := -24, macroName := "Rounding Top"
+        macroTarget := pl(0) - (ph(1) - pl(0))
+    // Complex Head & Shoulders
+    if macroScore == 0
+        if ph(2)>ph(3) and ph(2)>ph(1) and distPct(ph(3),ph(1))<st_tl
+            macroScore := -21, macroName := "Complex H&S"
+            macroTarget := pl(0) - (ph(2) - pl(0))
+        else if pl(2)<pl(3) and pl(2)<pl(1) and distPct(pl(3),pl(1))<st_tl
+            macroScore := 21, macroName := "Complex Inv H&S"
+            macroTarget := ph(0) + (ph(0) - pl(2))
+    // XABCD Gartley / Butterfly / Crab
+    if macroScore == 0
+        float xaB = ph(1) - pl(2), float adB = ph(1) - pl(0), float ratB = fibRatio(xaB, adB)
+        if ph(1)>ph(0) and pl(1)>pl(2) and pl(0)<pl(1)
+            if ratB >= 0.618 and ratB <= 0.886
+                macroScore := 19, macroName := "Bull Gartley/Bat"
+                macroTarget := ph(0)
+            else if ratB > 1.0 and ratB <= 1.382
+                macroScore := 20, macroName := "Bull Butterfly"
+                macroTarget := ph(1)
+            else if ratB > 1.382 and ratB <= 1.618
+                macroScore := 21, macroName := "Bull Crab"
+                macroTarget := ph(1)
+        float xaR = ph(2) - pl(1), float adR = ph(0) - pl(1), float ratR = fibRatio(xaR, adR)
+        if pl(1)<pl(0) and ph(1)<ph(2) and ph(0)>ph(1)
+            if ratR >= 0.618 and ratR <= 0.886
+                macroScore := -19, macroName := "Bear Gartley/Bat"
+                macroTarget := pl(0)
+            else if ratR > 1.0 and ratR <= 1.382
+                macroScore := -20, macroName := "Bear Butterfly"
+                macroTarget := pl(1)
+            else if ratR > 1.382 and ratR <= 1.618
+                macroScore := -21, macroName := "Bear Crab"
+                macroTarget := pl(1)
+    // Shark and Cypher
+    if macroScore == 0
+        if ph(0)>ph(1) and pl(0)<pl(2) and pl(1)>pl(2)
+            macroScore := 22, macroName := "Bull Shark"
+            macroTarget := ph(0)
+        else if pl(0)<pl(1) and ph(0)>ph(2) and ph(1)<ph(2)
+            macroScore := -22, macroName := "Bear Shark"
+            macroTarget := pl(0)
+    if macroScore == 0
+        if ph(0)>ph(1) and pl(0)>pl(2) and pl(0)<pl(1)
+            macroScore := 18, macroName := "Bull Cypher"
+            macroTarget := ph(0)
+        else if pl(0)<pl(1) and ph(0)<ph(2) and ph(0)>ph(1)
+            macroScore := -18, macroName := "Bear Cypher"
+            macroTarget := pl(0)
+
+// ---- LEVEL 2: 4-Pivot Structures ----
+if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+    if ph(1)<ph(0) and pl(1)>pl(0) and ph(2)<ph(1)
+        macroScore := -18, macroName := "Diamond Top"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1)
+        macroScore := 18, macroName := "Diamond Bottom"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if ph(2)<ph(1) and ph(1)<ph(0) and pl(2)<pl(1) and pl(1)<pl(0) and distPct(ph(1)-ph(2), ph(0)-ph(1))<0.3
+        macroScore := -17, macroName := "Three Drives Bearish"
+        macroTarget := pl(0)
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(2)>ph(1) and ph(1)>ph(0) and distPct(pl(2)-pl(1), pl(1)-pl(0))<0.3
+        macroScore := 17, macroName := "Three Drives Bullish"
+        macroTarget := ph(0)
+    else if ph(2)<ph(1) and ph(1)<ph(0) and pl(1)<pl(0) and pl(0)>ph(2)
+        macroScore := -16, macroName := "Wolfe Wave Bear"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if pl(2)>pl(1) and pl(1)>pl(0) and ph(1)>ph(0) and ph(0)<pl(2)
+        macroScore := 16, macroName := "Wolfe Wave Bull"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if pl(1)<ph(2) and pl(0)<ph(2) and distPct(pl(1),pl(0))<st_tl and ph(0)>ph(1)
+        macroScore := 16, macroName := "Dragon Bull"
+        macroTarget := ph(2)
+    else if ph(1)>pl(2) and ph(0)>pl(2) and distPct(ph(1),ph(0))<st_tl and pl(0)<pl(1)
+        macroScore := -16, macroName := "Dragon Bear"
+        macroTarget := pl(2)
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(0)>pl(1)+((ph(1)-pl(1))*0.3)
+        macroScore := 15, macroName := "1-2-3-4 Bull"
+        macroTarget := ph(1) + (ph(1) - pl(0))
+    else if pl(1)<pl(0) and ph(1)>ph(0) and ph(0)<ph(1)-((ph(1)-pl(1))*0.3)
+        macroScore := -15, macroName := "1-2-3-4 Bear"
+        macroTarget := pl(1) - (ph(0) - pl(1))
+
+// ---- LEVEL 3: 3-Pivot Classic ----
+if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 2
+    if distPct(ph(0),ph(1))<st_tl and distPct(ph(1),ph(2))<st_tl
+        macroScore := -14, macroName := "Triple Top"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if distPct(pl(0),pl(1))<st_tl and distPct(pl(1),pl(2))<st_tl
+        macroScore := 14, macroName := "Triple Bottom"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if ph(1)>ph(2) and ph(1)>ph(0) and distPct(ph(2),ph(0))<st_tl*1.5
+        macroScore := -13, macroName := "Head & Shoulders"
+        macroTarget := pl(0) - (ph(1) - pl(0))
+    else if pl(1)<pl(2) and pl(1)<pl(0) and distPct(pl(2),pl(0))<st_tl*1.5
+        macroScore := 13, macroName := "Inv Head & Shoulders"
+        macroTarget := ph(0) + (ph(0) - pl(1))
+    else if ph(2)<ph(1) and pl(1)<pl(2) and distPct(ph(2),ph(0))<st_tl
+        macroScore := -12, macroName := "Quasimodo Bear"
+        macroTarget := pl(1)
+    else if pl(2)>pl(1) and ph(1)>ph(2) and distPct(pl(2),pl(0))<st_tl
+        macroScore := 12, macroName := "Quasimodo Bull"
+        macroTarget := ph(1)
+
+// ---- LEVEL 4: Cup & Handle / W / M ----
+if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+    if distPct(ph(1),ph(0))<st_tl*1.5 and pl(0)>pl(1) and pl(0)<ph(0)
+        macroScore := 12, macroName := "Cup & Handle"
+        macroTarget := ph(0) + (ph(0) - pl(1))
+    else if distPct(pl(1),pl(0))<st_tl*1.5 and ph(0)<ph(1) and ph(0)>pl(0)
+        macroScore := -12, macroName := "Inv Cup & Handle"
+        macroTarget := pl(0) - (ph(1) - pl(0))
+    else if distPct(pl(1),pl(0))<st_tl and ph(0)>pl(0)+((ph(1)-pl(1))*0.6)
+        macroScore := 11, macroName := "W-Bottom (Adam & Eve)"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if distPct(ph(1),ph(0))<st_tl and pl(0)<ph(0)-((ph(1)-pl(1))*0.6)
+        macroScore := -11, macroName := "M-Top (Adam & Eve)"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+
+// ---- LEVEL 5: 2-Pivot Core Triangles/Flags/Wedges ----
+if macroScore == 0 and array.size(pivotsHigh) >= 2 and array.size(pivotsLow) >= 2
+    bool flatTop  = distPct(ph(0),ph(1)) < st_tl
+    bool flatBot  = distPct(pl(0),pl(1)) < st_tl
+    bool risingT  = ph(0) > ph(1) and not flatTop
+    bool fallingT = ph(0) < ph(1) and not flatTop
+    bool risingB  = pl(0) > pl(1) and not flatBot
+    bool fallingB = pl(0) < pl(1) and not flatBot
+    float topDiff = math.abs(ph(0) - ph(1))
+    float botDiff = math.abs(pl(0) - pl(1))
+    bool  isParallel = math.abs(topDiff - botDiff) < (math.max(topDiff, botDiff) * 0.3)
+
+    if flatTop and not flatBot
+        macroScore := -9,  macroName := "Double Top",        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if flatBot and not flatTop
+        macroScore := 9,   macroName := "Double Bottom",     macroTarget := ph(0) + (ph(0) - pl(0))
+    else if flatTop and risingB
+        macroScore := 8,   macroName := "Ascending Triangle", macroTarget := ph(0) + (ph(0) - pl(1))
+    else if flatBot and fallingT
+        macroScore := -8,  macroName := "Descending Triangle",macroTarget := pl(0) - (ph(1) - pl(0))
+    else if fallingT and risingB
+        macroScore := (close > ta.ema(close,50)) ? 5 : -5
+        macroName  := "Symmetrical Triangle"
+        macroTarget := ph(0)
+    else if risingT and fallingB and topDiff < botDiff and not isParallel
+        macroScore := -8,  macroName := "Rising Wedge",      macroTarget := pl(1)
+    else if fallingT and fallingB and topDiff > botDiff and not isParallel
+        macroScore := 8,   macroName := "Falling Wedge",     macroTarget := ph(1)
+    else if fallingT and fallingB and isParallel and math.abs(phb(1)-plb(0))<15
+        macroScore := 7,   macroName := "Bull Flag",          macroTarget := ph(1) + (ph(1) - pl(1))
+    else if risingT and risingB and isParallel and math.abs(plb(1)-phb(0))<15
+        macroScore := -7,  macroName := "Bear Flag",          macroTarget := pl(1) - (ph(1) - pl(1))
+    else if fallingT and fallingB and isParallel
+        macroScore := 6,   macroName := "Descending Channel", macroTarget := ph(1)
+    else if risingT and risingB and isParallel
+        macroScore := -6,  macroName := "Ascending Channel",  macroTarget := pl(1)
+    else if distPct(topDiff, botDiff) < 0.15
+        macroScore := (ph(0)>ph(1)) ? -10 : 10
+        macroName  := (ph(0)>ph(1)) ? "AB=CD Bear" : "AB=CD Bull"
+        macroTarget := (ph(0)>ph(1)) ? pl(0) : ph(0)
+    else if flatTop and math.abs(phb(1)-phb(0)) <= 3
+        macroScore := -11, macroName := "Horn Top",           macroTarget := pl(0)
+    else if flatBot and math.abs(plb(1)-plb(0)) <= 3
+        macroScore := 11,  macroName := "Horn Bottom",        macroTarget := ph(0)
+
+// ---- LEVEL 6: Trend Exhaustion ----
+if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+    if pl(0)<pl(1) and pl(1)<pl(2) and math.abs((pl(0)-pl(1))/math.max(1,(plb(0)-plb(1))))>math.abs((pl(1)-pl(2))/math.max(1,(plb(1)-plb(2))))*1.5
+        macroScore := 13, macroName := "Accelerating Bottom"
+        macroTarget := ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and math.abs((ph(0)-ph(1))/math.max(1,(phb(0)-phb(1))))>math.abs((ph(1)-ph(2))/math.max(1,(phb(1)-phb(2))))*1.5
+        macroScore := -13, macroName := "Accelerating Top"
+        macroTarget := pl(1)
+    else if ph(0)>ph(1) and close<ph(1) and math.abs(phb(0)-bar_index)<=3
+        macroScore := -15, macroName := "2B Reversal Top"
+        macroTarget := pl(1)
+    else if pl(0)<pl(1) and close>pl(1) and math.abs(plb(0)-bar_index)<=3
+        macroScore := 15, macroName := "2B Reversal Bottom"
+        macroTarget := ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and (ph(0)-pl(0))>(ph(1)-pl(1))*2.5
+        macroScore := -12, macroName := "Parabolic Blowoff Top"
+        macroTarget := pl(0) - ((ph(0)-pl(0))*0.5)
+    else if pl(0)<pl(1) and pl(1)<pl(2) and (ph(0)-pl(0))>(ph(1)-pl(1))*2.5
+        macroScore := 12, macroName := "Parabolic Blowoff Bottom"
+        macroTarget := ph(0) + ((ph(0)-pl(0))*0.5)
+
+// ---- LEVEL 7: Wyckoff & Liquidity Traps ----
+if macroScore == 0 and array.size(pivotsHigh) >= 3 and array.size(pivotsLow) >= 3
+    if pl(0)<pl(1) and pl(1)>pl(2) and distPct(pl(1),pl(2))<st_tl*1.5 and close>pl(1)
+        macroScore := 16, macroName := "Wyckoff Spring"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if ph(0)>ph(1) and ph(1)<ph(2) and distPct(ph(1),ph(2))<st_tl*1.5 and close<ph(1)
+        macroScore := -16, macroName := "Wyckoff UTAD"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if ph(0)==ta.highest(high,20) and close<ph(1) and math.abs(phb(0)-bar_index)<=2
+        macroScore := -14, macroName := "Turtle Soup Short"
+        macroTarget := pl(0)
+    else if pl(0)==ta.lowest(low,20) and close>pl(1) and math.abs(plb(0)-bar_index)<=2
+        macroScore := 14, macroName := "Turtle Soup Long"
+        macroTarget := ph(0)
+    else if ph(1)>ph(2) and ph(1)>ph(0) and close>ph(1)
+        macroScore := 15, macroName := "Failed H&S Bear Trap"
+        macroTarget := ph(1) + (ph(1) - pl(0))
+    else if pl(1)<pl(2) and pl(1)<pl(0) and close<pl(1)
+        macroScore := -15, macroName := "Failed InvH&S Bull Trap"
+        macroTarget := pl(1) - (ph(0) - pl(1))
+    else if ph(2)<ph(1) and pl(1)<pl(2) and close>ph(1)
+        macroScore := 13, macroName := "QM Failure Bullish"
+        macroTarget := ph(1) + (ph(1) - pl(1))
+    else if pl(2)>pl(1) and ph(1)>ph(2) and close<pl(1)
+        macroScore := -13, macroName := "QM Failure Bearish"
+        macroTarget := pl(1) - (ph(1) - pl(1))
+
+// ---- LEVEL 8: Deep Harmonics ----
+if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
+    float xaD  = pl(2) - ph(3), float cdD = ph(0) - pl(1)
+    float xaU  = ph(2) - pl(3), float cdU = pl(0) - ph(1)
+    if ph(3)>ph(2) and ph(0)>ph(3) and pl(1)>pl(2) and distPct(math.abs(cdD/math.max(xaD,0.001)), 1.618)<0.2
+        macroScore := -17, macroName := "Deep Crab Bearish"
+        macroTarget := pl(1)
+    else if pl(3)<pl(2) and pl(0)<pl(3) and ph(1)<ph(2) and distPct(math.abs(cdU/math.max(xaU,0.001)), 1.618)<0.2
+        macroScore := 17, macroName := "Deep Crab Bullish"
+        macroTarget := ph(1)
+    else if ph(0)>ph(1) and ph(1)>ph(2) and distPct(math.abs((ph(0)-pl(0))/math.max(ph(1)-pl(1),0.001)), 1.272)<0.2
+        macroScore := -13, macroName := "1.272 Extension Top"
+        macroTarget := pl(0)
+    else if pl(0)<pl(1) and pl(1)<pl(2) and distPct(math.abs((ph(0)-pl(0))/math.max(ph(1)-pl(1),0.001)), 1.272)<0.2
+        macroScore := 13, macroName := "1.272 Extension Bottom"
+        macroTarget := ph(0)
+
+// ---- LEVEL 9: Complex Multi-Leg Elliott Proxies ----
+if macroScore == 0 and array.size(pivotsHigh) >= 4 and array.size(pivotsLow) >= 4
+    if pl(1)<pl(2) and ph(0)>ph(1) and close<ph(0)
+        macroScore := -12, macroName := "Expanded Flat Bearish C"
+        macroTarget := pl(1) - (ph(0) - pl(1))
+    else if ph(1)>ph(2) and pl(0)<pl(1) and close>pl(0)
+        macroScore := 12, macroName := "Expanded Flat Bullish C"
+        macroTarget := ph(1) + (ph(1) - pl(0))
+    else if ph(0)>ph(1) and ph(1)>ph(2) and pl(0)<pl(1) and pl(1)<pl(2) and close<pl(0)
+        macroScore := -16, macroName := "Broadening Exhaustion Top"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+    else if pl(0)<pl(1) and pl(1)<pl(2) and ph(0)>ph(1) and ph(1)>ph(2) and close>ph(0)
+        macroScore := 16, macroName := "Broadening Exhaustion Bot"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if ph(1)<ph(0) and pl(1)>pl(0) and ph(2)<ph(1) and close>ph(0)
+        macroScore := 14, macroName := "Diamond Top Failure"
+        macroTarget := ph(0) + (ph(0) - pl(0))
+    else if ph(1)>ph(0) and pl(1)<pl(0) and pl(2)>pl(1) and close<pl(0)
+        macroScore := -14, macroName := "Diamond Bottom Failure"
+        macroTarget := pl(0) - (ph(0) - pl(0))
+
+// ============================================================================
+// 10. PATTERN SCORING & GEOMETRY VISUALISATION
+// ============================================================================
+
+pe.activeMacroPat  := macroName
+pe.patternScore    := candleScore + macroScore
+pe.structureTarget := macroTarget
+pe.isReversal      := math.abs(pe.patternScore) >= 12
+pe.isContinuation  := math.abs(pe.patternScore) > 0 and math.abs(pe.patternScore) < 12
+
+// Draw geometry boxes when a new macro pattern is detected
+if macroScore != 0 and macroScore != macroScore[1] and sh_pz
+    float hi30 = ta.highest(high, 30), float lo30 = ta.lowest(low, 30)
+    float rng  = hi30 - lo30
+    bool  isBullPat = macroScore > 0
+    color cCore = isBullPat ? color.new(#00FF00, 85) : color.new(#FF0000, 85)
+    color cBord = isBullPat ? color.lime : color.red
+    color cTarg = isBullPat ? color.new(#00BFFF, 85) : color.new(#FF8C00, 85)
+
+    box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97))
+    box.new(bar_index-28, hi30, bar_index, lo30, border_color=cBord, border_width=2, bgcolor=cCore)
+
+    if not na(macroTarget)
+        box.new(bar_index, isBullPat?macroTarget:close, bar_index+15, isBullPat?close:macroTarget, border_color=color.new(cTarg,50), border_style=line.style_dashed, bgcolor=cTarg)
+        line.new(bar_index, macroTarget, bar_index+15, macroTarget, color=cBord, width=2)

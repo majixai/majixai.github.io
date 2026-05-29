@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--base-dir", default="best", help="Base directory for best artifacts")
     parser.add_argument("--runtime-seconds", type=int, default=180, help="Maximum runtime per invocation")
     parser.add_argument("--api-page-limit", type=int, default=500, help="API page size")
-    parser.add_argument("--api-max-pages", type=int, default=100, help="Max pages fetched per run (safety cap; actual pages determined by API count)")
+    parser.add_argument("--api-max-pages", type=int, default=500, help="Max pages fetched per run (safety cap; actual pages determined by API count)")
     parser.add_argument("--api-concurrency", type=int, default=6, help="Concurrent API page fetches")
     parser.add_argument("--image-concurrency", type=int, default=12, help="Concurrent image downloads")
     parser.add_argument("--request-timeout", type=int, default=20, help="HTTP timeout seconds")
@@ -262,6 +262,29 @@ def write_manifest(base_dir: Path, conn: sqlite3.Connection, generated_at: int) 
         """
     ).fetchall()
 
+    history_rows = conn.execute(
+        """
+        SELECT username, image_url
+        FROM performer_image_history
+        ORDER BY username ASC, last_seen DESC, first_seen DESC
+        """
+    ).fetchall()
+
+    history_map: dict[str, list[str]] = {}
+    seen_per_user: dict[str, set[str]] = {}
+    per_user_limit = 24
+    for username, image_url in history_rows:
+        if not username or not image_url:
+            continue
+        bucket = history_map.setdefault(username, [])
+        seen = seen_per_user.setdefault(username, set())
+        if image_url in seen:
+            continue
+        if len(bucket) >= per_user_limit:
+            continue
+        bucket.append(image_url)
+        seen.add(image_url)
+
     items: list[dict[str, Any]] = []
     for row in rows:
         tags = []
@@ -273,14 +296,25 @@ def write_manifest(base_dir: Path, conn: sqlite3.Connection, generated_at: int) 
             except json.JSONDecodeError:
                 tags = []
 
+        username = row[0]
+        current_image = row[5]
+        history_urls = history_map.get(username, [])
+        merged_images = []
+        if current_image:
+            merged_images.append(current_image)
+        merged_images.extend(history_urls)
+        merged_images = list(dict.fromkeys(merged_images))
+
         items.append(
             {
-                "username": row[0],
-                "display_name": row[1] or row[0],
+                "username": username,
+                "display_name": row[1] or username,
                 "age": row[2],
                 "num_viewers": row[3] or 0,
                 "tags": tags,
-                "image_url": row[5],
+                "image_url": current_image,
+                "image_history": merged_images,
+                "image_count": len(merged_images),
                 "last_seen": row[6],
                 "byte_size": row[7] or 0,
                 "mime_type": row[8] or "",

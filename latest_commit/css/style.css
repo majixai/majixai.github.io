@@ -17,6 +17,13 @@ body, html {
     justify-content: center;
 }
 
+/* --- Result count --- */
+#result-count {
+    font-size: .82rem;
+    color: #666;
+    white-space: nowrap;
+}
+
 /* --- Timeline Container --- */
 .timeline-container {
     position: relative;
@@ -41,7 +48,7 @@ body, html {
     width: 50%;
     opacity: 0;
     transform: translateY(20px);
-    transition: all 0.5s ease-in-out;
+    transition: opacity 0.45s ease-in-out, transform 0.45s ease-in-out;
 }
 
 .timeline-item.left {
@@ -77,7 +84,71 @@ body, html {
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
+.timeline-content h5 {
+    font-size: .95rem;
+    margin-bottom: .4rem;
+    word-break: break-word;
+}
+
+.commit-sha {
+    display: inline-block;
+    font-family: monospace;
+    font-size: .75rem;
+    background: #eef2f7;
+    border: 1px solid #cdd8e3;
+    border-radius: 4px;
+    padding: .1rem .4rem;
+    color: #555;
+    margin-bottom: .4rem;
+}
+
+.commit-meta {
+    font-size: .8rem;
+    color: #777;
+    margin-bottom: .6rem;
+}
+
+.commit-author { font-weight: 600; color: #555; }
+.commit-date   { color: #888; }
+
 .timeline-item.visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+/* --- Load More Button --- */
+.load-more-btn {
+    padding: .5rem 1.5rem;
+    border: 2px solid #007bff;
+    border-radius: 999px;
+    background: #fff;
+    color: #007bff;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+}
+
+.load-more-btn:hover {
+    background: #007bff;
+    color: #fff;
+}
+
+/* --- Mobile: stack timeline to single column below 640px --- */
+@media (max-width: 640px) {
+    .timeline-container::before {
+        left: 20px;
+    }
+
+    .timeline-item {
+        width: 100%;
+        padding-left: 3.5rem;
+        padding-right: 1rem;
+        left: 0 !important;
+    }
+
+    .timeline-item::after {
+        left: 8px !important;
+        right: auto;
+    }
 }

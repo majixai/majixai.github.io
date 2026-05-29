@@ -468,6 +468,9 @@ function loadChart(ticker) {
         if (neuralResult && currentTicker === ticker) {
             // Re-render feedback panel with the richer neural signal overlay
             updateFeedbackEngine(forecast, patterns, data, neuralResult);
+            // Overlay most-probable cluster markers on previous bars and re-render
+            // forecast with confidence-aware sizing
+            enhanceChartWithClusters(ticker, dates, data, forecast, neuralResult);
         }
     });
 }
@@ -556,34 +559,46 @@ function renderMainChart(dates, open, high, low, close, data, patterns, forecast
         });
     }
     
-    // Forecast visualization
+    // Forecast visualization — size and opacity driven by neural confidence when available
     if (elements.showForecast.checked && forecast) {
         const lastDate = dates[dates.length - 1];
         const forecastDate = new Date(lastDate);
         forecastDate.setHours(13, 0, 0, 0);
-        
+
+        // neuralConfidence is injected by enhanceChartWithClusters after the worker returns;
+        // on first render use a neutral default so the marker still appears.
+        const fConf        = (typeof forecast._neuralConf === 'number') ? forecast._neuralConf : 0.50;
+        const isHighConf   = fConf >= 0.60;
+        const isMedConf    = fConf >= 0.45;
+        const markerSize   = isHighConf ? 20 : isMedConf ? 14 : 10;
+        const markerOpacity = isHighConf ? 1.0 : isMedConf ? 0.75 : 0.45;
+        const markerColor  = isHighConf ? '#FFD700' : isMedConf ? '#FFA500' : 'rgba(200,200,80,0.5)';
+        const ciLineWidth  = isHighConf ? 4 : isMedConf ? 2.5 : 1.5;
+
         traces.push({
             type: 'scatter',
             mode: 'markers',
             x: [forecastDate.toISOString()],
             y: [forecast.forecast_1pm],
             name: '1PM Forecast',
+            opacity: markerOpacity,
             marker: {
-                color: '#FFD700',
-                size: 15,
-                symbol: 'star',
-                line: { color: '#000', width: 2 }
+                color: markerColor,
+                size: markerSize,
+                symbol: isHighConf ? 'star' : 'diamond',
+                line: { color: isHighConf ? '#fff' : '#888', width: isHighConf ? 2 : 1 }
             }
         });
-        
-        // Confidence interval
+
+        // Confidence interval — thicker and brighter for high-confidence forecasts
         traces.push({
             type: 'scatter',
             mode: 'lines',
             x: [forecastDate.toISOString(), forecastDate.toISOString()],
             y: [forecast.confidence_lower, forecast.confidence_upper],
             name: '95% CI',
-            line: { color: '#FFD700', width: 3 },
+            opacity: markerOpacity,
+            line: { color: markerColor, width: ciLineWidth },
             showlegend: false
         });
     }
@@ -670,6 +685,131 @@ function renderMainChart(dates, open, high, low, close, data, patterns, forecast
     };
     
     Plotly.newPlot(elements.mainChart, traces, layout, config);
+}
+
+/**
+ * Overlay most-probable cluster markers on previous (historical) bars and
+ * re-render the forecast marker with neural-confidence-aware sizing.
+ *
+ * Called after the Web Worker returns barClusters so the initial chart render
+ * stays minimal (LOW-probability bars are untouched) while HIGH-probability
+ * forecasting bars receive enhanced visual emphasis.
+ */
+function enhanceChartWithClusters(ticker, dates, data, forecast, neuralResult) {
+    if (!isPlotlyAvailable()) return;
+    if (!neuralResult || !Array.isArray(neuralResult.barClusters)) return;
+
+    const clusters  = neuralResult.barClusters;
+    const close     = data.map(d => d.Close);
+    const high      = data.map(d => d.High);
+
+    // -- 1. Most-probable previous-bar markers ---------------------------------
+    // Show markers at HIGH-cluster bars so the viewer can see where the most
+    // probable forecasting signals occurred on historical bars.
+    const highX = [], highY = [], highText = [];
+    const medX  = [], medY  = [];
+
+    for (const c of clusters) {
+        if (c.idx >= dates.length) continue;
+        if (c.cluster === 'HIGH') {
+            highX.push(dates[c.idx]);
+            highY.push(high[c.idx]);
+            highText.push(`${c.signal} ${(c.conf * 100).toFixed(0)}%`);
+        } else if (c.cluster === 'MED') {
+            medX.push(dates[c.idx]);
+            medY.push(high[c.idx]);
+        }
+    }
+
+    const overlayTraces = [];
+
+    if (highX.length > 0) {
+        overlayTraces.push({
+            type: 'scatter',
+            mode: 'markers+text',
+            x: highX,
+            y: highY,
+            text: highText,
+            textposition: 'top center',
+            textfont: { size: 8, color: '#FFD700' },
+            name: '🔥 Most Probable',
+            opacity: 0.9,
+            marker: {
+                color: '#FFD700',
+                size: 8,
+                symbol: 'triangle-up',
+                line: { color: '#c8a000', width: 1 }
+            },
+            hovertemplate: '%{text}<extra>High Probability</extra>'
+        });
+    }
+
+    if (medX.length > 0) {
+        overlayTraces.push({
+            type: 'scatter',
+            mode: 'markers',
+            x: medX,
+            y: medY,
+            name: 'Med Probable',
+            opacity: 0.40,
+            marker: {
+                color: '#FFA500',
+                size: 5,
+                symbol: 'triangle-up',
+            },
+            hovertemplate: 'Med probability<extra></extra>'
+        });
+    }
+
+    // -- 2. Re-render forecast marker with neural confidence sizing ---------------
+    if (elements.showForecast.checked && forecast) {
+        // Stamp neural confidence onto the forecast object so renderMainChart
+        // uses it for size/opacity on the next full re-render.
+        forecast._neuralConf = neuralResult.confidence;
+
+        const lastDate     = dates[dates.length - 1];
+        const forecastDate = new Date(lastDate);
+        forecastDate.setHours(13, 0, 0, 0);
+
+        const fConf        = neuralResult.confidence;
+        const isHighConf   = fConf >= 0.60;
+        const isMedConf    = fConf >= 0.45;
+        const markerSize   = isHighConf ? 22 : isMedConf ? 15 : 10;
+        const markerOpacity = isHighConf ? 1.0 : isMedConf ? 0.75 : 0.45;
+        const markerColor  = isHighConf ? '#FFD700' : isMedConf ? '#FFA500' : 'rgba(200,200,80,0.5)';
+        const ciLineWidth  = isHighConf ? 4 : isMedConf ? 2.5 : 1.5;
+
+        overlayTraces.push({
+            type: 'scatter',
+            mode: 'markers',
+            x: [forecastDate.toISOString()],
+            y: [forecast.forecast_1pm],
+            name: '1PM Forecast ★',
+            opacity: markerOpacity,
+            marker: {
+                color: markerColor,
+                size: markerSize,
+                symbol: isHighConf ? 'star' : 'diamond',
+                line: { color: isHighConf ? '#fff' : '#888', width: isHighConf ? 2 : 1 }
+            },
+            hovertemplate: `Forecast $${forecast.forecast_1pm.toFixed(2)}<br>Conf ${(fConf * 100).toFixed(0)}%<extra></extra>`
+        });
+
+        overlayTraces.push({
+            type: 'scatter',
+            mode: 'lines',
+            x: [forecastDate.toISOString(), forecastDate.toISOString()],
+            y: [forecast.confidence_lower, forecast.confidence_upper],
+            name: '95% CI ★',
+            opacity: markerOpacity,
+            line: { color: markerColor, width: ciLineWidth },
+            showlegend: false
+        });
+    }
+
+    if (overlayTraces.length > 0) {
+        Plotly.addTraces(elements.mainChart, overlayTraces);
+    }
 }
 
 function renderVolumeChart(dates, volume, close) {

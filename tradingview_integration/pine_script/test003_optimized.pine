@@ -131,12 +131,18 @@ pv_lb  = input.int(10,     "Pivot Lookback",          minval=3,   maxval=30,  gr
 st_tl  = input.float(0.02, "Pattern Tolerance (%)",               step=0.005, group=g_pat, tooltip="Relative distance tolerance for pattern matching.")
 p_clB  = input.color(color.new(color.lime, 0), "Bullish Pattern Color",        group=g_pat)
 p_clR  = input.color(color.new(color.red,  0), "Bearish Pattern Color",        group=g_pat)
-g_kn   = "Kinematic Ensemble"
-fc_hz  = input.int(20,     'Forecast Horizon (Bars)', minval=2,   maxval=100, group=g_kn)
-lr_rt  = input.float(0.1,  'Feedback Learn Rate',     minval=0.01,maxval=0.5, group=g_kn, tooltip="Speed at which Bayesian bias adapts to forecast errors.")
-by_lb  = input.int(500,    'Bayesian Lookback',        minval=50,             group=g_kn)
-en_mr  = input.bool(true,  "Enable Mean Reversion Gravity",                    group=g_kn)
-up_md  = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn)
+g_kn    = "Kinematic Ensemble"
+tf_sh   = input.timeframe("5",   "Short  Conic TF",   group=g_kn, tooltip="Timeframe for the fast/short-term conic model. Must be ≥ chart TF.")
+tf_md   = input.timeframe("15",  "Medium Conic TF",   group=g_kn, tooltip="Timeframe for the medium-term conic model. Must be ≥ chart TF.")
+tf_lg   = input.timeframe("60",  "Long   Conic TF",   group=g_kn, tooltip="Timeframe for the slow/long-term conic model. Must be ≥ chart TF.")
+kn_lb_s = input.int(10,  "Short  Conic LB",  minval=5,  maxval=50,  group=g_kn, tooltip="OLS regression lookback bars on the short TF.")
+kn_lb_m = input.int(20,  "Medium Conic LB",  minval=5,  maxval=100, group=g_kn, tooltip="OLS regression lookback bars on the medium TF.")
+kn_lb_l = input.int(40,  "Long   Conic LB",  minval=10, maxval=200, group=g_kn, tooltip="OLS regression lookback bars on the long TF.")
+by_hz   = input.int(20,     'Bayesian Horizon Offset', minval=2, maxval=100, group=g_kn, tooltip="Historical bar offset used by Bayesian inference accuracy check.")
+lr_rt   = input.float(0.1,  'Feedback Learn Rate',     minval=0.01, maxval=0.5, group=g_kn, tooltip="Speed at which Bayesian bias adapts to forecast errors.")
+by_lb   = input.int(500,    'Bayesian Lookback',        minval=50,              group=g_kn)
+en_mr   = input.bool(true,  "Enable Mean Reversion Gravity",                    group=g_kn)
+up_md   = input.string("After target hit/miss", "Conic Refresh Mode", options=["Each tick", "Each new bar", "After target hit/miss"], group=g_kn)
 g_mtx  = "Ensemble Weight Matrix"
 wt_in  = input.text_area("1.0 0.5 0.2\n0.2 1.0 0.5\n0.5 0.2 1.0", "Model Weights (Kin / Bayes / MR)", group=g_mtx, tooltip="3×3 matrix rows: [Kin, Bayes, MR]. First row weights used for blending.")
 g_syn  = "MACD Synergy"
@@ -187,7 +193,13 @@ gc_prune   = input.int(3,   "GC Prune Batch/Bar",        minval=1, maxval=20,  g
 sh_gc_hud  = input.bool(false, "Show GC Diagnostics HUD", group=g_gc)
 
 var KinematicModel  kin  = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var KinematicModel  kinS = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 10)
+var KinematicModel  kinM = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 20)
+var KinematicModel  kinL = KinematicModel.new(0.0, 0.0, 0.0, 0.0, 40)
 var UncertaintyZone uz   = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+var UncertaintyZone uzS  = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+var UncertaintyZone uzM  = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
+var UncertaintyZone uzL  = UncertaintyZone.new(0.0, 0.0, 0.0, b_cf)
 var PinnedForecast  pfS  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
 var PinnedForecast  pfM  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
 var PinnedForecast  pfL  = PinnedForecast.new(0, 0, 0.0, array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), array.new_float(0), 0, false, "NONE")
@@ -207,9 +219,9 @@ var PivotNode[] pivotsLow  = array.new<PivotNode>()
 var TradeState  activeTrade = TradeState.new(0.0, 0.0, 0.0, 0.0, 0, false)
 var box[]      ghostBoxes  = array.new_box()
 var line[]     ghostWicks  = array.new_line()
-var matrix<float> mcMatrixS = matrix.new<float>(3, fc_hz, 0.0)
-var matrix<float> mcMatrixM = matrix.new<float>(3, fc_hz, 0.0)
-var matrix<float> mcMatrixL = matrix.new<float>(3, fc_hz, 0.0)
+var matrix<float> mcMatrixS = matrix.new<float>(3, 20, 0.0)
+var matrix<float> mcMatrixM = matrix.new<float>(3, 20, 0.0)
+var matrix<float> mcMatrixL = matrix.new<float>(3, 20, 0.0)
 var polyline[] mc_lines    = array.new<polyline>()
 var box[]      densBoxes   = array.new<box>()
 var polyline[] fcstShapes  = array.new<polyline>()
@@ -232,6 +244,8 @@ const int CAP_MIN_DENS_BOXES  = 16
 const int CAP_MIN_FCST_SHAPES = 16
 const int CAP_MIN_FCST_LABELS = 40
 const int CAP_MIN_MAIN_POLY   = 40
+const int MS_PER_MIN          = 60000  // milliseconds per minute – used for bar-time arithmetic
+const int GHOST_BOX_HW_MS     = 20000  // ghost-bar box half-width in ms (visual padding ~20 s)
 var int liveCapGhostBoxes = CAP_GHOST_BOXES
 var int liveCapGhostWicks = CAP_GHOST_WICKS
 var int liveCapMcLines    = CAP_MC_LINES
@@ -494,6 +508,20 @@ c_kn_ring(float[] ringBuf, int head, int count, int lb) =>
     float prevVel   = nz(velocity[2], velocity)
     float accel     = (velocity - prevVel) / 2.0
     KinematicModel.new(velocity, accel, intercept, math.sqrt(ssRes / n), nInt)
+// Per-TF linear kinematics computed inside request.security context.
+// Returns [velocity, acceleration, rmse, atr14, squeeze_duration].
+f_kin_tf(simple int lb) =>
+    float vel    = ta.linreg(close, lb, 0) - ta.linreg(close, lb, 1)
+    float prevVel = nz(vel[2], vel)
+    float accel  = (vel - prevVel) / 2.0
+    float err    = ta.stdev(close, lb) * 0.5
+    float atr14  = ta.atr(14)
+    float bbDev  = ta.stdev(close, lb) * 2.0
+    float kcDev  = ta.atr(lb) * 1.5
+    bool  isSqz  = bbDev < kcDev
+    var int sqzDur = 0
+    sqzDur := isSqz ? sqzDur + 1 : 0
+    [vel, accel, err, atr14, sqzDur]
 var float[] closeBuf = array.new_float(50, close)
 var int closeBufHead = 0
 var int closeBufCount = 50
@@ -519,6 +547,27 @@ AlphaTrend := moEngin ? (upBand < nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : upBand
                       : (dnBand > nz(AlphaTrend[1]) ? nz(AlphaTrend[1]) : dnBand)
 bool atBull = AlphaTrend > AlphaTrend[2]
 bool atFlip = ta.change(atBull) != 0
+
+// ── Per-TF kinematic data (each conic uses its own dedicated timeframe) ────────
+[velS_tf, accelS_tf, errS_tf, atrS_tf, sqzDurS_tf] = request.security(syminfo.tickerid, tf_sh, f_kin_tf(kn_lb_s), gaps=barmerge.gaps_off)
+[velM_tf, accelM_tf, errM_tf, atrM_tf, sqzDurM_tf] = request.security(syminfo.tickerid, tf_md, f_kin_tf(kn_lb_m), gaps=barmerge.gaps_off)
+[velL_tf, accelL_tf, errL_tf, atrL_tf, sqzDurL_tf] = request.security(syminfo.tickerid, tf_lg, f_kin_tf(kn_lb_l), gaps=barmerge.gaps_off)
+// Ratio of TF bar length to chart bar length; math.max(1,...) guards against tick/range charts
+// where timeframe.in_seconds() may return 0, ensuring tfMult is always ≥ 1.
+float tfMult_s = math.max(1.0, timeframe.in_seconds(tf_sh) / math.max(1, timeframe.in_seconds(timeframe.period)))
+float tfMult_m = math.max(1.0, timeframe.in_seconds(tf_md) / math.max(1, timeframe.in_seconds(timeframe.period)))
+float tfMult_l = math.max(1.0, timeframe.in_seconds(tf_lg) / math.max(1, timeframe.in_seconds(timeframe.period)))
+// Build per-TF kinematic models (intercept = close − vel×lb, good enough anchor)
+kinS := KinematicModel.new(nz(velS_tf, 0.0), nz(accelS_tf, 0.0), close - nz(velS_tf, 0.0) * kn_lb_s, nz(errS_tf, atrVal * 0.5), kn_lb_s)
+kinM := KinematicModel.new(nz(velM_tf, 0.0), nz(accelM_tf, 0.0), close - nz(velM_tf, 0.0) * kn_lb_m, nz(errM_tf, atrVal * 0.5), kn_lb_m)
+kinL := KinematicModel.new(nz(velL_tf, 0.0), nz(accelL_tf, 0.0), close - nz(velL_tf, 0.0) * kn_lb_l, nz(errL_tf, atrVal * 0.5), kn_lb_l)
+// Per-TF uncertainty zones; adaptiveCoeff initialised with errorTerm + chart factors
+uzS.standardError := kinS.errorTerm
+uzS.adaptiveCoeff := math.max(1.0, math.min(3.5, b_cf + (kinS.errorTerm / math.max(close, syminfo.mintick) * 100)))
+uzM.standardError := kinM.errorTerm
+uzM.adaptiveCoeff := math.max(1.0, math.min(3.5, b_cf + (kinM.errorTerm / math.max(close, syminfo.mintick) * 100) + trigFactor))
+uzL.standardError := kinL.errorTerm
+uzL.adaptiveCoeff := math.max(1.0, math.min(3.5, b_cf + (kinL.errorTerm / math.max(close, syminfo.mintick) * 100) * 0.6))
 getSqueezeMetrics(simple int len) =>
     float bbDev   = ta.stdev(close, len) * 2.0
     float kcDev   = ta.sma(ta.tr, len) * 1.5
@@ -1203,8 +1252,8 @@ pe.currentStdev   := statStdev
 // ─────────────────────────────────────────────────────────────────────────────
 float targetUp  = close + (atrVal * b_cf * 1.8)
 float targetDn  = close - (atrVal * b_cf * 1.8)
-float probBRaw  = math.sum(AlphaTrend>AlphaTrend[2] and high>nz(targetUp[fc_hz])?1:0, by_lb) / by_lb * 100
-float probBearR = math.sum(AlphaTrend<=AlphaTrend[2] and low<nz(targetDn[fc_hz])?1:0, by_lb) / by_lb * 100
+float probBRaw  = math.sum(AlphaTrend>AlphaTrend[2] and high>nz(targetUp[by_hz])?1:0, by_lb) / by_lb * 100
+float probBearR = math.sum(AlphaTrend<=AlphaTrend[2] and low<nz(targetDn[by_hz])?1:0, by_lb) / by_lb * 100
 Bayes.probBull   := math.max(0, math.min(100, probBRaw  + (feedbackBias*5) + (pe.patternScore*2)))
 Bayes.probBear   := math.max(0, math.min(100, probBearR - (feedbackBias*5) - (pe.patternScore*2)))
 Bayes.expectedClose := Bayes.probBull > Bayes.probBear ? targetUp : targetDn
@@ -1227,7 +1276,7 @@ resolve_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, float learnRate) =
         reset_forecast_state(pfIn, pmIn)
     else if pfIn.isActive and not ok
         reset_forecast_state(pfIn, pmIn)
-seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, int hz, string src, float tgt, float velMul, float mrMul, float bayMul, float accMul, float confMul) =>
+seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, KinematicModel knIn, UncertaintyZone uzIn, int hz, string src, float tgt, float velMul, float mrMul, float bayMul, float accMul, float confMul) =>
     pfIn.anchorBar := bar_index
     pfIn.anchorTime := time
     pfIn.anchorPrice := close
@@ -1243,12 +1292,12 @@ seed_forecast(PinnedForecast pfIn, ProjectionMetrics pmIn, int hz, string src, f
     for i = 1 to pfIn.horizonBars
         float ph = i / pfIn.horizonBars
         float dcy = math.exp(-i / math.max(1.0, pfIn.horizonBars * 0.6))
-        float v = (kin.velocity * velMul) + (((tgt - close) / pfIn.horizonBars) * bayMul)
-        float kinProj = pfIn.anchorPrice + (v * i) + (0.5 * kin.acceleration * accMul * math.pow(i, 2) * dcy)
+        float v = (knIn.velocity * velMul) + (((tgt - close) / pfIn.horizonBars) * bayMul)
+        float kinProj = pfIn.anchorPrice + (v * i) + (0.5 * knIn.acceleration * accMul * math.pow(i, 2) * dcy)
         float mrPull = en_mr ? (ema200 - close) * ph * mrMul : 0.0
         float bayPull = (tgt - pfIn.anchorPrice) * ph
         float finalPrj = (kinProj * kinWeight) + (bayPull * bayesWeight) + (mrPull * mrWeight)
-        float confBand = kin.errorTerm * uz.adaptiveCoeff * confMul * math.sqrt(i)
+        float confBand = knIn.errorTerm * uzIn.adaptiveCoeff * confMul * math.sqrt(i)
         array.push(pfIn.targetPoints, finalPrj)
         array.push(pfIn.confUpper, finalPrj + confBand)
         array.push(pfIn.confLower, finalPrj - confBand)
@@ -1264,23 +1313,64 @@ bool signalTrigger = atFlip or brk.isValidBreakout or pe.isReversal
 acc.hitRate := (acc.hitCount + acc.missCount) > 0 ? acc.hitCount / (acc.hitCount + acc.missCount) : 1.0
 if barstate.isconfirmed
     if acc.hitRate < 0.65
-        uz.adaptiveCoeff := math.min(3.5, uz.adaptiveCoeff + 0.05)
+        uzS.adaptiveCoeff := math.min(3.5, uzS.adaptiveCoeff + 0.05)
+        uzM.adaptiveCoeff := math.min(3.5, uzM.adaptiveCoeff + 0.05)
+        uzL.adaptiveCoeff := math.min(3.5, uzL.adaptiveCoeff + 0.05)
     else if acc.hitRate > 0.85
-        uz.adaptiveCoeff := math.max(b_cf, uz.adaptiveCoeff - 0.02)
+        uzS.adaptiveCoeff := math.max(b_cf, uzS.adaptiveCoeff - 0.02)
+        uzM.adaptiveCoeff := math.max(b_cf, uzM.adaptiveCoeff - 0.02)
+        uzL.adaptiveCoeff := math.max(b_cf, uzL.adaptiveCoeff - 0.02)
 resolve_forecast(pfS, PMS, lr_rt * 0.8)
 resolve_forecast(pfM, PM,  lr_rt)
 resolve_forecast(pfL, PML, lr_rt * 1.2)
 float trBias = (Bayes.probBull - Bayes.probBear) / 100.0
 float sigPow = math.abs(trBias)
-float volN = math.max(0.0, math.min(1.0, microVolIndex * 120.0))
-float velN = math.max(0.0, math.min(1.0, math.abs(kin.velocity) / math.max(atrVal, syminfo.mintick)))
-float revN = pe.isReversal ? 1.0 : 0.0
-int hzS = math.max(1, math.min(5, int(math.round(1 + 4 * ((1 - sigPow) * 0.55 + (1 - volN) * 0.35 + (revN * 0.10))))))
-int hzM = math.max(3, math.min(15, int(math.round(3 + 12 * ((sigPow * 0.50) + ((1 - volN) * 0.30) + (velN * 0.20))))))
-int hzL = math.max(10, math.min(120, int(math.round(10 + 110 * ((sigPow * (1 - volN) * 0.45) + (velN * 0.40) + ((1 - revN) * 0.15))))))
-float shT = close + (kin.velocity * hzS * 0.9) + (kin.acceleration * math.pow(hzS, 2) * 0.15) + (trBias * atrVal * (1.0 + sigPow)) + (pe.patternScore * atrVal * 0.02)
-float mdT = close + (kin.velocity * hzM * 0.8) + (kin.acceleration * math.pow(hzM, 2) * 0.2) + ((Bayes.expectedClose - close) * 0.55) + (trBias * atrVal * 1.6)
-float lgT = close + (kin.velocity * hzL * 0.65) + (kin.acceleration * math.pow(hzL, 2) * 0.08) + ((Bayes.expectedClose - close) * 0.35) + ((ta.ema(close, 200) - close) * (0.45 + (0.25 * (1 - volN))))
+
+// ── Per-TF normalised volatility, velocity, and squeeze loading ───────────────
+float atrS  = nz(atrS_tf, atrVal),  float atrM  = nz(atrM_tf, atrVal),  float atrL  = nz(atrL_tf, atrVal)
+float sqzS  = nz(sqzDurS_tf, 0),    float sqzM  = nz(sqzDurM_tf, 0),    float sqzL  = nz(sqzDurL_tf, 0)
+float volNS = math.max(0.0, math.min(1.0, atrS / math.max(close, syminfo.mintick)))
+float volNM = math.max(0.0, math.min(1.0, atrM / math.max(close, syminfo.mintick)))
+float volNL = math.max(0.0, math.min(1.0, atrL / math.max(close, syminfo.mintick)))
+float velNS = math.max(0.0, math.min(1.0, math.abs(kinS.velocity) / math.max(atrS, syminfo.mintick)))
+float velNM = math.max(0.0, math.min(1.0, math.abs(kinM.velocity) / math.max(atrM, syminfo.mintick)))
+float velNL = math.max(0.0, math.min(1.0, math.abs(kinL.velocity) / math.max(atrL, syminfo.mintick)))
+float sqzFacS = math.max(0.0, math.min(1.0, sqzS / 30.0))
+float sqzFacM = math.max(0.0, math.min(1.0, sqzM / 50.0))
+float sqzFacL = math.max(0.0, math.min(1.0, sqzL / 80.0))
+
+// ── Pattern-derived modifiers (integrate pattern recognition into forecasts) ───
+// Normalised scores: candleN in [-1,1], macroN in [-1,1]
+float candleN  = math.max(-1.0, math.min(1.0, candleScore / 10.0))
+float macroN   = math.max(-1.0, math.min(1.0, macroScore  / 25.0))
+float revN     = pe.isReversal     ? 1.0 : 0.0
+float contN    = pe.isContinuation ? 1.0 : 0.0
+// patProbN in [-1,1]: positive = high-probability bullish/bearish; negative = uncertainty
+float patProbN = (pe.currentProb - 50.0) / 50.0
+// Reversal patterns compress horizon; continuation / squeeze build-up extend it
+float patHzFactorS = math.max(0.5, math.min(2.0, 1.0 - (revN * 0.35) + (contN * 0.20) + (math.abs(candleN) * 0.15)))
+float patHzFactorM = math.max(0.5, math.min(2.0, 1.0 + (contN * 0.30) - (revN * 0.25) + (math.abs(macroN) * 0.25)))
+float patHzFactorL = math.max(0.5, math.min(2.0, 1.0 + (pe.probNextCont / 100.0 * 0.40) - (pe.probNextRev / 100.0 * 0.30) + (math.abs(macroN) * 0.30)))
+
+// ── Adaptive horizons: per-TF data × pattern factors ─────────────────────────
+int hzS = math.max(2, math.min(12,  int(math.round((2  + 10  * ((1 - sigPow) * 0.40 + (1 - volNS) * 0.35 + (sqzFacS * 0.25))) * patHzFactorS))))
+int hzM = math.max(5, math.min(50,  int(math.round((5  + 45  * ((sigPow * 0.40) + ((1 - volNM) * 0.25) + (velNM * 0.20) + (sqzFacM * 0.15))) * patHzFactorM))))
+int hzL = math.max(15, math.min(250, int(math.round((15 + 235 * ((sigPow * (1 - volNL) * 0.35) + (velNL * 0.35) + (sqzFacL * 0.15) + ((1 - revN) * 0.15))) * patHzFactorL))))
+
+// ── Targets: per-TF kinematics + pattern structure targets integrated ─────────
+// Short: candlestick pattern provides an immediate directional bias
+float candleTargBias = candleN * atrS * (1.0 + math.abs(candleN))
+float shT = close + (kinS.velocity * hzS * 0.9) + (kinS.acceleration * math.pow(hzS, 2) * 0.15) + (trBias * atrS * (1.0 + sigPow)) + candleTargBias
+// Medium: macro pattern structure target blended in proportion to pattern strength
+float macroTargBlend = (not na(pe.structureTarget) and math.abs(macroN) > 0.2) ? (pe.structureTarget - close) * math.abs(macroN) * 0.45 : 0.0
+float mdT = close + (kinM.velocity * hzM * 0.8) + (kinM.acceleration * math.pow(hzM, 2) * 0.2) + ((Bayes.expectedClose - close) * 0.45) + (trBias * atrM * 1.5) + macroTargBlend
+// Long: strong macro patterns pull target toward structure; otherwise kinematic + MR
+float longMacroWt  = math.max(0.0, math.abs(macroN) - 0.2) / 0.8
+float longKinTgt   = close + (kinL.velocity * hzL * 0.65) + (kinL.acceleration * math.pow(hzL, 2) * 0.08)
+float longMRTgt    = (ta.ema(close, 200) - close) * (0.40 + (0.20 * (1 - volNL)))
+float lgTmacro     = (longKinTgt * (1 - longMacroWt)) + (pe.structureTarget * longMacroWt) + ((Bayes.expectedClose - close) * 0.25) + longMRTgt
+float lgT = (not na(pe.structureTarget) and longMacroWt > 0) ? lgTmacro : longKinTgt + ((Bayes.expectedClose - close) * 0.30) + longMRTgt
+
 bool mdTick = up_md == "Each tick"
 bool mdBar = up_md == "Each new bar"
 string srcBase = pe.isReversal ? "GEO REV" : (brk.isValidBreakout ? "BRK SYN" : (atFlip ? "ALP FLP" : "STATE FLOW"))
@@ -1288,15 +1378,23 @@ bool canRefresh = mdTick ? true : (mdBar ? barstate.isnew : (signalTrigger and b
 bool rS = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfS.isActive)
 bool rM = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfM.isActive)
 bool rL = (mdTick or mdBar) ? canRefresh : (canRefresh and not pfL.isActive)
+// Pattern confidence modulates velocity multiplier; strong signals steer faster / slower
+float patVelBoostS = 1.0 + (candleN * math.abs(candleN) * 0.30)
+float patVelBoostM = 1.0 + (macroN  * math.abs(macroN)  * 0.25)
+float patVelBoostL = 1.0 + (macroN  * math.abs(macroN)  * 0.20)
+// High-confidence patterns tighten confidence bands; uncertainty widens them
+float patConfS = math.max(0.6, math.min(1.5,  1.0 - patProbN * 0.30))
+float patConfM = math.max(0.7, math.min(1.4,  1.0 - patProbN * 0.25))
+float patConfL = math.max(0.8, math.min(1.35, 1.0 - patProbN * 0.20))
 if rS
     mcMatrixS := m_rnd(3, hzS)
-    seed_forecast(pfS, PMS, hzS, "SHORT " + srcBase, shT, 1.2, 0.08, 0.55, 0.65, 0.9)
+    seed_forecast(pfS, PMS, kinS, uzS, hzS, "SH[" + tf_sh + "] " + srcBase, shT, 1.2  * patVelBoostS, 0.08, 0.55, 0.65, 0.9  * patConfS)
 if rM
     mcMatrixM := m_rnd(3, hzM)
-    seed_forecast(pfM, PM, hzM, "MEDIUM " + srcBase, mdT, 1.0, 0.18, 0.45, 0.9, 1.0)
+    seed_forecast(pfM, PM,  kinM, uzM, hzM, "MD[" + tf_md + "] " + srcBase, mdT, 1.0  * patVelBoostM, 0.18, 0.45, 0.9,  1.0  * patConfM)
 if rL
     mcMatrixL := m_rnd(3, hzL)
-    seed_forecast(pfL, PML, hzL, "LONG " + srcBase, lgT, 0.75, 0.32, 0.35, 1.2, 1.15)
+    seed_forecast(pfL, PML, kinL, uzL, hzL, "LG[" + tf_lg + "] " + srcBase, lgT, 0.75 * patVelBoostL, 0.32, 0.35, 1.2,  1.15 * patConfL)
 if pfM.isActive
     int elapsed = bar_index - pfM.anchorBar
     if elapsed > 0 and elapsed <= array.size(pfM.targetPoints)
@@ -1373,7 +1471,7 @@ f_render(PinnedForecast pfIn, KinematicModel knIn, UncertaintyZone uzIn, Accurac
             array.push(array.get(mcPtsArr, r).pts, anchorPt)
         float priorTP    = pfIn.anchorPrice
         int   horizSize  = array.size(pfIn.targetPoints)
-        int   dtStep     = int(timeframe.multiplier * tfMult * 60 * 1000)
+        int   dtStep     = int(timeframe.multiplier * tfMult * MS_PER_MIN)
         int   barStep    = math.max(1, int(tfMult))
         float baseVS     = math.sqrt(tfMult)
         float volScale   = baseVS * (1.0 + (mvi * 50))
@@ -1470,9 +1568,9 @@ if barstate.islast
     trim_lines(tradeVizLines, 6,          liveCapGhostWicks)
     trim_boxes(mssBoxes,      5,          liveCapGhostBoxes)
     color pathBase = acc.probBull > 0.65 ? color.new(#00FFAA,0) : acc.probBull < 0.35 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
-    f_render(pfS, kin, uz, acc, mcMatrixS, 1.0, color.new(#00BFFF,0), microVolIndex)
-    f_render(pfM, kin, uz, acc, mcMatrixM, 1.15, pathBase,            microVolIndex)
-    f_render(pfL, kin, uz, acc, mcMatrixL, 1.35, color.new(#FF8C00,0), microVolIndex)
+    f_render(pfS, kinS, uzS, acc, mcMatrixS, tfMult_s, color.new(#00BFFF,0),  microVolIndex)
+    f_render(pfM, kinM, uzM, acc, mcMatrixM, tfMult_m, pathBase,               microVolIndex)
+    f_render(pfL, kinL, uzL, acc, mcMatrixL, tfMult_l, color.new(#FF8C00,0),  microVolIndex)
     float cb = (open + high + low + close) / 4
     if not na(baselineRay)
         line.delete(baselineRay)
@@ -1494,9 +1592,11 @@ if barstate.islast
         array.clear(pgMean), array.clear(pgUpper), array.clear(pgLower)
         chart.point ancPt = chart.point.new(pfM.anchorTime, pfM.anchorBar, pfM.anchorPrice)
         array.push(pgMean, ancPt), array.push(pgUpper, ancPt), array.push(pgLower, ancPt)
+        int   barStepM = math.max(1, int(tfMult_m))
+        int   dtStepM  = int(tfMult_m * timeframe.multiplier * MS_PER_MIN)
         for i = 0 to array.size(pfM.targetPoints) - 1
-            int   tb = pfM.anchorBar + i + 1
-            int   tt = time + ((tb - bar_index) * timeframe.multiplier * 60 * 1000)
+            int   tb = pfM.anchorBar + int(i * barStepM) + 1
+            int   tt = time + ((tb - bar_index) * dtStepM)
             float tp = array.get(pfM.targetPoints, i)
             float up = array.get(pfM.confUpper, i)
             float dn = array.get(pfM.confLower, i)
@@ -1506,11 +1606,11 @@ if barstate.islast
             if sh_gb
                 float go = array.get(pfM.targetOpen,  i)
                 float gc = array.get(pfM.targetClose, i)
-                float gh = math.max(go, gc) + (kin.errorTerm * 0.5)
-                float gl = math.min(go, gc) - (kin.errorTerm * 0.5)
+                float gh = math.max(go, gc) + (kinM.errorTerm * 0.5)
+                float gl = math.min(go, gc) - (kinM.errorTerm * 0.5)
                 color gcol = gc >= go ? color.new(#00FF00,50) : color.new(#FF0055,50)
                 push_line_capped(ghostWicks, line.new(tt, gh, tt, gl, xloc=xloc.bar_time, color=color.new(gcol,70), width=1), liveCapGhostWicks)
-                push_box_capped(ghostBoxes, box.new(tt-(timeframe.multiplier*20000), math.max(go,gc), tt+(timeframe.multiplier*20000), math.min(go,gc), xloc=xloc.bar_time, border_color=gcol, bgcolor=gcol), liveCapGhostBoxes)
+                push_box_capped(ghostBoxes, box.new(tt-int(tfMult_m*timeframe.multiplier*GHOST_BOX_HW_MS), math.max(go,gc), tt+int(tfMult_m*timeframe.multiplier*GHOST_BOX_HW_MS), math.min(go,gc), xloc=xloc.bar_time, border_color=gcol, bgcolor=gcol), liveCapGhostBoxes)
         color ptCol = Bayes.probBull > 60 ? color.new(#00FFAA,0) : Bayes.probBear > 60 ? color.new(#FF0055,0) : color.new(#FFCC00,0)
         push_polyline_capped(mainPoly, polyline.new(pgMean,  curved=true, line_color=ptCol,                 line_width=3, line_style=line.style_dashed, xloc=xloc.bar_time), liveCapMainPoly)
         push_polyline_capped(mainPoly, polyline.new(pgUpper, curved=true, line_color=color.new(#A9A9A9,50), line_width=1, line_style=line.style_dotted, xloc=xloc.bar_time), liveCapMainPoly)
@@ -1558,17 +1658,17 @@ if barstate.islast and sh_tb
     table.cell(hudMain, 1, 9, str.tostring(pe.probNextCont,"#.#")+"%",  text_color=color.white)
     table.cell(hudMain, 2, 9, "NEXT REV%",   text_color=color.gray)
     table.cell(hudMain, 3, 9, str.tostring(pe.probNextRev,"#.#")+"%",   text_color=color.white)
-    table.cell(hudMain, 0, 10, "SHORT HZ",   text_color=color.gray)
+    table.cell(hudMain, 0, 10, "SH [" + tf_sh + "] HZ",  text_color=color.gray)
     table.cell(hudMain, 1, 10, pfS.isActive ? str.tostring(pfS.horizonBars) + "b" : "IDLE", text_color=pfS.isActive ? color.aqua : color.gray)
     table.cell(hudMain, 2, 10, "SH TGT",     text_color=color.gray)
     table.cell(hudMain, 3, 10, pfS.isActive ? str.tostring(PMS.lastTarget, "#.##") : "–",    text_color=color.white)
-    table.cell(hudMain, 0, 11, "MED HZ",     text_color=color.gray)
+    table.cell(hudMain, 0, 11, "MD [" + tf_md + "] HZ",  text_color=color.gray)
     table.cell(hudMain, 1, 11, pfM.isActive ? str.tostring(pfM.horizonBars) + "b" : "IDLE", text_color=pfM.isActive ? color.aqua : color.gray)
-    table.cell(hudMain, 2, 11, "MED TGT",    text_color=color.gray)
+    table.cell(hudMain, 2, 11, "MD TGT",    text_color=color.gray)
     table.cell(hudMain, 3, 11, pfM.isActive ? str.tostring(PM.lastTarget,  "#.##") : "–",    text_color=color.white)
-    table.cell(hudMain, 0, 12, "LONG HZ",    text_color=color.gray)
+    table.cell(hudMain, 0, 12, "LG [" + tf_lg + "] HZ",  text_color=color.gray)
     table.cell(hudMain, 1, 12, pfL.isActive ? str.tostring(pfL.horizonBars) + "b" : "IDLE", text_color=pfL.isActive ? color.aqua : color.gray)
-    table.cell(hudMain, 2, 12, "LONG TGT",   text_color=color.gray)
+    table.cell(hudMain, 2, 12, "LG TGT",   text_color=color.gray)
     table.cell(hudMain, 3, 12, pfL.isActive ? str.tostring(PML.lastTarget, "#.##") : "–",    text_color=color.white)
 var table hudPerf = table.new(position.middle_left, 4, 9, border_width=1, border_color=color.new(color.gray,70), bgcolor=color.new(#08080f,5))
 if barstate.islast and sh_tb
@@ -1634,10 +1734,10 @@ if barstate.islast and sh_t2
     table.cell(hudPat, 1, 6, atBull?"BULLISH":"BEARISH",               text_color=atBull?color.lime:color.red)
     table.cell(hudPat, 2, 6, "AT FLIP",    text_color=color.gray)
     table.cell(hudPat, 3, 6, atFlip?"YES":"NO",                         text_color=atFlip?color.yellow:color.gray)
-    table.cell(hudPat, 0, 7, "ADAPT COEF", text_color=color.gray)
-    table.cell(hudPat, 1, 7, str.tostring(uz.adaptiveCoeff,"#.##"),     text_color=color.yellow)
-    table.cell(hudPat, 2, 7, "ERR TERM",   text_color=color.gray)
-    table.cell(hudPat, 3, 7, str.tostring(kin.errorTerm,"#.####"),      text_color=color.white)
+    table.cell(hudPat, 0, 7, "MD COEF",    text_color=color.gray)
+    table.cell(hudPat, 1, 7, str.tostring(uzM.adaptiveCoeff,"#.##"),   text_color=color.yellow)
+    table.cell(hudPat, 2, 7, "MD ERR",     text_color=color.gray)
+    table.cell(hudPat, 3, 7, str.tostring(kinM.errorTerm,"#.####"),    text_color=color.white)
     table.cell(hudPat, 0, 8, "MTF AGREE",  text_color=color.gray)
     table.cell(hudPat, 1, 8, mtfAgree,     text_color=mtfColor)
     table.cell(hudPat, 2, 8, "DAY POS",    text_color=color.gray)
@@ -1806,12 +1906,10 @@ obvAccum += (close > close[1] ? volume : close < close[1] ? -volume : 0)
 float obvEma = ta.ema(obvAccum, 20)
 bool  obvBull = obvAccum > obvEma
 bool  obvBear = obvAccum < obvEma
-KinematicModel kinShort  = array.size(closeBuf) >= 10  ? c_kn(closeBuf, 10)  : kin
-KinematicModel kinMedium = array.size(closeBuf) >= 20  ? c_kn(closeBuf, 20)  : kin
-KinematicModel kinLong   = array.size(closeBuf) >= 40  ? c_kn(closeBuf, math.min(40, array.size(closeBuf)-1)) : kin
-float blendedVel   = kinShort.velocity  * 0.2 + kinMedium.velocity  * 0.5 + kinLong.velocity  * 0.3
-float blendedErr   = kinShort.errorTerm * 0.2 + kinMedium.errorTerm * 0.5 + kinLong.errorTerm * 0.3
-float blendedAccel = kinShort.acceleration * 0.2 + kinMedium.acceleration * 0.5 + kinLong.acceleration * 0.3
+// Per-TF kinematic models replace the chart-only closeBuf variants for blended metrics
+float blendedVel   = kinS.velocity     * 0.2 + kinM.velocity     * 0.5 + kinL.velocity     * 0.3
+float blendedErr   = kinS.errorTerm    * 0.2 + kinM.errorTerm    * 0.5 + kinL.errorTerm    * 0.3
+float blendedAccel = kinS.acceleration * 0.2 + kinM.acceleration * 0.5 + kinL.acceleration * 0.3
 float regimeVel = mkv.current == 1 ? blendedVel * 1.2  :
                   mkv.current == 2 ? blendedVel * 1.2  :
                   mkv.current == 3 ? blendedVel * 0.3  :

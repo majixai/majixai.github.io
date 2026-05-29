@@ -1,0 +1,55 @@
+name: GAS Market Forecast
+
+on:
+  pull_request:
+    paths:
+      - 'gas_market_forecast/**'
+      - 'scripts/gas_market_forecast_*.sh'
+      - '.github/workflows/gas_market_forecast.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'gas_market_forecast/**'
+      - 'scripts/gas_market_forecast_*.sh'
+      - '.github/workflows/gas_market_forecast.yml'
+  schedule:
+    - cron: '0 5 * * 0'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Set to true to push the Apps Script project with clasp'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Refresh sample artifacts deterministically
+        run: bash "$GITHUB_WORKSPACE/scripts/gas_market_forecast_refresh_samples.sh" --check
+
+      - name: Validate project directory
+        run: bash "$GITHUB_WORKSPACE/scripts/gas_market_forecast_validate.sh"
+
+      - name: Package Apps Script bundle
+        run: bash "$GITHUB_WORKSPACE/scripts/gas_market_forecast_package.sh"
+
+      - name: Install clasp for optional deployment
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        run: npm install -g @google/clasp@3.3.0
+
+      - name: Deploy Apps Script from GitHub source
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'true'
+        env:
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+          CLASP_CLIENT_ID: ${{ secrets.CLASP_CLIENT_ID }}
+          CLASP_CLIENT_SECRET: ${{ secrets.CLASP_CLIENT_SECRET }}
+          CLASP_REFRESH_TOKEN: ${{ secrets.CLASP_REFRESH_TOKEN }}
+        run: bash "$GITHUB_WORKSPACE/scripts/gas_market_forecast_deploy.sh"

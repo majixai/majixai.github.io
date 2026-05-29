@@ -68,6 +68,14 @@ if [ "$BULL_COUNT" -gt 0 ]; then
 fi
 ```
 
+## IXIC timeframe export
+
+```bash
+python fetch_ixic_timeframes.py
+```
+
+This writes separate CSV files for ^IXIC at 1m, 5m, 15m, 1h, 1d, and 1wk intervals using `period=max`, saved in `index/csv/` as `IXIC_<interval>.csv`.
+
 ## Report structure
 
 | Section | Content |
@@ -90,4 +98,3 @@ fi
 python -m unittest yfinance/tests/test_zones.py
 python -m unittest yfinance/tests/test_report.py
 ```
-

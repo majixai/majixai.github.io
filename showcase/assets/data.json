@@ -1,26 +1,56 @@
 [
     {
         "id": 1,
-        "name": "Concept A",
-        "description": "Demonstrates OOP principles with classes and inheritance.",
-        "features": 1
+        "name": "Reactive State Management",
+        "description": "Singleton StateManager with pub/sub pattern drives UI re-renders on every state mutation — demonstrated in latest_commit/ and details/.",
+        "features": 19
     },
     {
         "id": 2,
-        "name": "Concept B",
-        "description": "Utilizes async/await for non-blocking data fetching.",
+        "name": "Async/Await & Promise Chaining",
+        "description": "Non-blocking data fetching with abort controllers, timeout handling, and concurrent Promise.all() orchestration throughout yfinance, showcase, and best/performers/engine.",
         "features": 2
     },
     {
         "id": 3,
-        "name": "Concept C",
-        "description": "Implements a caching layer with IndexedDB for offline access.",
+        "name": "IndexedDB Caching Layer",
+        "description": "TTL-aware IndexedDB wrappers (CacheService) used in latest_commit/, best/performers/engine/cache.js, and showcase/ to serve stale-while-revalidate and offline-first data.",
         "features": 4
     },
     {
         "id": 4,
-        "name": "Concept D",
-        "description": "Showcases CSS animations and responsive design with Flexbox/Grid.",
+        "name": "CSS Animation & Generator Functions",
+        "description": "Staggered entrance animations driven by generator functions and requestAnimationFrame — see latest_commit/js/UIManager.js and details/js/ui/UIRenderer.js.",
         "features": 8
+    },
+    {
+        "id": 5,
+        "name": "ES Module Architecture",
+        "description": "The router, MVC framework, and showcase each use ES module imports/exports, enabling clean dependency graphs without bundlers.",
+        "features": 64
+    },
+    {
+        "id": 6,
+        "name": "GPU Dispatch & Kernel Registry",
+        "description": "gpu/ provides auto-backend selection (CUDA → MPS → TensorFlow → CPU), a thread-pool dispatcher with @register decorator, and registered kernels for HOSVD, Kalman, Monte Carlo, and PCA.",
+        "features": 128
+    },
+    {
+        "id": 7,
+        "name": "ML / Tensor Decomposition",
+        "description": "tensor/financial implements Tucker decomposition, Haar wavelet, Kalman smoothing, 5-regime softmax classification, and VaR computation over LOOKBACK=30 feature windows.",
+        "features": 256
+    },
+    {
+        "id": 8,
+        "name": "Client-Side MVC Router",
+        "description": "mvc/mvc-router.js provides History-API/hash routing, nested routes, named params, navigation guards, before/after hooks, and sessionStorage caching of the routes manifest.",
+        "features": 17
+    },
+    {
+        "id": 9,
+        "name": "Private Class Fields & OOP Patterns",
+        "description": "Modern JavaScript private fields (#field syntax) used throughout UIManager, CacheService, Router, and AnimationController to enforce encapsulation without closures.",
+        "features": 1
     }
 ]

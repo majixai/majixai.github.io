@@ -1,0 +1,1511 @@
+//@version=5
+// =============================================================================
+// Pattern Recognition Engine — 101 Patterns + Bayesian Predictor  |  Pine Script v5
+//
+// §1  Inputs & settings
+// §2  Common calculations (ATR, candle anatomy, bar aliases)
+// §3  Pivot array maintenance (shared by Chart and Harmonic sections)
+// §4  Helper functions (labels, Fibonacci check, pct tolerance)
+// §5  Single-bar candlestick patterns  [11]
+// §6  Two-bar candlestick patterns     [15]  (13 classic + 2 kicker)
+// §7  Multi-bar candlestick patterns   [18]  (3-bar × 17 + 4-bar × 1)
+// §8  Classic chart patterns           [31]
+// §9  Harmonic patterns                [26]
+// §10 Complex Situations — Confluence & Context Engine
+// §11 Bayesian Next-Pattern Class Predictor
+//
+// Total: 101 patterns
+// =============================================================================
+indicator("Pattern Recognition — 101 Patterns + Bayesian Predictor", overlay=true,
+         max_labels_count=500, max_lines_count=500, max_boxes_count=200)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §1  INPUTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+var GRP_CS = "Candlestick Patterns"
+showSingle   = input.bool(true,  "Single-Bar Candle Patterns",  group=GRP_CS)
+showTwoBar   = input.bool(true,  "Two-Bar Candle Patterns",     group=GRP_CS)
+showMultiBar = input.bool(true,  "Multi-Bar Candle Patterns",   group=GRP_CS)
+
+var GRP_CH = "Classic Chart Patterns"
+showChart    = input.bool(true,  "Classic Chart Patterns",      group=GRP_CH)
+pLeft        = input.int(5,      "Pivot Left Bars",             minval=2, maxval=30, group=GRP_CH)
+pRight       = input.int(5,      "Pivot Right Bars",            minval=2, maxval=30, group=GRP_CH)
+maxPivots    = input.int(10,     "Max Pivot History",           minval=5, maxval=20, group=GRP_CH)
+tolPct       = input.float(0.03, "Pattern Tolerance (0–1)",     minval=0.005, maxval=0.15, step=0.005, group=GRP_CH)
+
+var GRP_HM = "Harmonic Patterns"
+showHarm     = input.bool(true,  "Harmonic Patterns",           group=GRP_HM)
+harmTol      = input.float(0.05, "Fibonacci Tolerance (0–1)",   minval=0.01, maxval=0.20, step=0.005, group=GRP_HM)
+
+var GRP_VZ = "Visualisation"
+lSzStr       = input.string("small", "Label Size",              options=["tiny","small","normal"], group=GRP_VZ)
+showBullLbl  = input.bool(true,  "Show Bullish Labels",         group=GRP_VZ)
+showBearLbl  = input.bool(true,  "Show Bearish Labels",         group=GRP_VZ)
+atrLen       = input.int(14,     "ATR Length",                  minval=2, group=GRP_VZ)
+
+var GRP_CX = "Complex Situations"
+showCplx     = input.bool(true,  "Complex Situation Labels",    group=GRP_CX)
+showTrend    = input.bool(true,  "EMA Trend Lines (20/50/200)", group=GRP_CX)
+hcMinSigs    = input.int(2,      "Min Signals for HC Label",    minval=1, maxval=6, group=GRP_CX)
+showBgShade  = input.bool(true,  "Background Trend Shade",      group=GRP_CX)
+
+var GRP_BY = "Bayesian Predictor"
+showBayes    = input.bool(true,  "Show Bayesian Table",         group=GRP_BY)
+bayAlpha     = input.int(1,      "Laplace Prior α (1–10)",      minval=1, maxval=10, group=GRP_BY)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §2  COMMON CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+atrV      = ta.atr(atrLen)
+sma20     = ta.sma(close, 20)
+
+// Current-bar candle anatomy
+bodySize  = math.abs(close - open)
+upperWick = high - math.max(open, close)
+lowerWick = math.min(open, close) - low
+fullRange = high - low
+avgBody   = ta.sma(bodySize, 10)
+dojiThr   = atrV * 0.10
+
+isBull    = close > open
+isBear    = close < open
+isDoji    = bodySize <= dojiThr and fullRange > atrV * 0.20
+
+// Bar aliases (1–5 bars back)
+o1=open[1]; h1=high[1]; l1=low[1]; c1=close[1]
+o2=open[2]; h2=high[2]; l2=low[2]; c2=close[2]
+o3=open[3]; h3=high[3]; l3=low[3]; c3=close[3]
+o4=open[4]; h4=high[4]; l4=low[4]; c4=close[4]
+o5=open[5]; h5=high[5]; l5=low[5]; c5=close[5]
+
+body1 = math.abs(c1-o1)
+body2 = math.abs(c2-o2)
+body3 = math.abs(c3-o3)
+body4 = math.abs(c4-o4)
+
+uw1 = h1 - math.max(o1,c1)
+uw2 = h2 - math.max(o2,c2)
+lw1 = math.min(o1,c1) - l1
+lw2 = math.min(o2,c2) - l2
+
+bull1=c1>o1; bull2=c2>o2; bull3=c3>o3; bull4=c4>o4
+bear1=c1<o1; bear2=c2<o2; bear3=c3<o3; bear4=c4<o4
+
+doji1 = math.abs(c1-o1) <= atrV[1]*0.10 and (h1-l1) > atrV[1]*0.20
+doji2 = math.abs(c2-o2) <= atrV[2]*0.10 and (h2-l2) > atrV[2]*0.20
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §3  PIVOT ARRAYS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+phRaw = ta.pivothigh(high, pLeft, pRight)
+plRaw = ta.pivotlow(low,  pLeft, pRight)
+
+var float[] phP = array.new_float(0)   // pivot-high prices (newest at [0])
+var int[]   phB = array.new_int(0)     // pivot-high bar indices
+var float[] plP = array.new_float(0)   // pivot-low  prices
+var int[]   plB = array.new_int(0)     // pivot-low  bar indices
+
+if not na(phRaw)
+    array.unshift(phP, phRaw)
+    array.unshift(phB, bar_index - pRight)
+    if array.size(phP) > maxPivots
+        array.pop(phP)
+        array.pop(phB)
+
+if not na(plRaw)
+    array.unshift(plP, plRaw)
+    array.unshift(plB, bar_index - pRight)
+    if array.size(plP) > maxPivots
+        array.pop(plP)
+        array.pop(plB)
+
+nPH = array.size(phP)
+nPL = array.size(plP)
+
+// Safe accessors (return na when index out of range)
+getPH(i) => i < nPH ? array.get(phP, i) : na
+getPL(i) => i < nPL ? array.get(plP, i) : na
+getBH(i) => i < nPH ? array.get(phB, i) : na
+getBL(i) => i < nPL ? array.get(plB, i) : na
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §4  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+lSize = lSzStr == "tiny" ? size.tiny : lSzStr == "normal" ? size.normal : size.small
+
+bullLabel(txt, ypos) =>
+    if showBullLbl
+        label.new(bar_index, ypos, txt,
+                  style=label.style_label_up,
+                  color=color.new(color.green, 15),
+                  textcolor=color.white, size=lSize)
+
+bearLabel(txt, ypos) =>
+    if showBearLbl
+        label.new(bar_index, ypos, txt,
+                  style=label.style_label_down,
+                  color=color.new(color.red, 15),
+                  textcolor=color.white, size=lSize)
+
+neutLabel(txt, ypos) =>
+    label.new(bar_index, ypos, txt,
+              style=label.style_label_down,
+              color=color.new(color.gray, 20),
+              textcolor=color.white, size=lSize)
+
+// Is ratio ≈ fib within harmTol?
+fibOk(val, ref, fib) =>
+    not na(val) and not na(ref) and ref != 0 and
+    math.abs(val / ref - fib) <= harmTol
+
+// Are two prices within tolPct of each other?
+pctOk(a, b) =>
+    not na(a) and not na(b) and math.max(a, b) != 0 and
+    math.abs(a - b) / math.max(a, b) <= tolPct
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §5  SINGLE-BAR CANDLESTICK PATTERNS  [11]
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 1. Doji — body ≤ threshold, some range present
+p_doji = isDoji
+
+// 2. Long-Legged Doji — doji with long wicks on both sides
+p_llDoji = isDoji and upperWick > atrV * 0.35 and lowerWick > atrV * 0.35
+
+// 3. Dragonfly Doji — doji with long lower wick, tiny upper wick
+p_dfDoji = isDoji and fullRange > 0 and lowerWick >= fullRange * 0.60 and upperWick <= fullRange * 0.10
+
+// 4. Gravestone Doji — doji with long upper wick, tiny lower wick
+p_gsDoji = isDoji and fullRange > 0 and upperWick >= fullRange * 0.60 and lowerWick <= fullRange * 0.10
+
+// 5. Spinning Top — small body, symmetric wicks larger than body, not doji
+p_spinTop = bodySize < avgBody * 0.50 and upperWick > bodySize and lowerWick > bodySize and not isDoji
+
+// 6. Marubozu Bullish — strong bull body, near-zero wicks
+p_marubozuBull = isBull and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
+
+// 7. Marubozu Bearish — strong bear body, near-zero wicks
+p_marubozuBear = isBear and upperWick < atrV * 0.05 and lowerWick < atrV * 0.05 and bodySize > avgBody * 1.50
+
+// 8. Hammer — long lower wick ≥ 2× body, tiny upper wick, in downtrend
+p_hammer = lowerWick >= bodySize * 2.0 and upperWick <= bodySize * 0.50 and isBull and close < sma20
+
+// 9. Hanging Man — same shape as hammer but in uptrend (bearish reversal)
+p_hangMan = lowerWick >= bodySize * 2.0 and upperWick <= bodySize * 0.50 and close > sma20
+
+// 10. Inverted Hammer — long upper wick ≥ 2× body, after downtrend (bullish reversal)
+p_invHammer = upperWick >= bodySize * 2.0 and lowerWick <= bodySize * 0.50 and isBull and close < sma20
+
+// 11. Shooting Star — long upper wick ≥ 2× body, in uptrend (bearish reversal)
+p_shootStar = upperWick >= bodySize * 2.0 and lowerWick <= bodySize * 0.50 and isBear and close > sma20
+
+if showSingle
+    if p_llDoji
+        neutLabel("LLD", high)
+    else if p_dfDoji
+        bullLabel("DFD", low)
+    else if p_gsDoji
+        bearLabel("GSD", high)
+    else if p_doji
+        neutLabel("DOJI", high)
+    if p_spinTop
+        neutLabel("SPIN", high)
+    if p_marubozuBull
+        bullLabel("MARU↑", low)
+    if p_marubozuBear
+        bearLabel("MARU↓", high)
+    if p_hammer
+        bullLabel("HAMR", low)
+    if p_hangMan
+        bearLabel("HANG", high)
+    if p_invHammer
+        bullLabel("INVH", low)
+    if p_shootStar
+        bearLabel("SHOT★", high)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §6  TWO-BAR CANDLESTICK PATTERNS  [15]  (13 classic + 2 kicker)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 12. Bullish Engulfing — bear bar fully engulfed by bull bar
+p_bullEngulf = bear1 and isBull and open <= l1 and close >= h1 and bodySize > body1
+
+// 13. Bearish Engulfing — bull bar fully engulfed by bear bar
+p_bearEngulf = bull1 and isBear and open >= h1 and close <= l1 and bodySize > body1
+
+// 14. Tweezer Top — matching highs, second bar bearish
+p_tweezTop = pctOk(high, h1) and isBear and bull1
+
+// 15. Tweezer Bottom — matching lows, second bar bullish
+p_tweezBot = pctOk(low, l1) and isBull and bear1
+
+// 16. Bullish Harami — small bull bar inside prior bear bar
+p_bullHarami = bear1 and isBull and open > math.min(o1,c1) and close < math.max(o1,c1) and bodySize < body1
+
+// 17. Bearish Harami — small bear bar inside prior bull bar
+p_bearHarami = bull1 and isBear and open < math.max(o1,c1) and close > math.min(o1,c1) and bodySize < body1
+
+// 18. Bullish Harami Cross — doji inside prior bear bar
+p_bullHaramiX = bear1 and isDoji and open > math.min(o1,c1) and close < math.max(o1,c1)
+
+// 19. Bearish Harami Cross — doji inside prior bull bar
+p_bearHaramiX = bull1 and isDoji and open < math.max(o1,c1) and close > math.min(o1,c1)
+
+// 20. Piercing Line — bear then bull, close above midpoint of prior bar
+p_piercing = bear1 and isBull and open < l1 and close > (o1+c1)/2 and close < o1
+
+// 21. Dark Cloud Cover — bull then bear, close below midpoint of prior bar
+p_darkCloud = bull1 and isBear and open > h1 and close < (o1+c1)/2 and close > c1
+
+// 22. On-Neck — bear then bull, close near close of prior bar
+p_onNeck = bear1 and isBull and open < l1 and math.abs(close - c1) < atrV * 0.05
+
+// 23. In-Neck — bear then bull, small penetration into prior body
+p_inNeck = bear1 and isBull and open < l1 and close < (o1+c1)/2 and close > l1
+
+// 24. Thrusting — bear then bull, close above midpoint but below prior close
+p_thrusting = bear1 and isBull and open < l1 and close > (o1+c1)/2 and close < c1
+
+if showTwoBar
+    if p_bullEngulf
+        bullLabel("ENG↑", low)
+    if p_bearEngulf
+        bearLabel("ENG↓", high)
+    if p_tweezTop
+        bearLabel("TWEE↓", high)
+    if p_tweezBot
+        bullLabel("TWEE↑", low)
+    if p_bullHaramiX
+        bullLabel("HAMI×↑", low)
+    else if p_bullHarami
+        bullLabel("HAMI↑", low)
+    if p_bearHaramiX
+        bearLabel("HAMI×↓", high)
+    else if p_bearHarami
+        bearLabel("HAMI↓", high)
+    if p_piercing
+        bullLabel("PIER", low)
+    if p_darkCloud
+        bearLabel("DARK", high)
+    if p_onNeck
+        bearLabel("ONECK", high)
+    if p_inNeck
+        bearLabel("INECK", high)
+    if p_thrusting
+        bearLabel("THRU", high)
+    // Kicker Bullish (43) — big gap-up bull after bear bar
+    if bear1 and isBull and open >= h1
+        bullLabel("KICK↑", low)
+    // Kicker Bearish (44) — big gap-down bear after bull bar
+    if bull1 and isBear and open <= l1
+        bearLabel("KICK↓", high)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §7  MULTI-BAR CANDLESTICK PATTERNS  [18]  (3-bar × 17 + 4-bar × 1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Three-bar ─────────────────────────────────────────────────────────────────
+
+// 25. Morning Star — bear, small/doji middle, bull closing into bear body
+p_mornStar = bear2 and body2 > avgBody and doji1 and isBull and close > (o2+c2)/2
+
+// 26. Evening Star — bull, small/doji middle, bear closing into bull body
+p_evenStar = bull2 and body2 > avgBody and doji1 and isBear and close < (o2+c2)/2
+
+// 27. Morning Doji Star — bear, gap-down doji, gap-up bull recovery
+p_mornDojiStar = bear2 and body2 > avgBody*1.2 and doji1 and
+                 l1 < l2 and h1 < math.min(o2,c2) and
+                 isBull and open > h1
+
+// 28. Evening Doji Star — bull, gap-up doji, gap-down bear
+p_evenDojiStar = bull2 and body2 > avgBody*1.2 and doji1 and
+                 h1 > h2 and l1 > math.max(o2,c2) and
+                 isBear and open < l1
+
+// 29. Three White Soldiers — three consecutive rising bull bars
+p_3whiteSol = isBull and bull1 and bull2 and
+              close > c1 and c1 > c2 and
+              open > o1 and o1 > o2 and
+              bodySize > avgBody*0.75 and body1 > avgBody*0.75 and body2 > avgBody*0.75
+
+// 30. Three Black Crows — three consecutive falling bear bars
+p_3blackCrow = isBear and bear1 and bear2 and
+               close < c1 and c1 < c2 and
+               open < o1 and o1 < o2 and
+               bodySize > avgBody*0.75 and body1 > avgBody*0.75 and body2 > avgBody*0.75
+
+// 31. Three Inside Up — bullish harami confirmed by third bull bar above bar 1 high
+p_3insideUp = p_bullHarami[1] and isBull and close > h1
+
+// 32. Three Inside Down — bearish harami confirmed by third bear bar below bar 1 low
+p_3insideDown = p_bearHarami[1] and isBear and close < l1
+
+// 33. Three Outside Up — bullish engulfing confirmed by third bull bar
+p_3outsideUp = p_bullEngulf[1] and isBull and close > c1
+
+// 34. Three Outside Down — bearish engulfing confirmed by third bear bar
+p_3outsideDown = p_bearEngulf[1] and isBear and close < c1
+
+// 35. Rising Three Methods — big bull, three contained small bars, big bull
+p_risingThree = bull4 and body4 > avgBody*1.2 and
+                bear3 and bear2 and bear1 and
+                math.min(l3, math.min(l2, l1)) > l4 and
+                math.max(h3, math.max(h2, h1)) < h4 and
+                isBull and close > c4
+
+// 36. Falling Three Methods — big bear, three contained small bars, big bear
+p_fallingThree = bear4 and body4 > avgBody*1.2 and
+                 bull3 and bull2 and bull1 and
+                 math.max(h3, math.max(h2, h1)) < h4 and
+                 math.min(l3, math.min(l2, l1)) > l4 and
+                 isBear and close < c4
+
+// 37. Abandoned Baby Bullish — bear, gap-down doji, gap-up bull
+p_abanBabyBull = bear2 and body2 > avgBody and doji1 and
+                 l1 < l2 and h1 < math.min(o2,c2) and
+                 isBull and open > h1
+
+// 38. Abandoned Baby Bearish — bull, gap-up doji, gap-down bear
+p_abanBabyBear = bull2 and body2 > avgBody and doji1 and
+                 h1 > h2 and l1 > math.max(o2,c2) and
+                 isBear and open < l1
+
+// 39. Upside Gap Two Crows — bull, gap-up bear, second bear opening inside gap
+p_ugTwoCrows = bull2 and bear1 and isBear and
+               o1 > h2 and
+               open <= h2 and open >= c2 and
+               close <= o1 and close >= l1
+
+// 40. Tasuki Gap Bullish — bull gap-up, bear partially fills the gap
+p_tasukiGapBull = bull2 and bull1 and isBear and
+                  l1 > h2 and
+                  open >= l1 and open <= h1 and
+                  close > h2 and close < l1
+
+// 41. Tasuki Gap Bearish — bear gap-down, bull partially fills the gap
+p_tasukiGapBear = bear2 and bear1 and isBull and
+                  h1 < l2 and
+                  open >= l1 and open <= h1 and
+                  close < l2 and close > h1
+
+// ── Four+ bar ─────────────────────────────────────────────────────────────────
+
+// 42. Mat Hold — big bull, contained small bears, bull resumes above all prior closes
+p_matHold = bull4 and body4 > avgBody*1.2 and
+            bear3 and bear2 and bear1 and
+            math.min(l3, math.min(l2, l1)) > l4 and
+            math.max(h3, math.max(h2, h1)) < h4 and
+            isBull and close > c4 and
+            open > math.max(c3, math.max(c2, c1))
+
+if showMultiBar
+    if p_mornDojiStar
+        bullLabel("MDoji★", low)
+    else if p_mornStar
+        bullLabel("MORN★", low)
+    if p_evenDojiStar
+        bearLabel("EDoji★", high)
+    else if p_evenStar
+        bearLabel("EVEN★", high)
+    if p_3whiteSol
+        bullLabel("3SOL↑", low)
+    if p_3blackCrow
+        bearLabel("3CRW↓", high)
+    if p_3insideUp
+        bullLabel("3IN↑", low)
+    if p_3insideDown
+        bearLabel("3IN↓", high)
+    if p_3outsideUp
+        bullLabel("3OUT↑", low)
+    if p_3outsideDown
+        bearLabel("3OUT↓", high)
+    if p_risingThree
+        bullLabel("RISE3", low)
+    if p_fallingThree
+        bearLabel("FALL3", high)
+    if p_abanBabyBull
+        bullLabel("ABB↑", low)
+    if p_abanBabyBear
+        bearLabel("ABB↓", high)
+    if p_ugTwoCrows
+        bearLabel("UG2C", high)
+    if p_tasukiGapBull
+        bullLabel("TASK↑", low)
+    if p_tasukiGapBear
+        bearLabel("TASK↓", high)
+    if p_matHold
+        bullLabel("MATH", low)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §8  CLASSIC CHART PATTERNS  [31]
+// Patterns fire when a new confirmed pivot is added to the arrays.
+// Detection uses the most recent pivots in phP / plP.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Pivot-high helpers ────────────────────────────────────────────────────────
+ph0 = getPH(0); ph1v = getPH(1); ph2v = getPH(2); ph3v = getPH(3); ph4v = getPH(4)
+bh0 = getBH(0); bh1 = getBH(1); bh2 = getBH(2)
+
+// ── Pivot-low helpers ─────────────────────────────────────────────────────────
+pl0 = getPL(0); pl1v = getPL(1); pl2v = getPL(2); pl3v = getPL(3); pl4v = getPL(4)
+bl0 = getBL(0); bl1 = getBL(1); bl2 = getBL(2)
+
+// Fire only on a new confirmed pivot (either high or low just added)
+newPH = not na(phRaw)
+newPL = not na(plRaw)
+newPivot = newPH or newPL
+
+// ── 45. Head & Shoulders ──────────────────────────────────────────────────────
+// Three highs: left shoulder < head > right shoulder; shoulders similar height
+// Neckline = avg of two troughs between shoulders; price breaks below neckline
+p_hs = showChart and newPH and nPH >= 3 and nPL >= 2 and
+       ph1v > ph2v and ph1v > ph0 and                         // head tallest
+       pctOk(ph0, ph2v) and                                    // shoulders similar
+       ph1v > ph2v * (1 + tolPct) and                          // head clearly higher
+       close < (pl0 + pl1v) / 2                                // neckline break
+
+if p_hs
+    bearLabel("H&S", high)
+
+// ── 46. Inverse Head & Shoulders ─────────────────────────────────────────────
+p_ihs = showChart and newPL and nPL >= 3 and nPH >= 2 and
+        pl1v < pl2v and pl1v < pl0 and                         // head lowest
+        pctOk(pl0, pl2v) and                                   // shoulders similar
+        pl1v < pl2v * (1 - tolPct) and                         // head clearly lower
+        close > (ph0 + ph1v) / 2                               // neckline break
+
+if p_ihs
+    bullLabel("iH&S", low)
+
+// ── 47. Double Top ────────────────────────────────────────────────────────────
+p_dblTop = showChart and newPH and nPH >= 2 and
+           pctOk(ph0, ph1v) and                                // twin peaks same height
+           not na(pl0) and close < pl0                         // break below neckline
+
+if p_dblTop
+    bearLabel("DBL↓", high)
+
+// ── 48. Double Bottom ────────────────────────────────────────────────────────
+p_dblBot = showChart and newPL and nPL >= 2 and
+           pctOk(pl0, pl1v) and                                // twin troughs same depth
+           not na(ph0) and close > ph0                         // break above neckline
+
+if p_dblBot
+    bullLabel("DBL↑", low)
+
+// ── 49. Triple Top ───────────────────────────────────────────────────────────
+p_triTop = showChart and newPH and nPH >= 3 and
+           pctOk(ph0, ph1v) and pctOk(ph1v, ph2v) and
+           not na(pl0) and close < pl0
+
+if p_triTop
+    bearLabel("TRI↓", high)
+
+// ── 50. Triple Bottom ────────────────────────────────────────────────────────
+p_triBot = showChart and newPL and nPL >= 3 and
+           pctOk(pl0, pl1v) and pctOk(pl1v, pl2v) and
+           not na(ph0) and close > ph0
+
+if p_triBot
+    bullLabel("TRI↑", low)
+
+// ── 51. Cup & Handle ─────────────────────────────────────────────────────────
+// Rounded bottom: left rim ≈ right rim (recent high ≈ prior high), handle retraces ≤ 50%
+p_cupHandle = showChart and newPH and nPH >= 2 and nPL >= 1 and
+              pctOk(ph0, ph1v) and
+              pl0 < math.min(ph0, ph1v) and
+              ph0 - pl0 >= (ph1v - pl0) * 0.20 and             // depth ≥ 20%
+              close > ph0 * (1 - tolPct * 2)                   // approaching breakout
+
+if p_cupHandle
+    bullLabel("CUP", low)
+
+// ── 52. Inverted Cup & Handle ────────────────────────────────────────────────
+p_invCup = showChart and newPL and nPL >= 2 and nPH >= 1 and
+           pctOk(pl0, pl1v) and
+           ph0 > math.max(pl0, pl1v) and
+           pl0 - ph0 >= (ph0 - pl1v) * 0.20 and
+           close < pl0 * (1 + tolPct * 2)
+
+if p_invCup
+    bearLabel("iCUP", high)
+
+// ── 53. Ascending Triangle ───────────────────────────────────────────────────
+// Flat resistance (equal pivot highs) + rising support (rising pivot lows)
+p_ascTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           pctOk(ph0, ph1v) and                                // flat highs
+           pl0 > pl1v and                                      // rising lows
+           close > ph0 * (1 - tolPct)                          // approaching resistance
+
+if p_ascTri
+    bullLabel("ASC△", low)
+
+// ── 54. Descending Triangle ──────────────────────────────────────────────────
+p_dscTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           pctOk(pl0, pl1v) and                                // flat lows
+           ph0 < ph1v and                                      // falling highs
+           close < pl0 * (1 + tolPct)                          // approaching support
+
+if p_dscTri
+    bearLabel("DSC▽", high)
+
+// ── 55. Symmetrical Triangle ─────────────────────────────────────────────────
+// Falling highs + rising lows (convergence)
+p_symTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 < ph1v and pl0 > pl1v and
+           not pctOk(ph0, ph1v) and not pctOk(pl0, pl1v)       // still diverging from flat
+
+if p_symTri
+    neutLabel("SYM△", (ph0 + pl0) / 2)
+
+// ── 56. Expanding Triangle (Broadening) ──────────────────────────────────────
+p_expTri = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v and pl0 < pl1v                           // expanding highs and lows
+
+if p_expTri
+    neutLabel("EXP△", (ph0 + pl0) / 2)
+
+// ── 57. Rising Wedge (bearish) ────────────────────────────────────────────────
+// Both highs and lows rising, but highs and lows converging
+p_risingWedge = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+                ph0 > ph1v and pl0 > pl1v and
+                (ph0 - pl0) < (ph1v - pl1v) * 0.90             // narrowing range
+
+if p_risingWedge
+    bearLabel("R.WDG↓", high)
+
+// ── 58. Falling Wedge (bullish) ───────────────────────────────────────────────
+p_fallingWedge = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+                 ph0 < ph1v and pl0 < pl1v and
+                 (ph0 - pl0) < (ph1v - pl1v) * 0.90             // narrowing range
+
+if p_fallingWedge
+    bullLabel("F.WDG↑", low)
+
+// ── 59. Bull Flag ─────────────────────────────────────────────────────────────
+// Strong upward pole, then shallow pullback channel
+p_bullFlag = showChart and newPL and nPH >= 2 and nPL >= 2 and
+             ph1v > pl1v * 1.05 and                            // pole exists
+             ph0 < ph1v and pl0 > pl1v and                     // downward drift channel
+             (ph0 - pl0) < (ph1v - pl1v) * 0.60               // channel shallower than pole
+
+if p_bullFlag
+    bullLabel("BULL♦", low)
+
+// ── 60. Bear Flag ─────────────────────────────────────────────────────────────
+p_bearFlag = showChart and newPH and nPH >= 2 and nPL >= 2 and
+             pl1v < ph1v * 0.95 and                            // pole exists
+             pl0 > pl1v and ph0 < ph1v and                     // upward drift channel
+             (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bearFlag
+    bearLabel("BEAR♦", high)
+
+// ── 61. Bull Pennant ──────────────────────────────────────────────────────────
+// Strong pole + symmetrical triangle consolidation
+p_bullPennant = showChart and newPivot and nPH >= 3 and nPL >= 2 and
+                ph2v < ph1v and pl2v < ph2v and                // pole: ph2 rises above pl2
+                ph0 < ph1v and pl0 > pl1v and                  // convergence after pole
+                (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bullPennant
+    bullLabel("B.PNT↑", low)
+
+// ── 62. Bear Pennant ──────────────────────────────────────────────────────────
+p_bearPennant = showChart and newPivot and nPH >= 2 and nPL >= 3 and
+                pl2v > pl1v and ph2v > pl2v and                // pole: pl2 drops below ph2
+                ph0 < ph1v and pl0 > pl1v and
+                (ph0 - pl0) < (ph1v - pl1v) * 0.60
+
+if p_bearPennant
+    bearLabel("B.PNT↓", high)
+
+// ── 63. Rounding Bottom (Saucer) ─────────────────────────────────────────────
+// Lows form a U-shape: middle low is deepest, sides rising symmetrically
+p_roundBot = showChart and newPL and nPL >= 4 and
+             pl2v < pl3v and pl2v < pl1v and pl2v < pl0 and   // lowest in middle
+             pl0 > pl1v and pl3v > pl2v                        // symmetric rise
+
+if p_roundBot
+    bullLabel("SAUC↑", low)
+
+// ── 64. Rounding Top ──────────────────────────────────────────────────────────
+p_roundTop = showChart and newPH and nPH >= 4 and
+             ph2v > ph3v and ph2v > ph1v and ph2v > ph0 and   // highest in middle
+             ph0 < ph1v and ph3v < ph2v                        // symmetric fall
+
+if p_roundTop
+    bearLabel("RTOP↓", high)
+
+// ── 65. Rectangle Bullish Break ───────────────────────────────────────────────
+// Price contained between flat highs and flat lows, then breaks up
+p_rectBull = showChart and newPH and nPH >= 2 and nPL >= 2 and
+             pctOk(ph0, ph1v) and pctOk(pl0, pl1v) and        // flat bands
+             close > ph0 * (1 + tolPct)                        // upside breakout
+
+if p_rectBull
+    bullLabel("RECT↑", low)
+
+// ── 66. Rectangle Bearish Break ───────────────────────────────────────────────
+p_rectBear = showChart and newPL and nPH >= 2 and nPL >= 2 and
+             pctOk(ph0, ph1v) and pctOk(pl0, pl1v) and
+             close < pl0 * (1 - tolPct)                        // downside breakout
+
+if p_rectBear
+    bearLabel("RECT↓", high)
+
+// ── 67. Diamond Top ───────────────────────────────────────────────────────────
+// Broadening then narrowing price action at a top
+p_diamTop = showChart and newPH and nPH >= 3 and nPL >= 3 and
+            ph1v > ph2v and ph1v > ph0 and                     // head is tallest
+            pl2v > pl1v and pl0 > pl1v and                     // lows V-shape
+            pctOk(ph0, ph2v) and pctOk(pl0, pl2v)              // symmetric shoulders/feet
+
+if p_diamTop
+    bearLabel("DIAM↓", high)
+
+// ── 68. Diamond Bottom ────────────────────────────────────────────────────────
+p_diamBot = showChart and newPL and nPL >= 3 and nPH >= 3 and
+            pl1v < pl2v and pl1v < pl0 and
+            ph2v < ph1v and ph0 < ph1v and
+            pctOk(pl0, pl2v) and pctOk(ph0, ph2v)
+
+if p_diamBot
+    bullLabel("DIAM↑", low)
+
+// ── 69. Bump and Run Reversal Top ─────────────────────────────────────────────
+// Sharp rally (bump) followed by a gradual decline through lead-in trendline
+p_bumpRun = showChart and newPH and nPH >= 2 and nPL >= 2 and
+            ph0 > ph1v * (1 + tolPct*3) and                    // bump: sharp new high
+            close < pl0                                         // price falling below support
+
+if p_bumpRun
+    bearLabel("BUMP↓", high)
+
+// ── 70. Dead Cat Bounce ───────────────────────────────────────────────────────
+// Sharp drop, brief bounce that barely retraces, then continues lower
+p_deadCat = showChart and newPH and nPH >= 2 and nPL >= 2 and
+            pl0 < pl1v and                                      // prior low broken
+            ph0 < ph1v and                                      // bounce doesn't reach prior high
+            ph0 - pl0 < (ph1v - pl1v) * 0.50 and              // bounce < 50% of prior move
+            close < pl0 * (1 + tolPct)                         // price back near lows
+
+if p_deadCat
+    bearLabel("DCB↓", high)
+
+// ── 71. Flag / Pole High-Tight ────────────────────────────────────────────────
+// Very short, tight flag after strong pole — strong continuation
+p_htFlag = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v * (1 + tolPct) and                       // new high pole
+           (ph0 - pl0) < atrV * 3 and                          // tight channel
+           close > ph0 * (1 - tolPct)                          // at top of flag
+
+if p_htFlag
+    bullLabel("HTF↑", low)
+
+// ── 72. Channel Up (Parallel) ────────────────────────────────────────────────
+// Pivot highs and pivot lows both rising in parallel
+p_chanUp = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+           ph0 > ph1v and pl0 > pl1v and
+           pctOk(ph0 - pl0, ph1v - pl1v)                       // channel width stable
+
+if p_chanUp
+    bullLabel("CH↑", low)
+
+// ── 73. Channel Down (Parallel) ──────────────────────────────────────────────
+p_chanDown = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+             ph0 < ph1v and pl0 < pl1v and
+             pctOk(ph0 - pl0, ph1v - pl1v)
+
+if p_chanDown
+    bearLabel("CH↓", high)
+
+// ── 74. Megaphone (Broadening Wedge) ─────────────────────────────────────────
+// Highs rising, lows falling — expanding volatility
+p_megaphone = showChart and newPivot and nPH >= 2 and nPL >= 2 and
+              ph0 > ph1v and pl0 < pl1v and
+              (ph0 - pl0) > (ph1v - pl1v) * 1.15               // clearly expanding
+
+if p_megaphone
+    neutLabel("MEGA", (ph0 + pl0) / 2)
+
+// ── 75. Flat Top Breakout ─────────────────────────────────────────────────────
+p_flatTopBO = showChart and newPH and nPH >= 3 and
+              pctOk(ph0, ph1v) and pctOk(ph1v, ph2v) and
+              close > ph0 * (1 + tolPct)                        // breakout above flat top
+
+if p_flatTopBO
+    bullLabel("FLT↑", low)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §9  HARMONIC PATTERNS  [26]
+// Uses alternating pivot high / low sequences.
+// Legs: XA, AB, BC, CD — measured as absolute price moves.
+// Fib ratio: |AB|/|XA|, |BC|/|AB|, |CD|/|BC| etc.
+// Patterns fire when the D leg pivot is confirmed.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// We need 4 alternating pivots to form X A B C (D = current close area).
+// Bullish harmonics: X=PH, A=PL, B=PH, C=PL, D breaks below C (entry near D)
+// Bearish harmonics: X=PL, A=PH, B=PL, C=PH, D breaks above C (entry near D)
+
+// For bullish harmonic XABCD:
+//   X = ph2v  (older high), A = pl2v (lower low)
+//   B = ph1v  (retracement high), C = pl1v (lower low leg)
+//   D = pl0   (completion low, current price zone)
+// For bearish harmonic XABCD:
+//   X = pl2v  (older low), A = ph2v (higher high)
+//   B = pl1v  (retracement low), C = ph1v (higher high leg)
+//   D = ph0   (completion high, current price zone)
+
+// Leg magnitudes (bullish)
+xaBull = not na(ph2v) and not na(pl2v) ? math.abs(ph2v - pl2v) : na    // X→A drop
+abBull = not na(pl2v) and not na(ph1v) ? math.abs(ph1v - pl2v) : na    // A→B rise
+bcBull = not na(ph1v) and not na(pl1v) ? math.abs(ph1v - pl1v) : na    // B→C drop
+cdBull = not na(pl1v) and not na(pl0)  ? math.abs(pl1v - pl0)  : na    // C→D drop
+
+// Leg magnitudes (bearish)
+xaBear = not na(pl2v) and not na(ph2v) ? math.abs(ph2v - pl2v) : na
+abBear = not na(ph2v) and not na(pl1v) ? math.abs(ph2v - pl1v) : na
+bcBear = not na(pl1v) and not na(ph1v) ? math.abs(ph1v - pl1v) : na
+cdBear = not na(ph1v) and not na(ph0)  ? math.abs(ph1v - ph0)  : na
+
+// Fire on new confirmed low pivot (bullish) or new confirmed high pivot (bearish)
+newHarmBull = newPL and nPH >= 3 and nPL >= 3
+newHarmBear = newPH and nPH >= 3 and nPL >= 3
+
+// ── 76. ABCD Bullish — AB=CD in distance and time ───────────────────────────
+p_abcdBull = showHarm and newHarmBull and
+             not na(abBull) and not na(cdBull) and
+             fibOk(cdBull, abBull, 1.0) and
+             fibOk(bcBull, abBull, 0.618)
+
+if p_abcdBull
+    bullLabel("ABCD↑", low)
+
+// ── 77. ABCD Bearish ─────────────────────────────────────────────────────────
+p_abcdBear = showHarm and newHarmBear and
+             not na(abBear) and not na(cdBear) and
+             fibOk(cdBear, abBear, 1.0) and
+             fibOk(bcBear, abBear, 0.618)
+
+if p_abcdBear
+    bearLabel("ABCD↓", high)
+
+// ── 78. Gartley Bullish — AB retraces 0.618 of XA; CD = 0.786 of XA ─────────
+p_gartleyBull = showHarm and newHarmBull and
+                not na(xaBull) and not na(abBull) and not na(cdBull) and
+                fibOk(abBull, xaBull, 0.618) and
+                fibOk(bcBull, abBull, 0.382) and
+                fibOk(cdBull, xaBull, 0.786)
+
+if p_gartleyBull
+    bullLabel("GART↑", low)
+
+// ── 79. Gartley Bearish ──────────────────────────────────────────────────────
+p_gartleyBear = showHarm and newHarmBear and
+                not na(xaBear) and not na(abBear) and not na(cdBear) and
+                fibOk(abBear, xaBear, 0.618) and
+                fibOk(bcBear, abBear, 0.382) and
+                fibOk(cdBear, xaBear, 0.786)
+
+if p_gartleyBear
+    bearLabel("GART↓", high)
+
+// ── 80. Bat Bullish — AB retraces 0.382–0.50 of XA; CD = 0.886 of XA ────────
+p_batBull = showHarm and newHarmBull and
+            not na(xaBull) and not na(abBull) and not na(cdBull) and
+            (fibOk(abBull, xaBull, 0.382) or fibOk(abBull, xaBull, 0.50)) and
+            (fibOk(bcBull, abBull, 0.382) or fibOk(bcBull, abBull, 0.886)) and
+            fibOk(cdBull, xaBull, 0.886)
+
+if p_batBull
+    bullLabel("BAT↑", low)
+
+// ── 81. Bat Bearish ──────────────────────────────────────────────────────────
+p_batBear = showHarm and newHarmBear and
+            not na(xaBear) and not na(abBear) and not na(cdBear) and
+            (fibOk(abBear, xaBear, 0.382) or fibOk(abBear, xaBear, 0.50)) and
+            (fibOk(bcBear, abBear, 0.382) or fibOk(bcBear, abBear, 0.886)) and
+            fibOk(cdBear, xaBear, 0.886)
+
+if p_batBear
+    bearLabel("BAT↓", high)
+
+// ── 82. Butterfly Bullish — AB = 0.786 of XA; CD extends 1.27 of XA ─────────
+p_butterflyBull = showHarm and newHarmBull and
+                  not na(xaBull) and not na(abBull) and not na(cdBull) and
+                  fibOk(abBull, xaBull, 0.786) and
+                  (fibOk(bcBull, abBull, 0.382) or fibOk(bcBull, abBull, 0.886)) and
+                  (fibOk(cdBull, xaBull, 1.272) or fibOk(cdBull, xaBull, 1.618))
+
+if p_butterflyBull
+    bullLabel("BFLY↑", low)
+
+// ── 83. Butterfly Bearish ────────────────────────────────────────────────────
+p_butterflyBear = showHarm and newHarmBear and
+                  not na(xaBear) and not na(abBear) and not na(cdBear) and
+                  fibOk(abBear, xaBear, 0.786) and
+                  (fibOk(bcBear, abBear, 0.382) or fibOk(bcBear, abBear, 0.886)) and
+                  (fibOk(cdBear, xaBear, 1.272) or fibOk(cdBear, xaBear, 1.618))
+
+if p_butterflyBear
+    bearLabel("BFLY↓", high)
+
+// ── 84. Crab Bullish — AB = 0.382–0.618 of XA; CD extends 1.618 of XA ───────
+p_crabBull = showHarm and newHarmBull and
+             not na(xaBull) and not na(abBull) and not na(cdBull) and
+             (fibOk(abBull, xaBull, 0.382) or fibOk(abBull, xaBull, 0.618)) and
+             fibOk(cdBull, xaBull, 1.618)
+
+if p_crabBull
+    bullLabel("CRAB↑", low)
+
+// ── 85. Crab Bearish ────────────────────────────────────────────────────────
+p_crabBear = showHarm and newHarmBear and
+             not na(xaBear) and not na(abBear) and not na(cdBear) and
+             (fibOk(abBear, xaBear, 0.382) or fibOk(abBear, xaBear, 0.618)) and
+             fibOk(cdBear, xaBear, 1.618)
+
+if p_crabBear
+    bearLabel("CRAB↓", high)
+
+// ── 86. Deep Crab Bullish — AB = 0.886 of XA; CD extends 2.618–3.618 ────────
+p_deepCrabBull = showHarm and newHarmBull and
+                 not na(xaBull) and not na(abBull) and not na(cdBull) and
+                 fibOk(abBull, xaBull, 0.886) and
+                 (fibOk(cdBull, xaBull, 2.618) or fibOk(cdBull, xaBull, 3.618))
+
+if p_deepCrabBull
+    bullLabel("DCRAB↑", low)
+
+// ── 87. Deep Crab Bearish ────────────────────────────────────────────────────
+p_deepCrabBear = showHarm and newHarmBear and
+                 not na(xaBear) and not na(abBear) and not na(cdBear) and
+                 fibOk(abBear, xaBear, 0.886) and
+                 (fibOk(cdBear, xaBear, 2.618) or fibOk(cdBear, xaBear, 3.618))
+
+if p_deepCrabBear
+    bearLabel("DCRAB↓", high)
+
+// ── 88. Cypher Bullish — AB = 0.382–0.618 of XA; CD retraces 0.786 of XC ───
+// XC leg for Cypher: from X to C price distance
+xcBull = not na(ph2v) and not na(pl1v) ? math.abs(ph2v - pl1v) : na
+p_cypherBull = showHarm and newHarmBull and
+               not na(xaBull) and not na(abBull) and not na(xcBull) and
+               (fibOk(abBull, xaBull, 0.382) or fibOk(abBull, xaBull, 0.618)) and
+               fibOk(bcBull, abBull, 1.272) and
+               not na(pl0) and fibOk(math.abs(pl1v - pl0), xcBull, 0.786)
+
+if p_cypherBull
+    bullLabel("CYPH↑", low)
+
+// ── 89. Cypher Bearish ───────────────────────────────────────────────────────
+xcBear = not na(pl2v) and not na(ph1v) ? math.abs(ph1v - pl2v) : na
+p_cypherBear = showHarm and newHarmBear and
+               not na(xaBear) and not na(abBear) and not na(xcBear) and
+               (fibOk(abBear, xaBear, 0.382) or fibOk(abBear, xaBear, 0.618)) and
+               fibOk(bcBear, abBear, 1.272) and
+               not na(ph0) and fibOk(math.abs(ph1v - ph0), xcBear, 0.786)
+
+if p_cypherBear
+    bearLabel("CYPH↓", high)
+
+// ── 90. Shark Bullish — 0-X-A-B-C, CD = 0.886–1.13 of XA ──────────────────
+p_sharkBull = showHarm and newHarmBull and
+              not na(xaBull) and not na(abBull) and not na(cdBull) and
+              (fibOk(abBull, xaBull, 1.13) or fibOk(abBull, xaBull, 0.886)) and
+              (fibOk(bcBull, abBull, 1.618) or fibOk(bcBull, abBull, 2.24)) and
+              (fibOk(cdBull, xaBull, 0.886) or fibOk(cdBull, xaBull, 1.13))
+
+if p_sharkBull
+    bullLabel("SHRK↑", low)
+
+// ── 91. Shark Bearish ────────────────────────────────────────────────────────
+p_sharkBear = showHarm and newHarmBear and
+              not na(xaBear) and not na(abBear) and not na(cdBear) and
+              (fibOk(abBear, xaBear, 1.13) or fibOk(abBear, xaBear, 0.886)) and
+              (fibOk(bcBear, abBear, 1.618) or fibOk(bcBear, abBear, 2.24)) and
+              (fibOk(cdBear, xaBear, 0.886) or fibOk(cdBear, xaBear, 1.13))
+
+if p_sharkBear
+    bearLabel("SHRK↓", high)
+
+// ── 92. Alt Bat Bullish — AB = 0.382 of XA; CD = 1.13 of XA ────────────────
+p_altBatBull = showHarm and newHarmBull and
+               not na(xaBull) and not na(abBull) and not na(cdBull) and
+               fibOk(abBull, xaBull, 0.382) and
+               (fibOk(bcBull, abBull, 0.382) or fibOk(bcBull, abBull, 0.886)) and
+               fibOk(cdBull, xaBull, 1.13)
+
+if p_altBatBull
+    bullLabel("ABAT↑", low)
+
+// ── 93. Alt Bat Bearish ──────────────────────────────────────────────────────
+p_altBatBear = showHarm and newHarmBear and
+               not na(xaBear) and not na(abBear) and not na(cdBear) and
+               fibOk(abBear, xaBear, 0.382) and
+               (fibOk(bcBear, abBear, 0.382) or fibOk(bcBear, abBear, 0.886)) and
+               fibOk(cdBear, xaBear, 1.13)
+
+if p_altBatBear
+    bearLabel("ABAT↓", high)
+
+// ── 94. Three Drives Bullish — three equal-length down drives ───────────────
+// Drives: XA, CD, EF each approximately equal; BC, DE are retracements
+// Approximate using pivot arrays: PH3→PL2 (drive1), PH2→PL1 (drive2), PH1→PL0 (drive3)
+drive1 = not na(ph3v) and not na(pl3v) ? math.abs(ph3v - pl3v) : na
+drive2 = not na(ph2v) and not na(pl2v) ? math.abs(ph2v - pl2v) : na
+drive3 = not na(ph1v) and not na(pl0)  ? math.abs(ph1v - pl0)  : na
+
+p_threedrivesBull = showHarm and newPL and nPH >= 4 and nPL >= 4 and
+                    not na(drive1) and not na(drive2) and not na(drive3) and
+                    fibOk(drive2, drive1, 1.0) and fibOk(drive3, drive1, 1.0) and
+                    pl0 < pl2v and pl2v < pl3v                  // drives stepping lower
+
+if p_threedrivesBull
+    bullLabel("3DRV↑", low)
+
+// ── 95. Three Drives Bearish ─────────────────────────────────────────────────
+drive1b = not na(pl3v) and not na(ph3v) ? math.abs(ph3v - pl3v) : na
+drive2b = not na(pl2v) and not na(ph2v) ? math.abs(ph2v - pl2v) : na
+drive3b = not na(pl1v) and not na(ph0)  ? math.abs(ph0 - pl1v)  : na
+
+p_threedrivesBear = showHarm and newPH and nPH >= 4 and nPL >= 4 and
+                        not na(drive1b) and not na(drive2b) and not na(drive3b) and
+                        fibOk(drive2b, drive1b, 1.0) and fibOk(drive3b, drive1b, 1.0) and
+                        ph0 > ph2v and ph2v > ph3v               // drives stepping higher
+
+if p_threedrivesBear
+    bearLabel("3DRV↓", high)
+
+// ── 96. 5-0 Pattern Bullish — BC = 1.618–2.24 of AB; CD = 0.50 of BC ────────
+p_fiveZeroBull = showHarm and newHarmBull and
+                 not na(abBull) and not na(bcBull) and not na(cdBull) and
+                 (fibOk(bcBull, abBull, 1.618) or fibOk(bcBull, abBull, 2.24)) and
+                 fibOk(cdBull, bcBull, 0.50)
+
+if p_fiveZeroBull
+    bullLabel("5-0↑", low)
+
+// ── 97. 5-0 Pattern Bearish ──────────────────────────────────────────────────
+p_fiveZeroBear = showHarm and newHarmBear and
+                 not na(abBear) and not na(bcBear) and not na(cdBear) and
+                 (fibOk(bcBear, abBear, 1.618) or fibOk(bcBear, abBear, 2.24)) and
+                 fibOk(cdBear, bcBear, 0.50)
+
+if p_fiveZeroBear
+    bearLabel("5-0↓", high)
+
+// ── 98. Nen-Star (Anti-Gartley) Bullish — AB = 0.618 of XA; CD = 1.272 ──────
+p_nenStarBull = showHarm and newHarmBull and
+                not na(xaBull) and not na(abBull) and not na(cdBull) and
+                fibOk(abBull, xaBull, 0.618) and
+                (fibOk(bcBull, abBull, 1.272) or fibOk(bcBull, abBull, 1.618)) and
+                fibOk(cdBull, xaBull, 1.272)
+
+if p_nenStarBull
+    bullLabel("NEN↑", low)
+
+// ── 99. Nen-Star Bearish ─────────────────────────────────────────────────────
+p_nenStarBear = showHarm and newHarmBear and
+                not na(xaBear) and not na(abBear) and not na(cdBear) and
+                fibOk(abBear, xaBear, 0.618) and
+                (fibOk(bcBear, abBear, 1.272) or fibOk(bcBear, abBear, 1.618)) and
+                fibOk(cdBear, xaBear, 1.272)
+
+if p_nenStarBear
+    bearLabel("NEN↓", high)
+
+// ── 100. XABCD (Alternate AB=CD) Bullish — CD = 1.272 × AB ──────────────────
+p_xabcdBull = showHarm and newHarmBull and
+              not na(abBull) and not na(cdBull) and
+              fibOk(cdBull, abBull, 1.272) and
+              (fibOk(bcBull, abBull, 0.618) or fibOk(bcBull, abBull, 0.886))
+
+if p_xabcdBull
+    bullLabel("XAB↑", low)
+
+// ── 101. XABCD Bearish ───────────────────────────────────────────────────────
+p_xabcdBear = showHarm and newHarmBear and
+              not na(abBear) and not na(cdBear) and
+              fibOk(cdBear, abBear, 1.272) and
+              (fibOk(bcBear, abBear, 0.618) or fibOk(bcBear, abBear, 0.886))
+
+if p_xabcdBear
+    bearLabel("XAB↓", high)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §10  COMPLEX SITUATIONS — CONFLUENCE & CONTEXT ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── 10A. Trend context (EMA stack) ────────────────────────────────────────────
+ema20v    = ta.ema(close, 20)
+ema50v    = ta.ema(close, 50)
+ema200v   = ta.ema(close, 200)
+bullTrend = ema20v > ema50v and ema50v > ema200v    // classic bull alignment
+bearTrend = ema20v < ema50v and ema50v < ema200v    // classic bear alignment
+flatTrend = not bullTrend and not bearTrend
+
+// ── 10B. Volume context ───────────────────────────────────────────────────────
+volMA20  = ta.sma(volume, 20)
+volSurge = volume > volMA20 * 1.50    // above-average participation
+volDry   = volume < volMA20 * 0.70    // below-average (potential exhaustion)
+
+// ── 10C. ATR volatility regime ────────────────────────────────────────────────
+atrMA30     = ta.sma(atrV, 30)
+atrExpand   = atrV > atrMA30 * 1.20    // expanding volatility
+atrContract = atrV < atrMA30 * 0.80    // contracting (coiling)
+atrSqueeze  = atrExpand and atrContract[1]   // first bar of expansion after contraction
+
+// ── 10D. S/R proximity ────────────────────────────────────────────────────────
+nearR = not na(ph0) and ph0 > 0 and math.abs(close - ph0) / ph0 <= tolPct * 2.0
+nearS = not na(pl0) and pl0 > 0 and math.abs(close - pl0) / pl0 <= tolPct * 2.0
+
+// ── 10E. RSI divergence context ───────────────────────────────────────────────
+rsi14   = ta.rsi(close, 14)
+bullDiv = newPL and nPL >= 2 and pl0 < pl1v and rsi14 > rsi14[14]   // lower price low, higher RSI
+bearDiv = newPH and nPH >= 2 and ph0 > ph1v and rsi14 < rsi14[14]   // higher price high, lower RSI
+
+// ── 10F. Inside bar at S/R (coiled spring) ────────────────────────────────────
+insideBar  = high <= h1 and low >= l1
+insideAtSR = insideBar and (nearR or nearS)
+
+// ── 10G. Trend exhaustion: extended move + first counter-signal ───────────────
+// (References bullSigCount / bearSigCount computed in 10H; labels deferred to 10I)
+bullExhaust = close > ema200v + atrV * 2.5 and not bullTrend
+bearExhaust = close < ema200v - atrV * 2.5 and not bearTrend
+
+// ── 10H. Composite signal counts (bull / bear) ────────────────────────────────
+// Single-bar bull
+b1 = (p_hammer      ? 1:0) + (p_invHammer  ? 1:0) + (p_dfDoji      ? 1:0) + (p_marubozuBull ? 1:0)
+// Two-bar bull
+b2 = (p_bullEngulf  ? 1:0) + (p_tweezBot   ? 1:0) + (p_bullHarami  ? 1:0) +
+     (p_bullHaramiX ? 1:0) + (p_piercing   ? 1:0) + (bear1 and isBull and open >= h1 ? 1:0)
+// Multi-bar bull
+b3 = (p_mornStar    ? 1:0) + (p_mornDojiStar ? 1:0) + (p_3whiteSol   ? 1:0) +
+     (p_3insideUp   ? 1:0) + (p_3outsideUp   ? 1:0) + (p_risingThree ? 1:0) +
+     (p_abanBabyBull ? 1:0) + (p_matHold     ? 1:0)
+// Chart bull
+b4 = (p_ihs         ? 1:0) + (p_dblBot    ? 1:0) + (p_triBot       ? 1:0) + (p_cupHandle  ? 1:0) +
+     (p_ascTri       ? 1:0) + (p_fallingWedge ? 1:0) + (p_bullFlag  ? 1:0) +
+     (p_bullPennant  ? 1:0) + (p_roundBot  ? 1:0) + (p_rectBull     ? 1:0) +
+     (p_diamBot      ? 1:0) + (p_htFlag    ? 1:0) + (p_chanUp       ? 1:0) + (p_flatTopBO  ? 1:0)
+// Harmonic bull
+b5 = (p_abcdBull    ? 1:0) + (p_gartleyBull  ? 1:0) + (p_batBull     ? 1:0) +
+     (p_butterflyBull ? 1:0) + (p_crabBull   ? 1:0) + (p_deepCrabBull ? 1:0) +
+     (p_cypherBull   ? 1:0) + (p_sharkBull   ? 1:0) + (p_altBatBull  ? 1:0) +
+     (p_threedrivesBull ? 1:0) + (p_fiveZeroBull ? 1:0) + (p_nenStarBull ? 1:0) +
+     (p_xabcdBull    ? 1:0)
+bullSigCount = b1 + b2 + b3 + b4 + b5
+
+// Single-bar bear
+d1 = (p_shootStar   ? 1:0) + (p_hangMan     ? 1:0) + (p_gsDoji       ? 1:0) + (p_marubozuBear ? 1:0)
+// Two-bar bear
+d2 = (p_bearEngulf  ? 1:0) + (p_tweezTop    ? 1:0) + (p_bearHarami   ? 1:0) +
+     (p_bearHaramiX ? 1:0) + (p_darkCloud   ? 1:0) + (p_onNeck       ? 1:0) +
+     (p_inNeck      ? 1:0) + (p_thrusting   ? 1:0) + (bull1 and isBear and open <= l1 ? 1:0)
+// Multi-bar bear
+d3 = (p_evenStar    ? 1:0) + (p_evenDojiStar ? 1:0) + (p_3blackCrow  ? 1:0) +
+     (p_3insideDown ? 1:0) + (p_3outsideDown ? 1:0) + (p_fallingThree ? 1:0) +
+     (p_abanBabyBear ? 1:0) + (p_ugTwoCrows  ? 1:0)
+// Chart bear
+d4 = (p_hs          ? 1:0) + (p_dblTop      ? 1:0) + (p_triTop       ? 1:0) + (p_invCup     ? 1:0) +
+     (p_dscTri      ? 1:0) + (p_risingWedge ? 1:0) + (p_bearFlag     ? 1:0) +
+     (p_bearPennant ? 1:0) + (p_roundTop    ? 1:0) + (p_rectBear     ? 1:0) +
+     (p_diamTop     ? 1:0) + (p_bumpRun     ? 1:0) + (p_deadCat      ? 1:0) + (p_chanDown   ? 1:0)
+// Harmonic bear
+d5 = (p_abcdBear    ? 1:0) + (p_gartleyBear  ? 1:0) + (p_batBear     ? 1:0) +
+     (p_butterflyBear ? 1:0) + (p_crabBear   ? 1:0) + (p_deepCrabBear ? 1:0) +
+     (p_cypherBear   ? 1:0) + (p_sharkBear   ? 1:0) + (p_altBatBear  ? 1:0) +
+     (p_threedrivesBear ? 1:0) + (p_fiveZeroBear ? 1:0) + (p_nenStarBear ? 1:0) +
+     (p_xabcdBear    ? 1:0)
+bearSigCount = d1 + d2 + d3 + d4 + d5
+
+// Cross-category cluster (signals from candlestick / chart / harmonic sections)
+candleBullAny = b1 + b2 + b3 > 0
+chartBullAny  = b4 > 0
+harmBullAny   = b5 > 0
+bullCluster   = (candleBullAny ? 1:0) + (chartBullAny ? 1:0) + (harmBullAny ? 1:0)
+
+candleBearAny = d1 + d2 + d3 > 0
+chartBearAny  = d4 > 0
+harmBearAny   = d5 > 0
+bearCluster   = (candleBearAny ? 1:0) + (chartBearAny ? 1:0) + (harmBearAny ? 1:0)
+
+// ── 10I. Complex situation labels ────────────────────────────────────────────
+// High-Conviction: ≥N signals + EMA trend aligned + vol surge
+hcBull  = showCplx and bullSigCount >= hcMinSigs and bullTrend and volSurge
+hcBear  = showCplx and bearSigCount >= hcMinSigs and bearTrend and volSurge
+
+// Squeeze Breakout: ATR contracting→expanding + at least one signal
+sqzBull = showCplx and atrSqueeze and bullSigCount >= 1
+sqzBear = showCplx and atrSqueeze and bearSigCount >= 1
+
+// S/R Bounce: reversal signal at key level (typically counter-trend)
+srBull  = showCplx and nearS and bullSigCount >= 1 and (bearTrend or flatTrend) and not hcBull
+srBear  = showCplx and nearR and bearSigCount >= 1 and (bullTrend or flatTrend) and not hcBear
+
+// Divergence-confirmed: RSI divergence + pattern signal in same direction
+dvBull  = showCplx and bullDiv and bullSigCount >= 1
+dvBear  = showCplx and bearDiv and bearSigCount >= 1
+
+// Multi-category cluster: signals from ≥2 different section types
+clsBull = showCplx and bullCluster >= 2
+clsBear = showCplx and bearCluster >= 2
+
+// Trend exhaustion: price extended far beyond EMA200 + counter-signal
+exhBull = showCplx and bearExhaust and bullSigCount >= 1
+exhBear = showCplx and bullExhaust and bearSigCount >= 1
+
+// Inside bar coil at S/R key level
+coilSR  = showCplx and insideAtSR
+
+// Volume-dry reversal: pattern fires on unusually thin volume
+vdRev   = showCplx and volDry and (bullSigCount >= 1 or bearSigCount >= 1)
+
+// ── Labels (staggered y-offsets to reduce overlap) ───────────────────────────
+if hcBull
+    label.new(bar_index, low - atrV * 2.5,
+              "★HC BULL ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.lime, 0),
+              textcolor=color.black, size=size.normal)
+
+if hcBear
+    label.new(bar_index, high + atrV * 2.5,
+              "★HC BEAR ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.orange, 0),
+              textcolor=color.black, size=size.normal)
+
+if clsBull and not hcBull
+    label.new(bar_index, low - atrV * 2.0,
+              "CLSTR↑ [Cs/Ch/Hm]",
+              style=label.style_label_up,
+              color=color.new(color.green, 10),
+              textcolor=color.white, size=size.small)
+
+if clsBear and not hcBear
+    label.new(bar_index, high + atrV * 2.0,
+              "CLSTR↓ [Cs/Ch/Hm]",
+              style=label.style_label_down,
+              color=color.new(color.red, 10),
+              textcolor=color.white, size=size.small)
+
+if sqzBull and not hcBull
+    label.new(bar_index, low - atrV * 1.6,
+              "SQZ↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.teal, 10),
+              textcolor=color.white, size=size.small)
+
+if sqzBear and not hcBear
+    label.new(bar_index, high + atrV * 1.6,
+              "SQZ↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.maroon, 10),
+              textcolor=color.white, size=size.small)
+
+if srBull
+    label.new(bar_index, low - atrV * 1.2,
+              "SR↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.aqua, 20),
+              textcolor=color.black, size=size.small)
+
+if srBear
+    label.new(bar_index, high + atrV * 1.2,
+              "SR↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.fuchsia, 20),
+              textcolor=color.black, size=size.small)
+
+if dvBull and not hcBull and not sqzBull and not srBull
+    label.new(bar_index, low - atrV * 0.9,
+              "DIV↑ ×" + str.tostring(bullSigCount),
+              style=label.style_label_up,
+              color=color.new(color.purple, 20),
+              textcolor=color.white, size=size.tiny)
+
+if dvBear and not hcBear and not sqzBear and not srBear
+    label.new(bar_index, high + atrV * 0.9,
+              "DIV↓ ×" + str.tostring(bearSigCount),
+              style=label.style_label_down,
+              color=color.new(color.purple, 20),
+              textcolor=color.white, size=size.tiny)
+
+if exhBull
+    label.new(bar_index, low - atrV * 0.7,
+              "EXH↑",
+              style=label.style_label_up,
+              color=color.new(color.blue, 20),
+              textcolor=color.white, size=size.tiny)
+
+if exhBear
+    label.new(bar_index, high + atrV * 0.7,
+              "EXH↓",
+              style=label.style_label_down,
+              color=color.new(color.navy, 20),
+              textcolor=color.white, size=size.tiny)
+
+if coilSR
+    label.new(bar_index, (high + low) * 0.5,
+              "COIL@SR",
+              style=label.style_label_center,
+              color=color.new(color.purple, 35),
+              textcolor=color.white, size=size.tiny)
+
+if vdRev and not hcBull and not hcBear
+    label.new(bar_index, high + atrV * 0.4,
+              "VDR",
+              style=label.style_label_down,
+              color=color.new(color.gray, 50),
+              textcolor=color.white, size=size.tiny)
+
+// EMA trend lines
+plot(showTrend ? ema20v  : na, "EMA 20",  color=color.new(color.blue,   25), linewidth=1)
+plot(showTrend ? ema50v  : na, "EMA 50",  color=color.new(color.orange, 25), linewidth=1)
+plot(showTrend ? ema200v : na, "EMA 200", color=color.new(color.red,    25), linewidth=2)
+
+// Background trend shading
+bgcolor(showBgShade and bullTrend ? color.new(color.green, 96) :
+        showBgShade and bearTrend ? color.new(color.red,   96) : na)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// §11  BAYESIAN NEXT-PATTERN CLASS PREDICTOR
+//
+// 5-state Markov chain over pattern classes:
+//   0 = Strong Bull   1 = Mild Bull   2 = Neutral   3 = Mild Bear   4 = Strong Bear
+//
+// Transition matrix T[i,j]  = count of times class-i was followed by class-j
+// Prior: T[i,j] = bayAlpha  (Laplace smoothing — avoids zero probabilities)
+// Posterior: P(next=j | prev=i)  =  T[i,j] / Σ_k T[i,k]
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Class encoding (priority: Strong > Mild > Neutral; bull beats bear on tie) ──
+strongBullPat = p_marubozuBull  or p_bullEngulf    or p_3whiteSol    or p_3outsideUp   or
+                p_mornStar      or p_mornDojiStar   or p_abanBabyBull or p_risingThree  or
+                p_matHold       or p_ihs             or p_dblBot       or p_triBot       or
+                p_rectBull      or p_flatTopBO       or p_gartleyBull  or p_batBull      or
+                p_butterflyBull or p_crabBull        or p_deepCrabBull or p_cypherBull   or
+                p_threedrivesBull
+
+mildBullPat   = p_hammer        or p_invHammer      or p_dfDoji       or p_bullHarami   or
+                p_bullHaramiX   or p_piercing        or p_tweezBot     or p_3insideUp    or
+                p_tasukiGapBull or p_ascTri          or p_fallingWedge or p_bullFlag     or
+                p_bullPennant   or p_cupHandle       or p_roundBot     or p_diamBot      or
+                p_htFlag        or p_chanUp          or p_abcdBull     or p_altBatBull   or
+                p_nenStarBull   or p_fiveZeroBull    or p_xabcdBull    or p_sharkBull
+
+neutralPat    = p_doji          or p_llDoji          or p_spinTop      or p_symTri       or
+                p_expTri        or p_megaphone
+
+mildBearPat   = p_hangMan       or p_shootStar       or p_gsDoji       or p_bearHarami   or
+                p_bearHaramiX   or p_darkCloud        or p_onNeck       or p_inNeck       or
+                p_thrusting     or p_tweezTop         or p_3insideDown  or p_tasukiGapBear or
+                p_dscTri        or p_risingWedge      or p_bearFlag     or p_bearPennant  or
+                p_invCup        or p_chanDown         or p_bumpRun      or p_deadCat      or
+                p_abcdBear      or p_altBatBear       or p_nenStarBear  or p_fiveZeroBear or
+                p_xabcdBear     or p_sharkBear
+
+strongBearPat = p_marubozuBear  or p_bearEngulf      or p_3blackCrow   or p_3outsideDown or
+                p_evenStar      or p_evenDojiStar     or p_abanBabyBear or p_fallingThree or
+                p_ugTwoCrows    or p_hs               or p_dblTop       or p_triTop       or
+                p_rectBear      or p_roundTop         or p_diamTop      or p_gartleyBear  or
+                p_batBear       or p_butterflyBear    or p_crabBear     or p_deepCrabBear or
+                p_cypherBear    or p_threedrivesBear
+
+// Encode current bar (−1 = no pattern)
+int bayCur = strongBullPat ? 0 : mildBullPat ? 1 : neutralPat ? 2 :
+             mildBearPat   ? 3 : strongBearPat ? 4 : -1
+
+// ── Transition matrix (25 cells, persists across bars) ───────────────────────
+var int[]  bayMx       = array.new_int(25, 0)   // init to 0; filled to α on bar 0
+var bool   bayInitDone = false
+var int    bayPrev     = -1                      // class of previous detection
+
+if not bayInitDone
+    for ii = 0 to 24
+        array.set(bayMx, ii, bayAlpha)
+    bayInitDone := true
+
+// Update matrix on each new detection
+if bayCur >= 0
+    if bayPrev >= 0
+        int transIdx = bayPrev * 5 + bayCur
+        array.set(bayMx, transIdx, array.get(bayMx, transIdx) + 1)
+    bayPrev := bayCur
+
+// ── Posterior probabilities for next class ───────────────────────────────────
+var float[] bayPost  = array.new_float(5, 20.0)
+var int     bayBest  = 2
+var float   bayBestP = 20.0
+
+if bayCur >= 0
+    int rTotal = 0
+    for jj = 0 to 4
+        rTotal += array.get(bayMx, bayCur * 5 + jj)
+    float bestP = 0.0
+    int   bestJ = 0
+    for jj = 0 to 4
+        float p = rTotal > 0 ? array.get(bayMx, bayCur * 5 + jj) / float(rTotal) * 100.0 : 20.0
+        array.set(bayPost, jj, p)
+        if p > bestP
+            bestP := p
+            bestJ := jj
+    bayBest  := bestJ
+    bayBestP := bestP
+
+// ── Helper functions ─────────────────────────────────────────────────────────
+bayClassName(c) =>
+    c == 0 ? "Strong Bull" : c == 1 ? "Mild Bull" : c == 2 ? "Neutral" :
+    c == 3 ? "Mild Bear"   : c == 4 ? "Strong Bear" : "—"
+
+bayClassBg(c) =>
+    c == 0 ? color.new(color.lime,   10) :
+    c == 1 ? color.new(color.green,  30) :
+    c == 2 ? color.new(color.silver, 40) :
+    c == 3 ? color.new(color.orange, 20) :
+             color.new(color.red,    10)
+
+probBar(pct) =>
+    int    filled = math.max(0, math.min(10, math.round(pct / 10.0)))
+    string bar    = ""
+    for _b = 1 to 10
+        bar += _b <= filled ? "█" : "░"
+    bar
+
+// ── Bayesian prediction table (bottom-right, 3 cols × 11 rows) ──────────────
+var table bayTbl = table.new(position.bottom_right, 3, 11,
+                             bgcolor=color.new(color.black, 55),
+                             border_color=color.new(color.gray, 50), border_width=1,
+                             frame_color=color.new(color.navy, 30), frame_width=1)
+
+if barstate.islast and showBayes
+    // Row 0 — header
+    table.cell(bayTbl, 0, 0, "Bayesian Predictor",
+               text_color=color.yellow, text_size=size.small,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 1, 0, "P(class)",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+    table.cell(bayTbl, 2, 0, "Distribution",
+               text_color=color.silver, text_size=size.tiny,
+               bgcolor=color.new(color.navy, 25))
+
+    // Row 1 — current class
+    string curStr = bayCur >= 0 ? bayClassName(bayCur) : "No Pattern"
+    color  curBg  = bayCur >= 0 ? bayClassBg(bayCur)   : color.new(color.gray, 60)
+    table.cell(bayTbl, 0, 1, "Current",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 1, curStr,
+               bgcolor=curBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 1, "B:" + str.tostring(bullSigCount) + " D:" + str.tostring(bearSigCount),
+               text_color=color.gray, text_size=size.tiny)
+
+    // Rows 2–6 — probability for each next class
+    for rr = 0 to 4
+        float pPct = array.get(bayPost, rr)
+        bool  top  = rr == bayBest
+        table.cell(bayTbl, 0, 2 + rr,
+                   bayClassName(rr),
+                   text_color=top ? color.white : color.gray,
+                   bgcolor=top ? bayClassBg(rr) : color.new(color.black, 70),
+                   text_size=size.tiny)
+        table.cell(bayTbl, 1, 2 + rr,
+                   str.tostring(math.round(pPct, 1)) + "%",
+                   text_color=top ? color.white : color.gray,
+                   bgcolor=top ? bayClassBg(rr) : color.new(color.black, 70),
+                   text_size=size.tiny)
+        table.cell(bayTbl, 2, 2 + rr,
+                   probBar(pPct),
+                   text_color=top ? color.yellow : color.new(color.gray, 30),
+                   text_size=size.tiny)
+
+    // Row 7 — top prediction
+    table.cell(bayTbl, 0, 7, "⟹ NEXT",
+               bgcolor=color.new(color.navy, 30),
+               text_color=color.yellow, text_size=size.small)
+    table.cell(bayTbl, 1, 7, bayClassName(bayBest),
+               bgcolor=bayClassBg(bayBest),
+               text_color=color.white, text_size=size.small)
+    table.cell(bayTbl, 2, 7,
+               str.tostring(math.round(bayBestP, 1)) + "%",
+               bgcolor=bayClassBg(bayBest),
+               text_color=color.white, text_size=size.small)
+
+    // Row 8 — observation count
+    int obsTotal = 0
+    for oo = 0 to 24
+        obsTotal += array.get(bayMx, oo)
+    int realObs = math.max(0, obsTotal - 25 * bayAlpha)
+    table.cell(bayTbl, 0, 8, "Observations",
+               text_color=color.gray, text_size=size.tiny)
+    table.cell(bayTbl, 1, 8, str.tostring(realObs) + " detected",
+               text_color=color.gray, text_size=size.tiny)
+    table.cell(bayTbl, 2, 8, "α = " + str.tostring(bayAlpha),
+               text_color=color.gray, text_size=size.tiny)
+
+    // Row 9 — EMA trend + volume
+    string trendStr = bullTrend ? "BULL" : bearTrend ? "BEAR" : "FLAT"
+    color  trendBg  = bullTrend ? color.new(color.green, 30) :
+                      bearTrend ? color.new(color.red,   30) : color.new(color.gray, 50)
+    string volStr   = volSurge  ? "SURGE" : volDry ? "DRY" : "NORM"
+    table.cell(bayTbl, 0, 9, "EMA Trend",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 9, trendStr,
+               bgcolor=trendBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 9, "Vol: " + volStr,
+               text_color=color.gray, text_size=size.tiny)
+
+    // Row 10 — ATR regime
+    string atrStr = atrSqueeze  ? "SQUEEZE" : atrExpand ? "EXPAND" :
+                    atrContract ? "COIL"    : "NORMAL"
+    color  atrBg  = atrSqueeze  ? color.new(color.purple, 20) :
+                    atrExpand   ? color.new(color.orange, 30) :
+                    atrContract ? color.new(color.blue,   30) : color.new(color.gray, 50)
+    table.cell(bayTbl, 0, 10, "ATR Regime",
+               text_color=color.silver, text_size=size.tiny)
+    table.cell(bayTbl, 1, 10, atrStr,
+               bgcolor=atrBg, text_color=color.white, text_size=size.tiny)
+    table.cell(bayTbl, 2, 10, atrSqueeze ? "⚡" : "",
+               text_color=color.yellow, text_size=size.tiny)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Pattern Summary Table (top-right) — extended with complex signal counts
+// ══════════════════════════════════════════════════════════════════════════════
+var table tbl = table.new(position.top_right, 2, 8,
+                          bgcolor=color.new(color.black, 60),
+                          border_color=color.gray, border_width=1,
+                          frame_color=color.gray, frame_width=1)
+
+if barstate.islast
+    table.cell(tbl, 0, 0, "Pattern Engine",  text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 30))
+    table.cell(tbl, 1, 0, "101 patterns",    text_color=color.yellow, text_size=size.small, bgcolor=color.new(color.navy, 30))
+    table.cell(tbl, 0, 1, "Single-bar",       text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 1, "11",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 0, 2, "Two-bar + Kicker", text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 2, "15",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 0, 3, "Multi-bar (3+)",   text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 3, "18",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 0, 4, "Classic chart",    text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 4, "31",               text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 0, 5, "Harmonic",         text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 5, "26",               text_color=color.silver, text_size=size.tiny)
+    // Signal count (from §10)
+    bullColor = bullSigCount >= hcMinSigs and bullTrend ? color.new(color.lime, 20) :
+                bullSigCount > 0 ? color.new(color.green, 30) : color.new(color.gray, 60)
+    bearColor = bearSigCount >= hcMinSigs and bearTrend ? color.new(color.orange, 20) :
+                bearSigCount > 0 ? color.new(color.red, 30) : color.new(color.gray, 60)
+    table.cell(tbl, 0, 6, "Bull sigs",        text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 6, str.tostring(bullSigCount), bgcolor=bullColor, text_color=color.white, text_size=size.small)
+    table.cell(tbl, 0, 7, "Bear sigs",        text_color=color.silver, text_size=size.tiny)
+    table.cell(tbl, 1, 7, str.tostring(bearSigCount), bgcolor=bearColor, text_color=color.white, text_size=size.small)
+

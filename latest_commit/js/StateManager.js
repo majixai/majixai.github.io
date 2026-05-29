@@ -20,6 +20,7 @@ class StateManager {
         isLoading: true,
         error: null,
         searchQuery: '',
+        latestSite: null,
     };
 
     /** @type {Array<Function>} */

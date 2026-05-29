@@ -3,19 +3,33 @@ feed.py — backward-compatible entry point for the unified feed.
 
 All implementation has been moved into the modular sub-packages:
 
-  config       → configuration constants
-  adapters     → data-source adapters (RootDirectives)
-  db           → database management (DatabaseManager)
-  indicators   → technical analysis
-  signals      → anomaly detection, correlation, fusion, quality
-  engine       → async FeedEngine / run_all
+from yfinance_data.tickers import get_unique_tickers
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+log = logging.getLogger(__name__)
 
 This file re-exports the original public symbols so that any existing
 ``from feed import ...`` usage continues to work unchanged.
 """
 
-import asyncio
-import logging
+DIRS = {
+    "sp":  ROOT / "sp_closing_projection" / "latest_projection.json",
+    "mp":  ROOT / "market_prediction" / "latest_prediction.json",
+    "yf":  ROOT / "yfinance_data" / "yfinance.dat",
+    "gf":  ROOT / "tradingview_integration" / "data" / "google_finance_quotes.json",
+    "gh":  ROOT / "github_data" / "level1_csv",
+    "idx": ROOT / "index" / "csv",
+}
+
+_TICKER_EXTRAS = ["BTC-USD", "ETH-USD", "SOL-USD"]
+
+TICKERS = []
+_seen_tickers = set()
+for _ticker in [*get_unique_tickers(), *_TICKER_EXTRAS]:
+    _normalized = _ticker.strip().lower()
+    if _normalized and _normalized not in _seen_tickers:
+        _seen_tickers.add(_normalized)
+        TICKERS.append(_normalized)
 
 # ── Re-export configuration ───────────────────────────────────────────────────
 from .config import (

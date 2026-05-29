@@ -215,17 +215,24 @@
     }
     .card-path { color: #888; font-family: monospace; }
 
-    /* Category colours */
-    .cat-finance  { background: #dff0d8; color: #2d6a4f; }
-    .cat-gaming   { background: #fde8d8; color: #a84300; }
-    .cat-tools    { background: #dce8fd; color: #1a3a6e; }
-    .cat-web      { background: #ede8fd; color: #5a1a8a; }
-    .cat-data     { background: #fef3cd; color: #7a5200; }
-    .stripe-finance  { background: #52b788; }
-    .stripe-gaming   { background: #f4845f; }
-    .stripe-tools    { background: #4895ef; }
-    .stripe-web      { background: #9b72cf; }
-    .stripe-data     { background: #f4a261; }
+    .cat-finance     { background: #dff0d8; color: #2d6a4f; }
+    .cat-gaming      { background: #fde8d8; color: #a84300; }
+    .cat-tools       { background: #dce8fd; color: #1a3a6e; }
+    .cat-web         { background: #ede8fd; color: #5a1a8a; }
+    .cat-data        { background: #fef3cd; color: #7a5200; }
+    .cat-ml          { background: #d8f0ef; color: #1a5c5a; }
+    .cat-ai          { background: #fce4ec; color: #880e4f; }
+    .cat-mathematics { background: #e8f5e9; color: #1b5e20; }
+    .cat-gpu         { background: #f3e5f5; color: #4a148c; }
+    .stripe-finance     { background: #52b788; }
+    .stripe-gaming      { background: #f4845f; }
+    .stripe-tools       { background: #4895ef; }
+    .stripe-web         { background: #9b72cf; }
+    .stripe-data        { background: #f4a261; }
+    .stripe-ml          { background: #26a69a; }
+    .stripe-ai          { background: #e91e8c; }
+    .stripe-mathematics { background: #43a047; }
+    .stripe-gpu         { background: #8e24aa; }
 
     /* ── Empty state ────────────────────────────────────────────── */
     #empty-state {
@@ -250,6 +257,33 @@
     }
     #jump-bar span { font-size: .9rem; flex: 1; }
     #jump-bar a.btn { font-size: .8rem; }
+
+    /* ── Category stats bar ─────────────────────────────────────────────── */
+    #cat-stats {
+      background: rgba(0,0,0,.2);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+    .cat-stat {
+      padding: .45rem 1.1rem;
+      font-size: .78rem;
+      cursor: pointer;
+      border-right: 1px solid rgba(255,255,255,.12);
+      transition: background .2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      gap: .05rem;
+    }
+    .cat-stat:last-child { border-right: none; }
+    .cat-stat:hover { background: rgba(255,255,255,.1); color: #fff; text-decoration: none; }
+    .cat-stat-num { font-size: 1.1rem; font-weight: 700; line-height: 1; color: #06d6a0; }
+    .cat-stat-lbl { font-size: .65rem; text-transform: uppercase; letter-spacing: .07em; opacity: .8; }
   </style>
 </head>
 <body>
@@ -258,6 +292,7 @@
   <a class="back-link" href="/"><i class="fa fa-arrow-left"></i> Home</a>
   <h1><i class="fa fa-route"></i> MajixAI Router</h1>
   <p>Central routing hub — navigate to any of the <strong id="total-count">…</strong> projects instantly (supports <code>?go=/path/</code> deep links)</p>
+  <div id="cat-stats" role="region" aria-label="Projects by category"></div>
 </header>
 
 <div class="controls">
@@ -268,10 +303,14 @@
   <div class="cats" id="cat-buttons">
     <button class="active" data-cat="all">All</button>
     <button data-cat="finance">Finance</button>
+    <button data-cat="ml">ML</button>
+    <button data-cat="ai">AI</button>
+    <button data-cat="mathematics">Math</button>
     <button data-cat="gaming">Gaming</button>
     <button data-cat="tools">Tools</button>
     <button data-cat="web">Web</button>
     <button data-cat="data">Data</button>
+    <button data-cat="gpu">GPU</button>
   </div>
   <div class="sort-wrap">
     <label for="sort-select">Sort:</label>
@@ -326,10 +365,12 @@
   const CAT_STRIPE = {
     finance: 'stripe-finance', gaming: 'stripe-gaming',
     tools: 'stripe-tools', web: 'stripe-web', data: 'stripe-data',
+    ml: 'stripe-ml', ai: 'stripe-ai', mathematics: 'stripe-mathematics', gpu: 'stripe-gpu',
   };
   const CAT_BADGE = {
     finance: 'cat-finance', gaming: 'cat-gaming',
     tools: 'cat-tools', web: 'cat-web', data: 'cat-data',
+    ml: 'cat-ml', ai: 'cat-ai', mathematics: 'cat-mathematics', gpu: 'cat-gpu',
   };
 
   function buildCard(route) {
@@ -507,7 +548,49 @@
 
     applyFilters();
     handleJump();
+    renderCatStats();
   });
+
+  // ── Category stats bar ──────────────────────────────────────────────────────
+  function renderCatStats() {
+    const statsEl = document.getElementById('cat-stats');
+    if (!statsEl) return;
+
+    const CAT_ICONS = {
+      finance: '💰', tools: '🛠️', web: '🌐', data: '📊',
+      gaming: '🎮', mathematics: '📐', ai: '🤖', ml: '🧠', gpu: '⚡',
+    };
+
+    const counts = {};
+    for (const r of router.routes) {
+      const c = (r.category || 'tools').toLowerCase();
+      counts[c] = (counts[c] || 0) + 1;
+    }
+
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const frag = document.createDocumentFragment();
+
+    for (const [cat, count] of sorted) {
+      const icon = CAT_ICONS[cat] || '📁';
+      const btn = document.createElement('button');
+      btn.className = 'cat-stat';
+      btn.setAttribute('aria-label', `Filter by ${cat} (${count})`);
+      btn.dataset.cat = cat;
+      btn.innerHTML = `
+        <span style="font-size:1.1rem;">${icon}</span>
+        <span class="cat-stat-num">${count}</span>
+        <span class="cat-stat-lbl">${cat}</span>
+      `;
+      btn.addEventListener('click', () => {
+        catButtons.forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+        activeCat = cat;
+        applyFilters();
+        statsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+      frag.appendChild(btn);
+    }
+    statsEl.appendChild(frag);
+  }
 </script>
 </body>
 </html>

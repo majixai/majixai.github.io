@@ -12,34 +12,41 @@
 
     <header class="parallax">
         <div class="w3-container text-center text-white">
-            <h1><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16">
+            <h1><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-git" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M15.698 7.287 8.712.302a1.03 1.03 0 0 0-1.457 0l-1.45 1.45 1.84 1.84a1.223 1.223 0 0 1 1.55 1.56l1.773 1.774a1.224 1.224 0 0 1 1.267 2.025 1.226 1.226 0 0 1-2.002-1.334L8.58 5.963v4.353a1.226 1.226 0 1 1-1.008-.036V5.887a1.226 1.226 0 0 1-.666-1.608L5.093 2.465l-4.79 4.79a1.03 1.03 0 0 0 0 1.457l6.986 6.986a1.03 1.03 0 0 0 1.457 0l6.953-6.953a1.031 1.031 0 0 0 0-1.457z"/>
               </svg> Commit History Timeline</h1>
             <p class="lead">A reactive, state-driven application showcasing modern JavaScript.</p>
         </div>
     </header>
 
-    <main class="w3-container mt-4">
+    <main class="w3-container mt-4" role="main">
         <div class="w3-card-4">
             <header class="w3-container w3-light-grey">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3>Commit History</h3>
-                    <div class="w-50">
-                        <input type="text" id="search-input" class="form-control" placeholder="Filter by message or author...">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-1">
+                    <h3 class="mb-0">Commit History</h3>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <input type="search" id="search-input" class="form-control form-control-sm"
+                               placeholder="Filter by message or author…"
+                               aria-label="Filter commits by message or author"
+                               style="width:220px;">
+                        <span id="result-count" aria-live="polite"></span>
                     </div>
                     <div class="animation-controls">
-                        <button id="start-animation" class="w3-button w3-green">Animate</button>
-                        <button id="stop-animation" class="w3-button w3-red">Reset</button>
+                        <button id="start-animation" class="w3-button w3-green w3-small"
+                                aria-label="Replay entrance animation">Animate</button>
+                        <button id="stop-animation" class="w3-button w3-red w3-small"
+                                aria-label="Show all commits instantly">Reset</button>
                     </div>
                 </div>
             </header>
-            <div id="commit-list" class="timeline-container">
+            <div id="commit-list" class="timeline-container" role="list" aria-label="Commit timeline">
                 <!-- Commit timeline will be dynamically inserted here -->
             </div>
-            <div id="loader" class="text-center p-4">
-                <div class="spinner-border" role="status">
-                    <span class="sr-only">Loading...</span>
+            <div id="loader" class="text-center p-4" role="status" aria-label="Loading commits">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading…</span>
                 </div>
+                <p class="mt-2 text-muted small">Fetching latest commits…</p>
             </div>
         </div>
     </main>

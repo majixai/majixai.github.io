@@ -1,0 +1,272 @@
+name: Financial Email Reports
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schedule summary (all times ET → UTC cron offset uses EDT = UTC-4)
+#
+# OVERNIGHT  (10 PM – 6 AM ET)
+#   02:00 UTC (10 PM ET prior evening) — nightly_ixic_forecast (IXIC next-session forecast)
+#   03:00 UTC (11 PM ET)  — overnight_day_plan   (trading day ahead management)
+#   05:00 UTC ( 1 AM ET)  — overnight_bull_pick   (most bullish stock/crypto)
+#   07:00 UTC ( 3 AM ET)  — overnight_project     (project overview)
+#
+# PRE-MARKET (4 AM – 6:59 AM ET)
+#   08:00 UTC ( 4:00 AM ET) — premarket_1pm_proj  (projected 1 PM close)
+#   09:30 UTC ( 5:30 AM ET) — premarket_followup  (follow-up project)
+#   10:30 UTC ( 6:30 AM ET) — premarket_extra     (third pre-market slot)
+#
+# MARKET MORNING (8 AM – 11:59 AM ET)
+#   13:00 UTC ( 9:00 AM ET) — weekday_9am         (market open snapshot)
+#   14:00 UTC (10:00 AM ET) — market_bullnews     (extremely bullish / news-driven)
+#   15:59 UTC (11:59 AM ET) — market_midday       (midday follow-up)
+#
+# MIDDAY  (1 PM ET)
+#   17:00 UTC ( 1:00 PM ET) — market_1pm_et       (index feedback + next day plan)
+#
+# LEGACY UTC-ALIGNED WEEKDAY SLOTS (preserved)
+#   06:00 UTC  — weekday_open   (pre-market bull screener)
+#   10:00 UTC  — weekday_10am  (mid-morning report)
+#   13:00 UTC  — weekday_1pm   (legacy 1 PM UTC close report)
+#
+# WEEKENDS
+#   09:00 UTC Sat+Sun — weekend_9am  (morning digest)
+#   22:00 UTC Sat+Sun — weekend_10pm (evening digest)
+#
+# Transport: GAS webhook (email/gas_mailer.gs deployed as GAS Web App) or smtp.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: '0 2 * * 1-5'    # nightly_ixic_forecast (10 PM ET prior evening)
+    # ── OVERNIGHT (weekday ET nights, cron days +1 to cover next-calendar-day UTC) ──
+    - cron: '0 3 * * 2-6'    # overnight_day_plan  (11 PM ET Mon-Fri)
+    - cron: '0 5 * * 2-6'    # overnight_bull_pick  ( 1 AM ET Tue-Sat run)
+    - cron: '0 7 * * 2-6'    # overnight_project    ( 3 AM ET)
+    # ── PRE-MARKET ────────────────────────────────────────────────────────────
+    - cron: '0 8 * * 1-5'    # premarket_1pm_proj   ( 4:00 AM ET)
+    - cron: '30 9 * * 1-5'   # premarket_followup   ( 5:30 AM ET)
+    - cron: '30 10 * * 1-5'  # premarket_extra      ( 6:30 AM ET)
+    # ── MARKET MORNING ────────────────────────────────────────────────────────
+    - cron: '0 13 * * 1-5'   # weekday_9am / weekday_1pm (legacy)
+    - cron: '0 14 * * 1-5'   # market_bullnews     (10:00 AM ET)
+    - cron: '59 15 * * 1-5'  # market_midday       (11:59 AM ET)
+    # ── MIDDAY ────────────────────────────────────────────────────────────────
+    - cron: '0 17 * * 1-5'   # market_1pm_et       ( 1:00 PM ET)
+    # ── LEGACY UTC SLOTS (preserved) ─────────────────────────────────────────
+    - cron: '0 6 * * 1-5'    # weekday_open
+    - cron: '0 10 * * 1-5'   # weekday_10am (UTC)
+    # ── WEEKENDS ──────────────────────────────────────────────────────────────
+    - cron: '0 9 * * 6'      # weekend_9am  Saturday
+    - cron: '0 22 * * 6'     # weekend_10pm Saturday
+    - cron: '0 9 * * 0'      # weekend_9am  Sunday
+    - cron: '0 22 * * 0'     # weekend_10pm Sunday
+
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >
+          Report mode to send manually:
+          weekday_open | weekday_9am | weekday_10am | weekday_1pm |
+          weekend_9am  | weekend_10pm |
+          nightly_ixic_forecast |
+          overnight_day_plan | overnight_bull_pick | overnight_project |
+          premarket_1pm_proj | premarket_followup | premarket_extra |
+          market_bullnews | market_midday | market_1pm_et
+        required: false
+        default: 'weekday_open'
+      transport:
+        description: >
+          Email transport.  'gas' (default) POSTs to the GAS Web App webhook
+          (set GAS_WEBHOOK_URL + GAS_WEBHOOK_SECRET secrets).
+          'smtp' uses Python smtplib (set SMTP_* secrets).
+        required: false
+        default: 'gas'
+      dry_run:
+        description: 'Print report without sending email (true/false)'
+        required: false
+        default: 'false'
+      runtime_settings_json:
+        description: 'Optional JSON config for recipients/transport/webhook settings'
+        required: false
+        default: ''
+
+# contents: write is required only so the workflow can persist the gzip-backed
+# Gemini rate-limit state file under email/state/ when the optional AI block runs.
+permissions:
+  contents: write
+
+concurrency:
+  group: financial-email-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  send-financial-email:
+    name: Send Financial Email Report
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      # ── 3. Dependencies ──────────────────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install yfinance pandas numpy scipy
+
+      # ── 4. Determine report mode from cron schedule ──────────────────────────
+      #
+      #  GitHub Actions does not expose the matched cron rule directly, so we
+      #  determine the mode by inspecting the current UTC hour/minute and DOW.
+      #
+      - name: Determine report mode
+        id: mode
+        run: |
+          if [ -n "${{ github.event.inputs.mode }}" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> "$GITHUB_OUTPUT"
+            echo "INFO: Manual mode override: ${{ github.event.inputs.mode }}"
+          else
+            HOUR=$(date -u +%H)
+            MIN=$(date -u +%M)
+            # ISO week-day: 1=Mon … 6=Sat … 7=Sun
+            DOW=$(date -u +%u)
+            echo "INFO: UTC hour=${HOUR}  min=${MIN}  day-of-week=${DOW}"
+
+            if [ "$DOW" -eq 6 ] || [ "$DOW" -eq 7 ]; then
+              # Weekend: Sat=6, Sun=7
+              if [ "$HOUR" -eq 9 ]; then
+                MODE="weekend_9am"
+              else
+                MODE="weekend_10pm"
+              fi
+            else
+              # Weekday — match by hour and minute
+              # Overnight trading-prompt agent slots (ET times, UTC-4 offset)
+              if   [ "$HOUR" -eq 2  ] && [ "$MIN" -lt 30 ]; then
+                MODE="nightly_ixic_forecast"
+              elif [ "$HOUR" -eq 3  ] && [ "$MIN" -lt 30 ]; then
+                MODE="overnight_day_plan"
+              elif [ "$HOUR" -eq 5  ] && [ "$MIN" -lt 30 ]; then
+                MODE="overnight_bull_pick"
+              elif [ "$HOUR" -eq 7  ] && [ "$MIN" -lt 30 ]; then
+                MODE="overnight_project"
+              # Pre-market slots
+              elif [ "$HOUR" -eq 8  ] && [ "$MIN" -lt 30 ]; then
+                MODE="premarket_1pm_proj"
+              elif [ "$HOUR" -eq 9  ] && [ "$MIN" -ge 30 ]; then
+                MODE="premarket_followup"
+              elif [ "$HOUR" -eq 10 ] && [ "$MIN" -ge 30 ]; then
+                MODE="premarket_extra"
+              # Market-morning slots
+              elif [ "$HOUR" -eq 13 ]; then
+                # 13:00 UTC = 9 AM ET — market open; legacy weekday_1pm fires here too
+                # Prefer the ET-aligned market open label on weekdays
+                MODE="weekday_9am"
+              elif [ "$HOUR" -eq 14 ]; then
+                MODE="market_bullnews"
+              elif [ "$HOUR" -eq 15 ] && [ "$MIN" -ge 59 ]; then
+                MODE="market_midday"
+              # Midday ET slot
+              elif [ "$HOUR" -eq 17 ] && [ "$MIN" -lt 30 ]; then
+                MODE="market_1pm_et"
+              # Legacy UTC slots
+              elif [ "$HOUR" -eq 6  ]; then
+                MODE="weekday_open"
+              elif [ "$HOUR" -eq 10 ] && [ "$MIN" -lt 30 ]; then
+                MODE="weekday_10am"
+              else
+                MODE="weekday_open"
+              fi
+            fi
+            echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+            echo "INFO: Resolved mode: ${MODE}"
+          fi
+
+      # ── 5. Generate & send report ─────────────────────────────────────────────
+      - name: Send financial email report
+        env:
+          EMAIL_RUNTIME_SETTINGS_JSON: ${{ github.event.inputs.runtime_settings_json || vars.EMAIL_RUNTIME_SETTINGS_JSON || secrets.EMAIL_RUNTIME_SETTINGS_JSON }}
+          # ── GAS webhook transport (default) ──
+          EMAIL_GAS_WEBHOOK_URL: ${{ secrets.GAS_WEBHOOK_URL }}
+          EMAIL_GAS_SECRET:      ${{ secrets.GAS_WEBHOOK_SECRET }}
+          RECIPIENT_EMAILS:      ${{ secrets.RECIPIENT_EMAILS }}
+          GEMINI_API_KEY:        ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL:          ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          GEMINI_DAILY_LIMIT:    ${{ vars.GEMINI_DAILY_LIMIT || '20' }}
+          GEMINI_MONTHLY_LIMIT:  ${{ vars.GEMINI_MONTHLY_LIMIT || '400' }}
+          GEMINI_RATE_LIMIT_PATH: email/state/gemini_rate_limit.dat.gz
+
+          # ── SMTP transport (opt-in) ───────────
+          SMTP_SERVER:           ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT:             ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME:         ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD:         ${{ secrets.SMTP_PASSWORD }}
+          SENDER_EMAIL:          ${{ secrets.SENDER_EMAIL }}
+        run: |
+          MODE="${{ steps.mode.outputs.mode }}"
+          DRY="${{ github.event.inputs.dry_run || 'false' }}"
+          TRANSPORT="${{ github.event.inputs.transport || 'gas' }}"
+
+          echo "INFO: mode=${MODE}  transport=${TRANSPORT}"
+
+          EXTRA_FLAGS="--transport ${TRANSPORT}"
+          if [ "$DRY" = "true" ]; then
+            EXTRA_FLAGS="${EXTRA_FLAGS} --dry-run"
+          fi
+
+          python email/send_email.py --mode "$MODE" $EXTRA_FLAGS \
+            --out /tmp/report_latest.html
+
+          echo "SUCCESS: Email step complete."
+
+      # ── 6. Upload HTML report as artifact (14-day retention) ─────────────────
+      - name: Upload HTML report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: financial-report-${{ steps.mode.outputs.mode }}-${{ github.run_number }}
+          path: /tmp/report_latest.html
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Persist Gemini rate-limit state
+        if: success()
+        run: |
+          STATE_FILE="email/state/gemini_rate_limit.dat.gz"
+          if [ -f "$STATE_FILE" ]; then
+            git config --local user.name "financial-email[bot]"
+            git config --local user.email "financial-email[bot]@users.noreply.github.com"
+            git add "$STATE_FILE"
+            if ! git diff --staged --quiet; then
+              git commit -m "email: update Gemini rate-limit state"
+              git push
+            else
+              echo "Gemini rate-limit state unchanged."
+            fi
+          else
+            echo "Gemini rate-limit state file not created."
+          fi
+
+      # ── 7. Optional: dispatch a GitHub repository_dispatch event back to repo ─
+      - name: Notify GitHub (repository_dispatch)
+        if: >
+          github.event.inputs.dry_run != 'true' &&
+          (github.event.inputs.transport == 'gas' ||
+           github.event.inputs.transport == '')
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: financial_email_sent
+          client-payload: |
+            {
+              "mode": "${{ steps.mode.outputs.mode }}",
+              "transport": "${{ github.event.inputs.transport || 'gas' }}",
+              "run_id": "${{ github.run_id }}"
+            }

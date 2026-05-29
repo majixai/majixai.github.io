@@ -1,0 +1,197 @@
+name: Object Detection Python CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/object-detection
+    paths:
+      - "object_detection/**"
+      - ".github/workflows/python-ci.yml"
+  pull_request:
+    branches:
+      - main
+      - feature/object-detection
+    paths:
+      - "object_detection/**"
+      - ".github/workflows/python-ci.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r object_detection/requirements.txt
+
+      - name: Black check
+        run: black --check object_detection/app object_detection/tests
+
+      - name: Flake8 check
+        run: flake8 --config object_detection/setup.cfg object_detection/app object_detection/tests
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r object_detection/requirements.txt coverage
+
+      - name: Run pytest with coverage
+        run: |
+          PYTHONPATH=. coverage run -m pytest object_detection/tests -v
+          coverage xml -o object_detection/coverage.xml
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-detection-coverage
+          path: object_detection/coverage.xml
+
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and optionally push
+        uses: docker/build-push-action@v6
+        with:
+          context: object_detection
+          file: object_detection/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/${{ github.repository }}/object-detection:${{ github.sha }}
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r object_detection/requirements.txt
+
+      - name: Start uvicorn server
+        run: |
+          cd object_detection
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/object_detection_server.log 2>&1 &
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server failed to start"
+          cat /tmp/object_detection_server.log
+          exit 1
+
+      - name: Install JS dependencies and Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright smoke test
+        run: |
+          cat <<'NODE' > /tmp/object_detection_playwright_smoke.js
+          const { chromium } = require('@playwright/test');
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.goto('http://127.0.0.1:8000/', { waitUntil: 'networkidle' });
+            await page.waitForSelector('#status');
+
+            const result = await page.evaluate(async () => {
+              return await new Promise((resolve, reject) => {
+                const ws = new WebSocket(`ws://${location.host}/ws`);
+                ws.onopen = () => {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = 64;
+                  canvas.height = 64;
+                  const ctx = canvas.getContext('2d');
+                  ctx.fillStyle = 'black';
+                  ctx.fillRect(0, 0, 64, 64);
+                  ws.send(JSON.stringify({ type: 'frame', data: canvas.toDataURL('image/jpeg', 0.8) }));
+                };
+                ws.onmessage = (event) => {
+                  const payload = JSON.parse(event.data);
+                  ws.close();
+                  resolve({
+                    type: payload.type,
+                    hasDetections: Array.isArray(payload.detections),
+                    hasAnnotated: typeof payload.annotated === 'string',
+                  });
+                };
+                ws.onerror = (err) => reject(err);
+                setTimeout(() => reject(new Error('Timed out waiting for websocket response')), 10000);
+              });
+            });
+
+            if (result.type !== 'result' || !result.hasDetections || !result.hasAnnotated) {
+              throw new Error(`Unexpected websocket payload: ${JSON.stringify(result)}`);
+            }
+
+            await browser.close();
+          })().catch((err) => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
+          node /tmp/object_detection_playwright_smoke.js
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-detection-server-log
+          path: /tmp/object_detection_server.log

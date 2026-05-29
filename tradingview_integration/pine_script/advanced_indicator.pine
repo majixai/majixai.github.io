@@ -692,3 +692,488 @@ plot(bearScore, "Bear Score",     color=color.new(color.maroon, 100), display=di
 plot(cci,       "CCI",            color=color.new(color.aqua,   100), display=display.data_window)
 plot(roc,       "ROC(10)",        color=color.new(color.fuchsia,100), display=display.data_window)
 plot(cmo,       "CMO(14)",        color=color.new(color.silver, 100), display=display.data_window)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 12 · STOCHASTIC CALCULUS INDICATORS
+// Pine versions of the Python stochastic-calculus zone detectors
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 12.1 Ornstein-Uhlenbeck Mean-Reversion Speed (κ)
+// ΔX_t ≈ α − κ·X_{t-1}: κ estimated as −cov(ΔX, X_lag)/var(X_lag)
+// High κ (> 0.4 normalised) → strong mean-reversion zone
+
+var GRP_STOCH_CALC = "Stochastic Calculus"
+ouLen      = input.int(30, "OU Window", minval=5, group=GRP_STOCH_CALC)
+ouThresh   = input.float(0.4, "OU κ Threshold", step=0.05, group=GRP_STOCH_CALC)
+showOU     = input.bool(true, "Show OU Zone", group=GRP_STOCH_CALC)
+
+// Compute OU kappa approximation (rolling OLS proxy)
+dClose     = close - close[1]
+cov_num    = ta.sma(dClose * close[1], ouLen) - ta.sma(dClose, ouLen) * ta.sma(close[1], ouLen)
+var_lag    = ta.variance(close[1], ouLen)
+ouKappa    = var_lag > 0 ? -cov_num / var_lag : 0.0
+ouHighMR   = ouKappa > ouThresh
+
+// 12.2 Realised Variance (Brownian Quadratic Variation proxy)
+logRet     = math.log(close / close[1])
+realisedVar = ta.sma(logRet * logRet, 20) * 20
+rvMean     = ta.sma(realisedVar, 40)
+rvStd      = ta.stdev(realisedVar, 40)
+rvZscore   = rvStd > 0 ? (realisedVar - rvMean) / rvStd : 0.0
+highVolCluster = rvZscore > 2.0
+
+// 12.3 GBM Drift (μ) magnitude
+gbmMu      = ta.sma(logRet, 20)
+gbmSigma   = ta.stdev(logRet, 20)
+gbmZ       = gbmSigma > 0 ? gbmMu / gbmSigma : 0.0
+gbmBull    = gbmZ > 0.5
+gbmBear    = gbmZ < -0.5
+
+// Visualise OU and GBM zones
+bgcolor(showOU and ouHighMR ? color.new(color.teal,   88) : na, title="OU High MR Zone")
+bgcolor(highVolCluster      ? color.new(color.yellow, 90) : na, title="BM Vol Cluster")
+bgcolor(gbmBull             ? color.new(color.green,  92) : na, title="GBM Bull Drift")
+bgcolor(gbmBear             ? color.new(color.red,    92) : na, title="GBM Bear Drift")
+
+// Plot κ in data window
+plot(ouKappa, "OU κ", color=color.new(color.teal, 0), display=display.data_window)
+plot(rvZscore, "RV z-score", color=color.new(color.yellow, 0), display=display.data_window)
+plot(gbmZ, "GBM z", color=color.new(color.green, 0), display=display.data_window)
+
+// Alert conditions — stochastic
+alertcondition(ouHighMR and not ouHighMR[1], title="OU Mean-Reversion Zone",
+               message="{{ticker}} Strong mean-reversion zone detected (OU κ > " + str.tostring(ouThresh) + ")")
+alertcondition(highVolCluster and not highVolCluster[1], title="BM Volatility Cluster",
+               message="{{ticker}} Brownian volatility cluster: realised variance spike")
+alertcondition(gbmBull and not gbmBull[1], title="GBM Bull Drift",
+               message="{{ticker}} Geometric Brownian Motion bullish drift detected")
+alertcondition(gbmBear and not gbmBear[1], title="GBM Bear Drift",
+               message="{{ticker}} Geometric Brownian Motion bearish drift detected")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 13 · VECTOR CALCULUS INDICATORS
+// Discrete divergence and curl of the (log-price, log-volume) 2-D field
+// ─────────────────────────────────────────────────────────────────────────────
+
+var GRP_VECTOR = "Vector Calculus"
+vecLen     = input.int(20, "Vector Field Window", minval=5, group=GRP_VECTOR)
+showVec    = input.bool(true, "Show Divergence/Curl Zones", group=GRP_VECTOR)
+
+// Log-price and log-volume changes
+logVol     = math.log(math.max(volume, 1))
+dLogP      = math.log(close / close[1])
+dLogV      = logVol - logVol[1]
+
+// Discrete divergence ≈ d(ΔlogP)/dP + d(ΔlogV)/dV
+// Approximated by sums of second differences
+d2LogP     = dLogP - dLogP[1]
+d2LogV     = dLogV - dLogV[1]
+divergence = ta.sma(d2LogP + d2LogV, vecLen)
+vecExpand  = divergence > 0.001
+vecCompress = divergence < -0.001
+
+// Discrete curl approximation via running dot-cross product
+// curl ≈ mean( dLogP[i-1]*dLogV[i] - dLogV[i-1]*dLogP[i] )
+crossTerm  = dLogP[1] * dLogV - dLogV[1] * dLogP
+curlEst    = ta.sma(crossTerm, vecLen)
+curlAbs    = math.abs(curlEst)
+highCurl   = curlAbs > ta.sma(curlAbs, vecLen * 2) * 1.5
+
+bgcolor(showVec and vecExpand   ? color.new(color.blue,  90) : na, title="Vec Diverge Expand")
+bgcolor(showVec and vecCompress ? color.new(color.orange, 90) : na, title="Vec Diverge Compress")
+plotshape(showVec and highCurl,  title="High Curl", style=shape.circle,
+          location=location.abovebar, color=color.new(color.purple, 20), size=size.tiny,
+          text="↺")
+
+plot(divergence * 1000, "Vector Divergence ×1000", color=color.new(color.blue, 0), display=display.data_window)
+plot(curlEst    * 1000, "Vector Curl ×1000",       color=color.new(color.purple, 0), display=display.data_window)
+
+alertcondition(vecExpand and not vecExpand[1], title="Price-Volume Divergence Expansion",
+               message="{{ticker}} Price-volume vector field expanding (bullish momentum structure)")
+alertcondition(vecCompress and not vecCompress[1], title="Price-Volume Divergence Compression",
+               message="{{ticker}} Price-volume vector field compressing (bearish momentum structure)")
+alertcondition(highCurl and not highCurl[1], title="High Vector Curl",
+               message="{{ticker}} Rotational price-volume dynamics detected")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 14 · GEOMETRIC CALCULUS INDICATORS
+// Frenet-Serret curvature, geodesic S/R, and inflection detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+var GRP_GEO = "Geometric Calculus"
+geoLen     = input.int(15, "Curvature Window", minval=5, group=GRP_GEO)
+showGeo    = input.bool(true, "Show Curvature Zones", group=GRP_GEO)
+
+// Normalise close
+closeMean  = ta.sma(close, geoLen)
+closeStd   = ta.stdev(close, geoLen)
+closeNorm  = closeStd > 0 ? (close - closeMean) / closeStd : 0.0
+
+// First and second differences of normalised price
+d1Norm     = closeNorm - closeNorm[1]
+d2Norm     = d1Norm - d1Norm[1]
+
+// Frenet curvature κ = |x''| / (1 + x'^2)^(3/2)
+freKappa   = math.abs(d2Norm) / math.pow(1.0 + d1Norm[1] * d1Norm[1], 1.5)
+freKappaSma = ta.sma(freKappa, geoLen)
+freKappaMean = ta.sma(freKappaSma, geoLen * 3)
+freKappaStd  = ta.stdev(freKappaSma, geoLen * 3)
+freKappaZ    = freKappaStd > 0 ? (freKappaSma - freKappaMean) / freKappaStd : 0.0
+highCurvature = freKappaZ > 1.5
+
+// Inflection detection: sign change in d2Norm
+inflection = d2Norm * d2Norm[1] < 0
+
+// Geodesic arc-length proxy: cumulative price-time path length
+arcStep    = math.sqrt(1.0 + (close - close[1]) * (close - close[1]))
+arcLen     = ta.cum(arcStep)
+
+// 30-bar geodesic support/resistance: price at 1/3 and 2/3 arc-length points
+arcWindow  = 30
+arcStart   = arcLen - arcLen[arcWindow]
+geo_sr1    = ta.highest(close, arcWindow / 3)
+geo_sr2    = ta.lowest(close, arcWindow / 3)
+
+bgcolor(showGeo and highCurvature ? color.new(color.navy, 82) : na, title="High Curvature Zone")
+plotshape(showGeo and inflection, title="Inflection Point", style=shape.cross,
+          location=location.abovebar, color=color.new(color.aqua, 10), size=size.tiny,
+          text="κ↕")
+
+// Geodesic SR plots
+plot(geo_sr1, "Geo SR High",  color=color.new(color.orange, 50), linewidth=1,
+     style=plot.style_circles, display=display.all)
+plot(geo_sr2, "Geo SR Low",   color=color.new(color.lime,   50), linewidth=1,
+     style=plot.style_circles, display=display.all)
+
+plot(freKappaZ, "Frenet κ z-score", color=color.new(color.aqua, 0), display=display.data_window)
+plot(arcLen,    "Arc Length",       color=color.new(color.silver, 0), display=display.data_window)
+
+alertcondition(inflection and not inflection[1], title="Price Inflection Point",
+               message="{{ticker}} Frenet curvature sign change — potential reversal")
+alertcondition(highCurvature and not highCurvature[1], title="High Frenet Curvature",
+               message="{{ticker}} High path curvature detected — sharp price turn zone")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 15 · DIFFERENTIAL FORMS / EXTERIOR CALCULUS
+// Exterior derivative of log-returns; high d-ω magnitude = structural shift
+// ─────────────────────────────────────────────────────────────────────────────
+
+var GRP_EXT = "Exterior Calculus"
+extLen     = input.int(20, "Ext. Derivative Window", minval=5, group=GRP_EXT)
+showExt    = input.bool(true, "Show Ext. Deriv. Zones", group=GRP_EXT)
+
+// 1-form: ω = log-return at each bar
+omega      = math.log(close / close[1])
+
+// Discrete exterior derivative approximation:
+// dω_{i,j} = ω_j − ω_i   (antisymmetric 2-form component)
+// Magnitude ≈ running RMS of pairwise differences over a short window
+// Practical proxy: RMS of |ω − ω[k]| for k=1..extLen
+extDerivMag = 0.0
+for k = 1 to math.min(extLen, 10)
+    extDerivMag := extDerivMag + math.pow(omega - omega[k], 2)
+extDerivMag := math.sqrt(extDerivMag / math.min(extLen, 10))
+
+extMagSma   = ta.sma(extDerivMag, extLen)
+extMagStd   = ta.stdev(extDerivMag, extLen)
+extMagZ     = extMagStd > 0 ? (extDerivMag - extMagSma) / extMagStd : 0.0
+extSpike    = extMagZ > 1.5
+extNorm     = extMagSma > 0 ? extDerivMag / (extMagSma * 2) : 0.0
+
+bgcolor(showExt and extSpike ? color.new(color.fuchsia, 85) : na, title="Ext Deriv Spike Zone")
+plotshape(showExt and extSpike and not extSpike[1], title="Ext Deriv Spike",
+          style=shape.diamond, location=location.abovebar,
+          color=color.new(color.fuchsia, 0), size=size.tiny, text="dω")
+
+plot(extDerivMag * 100, "Ext. Deriv ×100", color=color.new(color.fuchsia, 0), display=display.data_window)
+plot(extMagZ,           "Ext. Deriv z",    color=color.new(color.purple,  0), display=display.data_window)
+
+alertcondition(extSpike and not extSpike[1], title="Exterior Derivative Spike",
+               message="{{ticker}} High exterior derivative magnitude — return structure shift")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 16 · FRACTAL / FRACTIONAL CALCULUS INDICATORS
+// Hurst Exponent proxy and regime classification
+// ─────────────────────────────────────────────────────────────────────────────
+
+var GRP_FRAC = "Fractional Calculus"
+hurstLen   = input.int(50, "Hurst Window", minval=20, group=GRP_FRAC)
+showHurst  = input.bool(true, "Show Hurst Zones", group=GRP_FRAC)
+
+// R/S (Rescaled Range) Hurst Exponent proxy — single-scale approximation
+// H ≈ log(R/S) / log(N)
+logRetH    = math.log(close / close[1])
+retMeanH   = ta.sma(logRetH, hurstLen)
+devSum     = 0.0
+for j = 0 to hurstLen - 1
+    devSum := devSum + (logRetH[j] - retMeanH)
+rangeH    = ta.highest(devSum, hurstLen) - ta.lowest(devSum, hurstLen)
+stdH      = ta.stdev(logRetH, hurstLen)
+rsVal     = stdH > 0 ? rangeH / stdH : 1.0
+hurstH    = rsVal > 1 ? math.log(rsVal) / math.log(hurstLen) : 0.5
+
+// Regime classification
+isTrending    = hurstH > 0.60  // Persistent (trending)
+isAntiTrending = hurstH < 0.40  // Anti-persistent (mean-reverting)
+isBrownian    = hurstH >= 0.40 and hurstH <= 0.60  // Random walk
+
+bgcolor(showHurst and isTrending     ? color.new(color.green,  90) : na, title="Hurst Trending")
+bgcolor(showHurst and isAntiTrending ? color.new(color.red,    90) : na, title="Hurst Anti-Trend")
+
+// Hurst-weighted signal enhancement
+// When Hurst > 0.6, momentum signals get a +1 bonus; when < 0.4, mean-reversion gets +1
+hurstBullBoost = isTrending ? 1 : 0
+hurstBearBoost = isTrending ? 1 : 0
+hurstMRBoost   = isAntiTrending and ouHighMR ? 1 : 0
+
+plot(hurstH,  "Hurst Exponent",  color=color.new(color.lime, 0),   display=display.data_window)
+plot(rsVal,   "R/S Value",       color=color.new(color.silver, 0), display=display.data_window)
+
+alertcondition(isTrending and not isTrending[1], title="Hurst Trending Regime",
+               message="{{ticker}} Hurst exponent > 0.6 — persistent trending regime active")
+alertcondition(isAntiTrending and not isAntiTrending[1], title="Hurst Anti-Trending Regime",
+               message="{{ticker}} Hurst exponent < 0.4 — mean-reverting regime active")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 17 · COMPOSITE MATH-ENHANCED SIGNAL SCORING
+// Integrates all new mathematical zone detectors into the master score
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Math-boosted bull/bear scores (adds to Section 7 bullScore / bearScore)
+mathBullBonus = (gbmBull     ? 1 : 0)
+              + (vecExpand   ? 1 : 0)
+              + hurstBullBoost
+              + (ouHighMR and close > closeMean ? 1 : 0)
+
+mathBearBonus = (gbmBear     ? 1 : 0)
+              + (vecCompress  ? 1 : 0)
+              + hurstBearBoost
+              + (ouHighMR and close < closeMean ? 1 : 0)
+
+// Extended structural anomaly score (not directional — used for alerting)
+structuralScore = (highVolCluster ? 1 : 0)
+                + (extSpike       ? 1 : 0)
+                + (highCurl       ? 1 : 0)
+                + (highCurvature  ? 1 : 0)
+                + (inflection     ? 1 : 0)
+                + hurstMRBoost
+
+// Enhanced signals with math bonuses
+enhancedBullScore = bullScore + mathBullBonus
+enhancedBearScore = bearScore + mathBearBonus
+
+longSignalMath  = enhancedBullScore >= minScore and enhancedBullScore > enhancedBearScore
+shortSignalMath = enhancedBearScore >= minScore and enhancedBearScore > enhancedBullScore
+
+plotshape(longSignalMath and not longSignal, title="Math-Enhanced Long",
+          style=shape.triangleup, location=location.belowbar,
+          color=color.new(color.aqua, 10), size=size.small, text="M+")
+plotshape(shortSignalMath and not shortSignal, title="Math-Enhanced Short",
+          style=shape.triangledown, location=location.abovebar,
+          color=color.new(color.fuchsia, 10), size=size.small, text="M-")
+
+plot(enhancedBullScore, "Enhanced Bull Score", color=color.new(color.lime,   100), display=display.data_window)
+plot(enhancedBearScore, "Enhanced Bear Score", color=color.new(color.maroon, 100), display=display.data_window)
+plot(structuralScore,   "Structural Score",    color=color.new(color.aqua,   100), display=display.data_window)
+plot(mathBullBonus,     "Math Bull Bonus",     color=color.new(color.green,  100), display=display.data_window)
+plot(mathBearBonus,     "Math Bear Bonus",     color=color.new(color.red,    100), display=display.data_window)
+
+// Additional alert conditions for math-enhanced signals
+alertcondition(longSignalMath and not longSignalMath[1], title="Math-Enhanced Long Signal",
+               message="{{ticker}} Math-enhanced LONG: enhancedBull=" + str.tostring(enhancedBullScore))
+alertcondition(shortSignalMath and not shortSignalMath[1], title="Math-Enhanced Short Signal",
+               message="{{ticker}} Math-enhanced SHORT: enhancedBear=" + str.tostring(enhancedBearScore))
+alertcondition(structuralScore >= 3, title="High Structural Anomaly",
+               message="{{ticker}} Structural anomaly score ≥ 3 — multiple math zones active simultaneously")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 18 · ADVANCED CANDLESTICK PATTERNS (Pine versions)
+// Rising/Falling Three Methods, Kicking, On-Neck, Separating Lines
+// ─────────────────────────────────────────────────────────────────────────────
+
+var GRP_ADVC = "Advanced Candle Patterns"
+showAdvCandle = input.bool(true, "Show Advanced Patterns", group=GRP_ADVC)
+
+bullBody4 = close[4] > open[4]
+bearBody4 = close[4] < open[4]
+smallBull = close > open and math.abs(close - open) / math.max(high - low, 0.001) < 0.5
+smallBear = close < open and math.abs(close - open) / math.max(high - low, 0.001) < 0.5
+
+// Rising Three Methods
+isRisingThree = bearBody4
+                and smallBear[3] and smallBear[2] and smallBear[1]
+                and close > close[4]
+                and low[3] > low[4] and low[2] > low[4] and low[1] > low[4]
+                and high[3] < high[4] and high[2] < high[4] and high[1] < high[4]
+
+// Falling Three Methods
+isFallingThree = not bearBody4
+                 and smallBull[3] and smallBull[2] and smallBull[1]
+                 and close < close[4]
+                 and high[3] < high[4] and high[2] < high[4] and high[1] < high[4]
+                 and low[3] > low[4] and low[2] > low[4] and low[1] > low[4]
+
+// Bullish Kicking: bearish marubozu → gap up → bullish marubozu
+isKickingBull = (close[1] < open[1] and
+                 math.abs(close[1] - open[1]) / math.max(high[1] - low[1], 0.001) > 0.85 and
+                 close > open and
+                 math.abs(close - open) / math.max(high - low, 0.001) > 0.85 and
+                 open > high[1])
+
+// Bearish Kicking
+isKickingBear = (close[1] > open[1] and
+                 math.abs(close[1] - open[1]) / math.max(high[1] - low[1], 0.001) > 0.85 and
+                 close < open and
+                 math.abs(close - open) / math.max(high - low, 0.001) > 0.85 and
+                 open < low[1])
+
+// On-Neck (bearish continuation after gap-down open)
+isOnNeck = (close[1] < open[1] and
+            close > open and
+            open < low[1] and
+            math.abs(close - low[1]) / math.max(high[1] - low[1], 0.001) < 0.03)
+
+// Separating Lines (bullish): same open, opposite direction
+isSepLinesBull = close[1] < open[1] and close > open and math.abs(open - open[1]) / math.max(open[1], 0.001) < 0.001
+
+if showAdvCandle
+    if isRisingThree
+        label.new(bar_index, low, "Rise3", style=label.style_label_up,
+                  color=color.new(color.green, 15), textcolor=color.white, size=size.tiny)
+    if isFallingThree
+        label.new(bar_index, high, "Fall3", style=label.style_label_down,
+                  color=color.new(color.red, 15), textcolor=color.white, size=size.tiny)
+    if isKickingBull
+        label.new(bar_index, low, "Kick↑", style=label.style_label_up,
+                  color=color.new(color.lime, 10), textcolor=color.white, size=size.small)
+    if isKickingBear
+        label.new(bar_index, high, "Kick↓", style=label.style_label_down,
+                  color=color.new(color.red, 10), textcolor=color.white, size=size.small)
+    if isOnNeck
+        label.new(bar_index, high, "OnNeck", style=label.style_label_down,
+                  color=color.new(color.orange, 20), textcolor=color.white, size=size.tiny)
+    if isSepLinesBull
+        label.new(bar_index, low, "SepLine", style=label.style_label_up,
+                  color=color.new(color.teal, 20), textcolor=color.white, size=size.tiny)
+
+// Add advanced candle patterns to scoring
+bullScore += isRisingThree ? 2 : 0
+bearScore += isFallingThree ? 2 : 0
+bullScore += isKickingBull ? 2 : 0
+bearScore += isKickingBear ? 2 : 0
+
+alertcondition(isRisingThree, title="Rising Three Methods",
+               message="{{ticker}} Rising Three Methods — bullish continuation")
+alertcondition(isFallingThree, title="Falling Three Methods",
+               message="{{ticker}} Falling Three Methods — bearish continuation")
+alertcondition(isKickingBull, title="Kicking Bullish",
+               message="{{ticker}} Kicking Bullish — powerful gap reversal")
+alertcondition(isKickingBear, title="Kicking Bearish",
+               message="{{ticker}} Kicking Bearish — powerful gap reversal")
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTION 19 · EXTENDED DASHBOARD (math zones appended to Section 9 table)
+// ─────────────────────────────────────────────────────────────────────────────
+
+if showTable and barstate.islast
+    var table mathDash = table.new(position.bottom_right, 3, 14,
+                                   border_width=1,
+                                   border_color=color.new(color.gray, 50),
+                                   frame_color=color.new(color.gray, 30),
+                                   frame_width=1)
+
+    f_mc(cond) => cond ? color.new(color.green, 30) : color.new(color.red, 30)
+
+    // Header
+    table.cell(mathDash, 0, 0, "Math Zone",    text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+    table.cell(mathDash, 1, 0, "Value",         text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+    table.cell(mathDash, 2, 0, "Active",        text_color=color.white,
+               bgcolor=color.new(color.navy, 10), text_size=size.small)
+
+    table.cell(mathDash, 0, 1, "OU κ (Stoch)",   text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 1, str.tostring(math.round(ouKappa, 4)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 1, ouHighMR ? "High MR" : "—",
+               bgcolor=f_mc(ouHighMR), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 2, "GBM Drift",     text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 2, str.tostring(math.round(gbmZ, 3)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 2, gbmBull ? "Bull" : gbmBear ? "Bear" : "—",
+               bgcolor=f_mc(gbmBull), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 3, "RV z-score",    text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 3, str.tostring(math.round(rvZscore, 2)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 3, highVolCluster ? "Cluster" : "—",
+               bgcolor=f_mc(not highVolCluster), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 4, "Divergence",    text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 4, str.tostring(math.round(divergence * 1000, 3)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 4, vecExpand ? "Expand" : vecCompress ? "Compress" : "—",
+               bgcolor=f_mc(vecExpand), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 5, "Curl |est|",    text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 5, str.tostring(math.round(curlAbs * 1000, 3)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 5, highCurl ? "Rotational" : "—",
+               bgcolor=f_mc(highCurl), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 6, "Frenet κ z",    text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 6, str.tostring(math.round(freKappaZ, 2)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 6, highCurvature ? "High κ" : "—",
+               bgcolor=f_mc(highCurvature), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 7, "Inflection",    text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 7, d2Norm >= 0 ? "Concave↑" : "Concave↓",
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 7, inflection ? "Inflect!" : "—",
+               bgcolor=f_mc(inflection), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 8, "Ext Deriv z",   text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 8, str.tostring(math.round(extMagZ, 2)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 8, extSpike ? "Spike!" : "—",
+               bgcolor=f_mc(extSpike), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 9, "Hurst H",       text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 9, str.tostring(math.round(hurstH, 3)),
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 9, isTrending ? "Trend" : isAntiTrending ? "MR" : "BM",
+               bgcolor=f_mc(isTrending), text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 10, "Math Bull+",   text_color=color.white,
+               bgcolor=color.new(color.green, 30), text_size=size.small)
+    table.cell(mathDash, 1, 10, str.tostring(mathBullBonus),
+               text_color=color.white, bgcolor=color.new(color.green, 50), text_size=size.small)
+    table.cell(mathDash, 2, 10, str.tostring(enhancedBullScore) + " total",
+               bgcolor=longSignalMath ? color.new(color.lime, 20) : color.new(color.gray, 60),
+               text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 11, "Math Bear+",   text_color=color.white,
+               bgcolor=color.new(color.red, 30), text_size=size.small)
+    table.cell(mathDash, 1, 11, str.tostring(mathBearBonus),
+               text_color=color.white, bgcolor=color.new(color.red, 50), text_size=size.small)
+    table.cell(mathDash, 2, 11, str.tostring(enhancedBearScore) + " total",
+               bgcolor=shortSignalMath ? color.new(color.red, 20) : color.new(color.gray, 60),
+               text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 12, "Structural",   text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 12, str.tostring(structuralScore) + " anomalies",
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 12, structuralScore >= 3 ? "ALERT" : "—",
+               bgcolor=structuralScore >= 3 ? color.new(color.fuchsia, 20) : color.new(color.gray, 60),
+               text_color=color.white, text_size=size.small)
+
+    table.cell(mathDash, 0, 13, "Adv Candles",  text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 1, 13, (isRisingThree or isKickingBull) ? "Bull" :
+               (isFallingThree or isKickingBear) ? "Bear" : "—",
+               text_color=color.white, text_size=size.small)
+    table.cell(mathDash, 2, 13, isKickingBull or isKickingBear ? "Kicking!" :
+               isRisingThree ? "Rise3" : isFallingThree ? "Fall3" : "—",
+               bgcolor=f_mc(isRisingThree or isKickingBull),
+               text_color=color.white, text_size=size.small)

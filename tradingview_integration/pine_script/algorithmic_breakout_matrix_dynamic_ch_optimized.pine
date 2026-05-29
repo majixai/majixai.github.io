@@ -1,0 +1,276 @@
+// This work is licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+// https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © Zeiierman (Integrated with Volatility Matrix, optimized webhook pipeline)
+
+//@version=6
+indicator("Algorithmic Breakout Matrix + Dynamic C&H (Optimized)", overlay=true, max_lines_count=500, max_labels_count=500, max_polylines_count=100)
+
+// ==============================================================================
+// 1. SETTINGS & TOOLTIPS
+// ==============================================================================
+var string t1  = "Controls how many bars are used to confirm swing highs/lows. Higher = fewer but stronger pivots."
+var string t2  = "How close the left rim and right rim must be. Lower = stricter, cleaner cups."
+var string t3  = "Minimum depth of the handle pullback relative to cup depth."
+var string t4  = "Maximum depth of the handle pullback."
+var string t5  = "Defines when the pattern fails."
+var string t6  = "If enabled, pattern triggers only after price breaks above/below the rim."
+var string t7  = "Controls how far the projection target is."
+
+pivotSpan    = input.int(10, "Pivot span", minval=2, step=1, group="Cup & Handle", tooltip=t1)
+rimTolPct    = input.int(18, "Rim similarity tolerance (%)", minval=0, maxval=50, step=1, group="Cup & Handle", tooltip=t2)
+hMin         = input.float(0.12, "Handle retrace min", minval=0.01, step=0.01, group="Cup & Handle", tooltip=t3)
+hMax         = input.float(0.55, "Handle retrace max", minval=0.05, step=0.01, group="Cup & Handle", tooltip=t4)
+killAtFib    = input.float(61.8, "Invalidation (handle max retrace %) ", minval=10, maxval=100, step=0.1, group="Cup & Handle", tooltip=t5) / 100.0
+needConfirm  = input.bool(false, "Require breakout confirmation", group="Cup & Handle", tooltip=t6)
+targetMult   = input.float(0.5, "Target multiplier (× cup depth)", minval=0.1, maxval=3.0, step=0.05, group="Cup & Handle", tooltip=t7)
+
+showName     = input.bool(true, "Show pattern name", group="Style")
+bgBull       = input.color(color.new(color.lime, 82), "Bullish fill", group="Style", inline="bull")
+lnBull       = input.color(color.new(color.lime, 35), "Bullish border", group="Style", inline="bull")
+bgBear       = input.color(color.new(color.red, 82), "Bearish fill", group="Style", inline="bear")
+lnBear       = input.color(color.new(color.red, 35), "Bearish border", group="Style", inline="bear")
+wOk          = input.int(2, "Width", minval=1, group="Style", inline="w1")
+stOk         = input.string("Solid", "Style", options=["Solid","Dashed","Dotted"], group="Style", inline="w1")
+
+showTarget   = input.bool(true, "Show target line", group="Style")
+targetWidth  = input.int(2, "Target width", minval=1, group="Style", inline="t1")
+targetStyle  = input.string("Dashed", "Target style", options=["Solid","Dashed","Dotted"], group="Style", inline="t1")
+
+bbLength     = input.int(20, "Bollinger Band Length", minval=5, group="Volatility Matrix")
+bbMult       = input.float(2.0, "Standard Deviation", minval=0.5, group="Volatility Matrix")
+sqLookback   = input.int(100, "Squeeze lookback", minval=20, group="Volatility Matrix")
+
+g_opt = "Execution Optimizations"
+requireDailyTF = input.bool(true, "Require Daily timeframe", group=g_opt, tooltip="When true, triggers and alerts are restricted to 1D charts.")
+onlyConfirmedBar = input.bool(true, "Only fire alerts on confirmed close", group=g_opt, tooltip="Recommended for daily-close execution consistency.")
+useTrendFilter = input.bool(true, "Use 200-SMA trend filter", group=g_opt, tooltip="Long: close > SMA200. Short: close < SMA200.")
+smaLen = input.int(200, "Trend SMA length", minval=50, group=g_opt)
+emitSqueezeOnce = input.bool(true, "Only one squeeze alert per squeeze cycle", group=g_opt)
+
+// ==============================================================================
+// 2. VOLATILITY SQUEEZE ENGINE & GRADIENT
+// ==============================================================================
+basis = ta.sma(close, bbLength)
+dev = bbMult * ta.stdev(close, bbLength)
+upperBB = basis + dev
+lowerBB = basis - dev
+
+bandwidthRaw = upperBB - lowerBB
+bandwidth = basis == 0.0 ? na : bandwidthRaw / basis
+bwLo = ta.lowest(bandwidth, sqLookback)
+bwHi = ta.highest(bandwidth, sqLookback)
+isSqueeze = not na(bandwidth) and bandwidth <= bwLo
+
+bbGradient = color.from_gradient(bandwidth, bwLo, bwHi, color.new(color.yellow, 70), color.new(color.navy, 90))
+
+p1 = plot(upperBB, color=color.new(color.gray, 80), title="Upper BB")
+p2 = plot(lowerBB, color=color.new(color.gray, 80), title="Lower BB")
+fill(p1, p2, color=bbGradient, title="Squeeze Compression Shading")
+
+// ==============================================================================
+// 3. HELPERS & PIVOT STREAM
+// ==============================================================================
+f_lineStyle(string s) =>
+    switch s
+        "Solid"  => line.style_solid
+        "Dashed" => line.style_dashed
+        "Dotted" => line.style_dotted
+        => line.style_solid
+
+f_near(float a, float b, float tolPct) =>
+    a == 0 or b == 0 ? false : math.abs(a - b) / math.abs(a) <= tolPct / 100.0
+
+f_depth(float rim, float bowl) =>
+    math.abs(rim - bowl)
+
+f_n(float v) =>
+    str.tostring(v, format.mintick)
+
+f_jsonSignal(string action, string pattern, float rim, float entry, float tgt, float stop, string reason) =>
+    "{\"action\":\"" + action + "\",\"pattern\":\"" + pattern + "\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"time_close\":" + str.tostring(time_close) + ",\"rim_price\":" + f_n(rim) + ",\"entry\":" + f_n(entry) + ",\"target\":" + f_n(tgt) + ",\"stop\":" + f_n(stop) + ",\"reason\":\"" + reason + "\",\"log_sheet\":\"Tickers\"}"
+
+f_jsonSqueeze() =>
+    "{\"action\":\"SQUEEZE_DETECTED\",\"symbol\":\"" + syminfo.tickerid + "\",\"timeframe\":\"" + timeframe.period + "\",\"time_close\":" + str.tostring(time_close) + ",\"status\":\"Volatility Compression\",\"log_sheet\":\"Tickers\"}"
+
+type Swing
+    float p
+    int   i
+    int   d
+
+var Swing[] swings = array.new<Swing>()
+
+f_pushSwing(float price, int idx, int dir) =>
+    if array.size(swings) == 0
+        array.push(swings, Swing.new(price, idx, dir))
+    else
+        last = array.get(swings, array.size(swings) - 1)
+        if last.d == dir
+            better = dir == 1 ? price > last.p : price < last.p
+            if better
+                array.set(swings, array.size(swings) - 1, Swing.new(price, idx, dir))
+        else
+            array.push(swings, Swing.new(price, idx, dir))
+    if array.size(swings) > 12
+        array.shift(swings)
+
+ph = ta.pivothigh(high, pivotSpan, pivotSpan)
+pl = ta.pivotlow(low, pivotSpan, pivotSpan)
+
+if not na(ph)
+    f_pushSwing(ph, bar_index - pivotSpan, +1)
+if not na(pl)
+    f_pushSwing(pl, bar_index - pivotSpan, -1)
+
+// ==============================================================================
+// 4. PATTERN RECORD & DETECTION LOGIC
+// ==============================================================================
+type BrewPattern
+    chart.point[] cupPts
+    chart.point[] hdlPts
+    polyline cupLine
+    polyline hdlLine
+    line tgtLine
+    label nameTag
+    int   side
+    int   state
+    float rimPrice
+    float invPrice
+    float tgtPrice
+    float entryPrice
+    int   rimBar
+
+var BrewPattern[] found = array.new<BrewPattern>()
+
+f_isDuplicate(int rimIdx, float rimPx) =>
+    if array.size(found) == 0
+        false
+    else
+        last = array.get(found, array.size(found) - 1)
+        rimIdx == last.rimBar or f_near(rimPx, last.rimPrice, 0.15)
+
+Swing s0 = na
+Swing s1 = na
+Swing s2 = na
+Swing s3 = na
+
+int n = array.size(swings)
+if n >= 4
+    s0 := array.get(swings, n - 4)
+    s1 := array.get(swings, n - 3)
+    s2 := array.get(swings, n - 2)
+    s3 := array.get(swings, n - 1)
+
+isDailyTf = timeframe.isdaily
+tfGateOk = not requireDailyTF or isDailyTf
+barCloseGateOk = not onlyConfirmedBar or barstate.isconfirmed
+trendBasis = ta.sma(close, smaLen)
+plot(useTrendFilter ? trendBasis : na, title="Trend SMA", color=color.new(color.aqua, 30), linewidth=1)
+
+var label tfWarn = na
+if requireDailyTF and not isDailyTf and barstate.islast
+    if na(tfWarn)
+        tfWarn := label.new(bar_index, high, "Switch to 1D for structurally correct signals", style=label.style_label_down, color=color.new(color.orange, 0), textcolor=color.white)
+    else
+        label.set_xy(tfWarn, bar_index, high)
+        label.set_text(tfWarn, "Switch to 1D for structurally correct signals")
+else if not na(tfWarn)
+    label.delete(tfWarn)
+    tfWarn := na
+
+bool newSignal = false
+int  newSide   = 0
+
+if tfGateOk and not na(s0) and not na(s1) and not na(s2) and not na(s3)
+    isSeqNorm = (s0.d == +1 and s1.d == -1 and s2.d == +1 and s3.d == -1)
+    isSeqInv  = (s0.d == -1 and s1.d == +1 and s2.d == -1 and s3.d == +1)
+
+    if isSeqNorm or isSeqInv
+        side = isSeqNorm ? +1 : -1
+
+        float Lp = s0.p
+        int   Li = s0.i
+        float Bp = s1.p
+        int   Bi = s1.i
+        float Rp = s2.p
+        int   Ri = s2.i
+        float Hp = s3.p
+        int   Hi = s3.i
+
+        useFill = side == +1 ? bgBull : bgBear
+        useLine = side == +1 ? lnBull : lnBear
+
+        rimPrice = side == +1 ? math.min(Lp, Rp) : math.max(Lp, Rp)
+        depth    = f_depth(rimPrice, Bp)
+        rimOk    = f_near(Lp, Rp, rimTolPct)
+        hRet     = depth == 0 ? 10.0 : math.abs(rimPrice - Hp) / depth
+        handleOk = (hRet >= hMin and hRet <= hMax)
+        sideOk   = side == +1 ? Hp < rimPrice : Hp > rimPrice
+        invPrice = side == +1 ? (Rp - depth * killAtFib) : (Rp + depth * killAtFib)
+        tgtPrice = side == +1 ? (Rp + depth * targetMult) : (Rp - depth * targetMult)
+        confirmOk = not needConfirm ? true : (side == +1 ? close > rimPrice : close < rimPrice)
+        trendOk = not useTrendFilter ? true : (side == +1 ? close > trendBasis : close < trendBasis)
+        ok = rimOk and handleOk and sideOk and confirmOk and trendOk
+
+        if ok and not f_isDuplicate(Li, rimPrice)
+            midBar = Ri - (Ri - Li) / 2
+
+            cupPts = array.new<chart.point>()
+            array.push(cupPts, chart.point.from_index(Li, rimPrice))
+            array.push(cupPts, chart.point.from_index(midBar, Bp))
+            array.push(cupPts, chart.point.from_index(Ri, rimPrice))
+
+            hdlPts = array.new<chart.point>()
+            projBar = Hi + (Hi - Ri)
+            array.push(hdlPts, chart.point.from_index(Ri, rimPrice))
+            array.push(hdlPts, chart.point.from_index(Hi, Hp))
+            array.push(hdlPts, chart.point.from_index(projBar, rimPrice))
+
+            cupPL = polyline.new(cupPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+            hdlPL = polyline.new(hdlPts, line_color=useLine, fill_color=useFill, line_width=wOk, line_style=f_lineStyle(stOk), curved=true)
+
+            extendBars = 25
+            line tgtLn = na
+            if showTarget
+                tgtCol = side == +1 ? color.new(color.lime, 0) : color.new(color.red, 0)
+                tgtLn := line.new(Ri, tgtPrice, Hi + extendBars, tgtPrice, color=tgtCol, width=targetWidth, style=f_lineStyle(targetStyle))
+
+            label tag = na
+            if showName
+                txt = side == +1 ? "Cup+Handle" : "Inv Cup+Handle"
+                tagCol = side == +1 ? color.new(color.lime, 70) : color.new(color.red, 70)
+                tag := label.new(midBar, rimPrice, txt, style=label.style_label_center, textcolor=color.white, color=tagCol, size=size.small)
+
+            entryPrice = needConfirm ? close : rimPrice
+            rec = BrewPattern.new(cupPts, hdlPts, cupPL, hdlPL, tgtLn, tag, side, 1, rimPrice, invPrice, tgtPrice, entryPrice, Li)
+            array.push(found, rec)
+
+            newSignal := true
+            newSide := side
+
+// ==============================================================================
+// 5. JSON DATA PIPELINE ALERTS (DYNAMIC)
+// ==============================================================================
+var int lastPatternAlertBar = na
+var bool squeezeCycleAlerted = false
+
+signalGate = tfGateOk and barCloseGateOk
+if newSignal and signalGate
+    lastPat = array.get(found, array.size(found) - 1)
+    if na(lastPatternAlertBar) or lastPatternAlertBar != lastPat.rimBar
+        if newSide == +1
+            alert(f_jsonSignal("ENTRY_LONG", "C&H", lastPat.rimPrice, lastPat.entryPrice, lastPat.tgtPrice, lastPat.invPrice, "Cup-and-handle breakout matrix"), alert.freq_once_per_bar_close)
+        else if newSide == -1
+            alert(f_jsonSignal("ENTRY_SHORT", "Inverted C&H", lastPat.rimPrice, lastPat.entryPrice, lastPat.tgtPrice, lastPat.invPrice, "Inverted cup-and-handle breakout matrix"), alert.freq_once_per_bar_close)
+        lastPatternAlertBar := lastPat.rimBar
+
+newSqueezeCycle = isSqueeze and not isSqueeze[1]
+if not isSqueeze
+    squeezeCycleAlerted := false
+
+if signalGate and isSqueeze
+    if emitSqueezeOnce
+        if newSqueezeCycle and not squeezeCycleAlerted
+            alert(f_jsonSqueeze(), alert.freq_once_per_bar_close)
+            squeezeCycleAlerted := true
+    else
+        alert(f_jsonSqueeze(), alert.freq_once_per_bar_close)

@@ -357,10 +357,14 @@ def generate_text():
 @app.route('/api/git-action', methods=['POST'])
 @log_request_response
 def trigger_git_action():
-    logger.info("Triggering git action")
-    git_action_controller.run_git_action()
-    logger.info("Git action completed successfully")
-    return jsonify({'message': 'Git action triggered'})
+    payload = request.get_json(silent=True) or {}
+    logger.info("Triggering git action with payload keys: %s", list(payload.keys()))
+    result = git_action_controller.run_git_action(payload)
+    if result.get("ok", False):
+        logger.info("Git action completed successfully")
+        return jsonify(result)
+    logger.error("Git action failed: %s", result.get("error"))
+    return jsonify(result), 400
 
 @app.route('/api/python-action', methods=['POST'])
 @log_request_response

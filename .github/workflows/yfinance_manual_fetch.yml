@@ -1,0 +1,192 @@
+name: YFinance Manual Fetch (with Cache & Forecasts)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MANUAL TRIGGER ONLY — no schedule, no push triggers.
+# Run from:  Actions → YFinance Manual Fetch → Run workflow
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+    inputs:
+      symbols:
+        description: >
+          Comma-separated override symbols to fetch (e.g. AAPL,MSFT,TSLA).
+          Leave blank to use the full actions/symbols.csv list.
+        required: false
+        default: ''
+      category:
+        description: >
+          Filter symbols.csv to a single category
+          (e.g. tech_mega, financials, crypto, etfs).
+          Ignored when 'symbols' override is provided.
+        required: false
+        default: ''
+      period:
+        description: 'yfinance data period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y)'
+        required: false
+        default: '1mo'
+      interval:
+        description: 'yfinance data interval (1m, 5m, 15m, 30m, 1h, 1d, 1wk, 1mo)'
+        required: false
+        default: '1d'
+      force_refresh:
+        description: 'Bypass cache and re-fetch all tickers (true / false)'
+        required: false
+        default: 'false'
+      limit:
+        description: 'Max number of symbols to process (0 = no limit)'
+        required: false
+        default: '0'
+      top_n:
+        description: 'Number of top tickers logged per zone / signal bucket'
+        required: false
+        default: '10'
+      cache_ttl_hours:
+        description: 'Hours before a cached entry is considered stale (default 24)'
+        required: false
+        default: '24'
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-forecast:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Python ──────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: yfinance_data/requirements.txt
+
+      # ── Dependencies ─────────────────────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          echo "INFO: Installing dependencies..."
+          pip install --upgrade pip
+          pip install -r yfinance_data/requirements.txt
+          echo "SUCCESS: Dependencies installed."
+
+      # ── Restore cache DB from previous runs (artefact) ──────────────────────
+      - name: Restore yfinance cache DB
+        uses: actions/cache@v4
+        with:
+          path: dbs/yfinance_cache.db
+          key: yfinance-cache-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            yfinance-cache-${{ runner.os }}-
+
+      # ── Run action script ────────────────────────────────────────────────────
+      - name: Run YFinance fetch action
+        run: |
+          echo "INFO: Starting yfinance_fetch_action.py..."
+          echo "INFO:   symbols       = '${{ github.event.inputs.symbols }}'"
+          echo "INFO:   category      = '${{ github.event.inputs.category }}'"
+          echo "INFO:   period        = '${{ github.event.inputs.period }}'"
+          echo "INFO:   interval      = '${{ github.event.inputs.interval }}'"
+          echo "INFO:   force_refresh = '${{ github.event.inputs.force_refresh }}'"
+          echo "INFO:   limit         = '${{ github.event.inputs.limit }}'"
+          echo "INFO:   top_n         = '${{ github.event.inputs.top_n }}'"
+          echo "INFO:   cache_ttl     = '${{ github.event.inputs.cache_ttl_hours }}'"
+
+          ARGS="--symbols-csv actions/symbols.csv \
+                --cache-db    dbs/yfinance_cache.db \
+                --period      ${{ github.event.inputs.period || '1mo' }} \
+                --interval    ${{ github.event.inputs.interval || '1d' }} \
+                --output-csv  yfinance_data/forecast_results.csv \
+                --output-json dbs/forecast_report.json \
+                --top-n       ${{ github.event.inputs.top_n || '10' }} \
+                --cache-ttl-hours ${{ github.event.inputs.cache_ttl_hours || '24' }}"
+
+          if [ -n "${{ github.event.inputs.symbols }}" ]; then
+            ARGS="$ARGS --symbols '${{ github.event.inputs.symbols }}'"
+          fi
+
+          if [ -n "${{ github.event.inputs.category }}" ]; then
+            ARGS="$ARGS --category '${{ github.event.inputs.category }}'"
+          fi
+
+          if [ "${{ github.event.inputs.force_refresh }}" = "true" ]; then
+            ARGS="$ARGS --force-refresh"
+          fi
+
+          LIMIT="${{ github.event.inputs.limit || '0' }}"
+          if [ "$LIMIT" != "0" ]; then
+            ARGS="$ARGS --limit $LIMIT"
+          fi
+
+          eval python actions/yfinance_fetch_action.py $ARGS
+          EXIT=$?
+          # exit 2 = bull triggers found (informational), not a failure
+          if [ $EXIT -eq 2 ]; then
+            echo "INFO: Bull triggers detected — exit code 2 (treated as success)."
+            exit 0
+          fi
+          exit $EXIT
+
+      # ── Save cache DB for next run ───────────────────────────────────────────
+      - name: Save yfinance cache DB
+        uses: actions/cache@v4
+        with:
+          path: dbs/yfinance_cache.db
+          key: yfinance-cache-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+
+      # ── Upload artefacts ─────────────────────────────────────────────────────
+      - name: Upload forecast artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: yfinance-forecasts-${{ github.run_number }}
+          path: |
+            yfinance_data/forecast_results.csv
+            dbs/forecast_report.json
+          retention-days: 30
+
+      # ── Commit outputs back to repo ──────────────────────────────────────────
+      - name: Commit forecast results
+        run: |
+          echo "INFO: Configuring git..."
+          git config --global user.name  'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+          git add yfinance_data/forecast_results.csv || true
+          git add dbs/forecast_report.json          || true
+
+          if git diff --staged --quiet; then
+            echo "INFO: No changes to commit."
+          else
+            TIMESTAMP=$(date +'%Y-%m-%d %H:%M:%S UTC')
+            git commit -m "data: yfinance manual fetch forecasts — $TIMESTAMP"
+            git push
+            echo "SUCCESS: Forecast results committed."
+          fi
+
+      # ── Job summary ──────────────────────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## YFinance Manual Fetch Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| symbols   | \`${{ github.event.inputs.symbols || '(all from symbols.csv)' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| category  | \`${{ github.event.inputs.category || '(all)' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| period    | \`${{ github.event.inputs.period || '1mo' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| interval  | \`${{ github.event.inputs.interval || '1d' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| force_refresh | \`${{ github.event.inputs.force_refresh || 'false' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| limit     | \`${{ github.event.inputs.limit || '0 (no limit)' }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f yfinance_data/forecast_results.csv ]; then
+            ROWS=$(wc -l < yfinance_data/forecast_results.csv)
+            echo "📊 Forecast CSV: **$((ROWS - 1)) ticker rows** written." >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f dbs/forecast_report.json ]; then
+            echo "📋 JSON report available as workflow artefact." >> $GITHUB_STEP_SUMMARY
+          fi

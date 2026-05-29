@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajixAI – Self-Aware Structure Prompt Solver</title>
+
+  <!-- W3.CSS -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <!-- Highlight.js (code syntax highlighting) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" crossorigin="anonymous">
+
+  <!-- ES module import map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@^0.12.0",
+      "marked": "https://esm.sh/marked@^15.0.7",
+      "dompurify": "https://esm.sh/dompurify@3.2.4",
+      "highlight.js": "https://esm.sh/highlight.js@11.9.0"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="w3-light-grey">
+
+  <!-- Header -->
+  <div class="w3-top w3-bar app-header w3-padding" style="z-index:100;">
+    <a href="../index.html" class="w3-bar-item w3-button w3-hover-blue">
+      <i class="fa fa-arrow-left"></i> Home
+    </a>
+    <span class="w3-bar-item w3-padding-16 header-title">
+      <i class="fa fa-brain w3-text-blue"></i>&nbsp; MajixAI – Self-Aware Structure Prompt Solver
+    </span>
+  </div>
+
+  <div class="container" style="max-width:1000px; padding-top:80px; padding-bottom:40px;">
+
+    <!-- API + control panel -->
+    <div class="w3-card w3-white w3-round-large w3-padding w3-margin-bottom control-panel">
+      <div class="row g-3 align-items-end">
+        <div class="col-lg-4">
+          <label for="api-key-input" class="w3-text-dark-grey form-label" style="font-size:.85rem; font-weight:600;">
+            <i class="fa fa-key"></i>&nbsp; Gemini API Key
+          </label>
+          <input
+            id="api-key-input"
+            type="password"
+            class="w3-input w3-border w3-round"
+            placeholder="AIza…"
+            autocomplete="off"
+          >
+          <small class="text-muted">Local commands work without an API key.</small>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <label for="model-select" class="form-label control-label">Model</label>
+          <select id="model-select" class="form-select form-select-sm">
+            <option value="gemini-1.5-flash-latest" selected>Flash 1.5</option>
+            <option value="gemini-2.0-flash">Flash 2.0</option>
+            <option value="gemini-1.5-pro-latest">Pro 1.5</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <label for="response-profile" class="form-label control-label">Response profile</label>
+          <select id="response-profile" class="form-select form-select-sm">
+            <option value="concise">Concise</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="deep">Deep</option>
+            <option value="strategist">Strategist</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <label for="routing-budget" class="form-label control-label">Routing budget</label>
+          <select id="routing-budget" class="form-select form-select-sm">
+            <option value="8">8 nodes</option>
+            <option value="12" selected>12 nodes</option>
+            <option value="16">16 nodes</option>
+            <option value="24">24 nodes</option>
+            <option value="32">32 nodes</option>
+          </select>
+        </div>
+
+        <div class="col-md-4 col-lg-2">
+          <div class="toggle-grid">
+            <label class="toggle-item"><input type="checkbox" id="self-aware-toggle" checked> self-aware</label>
+            <label class="toggle-item"><input type="checkbox" id="structure-scan-toggle" checked> structure scan</label>
+            <label class="toggle-item"><input type="checkbox" id="memory-toggle" checked> memory</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="self-aware-status" class="status-wrap" aria-live="polite"></div>
+      <div class="command-hints">
+        <span class="hint-label">Local commands:</span>
+        <code>/help</code>
+        <code>/self</code>
+        <code>/scan query</code>
+        <code>/taxonomy query</code>
+        <code>/taxonomy stats</code>
+        <code>/explain prompt</code>
+        <code>/browse [category]</code>
+        <code>/history</code>
+      </div>
+    </div>
+
+    <!-- Routing card (collapsible) -->
+    <div id="routing-card" class="routing-card w3-margin-bottom" style="display:none;">
+      <div class="routing-card-header" id="routing-card-toggle" role="button" aria-expanded="false" tabindex="0">
+        <div id="routing-display" aria-live="polite" style="flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;"></div>
+        <button class="routing-expand-btn" aria-label="Toggle routing details" tabindex="-1">
+          <i class="fa fa-chevron-down routing-chevron" id="routing-chevron"></i>
+        </button>
+      </div>
+      <div id="routing-card-details" class="routing-card-details" style="display:none;" aria-live="polite">
+        <div id="routing-diagnostics"></div>
+        <div id="routing-explainability"></div>
+      </div>
+    </div>
+
+    <!-- Chat history -->
+    <div class="w3-card w3-white w3-round-large w3-margin-bottom chat-wrapper">
+      <div class="chat-header">
+        <span class="chat-header-title"><i class="fa fa-comments"></i> Conversation</span>
+        <button id="clear-chat-btn" class="btn btn-sm btn-outline-secondary clear-btn" title="Clear conversation">
+          <i class="fa fa-trash-can"></i> Clear
+        </button>
+      </div>
+      <div
+        id="chat-container"
+        class="w3-padding"
+        style="min-height:220px;"
+      >
+        <p class="chat-empty-hint w3-text-grey w3-center" style="margin:36px 0;">
+          <i class="fa fa-comments fa-2x"></i><br>
+          Ask anything — responses use self-aware mode + structure routing.
+        </p>
+      </div>
+    </div>
+
+    <!-- Prompt input -->
+    <div class="w3-card w3-white w3-round-large w3-padding">
+      <label for="prompt-input" class="w3-text-dark-grey" style="font-size:.85rem; font-weight:600;">
+        <i class="fa fa-pen-to-square"></i>&nbsp; Your Prompt
+      </label>
+      <textarea
+        id="prompt-input"
+        class="w3-input w3-border w3-round"
+        rows="4"
+        placeholder="Prompt or local command (/help, /self, /scan finance market)…"
+        style="margin-top:6px; font-size:.95rem;"
+      ></textarea>
+      <div class="w3-margin-top prompt-footer">
+        <span class="w3-text-grey prompt-hint">
+          <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send · local commands: <code>/help</code> <code>/scan &lt;query&gt;</code> <code>/taxonomy &lt;query&gt;</code> <code>/explain &lt;prompt&gt;</code>
+        </span>
+        <div class="prompt-actions">
+          <span id="char-counter" class="char-counter">0</span>
+          <button id="send-btn" class="w3-button w3-blue w3-round" style="min-width:130px;">
+            <i class="fa fa-paper-plane"></i>&nbsp; Send
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

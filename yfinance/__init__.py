@@ -76,6 +76,22 @@ def __dir__() -> List[str]:
     return sorted(set(globals().keys()) | set(dir(_REAL_YFINANCE)))
 
 
-from .ops import download, ticker, ticker_history, ticker_info  # noqa: E402
+from .ops import (  # noqa: E402
+    download,
+    ticker,
+    ticker_history,
+    ticker_info,
+    Router,
+    ActionRegistry,
+    DataStore,
+    GpuDispatch,
+    NeuralBridge,
+    get_router,
+    get_action_registry,
+    get_datastore,
+    get_gpu,
+    get_neural_bridge,
+    neural_infer,
+)
 
 Ticker = _REAL_YFINANCE.Ticker
