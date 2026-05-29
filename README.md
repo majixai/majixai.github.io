@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-27 22:03 UTC_
+_Last updated: 2026-05-29 03:48 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,22 +13,22 @@ _Last updated: 2026-05-27 22:03 UTC_
 |--------|-------|
 | 📁 Project Directories | 174 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 130534 |
+| 📝 Total Commits | 130650 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`86c80c7f6c`](https://github.com/majixai/majixai.github.io/commit/86c80c7f6c132d079b915a4e1a20b1075e93d564) -- 2026-05-27 -- github-actions[bot] -- [AI Tensor Bot] Update Titan Matrix ML Forecasts -- [Open page](https://majixai.github.io/router/)
-- [`c056a0fa4c`](https://github.com/majixai/majixai.github.io/commit/c056a0fa4c252e93f956a355677d0477baeda86b) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — directory metadata 2026-05-27 21:34:48 UTC -- [Open page](https://majixai.github.io/router/)
-- [`66e4a064c7`](https://github.com/majixai/majixai.github.io/commit/66e4a064c73ba1d6dd8a2e8181cae1d625083907) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-27 21:32:21 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
-- [`4f3fe759ba`](https://github.com/majixai/majixai.github.io/commit/4f3fe759ba981223ab431cd4dbbf94b03c9f3476) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-27 21:31:47 UTC -- [Open page](https://majixai.github.io/data/)
-- [`34b1383cba`](https://github.com/majixai/majixai.github.io/commit/34b1383cba8338dc5d063e5fe3fe8a60c3debf57) -- 2026-05-27 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-27 21:30:57 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`3b5594fffb`](https://github.com/majixai/majixai.github.io/commit/3b5594fffb00554e23c9460d75a8f6f2bd791868) -- 2026-05-29 -- github-actions[bot] -- data: Update projects.json - 2026-05-29 02:54:39 UTC -- [Open page](https://majixai.github.io/router/)
+- [`15deb6e717`](https://github.com/majixai/majixai.github.io/commit/15deb6e717cbdaa4c954047831fb9aff5c5fbb56) -- 2026-05-29 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-05-29 02:46:29 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
+- [`9600efe6be`](https://github.com/majixai/majixai.github.io/commit/9600efe6be926fbec0909458a6311d6e290c4530) -- 2026-05-29 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
+- [`07b2400eeb`](https://github.com/majixai/majixai.github.io/commit/07b2400eebef1a76f7bab66f4d6ecf2ba0c885da) -- 2026-05-29 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
+- [`4ee9057f9f`](https://github.com/majixai/majixai.github.io/commit/4ee9057f9f02536af3740c4a1b8de78ba6ab0b0b) -- 2026-05-29 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-29 00:00:53 UTC -- [Open page](https://majixai.github.io/data/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `4378bbd` — 2026-05-27 — **github-actions[bot]** — data: Update index data - 2026-05-27 05:25:44 UTC  
-  _52504 lines changed (51391+ / 1113-)_
+- **Biggest update today:** `3b5594f` — 2026-05-29 — **github-actions[bot]** — data: Update projects.json - 2026-05-29 02:54:39 UTC  
+  _1826 lines changed (1605+ / 221-)_
 - **Biggest update this week:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
   _578160 lines changed (573728+ / 4432-)_
 - **Biggest update this month:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
