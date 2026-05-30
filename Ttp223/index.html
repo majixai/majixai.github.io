@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ESP32</title>
+  <title>Ttp223</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
   <style>
-    :root { --accent:#f7931a; --muted:#a8b3c7; }
+    :root { --accent:#34d399; --muted:#b8c7d9; }
     * { box-sizing:border-box; }
     body {
       margin:0;
       font-family:'Segoe UI',system-ui,sans-serif;
-      background:linear-gradient(135deg,#020617 0%,#0f172a 100%);
-      color:#e5eefb;
+      background:linear-gradient(135deg,#020617 0%,#052e26 100%);
+      color:#eef7f3;
       min-height:100vh;
     }
     .wrap { max-width:1120px; margin:0 auto; padding:2rem 1rem 3rem; }
     .hero {
-      background:rgba(17,28,51,.92);
-      border:1px solid rgba(247,147,26,.18);
+      background:rgba(10,29,26,.92);
+      border:1px solid rgba(52,211,153,.18);
       border-radius:18px;
       padding:1.6rem;
       box-shadow:0 14px 40px rgba(0,0,0,.24);
@@ -47,11 +47,11 @@
       border-radius:999px;
       text-decoration:none;
       color:#fff;
-      background:rgba(247,147,26,.15);
-      border:1px solid rgba(247,147,26,.32);
+      background:rgba(52,211,153,.14);
+      border:1px solid rgba(52,211,153,.32);
       font-size:.82rem;
     }
-    a.link-btn:hover { background:rgba(247,147,26,.25); color:#fff; }
+    a.link-btn:hover { background:rgba(52,211,153,.24); color:#fff; }
     .mini { font-size:.84rem; color:var(--muted); }
     .section {
       margin-top:1rem;
@@ -98,8 +98,8 @@
     <div class="hero">
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
         <div>
-          <h1 class="title mb-1"><i class="fa fa-microchip me-2"></i>ESP32</h1>
-          <p class="sub mb-0">Circuit-level companion page for ESP32 spec ops, transport control, Ttp223 touch input, and router/hash-aware firmware notes.</p>
+          <h1 class="title mb-1"><i class="fa fa-hand-pointer me-2"></i>Ttp223</h1>
+          <p class="sub mb-0">Circuit-level companion page for TTP223 touch input, wake control, and router/hash-aware hardware notes.</p>
         </div>
         <div class="text-end mini">Router-linked · hash-aware · spec ops ready</div>
       </div>
@@ -108,9 +108,8 @@
         <div class="cardx">
           <h2><i class="fa fa-link me-1"></i>Core integration</h2>
           <div><a class="link-btn" href="../Integrated_circuit/">Integrated_circuit</a></div>
-          <div><a class="link-btn" href="../BM1373/">BM1373</a></div>
-          <div><a class="link-btn" href="../Ttp223/">Ttp223</a></div>
-          <div><a class="link-btn" href="../esp32_bitcoin_pool_miner/">esp32_bitcoin_pool_miner</a></div>
+          <div><a class="link-btn" href="../ESP32/">ESP32</a></div>
+          <div><a class="link-btn" href="../bitcoin_miner/">bitcoin_miner</a></div>
         </div>
         <div class="cardx">
           <h2><i class="fa fa-gears me-1"></i>Automation</h2>
@@ -124,17 +123,16 @@
         <div class="cardx">
           <h2><i class="fa fa-shield-halved me-1"></i>Audit</h2>
           <div><a class="link-btn" href="../hash/">hash</a></div>
-          <div><a class="link-btn" href="../bitcoin_miner/">bitcoin_miner</a></div>
         </div>
       </div>
 
       <div class="section">
         <h3><i class="fa fa-diagram-project me-1"></i>Device model</h3>
         <table class="meta">
-          <tr><th>Goal</th><td>Describe the ESP32 as the MCU-side control plane for the repository's mining and circuit pages.</td></tr>
-          <tr><th>Primary audience</th><td>Firmware contributors and hardware explorers who need a clear home for ESP32 board notes.</td></tr>
-          <tr><th>Runtime shape</th><td>Static docs with room for flash guides, pin maps, and transport references.</td></tr>
-          <tr><th>Key dependencies</th><td><span class="inline-kbd">BM1373</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">Ttp223</span> <span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">hash</span> <span class="inline-kbd">router</span></td></tr>
+          <tr><th>Goal</th><td>Describe the TTP223 as the touch-input companion for the repository's control and hardware pages.</td></tr>
+          <tr><th>Primary audience</th><td>Hardware explorers and firmware contributors who need a clean landing page for touch-trigger notes.</td></tr>
+          <tr><th>Runtime shape</th><td>Static docs with room for wiring notes, threshold tuning, and wake-path references.</td></tr>
+          <tr><th>Key dependencies</th><td><span class="inline-kbd">ESP32</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">hash</span> <span class="inline-kbd">router</span></td></tr>
         </table>
       </div>
 
@@ -142,20 +140,20 @@
         <h3><i class="fa fa-wave-square me-1"></i>Spec ops overview</h3>
         <div class="grid" style="margin-top:0">
           <div class="cardx">
-            <h2>Boot spec ops</h2>
-            <p>Define flash, reset, and startup checks so the board always lands in a known-safe state.</p>
+            <h2>Touch spec ops</h2>
+            <p>Define thresholds, sensitivity, and re-trigger rules so touch events stay stable and predictable.</p>
           </div>
           <div class="cardx">
-            <h2>Network spec ops</h2>
-            <p>Describe Wi-Fi, job polling, touch input, and reconnect behavior with short, deterministic state transitions.</p>
+            <h2>Wake spec ops</h2>
+            <p>Describe low-power wake behavior and make resume paths clear for the control plane.</p>
           </div>
           <div class="cardx">
             <h2>GPIO spec ops</h2>
-            <p>Track status LEDs, buttons, UART, and debug outputs as first-class operational controls.</p>
+            <p>Track output polarity, interrupt style, and board wiring as first-class operational controls.</p>
           </div>
           <div class="cardx">
             <h2>Audit spec ops</h2>
-            <p>Bind control frames and route changes to hashable metadata so navigation and telemetry stay aligned.</p>
+            <p>Bind touch behavior and route changes to hashable metadata so the page lineage stays consistent.</p>
           </div>
         </div>
       </div>
@@ -163,45 +161,44 @@
       <div class="section">
         <h3><i class="fa fa-cubes me-1"></i>Control blocks</h3>
         <ul class="mb-0">
-          <li><strong>Boot block:</strong> flash validation, reset, and safe startup behavior.</li>
-          <li><strong>Transport block:</strong> Wi-Fi connectivity, pool jobs, and retry/backoff logic.</li>
-          <li><strong>IO block:</strong> LEDs, buttons, UART console, and status indicators.</li>
-          <li><strong>Telemetry block:</strong> temperature, reconnect counters, and job health.</li>
-          <li><strong>Governance block:</strong> router/hash validation for pages, payloads, updates, and touch controls.</li>
+          <li><strong>Touch block:</strong> capacitance thresholding, trigger detection, and de-bounce behavior.</li>
+          <li><strong>Wake block:</strong> low-power entry, wake-on-touch, and safe resume sequencing.</li>
+          <li><strong>IO block:</strong> output signaling, LEDs, and MCU-side input handling.</li>
+          <li><strong>Telemetry block:</strong> press counts, false-trigger counts, and state transitions.</li>
+          <li><strong>Audit block:</strong> router/hash checks for provenance, page lineage, and control integrity.</li>
         </ul>
       </div>
 
       <div class="section">
         <h3><i class="fa fa-list-check me-1"></i>Bring-up sequence</h3>
         <ul class="mb-0">
-          <li>Verify flash contents and reset behavior.</li>
-          <li>Bring up Wi-Fi and confirm the control plane has network reachability.</li>
-          <li>Load the pool or demo configuration and confirm worker identity.</li>
-          <li>Run a short status loop to confirm telemetry and LED behavior.</li>
-          <li>Confirm touch input state changes cleanly from the Ttp223 companion page.</li>
-          <li>Escalate to recovery mode when transport or thermal checks fail.</li>
+          <li>Verify power, ground, and touch pad wiring.</li>
+          <li>Confirm the default output state before exposing the sensor to the MCU.</li>
+          <li>Adjust sensitivity or threshold settings for the touch surface in use.</li>
+          <li>Run a short touch loop and confirm the output stays stable through repeated taps.</li>
+          <li>Escalate to recovery mode if wake or false-trigger checks fail.</li>
         </ul>
       </div>
 
       <div class="section">
         <h3><i class="fa fa-bolt me-1"></i>Spec ops matrix</h3>
         <table class="meta">
-          <tr><th>Boot</th><td>Validate flash, load configuration, and expose a safe status channel.</td></tr>
-          <tr><th>Transport</th><td>Handle Wi-Fi join, pool jobs, and reconnects with compact state transitions.</td></tr>
-          <tr><th>UI</th><td>Drive LEDs, buttons, and serial output without blocking the network loop.</td></tr>
-          <tr><th>Thermal</th><td>Watch temperature and reduce activity before the board becomes unstable.</td></tr>
-          <tr><th>Provenance</th><td>Attach router and hash metadata to every new control surface or subpage, including Ttp223 touch controls.</td></tr>
+          <tr><th>Touch</th><td>Detect finger contact with a stable threshold and bounded re-trigger behavior.</td></tr>
+          <tr><th>Wake</th><td>Use touch as a low-power wake source without surprising the main control loop.</td></tr>
+          <tr><th>UI</th><td>Drive buttons or tap areas while keeping the MCU-side polling path simple.</td></tr>
+          <tr><th>Recovery</th><td>Reset into a known-safe state and preserve diagnostics for later audit.</td></tr>
+          <tr><th>Provenance</th><td>Bind board actions to router and hash metadata for consistent site navigation.</td></tr>
         </table>
       </div>
 
       <div class="section">
         <h3><i class="fa fa-shield-halved me-1"></i>Operational rules</h3>
         <ul class="mb-0">
-          <li>Keep network loops short and recoverable.</li>
-          <li>Prefer inspectable counters over silent state changes.</li>
+          <li>Prefer stable touch surfaces and short wiring paths.</li>
+          <li>Keep threshold changes visible and documented.</li>
           <li>Keep fallback access through serial or browser controls.</li>
-          <li>Mirror terminology with the BM1373 and Ttp223 pages for shared control semantics.</li>
-          <li>Keep the ESP32 page linked from the circuit hub and miner stack.</li>
+          <li>Mirror terminology with the ESP32 page for shared control semantics.</li>
+          <li>Keep the Ttp223 page linked from the circuit hub and control stack.</li>
         </ul>
       </div>
 
@@ -209,20 +206,20 @@
         <h3><i class="fa fa-diagram-project me-1"></i>Expansion areas</h3>
         <div class="grid" style="margin-top:0">
           <div class="cardx">
-            <h2>Pinout map</h2>
-            <p>Reserve space for LED, button, UART, and optional sensor connections.</p>
+            <h2>Wiring map</h2>
+            <p>Reserve space for touch pad, VCC, GND, and output wiring notes.</p>
           </div>
           <div class="cardx">
-            <h2>Firmware guide</h2>
-            <p>Add flashing steps, build commands, and common recovery actions.</p>
+            <h2>Threshold table</h2>
+            <p>Add tuning notes for sensitivity, trigger level, and environmental drift.</p>
           </div>
           <div class="cardx">
-            <h2>Protocol frame</h2>
-            <p>Document the control and telemetry frames used by the miner workflow.</p>
+            <h2>Debounce guide</h2>
+            <p>Document minimum press spacing, release timing, and re-trigger limits.</p>
           </div>
           <div class="cardx">
             <h2>Failure modes</h2>
-            <p>Capture Wi-Fi loss, brownout, thermal trip, and retry exhaustion behavior.</p>
+            <p>Capture ghost touches, wake glitches, and noisy input handling in one place.</p>
           </div>
         </div>
       </div>
