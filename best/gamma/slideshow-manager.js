@@ -103,13 +103,29 @@ class SlideshowManager {
      * @returns {Promise<SlideshowManager>}
      */
     static async fromDatFile(imgElement, datUrl, options = {}) {
+        const candidateUrls = [];
+        if (datUrl.includes('/dbs/history/')) {
+            candidateUrls.push(datUrl);
+        } else if (datUrl.includes('/history/')) {
+            candidateUrls.push(datUrl.replace('/history/', '/dbs/history/'));
+        }
+        candidateUrls.push(datUrl);
+
         try {
-            const response = await fetch(datUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const buffer = await response.arrayBuffer();
-            const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
-            const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
-            return new SlideshowManager(imgElement, urls, options);
+            let lastError = null;
+            for (const candidateUrl of candidateUrls) {
+                try {
+                    const response = await fetch(candidateUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const buffer = await response.arrayBuffer();
+                    const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+                    const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];
+                    return new SlideshowManager(imgElement, urls, options);
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+            throw lastError || new Error('Dat file unavailable');
         } catch (e) {
             console.warn(`SlideshowManager: Could not load ${datUrl}:`, e.message);
             return new SlideshowManager(imgElement, imgElement.src ? [imgElement.src] : [], options);

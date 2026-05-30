@@ -342,9 +342,9 @@ def write_history_artifacts(base_dir: Path, conn: sqlite3.Connection, touched_us
     if not touched_usernames:
         return
 
-    history_dir = base_dir / "history"
+    history_dir = base_dir / "dbs" / "history"
     history_dir.mkdir(parents=True, exist_ok=True)
-    history_index_path = base_dir / "history_index.json"
+    history_index_path = base_dir / "dbs" / "history_index.json"
 
     existing_index: list[str] = []
     if history_index_path.exists():

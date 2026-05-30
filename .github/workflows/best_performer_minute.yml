@@ -318,8 +318,8 @@ jobs:
           #   best/dbs/performer_images.db.gz        (compressed image DB)
           #   best/dbs/performer_images_manifest.dat (viewer manifest)
           #   best/dbs/gpu_recognition_manifest.dat  (recognition manifest)
-          #   best/history/*.dat                     (per-performer image history)
-          #   best/*.dat                             (any other generated .dat files)
+          #   best/dbs/history/*.dat                (per-performer image history)
+          #   best/dbs/history_index.json            (archive index)
           git add best/ || true
 
           # Default to 0 so CHANGED_COUNT is always defined (used in the commit message step)

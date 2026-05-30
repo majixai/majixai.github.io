@@ -1304,6 +1304,27 @@ function setupIntersectionObservers() {
   }
 }
 
+async function fetchHistoryArchive(username) {
+ const safeUsername = encodeURIComponent(username);
+ const candidates = [
+   `dbs/history/${safeUsername}.dat`,
+   `history/${safeUsername}.dat`,
+ ];
+ let lastError = null;
+
+ for (const candidate of candidates) {
+   try {
+     const response = await fetch(`${candidate}?t=${Date.now()}`);
+     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+     return await response.arrayBuffer();
+   } catch (error) {
+     lastError = error;
+   }
+ }
+
+ throw lastError || new Error('History archive unavailable');
+}
+
 function initSlideshowRuntime(card) {
   if (card.dataset.intervalId) return; 
   if (!card._imgArray) card._imgArray = [];
@@ -1315,10 +1336,8 @@ function initSlideshowRuntime(card) {
   const historyIsStale = !lastFetchAt || (Date.now() - lastFetchAt >= historyRefreshMs);
 
   if (username && historyIsStale && !fetchInFlight) {
-    const safeUsername = encodeURIComponent(username);
     card.dataset.historyFetchInFlight = 'true';
-    fetch(`history/${safeUsername}.dat?t=${Date.now()}`)
-      .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
+    fetchHistoryArchive(username)
       .then(buffer => {
         const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
         const fetched = [...new Set(JSON.parse(decompressed).filter(Boolean))];
