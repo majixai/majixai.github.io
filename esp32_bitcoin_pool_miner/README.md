@@ -1,6 +1,6 @@
 # ESP32 Bitcoin Pool Miner
 
-This directory bridges the Bitcoin miner demo with ESP32-oriented hardware ideas.
+This directory bridges the Bitcoin miner demo with ESP32-P4 hardware ideas for an 8-chip BM1373 mining chain and Bitaxe-style flash driver workflows.
 
 ## Integrations
 
@@ -19,6 +19,7 @@ This directory bridges the Bitcoin miner demo with ESP32-oriented hardware ideas
 ## Notes
 
 - The goal is educational pool-mining and hardware-integration exploration.
+- The current target concept is an ESP32-P4 controller with eight BM1373 ASICs, level shifting, and Bitaxe-inspired flashing/recovery support.
 - The page is wired into the repository router and hashing system.
 - It now acts as the coordination hub for BM1373 and ESP32 spec ops notes.
 
@@ -33,6 +34,7 @@ The 400GHz protocol paradigm is a conceptual high-rate control channel for the d
 3. Hash every control frame that matters.
 4. Fall back to standard interfaces when the fast path is unavailable.
 5. Keep transport semantics aligned with router and hash metadata.
+6. Treat BM1373 details as reverse-engineered behavior unless verified by open schematics.
 
 ### Conceptual layers
 
