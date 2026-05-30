@@ -99,7 +99,7 @@
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
         <div>
           <h1 class="title mb-1"><i class="fa-brands fa-bitcoin me-2"></i>ESP32 Bitcoin Pool Miner</h1>
-          <p class="sub mb-0">Hardware-linked miner concept for pool mining, circuit integration, and repository automation.</p>
+          <p class="sub mb-0">Hardware-linked miner concept for pool mining, circuit integration, BM1373/ESP32 spec ops, and repository automation.</p>
         </div>
         <div class="text-end mini">Router-linked · hash-aware · GitHub Pages ready</div>
       </div>
@@ -109,6 +109,8 @@
           <h2><i class="fa fa-link me-1"></i>Core integration</h2>
           <div><a class="link-btn" href="../bitcoin_miner/">bitcoin_miner</a></div>
           <div><a class="link-btn" href="../Integrated_circuit/">Integrated_circuit</a></div>
+          <div><a class="link-btn" href="../BM1373/">BM1373</a></div>
+          <div><a class="link-btn" href="../ESP32/">ESP32</a></div>
         </div>
         <div class="cardx">
           <h2><i class="fa fa-gears me-1"></i>Automation</h2>
@@ -127,10 +129,10 @@
       <div class="section">
         <h3><i class="fa fa-diagram-project me-1"></i>Project model</h3>
         <table class="meta">
-          <tr><th>Goal</th><td>Bridge the educational Bitcoin miner with ESP32 hardware, pool-style job handling, and route/hash-aware site navigation.</td></tr>
+          <tr><th>Goal</th><td>Bridge the educational Bitcoin miner with ESP32 hardware, BM1373 coordination, pool-style job handling, and route/hash-aware site navigation.</td></tr>
           <tr><th>Primary audience</th><td>Firmware tinkerers, browser-based mining demonstrators, and repository automation maintainers.</td></tr>
           <tr><th>Runtime shape</th><td>Static page plus linked docs; can be extended into firmware notes, pool status dashboards, or hardware calculators.</td></tr>
-          <tr><th>Key dependencies</th><td><span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">actions</span> <span class="inline-kbd">compiler</span></td></tr>
+          <tr><th>Key dependencies</th><td><span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">BM1373</span> <span class="inline-kbd">ESP32</span> <span class="inline-kbd">actions</span> <span class="inline-kbd">compiler</span></td></tr>
         </table>
       </div>
 
@@ -143,11 +145,11 @@
           </div>
           <div class="cardx">
             <h2>Network plane</h2>
-            <p>Stratum connection lifecycle, share submission, difficulty adaptation, and retry/backoff policy.</p>
+            <p>Stratum connection lifecycle, share submission, difficulty adaptation, and retry/backoff policy for BM1373 and ESP32 flows.</p>
           </div>
           <div class="cardx">
             <h2>Math plane</h2>
-            <p>Hash target math, nonce-space exploration, and scoring functions for hardware telemetry.</p>
+            <p>Hash target math, nonce-space exploration, and scoring functions for hardware telemetry and spec ops.</p>
           </div>
           <div class="cardx">
             <h2>Ops plane</h2>
@@ -159,7 +161,7 @@
       <div class="section">
         <h3><i class="fa fa-microchip me-1"></i>Hardware notes</h3>
         <ul class="mb-0">
-          <li><strong>ESP32 role:</strong> lightweight control plane for job polling, status LEDs, and pool connectivity.</li>
+          <li><strong>ESP32 role:</strong> lightweight control plane for job polling, status LEDs, pool connectivity, and spec ops coordination.</li>
           <li><strong>Mining role:</strong> use the browser miner for simulation and the hardware page as a concept lab for real devices.</li>
           <li><strong>C bridge:</strong> keep firmware-facing logic in the C toolchain so performance-sensitive paths stay compact.</li>
           <li><strong>Routing:</strong> every new hardware page should stay linked from the router and hash modules.</li>
@@ -174,6 +176,7 @@
           <li>Iterate nonces until a share meets target difficulty.</li>
           <li>Submit accepted shares and refresh the next job.</li>
           <li>Record telemetry for shares, rejects, and reconnects.</li>
+          <li>Mirror timing and thermal status to the BM1373 and ESP32 circuit pages.</li>
         </ul>
       </div>
 

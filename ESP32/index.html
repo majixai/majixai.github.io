@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <style>
+    :root { --accent:#f7931a; --muted:#a8b3c7; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:'Segoe UI',system-ui,sans-serif;
+      background:linear-gradient(135deg,#020617 0%,#0f172a 100%);
+      color:#e5eefb;
+      min-height:100vh;
+    }
+    .wrap { max-width:1120px; margin:0 auto; padding:2rem 1rem 3rem; }
+    .hero {
+      background:rgba(17,28,51,.92);
+      border:1px solid rgba(247,147,26,.18);
+      border-radius:18px;
+      padding:1.6rem;
+      box-shadow:0 14px 40px rgba(0,0,0,.24);
+    }
+    .title { color:var(--accent); }
+    .sub { color:var(--muted); }
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+      gap:1rem;
+      margin-top:1rem;
+    }
+    .cardx {
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:1rem;
+      height:100%;
+    }
+    .cardx h2 { font-size:1rem; margin:0 0 .6rem; color:#fff; }
+    a.link-btn {
+      display:inline-block;
+      margin:.25rem .45rem .25rem 0;
+      padding:.45rem .8rem;
+      border-radius:999px;
+      text-decoration:none;
+      color:#fff;
+      background:rgba(247,147,26,.15);
+      border:1px solid rgba(247,147,26,.32);
+      font-size:.82rem;
+    }
+    a.link-btn:hover { background:rgba(247,147,26,.25); color:#fff; }
+    .mini { font-size:.84rem; color:var(--muted); }
+    .section {
+      margin-top:1rem;
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      padding:1rem;
+    }
+    .section h3 {
+      font-size:.98rem;
+      margin:0 0 .7rem;
+      color:#fff;
+    }
+    .section p,.section li {
+      color:#d7e3f3;
+      font-size:.9rem;
+      line-height:1.55;
+    }
+    table.meta {
+      width:100%;
+      border-collapse:collapse;
+      font-size:.86rem;
+    }
+    table.meta th, table.meta td {
+      text-align:left;
+      padding:.45rem .5rem;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      vertical-align:top;
+    }
+    table.meta th { color:#fff; width:170px; }
+    .inline-kbd {
+      display:inline-block;
+      padding:.12rem .4rem;
+      border-radius:6px;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      font-family:monospace;
+      font-size:.78rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <h1 class="title mb-1"><i class="fa fa-microchip me-2"></i>ESP32</h1>
+          <p class="sub mb-0">Circuit-level companion page for ESP32 spec ops, transport control, and router/hash-aware firmware notes.</p>
+        </div>
+        <div class="text-end mini">Router-linked · hash-aware · spec ops ready</div>
+      </div>
+
+      <div class="grid">
+        <div class="cardx">
+          <h2><i class="fa fa-link me-1"></i>Core integration</h2>
+          <div><a class="link-btn" href="../Integrated_circuit/">Integrated_circuit</a></div>
+          <div><a class="link-btn" href="../BM1373/">BM1373</a></div>
+          <div><a class="link-btn" href="../esp32_bitcoin_pool_miner/">esp32_bitcoin_pool_miner</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-gears me-1"></i>Automation</h2>
+          <div><a class="link-btn" href="../actions/">actions</a></div>
+          <div><a class="link-btn" href="../router/">router</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-square-root-variable me-1"></i>Math</h2>
+          <div><a class="link-btn" href="../algebra/">algebra</a><a class="link-btn" href="../calculus/">calculus</a></div>
+        </div>
+        <div class="cardx">
+          <h2><i class="fa fa-shield-halved me-1"></i>Audit</h2>
+          <div><a class="link-btn" href="../hash/">hash</a></div>
+          <div><a class="link-btn" href="../bitcoin_miner/">bitcoin_miner</a></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-diagram-project me-1"></i>Device model</h3>
+        <table class="meta">
+          <tr><th>Goal</th><td>Describe the ESP32 as the MCU-side control plane for the repository's mining and circuit pages.</td></tr>
+          <tr><th>Primary audience</th><td>Firmware contributors and hardware explorers who need a clear home for ESP32 board notes.</td></tr>
+          <tr><th>Runtime shape</th><td>Static docs with room for flash guides, pin maps, and transport references.</td></tr>
+          <tr><th>Key dependencies</th><td><span class="inline-kbd">BM1373</span> <span class="inline-kbd">Integrated_circuit</span> <span class="inline-kbd">bitcoin_miner</span> <span class="inline-kbd">hash</span> <span class="inline-kbd">router</span></td></tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-wave-square me-1"></i>Spec ops overview</h3>
+        <div class="grid" style="margin-top:0">
+          <div class="cardx">
+            <h2>Boot spec ops</h2>
+            <p>Define flash, reset, and startup checks so the board always lands in a known-safe state.</p>
+          </div>
+          <div class="cardx">
+            <h2>Network spec ops</h2>
+            <p>Describe Wi-Fi, job polling, and reconnect behavior with short, deterministic state transitions.</p>
+          </div>
+          <div class="cardx">
+            <h2>GPIO spec ops</h2>
+            <p>Track status LEDs, buttons, UART, and debug outputs as first-class operational controls.</p>
+          </div>
+          <div class="cardx">
+            <h2>Audit spec ops</h2>
+            <p>Bind control frames and route changes to hashable metadata so navigation and telemetry stay aligned.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-cubes me-1"></i>Control blocks</h3>
+        <ul class="mb-0">
+          <li><strong>Boot block:</strong> flash validation, reset, and safe startup behavior.</li>
+          <li><strong>Transport block:</strong> Wi-Fi connectivity, pool jobs, and retry/backoff logic.</li>
+          <li><strong>IO block:</strong> LEDs, buttons, UART console, and status indicators.</li>
+          <li><strong>Telemetry block:</strong> temperature, reconnect counters, and job health.</li>
+          <li><strong>Governance block:</strong> router/hash validation for pages, payloads, and updates.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-list-check me-1"></i>Bring-up sequence</h3>
+        <ul class="mb-0">
+          <li>Verify flash contents and reset behavior.</li>
+          <li>Bring up Wi-Fi and confirm the control plane has network reachability.</li>
+          <li>Load the pool or demo configuration and confirm worker identity.</li>
+          <li>Run a short status loop to confirm telemetry and LED behavior.</li>
+          <li>Escalate to recovery mode when transport or thermal checks fail.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-bolt me-1"></i>Spec ops matrix</h3>
+        <table class="meta">
+          <tr><th>Boot</th><td>Validate flash, load configuration, and expose a safe status channel.</td></tr>
+          <tr><th>Transport</th><td>Handle Wi-Fi join, pool jobs, and reconnects with compact state transitions.</td></tr>
+          <tr><th>UI</th><td>Drive LEDs, buttons, and serial output without blocking the network loop.</td></tr>
+          <tr><th>Thermal</th><td>Watch temperature and reduce activity before the board becomes unstable.</td></tr>
+          <tr><th>Provenance</th><td>Attach router and hash metadata to every new control surface or subpage.</td></tr>
+        </table>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-shield-halved me-1"></i>Operational rules</h3>
+        <ul class="mb-0">
+          <li>Keep network loops short and recoverable.</li>
+          <li>Prefer inspectable counters over silent state changes.</li>
+          <li>Keep fallback access through serial or browser controls.</li>
+          <li>Mirror terminology with the BM1373 page for shared transport semantics.</li>
+          <li>Keep the ESP32 page linked from the circuit hub and miner stack.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h3><i class="fa fa-diagram-project me-1"></i>Expansion areas</h3>
+        <div class="grid" style="margin-top:0">
+          <div class="cardx">
+            <h2>Pinout map</h2>
+            <p>Reserve space for LED, button, UART, and optional sensor connections.</p>
+          </div>
+          <div class="cardx">
+            <h2>Firmware guide</h2>
+            <p>Add flashing steps, build commands, and common recovery actions.</p>
+          </div>
+          <div class="cardx">
+            <h2>Protocol frame</h2>
+            <p>Document the control and telemetry frames used by the miner workflow.</p>
+          </div>
+          <div class="cardx">
+            <h2>Failure modes</h2>
+            <p>Capture Wi-Fi loss, brownout, thermal trip, and retry exhaustion behavior.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
