@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Calculus Matrix Engine</title>
+    <title>Tensor Forecast Engine</title>
     
     <!-- CDNs: Bootstrap 5, W3.CSS, and Pako for GZIP decompression -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -13,41 +13,180 @@
     <style>
         /* CSS GRID, FLEXBOX & CUSTOM PROPERTIES */
         :root {
-            --matrix-bg: #0a0a12;
-            --matrix-fg: #00ffcc;
-            --matrix-glow: rgba(0, 255, 204, 0.5);
-            --panel-bg: rgba(15, 15, 25, 0.85);
+            --matrix-bg: #060914;
+            --matrix-bg-2: #0b1221;
+            --matrix-fg: #4fffd1;
+            --matrix-glow: rgba(79, 255, 209, 0.35);
+            --panel-bg: rgba(12, 18, 34, 0.82);
+            --panel-border: rgba(148, 163, 184, 0.18);
+            --text-soft: #bfd0e2;
+            --text-bright: #f8fbff;
         }
-        
+
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
-            background-color: var(--matrix-bg);
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
+            background:
+                radial-gradient(circle at top, rgba(79, 255, 209, 0.13), transparent 28%),
+                radial-gradient(circle at 85% 15%, rgba(96, 165, 250, 0.12), transparent 20%),
+                linear-gradient(180deg, var(--matrix-bg) 0%, var(--matrix-bg-2) 100%);
+            color: var(--text-bright);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             overflow-x: hidden;
             margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
             min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: linear-gradient(180deg, rgba(0,0,0,0.55), transparent 85%);
         }
 
         /* PARALLAX & WEBKIT ANIMATIONS */
         .parallax-header {
-            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.05"><rect width="100" height="100" fill="none" stroke="%2300ffcc" stroke-width="1"/></svg>');
+            position: relative;
+            background:
+                linear-gradient(135deg, rgba(12, 18, 34, 0.95), rgba(9, 15, 28, 0.88)),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.05"><rect width="100" height="100" fill="none" stroke="%234fffd1" stroke-width="1"/></svg>');
             background-attachment: fixed;
             background-position: center;
             background-repeat: repeat;
-            padding: 40px 20px;
-            text-align: center;
-            border-bottom: 2px solid var(--matrix-fg);
-            -webkit-animation: pulse-border 4s infinite alternate;
-            animation: pulse-border 4s infinite alternate;
+            padding: 32px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--panel-border);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
             z-index: 10;
         }
 
         @-webkit-keyframes pulse-border {
-            0% { border-bottom-color: #004433; box-shadow: 0 0 10px #004433; }
-            100% { border-bottom-color: var(--matrix-fg); box-shadow: 0 0 30px var(--matrix-glow); }
+            0% { box-shadow: 0 0 10px rgba(79, 255, 209, 0.08); }
+            100% { box-shadow: 0 0 36px var(--matrix-glow); }
+        }
+
+        .hero-shell,
+        .dashboard-grid {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .hero-shell {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
+            gap: 24px;
+            align-items: center;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(79, 255, 209, 0.12);
+            color: var(--matrix-fg);
+            border: 1px solid rgba(79, 255, 209, 0.18);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            margin-bottom: 14px;
+        }
+
+        .eyebrow::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--matrix-fg);
+            box-shadow: 0 0 12px var(--matrix-fg);
+        }
+
+        .hero-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .hero-title h1 {
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+        }
+
+        .hero-copy p {
+            color: var(--text-soft);
+            max-width: 720px;
+            margin-bottom: 0;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-soft);
+            font-size: 0.88rem;
+        }
+
+        .hero-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: var(--matrix-fg);
+            box-shadow: 0 0 10px var(--matrix-fg);
+        }
+
+        .hero-panel {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .hero-card {
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.92), rgba(10, 14, 23, 0.92));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .hero-card .label {
+            color: var(--text-soft);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .hero-card .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .hero-card .meta {
+            color: var(--text-soft);
+            font-size: 0.84rem;
+            margin-top: 6px;
         }
 
         /* CSS GRID LAYOUT */
@@ -55,23 +194,23 @@
             display: grid;
             grid-template-columns: 1fr 350px;
             grid-template-rows: auto 1fr;
-            gap: 20px;
-            padding: 20px;
+            gap: 18px;
+            padding: 20px 20px 28px;
             flex-grow: 1;
         }
 
         .canvas-container {
             grid-column: 1 / 2;
             grid-row: 1 / 3;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid #333;
-            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(8, 12, 24, 0.92), rgba(5, 8, 16, 0.96));
+            border: 1px solid var(--panel-border);
+            border-radius: 22px;
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 20px 40px rgba(0,0,0,0.35);
         }
 
         canvas {
@@ -88,57 +227,162 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            background: var(--panel-bg);
+            background: linear-gradient(180deg, rgba(14, 20, 37, 0.88), rgba(10, 15, 28, 0.88));
+            border: 1px solid var(--panel-border);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            border-radius: 22px;
+            padding: 18px;
         }
 
         .data-panel {
             grid-column: 2 / 3;
             grid-row: 2 / 3;
             overflow-y: auto;
-            border: 1px solid #333;
-            padding: 15px;
-            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            padding: 18px;
+            background: linear-gradient(180deg, rgba(14, 20, 37, 0.88), rgba(10, 15, 28, 0.88));
             max-height: 50vh;
+            border-radius: 22px;
+        }
+
+        .panel-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .panel-heading h5 {
+            margin-bottom: 0;
+        }
+
+        .panel-subtitle {
+            color: var(--text-soft);
+            font-size: 0.86rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .summary-card {
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .summary-card .label {
+            color: var(--text-soft);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+        }
+
+        .summary-card .value {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .summary-card .meta {
+            color: var(--text-soft);
+            font-size: 0.82rem;
+            margin-top: 3px;
+        }
+
+        .empty-state {
+            padding: 18px;
+            border: 1px dashed rgba(255,255,255,0.16);
+            border-radius: 16px;
+            color: var(--text-soft);
+            text-align: center;
+        }
+
+        .status-pill {
+            white-space: nowrap;
+        }
+
+        .status-pill.is-warn {
+            background: #facc15 !important;
+            color: #111827 !important;
+        }
+
+        .status-pill.is-ok {
+            background: #16a34a !important;
+            color: white !important;
+        }
+
+        .status-pill.is-error {
+            background: #ef4444 !important;
+            color: white !important;
         }
 
         /* SVG & CUSTOM UI */
         .svg-icon {
-            width: 32px; height: 32px; fill: var(--matrix-fg); vertical-align: middle; margin-right: 12px;
-            filter: drop-shadow(0 0 5px var(--matrix-fg));
+            width: 32px; height: 32px; fill: var(--matrix-fg); vertical-align: middle;
+            filter: drop-shadow(0 0 8px var(--matrix-fg));
         }
         
         .btn-matrix {
-            background: transparent;
+            background: linear-gradient(135deg, rgba(79,255,209,0.15), rgba(79,255,209,0.06));
             color: var(--matrix-fg);
-            border: 1px solid var(--matrix-fg);
+            border: 1px solid rgba(79,255,209,0.45);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             text-transform: uppercase;
             font-weight: bold;
             letter-spacing: 1px;
+            border-radius: 14px;
         }
         .btn-matrix:hover {
-            background: var(--matrix-glow);
+            background: rgba(79,255,209,0.22);
             color: #fff;
-            box-shadow: 0 0 15px var(--matrix-fg);
+            box-shadow: 0 0 18px rgba(79,255,209,0.28);
             transform: translateY(-2px);
         }
 
         /* Data List Styling */
         .forecast-item {
+            border: 1px solid rgba(255,255,255,0.08);
             border-left: 3px solid var(--matrix-fg);
-            background: rgba(0, 255, 204, 0.05);
-            margin-bottom: 8px;
-            padding: 8px 12px;
-            font-size: 0.9rem;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 14px;
+            margin-bottom: 0;
+            padding: 12px 14px;
+            font-size: 0.92rem;
+        }
+
+        .forecast-item .spread-chip {
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fef08a;
+            font-size: 0.8rem;
         }
 
         /* Responsive */
+        @media (max-width: 1100px) {
+            .hero-shell {
+                grid-template-columns: 1fr;
+            }
+            .hero-panel {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
         @media (max-width: 992px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
                 grid-template-rows: 400px auto auto;
+            }
+            .summary-grid,
+            .hero-panel {
+                grid-template-columns: 1fr;
             }
             .canvas-container { grid-column: 1 / 2; grid-row: 1 / 2; }
             .controls-panel { grid-column: 1 / 2; grid-row: 2 / 3; }
@@ -149,11 +393,43 @@
 <body>
 
     <header class="parallax-header w3-animate-opacity">
-        <h1 class="display-5 fw-bold mb-0">
-            <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13.5h-13L12 6.5z"/></svg>
-            TENSOR FORECAST ENGINE
-        </h1>
-        <p class="lead w3-opacity mt-2">Multivariate Differential Data Visualization</p>
+        <div class="hero-shell">
+            <div class="hero-copy">
+                <div class="eyebrow">Tensor Forecast Engine</div>
+                <div class="hero-title">
+                    <svg class="svg-icon" viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2zm0 4.5l6.5 13.5h-13L12 6.5z"/></svg>
+                    <h1 class="display-5">Market Forecast Console</h1>
+                </div>
+                <p class="lead">A cleaner dashboard for the 15-minute BTC forecast stream, with live sync status, compact summaries, and a more readable prediction layout.</p>
+                <div class="hero-badges">
+                    <span class="hero-badge"><span class="dot"></span> 15m horizon</span>
+                    <span class="hero-badge"><span class="dot"></span> Live Git-backed sync</span>
+                    <span class="hero-badge"><span class="dot"></span> Offline cache ready</span>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <div class="hero-card">
+                    <div class="label">Latest close</div>
+                    <div class="value" id="heroLatestClose">—</div>
+                    <div class="meta">Anchor price for the next forecast window</div>
+                </div>
+                <div class="hero-card">
+                    <div class="label">Forecast steps</div>
+                    <div class="value" id="heroForecastCount">—</div>
+                    <div class="meta">Visible outlook entries in the current payload</div>
+                </div>
+                <div class="hero-card">
+                    <div class="label">Average spread</div>
+                    <div class="value" id="heroAvgSpread">—</div>
+                    <div class="meta">Mean range between the projected high and low</div>
+                </div>
+                <div class="hero-card">
+                    <div class="label">Sync status</div>
+                    <div class="value status-pill badge bg-secondary border border-secondary" id="heroSyncStatus">Initializing</div>
+                    <div class="meta">Fetches the latest GitHub-hosted artifact on load</div>
+                </div>
+            </div>
+        </div>
     </header>
 
     <main class="dashboard-grid">
@@ -164,7 +440,7 @@
             <!-- OVERLAY UI -->
             <div style="position: absolute; top: 15px; left: 15px; z-index: 10;">
                 <span class="badge bg-dark border border-secondary" id="fpsCounter">FPS: 0</span>
-                <span class="badge bg-dark border border-secondary text-info" id="dbStatus">Git DB: INITIALIZING</span>
+                <span class="badge bg-dark border border-secondary text-info status-pill" id="dbStatus">Git DB: INITIALIZING</span>
             </div>
         </div>
 
@@ -184,10 +460,34 @@
         </aside>
 
         <section class="data-panel w3-card w3-round-large">
-            <h5 class="w3-text-teal border-bottom border-secondary pb-2 fw-bold">Calculus Forecast Stream</h5>
-            <div id="latestClose" class="w3-text-white mb-3 fw-bold fs-5"></div>
+            <div class="panel-heading">
+                <div>
+                    <h5 class="w3-text-teal fw-bold">Calculus Forecast Stream</h5>
+                    <div class="panel-subtitle">Readable forecast bands and anchor price summary</div>
+                </div>
+                <span class="badge bg-dark border border-secondary status-pill" id="dataBadge">Idle</span>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="label">Anchor price</div>
+                    <div class="value" id="latestClose">—</div>
+                    <div class="meta">Current reference from the synced payload</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Forecast count</div>
+                    <div class="value" id="forecastCount">—</div>
+                    <div class="meta">How many step projections are available</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Average spread</div>
+                    <div class="value" id="averageSpread">—</div>
+                    <div class="meta">Mean distance between high and low bands</div>
+                </div>
+            </div>
+
             <div id="forecastList" class="d-flex flex-column gap-2">
-                <div class="text-muted small text-center mt-4">Waiting for Git Database Sync...</div>
+                <div class="empty-state" id="forecastEmpty">Waiting for Git Database Sync...</div>
             </div>
         </section>
     </main>
@@ -417,34 +717,76 @@ const TensorApp = (function() {
             Utils.on('data_parsed', (data) => this.updateUI(data));
         }
 
+        updateStatus(text, variant) {
+            const dbStatus = document.getElementById('dbStatus');
+            const heroSyncStatus = document.getElementById('heroSyncStatus');
+            const dataBadge = document.getElementById('dataBadge');
+            const classes = [
+                'bg-dark', 'bg-secondary', 'bg-warning', 'bg-success', 'bg-danger',
+                'border-dark', 'border-secondary', 'border-warning', 'border-success', 'border-danger',
+                'text-info', 'text-dark', 'is-warn', 'is-ok', 'is-error'
+            ];
+            [dbStatus, heroSyncStatus, dataBadge].forEach((el) => {
+                classes.forEach(cls => el.classList.remove(cls));
+            });
+
+            const badgeClass = variant === 'ok' ? 'bg-success' : variant === 'warn' ? 'bg-warning' : variant === 'error' ? 'bg-danger' : 'bg-secondary';
+            const textClass = variant === 'warn' ? 'text-dark' : '';
+
+            const addClasses = [badgeClass, 'border', 'status-pill'];
+            if (textClass) addClasses.push(textClass);
+
+            dbStatus.classList.add(...addClasses);
+            heroSyncStatus.classList.add(...addClasses);
+            dataBadge.classList.add(...addClasses);
+
+            dbStatus.textContent = `Git DB: ${text}`;
+            heroSyncStatus.textContent = text;
+            dataBadge.textContent = text;
+        }
+
         async updateUI(data) {
+            const forecasts = Array.isArray(data.forecasts) ? data.forecasts : [];
+            const avgSpread = forecasts.length
+                ? forecasts.reduce((sum, f) => sum + (f.high - f.low), 0) / forecasts.length
+                : 0;
+
             document.getElementById('syncTimestamp').innerText = `Last Sync: ${Utils.formatTime(data.timestamp)}`;
-            document.getElementById('latestClose').innerHTML = `Anchor Price: <span class="text-success">$${data.latest_close.toFixed(2)}</span>`;
-            
+            document.getElementById('latestClose').innerHTML = `<span class="text-success">$${data.latest_close.toFixed(2)}</span>`;
+            document.getElementById('heroLatestClose').innerHTML = `<span class="text-success">$${data.latest_close.toFixed(2)}</span>`;
+            document.getElementById('forecastCount').textContent = `${forecasts.length}`;
+            document.getElementById('heroForecastCount').textContent = `${forecasts.length}`;
+            document.getElementById('averageSpread').textContent = `$${avgSpread.toFixed(2)}`;
+            document.getElementById('heroAvgSpread').textContent = `$${avgSpread.toFixed(2)}`;
+
             const list = document.getElementById('forecastList');
+            const empty = document.getElementById('forecastEmpty');
             list.innerHTML = '';
-            
-            data.forecasts.forEach(f => {
+            if (empty) empty.remove();
+
+            forecasts.forEach(f => {
                 const spread = (f.high - f.low).toFixed(2);
-                list.innerHTML += `
+                list.insertAdjacentHTML('beforeend', `
                     <div class="forecast-item w3-animate-right">
-                        <div class="d-flex justify-content-between text-info fw-bold">
+                        <div class="d-flex justify-content-between align-items-center gap-2 text-info fw-bold">
                             <span>Step +${f.step} (15m)</span>
-                            <span class="text-warning">Spread: $${spread}</span>
+                            <span class="spread-chip">Spread $${spread}</span>
                         </div>
-                        <div class="d-flex justify-content-between mt-1 text-light">
+                        <div class="d-flex justify-content-between mt-2 text-light small">
                             <span>High: $${f.high.toFixed(2)}</span>
                             <span>Low: $${f.low.toFixed(2)}</span>
                         </div>
                     </div>
-                `;
+                `);
             });
+
+            if (!forecasts.length) {
+                list.innerHTML = '<div class="empty-state">No forecast bands were found in the current payload.</div>';
+            }
         }
 
         async syncGitDb() {
-            const statusEl = document.getElementById('dbStatus');
-            statusEl.innerText = 'Git DB: FETCHING...';
-            statusEl.className = 'badge bg-warning border border-warning text-dark';
+            this.updateStatus('FETCHING...', 'warn');
             
             try {
                 // Fetch the binary GZIP file directly from the GitHub repository
@@ -461,23 +803,20 @@ const TensorApp = (function() {
                 // Save to IndexedDB (Virtual FS Mapping)
                 await this.db.saveDat('data_lake/latest_forecast.dat', uint8Array, parsedData);
                 
-                statusEl.innerText = 'Git DB: SYNCED';
-                statusEl.className = 'badge bg-success border border-success';
+                this.updateStatus('SYNCED', 'ok');
                 
                 // Trigger hooks
                 Utils.emit('data_parsed', parsedData);
                 
             } catch (err) {
                 console.error("Sync Error:", err);
-                statusEl.innerText = 'Git DB: ERROR';
-                statusEl.className = 'badge bg-danger border border-danger';
+                this.updateStatus('ERROR', 'error');
                 
                 // Try fallback to local IndexedDB cache
                 const cached = await this.db.getDat('data_lake/latest_forecast.dat');
                 if (cached && cached.parsed) {
                     Utils.emit('data_parsed', cached.parsed);
-                    statusEl.innerText = 'Git DB: OFFLINE CACHE';
-                    statusEl.className = 'badge bg-secondary border border-secondary';
+                    this.updateStatus('OFFLINE CACHE', 'warn');
                 }
             }
         }
@@ -508,4 +847,3 @@ window.onload = TensorApp.bootstrap;
 </script>
 </body>
 </html>
-
