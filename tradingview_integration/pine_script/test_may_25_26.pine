@@ -1185,17 +1185,69 @@ peM.structureTarget := macroTarget
 peM.isReversal      := math.abs(peM.patternScore) >= 12
 peM.isContinuation  := math.abs(peM.patternScore) > 0 and math.abs(peM.patternScore) < 12
 if macroScore != 0 and macroScore != macroScore[1] and sh_pz
-    float hi30 = ta.highest(high, 30), float lo30 = ta.lowest(low, 30)
-    float rng  = hi30 - lo30
-    bool  isBullPat = macroScore > 0
-    color cCore = isBullPat ? color.new(#00FF00, 85) : color.new(#FF0000, 85)
-    color cBord = isBullPat ? color.lime : color.red
-    color cTarg = isBullPat ? color.new(#00BFFF, 85) : color.new(#FF8C00, 85)
-    push_box_capped(patGeoBoxes, box.new(bar_index-30, hi30+(rng*0.05), bar_index+2, lo30-(rng*0.05), border_color=color.new(cBord,70), border_style=line.style_dotted, bgcolor=color.new(cBord,97)), gc_pat_cap)
-    push_box_capped(patGeoBoxes, box.new(bar_index-28, hi30, bar_index, lo30, border_color=cBord, border_width=2, bgcolor=cCore), gc_pat_cap)
-    if not na(macroTarget)
-        box.new(bar_index, isBullPat?macroTarget:close, bar_index+15, isBullPat?close:macroTarget, border_color=color.new(cTarg,50), border_style=line.style_dashed, bgcolor=cTarg)
-        line.new(bar_index, macroTarget, bar_index+15, macroTarget, color=cBord, width=2)
+    int   lookbackBars = 30
+    int   leftBar      = bar_index - lookbackBars
+    int   rightBar     = bar_index
+    int   projRight    = rightBar + 18
+    float hi30         = ta.highest(high, lookbackBars)
+    float lo30         = ta.lowest(low, lookbackBars)
+    float rng          = math.max(hi30 - lo30, syminfo.mintick)
+    float patPad       = rng * 0.08
+    bool  isBullPat     = macroScore > 0
+    float targetPrice   = macroTarget
+    float entryPrice    = close
+    float stopBuffer    = rng * 0.25
+    float invalidation  = isBullPat ? (lo30 - stopBuffer) : (hi30 + stopBuffer)
+    float targetHi      = math.max(entryPrice, targetPrice)
+    float targetLo      = math.min(entryPrice, targetPrice)
+    float stopHi        = math.max(entryPrice, invalidation)
+    float stopLo        = math.min(entryPrice, invalidation)
+    color cHalo         = isBullPat ? color.new(#7CFF7C, 96) : color.new(#FF7C7C, 96)
+    color cGlow         = isBullPat ? color.new(#2DFF7A, 93) : color.new(#FF6A6A, 93)
+    color cCore         = isBullPat ? color.new(#00FF00, 86) : color.new(#FF0000, 86)
+    color cCoreDense    = isBullPat ? color.new(#00C853, 78) : color.new(#D50000, 78)
+    color cTargetOuter  = isBullPat ? color.new(#66D9FF, 89) : color.new(#FFB366, 89)
+    color cTargetInner  = isBullPat ? color.new(#00BFFF, 80) : color.new(#FF8C00, 80)
+    color cStopOuter    = isBullPat ? color.new(#FF8080, 91) : color.new(#80FF80, 91)
+    color cStopInner    = isBullPat ? color.new(#FF3333, 82) : color.new(#33FF33, 82)
+    color cBord         = isBullPat ? color.lime : color.red
+    color cTarg         = isBullPat ? color.aqua : color.orange
+    color cStop         = isBullPat ? color.maroon : color.new(color.rgb(00,255,00),87)
+    push_box_capped(patGeoBoxes, box.new(left=leftBar-6, top=hi30+patPad, right=projRight+2, bottom=lo30-patPad,
+         border_color=color.new(cBord, 88), border_width=1, border_style=line.style_dotted, bgcolor=cHalo), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=leftBar-3, top=hi30+(patPad*0.5), right=projRight+1, bottom=lo30-(patPad*0.5),
+         border_color=color.new(cBord, 78), border_width=1, border_style=line.style_dashed, bgcolor=cGlow), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=leftBar, top=hi30, right=rightBar, bottom=lo30,
+         border_color=cBord, border_width=2, border_style=line.style_solid, bgcolor=cCore), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=leftBar+1, top=hi30-(rng*0.04), right=rightBar-1, bottom=lo30+(rng*0.04),
+         border_color=color.new(cBord, 20), border_width=1, border_style=line.style_solid, bgcolor=cCoreDense), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=rightBar, top=targetHi+(rng*0.02), right=projRight, bottom=targetLo-(rng*0.02),
+         border_color=color.new(cTarg, 55), border_width=1, border_style=line.style_dashed, bgcolor=cTargetOuter), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=rightBar+1, top=targetHi, right=projRight, bottom=targetLo,
+         border_color=cTarg, border_width=1, border_style=line.style_solid, bgcolor=cTargetInner), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=rightBar, top=stopHi+(rng*0.015), right=projRight, bottom=stopLo-(rng*0.015),
+         border_color=color.new(cStop, 70), border_width=1, border_style=line.style_dotted, bgcolor=cStopOuter), gc_pat_cap)
+    push_box_capped(patGeoBoxes, box.new(left=rightBar+1, top=stopHi, right=projRight, bottom=stopLo,
+         border_color=cStop, border_width=1, border_style=line.style_dashed, bgcolor=cStopInner), gc_pat_cap)
+    line.new(x1=rightBar, y1=targetPrice, x2=projRight, y2=targetPrice, color=cTarg, width=2, style=line.style_solid)
+    line.new(x1=rightBar, y1=invalidation, x2=projRight, y2=invalidation, color=cStop, width=2, style=line.style_solid)
+    line.new(x1=leftBar, y1=entryPrice, x2=projRight, y2=entryPrice, color=color.new(cBord, 55), width=1, style=line.style_dotted)
+    float risk = math.abs(entryPrice - invalidation)
+    float reward = math.abs(targetPrice - entryPrice)
+    float rrRatio = risk > 0 ? reward / risk : 0
+    string labelData = "🔥 " + macroName + "\n" +
+        "──────────────\n" +
+        "Bias: " + (isBullPat ? "BULLISH" : "BEARISH") + " (Score: " + str.tostring(macroScore) + ")\n" +
+        "Entry: " + str.tostring(entryPrice, format.mintick) + "\n" +
+        "Target: " + str.tostring(targetPrice, format.mintick) + "\n" +
+        "Stop Loss: " + str.tostring(invalidation, format.mintick) + "\n" +
+        "Range: " + str.tostring(rng, format.mintick) + "\n" +
+        "R:R Ratio: " + str.tostring(rrRatio, "#.##") + "x\n" +
+        "TF: " + timeframe.period
+    label.new(x=rightBar, y=isBullPat ? lo30 : hi30,
+         text=labelData, color=color.new(cBord, 55), textcolor=color.white,
+         style=isBullPat ? label.style_label_up : label.style_label_down,
+         size=size.normal, textalign=text.align_left)
 int   statLB     = 20
 float statMean   = ta.sma(close, statLB)
 float statStdev  = ta.stdev(close, statLB)
