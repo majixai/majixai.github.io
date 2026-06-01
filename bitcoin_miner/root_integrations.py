@@ -10,6 +10,8 @@ FEATURED_ROOT_DIRS = (
     "actions",
     "esp32_bitcoin_pool_miner",
     "Integrated_circuit",
+    "BM1373",
+    "ESP32",
     "ai",
     "hash",
     "pwa",

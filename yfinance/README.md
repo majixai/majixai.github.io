@@ -74,7 +74,7 @@ fi
 python fetch_ixic_timeframes.py
 ```
 
-This writes timestamped CSV files for ^IXIC at 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 1wk, 1mo, and 3mo intervals into the repository root.
+This writes separate CSV files for ^IXIC at 1m, 5m, 15m, 1h, 1d, and 1wk intervals using `period=max`, saved in `index/csv/` as `IXIC_<interval>.csv`.
 
 ## Report structure
 

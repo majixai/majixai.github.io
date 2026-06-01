@@ -347,7 +347,7 @@
       </div>
 
       <div class="mb-3 form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="requireHistory" checked>
+        <input class="form-check-input" type="checkbox" role="switch" id="requireHistory">
         <label class="form-check-label form-label mt-1" for="requireHistory">Require Image History</label>
       </div>
 
@@ -1304,57 +1304,92 @@ function setupIntersectionObservers() {
   }
 }
 
+async function fetchHistoryArchive(username) {
+ const safeUsername = encodeURIComponent(username);
+ const candidates = [
+   `dbs/history/${safeUsername}.dat`,
+   `history/${safeUsername}.dat`,
+ ];
+ let lastError = null;
+
+ for (const candidate of candidates) {
+   try {
+     const response = await fetch(`${candidate}?t=${Date.now()}`);
+     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+     return await response.arrayBuffer();
+   } catch (error) {
+     lastError = error;
+   }
+ }
+
+ throw lastError || new Error('History archive unavailable');
+}
+
 function initSlideshowRuntime(card) {
   if (card.dataset.intervalId) return; 
-  const images = card._imgArray;
-  if (!images) return;
+  if (!card._imgArray) card._imgArray = [];
 
-  if (images.length <= 1 && !card.dataset.historyFetched) {
-    const username = card.dataset.user;
-    if (username) {
-      const safeUsername = encodeURIComponent(username);
-      card.dataset.historyFetched = 'true';
-      fetch(`history/${safeUsername}.dat`)
-        .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
-        .then(buffer => {
-          const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
-          const fetched = [...new Set(JSON.parse(decompressed).filter(Boolean))];
-          if (fetched.length > 1) {
-            card._imgArray = fetched;
-                // Update _imageCount on the dataset item for sort/filter accuracy
-                if (state.filteredDataset) {
-                  const dataItem = state.filteredDataset.find(d => d.username === card.dataset.user);
-                  if (dataItem) dataItem._imageCount = fetched.length;
-                }
-            const badge = card.querySelector('.img-count-badge');
-            if (badge) badge.textContent = `🖼 ${fetched.length}`;
-            else {
-              const b = document.createElement('span');
-              b.className = 'img-count-badge';
-              b.textContent = `🖼 ${fetched.length}`;
-              card.appendChild(b);
+  const username = card.dataset.user;
+  const historyRefreshMs = 60000;
+  const lastFetchAt = parseInt(card.dataset.historyLastFetchAt || '0', 10);
+  const fetchInFlight = card.dataset.historyFetchInFlight === 'true';
+  const historyIsStale = !lastFetchAt || (Date.now() - lastFetchAt >= historyRefreshMs);
+
+  if (username && historyIsStale && !fetchInFlight) {
+    card.dataset.historyFetchInFlight = 'true';
+    fetchHistoryArchive(username)
+      .then(buffer => {
+        const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
+        const fetched = [...new Set(JSON.parse(decompressed).filter(Boolean))];
+        if (fetched.length > 0) {
+          card._imgArray = [...new Set([...(card._imgArray || []), ...fetched])];
+
+          if (state.filteredDataset) {
+            const dataItem = state.filteredDataset.find(d => d.username === card.dataset.user);
+            if (dataItem) {
+              dataItem.image_history = [...new Set([...(dataItem.image_history || []), ...fetched])];
+              dataItem._imageCount = card._imgArray.length;
             }
-            if (!card.querySelector('.progress-bar-custom')) {
-              const pb = document.createElement('div');
-              pb.className = 'progress-bar-custom';
-              pb.innerHTML = '<div class="progress-fill"></div>';
-              card.insertBefore(pb, card.firstChild);
-            }
+          }
+
+          const badge = card.querySelector('.img-count-badge');
+          if (badge) badge.textContent = `🖼 ${card._imgArray.length}`;
+          else {
+            const b = document.createElement('span');
+            b.className = 'img-count-badge';
+            b.textContent = `🖼 ${card._imgArray.length}`;
+            card.appendChild(b);
+          }
+
+          if (!card.querySelector('.progress-bar-custom')) {
+            const pb = document.createElement('div');
+            pb.className = 'progress-bar-custom';
+            pb.innerHTML = '<div class="progress-fill"></div>';
+            card.insertBefore(pb, card.firstChild);
+          }
+
+          if (!card.dataset.intervalId && card._imgArray.length > 1) {
             initSlideshowRuntime(card);
           }
-        })
-        .catch(e => { console.warn(`[slideshow] Could not load history for ${username}:`, e.message); });
-    }
-    return;
+        }
+      })
+      .catch(e => { console.warn(`[slideshow] Could not load history for ${username}:`, e.message); })
+      .finally(() => {
+        card.dataset.historyLastFetchAt = String(Date.now());
+        card.dataset.historyFetchInFlight = 'false';
+      });
   }
 
-  if (images.length <= 1) return;
+  if ((card._imgArray || []).length <= 1) return;
 
   const imgEl = card.querySelector('.slide-img');
   const progBar = card.querySelector('.progress-fill');
   
   const duration = state.slideshowSpeed + Math.random() * 1500;
   const triggerStep = () => {
+    const images = card._imgArray || [];
+    if (images.length <= 1) return;
+
     if (progBar) {
       progBar.style.transition = 'none'; progBar.style.width = '0%'; void progBar.offsetWidth; 
       progBar.style.transition = `width ${duration}ms linear`; progBar.style.width = '100%';

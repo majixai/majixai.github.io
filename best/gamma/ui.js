@@ -253,6 +253,27 @@ class UIManager {
         }
     }
 
+    async _fetchHistoryArchive(username) {
+        const safeUsername = encodeURIComponent(username);
+        const candidates = [
+            `../dbs/history/${safeUsername}.dat`,
+            `../history/${safeUsername}.dat`,
+        ];
+        let lastError = null;
+
+        for (const candidate of candidates) {
+            try {
+                const response = await fetch(`${candidate}?t=${Date.now()}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.arrayBuffer();
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('History archive unavailable');
+    }
+
     /**
      * Initialize slideshow for a performer card if multiple images are available.
      * @param {HTMLElement} cardElement
@@ -268,9 +289,7 @@ class UIManager {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
                 obs.disconnect();
-                const datPath = `../history/${encodeURIComponent(user.username)}.dat`;
-                fetch(datPath)
-                    .then(r => r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`)))
+                this._fetchHistoryArchive(user.username)
                     .then(buffer => {
                         const decompressed = pako.inflate(new Uint8Array(buffer), { to: 'string' });
                         const urls = [...new Set(JSON.parse(decompressed).filter(Boolean))];

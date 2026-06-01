@@ -49,12 +49,12 @@ on:
       runtime_seconds:
         description: 'Maximum runtime for the DB pipeline in seconds'
         required: true
-        default: '300'
+        default: '55'
         type: string
       api_max_pages:
         description: 'Maximum API pages to fetch (safety cap; actual pages determined by API count)'
         required: true
-        default: '100'
+        default: '500'
         type: string
       api_concurrency:
         description: 'Number of concurrent API requests'
@@ -240,8 +240,8 @@ jobs:
       - name: Execute Compressed Image DB Pipeline
         id: db_pipeline
         env:
-          RUNTIME_SECONDS: ${{ github.event.inputs.runtime_seconds || '300' }}
-          API_MAX_PAGES: ${{ github.event.inputs.api_max_pages || '100' }}
+          RUNTIME_SECONDS: ${{ github.event.inputs.runtime_seconds || '55' }}
+          API_MAX_PAGES: ${{ github.event.inputs.api_max_pages || '500' }}
           API_CONCURRENCY: ${{ github.event.inputs.api_concurrency || '6' }}
           IMAGE_CONCURRENCY: ${{ github.event.inputs.image_concurrency || '12' }}
         run: |
@@ -318,8 +318,8 @@ jobs:
           #   best/dbs/performer_images.db.gz        (compressed image DB)
           #   best/dbs/performer_images_manifest.dat (viewer manifest)
           #   best/dbs/gpu_recognition_manifest.dat  (recognition manifest)
-          #   best/history/*.dat                     (per-performer image history)
-          #   best/*.dat                             (any other generated .dat files)
+          #   best/dbs/history/*.dat                (per-performer image history)
+          #   best/dbs/history_index.json            (archive index)
           git add best/ || true
 
           # Default to 0 so CHANGED_COUNT is always defined (used in the commit message step)

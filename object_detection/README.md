@@ -14,7 +14,8 @@ The detector uses Ultralytics YOLO when available and automatically falls back t
   - `GET /health` for health checks
   - `GET /` for web UI
   - `WS /ws` for browser frame streaming and inference
-- Browser app that captures webcam frames and streams JPEG frames over WebSocket
+- Browser app that captures webcam frames and streams smaller JPEG frames over
+  WebSocket on an adaptive loop for better throughput
 - CLI camera/screen loops with annotated preview windows
 - Docker image support
 - Pytest unit/integration tests

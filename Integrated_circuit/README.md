@@ -1,10 +1,12 @@
 # Integrated Circuit
 
-This directory captures circuit-level ideas that complement the Bitcoin miner and ESP32 exploration.
+This directory captures circuit-level ideas that complement the Bitcoin miner and ESP32-P4/8x BM1373 exploration.
 
 ## Integrations
 
 - [esp32_bitcoin_pool_miner](../esp32_bitcoin_pool_miner/)
+- [BM1373](../BM1373/)
+- [ESP32](../ESP32/)
 - [bitcoin_miner](../bitcoin_miner/)
 - [actions](../actions/)
 - [compiler](../compiler/)
@@ -16,6 +18,7 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 ## Notes
 
 - Designed as an educational circuit/hardware companion.
+- Current target concept: an ESP32-P4 control board for eight BM1373 ASICs with Bitaxe-style flashing support and reverse-engineered bring-up notes.
 - Linked into the site router and repository hash system.
 
 ## 400GHz protocol paradigm
@@ -29,6 +32,7 @@ The 400GHz protocol paradigm describes the board-side interpretation of a fast, 
 3. Keep fallback modes easy to reach.
 4. Tie each transaction to repository provenance.
 5. Use the same terminology across hardware and miner pages.
+6. Treat BM1373 integration as schematic-driven reverse engineering unless proven otherwise.
 
 ### Conceptual layers
 
@@ -48,6 +52,7 @@ The circuit page is the right place to explain how a high-rate protocol maps ont
 
 - A home for circuit-level reasoning, board layout notes, and embedded control descriptions.
 - A companion to the ESP32 mining page for people thinking about hardware and transport together.
+- A hub for BM1373 and ESP32 spec ops notes.
 - A place to keep low-level design notes separate from the higher-level bitcoin_miner dashboard.
 
 ## Suggested expansion areas
@@ -58,6 +63,7 @@ The circuit page is the right place to explain how a high-rate protocol maps ont
 4. Thermal and power constraints for sustained operation.
 5. Linkable examples that show how circuit timing relates to mining throughput.
 6. A 400GHz transport interpretation for control and telemetry.
+7. Spec ops matrices for BM1373 and ESP32 control paths.
 
 ## Source organization
 
@@ -66,6 +72,8 @@ The circuit page is the right place to explain how a high-rate protocol maps ont
 | `index.html` | Browser-facing companion page and navigation hub |
 | `README.md` | High-level documentation and integration guide |
 | `../esp32_bitcoin_pool_miner/` | ESP32 mining concept page |
+| `../BM1373/` | BM1373 circuit companion page |
+| `../ESP32/` | ESP32 circuit companion page |
 | `../bitcoin_miner/` | Main mining demo and live data dashboard |
 | 400GHz protocol notes | Circuit-side transport vocabulary |
 
@@ -79,9 +87,12 @@ The 400GHz protocol paradigm belongs here because it gives the circuit page a st
 
 - [x] Present a dedicated circuit-level landing page
 - [x] Link to the ESP32 mining directory
+- [x] Link to the BM1373 circuit page
+- [x] Link to the ESP32 circuit page
 - [x] Link to the main mining demo
 - [x] Keep math references visible
 - [x] Add 400GHz protocol paradigm language
+- [x] Add spec ops expansion language
 - [ ] Add schematics
 - [ ] Add a BOM table
 - [ ] Add a frame timing budget

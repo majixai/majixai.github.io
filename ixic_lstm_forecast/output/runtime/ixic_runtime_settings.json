@@ -1,0 +1,141 @@
+{
+  "symbol": "^IXIC",
+  "primary_symbol": "^IXIC",
+  "seq_length": 60,
+  "epochs": 3,
+  "batch_size": 256,
+  "log_level": "INFO",
+  "train_verbose": "2",
+  "output_dir": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output",
+  "project": "ixic_lstm_forecast",
+  "selected_symbols": [
+    "^IXIC",
+    "^GSPC",
+    "^DJI",
+    "^RUT",
+    "^VIX",
+    "^FTSE",
+    "^N225",
+    "^HSI",
+    "^GDAXI",
+    "^FCHI",
+    "^STOXX50E",
+    "^BVSP"
+  ],
+  "selected_categories": [
+    "indices",
+    "tech_mega"
+  ],
+  "symbols_csv_path": "/home/runner/work/majixai.github.io/majixai.github.io/actions/symbols.csv",
+  "symbols_csv_url": "https://raw.githubusercontent.com/majixai/majixai.github.io/main/actions/symbols.csv",
+  "symbols_in_catalog": 1508,
+  "max_symbols": 12,
+  "schedule": {
+    "send_hour_local": 22,
+    "timezone": "America/New_York",
+    "market_calendar": "US_EQUITIES",
+    "webhook_event": "ixic-nightly-forecast"
+  },
+  "gemini": {
+    "model": "gemini-2.5-flash",
+    "daily_limit": 20,
+    "monthly_limit": 400
+  },
+  "routing": {
+    "route_namespace": "/ixic_lstm_forecast/",
+    "router_manifest": "/home/runner/work/majixai.github.io/majixai.github.io/router/routes.json",
+    "packet_router_module": "/home/runner/work/majixai.github.io/majixai.github.io/ai/packet-router.js"
+  },
+  "directories": {
+    "project": "ixic_lstm_forecast",
+    "projectRoot": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast",
+    "entries": [
+      {
+        "name": "yfinance",
+        "repoPath": "yfinance/",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/yfinance/",
+        "purpose": "Yahoo Finance acquisition and ticker alignment for IXIC symbol context.",
+        "exists": true,
+        "scaffoldExists": true
+      },
+      {
+        "name": "neural",
+        "repoPath": "yfinance_data/models/neural_forecaster.py",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/neural/",
+        "purpose": "Neural inference hand-off for multi-timeframe signal enrichment.",
+        "exists": true,
+        "scaffoldExists": true
+      },
+      {
+        "name": "ml",
+        "repoPath": "ixic_lstm_forecast/",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/ml/",
+        "purpose": "Primary IXIC forecasting model outputs, summaries, and compressed artifacts.",
+        "exists": true,
+        "scaffoldExists": true
+      },
+      {
+        "name": "ai",
+        "repoPath": "ai/",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/ai/",
+        "purpose": "Gemini prompt/routing integration and AI orchestration surfaces.",
+        "exists": true,
+        "scaffoldExists": true
+      },
+      {
+        "name": "gpu",
+        "repoPath": "gpu/",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/gpu/",
+        "purpose": "GPU-aware acceleration entry points for heavier neural retraining.",
+        "exists": true,
+        "scaffoldExists": true
+      },
+      {
+        "name": "routing",
+        "repoPath": "router/",
+        "scaffoldPath": "ixic_lstm_forecast/scaffolding/routing/",
+        "purpose": "Git/GAS webhook payload routing and route namespace coordination.",
+        "exists": true,
+        "scaffoldExists": true
+      }
+    ]
+  },
+  "setting_props": {
+    "primarySymbol": "IXIC_PRIMARY_SYMBOL",
+    "symbolsCsv": "IXIC_SYMBOLS_CSV",
+    "symbols": "IXIC_SYMBOLS",
+    "symbolCategories": "IXIC_SYMBOL_CATEGORIES",
+    "recipientEmails": "RECIPIENT_EMAILS",
+    "geminiApiKey": "GEMINI_API_KEY",
+    "geminiModel": "IXIC_GEMINI_MODEL",
+    "maxDailyCalls": "IXIC_GEMINI_DAILY_LIMIT",
+    "maxMonthlyCalls": "IXIC_GEMINI_MONTHLY_LIMIT",
+    "maxSymbols": "IXIC_MAX_SYMBOLS",
+    "sendHourLocal": "IXIC_SEND_HOUR_LOCAL",
+    "marketCalendar": "IXIC_MARKET_CALENDAR",
+    "timezone": "IXIC_TIMEZONE",
+    "webhookSecret": "IXIC_WEBHOOK_SECRET",
+    "gasWebhookUrl": "IXIC_GAS_WEBHOOK_URL"
+  },
+  "output": {
+    "output_dir": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output",
+    "runtime_dir": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/runtime",
+    "webhook_dir": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/webhooks",
+    "runtime_settings_json": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/runtime/ixic_runtime_settings.json",
+    "directory_scaffold_json": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/runtime/ixic_directory_scaffold.json",
+    "webhook_payload_json": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/webhooks/ixic_gas_payload.json",
+    "summary_json": "/home/runner/work/majixai.github.io/majixai.github.io/ixic_lstm_forecast/output/ixic_summary.json"
+  },
+  "git": {
+    "repository": "majixai/majixai.github.io",
+    "ref": "main",
+    "sha": "ba2dd493d5c52409919b6be114ae2fc2cddd6aca",
+    "actor": "majixai"
+  },
+  "security": {
+    "gemini_api_key": "SET_IN_GAS_SCRIPT_PROPERTIES",
+    "github_token": "SET_IN_GITHUB_ACTIONS_OR_GAS_SECRETS",
+    "webhook_secret": "SET_IN_GAS_SCRIPT_PROPERTIES"
+  },
+  "settings_source": "IXIC_OUTPUT_DIR"
+}

@@ -2583,6 +2583,14 @@ stdev_length = input.int(20, "StDev Length", minval=5, group=grp_1bar)
 stdev_mult = input.float(1.5, "StDev Multiplier", minval=0.1, group=grp_1bar)
 show_forecast_label = input.bool(true, "Show Forecast Label", group=grp_1bar)
 
+get_complex_narrative(string pattern, float vector, float vol) =>
+    string s = "The tape currently navigates " + pattern + ", which calls for a disciplined response. "
+    s += "Relative to the balance line, price is displaced by " + str.tostring(vector, "#.##") + " points, suggesting pressure is building away from equilibrium. "
+    s += "Volatility is running at " + str.tostring(vol, "#.##") + ", so the next impulse should be judged through both continuation and mean-reversion risk. "
+    s += "If the market loses that reference, the probability of a corrective snap-back rises quickly, especially when participation thins out. "
+    s += "Traders should keep invalidation tight, respect confirmation, and avoid assuming that the first thrust is the final word. "
+    s
+
 grp_hs = "Head & Shoulders Engine"
 hs_pivot_left = input.int(3, "Pivot Left", minval=1, maxval=10, group=grp_hs)
 hs_pivot_right = input.int(3, "Pivot Right", minval=1, maxval=10, group=grp_hs)
@@ -2641,6 +2649,7 @@ var GlobalManager GM = GlobalManager.new(
      0)
 
 var label forecast_lbl = na
+var string forecast_narrative = ""
 var line vwap_line = na
 var line vwap_upper = na
 var line vwap_lower = na
@@ -2716,12 +2725,17 @@ confidence = math.max(prob_bullish, prob_bearish)
 weighted_magnitude = ta.stdev(close, stdev_length) * stdev_mult * (confidence + 0.5)
 
 if show_forecast_label and barstate.islast
+    if barstate.isconfirmed
+        string current_pattern = mkv.label
+        float current_vector = close - nz(avwap, close)
+        float current_vol = ta.stdev(close, stdev_length)
+        forecast_narrative := get_complex_narrative(current_pattern, current_vector, current_vol)
     if na(forecast_lbl)
         forecast_lbl := label.new(bar_index, close, "", style=label.style_label_left, textcolor=color.white, color=color.new(color.black, 20))
     dir_txt = prob_bullish >= prob_bearish ? "Bullish" : "Bearish"
     label.set_x(forecast_lbl, bar_index)
     label.set_y(forecast_lbl, close)
-    label.set_text(forecast_lbl, "1B " + dir_txt + " • " + str.tostring(confidence * 100.0, "#.#") + "% • Δ " + str.tostring(weighted_magnitude, "#.####"))
+    label.set_text(forecast_lbl, "1B " + dir_txt + " • " + str.tostring(confidence * 100.0, "#.#") + "% • Δ " + str.tostring(weighted_magnitude, "#.####") + "\n" + forecast_narrative)
 
 // ==========================================
 // --- REGIME FILTER (ADX) ---
