@@ -65,6 +65,7 @@ The ESP32 miner page is the natural place to describe a transport that wants str
 5. Router/hash integration for any future subpages.
 6. A 400GHz protocol sketch with fallback behavior and integrity checks.
 7. BM1373 and ESP32 spec ops references for board-level coordination.
+8. Concrete firmware examples under `../ESP32/examples/mining/` for mining bring-up.
 
 ## Source organization
 

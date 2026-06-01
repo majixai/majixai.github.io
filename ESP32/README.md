@@ -29,11 +29,18 @@ The ESP32 spec ops focus on control, network, and safety behavior:
 - Use this page as the MCU-side companion to the BM1373 circuit page.
 - Keep board, firmware, and transport vocabulary consistent with the integrated circuit hub.
 
+## Examples
+
+- [Mining](./examples/mining/) — pool client and double-SHA256 bring-up scripts
+- [Multiple servos](./examples/servos/) — native PWM and PCA9685-backed servo demos
+- [I2C](./examples/i2c/) — bus scan and generic peripheral probe scripts
+
 ## Checklist
 
 - [x] Create a dedicated ESP32 landing page
 - [x] Link the circuit page to BM1373 and miner roots
 - [x] Add spec ops guidance for boot, network, and recovery
+- [x] Add example script families for mining, multiple servos, and I2C
 - [ ] Add pinout tables
 - [ ] Add firmware diagrams
 - [ ] Add protocol frame references

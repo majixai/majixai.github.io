@@ -64,6 +64,7 @@ The circuit page is the right place to explain how a high-rate protocol maps ont
 5. Linkable examples that show how circuit timing relates to mining throughput.
 6. A 400GHz transport interpretation for control and telemetry.
 7. Spec ops matrices for BM1373 and ESP32 control paths.
+8. Concrete I2C examples under `../ESP32/examples/i2c/` for peripheral bring-up.
 
 ## Source organization
 
