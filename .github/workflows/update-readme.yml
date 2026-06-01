@@ -44,6 +44,9 @@ jobs:
 
       - name: Run README update script
         id: update_readme
+        env:
+          README_UPDATE_BASE_SHA: ${{ github.event.before }}
+          README_UPDATE_HEAD_SHA: ${{ github.sha }}
         run: |
           set -o pipefail
           # Run the script but do not fail the entire job on error. Record success state as an output.
@@ -71,7 +74,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "docs: auto-update README stats [skip ci]"
-          file_pattern: README.md latest_commit/data.json latest_commit/README.md
+          file_pattern: README.md **/README.md latest_commit/data.json
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"
           commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
