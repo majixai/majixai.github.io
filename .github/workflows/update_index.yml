@@ -1,15 +1,9 @@
 name: Update Index Projects Data
 
 on:
-  # Run on push to main branch
+  # Run on every push so projects.json stays current on each commit
   push:
-    branches:
-      - main
-    paths:
-      - '**/index.html'
-      - '**/README.md'
-      - '**/*.json'
-  
+
   # Manual trigger
   workflow_dispatch:
     inputs:
