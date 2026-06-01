@@ -7,6 +7,7 @@ This directory captures circuit-level ideas that complement the Bitcoin miner an
 - [esp32_bitcoin_pool_miner](../esp32_bitcoin_pool_miner/)
 - [BM1373](../BM1373/)
 - [ESP32](../ESP32/)
+- [Ttp223](../Ttp223/)
 - [bitcoin_miner](../bitcoin_miner/)
 - [actions](../actions/)
 - [compiler](../compiler/)
@@ -52,6 +53,7 @@ The circuit page is the right place to explain how a high-rate protocol maps ont
 
 - A home for circuit-level reasoning, board layout notes, and embedded control descriptions.
 - A companion to the ESP32 mining page for people thinking about hardware and transport together.
+- A hub for Ttp223 touch-input notes.
 - A hub for BM1373 and ESP32 spec ops notes.
 - A place to keep low-level design notes separate from the higher-level bitcoin_miner dashboard.
 

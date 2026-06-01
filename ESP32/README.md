@@ -6,6 +6,7 @@ This directory documents the ESP32 as a circuit-level control companion for the 
 
 - [Integrated_circuit](../Integrated_circuit/)
 - [BM1373](../BM1373/)
+- [Ttp223](../Ttp223/)
 - [bitcoin_miner](../bitcoin_miner/)
 - [esp32_bitcoin_pool_miner](../esp32_bitcoin_pool_miner/)
 - [actions](../actions/)
@@ -22,11 +23,13 @@ The ESP32 spec ops focus on control, network, and safety behavior:
 3. GPIO, LED, and serial control
 4. Telemetry, timing, and retry handling
 5. Thermal and power-safe fallback modes
-6. Router/hash provenance checks
+6. Touch-input handling for board controls
+7. Router/hash provenance checks
 
 ## Notes
 
 - Use this page as the MCU-side companion to the BM1373 circuit page.
+- Use this page as the MCU-side companion to the Ttp223 touch-input page.
 - Keep board, firmware, and transport vocabulary consistent with the integrated circuit hub.
 
 ## Checklist
