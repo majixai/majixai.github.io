@@ -27,6 +27,6 @@ print(root)
 ```python
 from numerical_methods.numerical_core import gauss_legendre
 
-area = gauss_legendre(lambda x: x * x, 0.0, 1.0, n=4)
+area = gauss_legendre(lambda x: x * x, 0.0, 1.0, n_pts=5)
 print(area)
 ```
