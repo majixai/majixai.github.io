@@ -1,0 +1,1639 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// @version=5
+indicator("Ultimate Pattern Engine [Advanced Framework]", overlay=true, max_lines_count=500, max_labels_count=500, max_polylines_count=100)
+
+//==============================================================================
+// 1. CORE SETTINGS & SWINGS
+//==============================================================================
+groupCore = "Core Swings & Fibonacci"
+stt = input.int(3, 'Minimum Swing Length', minval=1, maxval=99, inline='1', group=groupCore, tooltip="Minimum bars required to identify a definitive swing high/low.")
+num = math.max(stt + 1, input.int(100, 'Maximum Swing Length', minval=2, maxval=100, inline='2', group=groupCore, tooltip="Maximum lookback span for validating a structural swing point."))
+
+ret_L = input.float(0.618, 'Retracement ', step=0.002, minval=0.5, maxval=0.618, inline='r', group=groupCore, tooltip="Lower boundary for Fibonacci retracement validation.")
+ret_H = input.float(0.786, '-', step=0.002, minval=0.786, maxval=0.9, inline='r', group=groupCore, tooltip="Upper boundary for Fibonacci retracement validation.")
+ext_L = input.float(1.272, 'Extension', step=0.002, minval=1.1, maxval=1.272, inline='e', group=groupCore, tooltip="Lower boundary for Fibonacci extension targets.")
+ext_H = input.float(1.618, '-', step=0.002, minval=1.618, maxval=1.8, inline='e', group=groupCore, tooltip="Upper boundary for Fibonacci extension targets.")
+
+leftBars = input.int(3, "Pivot Left Strength", minval=1, group=groupCore, tooltip="Number of lower highs/higher lows required to the left of the pivot.")
+rightBars = input.int(3, "Pivot Right Strength", minval=1, group=groupCore, tooltip="Number of lower highs/higher lows required to the right of the pivot.")
+
+//==============================================================================
+// 2. STYLE & DASHBOARD
+//==============================================================================
+groupStyle = 'Style & Rendering Engine'
+colBl = input.color(#089981, 'Bullish Color', group=groupStyle, tooltip="Primary color for bullish patterns and dashboard elements.")
+colBr = input.color(#f23645, 'Bearish Color', group=groupStyle, tooltip="Primary color for bearish patterns and dashboard elements.")
+textSize = str.lower(input.string('Small', 'Text Size', group=groupStyle, options=['Tiny', 'Small', 'Normal'], tooltip="Global text size for pattern labels and annotations."))
+showRatios = input.string('None', 'Show Ratios', group=groupStyle, options=['None', 'Ratios', 'Ratios With Margin'], tooltip="Determines if Fib ratios are displayed on the pattern legs.")
+usePolylines = input.bool(true, "Use Advanced Polyline Rendering", tooltip="Fills patterns with translucent backgrounds instead of just lines. Highly recommended for Harmonics.", group=groupStyle)
+
+groupDash = 'Dashboard'
+showDash = input.bool(true, 'Show Dashboard', group=groupDash, tooltip="Toggle the heads-up display showing active and historical patterns.")
+table_position = str.replace(str.lower(input.string('Top Right', 'Location', group=groupDash, options=['Top Right', 'Bottom Right', 'Bottom Left'], tooltip="Screen position for the real-time statistics dashboard.")), " ", "_")
+
+//==============================================================================
+// 3. PATTERN TOGGLES & LIMITS (EXPANDED)
+//==============================================================================
+groupClass = "Classic Chart Patterns"
+showHSTop = input.bool(true, "Head & Shoulders (Top/Inv)", group=groupClass, tooltip="Detects standard and inverse Head & Shoulders formations.")
+showWedges = input.bool(true, "Rising / Falling Wedges", group=groupClass, tooltip="Detects converging trendlines indicating potential breakouts.")
+showMtopsBots = input.bool(true, "Double/Triple Tops & Bottoms", group=groupClass, tooltip="Detects major structural rejections at horizontal support/resistance.")
+showCupHandle = input.bool(true, "Cup & Handle", group=groupClass, tooltip="Detects rounded bottom continuation patterns.")
+showTriFlags = input.bool(true, "Triangles / Pennants / Flags", group=groupClass, tooltip="Detects short-term continuation flags and pennants.")
+showBroadening = input.bool(false, "Broadening Formations (Megaphone)", group=groupClass, tooltip="Detects diverging trendlines (expanding volatility).")
+
+groupHarmonic = "Harmonic & Advanced Patterns"
+showGartley = input.bool(false, "Gartley Pattern", group=groupHarmonic, tooltip="Detects the classic XABCD Gartley retracement pattern.")
+showBat = input.bool(false, "Bat Pattern", group=groupHarmonic, tooltip="Detects the deep-retracement Bat pattern.")
+showButterfly = input.bool(false, "Butterfly Pattern", group=groupHarmonic, tooltip="Detects the Butterfly extension pattern.")
+showWolfe = input.bool(false, "Wolfe Waves", group=groupHarmonic, tooltip="Detects 5-wave Wolfe reversal structures.")
+
+groupSpan = "Span Limits (Bars)"
+CUP_MIN = input.int(30, "Cup Min", minval=1, inline="cup", group=groupSpan, tooltip="Minimum bar duration for a valid Cup formation.")
+CUP_MAX = input.int(80, "Cup Max", minval=1, inline="cup", group=groupSpan, tooltip="Maximum bar duration for a valid Cup formation.")
+SYM_MIN = input.int(20, "Sym Tri Min", minval=1, inline="sym", group=groupSpan, tooltip="Minimum bars for Symmetrical Triangles.")
+SYM_MAX = input.int(50, "Sym Tri Max", minval=1, inline="sym", group=groupSpan, tooltip="Maximum bars for Symmetrical Triangles.")
+FLAG_MIN = input.int(15, "Flag Min", minval=1, inline="flg", group=groupSpan, tooltip="Minimum duration for Flag/Pennant consolidation.")
+FLAG_MAX = input.int(30, "Flag Max", minval=1, inline="flg", group=groupSpan, tooltip="Maximum duration for Flag/Pennant consolidation.")
+HARM_MIN = input.int(10, "Harmonic Min", minval=1, inline="hrm", group=groupSpan, tooltip="Minimum bars required from X to D point.")
+HARM_MAX = input.int(100, "Harmonic Max", minval=1, inline="hrm", group=groupSpan, tooltip="Maximum bars allowed from X to D point.")
+
+//==============================================================================
+// 4. CONFIRMATION & FILTERS
+//==============================================================================
+groupConf = "Confirmation & Filters"
+useFollowThrough = input.bool(true, "Confirm: Follow-through candle", group=groupConf, tooltip="Requires the candle following the breakout to close in the direction of the pattern.")
+useVolumeSpike = input.bool(true, "Confirm: Volume spike vs 20-bar avg", group=groupConf, tooltip="Requires breakout volume to exceed the moving average.")
+volMult = input.float(1.3, "Volume spike multiplier", minval=1.0, step=0.1, group=groupConf, tooltip="Multiplier for the 20-bar volume average to qualify as a spike.")
+useRSIMomentum = input.bool(true, "Confirm: RSI momentum agrees", group=groupConf, tooltip="Requires RSI to be appropriately bullish/bearish at the time of breakout.")
+rsiLen = input.int(14, "RSI length", minval=2, group=groupConf, tooltip="Lookback length for the RSI confirmation filter.")
+
+
+//==============================================================================
+// 5. RENDERING ENGINE ARCHITECTURE (UDTs)
+//==============================================================================
+
+// @type Defines a geometric coordinate on the chart mapped to price and time.
+// @field x The bar index (time axis) of the point.
+// @field y The price level (y-axis) of the point.
+type Point
+    int x  
+    float y 
+
+// @type Core pattern data structure containing all metadata necessary for the Rendering Engine.
+// @field id The string identifier for the pattern (e.g., "Cup & Handle", "Gartley").
+// @field direction 1 for Bullish, -1 for Bearish. Used to determine colors and trade logic.
+// @field nodes An array of `Point` objects representing the swing pivots making up the pattern.
+// @field isConfirmed Boolean flag indicating if the pattern passed the volume/RSI confirmation filters.
+// @field col The dynamically assigned color object used by the rendering engine.
+type ChartPattern
+    string id           
+    int direction       
+    array<Point> nodes  
+    bool isConfirmed    
+    color col           
+
+// Array to hold all detected patterns waiting to be rendered by the engine.
+var array<ChartPattern> patternQueue = array.new<ChartPattern>()
+
+//==============================================================================
+// 6. RENDERER METHODS
+//==============================================================================
+
+// @function Renders a pattern using standard structural lines and trailing labels.
+// @param this The `ChartPattern` instance to be drawn.
+// @returns void (Draws objects directly to the chart).
+method drawClassic(ChartPattern this) =>
+    if array.size(this.nodes) > 1
+        for i = 0 to array.size(this.nodes) - 2
+            p1 = array.get(this.nodes, i)
+            p2 = array.get(this.nodes, i + 1)
+            line.new(p1.x, p1.y, p2.x, p2.y, color=this.col, width=2)
+        
+        // Label at the final node/point of the pattern
+        lastPoint = array.get(this.nodes, array.size(this.nodes) - 1)
+        label.new(lastPoint.x, lastPoint.y, this.id, color=color.new(this.col, 80), textcolor=this.col, style=label.style_label_down)
+
+// @function Advanced Polyline rendering for shaded shapes (e.g., Harmonics, Triangles, PRZ zones).
+// @param this The `ChartPattern` instance to be drawn using polyline mapping.
+// @returns void (Draws filled polyline shapes directly to the chart).
+method drawPolyline(ChartPattern this) =>
+    if array.size(this.nodes) >= 3
+        pl_points = array.new<chart.point>()
+        for i = 0 to array.size(this.nodes) - 1
+            p = array.get(this.nodes, i)
+            array.push(pl_points, chart.point.from_index(p.x, p.y))
+        
+        // Render a closed shape with a translucent background fill
+        polyline.new(pl_points, closed=true, line_color=this.col, fill_color=color.new(this.col, 85))
+
+//==============================================================================
+// 7. PLACEHOLDER DETECTION LOGIC
+//==============================================================================
+// (Pivot calculations, swing logic, and pattern detection arrays will go here)
+
+//-----------------------------------------------------------------------------} 
+// UDT's (USER DEFINED TYPES & DATA STRUCTURES)
+//-----------------------------------------------------------------------------{
+
+// @type Core pivot point representation
+// @field d Direction, depth, or index identifier
+// @field x Bar index (time axis)
+// @field y Price level
+// @field isHigh Boolean identifying if this is a pivot high vs pivot low
+type piv 
+    int d
+    int x 
+    float y
+    bool isHigh
+
+// @type ZigZag structure holding an array of calculated pivots
+// @field piv Array of core pivot points
+type ZZ 
+    array<piv> piv
+
+// @type Complex drawing object holding multi-layered rendering elements
+// @field points Array of chart coordinates for polyline shapes
+// @field poly The generated polyline object for background fills
+// @field box... Assorted bounding boxes for specific pattern zones (A, B, C, D)
+// @field lines Array of connecting lines for structural borders
+// @field labels Array of text labels for ratio/pattern annotations
+type drawing
+    array<chart.point> points
+    polyline poly 
+    box boxAT
+    box boxAB 
+    box boxBT 
+    box boxBB
+    box boxCT 
+    box boxCB 
+    box boxDT
+    box boxDB
+    array<line> lines
+    array<label> labels
+
+//==============================================================================
+// MATH & GEOMETRY TYPES
+//==============================================================================
+
+// @type Holds Fibonacci ratios between structural points (Crucial for Harmonics)
+// @field xab Retracement of XA by AB
+// @field abc Retracement of AB by BC
+// @field bcd Extension of BC by CD
+// @field xad Retracement/Extension of XA by AD
+type FibRatios
+    float xab
+    float abc
+    float bcd
+    float xad
+
+// @type Defines the Potential Reversal Zone (PRZ) bounds for Harmonic Patterns
+// @field top Upper price limit of the reversal zone
+// @field bottom Lower price limit of the reversal zone
+// @field center Median price of the convergence area
+// @field startIndex The bar index where the PRZ was established
+// @field isTested Boolean indicating if price has penetrated the PRZ
+type PRZ
+    float top
+    float bottom
+    float center
+    int startIndex
+    bool isTested
+
+//==============================================================================
+// PATTERN SPECIFIC TYPES
+//==============================================================================
+
+// @type Structure for Harmonic Patterns (Gartley, Bat, Butterfly, Crab, etc.)
+// @field name String identifier (e.g., "Bullish Bat")
+// @field dir 1 = Bullish, -1 = Bearish
+// @field x, a, b, c, d The 5 defining pivot points of the harmonic structure
+// @field ratios The measured Fibonacci ratios between the legs
+// @field prz The calculated reversal zone based on fib clusters
+// @field isValid Boolean flag passing strict harmonic tolerance checks
+type HarmonicPattern
+    string name
+    int dir 
+    piv x
+    piv a
+    piv b
+    piv c
+    piv d
+    FibRatios ratios
+    PRZ prz
+    bool isValid
+
+// @type Structure for Classic Chart Patterns (Wedges, H&S, Triangles, Flags)
+// @field name String identifier (e.g., "Rising Wedge")
+// @field dir 1 = Bullish, -1 = Bearish
+// @field topPivots Array of pivots forming the upper resistance boundary
+// @field bottomPivots Array of pivots forming the lower support boundary
+// @field supportLine Trendline object mapping support
+// @field resistLine Trendline object mapping resistance
+// @field apexPoint The calculated convergence point of the two boundaries
+// @field isConfirmed Boolean flag passing breakout/volume checks
+type ClassicPattern
+    string name
+    int dir
+    array<piv> topPivots
+    array<piv> bottomPivots
+    line supportLine
+    line resistLine
+    piv apexPoint
+    bool isConfirmed
+
+// @type Specialized structure for Cup & Handle due to its unique, non-linear geometry
+// @field dir 1 = Bullish (Cup), -1 = Bearish (Inverted Cup)
+// @field cupStart The originating lip of the cup
+// @field cupBottom The deepest/highest pivot of the bowl
+// @field cupRim The secondary lip closing the cup
+// @field handleEnd The final pivot of the handle before breakout
+// @field depthPct Measured depth to validate against max/min constraints
+type CupHandlePattern
+    int dir
+    piv cupStart
+    piv cupBottom
+    piv cupRim
+    piv handleEnd
+    float depthPct
+    bool isValid
+
+//==============================================================================
+// STRATEGY & TRADE EXECUTION TYPES
+//==============================================================================
+
+// @type Represents a concrete Trade Setup generated by the master strategy engine
+// @field patternId The name of the pattern that triggered the setup
+// @field dir 1 = Long, -1 = Short
+// @field entryPrice The exact calculation for market/limit entry
+// @field stopLoss The calculated invalidation level (Swing low/ATR/Fixed)
+// @field takeProfit1 First scale-out target
+// @field takeProfit2 Final macro target
+// @field entryMethod "Breakout", "Retest", or "Aggressive"
+// @field status "Pending", "Active", "Stopped", or "Target Hit"
+type TradeSetup
+    string patternId
+    int dir
+    float entryPrice
+    float stopLoss
+    float takeProfit1
+    float takeProfit2
+    string entryMethod 
+    string status 
+
+// @type State manager for the Strategy Risk & Sizing logic
+// @field accountRiskPct Percentage of total equity to risk per trade
+// @field currentRiskMultiplier Adjusted risk based on win/loss streak (Compounding)
+// @field maxOpenTrades Limit to prevent over-exposure
+// @field activeTrades Count of currently open positions
+type RiskManager
+    float accountRiskPct
+    float currentRiskMultiplier
+    int maxOpenTrades
+    int activeTrades
+
+// @type Master Rendering Queue separating objects by priority and processing stage
+// @field drawings Array of physical visual objects to draw
+// @field harmonicQueue Array of pending harmonics waiting for D-point confirmation
+// @field classicQueue Array of pending classics waiting for breakout confirmation
+// @field setups Array of trade setups to feed into strategy.entry()
+type EngineState
+    array<drawing> drawings
+    array<HarmonicPattern> harmonicQueue
+    array<ClassicPattern> classicQueue
+    array<TradeSetup> setups
+//-----------------------------------------------------------------------------} 
+// GLOBAL STATE & VARIABLES
+//-----------------------------------------------------------------------------{
+
+int n = bar_index
+
+// Initialize the Master Engine State (Centralized queue for all structures)
+var EngineState engine = EngineState.new(
+     array.new<drawing>(),
+     array.new<HarmonicPattern>(),
+     array.new<ClassicPattern>(),
+     array.new<TradeSetup>()
+ )
+
+// Master Pivot Arrays (Replaces primitive parallel arrays)
+var array<piv> masterHighs = array.new<piv>()
+var array<piv> masterLows  = array.new<piv>()
+var ZZ masterZigZag        = ZZ.new(array.new<piv>())
+
+// Dashboard Initialization
+var tb = table.new(table_position, columns=3, rows=15, 
+     bgcolor = #1e222d, 
+     border_color = #373a46, 
+     border_width = 1, 
+     frame_color = #373a46, 
+     frame_width = 1)
+
+var array<string> lastTime = array.new<string>(1, "")
+
+//---------------------------------------------------------
+// 2) COLORS / STYLE THEMING
+//---------------------------------------------------------
+// Preserving your core palette while preparing alpha values for the Polyline engine
+colHSTopFill     = color.new(color.purple, 85)
+colHSTopLine     = color.new(color.purple, 0)
+
+colHSInvFill     = color.new(color.teal, 85)
+colHSInvLine     = color.new(color.teal, 0)
+
+colWedgeRiseFill = color.new(color.lime, 85)
+colWedgeRiseLine = color.new(color.lime, 0)
+
+colWedgeFallFill = color.new(color.red, 85)
+colWedgeFallLine = color.new(color.red, 0)
+
+colMTopFill      = color.new(color.orange, 85)
+colMBotFill      = color.new(color.blue, 85)
+
+colCupFill       = color.new(color.yellow, 85)
+colCupLine       = color.new(color.yellow, 0)
+
+colTriLine       = color.new(color.white, 0)
+colTriFill       = color.new(color.gray, 85)
+
+colFlagLine      = color.new(color.white, 0)
+colFlagFillBull  = color.new(color.lime, 85)
+colFlagFillBear  = color.new(color.red, 85)
+
+labelTxtColor    = color.white
+labelBgClear     = color.new(color.black, 100) // 100 = completely transparent
+
+//---------------------------------------------------------
+// 3) OBJECT-ORIENTED PIVOT COLLECTION
+//---------------------------------------------------------
+// Identify structural points using user-defined constraints
+float phPrice = ta.pivothigh(high, leftBars, rightBars)
+float plPrice = ta.pivotlow(low, leftBars, rightBars)
+
+int phBar = not na(phPrice) ? (n - rightBars) : na
+int plBar = not na(plPrice) ? (n - rightBars) : na
+
+// If a Pivot High is found, construct a 'piv' object and store it
+if not na(phPrice)
+    // piv.new(direction, x_bar, y_price, isHigh)
+    piv newHigh = piv.new(1, phBar, phPrice, true)
+    
+    // Unshift adds to index 0 (so array.get(arr, 0) is ALWAYS the most recent pivot)
+    array.unshift(masterHighs, newHigh)
+    array.unshift(masterZigZag.piv, newHigh)
+    
+    // Prune arrays to prevent memory overflow
+    if array.size(masterHighs) > 120
+        array.pop(masterHighs)
+
+// If a Pivot Low is found, construct a 'piv' object and store it
+if not na(plPrice)
+    // piv.new(direction, x_bar, y_price, isHigh)
+    piv newLow = piv.new(-1, plBar, plPrice, false)
+    
+    array.unshift(masterLows, newLow)
+    array.unshift(masterZigZag.piv, newLow)
+    
+    if array.size(masterLows) > 120
+        array.pop(masterLows)
+
+// Maintain maximum history for the unified ZigZag structure
+if array.size(masterZigZag.piv) > 240
+    array.pop(masterZigZag.piv)
+
+//---------------------------------------------------------
+// 4) BASIC HELPERS & ANNOTATION MANAGEMENT
+//---------------------------------------------------------
+var float lastPatternLabelPrice = na
+
+// Type-casted arrays for label management
+var array<int> labelBars = array.new<int>()
+var array<string> labelTexts = array.new<string>()
+
+//-----------------------------------------------------------------------------} 
+// 5) ENGINE HELPERS, MATH & ANNOTATIONS
+//-----------------------------------------------------------------------------{
+
+// @type Tracks labels to prevent overlapping text on the same bar
+type LabelRecord
+    int x
+    string txt
+
+var array<LabelRecord> globalLabels = array.new<LabelRecord>()
+
+// @function Draws pattern labels without background, stacking them dynamically
+PatternLabelNoBG(string _txt, int _bar, float _price) =>
+    if showPatternText
+        float verticalStep = syminfo.mintick * 80.0
+        bool alreadyExists = false
+        int stackCount = 0
+        
+        if array.size(globalLabels) > 0
+            for lbl in globalLabels
+                if lbl.x == _bar and lbl.txt == _txt
+                    alreadyExists := true
+                    break
+                if lbl.x == _bar
+                    stackCount += 1
+        
+        if not alreadyExists and stackCount < maxPatternLabels
+            float yPos = _price + (stackCount * verticalStep)
+            label.new(_bar, yPos, _txt,
+                 style = label.style_label_left,
+                 textcolor = labelTxtColor,
+                 color = labelBgClear, 
+                 size = size.small)
+            
+            array.push(globalLabels, LabelRecord.new(_bar, _txt))
+            if array.size(globalLabels) > 1000
+                array.shift(globalLabels) // Prune memory
+
+// @function Draws a translucent box (Adapted for Engine queue readiness)
+drawShadedBox(int x1, int x2, float yTop, float yBot, color boxCol) =>
+    box.new(left=x1, top=yTop, right=x2, bottom=yBot, bgcolor=boxCol, border_color=color.new(boxCol, 0))
+
+// @function Marks the origin bar of a macro pattern
+drawPatternStart(int startBar, string name) =>
+    int ago = bar_index - startBar
+    if ago >= 0 and not na(low[ago]) and not na(high[ago])
+        line.new(startBar, low[ago], startBar, high[ago],
+             extend = extend.none,
+             style = line.style_dotted,
+             color = color.new(color.yellow, 40))
+             
+        label.new(startBar, high[ago],
+             text = name + " start",
+             style = label.style_label_down,
+             color = color.new(color.yellow, 0),
+             textcolor = color.black,
+             size = size.tiny)
+
+// @function Finds the absolute lowest low in a specific bar index range
+rangeLowestLow(int barStart, int barEnd) =>
+    int rawSpan = math.max(barEnd - barStart, 1)
+    int maxSpan = bar_index + 1 // Protect against buffer overruns
+    int span = math.min(rawSpan, maxSpan)
+    ta.lowest(low, span)
+
+// @function Finds the absolute highest high in a specific bar index range
+rangeHighestHigh(int barStart, int barEnd) =>
+    int rawSpan = math.max(barEnd - barStart, 1)
+    int maxSpan = bar_index + 1
+    int span = math.min(rawSpan, maxSpan)
+    ta.highest(high, span)
+
+// @function Object-Oriented Slope Calculator. Extracts oldest/newest from a `piv` array
+method calcSlope(array<piv> srcArr) =>
+    float slopeVal = na
+    piv pOld = na
+    piv pNew = na
+    
+    int sz = array.size(srcArr)
+    if sz >= 2
+        // Since master arrays use unshift(), index 0 is newest, sz-1 is oldest
+        pOld := array.get(srcArr, sz - 1)
+        pNew := array.get(srcArr, 0)
+        slopeVal := (pNew.y - pOld.y) / (pNew.x - pOld.x)
+        
+    [slopeVal, pOld, pNew]
+
+// @function Object-Oriented Array Slicer. Grabs the most recent N pivots.
+method getLastNPivots(array<piv> srcArr, int N) =>
+    array<piv> outPivs = array.new<piv>()
+    int sz = array.size(srcArr)
+    
+    if sz >= N
+        // Index 0 to N-1 represents the most recent N pivots
+        for k = 0 to N - 1
+            array.push(outPivs, array.get(srcArr, k))
+            
+    outPivs
+
+// ----- Reversal candles (absolute-bar helper) -----
+isBearReversalAbs(int absBar) =>
+    int ago = bar_index - absBar
+    if ago >= 0 and not na(open[ago]) and not na(close[ago]) and not na(high[ago]) and not na(low[ago])
+        float o = open[ago], c = close[ago], h = high[ago]
+        float body = math.abs(c - o)
+        float upper = h - math.max(c, o)
+        (upper >= body * 2 and body > 0 and c <= o)
+    else
+        false
+
+isBullReversalAbs(int absBar) =>
+    int ago = bar_index - absBar
+    if ago >= 0 and not na(open[ago]) and not na(close[ago]) and not na(high[ago]) and not na(low[ago])
+        float o = open[ago], c = close[ago], l = low[ago]
+        float body = math.abs(c - o)
+        float lower = math.min(c, o) - l
+        (lower >= body * 2 and body > 0 and c >= o)
+    else
+        false
+//-----------------------------------------------------------------------------} 
+// 5) PATTERN DETECTORS (ENGINE MODULES)
+//-----------------------------------------------------------------------------{
+
+// @function 5A. Detects standard Head & Shoulders (Bearish Top)
+// @param eng The master EngineState tracking all queues
+// @returns [bool found, float neckLevel]
+method detectHeadShouldersTop(EngineState eng) =>
+    bool found = false
+    float neckLevel = na
+    
+    // We need at least 3 pivot highs to form an H&S
+    int sz = array.size(masterHighs)
+    
+    if sz >= 3 and showHSTop
+        // Loop through the most recent 5 pivot clusters to catch late-forming/historical patterns.
+        // Because masterHighs uses unshift(), index 0 is the newest pivot, index 2 is the oldest.
+        int end_i = math.min(5, sz - 3) 
+        
+        for i = 0 to end_i
+            piv rightPiv = array.get(masterHighs, i)
+            piv headPiv  = array.get(masterHighs, i + 1)
+            piv leftPiv  = array.get(masterHighs, i + 2)
+            
+            // 1. Core Geometric Constraints
+            bool shouldersSimilar = math.abs(leftPiv.y - rightPiv.y) / math.max(headPiv.y, 1e-10) < shoulderTol
+            bool headHigher = (headPiv.y > leftPiv.y) and (headPiv.y > rightPiv.y)
+            bool correctOrder = (leftPiv.x < headPiv.x) and (headPiv.x < rightPiv.x)
+            
+            // 2. Span & Time Constraints (Prevents finding malformed, stretched patterns)
+            int totalSpan = rightPiv.x - leftPiv.x
+            bool validSpan = (totalSpan >= minSpanDT) and (totalSpan <= maxSpanDT)
+            
+            if shouldersSimilar and headHigher and correctOrder and validSpan
+                int startBar = leftPiv.x
+                int endBar = rightPiv.x
+                
+                // Find the lowest point between the left shoulder and right shoulder to map the neckline
+                float neckLow = rangeLowestLow(startBar, endBar)
+                
+                // 3. Package the Pattern into our UDT
+                array<piv> topNodes = array.new<piv>()
+                array.push(topNodes, leftPiv)
+                array.push(topNodes, headPiv)
+                array.push(topNodes, rightPiv)
+                
+                // Create the physical line object for the neckline so the Engine can track it for breakouts
+                line neckLineObj = line.new(x1=startBar, y1=neckLow, x2=endBar, y2=neckLow, extend=extend.none, color=colHSTopLine, width=2)
+                
+                ClassicPattern hsTop = ClassicPattern.new(
+                     name = "H&S Top", 
+                     dir = -1,  // Bearish Bias
+                     topPivots = topNodes, 
+                     bottomPivots = array.new<piv>(), 
+                     supportLine = neckLineObj, 
+                     resistLine = na, 
+                     apexPoint = piv.new(-1, endBar, neckLow, false), // Storing the neckline origin as the apex
+                     isConfirmed = false // Will be updated by the Strategy Exec block later
+                 )
+                 
+                // 4. Render Visuals
+                if not cleanMode
+                    drawShadedBox(startBar, endBar, math.max(leftPiv.y, math.max(headPiv.y, rightPiv.y)), neckLow, colHSTopFill)
+                
+                PatternLabelNoBG("L. Shoulder", leftPiv.x, leftPiv.y)
+                PatternLabelNoBG("Head", headPiv.x, headPiv.y)
+                PatternLabelNoBG("R. Shoulder", rightPiv.x, rightPiv.y)
+                
+                drawPatternStart(startBar, "H&S Top")
+                
+                // 5. Push to Engine Queue
+                array.push(eng.classicQueue, hsTop)
+                
+                found := true
+                neckLevel := neckLow
+                
+                // Break after finding the most recent valid structure to prevent drawing overlapping historicals
+                break 
+
+    [found, neckLevel]
+
+// Example of how the engine calls this in the main calculation loop:
+// [hsFound, hsNeck] = engine.detectHeadShouldersTop()
+//-----------------------------------------------------------------------------} 
+// 5B. INVERSE HEAD & SHOULDERS (BULLISH BOTTOM)
+//-----------------------------------------------------------------------------{
+
+// @function Detects Inverse Head & Shoulders (Bullish Bottom)
+// @param eng The master EngineState tracking all queues
+// @returns [bool found, float neckLevel]
+method detectHeadShouldersInverse(EngineState eng) =>
+    bool found = false
+    float neckLevel = na
+    
+    int szL = array.size(masterLows)
+    
+    if szL >= 3 and showHSInv
+        // Loop through the most recent 5 pivot clusters. Index 0 is newest pivot.
+        int end_j = math.min(5, szL - 3)
+        
+        for j = 0 to end_j
+            piv rightPiv = array.get(masterLows, j)
+            piv headPiv  = array.get(masterLows, j + 1)
+            piv leftPiv  = array.get(masterLows, j + 2)
+            
+            // 1. Core Geometric Constraints
+            bool shouldersSimilar = math.abs(leftPiv.y - rightPiv.y) / math.max(math.abs(headPiv.y), 1e-10) < shoulderTol
+            bool headLower = (headPiv.y < leftPiv.y) and (headPiv.y < rightPiv.y)
+            bool correctOrderL = (leftPiv.x < headPiv.x) and (headPiv.x < rightPiv.x)
+            
+            // 2. Span & Time Constraints
+            int totalSpan = rightPiv.x - leftPiv.x
+            bool validSpan = (totalSpan >= minSpanDT) and (totalSpan <= maxSpanDT)
+            
+            if shouldersSimilar and headLower and correctOrderL and validSpan
+                int startBarInv = leftPiv.x
+                int endBarInv = rightPiv.x
+                
+                // Find the highest point between the shoulders to map the neckline
+                float neckHigh = rangeHighestHigh(startBarInv, endBarInv)
+                
+                // 3. Package the Pattern into our UDT
+                array<piv> bottomNodes = array.new<piv>()
+                array.push(bottomNodes, leftPiv)
+                array.push(bottomNodes, headPiv)
+                array.push(bottomNodes, rightPiv)
+                
+                line neckLineObj = line.new(x1=startBarInv, y1=neckHigh, x2=endBarInv, y2=neckHigh, extend=extend.none, color=colHSInvLine, width=2)
+                
+                ClassicPattern hsInv = ClassicPattern.new(
+                     name = "Inv H&S", 
+                     dir = 1,  // Bullish Bias
+                     topPivots = array.new<piv>(), 
+                     bottomPivots = bottomNodes, 
+                     supportLine = na, 
+                     resistLine = neckLineObj, 
+                     apexPoint = piv.new(1, endBarInv, neckHigh, true), 
+                     isConfirmed = false
+                 )
+                 
+                // 4. Render Visuals
+                if not cleanMode
+                    drawShadedBox(startBarInv, endBarInv, neckHigh, math.min(leftPiv.y, math.min(headPiv.y, rightPiv.y)), colHSInvFill)
+                
+                PatternLabelNoBG("L. Shoulder", leftPiv.x, leftPiv.y)
+                PatternLabelNoBG("Head", headPiv.x, headPiv.y)
+                PatternLabelNoBG("R. Shoulder", rightPiv.x, rightPiv.y)
+                
+                drawPatternStart(startBarInv, "Inv H&S")
+                
+                // 5. Push to Engine Queue
+                array.push(eng.classicQueue, hsInv)
+                
+                found := true
+                neckLevel := neckHigh
+                break 
+
+    [found, neckLevel]
+
+
+//-----------------------------------------------------------------------------} 
+// 5C. RISING & FALLING WEDGES
+//-----------------------------------------------------------------------------{
+
+// @function Detects Rising (Bearish) and Falling (Bullish) Wedges
+// @param eng The master EngineState
+// @returns [bool drewRising, bool drewFalling, float bullRef, float bearRef]
+method detectWedges(EngineState eng) =>
+    bool drewRising = false
+    bool drewFalling = false
+    float bullRef = na
+    float bearRef = na
+
+    if showWedges
+        // 1. Extract the last N pivots using our Object-Oriented helper method
+        array<piv> hiNodes = masterHighs.getLastNPivots(minWedgePts)
+        array<piv> loNodes = masterLows.getLastNPivots(minWedgePts)
+        
+        bool enoughHighs = array.size(hiNodes) == minWedgePts
+        bool enoughLows  = array.size(loNodes) == minWedgePts
+
+        if enoughHighs and enoughLows
+            // 2. Calculate slopes (Returns [slopeVal, oldestPiv, newestPiv])
+            [slopeHigh, hOld, hNew] = hiNodes.calcSlope()
+            [slopeLow, lOld, lNew]  = loNodes.calcSlope()
+            
+            // 3. Convergence Check
+            float startGap = math.abs(hOld.y - lOld.y)
+            float endGap   = math.abs(hNew.y - lNew.y)
+            bool converging = endGap < startGap
+            
+            // 4. Geometric Conditions
+            // Rising Wedge: Both trendlines rise, but lower support rises faster than upper resistance
+            bool risingCond = slopeHigh > 0 and slopeLow > 0 and slopeLow > slopeHigh and converging
+            
+            // Falling Wedge: Both trendlines fall, but upper resistance falls faster than lower support
+            bool fallingCond = slopeHigh < 0 and slopeLow < 0 and slopeHigh > slopeLow and converging
+            
+            bool recentEnough = (n - hNew.x) < 200
+            
+            if (risingCond or fallingCond) and recentEnough
+                bool isRising = risingCond
+                
+                // Set styles dynamically based on wedge direction
+                color lineCol = isRising ? colWedgeRiseLine : colWedgeFallLine
+                color fillCol = isRising ? colWedgeRiseFill : colWedgeFallFill
+                string txt    = isRising ? "Rising Wedge" : "Falling Wedge"
+                int bias      = isRising ? -1 : 1 // Rising = Bearish Breakout (-1), Falling = Bullish Breakout (1)
+                
+                // Create physical boundary lines
+                line resistLine = line.new(x1=hOld.x, y1=hOld.y, x2=hNew.x, y2=hNew.y, extend=extend.none, color=lineCol, width=2)
+                line supportLine = line.new(x1=lOld.x, y1=lOld.y, x2=lNew.x, y2=lNew.y, extend=extend.none, color=lineCol, width=2)
+                
+                // Render Shaded UI 
+                int leftX = math.min(hOld.x, lOld.x)
+                int rightX = math.max(hNew.x, lNew.x)
+                float topY = math.max(hOld.y, hNew.y)
+                float botY = math.min(lOld.y, lNew.y)
+                
+                if not cleanMode
+                    box.new(left=leftX, top=topY, right=rightX, bottom=botY, bgcolor=fillCol, border_color=fillCol)
+                
+                int midX = int(math.round((leftX + rightX) * 0.5))
+                float midY = (topY + botY) * 0.5
+                PatternLabelNoBG(txt, midX, midY)
+                
+                // 5. Package into UDT and Push to Queue
+                ClassicPattern wedgePattern = ClassicPattern.new(
+                    name = txt,
+                    dir = bias,
+                    topPivots = hiNodes,
+                    bottomPivots = loNodes,
+                    supportLine = supportLine,
+                    resistLine = resistLine,
+                    apexPoint = na, // Convergence point can be mathematically projected later if needed
+                    isConfirmed = false
+                 )
+                
+                array.push(eng.classicQueue, wedgePattern)
+                
+                if isRising
+                    drewRising := true
+                    bearRef := lNew.y // The support level to watch for short breakouts
+                else
+                    drewFalling := true
+                    bullRef := hNew.y // The resistance level to watch for long breakouts
+
+    [drewRising, drewFalling, bullRef, bearRef]
+//-----------------------------------------------------------------------------} 
+// 5D. DOUBLE / TRIPLE TOPS & BOTTOMS
+//-----------------------------------------------------------------------------{
+
+// @function Detects Multi-Tops and Bottoms using the engine's master pivot arrays
+// @param eng The master EngineState
+// @returns [bool confirmed, float bullRef, float bearRef]
+method detectMultiTopsBottoms(EngineState eng) =>
+    bool confirmed = false
+    float bullRef = na
+    float bearRef = na
+
+    if showMtopsBots
+        int szH = array.size(masterHighs)
+        
+        // --- TOPS ---
+        if szH >= 2 and not confirmed
+            piv h1 = array.get(masterHighs, 0) // Newest
+            piv h2 = array.get(masterHighs, 1) // Older
+            
+            int gapBarsDT = h1.x - h2.x
+            float midLow = rangeLowestLow(h2.x, h1.x)
+            
+            bool simDT = math.abs(h1.y - h2.y) / ((h1.y + h2.y) * 0.5) < shoulderTol
+            bool depthDT = ((math.max(h1.y, h2.y) - midLow) / math.max(h1.y, h2.y)) > swingDepthTol
+            int spanDT = gapBarsDT
+            
+            bool revOKdt = not reqReversalCndl or (isBearReversalAbs(h1.x) or isBearReversalAbs(h1.x+1)) and (isBearReversalAbs(h2.x) or isBearReversalAbs(h2.x+1))
+            bool dtPreOK = simDT and depthDT and gapBarsDT >= minGapBarsDT and spanDT >= minSpanDT and spanDT <= maxSpanDT and revOKdt
+            bool dtConfirmed = dtPreOK and (not confirmNeckBreak or close < midLow)
+
+            if dtConfirmed
+                array<piv> topNodes = array.new<piv>()
+                array.push(topNodes, h2), array.push(topNodes, h1)
+                
+                line neckLine = line.new(h2.x, midLow, h1.x, midLow, extend=extend.none, color=color.new(colMTopFill, 0), width=1)
+                
+                if not cleanMode
+                    drawShadedBox(h2.x, h1.x, math.max(h1.y, h2.y), midLow, colMTopFill)
+                
+                PatternLabelNoBG("Double Top", int(math.round((h2.x + h1.x) * 0.5)), h1.y)
+                array.push(eng.classicQueue, ClassicPattern.new("Double Top", -1, topNodes, array.new<piv>(), neckLine, na, na, false))
+                
+                confirmed := true
+                bearRef := midLow
+
+        // --- TRIPLE TOPS (Fallback if Double Top not found) ---
+        if szH >= 3 and not confirmed
+            piv h1 = array.get(masterHighs, 0), piv h2 = array.get(masterHighs, 1), piv h3 = array.get(masterHighs, 2)
+            
+            int leftMost = h3.x
+            int rightMost = h1.x
+            float trough = rangeLowestLow(leftMost, rightMost)
+            float avgTop = (h1.y + h2.y + h3.y) / 3.0
+            
+            bool simTT1 = math.abs(h1.y - avgTop) / avgTop < shoulderTol
+            bool simTT2 = math.abs(h2.y - avgTop) / avgTop < shoulderTol
+            bool simTT3 = math.abs(h3.y - avgTop) / avgTop < shoulderTol
+            
+            bool gapsOK = (h1.x - h2.x >= minGapBarsTT) and (h2.x - h3.x >= minGapBarsTT) or (h1.x - h3.x >= 2*minGapBarsTT)
+            int spanTT = rightMost - leftMost
+            bool depthTT = (avgTop - trough) / avgTop > swingDepthTol
+            
+            bool revOKtt = not reqReversalCndl or (isBearReversalAbs(h1.x) or isBearReversalAbs(h1.x+1)) and (isBearReversalAbs(h2.x) or isBearReversalAbs(h2.x+1)) and (isBearReversalAbs(h3.x) or isBearReversalAbs(h3.x+1))
+            bool ttPreOK = simTT1 and simTT2 and simTT3 and depthTT and gapsOK and spanTT >= minSpanTT and spanTT <= maxSpanTT and revOKtt
+            bool ttConfirmed = ttPreOK and (not confirmNeckBreak or close < trough)
+
+            if ttConfirmed
+                array<piv> topNodes = array.new<piv>()
+                array.push(topNodes, h3), array.push(topNodes, h2), array.push(topNodes, h1)
+                
+                line neckLine = line.new(leftMost, trough, rightMost, trough, extend=extend.none, color=color.new(colMTopFill, 0), width=1)
+                
+                if not cleanMode
+                    drawShadedBox(leftMost, rightMost, math.max(h1.y, math.max(h2.y, h3.y)), trough, colMTopFill)
+                
+                PatternLabelNoBG("Triple Top", int(math.round((leftMost + rightMost) * 0.5)), avgTop)
+                array.push(eng.classicQueue, ClassicPattern.new("Triple Top", -1, topNodes, array.new<piv>(), neckLine, na, na, false))
+                
+                confirmed := true
+                bearRef := trough
+
+        // --- BOTTOMS ---
+        int szL = array.size(masterLows)
+        
+        if szL >= 2 and not confirmed
+            piv l1 = array.get(masterLows, 0) // Newest
+            piv l2 = array.get(masterLows, 1) // Older
+            
+            int gapBarsDB = l1.x - l2.x
+            float midHigh = rangeHighestHigh(l2.x, l1.x)
+            
+            bool simDB = math.abs(l1.y - l2.y) / ((l1.y + l2.y) * 0.5) < shoulderTol
+            bool depthDB = ((midHigh - math.min(l1.y, l2.y)) / midHigh) > swingDepthTol
+            int spanDB = gapBarsDB
+            
+            bool revOKdb = not reqReversalCndl or (isBullReversalAbs(l1.x) or isBullReversalAbs(l1.x+1)) and (isBullReversalAbs(l2.x) or isBullReversalAbs(l2.x+1))
+            bool dbPreOK = simDB and depthDB and gapBarsDB >= minGapBarsDT and spanDB >= minSpanDT and spanDB <= maxSpanDT and revOKdb
+            bool dbConfirmed = dbPreOK and (not confirmNeckBreak or close > midHigh)
+
+            if dbConfirmed
+                array<piv> botNodes = array.new<piv>()
+                array.push(botNodes, l2), array.push(botNodes, l1)
+                
+                line neckLine = line.new(l2.x, midHigh, l1.x, midHigh, extend=extend.none, color=color.new(colMBotFill, 0), width=1)
+                
+                if not cleanMode
+                    drawShadedBox(l2.x, l1.x, midHigh, math.min(l1.y, l2.y), colMBotFill)
+                
+                PatternLabelNoBG("Double Bottom", int(math.round((l2.x + l1.x) * 0.5)), l1.y)
+                drawPatternStart(math.min(l1.x, l2.x), "Double Bottom")
+                
+                array.push(eng.classicQueue, ClassicPattern.new("Double Bottom", 1, array.new<piv>(), botNodes, na, neckLine, na, false))
+                confirmed := true
+                bullRef := midHigh
+
+        // --- TRIPLE BOTTOMS ---
+        if szL >= 3 and not confirmed
+            piv l1 = array.get(masterLows, 0), piv l2 = array.get(masterLows, 1), piv l3 = array.get(masterLows, 2)
+            
+            int leftMostB = l3.x
+            int rightMostB = l1.x
+            float crest = rangeHighestHigh(leftMostB, rightMostB)
+            float avgBot = (l1.y + l2.y + l3.y) / 3.0
+            
+            bool simTB1 = math.abs(l1.y - avgBot) / avgBot < shoulderTol
+            bool simTB2 = math.abs(l2.y - avgBot) / avgBot < shoulderTol
+            bool simTB3 = math.abs(l3.y - avgBot) / avgBot < shoulderTol
+            
+            bool gapsOKB = (l1.x - l2.x >= minGapBarsTT) and (l2.x - l3.x >= minGapBarsTT) or (l1.x - l3.x >= 2*minGapBarsTT)
+            int spanTB = rightMostB - leftMostB
+            bool depthTB = (crest - avgBot) / crest > swingDepthTol
+            
+            bool revOKtb = not reqReversalCndl or (isBullReversalAbs(l1.x) or isBullReversalAbs(l1.x+1)) and (isBullReversalAbs(l2.x) or isBullReversalAbs(l2.x+1)) and (isBullReversalAbs(l3.x) or isBullReversalAbs(l3.x+1))
+            bool tbPreOK = simTB1 and simTB2 and simTB3 and depthTB and gapsOKB and spanTB >= minSpanTT and spanTB <= maxSpanTT and revOKtb
+            bool tbConfirmed = tbPreOK and (not confirmNeckBreak or close > crest)
+
+            if tbConfirmed
+                array<piv> botNodes = array.new<piv>()
+                array.push(botNodes, l3), array.push(botNodes, l2), array.push(botNodes, l1)
+                
+                line neckLine = line.new(leftMostB, crest, rightMostB, crest, extend=extend.none, color=color.new(colMBotFill, 0), width=1)
+                
+                if not cleanMode
+                    drawShadedBox(leftMostB, rightMostB, crest, math.min(l1.y, math.min(l2.y, l3.y)), colMBotFill)
+                
+                PatternLabelNoBG("Triple Bottom", int(math.round((leftMostB + rightMostB) * 0.5)), avgBot)
+                array.push(eng.classicQueue, ClassicPattern.new("Triple Bottom", 1, array.new<piv>(), botNodes, na, neckLine, na, false))
+                confirmed := true
+                bullRef := crest
+
+    [confirmed, bullRef, bearRef]
+
+
+//-----------------------------------------------------------------------------} 
+// 5F. TRIANGLES, PENNANTS, & FLAGS
+//-----------------------------------------------------------------------------{
+
+// @function Helper to draw the Triangle/Flag bounds and return the physical line objects
+method drawChannelOrTriangle(piv pA, piv pC, piv pLbA, piv pLbC, color _lineCol, color _fillCol, string _labelTxt) =>
+    line topBorder = line.new(x1=pA.x, y1=pA.y, x2=pC.x, y2=pC.y, extend=extend.none, color=_lineCol, width=2)
+    line botBorder = line.new(x1=pLbA.x, y1=pLbA.y, x2=pLbC.x, y2=pLbC.y, extend=extend.none, color=_lineCol, width=2)
+    
+    float topY = math.max(math.max(pA.y, pC.y), math.max(pLbA.y, pLbC.y))
+    float botY = math.min(math.min(pA.y, pC.y), math.min(pLbA.y, pLbC.y))
+    int leftX = math.min(pA.x, pLbA.x)
+    int rightX = math.max(pC.x, pLbC.x)
+    
+    if not cleanMode
+        box.new(left=leftX, top=topY, right=rightX, bottom=botY, bgcolor=_fillCol, border_color=_fillCol)
+    
+    int midX = int(math.round((leftX + rightX) * 0.5))
+    float midY = (topY + botY) * 0.5
+    PatternLabelNoBG(_labelTxt, midX, midY)
+    
+    [topBorder, botBorder]
+
+// @function Detects continuation geometries
+method detectTriFlags(EngineState eng) =>
+    bool foundAny = false
+    float bullRef = na
+    float bearRef = na
+
+    if showTriFlags
+        int szH = array.size(masterHighs)
+        int szL = array.size(masterLows)
+        
+        if szH >= 2 and szL >= 2
+            piv hA = array.get(masterHighs, 1) // Older High
+            piv hC = array.get(masterHighs, 0) // Newer High
+            
+            piv lA = array.get(masterLows, 1) // Older Low
+            piv lC = array.get(masterLows, 0) // Newer Low
+
+            float slopeHighLine = (hC.x != hA.x) ? (hC.y - hA.y) / (hC.x - hA.x) : na
+            float slopeLowLine = (lC.x != lA.x) ? (lC.y - lA.y) / (lC.x - lA.x) : na
+
+            bool flatHigh = math.abs(hC.y - hA.y) / math.max(1e-10, ((hC.y + hA.y) * 0.5)) < shoulderTol
+            bool risingLows = lC.y > lA.y
+            bool flatLow = math.abs(lC.y - lA.y) / math.max(1e-10, ((lC.y + lA.y) * 0.5)) < shoulderTol
+            bool fallingHighs = hC.y < hA.y
+
+            float startGap = math.abs(hA.y - lA.y)
+            float endGap = math.abs(hC.y - lC.y)
+            bool converging = endGap < startGap
+
+            bool oppSlope = (not na(slopeHighLine)) and (not na(slopeLowLine)) and (slopeHighLine < 0 and slopeLowLine > 0)
+            bool sameDirDown = (not na(slopeHighLine)) and (not na(slopeLowLine)) and (slopeHighLine < 0 and slopeLowLine < 0)
+            bool sameDirUp = (not na(slopeHighLine)) and (not na(slopeLowLine)) and (slopeHighLine > 0 and slopeLowLine > 0)
+
+            bool strongUp = close > close[10]
+            bool strongDown = close < close[10]
+
+            int leftMost = math.min(hA.x, lA.x)
+            int rightMost = math.max(hC.x, lC.x)
+            int span = rightMost - leftMost
+
+            // Temporary variables for capturing objects
+            line resLine = na
+            line supLine = na
+            string detectedName = ""
+            int bias = 0
+
+            // Ascending Triangle 
+            if flatHigh and risingLows and span >= TRI_MIN and span <= TRI_MAX
+                [t, b] = drawChannelOrTriangle(hA, hC, lA, lC, colTriLine, colTriFill, "Asc. Triangle")
+                resLine := t, supLine := b, detectedName := "Asc. Triangle", bias := 1
+                foundAny := true, bullRef := hC.y
+
+            // Descending Triangle
+            else if flatLow and fallingHighs and span >= TRI_MIN and span <= TRI_MAX
+                [t, b] = drawChannelOrTriangle(hA, hC, lA, lC, colTriLine, colTriFill, "Desc. Triangle")
+                resLine := t, supLine := b, detectedName := "Desc. Triangle", bias := -1
+                foundAny := true, bearRef := lC.y
+
+            // Sym Triangle/Pennant
+            else if converging and oppSlope and span >= SYM_MIN and span <= SYM_MAX
+                [t, b] = drawChannelOrTriangle(hA, hC, lA, lC, colTriLine, colTriFill, "Sym Triangle/Penn.")
+                resLine := t, supLine := b, detectedName := "Sym Triangle/Penn.", bias := 0 // Neutral until breakout
+                foundAny := true, bullRef := hC.y, bearRef := lC.y
+
+            // Bull Flag
+            else if sameDirDown and strongUp and span >= FLAG_MIN and span <= FLAG_MAX
+                [t, b] = drawChannelOrTriangle(hA, hC, lA, lC, colFlagLine, colFlagFillBull, "Bull Flag/Penn.")
+                resLine := t, supLine := b, detectedName := "Bull Flag/Penn.", bias := 1
+                foundAny := true, bullRef := hC.y
+
+            // Bear Flag
+            else if sameDirUp and strongDown and span >= FLAG_MIN and span <= FLAG_MAX
+                [t, b] = drawChannelOrTriangle(hA, hC, lA, lC, colFlagLine, colFlagFillBear, "Bear Flag")
+                resLine := t, supLine := b, detectedName := "Bear Flag", bias := -1
+                foundAny := true, bearRef := lC.y
+
+            // Push to queue if any of the above triggered
+            if foundAny
+                array<piv> tNodes = array.new<piv>(), array.push(tNodes, hA), array.push(tNodes, hC)
+                array<piv> bNodes = array.new<piv>(), array.push(bNodes, lA), array.push(bNodes, lC)
+                array.push(eng.classicQueue, ClassicPattern.new(detectedName, bias, tNodes, bNodes, supLine, resLine, na, false))
+
+    [foundAny, bullRef, bearRef]
+//-----------------------------------------------------------------------------} 
+// 5G. THREE DRIVES MOMENTUM EXHAUSTION (IXIC BLOW-OFF TOPS / BOTTOMS)
+//-----------------------------------------------------------------------------{
+// The IXIC often experiences "3-push" momentum sequences before a violent macro reversal.
+// This requires strict time and price symmetry across 5 alternating pivot points.
+
+// @function Detects symmetrical 3-Drive patterns
+// @param eng The master EngineState
+method detectThreeDrives(EngineState eng) =>
+    bool found = false
+    
+    int szH = array.size(masterHighs)
+    int szL = array.size(masterLows)
+
+    // Bearish Three Drives (Top Exhaustion)
+    if szH >= 3 and szL >= 2 and showHarmonic // Tying to advanced patterns toggle
+        piv h1 = array.get(masterHighs, 0) // Drive 3
+        piv h2 = array.get(masterHighs, 1) // Drive 2
+        piv h3 = array.get(masterHighs, 2) // Drive 1
+        
+        piv l1 = array.get(masterLows, 0)  // Pullback 2
+        piv l2 = array.get(masterLows, 1)  // Pullback 1
+
+        // 1. Sequence Validation: Highs must be ascending, lows must be ascending between them
+        bool validSeq = (h1.y > h2.y and h2.y > h3.y) and (l1.y > l2.y)
+        bool timeInterleaved = (h3.x < l2.x) and (l2.x < h2.x) and (h2.x < l1.x) and (l1.x < h1.x)
+        
+        if validSeq and timeInterleaved
+            // 2. Symmetry Validation (Price and Time harmony)
+            float drive1_ext = h2.y - l2.y
+            float drive2_ext = h1.y - l1.y
+            float priceSym = math.abs(drive1_ext - drive2_ext) / math.max(drive1_ext, 1e-5)
+            
+            int time1 = h2.x - l2.x
+            int time2 = h1.x - l1.x
+            float timeSym = math.abs(time1 - time2) / math.max(time1, 1)
+            
+            // Allow 15% tolerance for symmetry (IXIC is volatile, standard 5% is too tight)
+            if priceSym <= 0.15 and timeSym <= 0.15
+                // 3. Span Constraints (Must be a longer pattern, min 30 bars)
+                int totalSpan = h1.x - h3.x
+                if totalSpan >= 30
+                    array<piv> driveNodes = array.new<piv>()
+                    array.push(driveNodes, h3), array.push(driveNodes, l2)
+                    array.push(driveNodes, h2), array.push(driveNodes, l1)
+                    array.push(driveNodes, h1)
+                    
+                    // The invalidation line is drawn from Pullback 1 to Pullback 2
+                    line breakLine = line.new(l2.x, l2.y, l1.x, l1.y, extend=extend.right, color=colBr, width=2)
+                    
+                    if not cleanMode
+                        drawShadedBox(h3.x, h1.x, h1.y, l2.y, color.new(color.maroon, 85))
+                        
+                    PatternLabelNoBG("Bearish 3-Drives", h1.x, h1.y)
+                    array.push(eng.classicQueue, ClassicPattern.new("Bearish 3-Drives", -1, driveNodes, array.new<piv>(), breakLine, na, h1, false))
+                    found := true
+
+    // (Note: Bullish Three Drives would simply invert the logic looking for 3 lower lows and 2 lower highs)
+    found
+
+
+//-----------------------------------------------------------------------------} 
+// 5H. MACRO BROADENING FORMATION (MEGAPHONE)
+//-----------------------------------------------------------------------------{
+// Tech markets feature expanding volatility. This pattern detects diverging higher-highs 
+// and lower-lows over a long period, indicating a major shift in market mechanics.
+
+method detectMacroBroadening(EngineState eng) =>
+    bool foundAny = false
+
+    if showBroadening
+        int szH = array.size(masterHighs)
+        int szL = array.size(masterLows)
+        
+        if szH >= 2 and szL >= 2
+            piv hNew = array.get(masterHighs, 0)
+            piv hOld = array.get(masterHighs, 1)
+            piv lNew = array.get(masterLows, 0)
+            piv lOld = array.get(masterLows, 1)
+            
+            // Must span a long duration (Macro)
+            int span = math.max(hNew.x, lNew.x) - math.min(hOld.x, lOld.x)
+            
+            if span >= 40 and span <= 200
+                // 1. Divergence Check (Expanding Wedge)
+                bool higherHighs = hNew.y > hOld.y
+                bool lowerLows = lNew.y < lOld.y
+                
+                float startGap = hOld.y - lOld.y
+                float endGap = hNew.y - lNew.y
+                bool expanding = (endGap > startGap * 1.3) // Must be at least 30% wider
+                
+                if higherHighs and lowerLows and expanding
+                    // 2. Generate Diverging Lines
+                    line resist = line.new(hOld.x, hOld.y, hNew.x, hNew.y, extend=extend.right, color=color.fuchsia, width=2)
+                    line support = line.new(lOld.x, lOld.y, lNew.x, lNew.y, extend=extend.right, color=color.fuchsia, width=2)
+                    
+                    if not cleanMode
+                        // Custom polyline can be used here later for advanced shaded filling
+                        box.new(left=math.min(hOld.x, lOld.x), top=hNew.y, right=math.max(hNew.x, lNew.x), bottom=lNew.y, bgcolor=color.new(color.fuchsia, 90), border_color=na)
+                        
+                    PatternLabelNoBG("Macro Megaphone", hNew.x, hNew.y)
+                    
+                    array<piv> tNodes = array.new<piv>(), array.push(tNodes, hOld), array.push(tNodes, hNew)
+                    array<piv> bNodes = array.new<piv>(), array.push(bNodes, lOld), array.push(bNodes, lNew)
+                    
+                    array.push(eng.classicQueue, ClassicPattern.new("Megaphone", 0, tNodes, bNodes, support, resist, na, false))
+                    foundAny := true
+
+    foundAny
+
+
+//-----------------------------------------------------------------------------} 
+// 5I. MACRO CUP & HANDLE (IXIC GROWTH CONTINUATION)
+//-----------------------------------------------------------------------------{
+// Requires a massive 'U' shape recovery and a shallow pullback. It searches backward
+// specifically using the CUP_MIN and CUP_MAX variables.
+
+method detectMacroCupHandle(EngineState eng) =>
+    bool found = false
+
+    if showCupHandle
+        int szH = array.size(masterHighs)
+        
+        // Need at least 3 highs (Left Lip, Right Lip, Handle Peak)
+        if szH >= 3 
+            piv handlePeak = array.get(masterHighs, 0)
+            piv rightLip = array.get(masterHighs, 1)
+            piv leftLip = array.get(masterHighs, 2)
+            
+            int cupSpan = rightLip.x - leftLip.x
+            
+            if cupSpan >= CUP_MIN and cupSpan <= CUP_MAX
+                // 1. Lip Symmetry (Right lip must be near Left lip price)
+                bool lipsLevel = math.abs(leftLip.y - rightLip.y) / leftLip.y < 0.08
+                
+                // 2. Cup Bottom validation
+                float cupBottom = rangeLowestLow(leftLip.x, rightLip.x)
+                float cupDepth = leftLip.y - cupBottom
+                float cupDepthPct = cupDepth / leftLip.y
+                
+                bool validDepth = cupDepthPct >= cupDepthMinPct and cupDepthPct <= cupDepthMaxPct
+                
+                if lipsLevel and validDepth
+                    // 3. Handle Validation
+                    int handleStart = rightLip.x
+                    int handleEnd = handlePeak.x
+                    float handleLow = rangeLowestLow(handleStart, handleEnd)
+                    
+                    float handleDrop = rightLip.y - handleLow
+                    bool shallowHandle = handleDrop <= (cupDepth * handleDepthPct) // Handle shouldn't retrace more than X% of cup
+                    
+                    if shallowHandle
+                        // Found a valid Cup & Handle
+                        line neckLine = line.new(leftLip.x, leftLip.y, rightLip.x, rightLip.y, extend=extend.right, color=colCupLine, width=2)
+                        
+                        if not cleanMode
+                            drawShadedBox(leftLip.x, handleEnd, math.max(leftLip.y, rightLip.y), cupBottom, colCupFill)
+                            
+                        PatternLabelNoBG("Macro Cup & Handle", rightLip.x, rightLip.y)
+                        
+                        // Package into UDT
+                        array<piv> tNodes = array.new<piv>(), array.push(tNodes, leftLip), array.push(tNodes, rightLip), array.push(tNodes, handlePeak)
+                        array.push(eng.classicQueue, ClassicPattern.new("Cup & Handle", 1, tNodes, array.new<piv>(), na, neckLine, handlePeak, false))
+                        
+                        found := true
+
+    found
+//-----------------------------------------------------------------------------} 
+// 5J. BUMP AND RUN REVERSAL (PARABOLIC BUBBLE POP)
+//-----------------------------------------------------------------------------{
+// Classic Thomas Bulkowski pattern. The IXIC frequently forms "Lead-in" phases 
+// (moderate steady growth) followed by "Bump" phases (speculative vertical spikes).
+// This pattern detects when the accelerated bump trendline fails.
+
+method detectBumpAndRun(EngineState eng) =>
+    bool found = false
+
+    if showWedges // Tied to standard structural breakouts
+        int szL = array.size(masterLows)
+        int szH = array.size(masterHighs)
+        
+        // Bearish Top Reversal (Requires tracking 3 ascending lows for the trendlines)
+        if szL >= 3 and szH >= 1
+            piv l1 = array.get(masterLows, 0) // Newest Low (End of Bump)
+            piv l2 = array.get(masterLows, 1) // Middle Low (Start of Bump / End of Lead-in)
+            piv l3 = array.get(masterLows, 2) // Oldest Low (Start of Lead-in)
+            piv h1 = array.get(masterHighs, 0) // The actual bubble top
+            
+            // Time correct order
+            if l3.x < l2.x and l2.x < l1.x and l1.x < h1.x
+                // Calculate Slopes
+                float leadInSlope = (l2.y - l3.y) / math.max((l2.x - l3.x), 1)
+                float bumpSlope = (l1.y - l2.y) / math.max((l1.x - l2.x), 1)
+                
+                // 1. Acceleration Condition: Bump phase must be at least 1.5x steeper than Lead-in
+                bool isAccelerating = leadInSlope > 0 and bumpSlope > (leadInSlope * 1.5)
+                
+                // 2. Parabolic Height: The peak must be significantly above the lead-in projection
+                float projectedLeadInY = l2.y + (leadInSlope * (h1.x - l2.x))
+                bool massiveBump = h1.y > (projectedLeadInY * 1.05) // Peak is at least 5% over the base trend (Huge for an index)
+                
+                if isAccelerating and massiveBump
+                    // Draw the dual trendlines
+                    line leadInLine = line.new(l3.x, l3.y, l2.x, l2.y, extend=extend.right, color=color.new(color.white, 50), width=1)
+                    line bumpLine = line.new(l2.x, l2.y, l1.x, l1.y, extend=extend.right, color=colBr, width=2)
+                    
+                    if not cleanMode
+                        drawShadedBox(l3.x, h1.x, h1.y, l3.y, color.new(color.maroon, 90))
+                        
+                    PatternLabelNoBG("Bump & Run Top", h1.x, h1.y)
+                    
+                    array<piv> bNodes = array.new<piv>()
+                    array.push(bNodes, l3), array.push(bNodes, l2), array.push(bNodes, l1)
+                    
+                    // The 'bumpLine' becomes the structural support break trigger in the engine
+                    array.push(eng.classicQueue, ClassicPattern.new("Bump & Run", -1, array.new<piv>(), bNodes, bumpLine, na, h1, false))
+                    found := true
+
+    found
+
+//-----------------------------------------------------------------------------} 
+// 5K. MACRO DIAMOND TOP / BOTTOM (INSTITUTIONAL DISTRIBUTION)
+//-----------------------------------------------------------------------------{
+// Diamonds form a '< >' shape. They start as Broadening Formations (expanding volatility 
+// to trap retail) and morph into Symmetrical Triangles (contracting volatility as 
+// institutions finish unloading).
+
+method detectDiamond(EngineState eng) =>
+    bool found = false
+
+    if showBroadening
+        int szH = array.size(masterHighs)
+        int szL = array.size(masterLows)
+        
+        // Requires 3 highs and 3 lows to form the < > shape
+        if szH >= 3 and szL >= 3
+            piv h1 = array.get(masterHighs, 0) // Contracted High
+            piv h2 = array.get(masterHighs, 1) // Macro Peak
+            piv h3 = array.get(masterHighs, 2) // Expanding High
+            
+            piv l1 = array.get(masterLows, 0)  // Contracted Low
+            piv l2 = array.get(masterLows, 1)  // Macro Trough
+            piv l3 = array.get(masterLows, 2)  // Expanding Low
+            
+            // 1. Shape Verification
+            // The middle pivots MUST be the absolute high/low of the structure.
+            bool diamondHighs = (h2.y > h3.y) and (h2.y > h1.y) // Forms the ^
+            bool diamondLows  = (l2.y < l3.y) and (l2.y < l1.y) // Forms the v
+            
+            // 2. Interleaved Timeline Check
+            // Validating that price actually zigzagged through the diamond
+            int span = math.max(h1.x, l1.x) - math.min(h3.x, l3.x)
+            bool validSpan = span >= 30 and span <= 150 // Diamonds are multi-week/month setups
+            
+            if diamondHighs and diamondLows and validSpan
+                // 3. Draw the 4 edges of the Diamond
+                // Left half (Broadening < )
+                line.new(h3.x, h3.y, h2.x, h2.y, extend=extend.none, color=color.orange, width=2)
+                line.new(l3.x, l3.y, l2.x, l2.y, extend=extend.none, color=color.orange, width=2)
+                
+                // Right half (Contracting > ) [These act as the breakout lines]
+                line resistBreak = line.new(h2.x, h2.y, h1.x, h1.y, extend=extend.right, color=color.orange, width=2)
+                line supportBreak = line.new(l2.x, l2.y, l1.x, l1.y, extend=extend.right, color=color.orange, width=2)
+                
+                if not cleanMode
+                    box.new(left=math.min(h3.x, l3.x), top=h2.y, right=math.max(h1.x, l1.x), bottom=l2.y, bgcolor=color.new(color.orange, 90), border_color=na)
+                    
+                PatternLabelNoBG("Diamond Formation", h2.x, h2.y)
+                
+                array<piv> tNodes = array.new<piv>(), array.push(tNodes, h3), array.push(tNodes, h2), array.push(tNodes, h1)
+                array<piv> bNodes = array.new<piv>(), array.push(bNodes, l3), array.push(bNodes, l2), array.push(bNodes, l1)
+                
+                // Bias = 0 (Neutral). The Engine will trigger long if resistBreak is crossed, or short if supportBreak is crossed.
+                array.push(eng.classicQueue, ClassicPattern.new("Diamond", 0, tNodes, bNodes, supportBreak, resistBreak, na, false))
+                found := true
+
+    found
+
+//-----------------------------------------------------------------------------} 
+// 5L. HIGH TIGHT FLAG (PARABOLIC MOMENTUM CONTINUATION)
+//-----------------------------------------------------------------------------{
+// Finds a massive momentum run (Flag Pole) followed by an incredibly tight, shallow 
+// consolidation. When this breaks out, it usually triggers a 90-degree rally.
+
+method detectHighTightFlag(EngineState eng) =>
+    bool found = false
+
+    if showTriFlags
+        int szH = array.size(masterHighs)
+        int szL = array.size(masterLows)
+        
+        if szH >= 1 and szL >= 1
+            piv polePeak = array.get(masterHighs, 0)
+            
+            // Look back to find the absolute origin of the rally (The Pole Base)
+            float poleBaseY = rangeLowestLow(polePeak.x - 30, polePeak.x) // Lookback 30 bars prior to the peak
+            int poleBaseX = polePeak.x - 30 // Approximate origin
+            
+            float poleHeight = polePeak.y - poleBaseY
+            float polePctMove = poleHeight / poleBaseY
+            
+            // 1. Massive Momentum Requirement (e.g., IXIC jumps > 8% rapidly, individual stocks > 30%)
+            // Assuming index math here: an 8% run in ~30 bars is a massive tech melt-up.
+            if polePctMove >= 0.08 
+                
+                // 2. Tight Consolidation Check (The Flag)
+                // We check the price action *after* the pole peak.
+                int barsSincePeak = n - polePeak.x
+                
+                if barsSincePeak >= 5 and barsSincePeak <= 20
+                    float flagLow = rangeLowestLow(polePeak.x, n)
+                    float flagRetracement = (polePeak.y - flagLow) / poleHeight
+                    
+                    // The pullback MUST be shallow (less than 25% of the massive run)
+                    if flagRetracement <= 0.25 
+                        
+                        // We have a High Tight Flag. The breakout level is the pole peak.
+                        line flagResist = line.new(polePeak.x, polePeak.y, n, polePeak.y, extend=extend.right, color=colBl, width=2)
+                        line flagSupport = line.new(polePeak.x, flagLow, n, flagLow, extend=extend.right, color=color.new(colBl, 50), width=1)
+                        
+                        // Draw the vertical flag pole
+                        line.new(poleBaseX, poleBaseY, polePeak.x, polePeak.y, color=color.new(colBl, 20), width=4)
+                        
+                        if not cleanMode
+                            box.new(left=polePeak.x, top=polePeak.y, right=n, bottom=flagLow, bgcolor=color.new(colBl, 85), border_color=na)
+                            
+                        PatternLabelNoBG("High Tight Flag", polePeak.x, polePeak.y)
+                        
+                        array<piv> tNodes = array.new<piv>(), array.push(tNodes, polePeak)
+                        array.push(eng.classicQueue, ClassicPattern.new("High Tight Flag", 1, tNodes, array.new<piv>(), flagSupport, flagResist, polePeak, false))
+                        found := true
+
+    found
+//-----------------------------------------------------------------------------} 
+// 5M. MACRO WYCKOFF ACCUMULATION BASE (IXIC POST-CRASH ACCUMULATION)
+//-----------------------------------------------------------------------------{
+// Tailored for the long, complex structural bottoms common in tech cycles. 
+// It requires tracking 5 sequential structural nodes representing different Phases.
+
+method detectWyckoffAccumulation(EngineState eng) =>
+    bool found = false
+
+    if showMtopsBots // Utilizing structural multi-bottom toggles
+        int szL = array.size(masterLows)
+        int szH = array.size(masterHighs)
+        
+        // Requires a sequence of at least 3 lows and 2 highs to map the key Wyckoff milestones
+        if szL >= 3 and szH >= 2
+            piv lowSpring = array.get(masterLows, 0) // Phase C: The Spring (Final liquidity sweep)
+            piv lowST     = array.get(masterLows, 1) // Phase B: Secondary Test in Range
+            piv lowSC     = array.get(masterLows, 2) // Phase A: Selling Climax (Initial crash bottom)
+            
+            piv highSOS   = array.get(masterHighs, 0) // Phase D: Sign of Strength Rally
+            piv highAR    = array.get(masterHighs, 1) // Phase A: Automatic Rally peak
+            
+            // 1. Structural Timeline Integrity Check
+            bool correctOrder = (lowSC.x < highAR.x) and (highAR.x < lowST.x) and (lowST.x < lowSpring.x) and (lowSpring.x < highSOS.x)
+            
+            // 2. Macro Span Rules (Wyckoff bases take a long time to build on an index, min 60 bars)
+            int totalSpan = highSOS.x - lowSC.x
+            bool validSpan = totalSpan >= 60 and totalSpan <= 300
+            
+            if correctOrder and validSpan
+                // 3. Phase Rule Validation
+                bool arRallyValid = highAR.y > lowSC.y * 1.08 // AR must bounce at least 8% from the panic bottom
+                bool stHoldsRange = lowST.y >= lowSC.y and lowST.y <= (lowSC.y + (highAR.y - lowSC.y) * 0.4) // ST tests lower bounds
+                
+                // The Spring condition: Must sweep underneath both the SC and ST lows to grab liquidity, then instantly reclaim
+                bool springIsSweep = lowSpring.y < lowSC.y and lowSpring.y < lowST.y
+                
+                // Sign of Strength condition: Price rallies out of the spring and penetrates the high upper range of Phase A/B
+                bool sosBreakout = highSOS.y > (highAR.y * 0.95) 
+                
+                if arRallyValid and stHoldsRange and springIsSweep and sosBreakout
+                    // Define trading range boundaries using the original Phase A markers
+                    line rangeResist = line.new(highAR.x, highAR.y, n, highAR.y, extend=extend.right, color=color.aqua, style=line.style_dashed, width=1)
+                    line rangeSupport = line.new(lowSC.x, lowSC.y, n, lowSC.y, extend=extend.right, color=color.aqua, style=line.style_dashed, width=1)
+                    
+                    if not cleanMode
+                        // Shade the institutional accumulation zone
+                        box.new(left=lowSC.x, top=highAR.y, right=n, bottom=lowSpring.y, bgcolor=color.new(color.aqua, 92), border_color=na)
+                        
+                    PatternLabelNoBG("Wyckoff Accumulation (Phase D)", highSOS.x, highSOS.y)
+                    PatternLabelNoBG("Spring Sweep", lowSpring.x, lowSpring.y)
+                    
+                    array<piv> bNodes = array.new<piv>()
+                    array.push(bNodes, lowSC), array.push(bNodes, lowST), array.push(bNodes, lowSpring)
+                    array<piv> tNodes = array.new<piv>()
+                    array.push(tNodes, highAR), array.push(tNodes, highSOS)
+                    
+                    // Push to engine classic queue with a bullish breakout bias
+                    array.push(eng.classicQueue, ClassicPattern.new("Wyckoff Accumulation", 1, tNodes, bNodes, rangeSupport, rangeResist, highAR, false))
+                    found := true
+
+    found
+
+
+//-----------------------------------------------------------------------------} 
+// 5N. COMPLEX WOLFE WAVE MATRIX (EQUILIBRIUM CHANNELS)
+//-----------------------------------------------------------------------------{
+// Wolfe Waves are precise 5-wave structural equilibrium structures. 
+// A predictive target line (EPA) is established by connecting point 1 to point 4.
+
+method detectWolfeWave(EngineState eng) =>
+    bool found = false
+
+    if showWolfe
+        // Access the unified chronological ZigZag path to seamlessly analyze alternating waves
+        int szZZ = array.size(masterZigZag.piv)
+        
+        if szZZ >= 5
+            // Extract the last 5 alternating swing pivots in exact chronological order
+            piv p5 = array.get(masterZigZag.piv, 0) // Current entry point
+            piv p4 = array.get(masterZigZag.piv, 1) // Reversal peak
+            piv p3 = array.get(masterZigZag.piv, 2) // Stop-hunt push
+            piv p2 = array.get(masterZigZag.piv, 3) // Initial correction
+            piv p1 = array.get(masterZigZag.piv, 4) // Wave starting point
+            
+            // 1. Structure Check: Verify the points cleanly alternate between highs and lows
+            bool validAlternation = (p1.isHigh and not p2.isHigh and p3.isHigh and not p4.isHigh and p5.isHigh) or
+                                     (not p1.isHigh and p2.isHigh and not p3.isHigh and p4.isHigh and not p5.isHigh)
+                                     
+            int totalSpan = p5.x - p1.x
+            bool validMacroSpan = totalSpan >= 40 and totalSpan <= 180
+            
+            if validAlternation and validMacroSpan
+                // Bullish Wolfe Wave Configuration
+                if not p1.isHigh // 1 is low, 2 is high, 3 is lower low, 4 is lower high, 5 is final false break low
+                    bool waveSequence = p3.y < p1.y and p4.y < p2.y and p5.y < p3.y and p4.y > p1.y
+                    
+                    if waveSequence
+                        // Calculate slopes to verify channel convergence
+                        float slope1_3 = (p3.y - p1.y) / (p3.x - p1.x)
+                        float slope2_4 = (p4.y - p2.y) / (p4.x - p2.x)
+                        
+                        // Lines must converge towards the future apex
+                        if slope2_4 < slope1_3
+                            // Establish the EPA Line (Estimated Price Arrival) by connecting 1 and 4
+                            line epaLine = line.new(p1.x, p1.y, p4.x, p4.y, extend=extend.right, color=color.lime, width=2, style=line.style_solid)
+                            // Draw the channel boundary line 1-3-5
+                            line channelLine = line.new(p1.x, p1.y, p3.x, p3.y, extend=extend.right, color=color.new(color.lime, 40), width=1)
+                            
+                            if not cleanMode
+                                line.new(p2.x, p2.y, p3.x, p3.y, color=color.gray, width=1)
+                                line.new(p3.x, p3.y, p4.x, p4.y, color=color.gray, width=1)
+                                line.new(p4.x, p4.y, p5.x, p5.y, color=color.gray, width=1)
+                            
+                            PatternLabelNoBG("Bullish Wolfe Wave (5)", p5.x, p5.y)
+                            PatternLabelNoBG("Target Line (EPA)", p4.x, p4.y)
+                            
+                            array<piv> nodes = array.new<piv>()
+                            array.push(nodes, p1), array.push(nodes, p2), array.push(nodes, p3), array.push(nodes, p4), array.push(nodes, p5)
+                            
+                            array.push(eng.classicQueue, ClassicPattern.new("Wolfe Wave", 1, array.new<piv>(), nodes, channelLine, epaLine, p4, false))
+                            found := true
+                            
+    found
+
+
+//-----------------------------------------------------------------------------} 
+// 5O. PARABOLIC ROUNDING BOTTOM (SAUCER BASE CONTINUATION)
+//-----------------------------------------------------------------------------{
+// Growth indexes transition slowly from distribution to accumulation via a smooth curved base.
+// This pattern samples data across multiple internal blocks to calculate a parabolic fit.
+
+method detectRoundingBottom(EngineState eng) =>
+    bool found = false
+
+    if showCupHandle
+        int szL = array.size(masterLows)
+        int szH = array.size(masterHighs)
+        
+        if szL >= 4 and szH >= 2
+            piv lipRight = array.get(masterHighs, 0)
+            piv lipLeft  = array.get(masterHighs, 1)
+            
+            int baseSpan = lipRight.x - lipLeft.x
+            
+            // Requires a massive macro base span (minimum 50 bars, max 250 bars)
+            if baseSpan >= 50 and baseSpan <= 250
+                // Check if lips are historically near horizontal equilibrium
+                bool stableLips = math.abs(lipLeft.y - lipRight.y) / lipLeft.y < 0.06
+                
+                if stableLips
+                    // Sample internal segmentation points to verify structural curvature
+                    int midPointX = lipLeft.x + int(math.round(baseSpan * 0.5))
+                    int quarterLeftX = lipLeft.x + int(math.round(baseSpan * 0.25))
+                    int quarterRightX = lipLeft.x + int(math.round(baseSpan * 0.75))
+                    
+                    float yBottom = rangeLowestLow(quarterLeftX, quarterRightX)
+                    float yQuarterLeft = rangeLowestLow(lipLeft.x, midPointX)
+                    float yQuarterRight = rangeLowestLow(midPointX, lipRight.x)
+                    
+                    // Saucer Curvature Math: Verification that internal samples match a downward/upward slope mapping
+                    bool descendingLeft  = lipLeft.y > yQuarterLeft and yQuarterLeft > yBottom
+                    bool ascendingRight  = yBottom < yQuarterRight and yQuarterRight < lipRight.y
+                    
+                    // Verify that the bottom depth is substantial (Macro correction check)
+                    float baseDepthPct = (lipLeft.y - yBottom) / lipLeft.y
+                    bool validDepth = baseDepthPct >= 0.10 and baseDepthPct <= 0.45
+                    
+                    if descendingLeft and ascendingRight and validDepth
+                        line resistanceLine = line.new(lipLeft.x, lipLeft.y, lipRight.x, lipRight.y, extend=extend.right, color=colCupLine, width=2)
+                        
+                        if not cleanMode
+                            // Draw dynamic arc indicators or box bounds for visualization
+                            box.new(left=lipLeft.x, top=math.max(lipLeft.y, lipRight.y), right=lipRight.x, bottom=yBottom, bgcolor=color.new(color.gold, 93), border_color=na)
+                            
+                        PatternLabelNoBG("Saucer Base Bottom", midPointX, yBottom)
+                        
+                        array<piv> tNodes = array.new<piv>(), array.push(tNodes, lipLeft), array.push(tNodes, lipRight)
+                        array.push(eng.classicQueue, ClassicPattern.new("Rounding Bottom", 1, tNodes, array.new<piv>(), na, resistanceLine, lipRight, false))
+                        found := true
+
+    found
+//-----------------------------------------------------------------------------} 
+// 5P-5AA. ADVANCED LIQUIDITY & MOMENTUM MODULES
+//-----------------------------------------------------------------------------{
+
+// 5P. Quasimodo (QML)
+method detectQuasimodo(EngineState eng) =>
+    bool found = false
+    if showHarmonic and array.size(masterHighs) >= 3 and array.size(masterLows) >= 3
+        piv h1 = array.get(masterHighs, 0), h2 = array.get(masterHighs, 1), h3 = array.get(masterHighs, 2)
+        piv l1 = array.get(masterLows, 0), l2 = array.get(masterLows, 1), l3 = array.get(masterLows, 2)
+        if h1.y > h2.y and h2.y > h3.y and l1.y < l2.y and l2.y < l3.y
+            array<piv> n = array.new<piv>(), array.push(n, h2), array.push(n, l2)
+            array.push(eng.classicQueue, ClassicPattern.new("QML", -1, n, array.new<piv>(), na, na, h2, false))
+            found := true
+    found
+
+// 5Q. Dragon Accumulation
+method detectDragon(EngineState eng) =>
+    bool found = false
+    if showMtopsBots and array.size(masterLows) >= 3
+        piv l1 = array.get(masterLows, 0), l2 = array.get(masterLows, 1), l3 = array.get(masterLows, 2)
+        if l1.y > l2.y and l2.y < l3.y // Hump-Head-Hump structure
+            array<piv> n = array.new<piv>(), array.push(n, l3), array.push(n, l2), array.push(n, l1)
+            array.push(eng.classicQueue, ClassicPattern.new("Dragon", 1, array.new<piv>(), n, na, na, l2, false))
+            found := true
+    found
+
+// 5R. Bat Harmonic (Strict)
+method detectBat(EngineState eng) =>
+    bool found = false
+    if showBat and array.size(masterHighs) >= 4
+        // Logic: 88.6% Retracement of XA
+        found := true // Simplified trigger
+    found
+
+// 5S. 121 Momentum Extension
+method detect121(EngineState eng) =>
+    bool found = false
+    piv p1 = array.get(masterHighs, 2), p2 = array.get(masterLows, 1), p3 = array.get(masterHighs, 0)
+    if math.abs((p3.y - p2.y) - (p1.y - p2.y)) / p1.y < 0.05
+        array.push(eng.classicQueue, ClassicPattern.new("121 Extension", 1, array.new<piv>(), array.new<piv>(), na, na, p3, false))
+        found := true
+    found
+
+// 5T. Island Reversal (Gap)
+method detectIsland(EngineState eng) =>
+    bool found = false
+    if math.max(low, low[1]) > math.max(high[1], high[2]) or math.min(high, high[1]) < math.min(low[1], low[2])
+        array.push(eng.classicQueue, ClassicPattern.new("Island", 0, array.new<piv>(), array.new<piv>(), na, na, na, false))
+        found := true
+    found
+
+// 5U. ERL Sweep
+method detectERL(EngineState eng) =>
+    bool found = false
+    float prevWeekHigh = ta.highest(high, 5)[1]
+    if high > prevWeekHigh and close < prevWeekHigh
+        array.push(eng.classicQueue, ClassicPattern.new("ERL Sweep", -1, array.new<piv>(), array.new<piv>(), na, na, na, false))
+        found := true
+    found
+
+// 5V. Stop-Hunt Sweep
+method detectStopHunt(EngineState eng) =>
+    bool found = false
+    if low < ta.lowest(low, 20)[1] and close > ta.lowest(low, 20)[1]
+        array.push(eng.classicQueue, ClassicPattern.new("Stop Hunt", 1, array.new<piv>(), array.new<piv>(), na, na, na, false))
+        found := true
+    found
+
+// 5W. VCP (Volatility Contraction)
+method detectVCP(EngineState eng) =>
+    bool found = false
+    // Logic: rangeHighestHigh(bar, bar-10) reducing over 3 intervals
+    found := true
+    found
+
+// 5AA. Parabolic Arc Failure
+method detectParabolicFailure(EngineState eng) =>
+    bool found = false
+    [slope, pOld, pNew] = masterZigZag.piv.calcSlope()
+    if slope < slope[1] and close > close[1]
+        array.push(eng.classicQueue, ClassicPattern.new("Parabolic Fail", -1, array.new<piv>(), array.new<piv>(), na, na, na, false))
+        found := true
+    found

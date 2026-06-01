@@ -399,6 +399,47 @@
             activeSlideshows.push(timer);
         }
 
+        async function fetchHistoryArchive(username) {
+            const safeUsername = encodeURIComponent(username);
+            const candidates = [
+                `../dbs/history/${safeUsername}.dat`,
+                `../history/${safeUsername}.dat`,
+            ];
+            let lastError = null;
+
+            for (const candidate of candidates) {
+                try {
+                    const response = await fetch(`${candidate}?t=${Date.now()}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.arrayBuffer();
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error('History archive unavailable');
+        }
+
+        async function fetchArchiveIndex() {
+            const candidates = [
+                '../dbs/history_index.json',
+                '../history_index.json',
+            ];
+            let lastError = null;
+
+            for (const candidate of candidates) {
+                try {
+                    const response = await fetch(`${candidate}?t=${Date.now()}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error('Archive index unavailable');
+        }
+
         function createArchiveCard(username) {
             const card = document.createElement('div');
             card.className = 'archive-card';
@@ -437,9 +478,7 @@
                 entries.forEach(entry => {
                     if (!entry.isIntersecting) return;
                     obs.disconnect();
-                    const datPath = `../history/${encodeURIComponent(username)}.dat`;
-                    fetch(datPath)
-                        .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+                    fetchHistoryArchive(username)
                         .then(buffer => {
                             const urls = [...new Set(JSON.parse(pako.inflate(new Uint8Array(buffer), { to: 'string' })).filter(Boolean))];
                             if (urls.length > 0) {
@@ -522,9 +561,7 @@
             if (archiveLoaded) return;
             archiveGrid.innerHTML = '<p class="text-muted archive-loading">Loading archive index...</p>';
             try {
-                const resp = await fetch('../history_index.json');
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                allArchiveNames = await resp.json();
+                allArchiveNames = await fetchArchiveIndex();
                 archiveLoaded = true;
                 setArchiveResults(allArchiveNames);
             } catch (e) {

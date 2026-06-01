@@ -162,6 +162,7 @@ This directory now includes an automated compressed image datastore pipeline:
 - Every newly seen performer `image_url` is downloaded once and stored in compressed SQLite.
 - Existing images are not re-downloaded unless the URL is unseen.
 - Per-performer mapping is updated with last-seen metadata for viewer rendering.
+- Slideshow history artifacts are written under `best/dbs/history/` and `best/dbs/history_index.json`.
 
 ### Viewer behavior
 

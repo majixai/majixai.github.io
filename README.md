@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-05-29 08:05 UTC_
+_Last updated: 2026-06-01 00:14 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -11,32 +11,29 @@ _Last updated: 2026-05-29 08:05 UTC_
 <!-- START_REPO_STATS -->
 | Metric | Value |
 |--------|-------|
-| 📁 Project Directories | 174 |
+| 📁 Project Directories | 176 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 130665 |
+| 📝 Total Commits | 131042 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`6f81c8bdf9`](https://github.com/majixai/majixai.github.io/commit/6f81c8bdf96fafbf1daa98f9a0a8c674ba85febb) -- 2026-05-29 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-05-29 07:53 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
-- [`2379e6a93f`](https://github.com/majixai/majixai.github.io/commit/2379e6a93f4c0df930e801a89178642a88c32a66) -- 2026-05-29 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
-- [`c4591f212a`](https://github.com/majixai/majixai.github.io/commit/c4591f212afdc3e9979cd0a6c7470717825eb1d8) -- 2026-05-29 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-05-29 06:20 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
-- [`bc374d1ae9`](https://github.com/majixai/majixai.github.io/commit/bc374d1ae9be711976bab2d2581dd9089c97a5ae) -- 2026-05-29 -- gpu-pipeline[bot] -- [GPU Pipeline] Update run summary 2026-05-29T06:03:09Z -- [Open page](https://majixai.github.io/gpu/)
-- [`018c0a64b9`](https://github.com/majixai/majixai.github.io/commit/018c0a64b91e3b4059ab72936b8fcbd3a21a6f8b) -- 2026-05-29 -- github-actions[bot] -- data: Update index data - 2026-05-29 05:22:30 UTC -- [Open page](https://majixai.github.io/index/)
+- [`b185d04d42`](https://github.com/majixai/majixai.github.io/commit/b185d04d42e5f22fa115c2625c6bc2be77b68ae1) -- 2026-05-31 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-05-31 23:46:46 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`5be94523a6`](https://github.com/majixai/majixai.github.io/commit/5be94523a6928a69ab6b685fed9bd1fae0737412) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-31 23:43:45 UTC -- [Open page](https://majixai.github.io/data/)
+- [`c3aa2239d5`](https://github.com/majixai/majixai.github.io/commit/c3aa2239d59ed44470941e52463d225ffa68831d) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-31 23:42:54 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`241a2eed3f`](https://github.com/majixai/majixai.github.io/commit/241a2eed3f342e2a66a47e025777934d245e9d30) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-31 23:42:52 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`808b77190c`](https://github.com/majixai/majixai.github.io/commit/808b77190ca3d32722c04e03563536c9095cd91a) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-31 23:42:47 UTC -- [Open page](https://majixai.github.io/data/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `018c0a6` — 2026-05-29 — **github-actions[bot]** — data: Update index data - 2026-05-29 05:22:30 UTC  
-  _52496 lines changed (51394+ / 1102-)_
-- **Biggest update this week:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
-  _578160 lines changed (573728+ / 4432-)_
-- **Biggest update this month:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
-  _578160 lines changed (573728+ / 4432-)_
-- **Biggest update this quarter:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
-  _578160 lines changed (573728+ / 4432-)_
-- **Biggest update this year:** `41a70fd` — 2026-05-26 — **copilot-swe-agent[bot]** — Resolve IXIC merge conflicts  
-  _578160 lines changed (573728+ / 4432-)_
+- **Biggest update today:** _No commits found_
+- **Biggest update this week:** _No commits found_
+- **Biggest update this month:** _No commits found_
+- **Biggest update this quarter:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
+  _1197561 lines changed (1192218+ / 5343-)_
+- **Biggest update this year:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
+  _1197561 lines changed (1192218+ / 5343-)_
 <!-- END_BIGGEST_UPDATES -->
 
 

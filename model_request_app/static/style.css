@@ -1,44 +1,42 @@
 body {
-    background-color: #f8f9fa;
-    position: relative;
+  background: linear-gradient(180deg, #f7f9fc 0%, #eef3fb 100%);
+  color: #1f2937;
 }
 
-.parallax {
-    background-image: url('https://picsum.photos/1920/1080');
-    background-attachment: fixed;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    height: 100vh;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: -1;
+.hero {
+  padding: 1.25rem 0;
 }
 
-.header {
-    margin-bottom: 2rem;
-    color: white;
-    text-shadow: 2px 2px 4px #000000;
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .78rem;
+  color: #2563eb;
+  font-weight: 700;
 }
 
-.main-header {
-    color: #00539B;
+.preview-box {
+  min-height: 220px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0f172a;
+  color: #d1fae5;
+  border-radius: .75rem;
+  padding: 1rem;
 }
 
-.btn-primary {
-    background-color: #00539B;
-    border-color: #00539B;
+.history-list {
+  display: grid;
+  gap: .75rem;
 }
 
-.btn-primary:hover {
-    background-color: #004080;
-    border-color: #004080;
+.history-item {
+  border: 1px solid #e5e7eb;
+  border-radius: .75rem;
+  padding: .75rem;
+  background: #fff;
 }
 
-.container {
-    background-color: rgba(255, 255, 255, 0.9);
-    border-radius: 10px;
-    padding: 2rem;
+code {
+  color: inherit;
 }
