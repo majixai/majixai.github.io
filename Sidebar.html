@@ -2,17 +2,29 @@
 <html>
 <head>
     <base target="_top">
-    <!-- Using Bootstrap for components and styling -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
     <style>
         :root {
             --primary-color: #00539B;
             --primary-color-dark: #003f7a;
+            --accent: #17a2b8;
         }
         body {
-            padding: 15px;
-            font-size: 0.95rem;
-            background-color: #f8f9fa;
+            padding: 12px;
+            font-size: 0.92rem;
+            background: #f8f9fa;
+        }
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .topbar h4 {
+            margin: 0;
+            font-weight: 700;
         }
         .btn-primary {
             background-color: var(--primary-color);
@@ -22,167 +34,514 @@
             background-color: var(--primary-color-dark);
             border-color: var(--primary-color-dark);
         }
-        .btn-success {
-            background-color: #28a745;
+        .btn-outline-info {
+            color: var(--accent);
+            border-color: var(--accent);
         }
-        section {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e9ecef;
+        .btn-outline-info:hover {
+            background: var(--accent);
+            color: #fff;
         }
-        section:last-child {
-            border-bottom: none;
+        .card {
+            border-radius: 10px;
+            margin-bottom: 10px;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .card-header {
+            padding: 0.6rem 0.8rem;
+            font-weight: 600;
+            background: #fff;
         }
-        .status-text { font-weight: 500; min-height: 20px; font-size: 0.9em; }
+        .card-body {
+            padding: 0.8rem;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .stat-card {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+        .stat-card .label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .stat-card .value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #212529;
+        }
+        .status-text {
+            min-height: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
         .success { color: #28a745; }
         .error { color: #dc3545; }
         .info { color: #17a2b8; }
         .warning { color: #ffc107; }
-        .schedule-list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            border-bottom: 1px solid #e9ecef;
+        .help-chip {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #e9ecef;
+            font-size: 0.75rem;
+            margin: 0 6px 6px 0;
         }
-        .schedule-list-item:last-child { border-bottom: none; }
-        .schedule-email { font-weight: 500; }
-        .schedule-time { color: #6c757d; font-size: 0.9em; margin-left: 5px;}
-        .modal-body h5 { color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
-        .modal-body p, .modal-body li { font-size: 0.9rem; }
+        .chart-box {
+            min-height: 260px;
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 6px;
+        }
+        .chart-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #495057;
+            margin-bottom: 4px;
+        }
+        .list-inline-chip {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+        .list-inline-chip li {
+            display: inline-block;
+            margin: 0 6px 6px 0;
+        }
+        .result-table-wrap {
+            max-height: 220px;
+            overflow: auto;
+        }
+        .tiny {
+            font-size: 0.76rem;
+        }
+        .section-spacing {
+            margin-top: 6px;
+        }
+        .input-group-text {
+            font-size: 0.78rem;
+        }
+        .form-control-sm, .custom-select-sm {
+            font-size: 0.82rem;
+        }
+        .modal-body h6 {
+            margin-top: 12px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
         .code-block {
-            background-color: #e9ecef;
+            background: #f1f3f5;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-family: monospace;
             white-space: pre-wrap;
             word-break: break-all;
-            font-size: 0.85rem;
+            font-size: 0.78rem;
+        }
+        .scroll-list {
+            max-height: 220px;
+            overflow: auto;
+        }
+        .badge-soft {
+            background: #e7f1ff;
+            color: #00539B;
         }
     </style>
 </head>
 <body>
-    <!-- Header with Buttons -->
-    <div class="header mb-3">
-        <h4 class="mb-0">Jinx Manager</h4>
+    <div class="topbar">
         <div>
-            <button class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#instructionsModal">?</button>
-            <button class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#settingsModal">⚙️</button>
+            <h4>Jinx Market Lab</h4>
+            <div class="text-muted tiny">yfinance hooks · DB query callables · indicators · pattern stacks</div>
+        </div>
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-info" data-toggle="modal" data-target="#instructionsModal" title="How to wire the data sources">?</button>
+            <button class="btn btn-outline-secondary" data-toggle="modal" data-target="#settingsModal" title="Dashboard settings">⚙</button>
+            <button class="btn btn-outline-primary" id="refreshAllBtn" title="Refresh chart and queries">↻</button>
         </div>
     </div>
 
-    <!-- Manual Run Section -->
-    <section>
-        <h5>Manual Run</h5>
-        <p class="small text-muted">Manually trigger the analysis and data processing workflow.</p>
-        <button class="btn btn-primary btn-sm" id="fetchButton" onclick="runManualFetch()">Run Analysis</button>
-        <div id="status" class="status-text mt-2"></div>
-    </section>
+    <div id="bootstrapStatus" class="alert alert-info py-2 px-3 mb-2 tiny">Loading dashboard...</div>
 
-    <!-- Schedule Management Section -->
-    <section>
-        <h5>Schedule Manager</h5>
-        <p class="small text-muted">Add or remove automated analysis schedules.</p>
-        <div class="form-group">
-            <label for="emailList" class="small font-weight-bold">Email Recipient(s)</label>
-            <input type="text" class="form-control form-control-sm" id="emailList" placeholder="user@example.com, team@example.com">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Control Surface</span>
+            <small class="text-muted tiny">Hover labels for tooltips</small>
         </div>
-        <div class="form-group">
-            <label for="scheduleTime" class="small font-weight-bold">Time (HH:MM)</label>
-            <input type="time" class="form-control form-control-sm" id="scheduleTime">
-            <small id="scheduleTimeZone" class="form-text text-muted">Loading timezone...</small>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group col-6">
+                    <label data-toggle="tooltip" title="Primary ticker pulled from yfinance or the webhook endpoint">Ticker</label>
+                    <input type="text" id="ticker" class="form-control form-control-sm" value="SPY">
+                </div>
+                <div class="form-group col-6">
+                    <label data-toggle="tooltip" title="Optional comparison ticker overlaid on the same price panel">Compare</label>
+                    <input type="text" id="compareTicker" class="form-control form-control-sm" placeholder="QQQ">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Data pull source">Source</label>
+                    <select id="source" class="custom-select custom-select-sm">
+                        <option value="webhook">Webhook</option>
+                        <option value="direct">Direct yfinance</option>
+                        <option value="cache">Cache</option>
+                    </select>
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Time range returned by the provider">Period</label>
+                    <select id="period" class="custom-select custom-select-sm">
+                        <option value="1d">1d</option>
+                        <option value="5d">5d</option>
+                        <option value="1mo">1mo</option>
+                        <option value="3mo">3mo</option>
+                        <option value="6mo">6mo</option>
+                        <option value="1y">1y</option>
+                        <option value="2y">2y</option>
+                    </select>
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Candles timeframe">Interval</label>
+                    <select id="interval" class="custom-select custom-select-sm">
+                        <option value="1m">1m</option>
+                        <option value="5m">5m</option>
+                        <option value="15m">15m</option>
+                        <option value="30m">30m</option>
+                        <option value="1h">1h</option>
+                        <option value="1d">1d</option>
+                        <option value="1wk">1wk</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Chart style">Chart Type</label>
+                    <select id="chartType" class="custom-select custom-select-sm">
+                        <option value="candlestick">Candlestick</option>
+                        <option value="line">Line</option>
+                        <option value="ohlc">OHLC</option>
+                    </select>
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="How many rows to retain in chart logic">Lookback</label>
+                    <input type="number" id="lookback" class="form-control form-control-sm" value="120" min="25" max="2000">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Rows returned by DB queries">DB Limit</label>
+                    <input type="number" id="dbLimit" class="form-control form-control-sm" value="100" min="1" max="1000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Fast moving average period">SMA Fast</label>
+                    <input type="number" id="smaFast" class="form-control form-control-sm" value="9" min="2" max="200">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Slow moving average period">SMA Slow</label>
+                    <input type="number" id="smaSlow" class="form-control form-control-sm" value="21" min="3" max="400">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Standard deviation multiplier for Bollinger Bands">BB Std</label>
+                    <input type="number" id="bbStd" class="form-control form-control-sm" value="2" step="0.1" min="0.5" max="5">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Fast EMA period">EMA Fast</label>
+                    <input type="number" id="emaFast" class="form-control form-control-sm" value="12" min="2" max="200">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Slow EMA period">EMA Slow</label>
+                    <input type="number" id="emaSlow" class="form-control form-control-sm" value="26" min="3" max="400">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="RSI lookback length">RSI Length</label>
+                    <input type="number" id="rsiLength" class="form-control form-control-sm" value="14" min="2" max="200">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="MACD fast EMA">MACD Fast</label>
+                    <input type="number" id="macdFast" class="form-control form-control-sm" value="12" min="2" max="200">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="MACD slow EMA">MACD Slow</label>
+                    <input type="number" id="macdSlow" class="form-control form-control-sm" value="26" min="3" max="400">
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="MACD signal smoothing">MACD Signal</label>
+                    <input type="number" id="macdSignal" class="form-control form-control-sm" value="9" min="2" max="200">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Quick source toggle to keep the request on the webhook only">Webhook Only</label>
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="webhookOnly">
+                        <label class="custom-control-label" for="webhookOnly">Force webhook</label>
+                    </div>
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Includes a dedicated volume trace">Volume</label>
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input indicator-toggle" id="includeVolume" value="volume" checked>
+                        <label class="custom-control-label" for="includeVolume">Show volume</label>
+                    </div>
+                </div>
+                <div class="form-group col-4">
+                    <label data-toggle="tooltip" title="Normalize both price and oscillator scales">Normalize</label>
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="normalize">
+                        <label class="custom-control-label" for="normalize">Scale normalize</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-12 mb-0">
+                    <label data-toggle="tooltip" title="Pattern stack toggles">Pattern recognition</label>
+                    <div class="d-flex flex-wrap">
+                        <div class="custom-control custom-checkbox mr-3">
+                            <input type="checkbox" class="custom-control-input pattern-toggle" id="patternTrend" value="trend" checked>
+                            <label class="custom-control-label" for="patternTrend">Trend</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mr-3">
+                            <input type="checkbox" class="custom-control-input pattern-toggle" id="patternBreakout" value="breakout" checked>
+                            <label class="custom-control-label" for="patternBreakout">Breakout</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mr-3">
+                            <input type="checkbox" class="custom-control-input pattern-toggle" id="patternReversal" value="reversal" checked>
+                            <label class="custom-control-label" for="patternReversal">Reversal</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mr-3">
+                            <input type="checkbox" class="custom-control-input pattern-toggle" id="patternSqueeze" value="squeeze" checked>
+                            <label class="custom-control-label" for="patternSqueeze">Squeeze</label>
+                        </div>
+                        <div class="custom-control custom-checkbox mr-3">
+                            <input type="checkbox" class="custom-control-input pattern-toggle" id="patternVolumeSpike" value="volume_spike" checked>
+                            <label class="custom-control-label" for="patternVolumeSpike">Volume spike</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section-spacing d-flex flex-wrap">
+                <span class="help-chip">Plotly charting</span>
+                <span class="help-chip">Tooltips</span>
+                <span class="help-chip">Hooked to yfinance</span>
+                <span class="help-chip">DB queries</span>
+                <span class="help-chip">Schedule manager</span>
+            </div>
+            <div class="section-spacing d-flex flex-wrap">
+                <button class="btn btn-primary btn-sm mr-2 mb-2" id="loadChartBtn">Load Chart</button>
+                <button class="btn btn-outline-info btn-sm mr-2 mb-2" id="refreshDbBtn">Query DB</button>
+                <button class="btn btn-success btn-sm mb-2" id="saveSettingsBtn">Save Settings</button>
+            </div>
+            <div id="status" class="status-text mt-2"></div>
         </div>
-        <button id="addScheduleButton" class="btn btn-success btn-sm" onclick="addSchedule()">Add Schedule</button>
-        <div id="scheduleStatus" class="status-text mt-2"></div>
-    </section>
+    </div>
 
-    <!-- Current Schedules Section -->
-    <section>
-        <h5>Current Schedules</h5>
-        <div id="scheduleList">
-            <div id="loadingSchedules" class="text-muted small">Loading schedules...</div>
+    <div class="card">
+        <div class="card-header">Market Snapshot</div>
+        <div class="card-body">
+            <div class="stat-grid">
+                <div class="stat-card"><div class="label">Price</div><div class="value" id="priceValue">--</div></div>
+                <div class="stat-card"><div class="label">Change</div><div class="value" id="changeValue">--</div></div>
+                <div class="stat-card"><div class="label">RSI</div><div class="value" id="rsiValue">--</div></div>
+                <div class="stat-card"><div class="label">Patterns</div><div class="value" id="patternValue">--</div></div>
+            </div>
         </div>
-    </section>
+    </div>
 
-    <!-- *********************************************************************** -->
-    <!--                            MODALS                                       -->
-    <!-- *********************************************************************** -->
+    <div class="card">
+        <div class="card-header">Price Chart</div>
+        <div class="card-body">
+            <div id="priceChart" class="chart-box"></div>
+        </div>
+    </div>
 
-    <!-- Settings Modal -->
-    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
+    <div class="card">
+        <div class="card-header">Indicator Stack</div>
+        <div class="card-body">
+            <div id="indicatorChart" class="chart-box"></div>
+            <div id="indicatorStack" class="scroll-list mt-2 tiny"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Pattern Recognition</div>
+        <div class="card-body">
+            <ul id="patternStack" class="list-inline-chip tiny"></ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Database Query</div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group col-6">
+                    <label data-toggle="tooltip" title="Database alias or external source">Database</label>
+                    <select id="database" class="custom-select custom-select-sm"></select>
+                </div>
+                <div class="form-group col-6">
+                    <label data-toggle="tooltip" title="Row limit for the returned result set">Limit</label>
+                    <input type="number" id="queryLimit" class="form-control form-control-sm" value="100" min="1" max="1000">
+                </div>
+            </div>
+            <div class="form-group mb-2">
+                <label data-toggle="tooltip" title="SQL or query text sent to the configured DB webhook">Query</label>
+                <textarea id="sql" class="form-control form-control-sm" rows="4" placeholder="SELECT * FROM signals ORDER BY created_at DESC"></textarea>
+            </div>
+            <div class="d-flex flex-wrap mb-2">
+                <button class="btn btn-outline-info btn-sm mr-2 mb-2" id="runDbQueryBtn">Run Query</button>
+                <button class="btn btn-outline-secondary btn-sm mb-2" id="loadSchedulesBtn">Refresh Schedules</button>
+            </div>
+            <div id="dbStatus" class="status-text"></div>
+            <div class="result-table-wrap mt-2" id="dbResults"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Schedule Manager</div>
+        <div class="card-body">
+            <div class="form-row">
+                <div class="form-group col-7">
+                    <label data-toggle="tooltip" title="Recipient for schedule emails">Email Recipient(s)</label>
+                    <input type="text" class="form-control form-control-sm" id="emailList" placeholder="user@example.com, team@example.com">
+                </div>
+                <div class="form-group col-5">
+                    <label data-toggle="tooltip" title="24h time for the trigger">Time (HH:MM)</label>
+                    <input type="time" class="form-control form-control-sm" id="scheduleTime">
+                    <small id="scheduleTimeZone" class="text-muted tiny">Loading timezone...</small>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap mb-2">
+                <button class="btn btn-primary btn-sm mr-2 mb-2" id="addScheduleBtn">Add Schedule</button>
+                <button class="btn btn-outline-secondary btn-sm mb-2" id="manualRunBtn">Manual Run</button>
+            </div>
+            <div id="scheduleStatus" class="status-text"></div>
+            <div id="scheduleList" class="scroll-list mt-2 tiny"></div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Settings & API Keys</h5>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h5 class="modal-title">Settings</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">Keys are stored securely in script properties, not in the code.</p>
-                    <div id="settingsStatus" class="status-text mb-3"></div>
-                    <div class="form-group">
-                        <label for="githubPat">GitHub Personal Access Token (PAT)</label>
-                        <input type="password" class="form-control" id="githubPat" placeholder="Enter GitHub PAT">
+                    <p class="tiny text-muted">Webhook URLs are optional. When empty, the sidebar falls back to direct Yahoo Finance requests.</p>
+                    <div id="settingsStatus" class="status-text mb-2"></div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>GitHub PAT</label>
+                            <input type="password" class="form-control form-control-sm" id="githubPat" placeholder="Personal access token">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>GitHub Repo</label>
+                            <input type="text" class="form-control form-control-sm" id="githubRepo" placeholder="user/repo">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="githubRepo">GitHub Repository (e.g., user/repo)</label>
-                        <input type="text" class="form-control" id="githubRepo" placeholder="your-username/your-repo-name">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>FMP API Key</label>
+                            <input type="password" class="form-control form-control-sm" id="fmpApiKey" placeholder="Optional">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Gemini API Key</label>
+                            <input type="password" class="form-control form-control-sm" id="geminiApiKey" placeholder="Optional">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="fmpApiKey">Financial Modeling Prep API Key</label>
-                        <input type="password" class="form-control" id="fmpApiKey" placeholder="Enter FMP API Key">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>yfinance Webhook URL</label>
+                            <input type="text" class="form-control form-control-sm" id="yfinanceWebhookUrl" placeholder="https://.../yfinance_pull">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>DB Query Webhook URL</label>
+                            <input type="text" class="form-control form-control-sm" id="dbQueryWebhookUrl" placeholder="https://.../db_query">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="geminiApiKey">Google Gemini API Key</label>
-                        <input type="password" class="form-control" id="geminiApiKey" placeholder="Enter Gemini API Key">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label>Default Ticker</label>
+                            <input type="text" class="form-control form-control-sm" id="defaultTicker" value="SPY">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Default Period</label>
+                            <input type="text" class="form-control form-control-sm" id="defaultPeriod" value="1mo">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Default Interval</label>
+                            <input type="text" class="form-control form-control-sm" id="defaultInterval" value="1d">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>Default Chart</label>
+                            <input type="text" class="form-control form-control-sm" id="defaultChartType" value="candlestick">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>Default DB Source</label>
+                            <input type="text" class="form-control form-control-sm" id="defaultDbSource" value="watchlist">
+                        </div>
+                        <div class="form-group col-md-8">
+                            <label>Preset JSON</label>
+                            <input type="text" class="form-control form-control-sm" id="chartPreset" placeholder="Optional preset blob">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                    <button type="button" class="btn btn-primary" id="saveSettingsModalBtn">Save Settings</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Instructions Modal -->
-    <div class="modal fade" id="instructionsModal" tabindex="-1" role="dialog">
+    <div class="modal fade" id="instructionsModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Instructions</h5>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
-                    <h5>TradingView Webhook Setup</h5>
-                    <ol>
-                        <li>In TradingView, create an alert from a chart or Pine Script.</li>
-                        <li>Go to the "Notifications" tab of the alert setup.</li>
-                        <li>Check the "Webhook URL" box.</li>
-                        <li>Paste your script's deployment URL into the webhook field.</li>
-                        <li>In the "Message" box, you **must** provide a JSON payload. Use this template:
-                            <div class="code-block">{"ticker": "{{ticker}}", "price": "{{close}}", "signal": "Buy Signal"}</div>
-                        </li>
+                    <h6>Webhook flow</h6>
+                    <ol class="tiny">
+                        <li>Set the yfinance webhook URL in Settings if you want an external fetcher.</li>
+                        <li>Use the DB query webhook when you want the sidebar to hit a SQL/API service.</li>
+                        <li>If those URLs are empty, the sidebar falls back to direct Yahoo Finance chart requests.</li>
                     </ol>
-
-                    <h5>GitHub Integration Setup</h5>
-                    <ol>
-                        <li>Create a GitHub Personal Access Token (PAT).
-                            <ul>
-                                <li>Go to GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic).</li>
-                                <li>Generate a new token with the <strong>`repo`</strong> scope.</li>
-                                <li>Copy the token. You will not see it again.</li>
-                            </ul>
-                        </li>
-                        <li>Click the <strong>⚙️ Settings</strong> button in this sidebar.</li>
-                        <li>Paste your PAT into the "GitHub Personal Access Token" field.</li>
-                        <li>Enter your target repository in the format `username/reponame`.</li>
-                        <li>Click "Save Settings". The webhook will now write alert data to this repository.</li>
-                    </ol>
+                    <h6>Chart inputs</h6>
+                    <ul class="tiny">
+                        <li>Toggle indicators to build the stack used in the chart payload.</li>
+                        <li>Pattern toggles control the recognition list shown below the chart.</li>
+                        <li>Any change in the control surface can trigger a fresh chart request.</li>
+                    </ul>
+                    <h6>Example webhook payload</h6>
+                    <div class="code-block">{
+  "action": "yfinance_pull",
+  "ticker": "SPY",
+  "period": "1mo",
+  "interval": "1d",
+  "indicators": ["sma", "macd", "rsi"],
+  "patterns": ["trend", "breakout"]
+}</div>
+                    <h6>DB query payload</h6>
+                    <div class="code-block">{
+  "action": "db_query",
+  "database": "watchlist",
+  "sql": "SELECT * FROM signals ORDER BY created_at DESC LIMIT 100",
+  "limit": 100
+}</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -191,150 +550,315 @@
         </div>
     </div>
 
-    <!-- Required JS for Bootstrap Modals -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script>
-    // --- Client-Side Controller ---
-    class SidebarController {
+    class MarketLabSidebar {
         constructor() {
-            // Bind all methods to the instance to maintain `this` context
-            this.runManualFetch = this.runManualFetch.bind(this);
-            this.addSchedule = this.addSchedule.bind(this);
-            this.deleteSchedule = this.deleteSchedule.bind(this);
-            this.saveSettings = this.saveSettings.bind(this);
-            this.loadInitialData = this.loadInitialData.bind(this);
+            this.bootstrap = null;
+            this.refreshTimer = null;
+            this.bindMethods();
         }
 
-        setStatus(elementId, message, type) {
-            const el = document.getElementById(elementId);
-            if(el) {
-              el.textContent = message;
-              el.className = `status-text mt-2 ${type}`;
+        bindMethods() {
+            this.refreshChart = this.refreshChart.bind(this);
+            this.refreshDb = this.refreshDb.bind(this);
+            this.saveAllSettings = this.saveAllSettings.bind(this);
+            this.addSchedule = this.addSchedule.bind(this);
+            this.deleteSchedule = this.deleteSchedule.bind(this);
+            this.manualRun = this.manualRun.bind(this);
+            this.loadInitialData = this.loadInitialData.bind(this);
+            this.populateBootstrap = this.populateBootstrap.bind(this);
+        }
+
+        setStatus(target, message, type) {
+            const el = document.getElementById(target);
+            if (!el) return;
+            el.textContent = message;
+            el.className = `status-text ${type || ''}`;
+        }
+
+        debounceRefresh() {
+            clearTimeout(this.refreshTimer);
+            this.refreshTimer = setTimeout(() => this.refreshChart(), 300);
+        }
+
+        collectChartRequest() {
+            const getChecked = selector => Array.from(document.querySelectorAll(selector + ':checked')).map(el => el.value);
+            return {
+                ticker: (document.getElementById('ticker').value || 'SPY').trim().toUpperCase(),
+                compareTicker: (document.getElementById('compareTicker').value || '').trim().toUpperCase(),
+                source: document.getElementById('source').value,
+                period: document.getElementById('period').value,
+                interval: document.getElementById('interval').value,
+                chartType: document.getElementById('chartType').value,
+                lookback: Number(document.getElementById('lookback').value || 120),
+                smaFast: Number(document.getElementById('smaFast').value || 9),
+                smaSlow: Number(document.getElementById('smaSlow').value || 21),
+                emaFast: Number(document.getElementById('emaFast').value || 12),
+                emaSlow: Number(document.getElementById('emaSlow').value || 26),
+                rsiLength: Number(document.getElementById('rsiLength').value || 14),
+                macdFast: Number(document.getElementById('macdFast').value || 12),
+                macdSlow: Number(document.getElementById('macdSlow').value || 26),
+                macdSignal: Number(document.getElementById('macdSignal').value || 9),
+                bbStd: Number(document.getElementById('bbStd').value || 2),
+                indicators: getChecked('.indicator-toggle'),
+                patterns: getChecked('.pattern-toggle'),
+                includeVolume: document.getElementById('includeVolume').checked,
+                includePatterns: true,
+                normalize: document.getElementById('normalize').checked,
+                webhookOnly: document.getElementById('webhookOnly').checked
+            };
+        }
+
+        collectSettingsPayload() {
+            return {
+                githubPat: document.getElementById('githubPat').value,
+                githubRepo: document.getElementById('githubRepo').value,
+                fmpApiKey: document.getElementById('fmpApiKey').value,
+                geminiApiKey: document.getElementById('geminiApiKey').value,
+                yfinanceWebhookUrl: document.getElementById('yfinanceWebhookUrl').value,
+                dbQueryWebhookUrl: document.getElementById('dbQueryWebhookUrl').value,
+                defaultTicker: document.getElementById('defaultTicker').value,
+                defaultPeriod: document.getElementById('defaultPeriod').value,
+                defaultInterval: document.getElementById('defaultInterval').value,
+                defaultChartType: document.getElementById('defaultChartType').value,
+                defaultDbSource: document.getElementById('defaultDbSource').value,
+                chartPreset: document.getElementById('chartPreset').value
+            };
+        }
+
+        populateBootstrap(bootstrap) {
+            this.bootstrap = bootstrap || {};
+            const settings = this.bootstrap.settings || {};
+            document.getElementById('ticker').value = settings.defaultTicker || 'SPY';
+            document.getElementById('period').value = settings.defaultPeriod || '1mo';
+            document.getElementById('interval').value = settings.defaultInterval || '1d';
+            document.getElementById('chartType').value = settings.defaultChartType || 'candlestick';
+            document.getElementById('source').value = settings.yfinanceWebhookUrl ? 'webhook' : 'direct';
+            document.getElementById('defaultTicker').value = settings.defaultTicker || 'SPY';
+            document.getElementById('defaultPeriod').value = settings.defaultPeriod || '1mo';
+            document.getElementById('defaultInterval').value = settings.defaultInterval || '1d';
+            document.getElementById('defaultChartType').value = settings.defaultChartType || 'candlestick';
+            document.getElementById('defaultDbSource').value = settings.defaultDbSource || 'watchlist';
+            document.getElementById('yfinanceWebhookUrl').value = settings.yfinanceWebhookUrl || '';
+            document.getElementById('dbQueryWebhookUrl').value = settings.dbQueryWebhookUrl || '';
+            this.renderDatabaseOptions((bootstrap.databases || []).map(item => ({ value: item.key, label: item.label })));
+            this.renderScheduleList(bootstrap.schedules || []);
+            this.renderCatalogs(bootstrap.indicators || [], bootstrap.patterns || []);
+            this.setStatus('bootstrapStatus', 'Ready.', 'success');
+        }
+
+        renderDatabaseOptions(items) {
+            const select = document.getElementById('database');
+            select.innerHTML = '';
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.value;
+                opt.textContent = item.label;
+                select.appendChild(opt);
+            });
+            if (!items.length) {
+                const opt = document.createElement('option');
+                opt.value = 'watchlist';
+                opt.textContent = 'Watchlist';
+                select.appendChild(opt);
             }
         }
 
-        disableButtons(disabled) {
-            document.getElementById('fetchButton').disabled = disabled;
-            document.getElementById('addScheduleButton').disabled = disabled;
-            document.querySelectorAll('.delete-btn').forEach(btn => btn.disabled = disabled);
+        renderCatalogs(indicators, patterns) {
+            const indicatorStack = document.getElementById('indicatorStack');
+            indicatorStack.innerHTML = indicators.map(item => `<span class="badge badge-soft mr-1 mb-1">${item.label}</span>`).join('') || '<span class="text-muted">No indicator catalog loaded.</span>';
+            const patternStack = document.getElementById('patternStack');
+            patternStack.innerHTML = patterns.map(item => `<li><span class="badge badge-secondary">${item.label}</span></li>`).join('') || '<li class="text-muted">No patterns loaded.</li>';
         }
 
-        runManualFetch() {
-            this.setStatus('status', 'Running analysis...', 'info');
-            this.disableButtons(true);
+        renderScheduleList(schedules) {
+            const target = document.getElementById('scheduleList');
+            if (!schedules || !schedules.length) {
+                target.innerHTML = '<div class="text-muted">No schedules added yet.</div>';
+                return;
+            }
+            target.innerHTML = schedules.map(s => `
+                <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                    <div>
+                        <div><strong>${this.escapeHtml(s.email || '')}</strong></div>
+                        <div class="text-muted tiny">${this.escapeHtml(s.time || '')}</div>
+                    </div>
+                    <button class="btn btn-sm btn-danger delete-schedule" data-id="${s.id}">X</button>
+                </div>
+            `).join('');
+            Array.from(target.querySelectorAll('.delete-schedule')).forEach(btn => {
+                btn.addEventListener('click', () => this.deleteSchedule(btn.getAttribute('data-id')));
+            });
+        }
+
+        renderChart(payload) {
+            if (!payload || !payload.chart) return;
+            const priceChart = payload.chart.price || { traces: [], layout: {} };
+            const indicatorChart = payload.chart.indicator || { traces: [], layout: {} };
+            if (window.Plotly) {
+                Plotly.react('priceChart', priceChart.traces || [], priceChart.layout || { height: 420 });
+                Plotly.react('indicatorChart', indicatorChart.traces || [], indicatorChart.layout || { height: 280 });
+            }
+
+            const summary = payload.summary || {};
+            document.getElementById('priceValue').textContent = summary.lastPrice != null ? this.formatNumber(summary.lastPrice) : '--';
+            document.getElementById('changeValue').textContent = summary.changePct != null ? `${summary.changePct.toFixed(2)}%` : '--';
+            document.getElementById('rsiValue').textContent = summary.rsi != null ? summary.rsi.toFixed(2) : '--';
+            document.getElementById('patternValue').textContent = `${summary.patternCount || 0}`;
+            this.renderIndicatorSnapshot(payload.indicators || {});
+            this.renderPatternMatches(payload.patterns || []);
+        }
+
+        renderIndicatorSnapshot(indicators) {
+            const nodes = [];
+            if (indicators.smaFast && indicators.smaFast.length) nodes.push(['SMA Fast', this.tailValue(indicators.smaFast)]);
+            if (indicators.smaSlow && indicators.smaSlow.length) nodes.push(['SMA Slow', this.tailValue(indicators.smaSlow)]);
+            if (indicators.emaFast && indicators.emaFast.length) nodes.push(['EMA Fast', this.tailValue(indicators.emaFast)]);
+            if (indicators.emaSlow && indicators.emaSlow.length) nodes.push(['EMA Slow', this.tailValue(indicators.emaSlow)]);
+            if (indicators.vwap && indicators.vwap.length) nodes.push(['VWAP', this.tailValue(indicators.vwap)]);
+            if (indicators.atr && indicators.atr.length) nodes.push(['ATR', this.tailValue(indicators.atr)]);
+            if (indicators.rsi && indicators.rsi.length) nodes.push(['RSI', this.tailValue(indicators.rsi)]);
+            const macdLine = indicators.macd && indicators.macd.line ? this.tailValue(indicators.macd.line) : null;
+            const macdSignal = indicators.macd && indicators.macd.signal ? this.tailValue(indicators.macd.signal) : null;
+            if (macdLine != null) nodes.push(['MACD', macdLine]);
+            if (macdSignal != null) nodes.push(['Signal', macdSignal]);
+            document.getElementById('indicatorStack').innerHTML = nodes.map(([label, value]) => `<div><strong>${label}:</strong> ${this.formatNumber(value)}</div>`).join('') || '<span class="text-muted">No indicator values.</span>';
+        }
+
+        renderPatternMatches(patterns) {
+            const el = document.getElementById('patternStack');
+            if (!patterns || !patterns.length) {
+                el.innerHTML = '<li class="text-muted">No active pattern matches.</li>';
+                return;
+            }
+            el.innerHTML = patterns.map(pattern => `<li><span class="badge badge-primary mr-1 mb-1">${this.escapeHtml(pattern.label || pattern.key || 'Pattern')}</span></li>`).join('');
+        }
+
+        renderDbResults(result) {
+            const target = document.getElementById('dbResults');
+            if (!result) {
+                target.innerHTML = '<div class="text-muted">No result.</div>';
+                return;
+            }
+            const rows = Array.isArray(result.data) ? result.data : (Array.isArray(result.rows) ? result.rows : []);
+            if (rows.length && typeof rows[0] === 'object') {
+                const columns = Array.from(rows.reduce((set, row) => {
+                    Object.keys(row).forEach(key => set.add(key));
+                    return set;
+                }, new Set()));
+                const head = `<thead><tr>${columns.map(col => `<th>${this.escapeHtml(col)}</th>`).join('')}</tr></thead>`;
+                const body = `<tbody>${rows.map(row => `<tr>${columns.map(col => `<td>${this.escapeHtml(row[col] == null ? '' : String(row[col]))}</td>`).join('')}</tr>`).join('')}</tbody>`;
+                target.innerHTML = `<table class="table table-sm table-striped tiny mb-0">${head}${body}</table>`;
+                return;
+            }
+            target.innerHTML = `<pre class="code-block mb-0">${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
+        }
+
+        refreshChart() {
+            this.setStatus('status', 'Loading chart...', 'info');
             google.script.run
                 .withSuccessHandler(result => {
-                    this.setStatus('status', result.message, result.success ? 'success' : 'error');
-                    this.disableButtons(false);
+                    this.setStatus('status', result && result.success ? `Loaded ${result.request.ticker}.` : 'Chart loaded.', result && result.success ? 'success' : 'warning');
+                    this.renderChart(result);
                 })
-                .withFailureHandler(err => {
-                    this.setStatus('status', `Error: ${err.message}`, 'error');
-                    this.disableButtons(false);
+                .withFailureHandler(err => this.setStatus('status', `Error: ${err.message}`, 'error'))
+                .fetchYFinanceData(this.collectChartRequest());
+        }
+
+        refreshDb() {
+            this.setStatus('dbStatus', 'Running query...', 'info');
+            google.script.run
+                .withSuccessHandler(result => {
+                    this.setStatus('dbStatus', result && result.success ? 'Query complete.' : (result.message || 'Query completed.'), result && result.success ? 'success' : 'warning');
+                    this.renderDbResults(result);
                 })
-                .runManualPortAnalysis();
+                .withFailureHandler(err => this.setStatus('dbStatus', `Error: ${err.message}`, 'error'))
+                .queryDatabases({
+                    database: document.getElementById('database').value,
+                    sql: document.getElementById('sql').value,
+                    limit: Number(document.getElementById('queryLimit').value || 100)
+                });
+        }
+
+        saveAllSettings() {
+            this.setStatus('settingsStatus', 'Saving...', 'info');
+            const payload = this.collectSettingsPayload();
+            google.script.run
+                .withSuccessHandler(() => {
+                    google.script.run
+                        .withSuccessHandler(result => {
+                            this.setStatus('settingsStatus', result && result.success ? 'Settings saved.' : 'Settings saved.', 'success');
+                            document.getElementById('ticker').value = payload.defaultTicker || document.getElementById('ticker').value;
+                            document.getElementById('period').value = payload.defaultPeriod || document.getElementById('period').value;
+                            document.getElementById('interval').value = payload.defaultInterval || document.getElementById('interval').value;
+                            $('#settingsModal').modal('hide');
+                            this.setStatus('settingsStatus', '', '');
+                        })
+                        .withFailureHandler(err => this.setStatus('settingsStatus', `Error: ${err.message}`, 'error'))
+                        .saveDashboardSettings(payload);
+                })
+                .withFailureHandler(err => this.setStatus('settingsStatus', `Error: ${err.message}`, 'error'))
+                .saveSettings(payload);
         }
 
         addSchedule() {
             const email = document.getElementById('emailList').value.trim();
             const time = document.getElementById('scheduleTime').value;
             if (!email || !time) {
-                this.setStatus('scheduleStatus', 'Email(s) and time required.', 'error');
+                this.setStatus('scheduleStatus', 'Email and time are required.', 'error');
                 return;
             }
-            this.setStatus('scheduleStatus', 'Adding...', 'info');
-            this.disableButtons(true);
+            this.setStatus('scheduleStatus', 'Adding schedule...', 'info');
             google.script.run
                 .withSuccessHandler(result => {
-                    this.setStatus('scheduleStatus', result.message, result.success ? 'success' : 'error');
-                    if (result.success) {
-                        this.renderSchedules(result.schedules);
-                        document.getElementById('emailList').value = '';
-                    }
-                    this.disableButtons(false);
+                    this.setStatus('scheduleStatus', result.message || 'Schedule added.', result.success ? 'success' : 'warning');
+                    this.renderScheduleList(result.schedules || []);
+                    document.getElementById('emailList').value = '';
                 })
-                .withFailureHandler(err => {
-                    this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error');
-                    this.disableButtons(false);
-                })
+                .withFailureHandler(err => this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error'))
                 .addSchedule({ email, time });
         }
 
-        deleteSchedule(scheduleId) {
-            if (!confirm('Are you sure?')) return;
+        deleteSchedule(id) {
+            if (!confirm('Delete this schedule?')) return;
             this.setStatus('scheduleStatus', 'Deleting...', 'info');
-            this.disableButtons(true);
             google.script.run
                 .withSuccessHandler(result => {
-                    this.setStatus('scheduleStatus', result.message, result.success ? 'success' : 'error');
-                    if (result.success) this.renderSchedules(result.schedules);
-                    this.disableButtons(false);
+                    this.setStatus('scheduleStatus', result.message || 'Deleted.', result.success ? 'success' : 'warning');
+                    this.renderScheduleList(result.schedules || []);
                 })
-                .withFailureHandler(err => {
-                    this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error');
-                    this.disableButtons(false);
-                })
-                .deleteSchedule(scheduleId);
+                .withFailureHandler(err => this.setStatus('scheduleStatus', `Error: ${err.message}`, 'error'))
+                .deleteSchedule(id);
         }
 
-        renderSchedules(schedules) {
-            const listDiv = document.getElementById('scheduleList');
-            listDiv.innerHTML = '';
-            if (schedules && schedules.length > 0) {
-                schedules.forEach(schedule => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'schedule-list-item';
-                    itemDiv.innerHTML = `
-                        <div class="schedule-details">
-                            <span class="schedule-email" title="${schedule.email}">${schedule.email.length > 25 ? schedule.email.substring(0,22)+'...' : schedule.email}</span>
-                            <span class="schedule-time">at ${schedule.time}</span>
-                        </div>
-                        <button class="btn btn-danger btn-sm delete-btn" onclick="app.deleteSchedule('${schedule.id}')">X</button>
-                    `;
-                    listDiv.appendChild(itemDiv);
-                });
-            } else {
-                listDiv.innerHTML = '<p class="text-muted small">No schedules added yet.</p>';
-            }
-        }
-
-        saveSettings() {
-            this.setStatus('settingsStatus', 'Saving...', 'info');
-            const settings = {
-                githubPat: document.getElementById('githubPat').value,
-                githubRepo: document.getElementById('githubRepo').value,
-                fmpApiKey: document.getElementById('fmpApiKey').value,
-                geminiApiKey: document.getElementById('geminiApiKey').value,
-            };
+        manualRun() {
+            this.setStatus('status', 'Running manual analysis...', 'info');
             google.script.run
-                .withSuccessHandler(result => {
-                    this.setStatus('settingsStatus', result.message, result.success ? 'success' : 'error');
-                    // Hide password fields after saving
-                    document.getElementById('githubPat').value = '';
-                    document.getElementById('fmpApiKey').value = '';
-                    document.getElementById('geminiApiKey').value = '';
-                    setTimeout(() => { $('#settingsModal').modal('hide'); this.setStatus('settingsStatus', '', 'info'); }, 1500);
-                })
-                .withFailureHandler(err => {
-                    this.setStatus('settingsStatus', `Error: ${err.message}`, 'error');
-                })
-                .saveSettings(settings);
+                .withSuccessHandler(result => this.setStatus('status', result.message || 'Manual run complete.', result.success ? 'success' : 'warning'))
+                .withFailureHandler(err => this.setStatus('status', `Error: ${err.message}`, 'error'))
+                .runManualPortAnalysis();
         }
 
         loadInitialData() {
-            // Get timezone
+            if (window.$ && $.fn.tooltip) {
+                $('[data-toggle="tooltip"]').tooltip();
+            }
             google.script.run
                 .withSuccessHandler(tz => document.getElementById('scheduleTimeZone').textContent = `Timezone: ${tz}`)
                 .getServerTimezone();
 
-            // Get schedules
             google.script.run
-                .withSuccessHandler(schedules => this.renderSchedules(schedules))
-                .getSchedules();
+                .withSuccessHandler(bootstrap => {
+                    this.populateBootstrap(bootstrap);
+                    this.refreshChart();
+                })
+                .withFailureHandler(err => this.setStatus('bootstrapStatus', `Bootstrap error: ${err.message}`, 'error'))
+                .getSidebarBootstrap();
 
-            // Get settings to populate repo field
             google.script.run
                 .withSuccessHandler(settings => {
                     if (settings && settings.githubRepo) {
@@ -342,19 +866,63 @@
                     }
                 })
                 .getSettings();
+
+            google.script.run
+                .withSuccessHandler(schedules => this.renderScheduleList(schedules || []))
+                .getSchedules();
+        }
+
+        escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        formatNumber(value) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return '--';
+            if (Math.abs(num) >= 1000) return num.toFixed(2);
+            if (Math.abs(num) >= 1) return num.toFixed(2);
+            return num.toFixed(4);
+        }
+
+        tailValue(values) {
+            if (!Array.isArray(values)) return null;
+            for (let i = values.length - 1; i >= 0; i--) {
+                if (values[i] != null && !Number.isNaN(Number(values[i]))) return Number(values[i]);
+            }
+            return null;
         }
     }
 
-    const app = new SidebarController();
+    const app = new MarketLabSidebar();
 
-    // Make methods globally accessible for onclick attributes
-    window.runManualFetch = app.runManualFetch;
-    window.addSchedule = app.addSchedule;
-    window.deleteSchedule = app.deleteSchedule;
-    window.saveSettings = app.saveSettings;
+    window.onload = function() {
+        app.loadInitialData();
+    };
 
-    // Load initial data when the sidebar opens
-    window.onload = app.loadInitialData;
+    document.getElementById('refreshAllBtn').addEventListener('click', () => app.refreshChart());
+    document.getElementById('loadChartBtn').addEventListener('click', () => app.refreshChart());
+    document.getElementById('refreshDbBtn').addEventListener('click', () => app.refreshDb());
+    document.getElementById('runDbQueryBtn').addEventListener('click', () => app.refreshDb());
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => app.saveAllSettings());
+    document.getElementById('saveSettingsModalBtn').addEventListener('click', () => app.saveAllSettings());
+    document.getElementById('addScheduleBtn').addEventListener('click', () => app.addSchedule());
+    document.getElementById('manualRunBtn').addEventListener('click', () => app.manualRun());
+    document.getElementById('loadSchedulesBtn').addEventListener('click', () => {
+        google.script.run.withSuccessHandler(schedules => app.renderScheduleList(schedules || [])).getSchedules();
+    });
+
+    ['ticker','compareTicker','source','period','interval','chartType','lookback','smaFast','smaSlow','emaFast','emaSlow','rsiLength','macdFast','macdSlow','macdSignal','bbStd','includeVolume','normalize','webhookOnly'].forEach(id => {
+        const node = document.getElementById(id);
+        if (!node) return;
+        node.addEventListener('change', () => app.debounceRefresh());
+        node.addEventListener('keyup', () => app.debounceRefresh());
+    });
+    Array.from(document.querySelectorAll('.pattern-toggle, .indicator-toggle')).forEach(node => node.addEventListener('change', () => app.debounceRefresh()));
     </script>
 </body>
 </html>
