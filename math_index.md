@@ -38,6 +38,9 @@ and computer science. Each directory contains:
 | [`/numerical_methods/`](numerical_methods/README.md) | CG, GMRES, root finding, spline, Richardson, GL quadrature, FD/FEM, Chebyshev |
 | [`/calculus/`](calculus/README.md) | Multivariable, differential forms, complex analysis, fractional calculus |
 
+Several of the core math modules now include `examples/` subdirectories with
+worked snippets for the main APIs and solvers.
+
 ### ⚛️ Physics
 
 | Directory | Topics |

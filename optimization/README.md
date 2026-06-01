@@ -131,6 +131,13 @@ condition ($L_{y'y'} > 0$) and Weierstrass excess function $E \geq 0$.
 
 ---
 
+## Examples
+
+- `examples/` — worked optimization snippets for smooth, constrained, and stochastic problems.
+- `examples/README.md` — import examples for `gradient_descent`, `newton_method`, and `admm_lasso`.
+
+---
+
 ## Subdirectories
 
 | Directory | Content |
@@ -141,3 +148,4 @@ condition ($L_{y'y'} > 0$) and Weierstrass excess function $E \geq 0$.
 | `optimal_control/` | Pontryagin, HJB, LQR, MPC, dynamic programming |
 | `semidefinite/` | SDP, SOCP, SOS, moment relaxations, Lovász theta |
 | `combinatorial/` | Integer programming, branch-and-bound, cuts, approximation |
+| `examples/` | Worked examples for smooth, constrained, and stochastic optimization |

@@ -149,6 +149,13 @@ boundaries in $(a,b)$-parameter space.
 
 ---
 
+## Examples
+
+- `examples/` — worked solver snippets for ODEs, SDEs, and PDEs.
+- `examples/README.md` — import examples for `rk4`, `euler_maruyama`, and `heat_eq_1d_cn`.
+
+---
+
 ## Subdirectories
 
 | Directory | Content |
@@ -160,3 +167,4 @@ boundaries in $(a,b)$-parameter space.
 | `delay/` | DDEs with constant/variable delay, neutral DDEs |
 | `fractional/` | Caputo, Riemann-Liouville, Grünwald-Letnikov schemes |
 | `geometric/` | Variational integrators, symplectic methods, Lie group integrators |
+| `examples/` | Worked examples for ODEs, SDEs, and PDE solvers |

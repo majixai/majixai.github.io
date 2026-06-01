@@ -114,6 +114,13 @@ Mild solution: $u(t) = S(t)u_0 + \int_0^t S(t-s)\sigma\,dW(s)$.
 
 ---
 
+## Examples
+
+- `examples/` — short stochastic-process and integration recipes.
+- `examples/README.md` — import examples for `brownian_motion`, `geometric_brownian_motion`, and `qmc_integrate`.
+
+---
+
 ## Subdirectories
 
 | Directory | Content |
@@ -123,3 +130,4 @@ Mild solution: $u(t) = S(t)u_0 + \int_0^t S(t-s)\sigma\,dW(s)$.
 | `large_deviations/` | Cramér, Gärtner-Ellis, Sanov, process-level LDP |
 | `random_fields/` | Gaussian fields, covariance functions, Matérn, SPDEs |
 | `extreme_value/` | GEV, GPD, block maxima, peaks over threshold, EVT |
+| `examples/` | Worked examples for stochastic processes, simulation, and QMC |

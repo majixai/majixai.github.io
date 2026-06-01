@@ -157,6 +157,13 @@ eigenvalues and eigenvectors are analytic in $t$ (simple spectrum).
 
 ---
 
+## Examples
+
+- `examples/` — worked linear-algebra snippets for solving systems, estimating spectra, and building low-rank approximations.
+- `examples/README.md` — runnable import examples for `lu_solve`, `power_iteration`, and `mat_expm`.
+
+---
+
 ## Subdirectories
 
 | Directory | Content |
@@ -168,3 +175,4 @@ eigenvalues and eigenvectors are analytic in $t$ (simple spectrum).
 | `lie_groups/` | Matrix Lie groups, exponential map, adjoint representation |
 | `perturbation/` | Weyl, Davis–Kahan, Bauer–Fike, Kato–Rellich, pseudospectra |
 | `matrix_functions/` | Matrix exp, log, sqrt, sign function, Fréchet derivative |
+| `examples/` | Worked examples for matrix solves, spectra, and matrix functions |

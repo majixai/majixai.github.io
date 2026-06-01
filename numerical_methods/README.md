@@ -134,6 +134,13 @@ sequences achieves $O((\log N)^d / N)$.
 
 ---
 
+## Examples
+
+- `examples/` — small numerical recipes for linear solvers, interpolation, and quadrature.
+- `examples/README.md` — compact imports for `conjugate_gradient`, `newton_raphson`, and `gauss_legendre`.
+
+---
+
 ## Subdirectories
 
 | Directory | Content |
@@ -144,3 +151,4 @@ sequences achieves $O((\log N)^d / N)$.
 | `finite_elements/` | FEM assembly, mesh refinement, hp-FEM, DG methods |
 | `spectral_methods/` | Fourier, Chebyshev, pseudospectral, exponential integrators |
 | `quadrature/` | Gaussian, Gauss-Kronrod, adaptive, Monte Carlo, quasi-MC |
+| `examples/` | Worked examples for solvers, interpolation, and quadrature |
