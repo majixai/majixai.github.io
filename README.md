@@ -37,7 +37,34 @@ _Last updated: 2026-06-01 00:14 UTC_
 <!-- END_BIGGEST_UPDATES -->
 
 
-This repository is a collection of diverse projects, including web applications, data scrapers, financial analysis tools, and simple web pages. Each project is self-contained in its own directory.
+## Repository at a glance
+
+This repository is a large GitHub Pages workspace made up of mostly self-contained apps, scripts, and data pipelines. Most folders can be opened on their own, while shared infrastructure lives at the repo root.
+
+### Main technology stack
+
+- **Static web apps:** HTML5, CSS3, vanilla JavaScript, Service Workers, manifests
+- **Backend / automation:** Python 3, shell scripts, GitHub Actions
+- **Financial research:** Pine Script, CSV / DAT datasets, SQLite
+- **Data and integrations:** Google Apps Script, APIs, browser storage, C/C++ helpers
+
+### How the codebase is organized
+
+| Area | Common directories | What lives there |
+|---|---|---|
+| **Shared infrastructure** | `pwa/`, `actions/`, `.github/` | Reusable service worker logic, action helpers, workflow automation, and repo-wide setup |
+| **Financial / analytics** | `tradingview_integration/`, `quantitative_ai/`, `bitcoin_miner/`, `conics/`, `best/` | Market pipelines, Pine Script tools, neural / tensor experiments, and finance-focused dashboards |
+| **Standalone web apps** | `chat/`, `OptionStrategy/`, `contact_ledger_pwa/`, `beta/`, `boxstore/`, `chat_server/` | Self-contained browser apps with their own HTML, CSS, JS, or Python support code |
+| **Data collection / scrapers** | `bedpage_scraper/`, `craigslist_scraper/`, `stock_fetcher/`, `yfinance_data/`, `csv/` | Fetchers, crawlers, and generated market datasets |
+| **Reference / content pages** | `7t/`, `Gridiron/`, `Menus/`, `Touchdown/`, `Trades/`, `Security/`, and similar folders | Simple pages, demos, and static site content |
+
+### Where to look first
+
+- **Repository overview:** this file (`README.md`)
+- **Per-project docs:** each major folder usually has its own `README.md`
+- **Automation:** `.github/workflows/` and `.github/copilot-setup-steps.yml`
+- **Shared PWA logic:** `pwa/`
+- **Financial pipelines:** `tradingview_integration/`, `bitcoin_miner/`, `quantitative_ai/`
 
 ## Financial & AI Tools
 
