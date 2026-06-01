@@ -326,6 +326,17 @@ def build_repo_stats():
     except (ValueError, TypeError):
         total_commits = 0
 
+    # Shallow clones only know about the fetched subset of history.
+    # Preserve the existing README value when the local count is clearly incomplete.
+    if total_commits < 1000:
+        try:
+            existing_text = run(["git", "show", "HEAD:README.md"])
+            match = re.search(r"\| 📝 Total Commits \| (\d+) \|", existing_text)
+            if match:
+                total_commits = int(match.group(1))
+        except (OSError, ValueError, TypeError):
+            pass
+
     lines = [
         f"| Metric | Value |",
         f"|--------|-------|",

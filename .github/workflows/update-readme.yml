@@ -62,8 +62,8 @@ jobs:
         # Only check for changes when the update script succeeded.
         if: steps.update_readme.outputs.success == 'true'
         run: |
-          # Detect if any tracked files changed.
-          if git diff --quiet -- README.md latest_commit/data.json latest_commit/README.md; then
+          # Detect if any README or latest_commit artifact changed.
+          if ! git diff --name-only | grep -Eq '(^|/)README\.md$|^latest_commit/data\.json$'; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT

@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-06-01 00:14 UTC_
+_Last updated: 2026-06-01 20:32 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -18,22 +18,23 @@ _Last updated: 2026-06-01 00:14 UTC_
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`b185d04d42`](https://github.com/majixai/majixai.github.io/commit/b185d04d42e5f22fa115c2625c6bc2be77b68ae1) -- 2026-05-31 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-05-31 23:46:46 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`5be94523a6`](https://github.com/majixai/majixai.github.io/commit/5be94523a6928a69ab6b685fed9bd1fae0737412) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-05-31 23:43:45 UTC -- [Open page](https://majixai.github.io/data/)
-- [`c3aa2239d5`](https://github.com/majixai/majixai.github.io/commit/c3aa2239d59ed44470941e52463d225ffa68831d) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — market prediction 2026-05-31 23:42:54 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`241a2eed3f`](https://github.com/majixai/majixai.github.io/commit/241a2eed3f342e2a66a47e025777934d245e9d30) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-05-31 23:42:52 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
-- [`808b77190c`](https://github.com/majixai/majixai.github.io/commit/808b77190ca3d32722c04e03563536c9095cd91a) -- 2026-05-31 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-05-31 23:42:47 UTC -- [Open page](https://majixai.github.io/data/)
+- [`1b850cb636`](https://github.com/majixai/majixai.github.io/commit/1b850cb636391df1a59a3a160c7239dab3fb5d75) -- 2026-06-01 -- copilot-swe-agent[bot] -- docs: add auto readme banners -- [Open page](https://majixai.github.io/scripts/)
+- [`6a54e36162`](https://github.com/majixai/majixai.github.io/commit/6a54e3616245619df45425c2d1c1504fbcf5319b) -- 2026-06-01 -- copilot-swe-agent[bot] -- docs: improve repository overview -- [Open page](https://majixai.github.io/router/)
+- [`9df219096d`](https://github.com/majixai/majixai.github.io/commit/9df219096d3fd67de1ff213952d4f1508b463110) -- 2026-06-01 -- majixai -- Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory -- [Open page](https://majixai.github.io/7t/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** _No commits found_
-- **Biggest update this week:** _No commits found_
-- **Biggest update this month:** _No commits found_
-- **Biggest update this quarter:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
-  _1197561 lines changed (1192218+ / 5343-)_
-- **Biggest update this year:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
-  _1197561 lines changed (1192218+ / 5343-)_
+- **Biggest update today:** `9df2190` — 2026-06-01 — **majixai** — Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory  
+  _5944104 lines changed (5944104+ / 0-)_
+- **Biggest update this week:** `9df2190` — 2026-06-01 — **majixai** — Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory  
+  _5944104 lines changed (5944104+ / 0-)_
+- **Biggest update this month:** `9df2190` — 2026-06-01 — **majixai** — Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory  
+  _5944104 lines changed (5944104+ / 0-)_
+- **Biggest update this quarter:** `9df2190` — 2026-06-01 — **majixai** — Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory  
+  _5944104 lines changed (5944104+ / 0-)_
+- **Biggest update this year:** `9df2190` — 2026-06-01 — **majixai** — Merge pull request #490 from majixai/copilot/refactor-entirely-to-new-directory  
+  _5944104 lines changed (5944104+ / 0-)_
 <!-- END_BIGGEST_UPDATES -->
 
 
