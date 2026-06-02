@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Slot Machine Overlay (Functional)</title>
+    <style>
+        :root {
+            --slot-machine-width: 450px;
+            --reel-height: 120px;
+            --symbol-size: 60px;
+            --frame-color: #a16a1c;
+            --frame-glow: rgba(255, 215, 0, 0.7);
+            --dark-bg: #2c3e50;
+            --darker-bg: #233140;
+            --light-text: #ecf0f1;
+            --win-color: #2ecc71;
+            --button-color: #e67e22;
+            --button-hover: #f39c12;
+        }
+
+        body {
+            margin: 0;
+            background-color: transparent;
+            color: var(--light-text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.7);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Parallax Background */
+        #parallax-background {
+            position: fixed;
+            top: -20px; left: -20px; right: -20px; bottom: -20px;
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            background-color: rgba(10, 0, 20, 0.3);
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            z-index: -1;
+        }
+
+        #overlayContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+
+        #slotMachine {
+            width: var(--slot-machine-width);
+            background: linear-gradient(145deg, var(--dark-bg), var(--darker-bg));
+            border: 8px solid var(--frame-color);
+            border-radius: 20px;
+            padding: 1rem;
+            box-shadow: 0 0 30px var(--frame-glow), inset 0 0 15px rgba(0,0,0,0.5);
+            user-select: none;
+        }
+
+        #reelsContainer {
+            display: flex;
+            gap: 10px;
+            border: 4px solid var(--darker-bg);
+            border-radius: 10px;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .reel {
+            flex: 1;
+            height: var(--reel-height);
+            overflow: hidden;
+            position: relative;
+            background-color: #222;
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .reel-symbols {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1); /* Smooth stop */
+        }
+
+        .symbol {
+            height: var(--reel-height);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .symbol svg {
+            width: var(--symbol-size);
+            height: var(--symbol-size);
+            filter: drop-shadow(3px 3px 2px rgba(0, 0, 0, 0.7));
+        }
+
+        #resultDisplay {
+            min-height: 4rem;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            padding: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #resultDisplay.visible {
+            opacity: 1;
+        }
+
+        /* Win Animation */
+        .win-glow {
+            animation: winGlow 1.5s infinite alternate;
+        }
+        @keyframes winGlow {
+            from { box-shadow: 0 0 10px rgba(0,255,0,0.3), 0 0 30px var(--frame-glow); }
+            to { box-shadow: 0 0 25px rgba(0,255,0,0.9), 0 0 50px var(--frame-glow); }
+        }
+
+        /* Controls & Buttons */
+        .controls {
+            padding: 0.5rem 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .controls button:active {
+            transform: scale(0.95);
+        }
+        #spinButton {
+            background-color: var(--button-color);
+            color: white;
+        }
+        #spinButton:hover {
+            background-color: var(--button-hover);
+        }
+        #historyButton {
+            background-color: transparent;
+            color: var(--light-text);
+            border: 2px solid var(--light-text);
+        }
+        #historyButton:hover {
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        /* Custom Modal Styles */
+        #historyModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        #historyModal.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--dark-bg);
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid var(--frame-color);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--darker-bg);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .modal-close-btn {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--light-text);
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        .modal-body {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .modal-footer {
+            border-top: 1px solid var(--darker-bg);
+            padding-top: 15px;
+            margin-top: 15px;
+            text-align: right;
+        }
+        #clearHistoryButton {
+             background-color: #c0392b;
+             color: white;
+        }
+        #clearHistoryButton:hover {
+            background-color: #e74c3c;
+        }
+        
+        /* History List Styles */
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .history-item {
+            background-color: var(--darker-bg);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .history-item.win {
+            border-left: 5px solid var(--win-color);
+        }
+        .history-item-user {
+            font-weight: bold;
+        }
+        .history-item-details {
+            display: block;
+            font-size: 0.9em;
+            color: #bdc3c7;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- SVG Definitions for Slot Symbols -->
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <g id="svg-cherry">
+            <circle cx="35" cy="40" r="15" fill="#C2185B"/>
+            <circle cx="65" cy="40" r="15" fill="#D32F2F"/>
+            <path d="M35 25 Q 40 10 50 10" stroke="#4CAF50" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M65 25 Q 60 10 50 10" stroke="#4CAF50" stroke-width="5" fill="none" stroke-linecap="round"/>
+        </g>
+        <g id="svg-bell">
+            <path d="M20 75 H 80 Q 75 90 50 90 Q 25 90 20 75" fill="#FFD700"/>
+            <path d="M20 75 C 20 40, 80 40, 80 75" fill="#FFC107"/>
+            <circle cx="50" cy="85" r="8" fill="#B28900"/>
+        </g>
+        <g id="svg-bar">
+            <rect x="10" y="30" width="80" height="40" rx="5" fill="#455A64"/>
+            <text x="50" y="58" text-anchor="middle" font-size="28" fill="#CFD8DC" font-weight="bold" font-family="Arial">BAR</text>
+        </g>
+        <g id="svg-seven">
+            <path d="M25 10 H 75 L 50 90" fill="#E53935" stroke="#F44336" stroke-width="5" />
+        </g>
+        <g id="svg-diamond">
+            <polygon points="50,10 90,50 50,90 10,50" fill="#03A9F4" stroke="#4FC3F7" stroke-width="5"/>
+        </g>
+      </defs>
+    </svg>
+
+    <div id="parallax-background"></div>
+
+    <div id="overlayContainer">
+        <div id="slotMachine">
+            <div id="reelsContainer">
+                <!-- Reels will be dynamically added here -->
+            </div>
+            <div id="resultDisplay">
+                <div id="statusText">Loading...</div>
+            </div>
+            <div class="controls">
+                <button id="spinButton">Test Spin</button>
+                <button id="historyButton">Spin History</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Spin History -->
+    <div id="historyModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Spin History</h2>
+          <button class="modal-close-btn" id="modalCloseBtn">&times;</button>
+        </div>
+        <div class="modal-body" id="historyModalBody">
+          <p>No history found.</p>
+        </div>
+        <div class="modal-footer">
+          <button id="clearHistoryButton">Clear History</button>
+        </div>
+      </div>
+    </div>
+
+</body>
+</html>
