@@ -1,7 +1,7 @@
 {
   "ticker": "SPY",
-  "timestamp": "2026-06-03T22:20:04.883733",
-  "current_price": 759.57,
+  "timestamp": "2026-06-03T22:59:11.174910",
+  "current_price": 754.24,
   "forecast_minutes": 60,
   "data_sources": {
     "ticker": "SPY",
@@ -14,60 +14,59 @@
     "current_price_source": "yfinance"
   },
   "technical_indicators": {
-    "rsi": 71.17,
+    "rsi": 61.53,
     "macd": {
-      "line": 7.8056,
-      "signal": 7.025,
-      "histogram": 0.7806
+      "line": 7.317,
+      "signal": 6.5853,
+      "histogram": 0.7317
     },
     "bollinger_bands": {
-      "upper": 762.02,
-      "middle": 743.31,
-      "lower": 724.6
+      "upper": 761.81,
+      "middle": 744.83,
+      "lower": 727.85
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.5616,
-      "gamma": 0.016774,
-      "theta": -0.2141,
-      "vega": 0.8584,
-      "rho": 0.3415
+      "delta": 0.5615,
+      "gamma": 0.016856,
+      "theta": -0.213,
+      "vega": 0.8524,
+      "rho": 0.339
     },
-    "atm_call_price": 11.08,
-    "atm_put_price": 7.81,
+    "atm_call_price": 11.02,
+    "atm_put_price": 7.78,
     "implied_move": 0.27
   },
   "prediction": {
     "signal": "NEUTRAL",
-    "score": -1,
+    "score": 1,
     "confidence": 25.0,
     "reasons": [
-      "RSI indicates overbought conditions",
       "MACD histogram positive (bullish momentum)"
     ],
     "actions": [
       "Stay range-aware and prioritize mean-reversion until directional confirmation.",
-      "RSI is overbought; tighten risk controls and watch for momentum exhaustion.",
+      "RSI is neutral; align entries with volatility bands and trend context.",
       "Volatility is moderate; standard risk sizing is appropriate."
     ],
-    "target_price": 759.69,
-    "support": 758.44,
-    "resistance": 760.94
+    "target_price": 754.3,
+    "support": 752.9,
+    "resistance": 755.66
   },
   "simulation": {
     "statistics": {
-      "mean": 759.6867852491031,
-      "std": 2.041627816284076,
-      "p05": 756.6707770785317,
-      "p25": 758.4361790098027,
-      "p50": 759.7331975232885,
-      "p75": 760.9397846020299,
-      "p95": 763.0695713057312,
-      "min": 751.8314103424934,
-      "max": 766.7527018668436
+      "mean": 754.296000093479,
+      "std": 2.024255615463115,
+      "p05": 750.9654779070522,
+      "p25": 752.9032442998933,
+      "p50": 754.2999920399097,
+      "p75": 755.6570188449737,
+      "p95": 757.5458177501034,
+      "min": 748.4700485466161,
+      "max": 760.863115844583
     },
-    "simulations": 500,
-    "volatility": 0.1079
+    "simulations": 1000,
+    "volatility": 0.1081
   }
 }
