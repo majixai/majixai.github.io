@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-07-12 02:57 UTC_
+_Last updated: 2026-07-12 11:19 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,28 +13,28 @@ _Last updated: 2026-07-12 02:57 UTC_
 |--------|-------|
 | 📁 Project Directories | 181 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 139854 |
+| 📝 Total Commits | 139898 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`c453ab21f8`](https://github.com/majixai/majixai.github.io/commit/c453ab21f8e7f34543d4d9bc174e6d2ad287a61f) -- 2026-07-12 -- github-actions[bot] -- data: Update projects.json - 2026-07-12 02:29:15 UTC -- [Open page](https://majixai.github.io/router/)
-- [`d054abfa31`](https://github.com/majixai/majixai.github.io/commit/d054abfa31a96c432ea65c457caaf855580f69a0) -- 2026-07-12 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
-- [`96ca4090a1`](https://github.com/majixai/majixai.github.io/commit/96ca4090a1cad007c13bf01e04d2446aa2009170) -- 2026-07-11 -- majixai -- Modify circle positions and add new entities -- [Open page](https://majixai.github.io/router/)
-- [`45d83a242a`](https://github.com/majixai/majixai.github.io/commit/45d83a242a0361e8871ca69888e2d53126e91cde) -- 2026-07-12 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-07-12T02:09:21Z -- [Open page](https://majixai.github.io/integrity/)
-- [`96469941c3`](https://github.com/majixai/majixai.github.io/commit/96469941c3fa69d160fa7bb1c98b80d4eaf7d095) -- 2026-07-11 -- majixai -- Create initial DXF structure with layers and entities -- [Open page](https://majixai.github.io/router/)
+- [`446d6aaf41`](https://github.com/majixai/majixai.github.io/commit/446d6aaf41480c26ef6d098564446f5937515641) -- 2026-07-12 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-07-12 11:08 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
+- [`f202d4822a`](https://github.com/majixai/majixai.github.io/commit/f202d4822a43a4346309ab91fe7d0af2a99e6de4) -- 2026-07-12 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
+- [`df284b8375`](https://github.com/majixai/majixai.github.io/commit/df284b837543d8108f84cd01e228bff3f8a8d16b) -- 2026-07-12 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
+- [`ff2b89590b`](https://github.com/majixai/majixai.github.io/commit/ff2b89590b4e477b34385ac5d1ea2bf120e8e46c) -- 2026-07-12 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-07-12 10:29:46 UTC -- [Open page](https://majixai.github.io/data/)
+- [`c97ea657f8`](https://github.com/majixai/majixai.github.io/commit/c97ea657f8395d57e81873b5523e5270279c769e) -- 2026-07-12 -- github-actions[bot] -- data: omnibus — market prediction 2026-07-12 10:29:00 UTC -- [Open page](https://majixai.github.io/market_prediction/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `9646994` — 2026-07-11 — **majixai** — Create initial DXF structure with layers and entities  
-  _935 lines changed (935+ / 0-)_
-- **Biggest update this week:** `2d4e89a` — 2026-07-09 — **Nancysstays** — Change line layer names to 'Grid'  
-  _1952 lines changed (1944+ / 8-)_
-- **Biggest update this month:** `1586749` — 2026-07-05 — **github-actions[bot]** — data: Update index data - 2026-07-05 01:49:12 UTC  
-  _117615 lines changed (116505+ / 1110-)_
-- **Biggest update this quarter:** `1586749` — 2026-07-05 — **github-actions[bot]** — data: Update index data - 2026-07-05 01:49:12 UTC  
-  _117615 lines changed (116505+ / 1110-)_
+- **Biggest update today:** `c92388c` — 2026-07-12 — **github-actions[bot]** — data: Update index data - 2026-07-12 04:37:08 UTC  
+  _255576 lines changed (254465+ / 1111-)_
+- **Biggest update this week:** `c92388c` — 2026-07-12 — **github-actions[bot]** — data: Update index data - 2026-07-12 04:37:08 UTC  
+  _255576 lines changed (254465+ / 1111-)_
+- **Biggest update this month:** `c92388c` — 2026-07-12 — **github-actions[bot]** — data: Update index data - 2026-07-12 04:37:08 UTC  
+  _255576 lines changed (254465+ / 1111-)_
+- **Biggest update this quarter:** `c92388c` — 2026-07-12 — **github-actions[bot]** — data: Update index data - 2026-07-12 04:37:08 UTC  
+  _255576 lines changed (254465+ / 1111-)_
 - **Biggest update this year:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
   _1197561 lines changed (1192218+ / 5343-)_
 <!-- END_BIGGEST_UPDATES -->
