@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-07-11 12:01 UTC_
+_Last updated: 2026-07-12 02:57 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -11,24 +11,24 @@ _Last updated: 2026-07-11 12:01 UTC_
 <!-- START_REPO_STATS -->
 | Metric | Value |
 |--------|-------|
-| 📁 Project Directories | 180 |
+| 📁 Project Directories | 181 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 139752 |
+| 📝 Total Commits | 139854 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`a1b01a8886`](https://github.com/majixai/majixai.github.io/commit/a1b01a8886dffdc7de8bef7fb963691c06012946) -- 2026-07-11 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-07-11 11:38:16 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`e3ec0d7dd4`](https://github.com/majixai/majixai.github.io/commit/e3ec0d7dd44e9cfb8c5c07537aea4a4bb588a2c5) -- 2026-07-11 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-07-11 11:30:10 UTC -- [Open page](https://majixai.github.io/data/)
-- [`730b010d37`](https://github.com/majixai/majixai.github.io/commit/730b010d37a63b1d05a865efdd0c58232ba0c817) -- 2026-07-11 -- github-actions[bot] -- data: omnibus — market prediction 2026-07-11 11:29:49 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`ac5ec3e250`](https://github.com/majixai/majixai.github.io/commit/ac5ec3e25074a09f7aa1a6cbcccc0ef038dfcba3) -- 2026-07-11 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-07-11 11:29:29 UTC -- [Open page](https://majixai.github.io/data/)
-- [`788635ceff`](https://github.com/majixai/majixai.github.io/commit/788635ceff7a24f482b0e5b9e988d34f2c98044a) -- 2026-07-11 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-07-11 11:29:28 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`c453ab21f8`](https://github.com/majixai/majixai.github.io/commit/c453ab21f8e7f34543d4d9bc174e6d2ad287a61f) -- 2026-07-12 -- github-actions[bot] -- data: Update projects.json - 2026-07-12 02:29:15 UTC -- [Open page](https://majixai.github.io/router/)
+- [`d054abfa31`](https://github.com/majixai/majixai.github.io/commit/d054abfa31a96c432ea65c457caaf855580f69a0) -- 2026-07-12 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`96ca4090a1`](https://github.com/majixai/majixai.github.io/commit/96ca4090a1cad007c13bf01e04d2446aa2009170) -- 2026-07-11 -- majixai -- Modify circle positions and add new entities -- [Open page](https://majixai.github.io/router/)
+- [`45d83a242a`](https://github.com/majixai/majixai.github.io/commit/45d83a242a0361e8871ca69888e2d53126e91cde) -- 2026-07-12 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-07-12T02:09:21Z -- [Open page](https://majixai.github.io/integrity/)
+- [`96469941c3`](https://github.com/majixai/majixai.github.io/commit/96469941c3fa69d160fa7bb1c98b80d4eaf7d095) -- 2026-07-11 -- majixai -- Create initial DXF structure with layers and entities -- [Open page](https://majixai.github.io/router/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `92a6670` — 2026-07-11 — **github-actions[bot]** — projection: Update S&P 500 closing projection - 2026-07-11 00:04:42 UTC  
-  _1100 lines changed (545+ / 555-)_
+- **Biggest update today:** `9646994` — 2026-07-11 — **majixai** — Create initial DXF structure with layers and entities  
+  _935 lines changed (935+ / 0-)_
 - **Biggest update this week:** `2d4e89a` — 2026-07-09 — **Nancysstays** — Change line layer names to 'Grid'  
   _1952 lines changed (1944+ / 8-)_
 - **Biggest update this month:** `1586749` — 2026-07-05 — **github-actions[bot]** — data: Update index data - 2026-07-05 01:49:12 UTC  
