@@ -6,10 +6,10 @@ This directory hosts a reactive commit-history timeline viewer.
 
 | Field | Value |
 |-------|-------|
-| SHA | `d5c60763bb` |
-| Date | 2026-07-16T02:57:37Z |
-| Author | jinxai-tensor[bot] |
-| Message | [JINXAI Tensor] Update forecast 2026-07-16T02:57:37Z |
-| Site | [https://majixai.github.io/tradingview_integration/](https://majixai.github.io/tradingview_integration/) |
+| SHA | `7752a70bac` |
+| Date | 2026-07-17T09:00:18Z |
+| Author | github-actions[bot] |
+| Message | data: omnibus — neural snapshot 2026-07-17 09:00:18 UTC |
+| Site | [https://majixai.github.io/data/](https://majixai.github.io/data/) |
 
-_Auto-generated on 2026-07-16T03:49:36.531528+00:00_
+_Auto-generated on 2026-07-17T09:34:06.928943+00:00_
