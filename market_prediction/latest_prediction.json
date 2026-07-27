@@ -1,72 +1,72 @@
 {
   "ticker": "SPY",
-  "timestamp": "2026-07-27T22:34:48.723390",
-  "current_price": 738.18,
+  "timestamp": "2026-07-27T23:41:05.066359",
+  "current_price": 739.09,
   "forecast_minutes": 60,
   "data_sources": {
     "ticker": "SPY",
     "source_chain": [
       "data/*/*.dat"
     ],
-    "yfinance_points": 501,
+    "yfinance_points": 500,
     "scrape_points": 0,
     "used_fallback": false,
     "current_price_source": "yfinance"
   },
   "technical_indicators": {
-    "rsi": 44.71,
+    "rsi": 41.9,
     "macd": {
-      "line": 0.466,
-      "signal": 0.4194,
-      "histogram": 0.0466
+      "line": -0.9732,
+      "signal": -0.8759,
+      "histogram": -0.0973
     },
     "bollinger_bands": {
-      "upper": 758.82,
-      "middle": 745.92,
-      "lower": 733.02
+      "upper": 756.61,
+      "middle": 746.66,
+      "lower": 736.71
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.554,
-      "gamma": 0.014565,
-      "theta": -0.2358,
-      "vega": 0.8365,
-      "rho": 0.3259
+      "delta": 0.5565,
+      "gamma": 0.015454,
+      "theta": -0.2257,
+      "vega": 0.8368,
+      "rho": 0.3283
     },
-    "atm_call_price": 12.47,
-    "atm_put_price": 9.29,
-    "implied_move": 0.31
+    "atm_call_price": 11.84,
+    "atm_put_price": 8.66,
+    "implied_move": 0.29
   },
   "prediction": {
     "signal": "NEUTRAL",
-    "score": 1,
+    "score": -1,
     "confidence": 25.0,
     "reasons": [
-      "MACD histogram positive (bullish momentum)"
+      "MACD histogram negative (bearish momentum)"
     ],
     "actions": [
       "Stay range-aware and prioritize mean-reversion until directional confirmation.",
       "RSI is neutral; align entries with volatility bands and trend context.",
       "Volatility is moderate; standard risk sizing is appropriate."
     ],
-    "target_price": 738.17,
-    "support": 736.54,
-    "resistance": 739.69
+    "target_price": 739.13,
+    "support": 737.66,
+    "resistance": 740.54
   },
   "simulation": {
     "statistics": {
-      "mean": 738.1716483828168,
-      "std": 2.288223894096584,
-      "p05": 734.7123257925464,
-      "p25": 736.542396393719,
-      "p50": 738.0968991452144,
-      "p75": 739.6869382780836,
-      "p95": 742.0525864723152,
-      "min": 731.2352179748077,
-      "max": 746.8792676605901
+      "mean": 739.1348966282038,
+      "std": 2.131387753360878,
+      "p05": 735.683335609815,
+      "p25": 737.664780202796,
+      "p50": 739.1909115644238,
+      "p75": 740.5364061919989,
+      "p95": 742.6896525527845,
+      "min": 733.3314299927456,
+      "max": 745.6642330456491
     },
-    "simulations": 1000,
-    "volatility": 0.1282
+    "simulations": 500,
+    "volatility": 0.1206
   }
 }
