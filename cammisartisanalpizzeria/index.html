@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cammis's Artisanal Pizzeria - DoorDash Merchant Menu</title>
+    <style>
+        :root {
+            --primary: #8b1d18;
+            --primary-dark: #63120e;
+            --accent: #d4a359;
+            --accent-light: #f7e7ce;
+            --bg: #fcfaf7;
+            --card-bg: #ffffff;
+            --text-dark: #2c2523;
+            --text-muted: #554843;
+            --border-color: #e0d6c8;
+            --veg-green: #2e6b30;
+            --veg-bg: #e2f0e3;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--text-dark);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Header Bar */
+        .header {
+            background-color: var(--primary);
+            color: #ffffff;
+            margin: -30px -30px 20px -30px;
+            padding: 25px 20px;
+            text-align: center;
+            border-bottom: 4px solid var(--accent);
+            border-top-left-radius: 7px;
+            border-top-right-radius: 7px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24pt;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--accent-light);
+        }
+
+        .header .subtitle {
+            margin: 6px 0 0 0;
+            font-size: 11pt;
+            font-style: italic;
+            color: #e8cca4;
+        }
+
+        .doordash-badge {
+            display: inline-block;
+            background-color: var(--accent);
+            color: #4a0e0b;
+            font-weight: bold;
+            font-size: 8.5pt;
+            padding: 3px 12px;
+            border-radius: 12px;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Notice Banner */
+        .merchant-note {
+            background-color: #f3e9dc;
+            border-left: 4px solid var(--accent);
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 9pt;
+            color: #5a4033;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .merchant-note strong {
+            color: var(--primary);
+        }
+
+        /* Section Styling */
+        .section-title {
+            font-size: 14pt;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 4px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-subtitle {
+            font-size: 9pt;
+            font-style: italic;
+            color: #66554e;
+            margin-top: -8px;
+            margin-bottom: 12px;
+        }
+
+        /* Grid Layouts using Tables for Web/Print Compatibility */
+        .menu-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        .menu-table td {
+            vertical-align: top;
+            padding-bottom: 12px;
+        }
+
+        .col-half {
+            width: 48%;
+        }
+
+        .col-gap {
+            width: 4%;
+        }
+
+        /* Item Formatting */
+        .item {
+            margin-bottom: 10px;
+        }
+
+        .item-name {
+            font-weight: 700;
+            font-size: 10.5pt;
+            color: #1a1412;
+            display: inline;
+        }
+
+        .item-tag {
+            font-size: 7.5pt;
+            font-weight: bold;
+            color: var(--veg-green);
+            background-color: var(--veg-bg);
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .item-desc {
+            font-size: 9pt;
+            color: var(--text-muted);
+            margin: 3px 0 4px 0;
+            line-height: 1.3;
+        }
+
+        .item-prices {
+            font-size: 9pt;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Build Your Own Box */
+        .byo-box {
+            background-color: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+        }
+
+        .byo-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .byo-step {
+            margin-bottom: 6px;
+            font-size: 9pt;
+        }
+
+        .byo-step-title {
+            font-weight: bold;
+            color: #3d2e28;
+        }
+
+        .topping-list {
+            color: var(--text-muted);
+            font-size: 9pt;
+        }
+
+        /* Modifier Add-ons Footer */
+        .addons-bar {
+            background-color: var(--text-dark);
+            color: var(--accent-light);
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 9pt;
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+
+        .addons-bar strong {
+            color: var(--accent);
+        }
+
+        @media print {
+            body { background-color: #fff; padding: 0; }
+            .container { box-shadow: none; border: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Header Section -->
+    <div class="header">
+        <h1>Cammis's Artisanal Pizzeria</h1>
+        <div class="subtitle">Authentic Stone-Baked Pizza • Fresh Ingredients • Fast Delivery</div>
+        <div class="doordash-badge">Official DoorDash Merchant Menu</div>
+    </div>
+
+    <!-- Merchant Note -->
+    <div class="merchant-note">
+        <strong>DoorDash Merchant Tip:</strong> Crust options (Thin Crust, Hand-Tossed, Cauliflower GF +$3.50) are configured as mandatory modifier selections for all pizzas.
+    </div>
+
+    <!-- Section 1: Specialty Pizzas -->
+    <div class="section-title">🍕 Specialty Pizzas</div>
+    <div class="section-subtitle">All pizzas served with signature dough made fresh daily. Sizes: Small (10") | Medium (14") | Large (16")</div>
+
+    <table class="menu-table">
+        <tr>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">The Classic Pepperoni</div>
+                    <div class="item-desc">Double pepperoni, house marinara sauce, and whole-milk mozzarella.</div>
+                    <div class="item-prices">Sm $12.99 | Med $17.99 | Lg $21.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Supreme Feast</div>
+                    <div class="item-desc">Pepperoni, Italian sausage, green peppers, red onions, mushrooms, black olives.</div>
+                    <div class="item-prices">Sm $14.99 | Med $20.99 | Lg $25.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">BBQ Chicken Supreme</div>
+                    <div class="item-desc">Grilled chicken, smoky BBQ base, red onions, bacon, cilantro, smoked provolone.</div>
+                    <div class="item-prices">Sm $14.99 | Med $20.99 | Lg $25.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Margherita D.O.P.</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.</div>
+                    <div class="item-prices">Sm $13.99 | Med $18.99 | Lg $22.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Meat Lover's Trio</div>
+                    <div class="item-desc">Pepperoni, crispy bacon, savory Italian sausage, meatballs, extra cheese.</div>
+                    <div class="item-prices">Sm $15.99 | Med $21.99 | Lg $26.99</div>
+                </div>
+            </td>
+            <td class="col-gap"></td>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Quattro Formaggi</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Mozzarella, creamy ricotta, aged parmesan, and sharp gorgonzola with garlic oil.</div>
+                    <div class="item-prices">Sm $13.99 | Med $18.99 | Lg $23.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Spicy Hawaiian Hot Honey</div>
+                    <div class="item-desc">Smoked ham, sweet pineapple, jalapeños, bacon, topped with hot honey drizzle.</div>
+                    <div class="item-prices">Sm $14.99 | Med $20.99 | Lg $25.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Garden Veggie Delight</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Spinach, green peppers, red onions, black olives, roasted red peppers, garlic.</div>
+                    <div class="item-prices">Sm $13.99 | Med $18.99 | Lg $23.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Buffalo Chicken Ranch</div>
+                    <div class="item-desc">Crispy buffalo chicken, blue cheese crumbles, mozzarella, creamy ranch swirl.</div>
+                    <div class="item-prices">Sm $14.99 | Med $20.99 | Lg $25.99</div>
+                </div>
+
+                <div class="item">
+                    <div class="item-name">Truffle Mushroom Bianca</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Roasted wild mushrooms, garlic cream sauce, mozzarella, truffle oil drizzle.</div>
+                    <div class="item-prices">Sm $15.99 | Med $21.99 | Lg $26.99</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 2: Build Your Own -->
+    <div class="byo-box">
+        <div class="byo-title">🛠️ Build Your Own Custom Pizza</div>
+        <div class="byo-step">
+            <span class="byo-step-title">Step 1: Choose Base Price & Size — </span>
+            <span>Small (10") $10.99 | Medium (14") $14.99 | Large (16") $17.99</span>
+        </div>
+        <div class="byo-step">
+            <span class="byo-step-title">Step 2: Choose Sauce — </span>
+            <span>Signature Marinara, Creamy Garlic Alfredo, Smoky BBQ, Spicy Buffalo, Pesto (+ $1.50)</span>
+        </div>
+        <div class="byo-step">
+            <span class="byo-step-title">Meats (+$1.50 Sm / +$2.25 Med / +$2.75 Lg): </span>
+            <span class="topping-list">Pepperoni, Italian Sausage, Crispy Bacon, Grilled Chicken, Ham, Meatballs, Anchovies</span>
+        </div>
+        <div class="byo-step">
+            <span class="byo-step-title">Veggies & Cheeses (+$1.00 Sm / +$1.50 Med / +$2.00 Lg): </span>
+            <span class="topping-list">Mushrooms, Red Onions, Green Peppers, Black Olives, Jalapeños, Fresh Garlic, Spinach, Roma Tomatoes, Banana Peppers, Extra Mozzarella, Ricotta, Gorgonzola</span>
+        </div>
+    </div>
+
+    <!-- Section 3: Appetizers & Sides -->
+    <div class="section-title">🍗 Wings, Sides & Starters</div>
+    <table class="menu-table">
+        <tr>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Jumbo Bone-In Wings</div>
+                    <div class="item-desc">Tossed in Buffalo, BBQ, Garlic Parmesan, or Mango Habanero. Served with Ranch.</div>
+                    <div class="item-prices">6 pc $9.99 | 12 pc $17.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Boneless Chicken Bites</div>
+                    <div class="item-desc">All-white meat tender chicken bites tossed in your choice of sauce.</div>
+                    <div class="item-prices">8 pc $8.99 | 16 pc $15.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Garlic Cheese Breadsticks</div>
+                    <div class="item-desc">Brushed with garlic butter & melted mozzarella. Served with warm marinara.</div>
+                    <div class="item-prices">$7.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Crispy Mozzarella Sticks (6 pc)</div>
+                    <div class="item-desc">Golden fried Italian mozzarella served with house marinara sauce.</div>
+                    <div class="item-prices">$6.99</div>
+                </div>
+            </td>
+            <td class="col-gap"></td>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Loaded Italian Garlic Fries</div>
+                    <div class="item-desc">Crispy fries seasoned with Italian herbs, garlic, melted mozzarella & bacon.</div>
+                    <div class="item-prices">$8.49</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">House-Baked Italian Meatballs (4 pc)</div>
+                    <div class="item-desc">Savory beef & pork meatballs simmered in marinara, topped with ricotta & basil.</div>
+                    <div class="item-prices">$9.49</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Truffle Parmesan Fries</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Golden fries tossed with white truffle oil, grated parmesan, and fresh parsley.</div>
+                    <div class="item-prices">$7.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Toasted Meat Ravioli (8 pc)</div>
+                    <div class="item-desc">Crispy breaded ravioli stuffed with seasoned beef, served with marinara sauce.</div>
+                    <div class="item-prices">$8.99</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 4: Fresh Salads -->
+    <div class="section-title">🥗 Fresh Salads</div>
+    <table class="menu-table">
+        <tr>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Classic Caesar Salad</div>
+                    <div class="item-desc">Crisp romaine, shaved parmesan, garlic croutons, creamy Caesar dressing.</div>
+                    <div class="item-prices">$8.99 | Add Grilled Chicken +$3.50</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">House Garden Salad</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Mixed greens, cherry tomatoes, cucumbers, red onions, croutons, Italian dressing.</div>
+                    <div class="item-prices">$7.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Mediterranean Greek Salad</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Romaine, kalamata olives, feta cheese, cucumbers, red onions, oregano vinaigrette.</div>
+                    <div class="item-prices">$9.99</div>
+                </div>
+            </td>
+            <td class="col-gap"></td>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Caprese Salad</div> <span class="item-tag">VEG</span>
+                    <div class="item-desc">Fresh mozzarella balls, vine tomatoes, basil, extra virgin olive oil & balsamic glaze.</div>
+                    <div class="item-prices">$10.49</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Italian Antipasto Salad</div>
+                    <div class="item-desc">Salami, pepperoni, provolone, black olives, pepperoncini over crisp romaine.</div>
+                    <div class="item-prices">$11.99</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 5: Desserts -->
+    <div class="section-title">🍰 Desserts</div>
+    <table class="menu-table">
+        <tr>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Cinnamon Sugar Dough Bites</div>
+                    <div class="item-desc">Warm dough bites tossed in cinnamon sugar with vanilla icing dip.</div>
+                    <div class="item-prices">$6.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Classic Italian Cannoli (2 pc)</div>
+                    <div class="item-desc">Crispy pastry shells filled with sweet ricotta cream and chocolate chips.</div>
+                    <div class="item-prices">$5.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Authentic Tiramisu</div>
+                    <div class="item-desc">Espresso-soaked ladyfingers layered with mascarpone cream & cocoa.</div>
+                    <div class="item-prices">$6.99</div>
+                </div>
+            </td>
+            <td class="col-gap"></td>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">Chocolate Fudge Lava Cake</div>
+                    <div class="item-desc">Warm chocolate cake with a molten chocolate center.</div>
+                    <div class="item-prices">$7.49</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">New York Style Cheesecake</div>
+                    <div class="item-desc">Rich and creamy cheesecake with strawberry drizzle on the side.</div>
+                    <div class="item-prices">$6.49</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Section 6: Beverages -->
+    <div class="section-title">🥤 Beverages</div>
+    <table class="menu-table">
+        <tr>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">2-Liter Bottles</div>
+                    <div class="item-desc">Coca-Cola, Diet Coke, Sprite, Dr Pepper, Fanta Orange, Root Beer</div>
+                    <div class="item-prices">$3.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Can Sodas (12 oz)</div>
+                    <div class="item-desc">Coca-Cola, Diet Coke, Sprite, Dr Pepper, Ginger Ale, Lemonade</div>
+                    <div class="item-prices">$1.99</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">San Pellegrino Sparkling Water (500ml)</div>
+                    <div class="item-desc">Crispy sparkling mineral water from Italy.</div>
+                    <div class="item-prices">$2.99</div>
+                </div>
+            </td>
+            <td class="col-gap"></td>
+            <td class="col-half">
+                <div class="item">
+                    <div class="item-name">San Pellegrino Italian Soda (Can)</div>
+                    <div class="item-desc">Aranciata (Orange) or Limonata (Lemon)</div>
+                    <div class="item-prices">$2.79</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">House Iced Tea (16 oz)</div>
+                    <div class="item-desc">Freshly brewed Sweet Tea or Unsweetened Black Tea.</div>
+                    <div class="item-prices">$2.49</div>
+                </div>
+                <div class="item">
+                    <div class="item-name">Bottled Spring Water (16.9 oz)</div>
+                    <div class="item-desc">Purified spring water.</div>
+                    <div class="item-prices">$1.49</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Extra Modifiers Footer -->
+    <div class="addons-bar">
+        <strong>Extra Dipping Sauces & Side Add-ons ( DoorDash High-Margin Modifiers ):</strong><br>
+        Ranch Dip ($0.75) • Blue Cheese ($0.75) • Hot Honey Cup ($1.25) • Marinara Dip ($0.75) • Garlic Butter Cup ($0.75) • Jalapeño Slice Cup ($0.75) • Alfredo Sauce Cup ($1.25)
+    </div>
+
+</div>
+
+</body>
+</html>
