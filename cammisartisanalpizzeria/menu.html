@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cammis's Artisanal Pizzeria - Complete Menu</title>
+    <style>
+        :root {
+            --primary: #8b1d18;
+            --accent: #d4a359;
+            --bg: #fcfaf7;
+            --card-bg: #ffffff;
+            --text-dark: #2c2523;
+            --text-muted: #554843;
+            --veg-green: #2e6b30;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.5;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-style: italic;
+        }
+        
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .product-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 1px solid #e0d6c8;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+        
+        .product-category {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: var(--accent);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .product-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1412;
+            margin: 0 0 10px 0;
+        }
+        
+        .product-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            flex-grow: 1;
+            margin: 0 0 15px 0;
+        }
+        
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #f0eadd;
+            padding-top: 15px;
+        }
+        
+        .product-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--veg-green);
+        }
+        
+        .product-id {
+            font-size: 0.75rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Cammis's Artisanal Pizzeria</h1>
+        <p>Complete Product Menu</p>
+    </div>
+
+    <div class="product-grid" id="product-grid">
+        <!-- Products will be injected here via JavaScript -->
+    </div>
+
+    <script>
+        // JSON data of all 56 products
+        const products = [
+  {
+    "id": "PZ-01-SM",
+    "title": "The Classic Pepperoni - Small",
+    "description": "Double pepperoni, house marinara sauce, and whole-milk mozzarella.",
+    "availability": "in stock",
+    "price": "12.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-01-MD",
+    "title": "The Classic Pepperoni - Medium",
+    "description": "Double pepperoni, house marinara sauce, and whole-milk mozzarella.",
+    "availability": "in stock",
+    "price": "17.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-01-LG",
+    "title": "The Classic Pepperoni - Large",
+    "description": "Double pepperoni, house marinara sauce, and whole-milk mozzarella.",
+    "availability": "in stock",
+    "price": "21.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-02-SM",
+    "title": "Supreme Feast - Small",
+    "description": "Pepperoni, Italian sausage, green peppers, red onions, mushrooms, black olives.",
+    "availability": "in stock",
+    "price": "14.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-02-MD",
+    "title": "Supreme Feast - Medium",
+    "description": "Pepperoni, Italian sausage, green peppers, red onions, mushrooms, black olives.",
+    "availability": "in stock",
+    "price": "20.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-02-LG",
+    "title": "Supreme Feast - Large",
+    "description": "Pepperoni, Italian sausage, green peppers, red onions, mushrooms, black olives.",
+    "availability": "in stock",
+    "price": "25.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-03-SM",
+    "title": "BBQ Chicken Supreme - Small",
+    "description": "Grilled chicken, smoky BBQ base, red onions, bacon, cilantro, smoked provolone.",
+    "availability": "in stock",
+    "price": "14.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-03-MD",
+    "title": "BBQ Chicken Supreme - Medium",
+    "description": "Grilled chicken, smoky BBQ base, red onions, bacon, cilantro, smoked provolone.",
+    "availability": "in stock",
+    "price": "20.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-03-LG",
+    "title": "BBQ Chicken Supreme - Large",
+    "description": "Grilled chicken, smoky BBQ base, red onions, bacon, cilantro, smoked provolone.",
+    "availability": "in stock",
+    "price": "25.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-04-SM",
+    "title": "Margherita D.O.P. - Small",
+    "description": "Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.",
+    "availability": "in stock",
+    "price": "13.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-04-MD",
+    "title": "Margherita D.O.P. - Medium",
+    "description": "Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.",
+    "availability": "in stock",
+    "price": "18.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-04-LG",
+    "title": "Margherita D.O.P. - Large",
+    "description": "Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.",
+    "availability": "in stock",
+    "price": "22.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-05-SM",
+    "title": "Meat Lover's Trio - Small",
+    "description": "Pepperoni, crispy bacon, savory Italian sausage, meatballs, extra cheese.",
+    "availability": "in stock",
+    "price": "15.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-05-MD",
+    "title": "Meat Lover's Trio - Medium",
+    "description": "Pepperoni, crispy bacon, savory Italian sausage, meatballs, extra cheese.",
+    "availability": "in stock",
+    "price": "21.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-05-LG",
+    "title": "Meat Lover's Trio - Large",
+    "description": "Pepperoni, crispy bacon, savory Italian sausage, meatballs, extra cheese.",
+    "availability": "in stock",
+    "price": "26.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-06-SM",
+    "title": "Quattro Formaggi - Small",
+    "description": "Mozzarella, creamy ricotta, aged parmesan, and sharp gorgonzola with garlic oil.",
+    "availability": "in stock",
+    "price": "13.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-06-MD",
+    "title": "Quattro Formaggi - Medium",
+    "description": "Mozzarella, creamy ricotta, aged parmesan, and sharp gorgonzola with garlic oil.",
+    "availability": "in stock",
+    "price": "18.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-06-LG",
+    "title": "Quattro Formaggi - Large",
+    "description": "Mozzarella, creamy ricotta, aged parmesan, and sharp gorgonzola with garlic oil.",
+    "availability": "in stock",
+    "price": "23.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-07-SM",
+    "title": "Spicy Hawaiian Hot Honey - Small",
+    "description": "Smoked ham, sweet pineapple, jalapeños, bacon, topped with hot honey drizzle.",
+    "availability": "in stock",
+    "price": "14.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-07-MD",
+    "title": "Spicy Hawaiian Hot Honey - Medium",
+    "description": "Smoked ham, sweet pineapple, jalapeños, bacon, topped with hot honey drizzle.",
+    "availability": "in stock",
+    "price": "20.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-07-LG",
+    "title": "Spicy Hawaiian Hot Honey - Large",
+    "description": "Smoked ham, sweet pineapple, jalapeños, bacon, topped with hot honey drizzle.",
+    "availability": "in stock",
+    "price": "25.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-08-SM",
+    "title": "Garden Veggie Delight - Small",
+    "description": "Spinach, green peppers, red onions, black olives, roasted red peppers, garlic.",
+    "availability": "in stock",
+    "price": "13.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-08-MD",
+    "title": "Garden Veggie Delight - Medium",
+    "description": "Spinach, green peppers, red onions, black olives, roasted red peppers, garlic.",
+    "availability": "in stock",
+    "price": "18.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-08-LG",
+    "title": "Garden Veggie Delight - Large",
+    "description": "Spinach, green peppers, red onions, black olives, roasted red peppers, garlic.",
+    "availability": "in stock",
+    "price": "23.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-09-SM",
+    "title": "Buffalo Chicken Ranch - Small",
+    "description": "Crispy buffalo chicken, blue cheese crumbles, mozzarella, creamy ranch swirl.",
+    "availability": "in stock",
+    "price": "14.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-09-MD",
+    "title": "Buffalo Chicken Ranch - Medium",
+    "description": "Crispy buffalo chicken, blue cheese crumbles, mozzarella, creamy ranch swirl.",
+    "availability": "in stock",
+    "price": "20.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-09-LG",
+    "title": "Buffalo Chicken Ranch - Large",
+    "description": "Crispy buffalo chicken, blue cheese crumbles, mozzarella, creamy ranch swirl.",
+    "availability": "in stock",
+    "price": "25.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-10-SM",
+    "title": "Truffle Mushroom Bianca - Small",
+    "description": "Roasted wild mushrooms, garlic cream sauce, mozzarella, truffle oil drizzle.",
+    "availability": "in stock",
+    "price": "15.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-10-MD",
+    "title": "Truffle Mushroom Bianca - Medium",
+    "description": "Roasted wild mushrooms, garlic cream sauce, mozzarella, truffle oil drizzle.",
+    "availability": "in stock",
+    "price": "21.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "PZ-10-LG",
+    "title": "Truffle Mushroom Bianca - Large",
+    "description": "Roasted wild mushrooms, garlic cream sauce, mozzarella, truffle oil drizzle.",
+    "availability": "in stock",
+    "price": "26.99 USD",
+    "condition": "new",
+    "product_type": "Specialty Pizzas",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "WG-01-6",
+    "title": "Jumbo Bone-In Wings - 6 pc",
+    "description": "Tossed in Buffalo, BBQ, Garlic Parmesan, or Mango Habanero. Served with Ranch.",
+    "availability": "in stock",
+    "price": "9.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "WG-01-12",
+    "title": "Jumbo Bone-In Wings - 12 pc",
+    "description": "Tossed in Buffalo, BBQ, Garlic Parmesan, or Mango Habanero. Served with Ranch.",
+    "availability": "in stock",
+    "price": "17.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "WG-02-8",
+    "title": "Boneless Chicken Bites - 8 pc",
+    "description": "All-white meat tender chicken bites tossed in your choice of sauce.",
+    "availability": "in stock",
+    "price": "8.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "WG-02-16",
+    "title": "Boneless Chicken Bites - 16 pc",
+    "description": "All-white meat tender chicken bites tossed in your choice of sauce.",
+    "availability": "in stock",
+    "price": "15.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-01",
+    "title": "Garlic Cheese Breadsticks",
+    "description": "Brushed with garlic butter & melted mozzarella. Served with warm marinara.",
+    "availability": "in stock",
+    "price": "7.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-02",
+    "title": "Crispy Mozzarella Sticks (6 pc)",
+    "description": "Golden fried Italian mozzarella served with house marinara sauce.",
+    "availability": "in stock",
+    "price": "6.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-03",
+    "title": "Loaded Italian Garlic Fries",
+    "description": "Crispy fries seasoned with Italian herbs, garlic, melted mozzarella & bacon.",
+    "availability": "in stock",
+    "price": "8.49 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-04",
+    "title": "House-Baked Italian Meatballs (4 pc)",
+    "description": "Savory beef & pork meatballs simmered in marinara, topped with ricotta & basil.",
+    "availability": "in stock",
+    "price": "9.49 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-05",
+    "title": "Truffle Parmesan Fries",
+    "description": "Golden fries tossed with white truffle oil, grated parmesan, and fresh parsley.",
+    "availability": "in stock",
+    "price": "7.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SD-06",
+    "title": "Toasted Meat Ravioli (8 pc)",
+    "description": "Crispy breaded ravioli stuffed with seasoned beef, served with marinara sauce.",
+    "availability": "in stock",
+    "price": "8.99 USD",
+    "condition": "new",
+    "product_type": "Wings Sides & Starters",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SL-01",
+    "title": "Classic Caesar Salad",
+    "description": "Crisp romaine, shaved parmesan, garlic croutons, creamy Caesar dressing.",
+    "availability": "in stock",
+    "price": "8.99 USD",
+    "condition": "new",
+    "product_type": "Fresh Salads",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SL-02",
+    "title": "House Garden Salad",
+    "description": "Mixed greens, cherry tomatoes, cucumbers, red onions, croutons, Italian dressing.",
+    "availability": "in stock",
+    "price": "7.99 USD",
+    "condition": "new",
+    "product_type": "Fresh Salads",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SL-03",
+    "title": "Mediterranean Greek Salad",
+    "description": "Romaine, kalamata olives, feta cheese, cucumbers, red onions, oregano vinaigrette.",
+    "availability": "in stock",
+    "price": "9.99 USD",
+    "condition": "new",
+    "product_type": "Fresh Salads",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SL-04",
+    "title": "Caprese Salad",
+    "description": "Fresh mozzarella balls, vine tomatoes, basil, extra virgin olive oil & balsamic glaze.",
+    "availability": "in stock",
+    "price": "10.49 USD",
+    "condition": "new",
+    "product_type": "Fresh Salads",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "SL-05",
+    "title": "Italian Antipasto Salad",
+    "description": "Salami, pepperoni, provolone, black olives, pepperoncini over crisp romaine.",
+    "availability": "in stock",
+    "price": "11.99 USD",
+    "condition": "new",
+    "product_type": "Fresh Salads",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "DS-01",
+    "title": "Cinnamon Sugar Dough Bites",
+    "description": "Warm dough bites tossed in cinnamon sugar with vanilla icing dip.",
+    "availability": "in stock",
+    "price": "6.99 USD",
+    "condition": "new",
+    "product_type": "Desserts",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "DS-02",
+    "title": "Classic Italian Cannoli (2 pc)",
+    "description": "Crispy pastry shells filled with sweet ricotta cream and chocolate chips.",
+    "availability": "in stock",
+    "price": "5.99 USD",
+    "condition": "new",
+    "product_type": "Desserts",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "DS-03",
+    "title": "Authentic Tiramisu",
+    "description": "Espresso-soaked ladyfingers layered with mascarpone cream & cocoa.",
+    "availability": "in stock",
+    "price": "6.99 USD",
+    "condition": "new",
+    "product_type": "Desserts",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "DS-04",
+    "title": "Chocolate Fudge Lava Cake",
+    "description": "Warm chocolate cake with a molten chocolate center.",
+    "availability": "in stock",
+    "price": "7.49 USD",
+    "condition": "new",
+    "product_type": "Desserts",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "DS-05",
+    "title": "New York Style Cheesecake",
+    "description": "Rich and creamy cheesecake with strawberry drizzle on the side.",
+    "availability": "in stock",
+    "price": "6.49 USD",
+    "condition": "new",
+    "product_type": "Desserts",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-01",
+    "title": "2-Liter Bottles",
+    "description": "Coca-Cola, Diet Coke, Sprite, Dr Pepper, Fanta Orange, Root Beer",
+    "availability": "in stock",
+    "price": "3.99 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-02",
+    "title": "Can Sodas (12 oz)",
+    "description": "Coca-Cola, Diet Coke, Sprite, Dr Pepper, Ginger Ale, Lemonade",
+    "availability": "in stock",
+    "price": "1.99 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-03",
+    "title": "San Pellegrino Sparkling Water (500ml)",
+    "description": "Crispy sparkling mineral water from Italy.",
+    "availability": "in stock",
+    "price": "2.99 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-04",
+    "title": "San Pellegrino Italian Soda (Can)",
+    "description": "Aranciata (Orange) or Limonata (Lemon)",
+    "availability": "in stock",
+    "price": "2.79 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-05",
+    "title": "House Iced Tea (16 oz)",
+    "description": "Freshly brewed Sweet Tea or Unsweetened Black Tea.",
+    "availability": "in stock",
+    "price": "2.49 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  },
+  {
+    "id": "BV-06",
+    "title": "Bottled Spring Water (16.9 oz)",
+    "description": "Purified spring water.",
+    "availability": "in stock",
+    "price": "1.49 USD",
+    "condition": "new",
+    "product_type": "Beverages",
+    "brand": "Cammis's Artisanal Pizzeria"
+  }
+];
+
+        // Render the products dynamically
+        const grid = document.getElementById('product-grid');
+        
+        products.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            
+            card.innerHTML = `
+                <div class="product-category">${product.product_type}</div>
+                <h2 class="product-title">${product.title}</h2>
+                <p class="product-desc">${product.description}</p>
+                <div class="product-footer">
+                    <span class="product-price">${product.price}</span>
+                    <span class="product-id">ID: ${product.id}</span>
+                </div>
+            `;
+            
+            grid.appendChild(card);
+        });
+    </script>
+</body>
+</html>
