@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Online - Cammis's Artisanal Pizzeria</title>
+    <style>
+        :root {
+            --primary: #8b1d18;
+            --primary-hover: #a32a24;
+            --accent: #d4a359;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-dark: #2c2523;
+            --text-muted: #666;
+            --border: #e0d6c8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 4px solid var(--accent);
+        }
+
+        header h1 { margin-bottom: 5px; }
+        header p { color: #f7e7ce; font-style: italic; }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 20px;
+            gap: 30px;
+        }
+
+        .menu-section {
+            flex: 1 1 60%;
+        }
+
+        .cart-section {
+            flex: 1 1 30%;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            position: sticky;
+            top: 20px;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .menu-item {
+            background: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: box-shadow 0.2s;
+        }
+
+        .menu-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
+
+        .item-info h3 { margin-bottom: 5px; color: #1a1412; }
+        .item-info p { font-size: 0.9rem; color: var(--text-muted); max-width: 400px; }
+        .item-price { font-weight: bold; color: #2e6b30; margin-top: 5px; display: block;}
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 0.95rem;
+        }
+
+        .cart-item-title { flex: 1; }
+        
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 15px;
+        }
+
+        .qty-btn {
+            background: #eee;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .qty-btn:hover { background: #ddd; }
+
+        .cart-totals {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid var(--border);
+        }
+
+        .cart-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .cart-row.total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: 10px;
+        }
+
+        .checkout-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            margin-top: 15px;
+            background-color: #2e6b30;
+        }
+
+        .checkout-btn:hover { background-color: #245426; }
+        .checkout-btn:disabled { background-color: #999; cursor: not-allowed; }
+
+        .empty-cart { color: var(--text-muted); font-style: italic; text-align: center; padding: 20px 0; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .cart-section { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Cammis's Artisanal Pizzeria</h1>
+        <p>Fresh Ingredients • Fast Delivery • Order Online</p>
+    </header>
+
+    <div class="container">
+        <div class="menu-section">
+            <h2>Our Menu</h2>
+            <div id="menu-container">
+                <!-- Menu items injected via JS -->
+            </div>
+        </div>
+
+        <div class="cart-section">
+            <h2>Your Cart</h2>
+            <div id="cart-container">
+                <div class="empty-cart">Your cart is currently empty.</div>
+            </div>
+            
+            <div class="cart-totals">
+                <div class="cart-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">$0.00</span>
+                </div>
+                <div class="cart-row">
+                    <span>Tax (8.5%):</span>
+                    <span id="tax">$0.00</span>
+                </div>
+                <div class="cart-row total">
+                    <span>Total:</span>
+                    <span id="total">$0.00</span>
+                </div>
+                <button class="checkout-btn" id="checkout-btn" disabled onclick="checkout()">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample product data based on Cammis's menu
+        const products = [
+            { id: 'PZ-01-SM', title: 'The Classic Pepperoni - Small', desc: 'Double pepperoni, house marinara, whole-milk mozzarella.', price: 12.99 },
+            { id: 'PZ-03-MD', title: 'BBQ Chicken Supreme - Medium', desc: 'Grilled chicken, BBQ base, red onions, bacon, cilantro.', price: 20.99 },
+            { id: 'PZ-04-LG', title: 'Margherita D.O.P. - Large', desc: 'Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.', price: 22.99 },
+            { id: 'SD-01', title: 'Garlic Cheese Breadsticks', desc: 'Brushed with garlic butter & melted mozzarella.', price: 7.99 },
+            { id: 'SL-01', title: 'Classic Caesar Salad', desc: 'Crisp romaine, shaved parmesan, garlic croutons.', price: 8.99 },
+            { id: 'DS-03', title: 'Authentic Tiramisu', desc: 'Espresso-soaked ladyfingers layered with mascarpone cream.', price: 6.99 },
+            { id: 'BV-01', title: '2-Liter Soda', desc: 'Choice of Coca-Cola, Sprite, or Dr Pepper.', price: 3.99 }
+        ];
+
+        let cart = [];
+        const TAX_RATE = 0.085;
+
+        // Initialize Menu
+        function renderMenu() {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+            
+            products.forEach(product => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'menu-item';
+                itemDiv.innerHTML = `
+                    <div class="item-info">
+                        <h3>${product.title}</h3>
+                        <p>${product.desc}</p>
+                        <span class="item-price">$${product.price.toFixed(2)}</span>
+                    </div>
+                    <button onclick="addToCart('${product.id}')">Add to Cart</button>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
+
+        // Cart Functions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.qty += 1;
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQty(productId, delta) {
+            const itemIndex = cart.findIndex(item => item.id === productId);
+            if (itemIndex > -1) {
+                cart[itemIndex].qty += delta;
+                if (cart[itemIndex].qty <= 0) {
+                    cart.splice(itemIndex, 1); // Remove if qty is 0
+                }
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-container');
+            const checkoutBtn = document.getElementById('checkout-btn');
+            
+            if (cart.length === 0) {
+                container.innerHTML = '<div class="empty-cart">Your cart is currently empty.</div>';
+                checkoutBtn.disabled = true;
+                updateTotals(0);
+                return;
+            }
+
+            container.innerHTML = '';
+            let subtotal = 0;
+
+            cart.forEach(item => {
+                const itemTotal = item.price * item.qty;
+                subtotal += itemTotal;
+
+                const cartItem = document.createElement('div');
+                cartItem.className = 'cart-item';
+                cartItem.innerHTML = `
+                    <div class="cart-item-title">${item.title}</div>
+                    <div class="qty-controls">
+                        <button class="qty-btn" onclick="updateQty('${item.id}', -1)">-</button>
+                        <span>${item.qty}</span>
+                        <button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button>
+                    </div>
+                    <div class="cart-item-price">$${itemTotal.toFixed(2)}</div>
+                `;
+                container.appendChild(cartItem);
+            });
+
+            checkoutBtn.disabled = false;
+            updateTotals(subtotal);
+        }
+
+        function updateTotals(subtotal) {
+            const tax = subtotal * TAX_RATE;
+            const total = subtotal + tax;
+
+            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
+            document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+        }
+
+        function checkout() {
+            const finalTotal = document.getElementById('total').textContent;
+            alert(`Thank you for your order!\n\nYour total is ${finalTotal}.\nYour food will be prepared shortly.`);
+            cart = [];
+            renderCart();
+        }
+
+        // Boot
+        renderMenu();
+    </script>
+</body>
+</html>
