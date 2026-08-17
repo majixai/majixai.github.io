@@ -10,8 +10,8 @@ const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?to
 const apiLimit = 500; // Limit per API page request
 const fetchIntervalDuration = 600000; // 1 minute (60 * 1000 milliseconds)
 const maxHistorySize = 100000; // Max number of users to keep in the 'previousUsers' history
-const maxIframes = 9; // Max iframe slots
-const defaultIframeCount = 2; // Default iframe slots
+const maxIframes = 16; // Max iframe slots
+const defaultIframeCount = 4; // Default iframe slots
 const defaultIframeUrl = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
 const buildEmbedUrl = (username) => `https://chaturbate.com/embed/${username}/?tour=dU9X&campaign=9cg6A&disable_sound=1&bgcolor=black`;
 const apiFetchTimeout = 25000; // Timeout for each API fetch request (milliseconds)
