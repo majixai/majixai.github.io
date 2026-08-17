@@ -61,7 +61,7 @@
         #recordingController = null;
 
         // Infinite-scroll state for online users list (local filtered batch rendering)
-        #onlineBatchSize = 50;
+        #onlineBatchSize = 500;
         #onlineDisplayOffset = 0;
         #onlineSentinelObserver = null; // IntersectionObserver for online list sentinel
 
@@ -78,7 +78,7 @@
         #hasMoreOnlineUsersToLoad = true; 
 
         #previousUsersDisplayOffset = 0;
-        #previousUsersPageSize = 25; 
+        #previousUsersPageSize = 250; 
         #isLoadingMorePreviousUsers = false;
         #hasMorePreviousUsersToLoad = true;
         #snippetCache = [];
