@@ -8,8 +8,8 @@ const REPORT_SERVER_ENDPOINT = '/api/send-user-report'; // Placeholder URL - NEE
 // !! Verify this URL is correct and accessible from where your page is hosted !!
 const apiUrlBase = 'https://chaturbate.com/api/public/affiliates/onlinerooms/?tour=dU9X&wm=9cg6A&disable_sound=1&client_ip=request_ip&gender=f';
 const apiLimit = 500; // Limit per API page request
-const fetchIntervalDuration = 60000; // 1 minute (60 * 1000 milliseconds)
-const maxHistorySize = 100; // Max number of users to keep in the 'previousUsers' history
+const fetchIntervalDuration = 600000; // 1 minute (60 * 1000 milliseconds)
+const maxHistorySize = 100000; // Max number of users to keep in the 'previousUsers' history
 const maxIframes = 9; // Max iframe slots
 const defaultIframeCount = 2; // Default iframe slots
 const defaultIframeUrl = 'https://cbxyz.com/in/?tour=dU9X&campaign=9cg6A&track=embed&signup_notice=1&disable_sound=1&mobileRedirect=never';
