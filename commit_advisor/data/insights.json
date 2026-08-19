@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-18T12:40:14.536274+00:00",
+  "generatedAt": "2026-08-19T01:01:12.244210+00:00",
   "commitCount": 100,
   "authorFilter": "all",
   "topDirectories": [
     {
       "name": "data",
-      "count": 64
+      "count": 229
     },
     {
       "name": "market_prediction",
@@ -13,55 +13,67 @@
     },
     {
       "name": "sp_closing_projection",
-      "count": 30
+      "count": 34
     },
     {
       "name": "tradingview_integration",
-      "count": 16
-    },
-    {
-      "name": "fintst",
-      "count": 10
+      "count": 15
     },
     {
       "name": "scrape",
-      "count": 8
+      "count": 14
+    },
+    {
+      "name": "fintst",
+      "count": 6
     },
     {
       "name": "dji_ohlc_tensorflow",
-      "count": 3
+      "count": 2
     },
     {
-      "name": "commit_advisor",
+      "name": "SP500_ML_RESULTS.csv",
       "count": 1
     }
   ],
   "topFileTypes": [
     {
+      "ext": "dat",
+      "count": 169
+    },
+    {
       "ext": "json",
-      "count": 121
+      "count": 116
     },
     {
       "ext": "png",
-      "count": 37
-    },
-    {
-      "ext": "yml",
-      "count": 10
+      "count": 39
     },
     {
       "ext": "gz",
-      "count": 8
+      "count": 14
+    },
+    {
+      "ext": "yml",
+      "count": 6
+    },
+    {
+      "ext": "csv",
+      "count": 1
     }
   ],
   "topAuthors": [
     {
       "name": "github-actions[bot]",
-      "count": 89
+      "count": 92
     },
     {
       "name": "AI-Forecaster-Bot",
-      "count": 10
+      "count": 6
+    },
+    {
+      "name": "financial-data[bot]",
+      "count": 1
     },
     {
       "name": "jinxai-tensor[bot]",
@@ -69,19 +81,20 @@
     }
   ],
   "commitsByWeekday": {
-    "Tuesday": 100
+    "Wednesday": 1,
+    "Tuesday": 99
   },
   "commitsByHour": {
-    "12": 5,
-    "11": 13,
-    "10": 14,
-    "9": 9,
-    "8": 10,
-    "7": 14,
-    "6": 7,
-    "5": 14,
-    "4": 10,
-    "3": 4
+    "0": 1,
+    "23": 16,
+    "22": 11,
+    "21": 15,
+    "20": 7,
+    "19": 11,
+    "18": 8,
+    "17": 13,
+    "16": 8,
+    "15": 10
   },
   "topKeywords": [
     "utc",
@@ -89,20 +102,20 @@
     "omnibus",
     "update",
     "prediction",
-    "forecast",
-    "snapshot",
     "projection",
+    "snapshot",
     "market",
+    "forecast",
     "tensor",
+    "financial",
+    "scraped",
     "yfinance",
     "neural",
+    "closing",
+    "skip",
     "ledger",
     "sync",
-    "skip",
     "spy",
-    "closing",
-    "scraped",
-    "financial",
     "ohlc"
   ],
   "recommendations": [
@@ -121,7 +134,7 @@
       "id": "commit-cadence",
       "category": "Cadence",
       "title": "Commit Rhythm",
-      "detail": "Most commits land on **Tuesday**; **Tuesday** sees the least activity. Distributing work more evenly can reduce integration risk.",
+      "detail": "Most commits land on **Tuesday**; **Wednesday** sees the least activity. Distributing work more evenly can reduce integration risk.",
       "priority": "medium",
       "tags": [
         "process"
@@ -131,7 +144,7 @@
       "id": "peak-hour",
       "category": "Productivity",
       "title": "Peak Commit Hour",
-      "detail": "The peak commit hour is **10:00 UTC**. Scheduling code reviews shortly after this window means reviewers see fresh context.",
+      "detail": "The peak commit hour is **23:00 UTC**. Scheduling code reviews shortly after this window means reviewers see fresh context.",
       "priority": "low",
       "tags": [
         "process",
@@ -142,7 +155,7 @@
       "id": "file-types",
       "category": "Tech Stack",
       "title": "Dominant File Types",
-      "detail": "The most-changed file types are **.json, .png, .yml**. Ensure linting and CI coverage exists for each type.",
+      "detail": "The most-changed file types are **.dat, .json, .png**. Ensure linting and CI coverage exists for each type.",
       "priority": "medium",
       "tags": [
         "ci",
@@ -162,20 +175,10 @@
   ],
   "recentCommits": [
     {
-      "sha": "1cf135298dc03395439d2ba3c5290df2f3cf34b5",
-      "shortSha": "1cf1352",
-      "date": "2026-08-18T12:19:20Z",
-      "message": "Update scraped financial data",
-      "author": "github-actions[bot]",
-      "files": [
-        "scrape/finance.db.gz"
-      ]
-    },
-    {
-      "sha": "00b478aeecd47eab116c7cdd835b1aed09c3f768",
-      "shortSha": "00b478a",
-      "date": "2026-08-18T12:05:11Z",
-      "message": "prediction: Update SPY market prediction - 2026-08-18 12:05:11 UTC",
+      "sha": "c213549a18e274cbedb3be149fc293e54b556209",
+      "shortSha": "c213549",
+      "date": "2026-08-19T00:03:40Z",
+      "message": "prediction: Update SPY market prediction - 2026-08-19 00:03:40 UTC",
       "author": "github-actions[bot]",
       "files": [
         "market_prediction/latest_prediction.json",
@@ -183,94 +186,20 @@
       ]
     },
     {
-      "sha": "cc9cebb2e8e0730bc5aabd80551a8d76dcf14231",
-      "shortSha": "cc9cebb",
-      "date": "2026-08-18T12:01:43Z",
-      "message": "data: omnibus \u2014 market prediction 2026-08-18 12:01:43 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "af1564472d7c884ff359b3a284031e764c422730",
-      "shortSha": "af15644",
-      "date": "2026-08-18T12:01:15Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 12:01:15 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/data/tensor_forecast.json"
-      ]
-    },
-    {
-      "sha": "53fef9027191b713c5036df2ad9c37200ca4a023",
-      "shortSha": "53fef90",
-      "date": "2026-08-18T12:01:10Z",
-      "message": "data: omnibus \u2014 sp projection 2026-08-18 12:01:10 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "sp_closing_projection/latest_projection.json",
-        "sp_closing_projection/sp_closing_projection_output.png"
-      ]
-    },
-    {
-      "sha": "342157f08a355df195c782c35e50abf15a891807",
-      "shortSha": "342157f",
-      "date": "2026-08-18T11:57:27Z",
-      "message": "Update scraped financial data",
-      "author": "github-actions[bot]",
-      "files": [
-        "scrape/finance.db.gz"
-      ]
-    },
-    {
-      "sha": "0ddb4cf1a51d9850b8007d37b283aa6300433e5b",
-      "shortSha": "0ddb4cf",
-      "date": "2026-08-18T11:44:49Z",
-      "message": "prediction: Update SPY market prediction - 2026-08-18 11:44:49 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "bf50dc33015b18b9a907acfc710184f2f0fa004e",
-      "shortSha": "bf50dc3",
-      "date": "2026-08-18T11:38:59Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 11:38:59 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/data/tensor_forecast.json"
-      ]
-    },
-    {
-      "sha": "7f8bb3376b7aeb3c918ceca8d0c7d06f225de12a",
-      "shortSha": "7f8bb33",
-      "date": "2026-08-18T11:38:20Z",
-      "message": "data: omnibus \u2014 sp projection 2026-08-18 11:38:20 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "sp_closing_projection/latest_projection.json",
-        "sp_closing_projection/sp_closing_projection_output.png"
-      ]
-    },
-    {
-      "sha": "279249b0e1e767d1b6bfd63f925a012c8fe2cd97",
-      "shortSha": "279249b",
-      "date": "2026-08-18T11:37:20Z",
-      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 11:37:20 UTC",
+      "sha": "3d5039555261c28efc8e09fe81e9a36300aa8041",
+      "shortSha": "3d50395",
+      "date": "2026-08-18T23:58:05Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 23:58:04 UTC",
       "author": "github-actions[bot]",
       "files": [
         "data/neural/snapshot.json"
       ]
     },
     {
-      "sha": "114c1a0df33b39c955baf0eb6328c20396fbc99d",
-      "shortSha": "114c1a0",
-      "date": "2026-08-18T11:36:37Z",
-      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 11:36:37 UTC",
+      "sha": "5e5c61219645b150967177fdeb3b9700caa397be",
+      "shortSha": "5e5c612",
+      "date": "2026-08-18T23:57:41Z",
+      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 23:57:41 UTC",
       "author": "github-actions[bot]",
       "files": [
         "data/crypto/snapshot.json",
@@ -280,43 +209,31 @@
       ]
     },
     {
-      "sha": "63afd6938668bf6a0d81a1dc04fbf1bc3c541f16",
-      "shortSha": "63afd69",
-      "date": "2026-08-18T11:36:28Z",
-      "message": "AI Forecast & Ledger Sync [skip ci]",
-      "author": "AI-Forecaster-Bot",
-      "files": [
-        "fintst/Copy_Of_Ledger.yml"
-      ]
-    },
-    {
-      "sha": "f3ca1bf44bc91fade04f567fd60788596866dbcd",
-      "shortSha": "f3ca1bf",
-      "date": "2026-08-18T11:07:36Z",
-      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 11:07:36 UTC",
+      "sha": "e4cfed70c466ee5d8159b14a4cf9f16af09e64ff",
+      "shortSha": "e4cfed7",
+      "date": "2026-08-18T23:57:41Z",
+      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 23:57:41 UTC",
       "author": "github-actions[bot]",
       "files": [
-        "data/neural/snapshot.json"
+        "tradingview_integration/data/tensor_forecast.json"
       ]
     },
     {
-      "sha": "04bcb16bdc222955cab17c437ee58a6062451e1a",
-      "shortSha": "04bcb16",
-      "date": "2026-08-18T11:07:05Z",
-      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 11:07:05 UTC",
+      "sha": "0b974dea2a980264048028ff0440612d8038f9fc",
+      "shortSha": "0b974de",
+      "date": "2026-08-18T23:57:32Z",
+      "message": "data: omnibus \u2014 market prediction 2026-08-18 23:57:32 UTC",
       "author": "github-actions[bot]",
       "files": [
-        "data/crypto/snapshot.json",
-        "data/financials/snapshot.json",
-        "data/indices/snapshot.json",
-        "data/tech/snapshot.json"
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
       ]
     },
     {
-      "sha": "9eb381be7e1d0e1c6e4a720a387f7b2a01cf2b59",
-      "shortSha": "9eb381b",
-      "date": "2026-08-18T11:07:00Z",
-      "message": "data: omnibus \u2014 sp projection 2026-08-18 11:07:00 UTC",
+      "sha": "aed6312c1c1301ef27289ed538db9a6734cced51",
+      "shortSha": "aed6312",
+      "date": "2026-08-18T23:57:29Z",
+      "message": "data: omnibus \u2014 sp projection 2026-08-18 23:57:29 UTC",
       "author": "github-actions[bot]",
       "files": [
         "sp_closing_projection/latest_projection.json",
@@ -324,126 +241,9 @@
       ]
     },
     {
-      "sha": "6356c5b0e57f1208ae361b65dfa5d35abfcb4ee3",
-      "shortSha": "6356c5b",
-      "date": "2026-08-18T11:06:44Z",
-      "message": "data: omnibus \u2014 market prediction 2026-08-18 11:06:44 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "0fe4fb04f039d11791657aa14969aca81124c86f",
-      "shortSha": "0fe4fb0",
-      "date": "2026-08-18T11:06:40Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 11:06:40 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/data/tensor_forecast.json"
-      ]
-    },
-    {
-      "sha": "076a9556945953bdc60bbd68ef5a0d5e12d8ca03",
-      "shortSha": "076a955",
-      "date": "2026-08-18T11:03:26Z",
-      "message": "AI Forecast & Ledger Sync [skip ci]",
-      "author": "AI-Forecaster-Bot",
-      "files": [
-        "fintst/Copy_Of_Ledger.yml"
-      ]
-    },
-    {
-      "sha": "4fc40ea576a044144744cd1146dac5a748a65096",
-      "shortSha": "4fc40ea",
-      "date": "2026-08-18T10:55:36Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-08-18 10:55 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "bfd94a7e0f7f3686e40976948722a5cb409d634b",
-      "shortSha": "bfd94a7",
-      "date": "2026-08-18T10:45:36Z",
-      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 10:45:36 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "data/neural/snapshot.json"
-      ]
-    },
-    {
-      "sha": "ef091b7031146d06055fc5d6f862eb96f43874f4",
-      "shortSha": "ef091b7",
-      "date": "2026-08-18T10:44:52Z",
-      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 10:44:52 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "data/crypto/snapshot.json",
-        "data/financials/snapshot.json",
-        "data/indices/snapshot.json",
-        "data/tech/snapshot.json"
-      ]
-    },
-    {
-      "sha": "fdb88ca58ecbb4447fd4b2276db3c3748488a163",
-      "shortSha": "fdb88ca",
-      "date": "2026-08-18T10:44:49Z",
-      "message": "data: omnibus \u2014 market prediction 2026-08-18 10:44:49 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "1de6e58d9fdc191ff21d50cf26a8ff2846dc09db",
-      "shortSha": "1de6e58",
-      "date": "2026-08-18T10:44:35Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 10:44:35 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/data/tensor_forecast.json"
-      ]
-    },
-    {
-      "sha": "2a7550f255900f13155a13f7313342e359c24c4c",
-      "shortSha": "2a7550f",
-      "date": "2026-08-18T10:44:21Z",
-      "message": "data: omnibus \u2014 sp projection 2026-08-18 10:44:21 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "sp_closing_projection/latest_projection.json",
-        "sp_closing_projection/sp_closing_projection_output.png"
-      ]
-    },
-    {
-      "sha": "6a9709e714723cc2df339409348a278fd3ce7b51",
-      "shortSha": "6a9709e",
-      "date": "2026-08-18T10:33:58Z",
-      "message": "prediction: Update SPY market prediction - 2026-08-18 10:33:58 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "3a47d5eac0173c81260d46cd6d752e232adc5201",
-      "shortSha": "3a47d5e",
-      "date": "2026-08-18T10:25:24Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-08-18 10:25 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "d8987a4a0a6ed827652946907c6857ac0e251576",
-      "shortSha": "d8987a4",
-      "date": "2026-08-18T10:20:07Z",
+      "sha": "d26ffa7ce3301ddd029393a4429a9be43d11ffa1",
+      "shortSha": "d26ffa7",
+      "date": "2026-08-18T23:55:28Z",
       "message": "Update scraped financial data",
       "author": "github-actions[bot]",
       "files": [
@@ -451,30 +251,414 @@
       ]
     },
     {
-      "sha": "0f7796b6f55e64336c4dd23f74e337c305d9f296",
-      "shortSha": "0f7796b",
-      "date": "2026-08-18T10:07:45Z",
-      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 10:07:45 UTC",
+      "sha": "fafcfee85f1e033f12136617c6ab06e8286b72f3",
+      "shortSha": "fafcfee",
+      "date": "2026-08-18T23:39:40Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 23:39:40 UTC",
       "author": "github-actions[bot]",
       "files": [
         "data/neural/snapshot.json"
       ]
     },
     {
-      "sha": "69450bef55fcfb6569885af2ca413fb51828f68d",
-      "shortSha": "69450be",
-      "date": "2026-08-18T10:07:24Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 10:07:24 UTC",
+      "sha": "48bf6513267a075ec98a2259d223786f17a80b7f",
+      "shortSha": "48bf651",
+      "date": "2026-08-18T23:37:59Z",
+      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 23:37:59 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/crypto/snapshot.json",
+        "data/financials/snapshot.json",
+        "data/indices/snapshot.json",
+        "data/tech/snapshot.json"
+      ]
+    },
+    {
+      "sha": "6dd374bd49a2f9ba6839f4fabfc1803c636040a4",
+      "shortSha": "6dd374b",
+      "date": "2026-08-18T23:37:40Z",
+      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 23:37:40 UTC",
       "author": "github-actions[bot]",
       "files": [
         "tradingview_integration/data/tensor_forecast.json"
       ]
     },
     {
-      "sha": "c86dae40101ead54e9e8b35cbabd967d3fc5d6a5",
-      "shortSha": "c86dae4",
-      "date": "2026-08-18T10:07:04Z",
-      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 10:07:04 UTC",
+      "sha": "fee8cfa0cd8714dcb910c573662df27949837105",
+      "shortSha": "fee8cfa",
+      "date": "2026-08-18T23:37:34Z",
+      "message": "data: omnibus \u2014 market prediction 2026-08-18 23:37:34 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "a30b052ef4db6b39ca06c361e480472a776e2fd6",
+      "shortSha": "a30b052",
+      "date": "2026-08-18T23:37:06Z",
+      "message": "Update scraped financial data",
+      "author": "github-actions[bot]",
+      "files": [
+        "scrape/finance.db.gz"
+      ]
+    },
+    {
+      "sha": "41fbb149234bb6683234ff093d736202add3a5e0",
+      "shortSha": "41fbb14",
+      "date": "2026-08-18T23:12:21Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 23:12:21 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/neural/snapshot.json"
+      ]
+    },
+    {
+      "sha": "8a0dd94174ddc31a0c303299cfddf4a4c389156b",
+      "shortSha": "8a0dd94",
+      "date": "2026-08-18T23:11:33Z",
+      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 23:11:33 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "tradingview_integration/data/tensor_forecast.json"
+      ]
+    },
+    {
+      "sha": "9f0fb214da1d52048ca00ff8f061f3fc42a9e8b8",
+      "shortSha": "9f0fb21",
+      "date": "2026-08-18T23:11:28Z",
+      "message": "data: omnibus \u2014 market prediction 2026-08-18 23:11:28 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "349fe94d64b53fc8639fb293cc22641bba02ca5b",
+      "shortSha": "349fe94",
+      "date": "2026-08-18T23:11:04Z",
+      "message": "projection: Update S&P 500 closing projection - 2026-08-18 23:11:04 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "sp_closing_projection/latest_projection.json",
+        "sp_closing_projection/sp_closing_projection_output.png"
+      ]
+    },
+    {
+      "sha": "9f0f9e14a897e3109887c0f751a6da03c5c1cdd7",
+      "shortSha": "9f0f9e1",
+      "date": "2026-08-18T23:03:15Z",
+      "message": "prediction: Update SPY market prediction - 2026-08-18 23:03:15 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "b44ba1824470a8096b9d75da7ecf39e600645d98",
+      "shortSha": "b44ba18",
+      "date": "2026-08-18T22:57:09Z",
+      "message": "Update scraped financial data",
+      "author": "github-actions[bot]",
+      "files": [
+        "scrape/finance.db.gz"
+      ]
+    },
+    {
+      "sha": "41a16ba4d77fdcd856fc81f6763b7fd0e1bfadd3",
+      "shortSha": "41a16ba",
+      "date": "2026-08-18T22:50:18Z",
+      "message": "data: omnibus \u2014 tensor forecast 2026-08-18 22:50:17 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "tradingview_integration/data/tensor_forecast.json"
+      ]
+    },
+    {
+      "sha": "c6e7fe73c6811ec448ee5aedf9286f2b2dee42ba",
+      "shortSha": "c6e7fe7",
+      "date": "2026-08-18T22:50:16Z",
+      "message": "data: omnibus \u2014 market prediction 2026-08-18 22:50:16 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "4f4ceffadf88f87f3262a9bfe480cc445eb6c8b2",
+      "shortSha": "4f4ceff",
+      "date": "2026-08-18T22:50:09Z",
+      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 22:50:09 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/crypto/snapshot.json",
+        "data/financials/snapshot.json",
+        "data/indices/snapshot.json",
+        "data/tech/snapshot.json"
+      ]
+    },
+    {
+      "sha": "98a0dc4cff9f805f2d49aab59bb5f1b6ed250c84",
+      "shortSha": "98a0dc4",
+      "date": "2026-08-18T22:49:10Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 22:49:10 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/neural/snapshot.json"
+      ]
+    },
+    {
+      "sha": "c30841eeb84d3d420006d901160d04d70ab22570",
+      "shortSha": "c30841e",
+      "date": "2026-08-18T22:47:13Z",
+      "message": "projection: Update S&P 500 closing projection - 2026-08-18 22:47:13 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "sp_closing_projection/latest_projection.json",
+        "sp_closing_projection/sp_closing_projection_output.png"
+      ]
+    },
+    {
+      "sha": "c4dde5ba64b47ba0315b5515bb33a6194c445dca",
+      "shortSha": "c4dde5b",
+      "date": "2026-08-18T22:35:47Z",
+      "message": "prediction: Update SPY market prediction - 2026-08-18 22:35:47 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "eee3200089eacc9c2ab32f3ee1e44093ebeff750",
+      "shortSha": "eee3200",
+      "date": "2026-08-18T22:31:48Z",
+      "message": "data: update financial .dat files 2026-08-18T22:31:48Z [skip ci]",
+      "author": "financial-data[bot]",
+      "files": [
+        "data/crypto/ada_usd.dat",
+        "data/crypto/algo_usd.dat",
+        "data/crypto/apt_usd.dat",
+        "data/crypto/arb_usd.dat",
+        "data/crypto/atom_usd.dat",
+        "data/crypto/avax_usd.dat",
+        "data/crypto/bch_usd.dat",
+        "data/crypto/bito.dat",
+        "data/crypto/bnb_usd.dat",
+        "data/crypto/btc_usd.dat",
+        "data/crypto/doge_usd.dat",
+        "data/crypto/dot_usd.dat",
+        "data/crypto/eth_usd.dat",
+        "data/crypto/ethe.dat",
+        "data/crypto/fbtc.dat",
+        "data/crypto/fil_usd.dat",
+        "data/crypto/gbtc.dat",
+        "data/crypto/hbar_usd.dat",
+        "data/crypto/ibit.dat",
+        "data/crypto/icp_usd.dat",
+        "data/crypto/inj_usd.dat",
+        "data/crypto/link_usd.dat",
+        "data/crypto/ltc_usd.dat",
+        "data/crypto/matic_usd.dat",
+        "data/crypto/near_usd.dat",
+        "data/crypto/op_usd.dat",
+        "data/crypto/shib_usd.dat",
+        "data/crypto/sol_usd.dat",
+        "data/crypto/tia_usd.dat",
+        "data/crypto/ton_usd.dat",
+        "data/crypto/uni_usd.dat",
+        "data/crypto/vet_usd.dat",
+        "data/crypto/xlm_usd.dat",
+        "data/crypto/xrp_usd.dat",
+        "data/fortune500/aapl.dat",
+        "data/fortune500/abbv.dat",
+        "data/fortune500/abt.dat",
+        "data/fortune500/adbe.dat",
+        "data/fortune500/amd.dat",
+        "data/fortune500/amgn.dat",
+        "data/fortune500/amt.dat",
+        "data/fortune500/amzn.dat",
+        "data/fortune500/apd.dat",
+        "data/fortune500/avgo.dat",
+        "data/fortune500/axp.dat",
+        "data/fortune500/ba.dat",
+        "data/fortune500/bac.dat",
+        "data/fortune500/blk.dat",
+        "data/fortune500/bsx.dat",
+        "data/fortune500/c.dat",
+        "data/fortune500/cat.dat",
+        "data/fortune500/chtr.dat",
+        "data/fortune500/cmcsa.dat",
+        "data/fortune500/cme.dat",
+        "data/fortune500/cop.dat",
+        "data/fortune500/cost.dat",
+        "data/fortune500/crm.dat",
+        "data/fortune500/crwd.dat",
+        "data/fortune500/csco.dat",
+        "data/fortune500/cvx.dat",
+        "data/fortune500/de.dat",
+        "data/fortune500/dis.dat",
+        "data/fortune500/duk.dat",
+        "data/fortune500/emr.dat",
+        "data/fortune500/eog.dat",
+        "data/fortune500/fcx.dat",
+        "data/fortune500/fdx.dat",
+        "data/fortune500/ge.dat",
+        "data/fortune500/gild.dat",
+        "data/fortune500/googl.dat",
+        "data/fortune500/gs.dat",
+        "data/fortune500/hd.dat",
+        "data/fortune500/hon.dat",
+        "data/fortune500/ibm.dat",
+        "data/fortune500/ice.dat",
+        "data/fortune500/intc.dat",
+        "data/fortune500/intu.dat",
+        "data/fortune500/isrg.dat",
+        "data/fortune500/jnj.dat",
+        "data/fortune500/jpm.dat",
+        "data/fortune500/ko.dat",
+        "data/fortune500/lin.dat",
+        "data/fortune500/lly.dat",
+        "data/fortune500/lmt.dat",
+        "data/fortune500/low.dat",
+        "data/fortune500/ma.dat",
+        "data/fortune500/mcd.dat",
+        "data/fortune500/mdt.dat",
+        "data/fortune500/meta.dat",
+        "data/fortune500/mmm.dat",
+        "data/fortune500/mpc.dat",
+        "data/fortune500/mrk.dat",
+        "data/fortune500/ms.dat",
+        "data/fortune500/nee.dat",
+        "data/fortune500/nem.dat",
+        "data/fortune500/net.dat",
+        "data/fortune500/nflx.dat",
+        "data/fortune500/nke.dat",
+        "data/fortune500/noc.dat",
+        "data/fortune500/now.dat",
+        "data/fortune500/nvda.dat",
+        "data/fortune500/orcl.dat",
+        "data/fortune500/oxy.dat",
+        "data/fortune500/panw.dat",
+        "data/fortune500/pep.dat",
+        "data/fortune500/pfe.dat",
+        "data/fortune500/pg.dat",
+        "data/fortune500/pld.dat",
+        "data/fortune500/pltr.dat",
+        "data/fortune500/psx.dat",
+        "data/fortune500/qcom.dat",
+        "data/fortune500/regn.dat",
+        "data/fortune500/rtx.dat",
+        "data/fortune500/sbux.dat",
+        "data/fortune500/schw.dat",
+        "data/fortune500/shw.dat",
+        "data/fortune500/slb.dat",
+        "data/fortune500/snow.dat",
+        "data/fortune500/so.dat",
+        "data/fortune500/spgi.dat",
+        "data/fortune500/syk.dat",
+        "data/fortune500/t.dat",
+        "data/fortune500/tgt.dat",
+        "data/fortune500/tmo.dat",
+        "data/fortune500/tmus.dat",
+        "data/fortune500/tsla.dat",
+        "data/fortune500/txn.dat",
+        "data/fortune500/unh.dat",
+        "data/fortune500/ups.dat",
+        "data/fortune500/v.dat",
+        "data/fortune500/vlo.dat",
+        "data/fortune500/vrtx.dat",
+        "data/fortune500/vz.dat",
+        "data/fortune500/wfc.dat",
+        "data/fortune500/wmt.dat",
+        "data/fortune500/xom.dat",
+        "data/indices/agg.dat",
+        "data/indices/arkk.dat",
+        "data/indices/axjo.dat",
+        "data/indices/bvsp.dat",
+        "data/indices/dia.dat",
+        "data/indices/dji.dat",
+        "data/indices/eem.dat",
+        "data/indices/efa.dat",
+        "data/indices/fchi.dat",
+        "data/indices/ftse.dat",
+        "data/indices/gdaxi.dat",
+        "data/indices/gld.dat",
+        "data/indices/gspc.dat",
+        "data/indices/gsptse.dat",
+        "data/indices/hsi.dat",
+        "data/indices/iwm.dat",
+        "data/indices/ixic.dat",
+        "data/indices/ks11.dat",
+        "data/indices/n225.dat",
+        "data/indices/nsei.dat",
+        "data/indices/qqq.dat",
+        "data/indices/rut.dat",
+        "data/indices/slv.dat",
+        "data/indices/smh.dat",
+        "data/indices/spy.dat",
+        "data/indices/stoxx50e.dat",
+        "data/indices/tlt.dat",
+        "data/indices/vix.dat",
+        "data/indices/vnq.dat",
+        "data/indices/xle.dat",
+        "data/indices/xlf.dat",
+        "data/indices/xlk.dat",
+        "data/indices/xlv.dat",
+        "data/manifest.json"
+      ]
+    },
+    {
+      "sha": "32a9b9444760855a7cdc5351b1ed9952f9a0a40c",
+      "shortSha": "32a9b94",
+      "date": "2026-08-18T22:24:34Z",
+      "message": "data: omnibus \u2014 market prediction 2026-08-18 22:24:34 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "2af01fa8550c1565e7378864e21dde566478aee3",
+      "shortSha": "2af01fa",
+      "date": "2026-08-18T22:23:47Z",
+      "message": "projection: Update S&P 500 closing projection - 2026-08-18 22:23:47 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "sp_closing_projection/latest_projection.json",
+        "sp_closing_projection/sp_closing_projection_output.png"
+      ]
+    },
+    {
+      "sha": "b665f6e594e9ee00683790ce0234f63fef56219c",
+      "shortSha": "b665f6e",
+      "date": "2026-08-18T22:06:48Z",
+      "message": "Update scraped financial data",
+      "author": "github-actions[bot]",
+      "files": [
+        "scrape/finance.db.gz"
+      ]
+    },
+    {
+      "sha": "ccc7e793957606e330d20d87c5e845365aeaae3c",
+      "shortSha": "ccc7e79",
+      "date": "2026-08-18T21:58:37Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-08-18 21:58:37 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/neural/snapshot.json"
+      ]
+    },
+    {
+      "sha": "ea7348147ef8ce23dc315a21a08cbfe1dbd56893",
+      "shortSha": "ea73481",
+      "date": "2026-08-18T21:58:00Z",
+      "message": "data: omnibus \u2014 yfinance snapshot 2026-08-18 21:58:00 UTC",
       "author": "github-actions[bot]",
       "files": [
         "data/crypto/snapshot.json",
