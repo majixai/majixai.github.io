@@ -583,36 +583,36 @@ A breakout-focused XRP indicator that combines **cup-and-handle geometry**, **Ba
 ---
 
 <!-- AUTO-UPDATE-START -->
-_Last updated: 2026-08-21 19:56 UTC_
+_Last updated: 2026-08-21 20:56 UTC_
 
 ### Live Market Snapshot  (yfinance · Yahoo Finance chart fallback)
 
 | Ticker | Exch | Price | Chg | Chg% | Mom-5b | RSI~ | Src | Updated |
 |--------|------|-------|-----|------|--------|------|-----|---------|
-| [SPY](https://finance.yahoo.com/quote/SPY) | NYSEARCA | $765.81 | 2.95 | 0.3867% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [QQQ](https://finance.yahoo.com/quote/QQQ) | NASDAQ | $713.23 | 2.4323 | 0.3422% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [DIA](https://finance.yahoo.com/quote/DIA) | NYSEARCA | $532.38 | 4.65 | 0.8811% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [IWM](https://finance.yahoo.com/quote/IWM) | NYSEARCA | $300.085 | 2.275 | 0.7639% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [AAPL](https://finance.yahoo.com/quote/AAPL) | NASDAQ | $309.83 | -2.27 | -0.7273% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [MSFT](https://finance.yahoo.com/quote/MSFT) | NASDAQ | $483.01 | 1.9 | 0.3949% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [GOOGL](https://finance.yahoo.com/quote/GOOGL) | NASDAQ | $344.58 | 3.78 | 1.1092% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [AMZN](https://finance.yahoo.com/quote/AMZN) | NASDAQ | $258.34 | -2.1755 | -0.8351% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [TSLA](https://finance.yahoo.com/quote/TSLA) | NASDAQ | $362.67 | 16.37 | 4.7271% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [NVDA](https://finance.yahoo.com/quote/NVDA) | NASDAQ | $214.86 | -2.19 | -1.009% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [META](https://finance.yahoo.com/quote/META) | NASDAQ | $549.8071 | 3.6071 | 0.6604% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [JPM](https://finance.yahoo.com/quote/JPM) | NYSE | $351.485 | -1.165 | -0.3304% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [BAC](https://finance.yahoo.com/quote/BAC) | NYSE | $61.695 | -0.305 | -0.4919% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [GS](https://finance.yahoo.com/quote/GS) | NYSE | $1040.14 | 36.16 | 3.6017% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [XOM](https://finance.yahoo.com/quote/XOM) | NYSE | $165.08 | -1.25 | -0.7515% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [GLD](https://finance.yahoo.com/quote/GLD) | NYSEARCA | $423.875 | 8.755 | 2.109% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [SLV](https://finance.yahoo.com/quote/SLV) | NYSEARCA | $62.7831 | 1.1233 | 1.8218% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [TLT](https://finance.yahoo.com/quote/TLT) | NASDAQ | $82.015 | -0.325 | -0.3947% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [VIX](https://finance.yahoo.com/quote/^VIX) | INDEXCBOE | $15.15 | -0.86 | -5.3716% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
-| [BTC-USD](https://finance.yahoo.com/quote/BTC-USD) | CRYPTO | $77087.6094 | 4089.2891 | 5.6019% | ─ | — | yfinance | 2026-08-21 19:56 UTC |
+| [SPY](https://finance.yahoo.com/quote/SPY) | NYSEARCA | $765.72 | 2.84 | 0.3723% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [QQQ](https://finance.yahoo.com/quote/QQQ) | NASDAQ | $713.44 | 2.6423 | 0.3717% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [DIA](https://finance.yahoo.com/quote/DIA) | NYSEARCA | $532.22 | 4.49 | 0.8508% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [IWM](https://finance.yahoo.com/quote/IWM) | NYSEARCA | $299.96 | 2.15 | 0.7219% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [AAPL](https://finance.yahoo.com/quote/AAPL) | NASDAQ | $309.35 | -2.75 | -0.8811% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [MSFT](https://finance.yahoo.com/quote/MSFT) | NASDAQ | $483.24 | 2.13 | 0.4427% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [GOOGL](https://finance.yahoo.com/quote/GOOGL) | NASDAQ | $344.82 | 4.02 | 1.1796% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [AMZN](https://finance.yahoo.com/quote/AMZN) | NASDAQ | $258.63 | -1.8855 | -0.7238% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [TSLA](https://finance.yahoo.com/quote/TSLA) | NASDAQ | $362.86 | 16.56 | 4.782% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [NVDA](https://finance.yahoo.com/quote/NVDA) | NASDAQ | $214.72 | -2.33 | -1.0735% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [META](https://finance.yahoo.com/quote/META) | NASDAQ | $549.9 | 3.7 | 0.6774% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [JPM](https://finance.yahoo.com/quote/JPM) | NYSE | $351.58 | -1.07 | -0.3034% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [BAC](https://finance.yahoo.com/quote/BAC) | NYSE | $61.69 | -0.31 | -0.5% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [GS](https://finance.yahoo.com/quote/GS) | NYSE | $1039.28 | 35.3 | 3.516% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [XOM](https://finance.yahoo.com/quote/XOM) | NYSE | $165.11 | -1.22 | -0.7335% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [GLD](https://finance.yahoo.com/quote/GLD) | NYSEARCA | $423.36 | 8.24 | 1.985% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [SLV](https://finance.yahoo.com/quote/SLV) | NYSEARCA | $62.72 | 1.0602 | 1.7194% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [TLT](https://finance.yahoo.com/quote/TLT) | NASDAQ | $82.05 | -0.29 | -0.3522% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [VIX](https://finance.yahoo.com/quote/^VIX) | INDEXCBOE | $15.13 | -0.88 | -5.4966% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
+| [BTC-USD](https://finance.yahoo.com/quote/BTC-USD) | CRYPTO | $77496.3438 | 4480.4141 | 6.1362% | ─ | — | yfinance | 2026-08-21 20:56 UTC |
 
 #### Market Breadth
 - Advancing: **12** / 20  | Declining: **8**  | Unchanged: 0
-- Composite score: **+4162.75**  | Avg RSI proxy: 0.0
+- Composite score: **+4552.81**  | Avg RSI proxy: 0.0
 - Positive momentum (5b): 0  | Negative: 0
 
 <!-- AUTO-UPDATE-END -->
