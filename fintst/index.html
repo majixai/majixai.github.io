@@ -36,6 +36,7 @@
             <div>
                 <span id="last-update" class="badge bg-secondary me-2">Syncing Tensors...</span>
                 <button id="refresh-btn" class="btn btn-sm btn-outline-warning">Refresh Data</button>
+                <button id="download-csv-btn" class="btn btn-sm btn-outline-success ms-2">Download CSV</button>
             </div>
         </div>
 
@@ -65,6 +66,7 @@
 
     <script>
         let btcChart = null;
+        let fintstData = [];
 
         const hasMajixModules = typeof MajixLogger !== 'undefined' && typeof MajixActions !== 'undefined';
 
@@ -85,6 +87,40 @@
             console.error('fintst: shared logging/actions modules failed to load');
         }
 
+        function csvEscape(val) {
+            if (val === null || val === undefined) return '';
+            let s = String(val);
+            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                s = '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        }
+
+        function downloadCSV() {
+            if (!fintstData || fintstData.length === 0) {
+                alert('No data available to download');
+                return;
+            }
+
+            // Build a union of all keys to ensure we include every available field
+            const keys = Array.from(new Set(fintstData.flatMap(Object.keys)));
+
+            const header = keys.join(',') + '\n';
+            const rows = fintstData.map(row => keys.map(k => csvEscape(row[k])).join(',')).join('\n');
+            const csvContent = header + rows;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '');
+            a.href = url;
+            a.download = `fintst_ledger_${timestamp}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
         async function loadDashboard(trigger = 'unknown') {
             try {
                 const normalizedTrigger = ['initial', 'manual', 'unknown'].includes(trigger) ? trigger : 'unknown';
@@ -101,6 +137,9 @@
                 
                 const yamlText = await res.text();
                 const data = jsyaml.load(yamlText) || [];
+
+                // store globally for download
+                fintstData = data;
 
                 if (data.length === 0) {
                     if (hasMajixModules) {
@@ -196,6 +235,14 @@
             }
             loadDashboard('manual');
         });
+
+        document.getElementById('download-csv-btn').addEventListener('click', function () {
+            if (hasMajixModules) {
+                MajixActions.dispatch('dashboard/download-click', { source: 'button' });
+            }
+            downloadCSV();
+        });
+
         loadDashboard('initial');
     </script>
 </body>
