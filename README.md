@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-08-26 22:57 UTC_
+_Last updated: 2026-08-29 06:08 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,26 +13,26 @@ _Last updated: 2026-08-26 22:57 UTC_
 |--------|-------|
 | 📁 Project Directories | 184 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 148121 |
+| 📝 Total Commits | 148206 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`0f695180f9`](https://github.com/majixai/majixai.github.io/commit/0f695180f924a51f312a000a7da418992df0162b) -- 2026-08-26 -- github-actions[bot] -- [AI Tensor Bot] Update Titan Matrix ML Forecasts -- [Open page](https://majixai.github.io/router/)
-- [`b813aa5b63`](https://github.com/majixai/majixai.github.io/commit/b813aa5b6350d367b35ec608713dd6514034d509) -- 2026-08-26 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
-- [`3396f717c9`](https://github.com/majixai/majixai.github.io/commit/3396f717c9e6830f217e1fbf9c6378b9982edede) -- 2026-08-26 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
-- [`b21f7ec2e1`](https://github.com/majixai/majixai.github.io/commit/b21f7ec2e17265d203704d34ce181808ac2e6dad) -- 2026-08-26 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-08-26 20:39:36 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`720a472972`](https://github.com/majixai/majixai.github.io/commit/720a472972d272a59e386e7668c22bdc8c5e156a) -- 2026-08-26 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-08-26 20:08:42 UTC -- [Open page](https://majixai.github.io/data/)
+- [`571e536229`](https://github.com/majixai/majixai.github.io/commit/571e536229b63c0f6298206569269737fee86426) -- 2026-08-29 -- github-actions[bot] -- data: Update projects.json - 2026-08-29 05:34:16 UTC -- [Open page](https://majixai.github.io/router/)
+- [`5ec6f6fb91`](https://github.com/majixai/majixai.github.io/commit/5ec6f6fb9148aa6c12de80a9c6417e3d39eca77a) -- 2026-08-29 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-08-29 03:50:52 UTC -- [Open page](https://majixai.github.io/data/)
+- [`80bce52356`](https://github.com/majixai/majixai.github.io/commit/80bce5235683b094c5b5f84d247173219da989df) -- 2026-08-29 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-08-29 03:50:04 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`1a8dbd6c06`](https://github.com/majixai/majixai.github.io/commit/1a8dbd6c063b5cc5cde36148a6e0ec0b8fc8a8ec) -- 2026-08-29 -- github-actions[bot] -- data: omnibus — market prediction 2026-08-29 03:50:14 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`40d8e21fb9`](https://github.com/majixai/majixai.github.io/commit/40d8e21fb9c8fdcf4f48e3f66b21b8769d4143e1) -- 2026-08-29 -- github-actions[bot] -- data: omnibus — sp projection 2026-08-29 03:50:10 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `0f69518` — 2026-08-26 — **github-actions[bot]** — [AI Tensor Bot] Update Titan Matrix ML Forecasts  
-  _1002 lines changed (501+ / 501-)_
-- **Biggest update this week:** `ed2b51c` — 2026-08-24 — **github-actions[bot]** — data: Update index data - 2026-08-24 02:32:24 UTC  
-  _1859 lines changed (1732+ / 127-)_
-- **Biggest update this month:** `9af8d40` — 2026-08-02 — **github-actions[bot]** — data: Update index data - 2026-08-02 04:35:36 UTC  
-  _150776 lines changed (149676+ / 1100-)_
+- **Biggest update today:** `85aa5cd` — 2026-08-29 — **github-actions[bot]** — projection: S&P 500 pre-market projection - 2026-08-29 00:27:30 UTC  
+  _1104 lines changed (542+ / 562-)_
+- **Biggest update this week:** `8758d56` — 2026-08-28 — **github-actions[bot]** — data: Update index data - 2026-08-28 12:45:58 UTC  
+  _213184 lines changed (212074+ / 1110-)_
+- **Biggest update this month:** `8758d56` — 2026-08-28 — **github-actions[bot]** — data: Update index data - 2026-08-28 12:45:58 UTC  
+  _213184 lines changed (212074+ / 1110-)_
 - **Biggest update this quarter:** `c92388c` — 2026-07-12 — **github-actions[bot]** — data: Update index data - 2026-07-12 04:37:08 UTC  
   _255576 lines changed (254465+ / 1111-)_
 - **Biggest update this year:** `70c685c` — 2026-05-29 — **majixai** — Merge branch 'main' into copilot/tradingview-integration-unified-feed-scaffold  
