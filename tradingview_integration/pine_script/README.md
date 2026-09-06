@@ -37,129 +37,129 @@ Toggle each category independently from the **Inputs** panel.
 
 ### Single-Bar Candlestick [11]
 
-| # | Pattern | Label | Bias |
-|---|---------|-------|------|
-| 1 | Doji | `DOJI` | Neutral |
-| 2 | Long-Legged Doji | `LLD` | Neutral |
-| 3 | Dragonfly Doji | `DFD` | Bullish |
-| 4 | Gravestone Doji | `GSD` | Bearish |
-| 5 | Spinning Top | `SPIN` | Neutral |
-| 6 | Marubozu Bullish | `MARU↑` | Bullish |
-| 7 | Marubozu Bearish | `MARU↓` | Bearish |
-| 8 | Hammer | `HAMR` | Bullish |
-| 9 | Hanging Man | `HANG` | Bearish |
-| 10 | Inverted Hammer | `INVH` | Bullish |
-| 11 | Shooting Star | `SHOT★` | Bearish |
+| # | Pattern | Label | Bias | BTC 1d % | Duration |
+|---|---------|-------|------|----------|----------|
+| 1 | Doji | `DOJI` | Neutral | — | — |
+| 2 | Long-Legged Doji | `LLD` | Neutral | — | — |
+| 3 | Dragonfly Doji | `DFD` | Bullish | — | — |
+| 4 | Gravestone Doji | `GSD` | Bearish | — | — |
+| 5 | Spinning Top | `SPIN` | Neutral | — | — |
+| 6 | Marubozu Bullish | `MARU↑` | Bullish | — | — |
+| 7 | Marubozu Bearish | `MARU↓` | Bearish | — | — |
+| 8 | Hammer | `HAMR` | Bullish | — | — |
+| 9 | Hanging Man | `HANG` | Bearish | — | — |
+| 10 | Inverted Hammer | `INVH` | Bullish | — | — |
+| 11 | Shooting Star | `SHOT★` | Bearish | — | — |
 
 ### Two-Bar Candlestick [15]
 
-| # | Pattern | Label | Bias |
-|---|---------|-------|------|
-| 12 | Bullish Engulfing | `ENG↑` | Bullish |
-| 13 | Bearish Engulfing | `ENG↓` | Bearish |
-| 14 | Tweezer Top | `TWEE↓` | Bearish |
-| 15 | Tweezer Bottom | `TWEE↑` | Bullish |
-| 16 | Bullish Harami | `HAMI↑` | Bullish |
-| 17 | Bearish Harami | `HAMI↓` | Bearish |
-| 18 | Bullish Harami Cross | `HAMI×↑` | Bullish |
-| 19 | Bearish Harami Cross | `HAMI×↓` | Bearish |
-| 20 | Piercing Line | `PIER` | Bullish |
-| 21 | Dark Cloud Cover | `DARK` | Bearish |
-| 22 | On-Neck | `ONECK` | Bearish |
-| 23 | In-Neck | `INECK` | Bearish |
-| 24 | Thrusting | `THRU` | Bearish |
-| 43 | Kicker Bullish | `KICK↑` | Bullish |
-| 44 | Kicker Bearish | `KICK↓` | Bearish |
+| # | Pattern | Label | Bias | BTC 1d % | Duration |
+|---|---------|-------|------|----------|----------|
+| 12 | Bullish Engulfing | `ENG↑` | Bullish | — | — |
+| 13 | Bearish Engulfing | `ENG↓` | Bearish | — | — |
+| 14 | Tweezer Top | `TWEE↓` | Bearish | — | — |
+| 15 | Tweezer Bottom | `TWEE↑` | Bullish | — | — |
+| 16 | Bullish Harami | `HAMI↑` | Bullish | — | — |
+| 17 | Bearish Harami | `HAMI↓` | Bearish | — | — |
+| 18 | Bullish Harami Cross | `HAMI×↑` | Bullish | — | — |
+| 19 | Bearish Harami Cross | `HAMI×↓` | Bearish | — | — |
+| 20 | Piercing Line | `PIER` | Bullish | — | — |
+| 21 | Dark Cloud Cover | `DARK` | Bearish | — | — |
+| 22 | On-Neck | `ONECK` | Bearish | — | — |
+| 23 | In-Neck | `INECK` | Bearish | — | — |
+| 24 | Thrusting | `THRU` | Bearish | — | — |
+| 43 | Kicker Bullish | `KICK↑` | Bullish | — | — |
+| 44 | Kicker Bearish | `KICK↓` | Bearish | — | — |
 
 ### Multi-Bar Candlestick [18]
 
-| # | Pattern | Label | Bias |
-|---|---------|-------|------|
-| 25 | Morning Star | `MORN★` | Bullish |
-| 26 | Evening Star | `EVEN★` | Bearish |
-| 27 | Morning Doji Star | `MDoji★` | Bullish |
-| 28 | Evening Doji Star | `EDoji★` | Bearish |
-| 29 | Three White Soldiers | `3SOL↑` | Bullish |
-| 30 | Three Black Crows | `3CRW↓` | Bearish |
-| 31 | Three Inside Up | `3IN↑` | Bullish |
-| 32 | Three Inside Down | `3IN↓` | Bearish |
-| 33 | Three Outside Up | `3OUT↑` | Bullish |
-| 34 | Three Outside Down | `3OUT↓` | Bearish |
-| 35 | Rising Three Methods | `RISE3` | Bullish |
-| 36 | Falling Three Methods | `FALL3` | Bearish |
-| 37 | Abandoned Baby Bullish | `ABB↑` | Bullish |
-| 38 | Abandoned Baby Bearish | `ABB↓` | Bearish |
-| 39 | Upside Gap Two Crows | `UG2C` | Bearish |
-| 40 | Tasuki Gap Bullish | `TASK↑` | Bullish |
-| 41 | Tasuki Gap Bearish | `TASK↓` | Bearish |
-| 42 | Mat Hold | `MATH` | Bullish |
+| # | Pattern | Label | Bias | BTC 1d % | Duration |
+|---|---------|-------|------|----------|----------|
+| 25 | Morning Star | `MORN★` | Bullish | — | — |
+| 26 | Evening Star | `EVEN★` | Bearish | — | — |
+| 27 | Morning Doji Star | `MDoji★` | Bullish | — | — |
+| 28 | Evening Doji Star | `EDoji★` | Bearish | — | — |
+| 29 | Three White Soldiers | `3SOL↑` | Bullish | — | — |
+| 30 | Three Black Crows | `3CRW↓` | Bearish | — | — |
+| 31 | Three Inside Up | `3IN↑` | Bullish | — | — |
+| 32 | Three Inside Down | `3IN↓` | Bearish | — | — |
+| 33 | Three Outside Up | `3OUT↑` | Bullish | — | — |
+| 34 | Three Outside Down | `3OUT↓` | Bearish | — | — |
+| 35 | Rising Three Methods | `RISE3` | Bullish | — | — |
+| 36 | Falling Three Methods | `FALL3` | Bearish | — | — |
+| 37 | Abandoned Baby Bullish | `ABB↑` | Bullish | — | — |
+| 38 | Abandoned Baby Bearish | `ABB↓` | Bearish | — | — |
+| 39 | Upside Gap Two Crows | `UG2C` | Bearish | — | — |
+| 40 | Tasuki Gap Bullish | `TASK↑` | Bullish | — | — |
+| 41 | Tasuki Gap Bearish | `TASK↓` | Bearish | — | — |
+| 42 | Mat Hold | `MATH` | Bullish | — | — |
 
 ### Classic Chart Patterns [31]
 
-| # | Pattern | Label | Bias |
-|---|---------|-------|------|
-| 45 | Head & Shoulders | `H&S` | Bearish |
-| 46 | Inverse H&S | `iH&S` | Bullish |
-| 47 | Double Top | `DBL↓` | Bearish |
-| 48 | Double Bottom | `DBL↑` | Bullish |
-| 49 | Triple Top | `TRI↓` | Bearish |
-| 50 | Triple Bottom | `TRI↑` | Bullish |
-| 51 | Cup & Handle | `CUP` | Bullish |
-| 52 | Inverted Cup & Handle | `iCUP` | Bearish |
-| 53 | Ascending Triangle | `ASC△` | Bullish |
-| 54 | Descending Triangle | `DSC▽` | Bearish |
-| 55 | Symmetrical Triangle | `SYM△` | Neutral |
-| 56 | Expanding Triangle | `EXP△` | Neutral |
-| 57 | Rising Wedge | `R.WDG↓` | Bearish |
-| 58 | Falling Wedge | `F.WDG↑` | Bullish |
-| 59 | Bull Flag | `BULL♦` | Bullish |
-| 60 | Bear Flag | `BEAR♦` | Bearish |
-| 61 | Bull Pennant | `B.PNT↑` | Bullish |
-| 62 | Bear Pennant | `B.PNT↓` | Bearish |
-| 63 | Rounding Bottom | `SAUC↑` | Bullish |
-| 64 | Rounding Top | `RTOP↓` | Bearish |
-| 65 | Rectangle Bullish Break | `RECT↑` | Bullish |
-| 66 | Rectangle Bearish Break | `RECT↓` | Bearish |
-| 67 | Diamond Top | `DIAM↓` | Bearish |
-| 68 | Diamond Bottom | `DIAM↑` | Bullish |
-| 69 | Bump and Run Reversal | `BUMP↓` | Bearish |
-| 70 | Dead Cat Bounce | `DCB↓` | Bearish |
-| 71 | High-Tight Flag | `HTF↑` | Bullish |
-| 72 | Channel Up | `CH↑` | Bullish |
-| 73 | Channel Down | `CH↓` | Bearish |
-| 74 | Megaphone | `MEGA` | Neutral |
-| 75 | Flat Top Breakout | `FLT↑` | Bullish |
+| # | Pattern | Label | Bias | BTC 1d % | Duration |
+|---|---------|-------|------|----------|----------|
+| 45 | Head & Shoulders | `H&S` | Bearish | — | — |
+| 46 | Inverse H&S | `iH&S` | Bullish | — | — |
+| 47 | Double Top | `DBL↓` | Bearish | — | — |
+| 48 | Double Bottom | `DBL↑` | Bullish | — | — |
+| 49 | Triple Top | `TRI↓` | Bearish | — | — |
+| 50 | Triple Bottom | `TRI↑` | Bullish | — | — |
+| 51 | Cup & Handle | `CUP` | Bullish | — | — |
+| 52 | Inverted Cup & Handle | `iCUP` | Bearish | — | — |
+| 53 | Ascending Triangle | `ASC△` | Bullish | — | — |
+| 54 | Descending Triangle | `DSC▽` | Bearish | — | — |
+| 55 | Symmetrical Triangle | `SYM△` | Neutral | — | — |
+| 56 | Expanding Triangle | `EXP△` | Neutral | — | — |
+| 57 | Rising Wedge | `R.WDG↓` | Bearish | — | — |
+| 58 | Falling Wedge | `F.WDG↑` | Bullish | — | — |
+| 59 | Bull Flag | `BULL♦` | Bullish | — | — |
+| 60 | Bear Flag | `BEAR♦` | Bearish | — | — |
+| 61 | Bull Pennant | `B.PNT↑` | Bullish | — | — |
+| 62 | Bear Pennant | `B.PNT↓` | Bearish | — | — |
+| 63 | Rounding Bottom | `SAUC↑` | Bullish | — | — |
+| 64 | Rounding Top | `RTOP↓` | Bearish | — | — |
+| 65 | Rectangle Bullish Break | `RECT↑` | Bullish | — | — |
+| 66 | Rectangle Bearish Break | `RECT↓` | Bearish | — | — |
+| 67 | Diamond Top | `DIAM↓` | Bearish | — | — |
+| 68 | Diamond Bottom | `DIAM↑` | Bullish | — | — |
+| 69 | Bump and Run Reversal | `BUMP↓` | Bearish | — | — |
+| 70 | Dead Cat Bounce | `DCB↓` | Bearish | — | — |
+| 71 | High-Tight Flag | `HTF↑` | Bullish | — | — |
+| 72 | Channel Up | `CH↑` | Bullish | — | — |
+| 73 | Channel Down | `CH↓` | Bearish | — | — |
+| 74 | Megaphone | `MEGA` | Neutral | — | — |
+| 75 | Flat Top Breakout | `FLT↑` | Bullish | — | — |
 
 ### Harmonic Patterns [26]
 
-| # | Pattern | Label | Key Ratios |
-|---|---------|-------|-----------|
-| 76 | ABCD Bullish | `ABCD↑` | CD=AB, BC=0.618·AB |
-| 77 | ABCD Bearish | `ABCD↓` | CD=AB, BC=0.618·AB |
-| 78 | Gartley Bullish | `GART↑` | AB=0.618·XA, CD=0.786·XA |
-| 79 | Gartley Bearish | `GART↓` | AB=0.618·XA, CD=0.786·XA |
-| 80 | Bat Bullish | `BAT↑` | AB=0.382-0.5·XA, CD=0.886·XA |
-| 81 | Bat Bearish | `BAT↓` | AB=0.382-0.5·XA, CD=0.886·XA |
-| 82 | Butterfly Bullish | `BFLY↑` | AB=0.786·XA, CD=1.272-1.618·XA |
-| 83 | Butterfly Bearish | `BFLY↓` | AB=0.786·XA, CD=1.272-1.618·XA |
-| 84 | Crab Bullish | `CRAB↑` | AB=0.382-0.618·XA, CD=1.618·XA |
-| 85 | Crab Bearish | `CRAB↓` | AB=0.382-0.618·XA, CD=1.618·XA |
-| 86 | Deep Crab Bullish | `DCRAB↑` | AB=0.886·XA, CD=2.618-3.618·XA |
-| 87 | Deep Crab Bearish | `DCRAB↓` | AB=0.886·XA, CD=2.618-3.618·XA |
-| 88 | Cypher Bullish | `CYPH↑` | AB=0.382-0.618·XA, CD=0.786·XC |
-| 89 | Cypher Bearish | `CYPH↓` | AB=0.382-0.618·XA, CD=0.786·XC |
-| 90 | Shark Bullish | `SHRK↑` | AB=0.886-1.13·XA, BC=1.618-2.24 |
-| 91 | Shark Bearish | `SHRK↓` | AB=0.886-1.13·XA, BC=1.618-2.24 |
-| 92 | Alt Bat Bullish | `ABAT↑` | AB=0.382·XA, CD=1.13·XA |
-| 93 | Alt Bat Bearish | `ABAT↓` | AB=0.382·XA, CD=1.13·XA |
-| 94 | Three Drives Bullish | `3DRV↑` | Three equal-length down drives |
-| 95 | Three Drives Bearish | `3DRV↓` | Three equal-length up drives |
-| 96 | 5-0 Bullish | `5-0↑` | BC=1.618-2.24·AB, CD=0.5·BC |
-| 97 | 5-0 Bearish | `5-0↓` | BC=1.618-2.24·AB, CD=0.5·BC |
-| 98 | Nen-Star Bullish | `NEN↑` | AB=0.618·XA, CD=1.272·XA |
-| 99 | Nen-Star Bearish | `NEN↓` | AB=0.618·XA, CD=1.272·XA |
-| 100 | XABCD Alt Bullish | `XAB↑` | CD=1.272·AB |
-| 101 | XABCD Alt Bearish | `XAB↓` | CD=1.272·AB |
+| # | Pattern | Label | Key Ratios | BTC 1d % | Duration |
+|---|---------|-------|-----------|----------|----------|
+| 76 | ABCD Bullish | `ABCD↑` | CD=AB, BC=0.618·AB | — | — |
+| 77 | ABCD Bearish | `ABCD↓` | CD=AB, BC=0.618·AB | — | — |
+| 78 | Gartley Bullish | `GART↑` | AB=0.618·XA, CD=0.786·XA | — | — |
+| 79 | Gartley Bearish | `GART↓` | AB=0.618·XA, CD=0.786·XA | — | — |
+| 80 | Bat Bullish | `BAT↑` | AB=0.382-0.5·XA, CD=0.886·XA | — | — |
+| 81 | Bat Bearish | `BAT↓` | AB=0.382-0.5·XA, CD=0.886·XA | — | — |
+| 82 | Butterfly Bullish | `BFLY↑` | AB=0.786·XA, CD=1.272-1.618·XA | — | — |
+| 83 | Butterfly Bearish | `BFLY↓` | AB=0.786·XA, CD=1.272-1.618·XA | — | — |
+| 84 | Crab Bullish | `CRAB↑` | AB=0.382-0.618·XA, CD=1.618·XA | — | — |
+| 85 | Crab Bearish | `CRAB↓` | AB=0.382-0.618·XA, CD=1.618·XA | — | — |
+| 86 | Deep Crab Bullish | `DCRAB↑` | AB=0.886·XA, CD=2.618-3.618·XA | — | — |
+| 87 | Deep Crab Bearish | `DCRAB↓` | AB=0.886·XA, CD=2.618-3.618·XA | — | — |
+| 88 | Cypher Bullish | `CYPH↑` | AB=0.382-0.618·XA, CD=0.786·XC | — | — |
+| 89 | Cypher Bearish | `CYPH↓` | AB=0.382-0.618·XA, CD=0.786·XC | — | — |
+| 90 | Shark Bullish | `SHRK↑` | AB=0.886-1.13·XA, BC=1.618-2.24 | — | — |
+| 91 | Shark Bearish | `SHRK↓` | AB=0.886-1.13·XA, BC=1.618-2.24 | — | — |
+| 92 | Alt Bat Bullish | `ABAT↑` | AB=0.382·XA, CD=1.13·XA | — | — |
+| 93 | Alt Bat Bearish | `ABAT↓` | AB=0.382·XA, CD=1.13·XA | — | — |
+| 94 | Three Drives Bullish | `3DRV↑` | Three equal-length down drives | — | — |
+| 95 | Three Drives Bearish | `3DRV↓` | Three equal-length up drives | — | — |
+| 96 | 5-0 Bullish | `5-0↑` | BC=1.618-2.24·AB, CD=0.5·BC | — | — |
+| 97 | 5-0 Bearish | `5-0↓` | BC=1.618-2.24·AB, CD=0.5·BC | — | — |
+| 98 | Nen-Star Bullish | `NEN↑` | AB=0.618·XA, CD=1.272·XA | — | — |
+| 99 | Nen-Star Bearish | `NEN↓` | AB=0.618·XA, CD=1.272·XA | — | — |
+| 100 | XABCD Alt Bullish | `XAB↑` | CD=1.272·AB | — | — |
+| 101 | XABCD Alt Bearish | `XAB↓` | CD=1.272·AB | — | — |
 
 ---
 
@@ -441,144 +441,7 @@ The following enhancements are planned for subsequent versions:
 
 ## Overview
 
-A multi-pattern detection engine built on a 5-level **Recursive Nested Type** (UDT) hierarchy.  Atomic price/volume coordinates are nested into geometric segments, which are assembled into swing paths, which compose pattern manifests, all owned by a single `GlobalMatrix` engine object.  Four chart-pattern detectors fire simultaneously each bar and the highest-confidence detection is rendered.
-
----
-
-## UDT Hierarchy
-
-| Level | Type | Contains |
-|-------|------|---------|
-| 1 | `MatrixPoint` | `bar_index`, price, raw volume, volume z-score, ATR snapshot |
-| 2 | `VectorSegment` | Two `MatrixPoint`s + slope, ATR-normalised slope, vol-delta, expansion flag |
-| 3 | `SwingPath` | `VectorSegment[]` + total length, avg slope, impulsive flag |
-| 4 | `PatternManifest` | Two `SwingPath`s + target, stop, R/R, confidence score, vol weight, directional bias |
-| 5 | `GlobalMatrix` | `PatternManifest[]` registry + 4×2 correlation matrix + 20-bucket volume-profile matrix + HTF/LTF state |
-
----
-
-## Pattern Detectors
-
-| Signature | Geometry | Default Bias |
-|-----------|----------|-------------|
-| `MEGA-EXPANSION` | Three consecutive HH + two LL (diverging structure) | Volume-weighted |
-| `COMPRESSION` | LH + HL convergence (pennant / wedge) | Vol-delta direction |
-| `HEAD-AND-SHOULDERS` | 3 highs; head tallest; ATR-adaptive shoulder symmetry | Bearish |
-| `DOUBLE-TOP` / `DOUBLE-BOTTOM` | Twin pivots within 0.5%; neckline measured move | Directional |
-
----
-
-## Confidence Scoring
-
-```
-confidence = mean_abs_corr × 50  +  directional_alignment × 30  +  vol_quality × 20
-```
-
-- **`mean_abs_corr`** — average |correlation| across all 4 reference tickers (SPY, QQQ, IWM, DIA)
-- **`directional_alignment`** — how much each ticker's correlation sign agrees with the pattern direction
-- **`vol_quality`** — volume z-score modifier; high-volume signals score higher
-
-Patterns below the configurable **Min Confidence Filter** (default 25 %) are suppressed.
-
----
-
-## Inputs
-
-| Group | Key Inputs |
-|-------|-----------|
-| Matrix System | Pivot lookback, registry depth, ATR length, volume z-score length, correlation length, min confidence filter |
-| Multi-Timeframe | HTF reference TF, LTF delta-precision TF, 4 correlation tickers |
-| Visualisation | S/R boxes, pattern labels, dashboard table, polylines toggles |
-
----
-
-## Rendering
-
-| Element | Description |
-|---------|-------------|
-| Primary polyline | Curved line through the primary swing path segments |
-| Secondary polyline | Opacity-dimmed straight line for the secondary path |
-| Target box | Colour-coded ±¼ ATR band at the projected target price |
-| Stop box | Gray ±¼ ATR band at the stop level |
-| POC box | Blue band at the volume-profile point-of-control |
-| HUD label | Signature, confidence %, R/R, vol-weight, composite bias |
-| Dashboard table | 3 × 8 table: all 4 correlations + closes, active node count, HTF vol-index, LTF precision factor, composite bias |
-
----
-
-# XRP Breakout Matrix Bayesian GC — Pine Script v6
-
-**File:** `xrp_breakout_matrix_bayesian.pine`  
-**Language:** Pine Script v6  
-**Type:** Indicator (overlay)
-
----
-
-## Overview
-
-A breakout-focused XRP indicator that combines **cup-and-handle geometry**, **Bayesian posterior scoring**, **multi-timeframe squeeze confluence**, and **garbage-collection clustering** for drawing management. The script uses nested UDTs to keep pivots, execution levels, drawings, and Bayesian metadata isolated but linked inside a single pattern state object.
-
-**Prerequisites**
-
-- Pine Script **v6** support in the TradingView editor.
-- Enough object headroom for scripts using high drawing limits (`max_lines_count=500`, `max_labels_count=500`, `max_boxes_count=300`, `max_polylines_count=100`).
-
----
-
-## Core Components
-
-| Component | Purpose |
-|-----------|---------|
-| `Swing` | Rolling pivot stream for rim / bowl / handle discovery |
-| `PatternPivots` | Nested storage for left rim, bottom, right rim, and handle swings |
-| `PatternLevels` | Entry structure: rim, invalidation, and target prices |
-| `PatternDrawings` | Cup polyline, handle polyline, target line, target box, stop box, and label |
-| `BayesianIntel` | Posterior probability, MTF confluence score, confidence state |
-| `BrewPattern` | Master state object joining pivots, levels, drawings, Bayesian state, side, lifecycle, and cluster id |
-| `GarbageCollector` | Pattern pool manager that sweeps invalidated drawings while preserving stronger clusters |
-
----
-
-## Engines
-
-### 1. Volatility Matrix
-
-- Bollinger-band squeeze detection on the active chart.
-- Gradient shading between upper/lower bands to visualise compression intensity.
-- Additional gradient fill weighted by MTF Bayesian confluence.
-
-### 2. Multi-Timeframe Bayesian Matrix
-
-- Dynamic hierarchy: lower, mid-1, mid-2, and upper timeframes.
-- `request.security()` squeeze checks for each layer.
-- 4×2 matrix stores squeeze states and timeframe durations for dashboard rendering.
-- Posterior probability rises as cross-timeframe squeeze agreement improves.
-
-### 3. GC Clustering
-
-- Patterns are assigned to cluster buckets.
-- A cluster matrix tracks total, active, validated, and cumulative-posterior values.
-- Invalidated patterns are swept once the pool exceeds the GC trigger, while the strongest cluster is retained longer.
-
-### 4. Dynamic Alert Pipeline
-
-- Entry alerts use `alert()` instead of static `alertcondition()`.
-- JSON payloads include action, pattern, posterior, MTF score, rim price, stop, target, cluster id, and `log_sheet: "Tickers"`.
-
----
-
-## Visual Elements
-
-| Element | Description |
-|---------|-------------|
-| Curved cup polyline | Structural cup mapping |
-| Curved handle polyline | Handle recovery / rejection path |
-| Target line | Measured-move projection |
-| Target box | Target zone band |
-| Stop box | Invalidation zone band |
-| Pattern label | Pattern name + posterior + MTF score |
-| Bollinger fill | Compression gradient |
-| Dashboard table | Four timeframe squeeze states + posterior + GC status |
+A multi-pattern detection engine built on a 5-level **Recursive Nested Type** (UDT) hierarchy.  Atomic price/volume coordinates are nested into geometric segments, which are assembled into swing paths[...] 
 
 ---
 
