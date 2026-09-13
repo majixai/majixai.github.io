@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-09-11 17:45 UTC_
+_Last updated: 2026-09-13 03:43 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,22 +13,22 @@ _Last updated: 2026-09-11 17:45 UTC_
 |--------|-------|
 | 📁 Project Directories | 184 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 149213 |
+| 📝 Total Commits | 149333 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`db69c760c4`](https://github.com/majixai/majixai.github.io/commit/db69c760c43774d2cdf8822c5269759d9f9933dd) -- 2026-09-11 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
-- [`5a4c3578e3`](https://github.com/majixai/majixai.github.io/commit/5a4c3578e394aa83f0a5b7885efe0f28f34ee8fa) -- 2026-09-11 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-09-11 17:25:22 UTC -- [Open page](https://majixai.github.io/data/)
-- [`e0c55a8f19`](https://github.com/majixai/majixai.github.io/commit/e0c55a8f19dda382a5ac2ed39a3deb9e78b008a6) -- 2026-09-11 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-09-11 17:23:58 UTC -- [Open page](https://majixai.github.io/data/)
-- [`514184320e`](https://github.com/majixai/majixai.github.io/commit/514184320eb7412c27a1415ca1f1110241f25d82) -- 2026-09-11 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-09-11 17:23:51 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
-- [`f1bae23194`](https://github.com/majixai/majixai.github.io/commit/f1bae23194d1b907221c5c9114b9459ac61582d2) -- 2026-09-11 -- github-actions[bot] -- data: omnibus — sp projection 2026-09-11 17:23:22 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
+- [`c326d0b3e4`](https://github.com/majixai/majixai.github.io/commit/c326d0b3e44c01965dc06a58ef3c0264f5e1626a) -- 2026-09-13 -- github-actions[bot] -- data: Update projects.json - 2026-09-13 02:59:43 UTC -- [Open page](https://majixai.github.io/router/)
+- [`f21af6ffbc`](https://github.com/majixai/majixai.github.io/commit/f21af6ffbcceaa0a54dee6b32265a52552ffb6f2) -- 2026-09-13 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-09-13 02:45:27 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
+- [`7b7f31d6bc`](https://github.com/majixai/majixai.github.io/commit/7b7f31d6bc799cd3a30cc18eb07bdbf48681c4b5) -- 2026-09-13 -- github-actions[bot] -- data: update menu links + wire MajixActions into menu -- [Open page](https://majixai.github.io/menu/)
+- [`83910e1517`](https://github.com/majixai/majixai.github.io/commit/83910e1517368e60a257f160e732e9dfe6cb0521) -- 2026-09-12 -- majixai -- Refactor: Remove dead code, consolidate redundant types & inputs, simplify security calls & matrix loading -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`dddab5561f`](https://github.com/majixai/majixai.github.io/commit/dddab5561fb5dde77350203d8220ad3a74ee1f60) -- 2026-09-13 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-09-13T01:15:22Z -- [Open page](https://majixai.github.io/integrity/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `ab5b331` — 2026-09-11 — **github-actions[bot]** — data: Update index data - 2026-09-11 05:51:03 UTC  
-  _53445 lines changed (52337+ / 1108-)_
+- **Biggest update today:** `1a8e282` — 2026-09-12 — **majixai** — Create Falll_Latte.pine  
+  _2630 lines changed (2630+ / 0-)_
 - **Biggest update this week:** `fb799ad` — 2026-09-09 — **github-actions[bot]** — data: Update index data - 2026-09-09 05:58:36 UTC  
   _53735 lines changed (52639+ / 1096-)_
 - **Biggest update this month:** `1664528` — 2026-09-05 — **github-actions[bot]** — data: Update index data - 2026-09-05 05:34:18 UTC  
