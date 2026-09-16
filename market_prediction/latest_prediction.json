@@ -1,42 +1,42 @@
 {
   "ticker": "SPY",
-  "timestamp": "2026-09-15T23:09:55.848044",
-  "current_price": 764.29,
+  "timestamp": "2026-09-16T00:19:35.559567",
+  "current_price": 760.88,
   "forecast_minutes": 60,
   "data_sources": {
     "ticker": "SPY",
     "source_chain": [
       "data/*/*.dat"
     ],
-    "yfinance_points": 499,
+    "yfinance_points": 500,
     "scrape_points": 0,
     "used_fallback": false,
     "current_price_source": "yfinance"
   },
   "technical_indicators": {
-    "rsi": 48.64,
+    "rsi": 47.58,
     "macd": {
-      "line": -1.6646,
-      "signal": -1.4981,
-      "histogram": -0.1665
+      "line": -1.906,
+      "signal": -1.7154,
+      "histogram": -0.1906
     },
     "bollinger_bands": {
-      "upper": 775.53,
-      "middle": 766.88,
-      "lower": 758.23
+      "upper": 773.96,
+      "middle": 766.11,
+      "lower": 758.25
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.5631,
-      "gamma": 0.017186,
-      "theta": -0.2108,
-      "vega": 0.8632,
-      "rho": 0.3448
+      "delta": 0.564,
+      "gamma": 0.017543,
+      "theta": -0.2075,
+      "vega": 0.859,
+      "rho": 0.3439
     },
-    "atm_call_price": 10.86,
-    "atm_put_price": 7.57,
-    "implied_move": 0.26
+    "atm_call_price": 10.67,
+    "atm_put_price": 7.39,
+    "implied_move": 0.25
   },
   "prediction": {
     "signal": "NEUTRAL",
@@ -50,23 +50,23 @@
       "RSI is neutral; align entries with volatility bands and trend context.",
       "Volatility is moderate; standard risk sizing is appropriate."
     ],
-    "target_price": 764.34,
-    "support": 762.95,
-    "resistance": 765.66
+    "target_price": 760.92,
+    "support": 759.69,
+    "resistance": 762.14
   },
   "simulation": {
     "statistics": {
-      "mean": 764.3377808397471,
-      "std": 1.9666612147019416,
-      "p05": 761.164012827738,
-      "p25": 762.9503636532562,
-      "p50": 764.2964225520329,
-      "p75": 765.6574970599963,
-      "p95": 767.4127042030575,
-      "min": 758.015090353127,
-      "max": 770.5461955965625
+      "mean": 760.920871770402,
+      "std": 1.872620891949687,
+      "p05": 757.8469753890543,
+      "p25": 759.6926778202051,
+      "p50": 760.7719817276004,
+      "p75": 762.1366121460111,
+      "p95": 764.2296828742191,
+      "min": 755.3223756299062,
+      "max": 766.6500032377761
     },
-    "simulations": 1000,
-    "volatility": 0.1046
+    "simulations": 500,
+    "volatility": 0.1029
   }
 }
