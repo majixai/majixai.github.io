@@ -18,21 +18,33 @@ class ApiService {
      * @returns {Promise<Object>} A promise that resolves with an object: { users: Array, nextOffset: number, hasMore: boolean }.
      */
     async getOnlineRooms(requestedOffset = 0) {
-        console.log(`ApiService: Fetching page (limit ${this.#apiLimit}, offset ${requestedOffset}).`);
-        const apiUrl = `${this.#apiUrlBase}&limit=${this.#apiLimit}&offset=${requestedOffset}`;
-        
+        const limit = Number.isFinite(this.#maxApiFetchLimit) && this.#maxApiFetchLimit > 0
+            ? Math.min(this.#apiLimit, this.#maxApiFetchLimit - requestedOffset)
+            : this.#apiLimit;
+
+        if (limit <= 0) {
+            return {
+                users: [],
+                nextOffset: requestedOffset,
+                hasMore: false
+            };
+        }
+
+        console.log(`ApiService: Fetching page (limit ${limit}, offset ${requestedOffset}).`);
+        const apiUrl = `${this.#apiUrlBase}&limit=${limit}&offset=${requestedOffset}`;
+
         let usersForThisPage = [];
         let hasMoreData = false;
+        let timeoutId = null;
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 console.warn(`ApiService: Aborting fetch for offset ${requestedOffset} due to timeout (${this.#apiFetchTimeout}ms).`);
                 controller.abort();
             }, this.#apiFetchTimeout);
 
-            const response = await fetch(apiUrl, { signal: controller.signal });
-            clearTimeout(timeoutId);
+            const response = await fetch(apiUrl, { signal: controller.signal, cache: 'no-store' });
 
             console.log(`ApiService: Response status for offset ${requestedOffset}: ${response.status}`);
 
@@ -47,15 +59,19 @@ class ApiService {
             if (data && data.results && Array.isArray(data.results)) {
                 usersForThisPage = data.results;
                 console.log(`ApiService: Received ${usersForThisPage.length} results for offset ${requestedOffset}.`);
-                hasMoreData = usersForThisPage.length === this.#apiLimit;
+                const remainingBudget = this.#maxApiFetchLimit > 0 ? this.#maxApiFetchLimit - requestedOffset : Infinity;
+                const pageCanContinue = remainingBudget > 0 && usersForThisPage.length >= limit;
+                hasMoreData = pageCanContinue && usersForThisPage.length === limit;
             } else {
                 console.warn(`ApiService: Response JSON does not contain a valid 'results' array from offset ${requestedOffset}:`, data);
-                // usersForThisPage remains [], hasMoreData remains false
             }
         } catch (error) {
             console.error(`ApiService: Error during fetch for offset ${requestedOffset}:`, error);
-            // Rethrow the error to be handled by the caller in script.js
-            throw error; 
+            throw error;
+        } finally {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
         }
 
         return {
