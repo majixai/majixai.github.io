@@ -6,10 +6,10 @@ This directory hosts a reactive commit-history timeline viewer.
 
 | Field | Value |
 |-------|-------|
-| SHA | `63095dd984` |
-| Date | 2026-09-22T09:01:55Z |
+| SHA | `fc290aaea9` |
+| Date | 2026-09-22T18:20:21Z |
 | Author | github-actions[bot] |
-| Message | dji-ohlc: TF OHLC update [scheduled] — 2026-09-22 09:01 UTC |
-| Site | [https://majixai.github.io/dji_ohlc_tensorflow/](https://majixai.github.io/dji_ohlc_tensorflow/) |
+| Message | docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy) |
+| Site | [https://majixai.github.io/tradingview_integration/](https://majixai.github.io/tradingview_integration/) |
 
-_Auto-generated on 2026-09-22T09:38:17.669025+00:00_
+_Auto-generated on 2026-09-22T19:04:54.741978+00:00_
