@@ -1,72 +1,73 @@
 {
   "ticker": "SPY",
-  "timestamp": "2026-10-07T00:59:43.371120",
-  "current_price": 774.83,
+  "timestamp": "2026-10-07T06:42:25.763971",
+  "current_price": 779.09,
   "forecast_minutes": 60,
   "data_sources": {
     "ticker": "SPY",
     "source_chain": [
       "data/*/*.dat"
     ],
-    "yfinance_points": 500,
+    "yfinance_points": 501,
     "scrape_points": 0,
     "used_fallback": false,
     "current_price_source": "yfinance"
   },
   "technical_indicators": {
-    "rsi": 67.23,
+    "rsi": 73.61,
     "macd": {
-      "line": 2.3879,
-      "signal": 2.1491,
-      "histogram": 0.2388
+      "line": 3.3597,
+      "signal": 3.0238,
+      "histogram": 0.336
     },
     "bollinger_bands": {
-      "upper": 776.48,
-      "middle": 764.31,
-      "lower": 752.13
+      "upper": 778.83,
+      "middle": 765.06,
+      "lower": 751.29
     }
   },
   "bsm_analysis": {
     "greeks": {
-      "delta": 0.5647,
-      "gamma": 0.017453,
+      "delta": 0.5651,
+      "gamma": 0.017494,
       "theta": -0.2094,
-      "vega": 0.8745,
-      "rho": 0.3508
+      "vega": 0.8792,
+      "rho": 0.353
     },
-    "atm_call_price": 10.75,
-    "atm_put_price": 7.41,
+    "atm_call_price": 10.73,
+    "atm_put_price": 7.38,
     "implied_move": 0.24
   },
   "prediction": {
     "signal": "NEUTRAL",
-    "score": 1,
+    "score": -1,
     "confidence": 25.0,
     "reasons": [
+      "RSI indicates overbought conditions",
       "MACD histogram positive (bullish momentum)"
     ],
     "actions": [
       "Stay range-aware and prioritize mean-reversion until directional confirmation.",
-      "RSI is neutral; align entries with volatility bands and trend context.",
+      "RSI is overbought; tighten risk controls and watch for momentum exhaustion.",
       "Volatility is moderate; standard risk sizing is appropriate."
     ],
-    "target_price": 774.76,
-    "support": 773.58,
-    "resistance": 776.03
+    "target_price": 779.11,
+    "support": 778.0,
+    "resistance": 780.3
   },
   "simulation": {
     "statistics": {
-      "mean": 774.7599708502886,
-      "std": 1.892526123460662,
-      "p05": 771.5311786902997,
-      "p25": 773.5759350997794,
-      "p50": 774.7219697854086,
-      "p75": 776.0271925661591,
-      "p95": 777.8875020705601,
-      "min": 769.1068842870666,
-      "max": 782.4487603369462
+      "mean": 779.1144496673389,
+      "std": 1.8657568831321028,
+      "p05": 776.0123898950036,
+      "p25": 777.9951010426086,
+      "p50": 779.0309976321665,
+      "p75": 780.2961286388058,
+      "p95": 782.1220743812754,
+      "min": 772.0612301140732,
+      "max": 785.1906275418706
     },
-    "simulations": 1000,
-    "volatility": 0.1015
+    "simulations": 500,
+    "volatility": 0.1007
   }
 }
