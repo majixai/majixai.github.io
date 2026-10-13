@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-10-13T05:12:12.950174+00:00",
+  "generatedAt": "2026-10-13T15:38:46.120127+00:00",
   "commitCount": 100,
   "authorFilter": "all",
   "topDirectories": [
     {
       "name": "index",
-      "count": 167
+      "count": 449
     },
     {
       "name": "data",
@@ -17,7 +17,7 @@
     },
     {
       "name": "dji_ohlc_tensorflow",
-      "count": 21
+      "count": 18
     },
     {
       "name": "sp_closing_projection",
@@ -28,11 +28,11 @@
       "count": 15
     },
     {
-      "name": "latest_commit",
-      "count": 10
+      "name": "scrape",
+      "count": 8
     },
     {
-      "name": "scrape",
+      "name": "latest_commit",
       "count": 8
     },
     {
@@ -40,30 +40,30 @@
       "count": 7
     },
     {
-      "name": "README.md",
-      "count": 5
+      "name": "commit_advisor",
+      "count": 4
     }
   ],
   "topFileTypes": [
     {
       "ext": "gz",
-      "count": 154
+      "count": 300
+    },
+    {
+      "ext": "csv",
+      "count": 156
     },
     {
       "ext": "json",
-      "count": 110
+      "count": 111
     },
     {
       "ext": "png",
       "count": 24
     },
     {
-      "ext": "csv",
-      "count": 23
-    },
-    {
       "ext": "md",
-      "count": 12
+      "count": 10
     },
     {
       "ext": "yml",
@@ -73,7 +73,7 @@
   "topAuthors": [
     {
       "name": "github-actions[bot]",
-      "count": 87
+      "count": 86
     },
     {
       "name": "AI-Forecaster-Bot",
@@ -85,15 +85,23 @@
     },
     {
       "name": "gpu-pipeline[bot]",
-      "count": 1
+      "count": 2
     }
   ],
   "commitsByWeekday": {
-    "Tuesday": 11,
+    "Tuesday": 27,
     "Monday": 52,
-    "Sunday": 37
+    "Sunday": 21
   },
   "commitsByHour": {
+    "13": 1,
+    "12": 2,
+    "11": 7,
+    "10": 2,
+    "9": 3,
+    "8": 5,
+    "7": 2,
+    "5": 3,
     "3": 7,
     "2": 3,
     "1": 3,
@@ -103,21 +111,12 @@
     "21": 9,
     "20": 3,
     "19": 9,
-    "17": 3,
-    "16": 8,
-    "14": 3,
-    "12": 2,
-    "11": 2,
-    "10": 2,
-    "9": 2,
-    "8": 2,
-    "7": 1,
+    "17": 1,
+    "16": 6,
+    "14": 1,
     "6": 6,
-    "5": 1,
     "4": 2,
-    "18": 6,
-    "15": 1,
-    "13": 6
+    "18": 6
   },
   "topKeywords": [
     "utc",
@@ -130,16 +129,16 @@
     "tensor",
     "snapshot",
     "market",
+    "projection",
     "dji",
     "scheduled",
     "skip",
-    "projection",
     "neural",
     "yfinance",
     "scraped",
     "financial",
-    "docs",
-    "auto"
+    "ledger",
+    "sync"
   ],
   "recommendations": [
     {
@@ -157,7 +156,7 @@
       "id": "commit-cadence",
       "category": "Cadence",
       "title": "Commit Rhythm",
-      "detail": "Most commits land on **Monday**; **Tuesday** sees the least activity. Distributing work more evenly can reduce integration risk.",
+      "detail": "Most commits land on **Monday**; **Sunday** sees the least activity. Distributing work more evenly can reduce integration risk.",
       "priority": "medium",
       "tags": [
         "process"
@@ -178,7 +177,7 @@
       "id": "file-types",
       "category": "Tech Stack",
       "title": "Dominant File Types",
-      "detail": "The most-changed file types are **.gz, .json, .png**. Ensure linting and CI coverage exists for each type.",
+      "detail": "The most-changed file types are **.gz, .csv, .json**. Ensure linting and CI coverage exists for each type.",
       "priority": "medium",
       "tags": [
         "ci",
@@ -197,6 +196,453 @@
     }
   ],
   "recentCommits": [
+    {
+      "sha": "008cd929c1ce6025614343945ba29744d164cf18",
+      "shortSha": "008cd92",
+      "date": "2026-10-13T13:57:09Z",
+      "message": "[JINXAI Tensor] Update forecast 2026-10-13T13:57:09Z",
+      "author": "jinxai-tensor[bot]",
+      "files": [
+        "tradingview_integration/data/tensor_forecast.json"
+      ]
+    },
+    {
+      "sha": "691df5e1aa90df6365f8d30b084459a700ac8e88",
+      "shortSha": "691df5e",
+      "date": "2026-10-13T12:29:45Z",
+      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-13 12:29 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
+      ]
+    },
+    {
+      "sha": "960286520f6f1dda1a0e05a8380912d6c9e2f492",
+      "shortSha": "9602865",
+      "date": "2026-10-13T11:25:20Z",
+      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-13 11:25 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
+      ]
+    },
+    {
+      "sha": "dfe746dd9bc8a0e1942ea1850c6e2b91d1fec5ff",
+      "shortSha": "dfe746d",
+      "date": "2026-10-13T11:03:22Z",
+      "message": "data: omnibus \u2014 neural snapshot 2026-10-13 11:03:22 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/neural/snapshot.json"
+      ]
+    },
+    {
+      "sha": "3fd23fa60d4ca85f83d903dd9f3f285626d3258d",
+      "shortSha": "3fd23fa",
+      "date": "2026-10-13T11:03:13Z",
+      "message": "data: omnibus \u2014 tensor forecast 2026-10-13 11:03:13 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "tradingview_integration/data/tensor_forecast.json"
+      ]
+    },
+    {
+      "sha": "2e60c4f991609d427d299a6e4021fe37031656d4",
+      "shortSha": "2e60c4f",
+      "date": "2026-10-13T11:02:38Z",
+      "message": "data: omnibus \u2014 market prediction 2026-10-13 11:02:38 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "559b95f491c6c2d4104de6ca616e68c049978a5b",
+      "shortSha": "559b95f",
+      "date": "2026-10-13T11:02:30Z",
+      "message": "data: omnibus \u2014 yfinance snapshot 2026-10-13 11:02:30 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "data/crypto/snapshot.json",
+        "data/financials/snapshot.json",
+        "data/indices/snapshot.json",
+        "data/tech/snapshot.json"
+      ]
+    },
+    {
+      "sha": "4f8282fca51d97f3c152bab6d88742408884ee16",
+      "shortSha": "4f8282f",
+      "date": "2026-10-13T11:02:07Z",
+      "message": "projection: Update S&P 500 closing projection - 2026-10-13 11:02:07 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "sp_closing_projection/latest_projection.json",
+        "sp_closing_projection/sp_closing_projection_output.png"
+      ]
+    },
+    {
+      "sha": "9dd9050e19a3ccb5ad676c9183886865a5ce0998",
+      "shortSha": "9dd9050",
+      "date": "2026-10-13T10:39:59Z",
+      "message": "Update scraped financial data",
+      "author": "github-actions[bot]",
+      "files": [
+        "scrape/finance.db.gz"
+      ]
+    },
+    {
+      "sha": "1e0f0319f4199e66f508b41e07ccf14a92de46eb",
+      "shortSha": "1e0f031",
+      "date": "2026-10-13T09:09:36Z",
+      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-13 09:09 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
+      ]
+    },
+    {
+      "sha": "0d87064b612bd2856077c42850bdbd47aade02b3",
+      "shortSha": "0d87064",
+      "date": "2026-10-13T08:37:08Z",
+      "message": "[GPU Pipeline] Update run summary 2026-10-13T08:37:08Z",
+      "author": "gpu-pipeline[bot]",
+      "files": [
+        "gpu/last_run_summary.json"
+      ]
+    },
+    {
+      "sha": "51ddc64f700c1939fa9a5394c472ccdd1c139ccf",
+      "shortSha": "51ddc64",
+      "date": "2026-10-13T08:28:44Z",
+      "message": "AI Forecast & Ledger Sync [skip ci]",
+      "author": "AI-Forecaster-Bot",
+      "files": [
+        "fintst/Copy_Of_Ledger.yml"
+      ]
+    },
+    {
+      "sha": "08bea628fbaa03d893cb6025932a9998acbac579",
+      "shortSha": "08bea62",
+      "date": "2026-10-13T08:16:22Z",
+      "message": "prediction: Update SPY market prediction - 2026-10-13 08:16:22 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "market_prediction/latest_prediction.json",
+        "market_prediction/market_prediction_output.png"
+      ]
+    },
+    {
+      "sha": "9dafde08d6f262633bbb083bb55262452284f664",
+      "shortSha": "9dafde0",
+      "date": "2026-10-13T07:42:07Z",
+      "message": "data: Update index data - 2026-10-13 07:42:07 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "index/analytics.json",
+        "index/csv/000001_SS_1m.csv",
+        "index/csv/399001_SZ_1m.csv",
+        "index/csv/AEX_1m.csv",
+        "index/csv/AGG_1m.csv",
+        "index/csv/AORD_1m.csv",
+        "index/csv/ARKF_1m.csv",
+        "index/csv/ARKG_1m.csv",
+        "index/csv/ARKK_1m.csv",
+        "index/csv/ARKQ_1m.csv",
+        "index/csv/ARKW_1m.csv",
+        "index/csv/ATX_1m.csv",
+        "index/csv/AXJO_1m.csv",
+        "index/csv/BFX_1m.csv",
+        "index/csv/BITO_1m.csv",
+        "index/csv/BND_1m.csv",
+        "index/csv/BOTZ_1m.csv",
+        "index/csv/BSESN_1m.csv",
+        "index/csv/CASE30_1m.csv",
+        "index/csv/DBA_1m.csv",
+        "index/csv/DBC_1m.csv",
+        "index/csv/DIA_1m.csv",
+        "index/csv/DJI_1m.csv",
+        "index/csv/EEM_1m.csv",
+        "index/csv/EFA_1m.csv",
+        "index/csv/ETHE_1m.csv",
+        "index/csv/EWA_1m.csv",
+        "index/csv/EWC_1m.csv",
+        "index/csv/EWG_1m.csv",
+        "index/csv/EWH_1m.csv",
+        "index/csv/EWJ_1m.csv",
+        "index/csv/EWT_1m.csv",
+        "index/csv/EWU_1m.csv",
+        "index/csv/EWW_1m.csv",
+        "index/csv/EWY_1m.csv",
+        "index/csv/EWZ_1m.csv",
+        "index/csv/EZA_1m.csv",
+        "index/csv/FCHI_1m.csv",
+        "index/csv/FTSE_1m.csv",
+        "index/csv/FXB_1m.csv",
+        "index/csv/FXE_1m.csv",
+        "index/csv/FXI_1m.csv",
+        "index/csv/FXY_1m.csv",
+        "index/csv/GBTC_1m.csv",
+        "index/csv/GDAXI_1m.csv",
+        "index/csv/GLD_1m.csv",
+        "index/csv/GSPC_1m.csv",
+        "index/csv/HACK_1m.csv",
+        "index/csv/HSCE_1m.csv",
+        "index/csv/HSI_1m.csv",
+        "index/csv/HYG_1m.csv",
+        "index/csv/IBEX_1m.csv",
+        "index/csv/ICLN_1m.csv",
+        "index/csv/IEF_1m.csv",
+        "index/csv/IEMG_1m.csv",
+        "index/csv/INDA_1m.csv",
+        "index/csv/IWB_1m.csv",
+        "index/csv/IWM_1m.csv",
+        "index/csv/IWV_1m.csv",
+        "index/csv/IXIC_1m.csv",
+        "index/csv/IYR_1m.csv",
+        "index/csv/JKSE_1m.csv",
+        "index/csv/JN0U_JO_1m.csv",
+        "index/csv/KLSE_1m.csv",
+        "index/csv/KQ11_1m.csv",
+        "index/csv/KS11_1m.csv",
+        "index/csv/LIT_1m.csv",
+        "index/csv/LQD_1m.csv",
+        "index/csv/MCHI_1m.csv",
+        "index/csv/MID_1m.csv",
+        "index/csv/MXX_1m.csv",
+        "index/csv/N225_1m.csv",
+        "index/csv/NDX_1m.csv",
+        "index/csv/NSEI_1m.csv",
+        "index/csv/NYA_1m.csv",
+        "index/csv/NZ50_1m.csv",
+        "index/csv/OEX_1m.csv",
+        "index/csv/OMXC25_1m.csv",
+        "index/csv/OMXH25_1m.csv",
+        "index/csv/OMXS30_1m.csv",
+        "index/csv/QQQ_1m.csv",
+        "index/csv/RUA_1m.csv",
+        "index/csv/RUT_1m.csv",
+        "index/csv/SCHH_1m.csv",
+        "index/csv/SET_BK_1m.csv",
+        "index/csv/SHY_1m.csv",
+        "index/csv/SLV_1m.csv",
+        "index/csv/SMH_1m.csv",
+        "index/csv/SOXX_1m.csv",
+        "index/csv/SP500-15_1m.csv",
+        "index/csv/SP500-20_1m.csv",
+        "index/csv/SP500-25_1m.csv",
+        "index/csv/SP500-30_1m.csv",
+        "index/csv/SP500-35_1m.csv",
+        "index/csv/SP500-40_1m.csv",
+        "index/csv/SP500-45_1m.csv",
+        "index/csv/SP500-50_1m.csv",
+        "index/csv/SP500-55_1m.csv",
+        "index/csv/SP500-60_1m.csv",
+        "index/csv/SPXU_1m.csv",
+        "index/csv/SPY_1m.csv",
+        "index/csv/SQQQ_1m.csv",
+        "index/csv/SSMI_1m.csv",
+        "index/csv/STI_1m.csv",
+        "index/csv/STOXX50E_1m.csv",
+        "index/csv/STOXX_1m.csv",
+        "index/csv/SVXY_1m.csv",
+        "index/csv/TA125_TA_1m.csv",
+        "index/csv/TAN_1m.csv",
+        "index/csv/TLT_1m.csv",
+        "index/csv/TQQQ_1m.csv",
+        "index/csv/TWII_1m.csv",
+        "index/csv/UNG_1m.csv",
+        "index/csv/UPRO_1m.csv",
+        "index/csv/USO_1m.csv",
+        "index/csv/UUP_1m.csv",
+        "index/csv/UVXY_1m.csv",
+        "index/csv/VEA_1m.csv",
+        "index/csv/VIX_1m.csv",
+        "index/csv/VNQ_1m.csv",
+        "index/csv/VOO_1m.csv",
+        "index/csv/VTI_1m.csv",
+        "index/csv/VWO_1m.csv",
+        "index/csv/XAX_1m.csv",
+        "index/csv/XLB_1m.csv",
+        "index/csv/XLC_1m.csv",
+        "index/csv/XLE_1m.csv",
+        "index/csv/XLF_1m.csv",
+        "index/csv/XLI_1m.csv",
+        "index/csv/XLK_1m.csv",
+        "index/csv/XLP_1m.csv",
+        "index/csv/XLRE_1m.csv",
+        "index/csv/XLU_1m.csv",
+        "index/csv/XLV_1m.csv",
+        "index/csv/XLY_1m.csv",
+        "index/dbs/000001_SS.db.gz",
+        "index/dbs/399001_SZ.db.gz",
+        "index/dbs/AEX.db.gz",
+        "index/dbs/AGG.db.gz",
+        "index/dbs/AORD.db.gz",
+        "index/dbs/ARKF.db.gz",
+        "index/dbs/ARKG.db.gz",
+        "index/dbs/ARKK.db.gz",
+        "index/dbs/ARKQ.db.gz",
+        "index/dbs/ARKW.db.gz",
+        "index/dbs/ATX.db.gz",
+        "index/dbs/AXJO.db.gz",
+        "index/dbs/BFX.db.gz",
+        "index/dbs/BITO.db.gz",
+        "index/dbs/BND.db.gz",
+        "index/dbs/BOTZ.db.gz",
+        "index/dbs/BSESN.db.gz",
+        "index/dbs/BVSP.db.gz",
+        "index/dbs/CASE30.db.gz",
+        "index/dbs/DBA.db.gz",
+        "index/dbs/DBC.db.gz",
+        "index/dbs/DIA.db.gz",
+        "index/dbs/DJI.db.gz",
+        "index/dbs/EEM.db.gz",
+        "index/dbs/EFA.db.gz",
+        "index/dbs/ETHE.db.gz",
+        "index/dbs/EWA.db.gz",
+        "index/dbs/EWC.db.gz",
+        "index/dbs/EWG.db.gz",
+        "index/dbs/EWH.db.gz",
+        "index/dbs/EWJ.db.gz",
+        "index/dbs/EWT.db.gz",
+        "index/dbs/EWU.db.gz",
+        "index/dbs/EWW.db.gz",
+        "index/dbs/EWY.db.gz",
+        "index/dbs/EWZ.db.gz",
+        "index/dbs/EZA.db.gz",
+        "index/dbs/FCHI.db.gz",
+        "index/dbs/FTSE.db.gz",
+        "index/dbs/FTSEMIB_MI.db.gz",
+        "index/dbs/FXB.db.gz",
+        "index/dbs/FXE.db.gz",
+        "index/dbs/FXI.db.gz",
+        "index/dbs/FXY.db.gz",
+        "index/dbs/GBTC.db.gz",
+        "index/dbs/GDAXI.db.gz",
+        "index/dbs/GLD.db.gz",
+        "index/dbs/GSPC.db.gz",
+        "index/dbs/GSPTSE.db.gz",
+        "index/dbs/HACK.db.gz",
+        "index/dbs/HSCE.db.gz",
+        "index/dbs/HSI.db.gz",
+        "index/dbs/HYG.db.gz",
+        "index/dbs/IBEX.db.gz",
+        "index/dbs/ICLN.db.gz",
+        "index/dbs/IEF.db.gz",
+        "index/dbs/IEMG.db.gz",
+        "index/dbs/INDA.db.gz",
+        "index/dbs/IPSA.db.gz",
+        "index/dbs/IWB.db.gz",
+        "index/dbs/IWM.db.gz",
+        "index/dbs/IWV.db.gz",
+        "index/dbs/IXIC.db.gz",
+        "index/dbs/IYR.db.gz",
+        "index/dbs/JKSE.db.gz",
+        "index/dbs/JN0U_JO.db.gz",
+        "index/dbs/KLSE.db.gz",
+        "index/dbs/KQ11.db.gz",
+        "index/dbs/KS11.db.gz",
+        "index/dbs/LIT.db.gz",
+        "index/dbs/LQD.db.gz",
+        "index/dbs/MCHI.db.gz",
+        "index/dbs/MERV.db.gz",
+        "index/dbs/MID.db.gz",
+        "index/dbs/MXX.db.gz",
+        "index/dbs/N225.db.gz",
+        "index/dbs/NDX.db.gz",
+        "index/dbs/NSEI.db.gz",
+        "index/dbs/NYA.db.gz",
+        "index/dbs/NZ50.db.gz",
+        "index/dbs/OEX.db.gz",
+        "index/dbs/OMXC25.db.gz",
+        "index/dbs/OMXH25.db.gz",
+        "index/dbs/OMXS30.db.gz",
+        "index/dbs/OSEAX.db.gz",
+        "index/dbs/PSEI.db.gz",
+        "index/dbs/PSI20.db.gz",
+        "index/dbs/QQQ.db.gz",
+        "index/dbs/RUA.db.gz",
+        "index/dbs/RUT.db.gz",
+        "index/dbs/SCHH.db.gz",
+        "index/dbs/SET_BK.db.gz",
+        "index/dbs/SHY.db.gz",
+        "index/dbs/SLV.db.gz",
+        "index/dbs/SMH.db.gz",
+        "index/dbs/SML.db.gz",
+        "index/dbs/SOXX.db.gz",
+        "index/dbs/SP500-10.db.gz",
+        "index/dbs/SP500-15.db.gz",
+        "index/dbs/SP500-20.db.gz",
+        "index/dbs/SP500-25.db.gz",
+        "index/dbs/SP500-30.db.gz",
+        "index/dbs/SP500-35.db.gz",
+        "index/dbs/SP500-40.db.gz",
+        "index/dbs/SP500-45.db.gz",
+        "index/dbs/SP500-50.db.gz",
+        "index/dbs/SP500-55.db.gz",
+        "index/dbs/SP500-60.db.gz",
+        "index/dbs/SPXU.db.gz",
+        "index/dbs/SPY.db.gz",
+        "index/dbs/SQQQ.db.gz",
+        "index/dbs/SSMI.db.gz",
+        "index/dbs/STI.db.gz",
+        "index/dbs/STOXX.db.gz",
+        "index/dbs/STOXX50E.db.gz",
+        "index/dbs/SVXY.db.gz",
+        "index/dbs/TA125_TA.db.gz",
+        "index/dbs/TAN.db.gz",
+        "index/dbs/TLT.db.gz",
+        "index/dbs/TOPX.db.gz",
+        "index/dbs/TQQQ.db.gz",
+        "index/dbs/TWII.db.gz",
+        "index/dbs/UNG.db.gz",
+        "index/dbs/UPRO.db.gz",
+        "index/dbs/USO.db.gz",
+        "index/dbs/UUP.db.gz",
+        "index/dbs/UVXY.db.gz",
+        "index/dbs/VEA.db.gz",
+        "index/dbs/VIX.db.gz",
+        "index/dbs/VNQ.db.gz",
+        "index/dbs/VOO.db.gz",
+        "index/dbs/VTI.db.gz",
+        "index/dbs/VWO.db.gz",
+        "index/dbs/W5000.db.gz",
+        "index/dbs/XAX.db.gz",
+        "index/dbs/XLB.db.gz",
+        "index/dbs/XLC.db.gz",
+        "index/dbs/XLE.db.gz",
+        "index/dbs/XLF.db.gz",
+        "index/dbs/XLI.db.gz",
+        "index/dbs/XLK.db.gz",
+        "index/dbs/XLP.db.gz",
+        "index/dbs/XLRE.db.gz",
+        "index/dbs/XLU.db.gz",
+        "index/dbs/XLV.db.gz",
+        "index/dbs/XLY.db.gz",
+        "index/files.json"
+      ]
+    },
+    {
+      "sha": "1955325a916278959515eb9e9e541897de72227b",
+      "shortSha": "1955325",
+      "date": "2026-10-13T05:25:25Z",
+      "message": "data: Update projects.json - 2026-10-13 05:25:25 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "projects.json"
+      ]
+    },
+    {
+      "sha": "7084ebed67a407a51ac3dda0ed8cca4ef3d4070e",
+      "shortSha": "7084ebe",
+      "date": "2026-10-13T05:12:13Z",
+      "message": "data: Update commit_advisor insights \u2013 2026-10-13 05:12:13 UTC",
+      "author": "github-actions[bot]",
+      "files": [
+        "commit_advisor/data/insights.json"
+      ]
+    },
     {
       "sha": "6938596894eba3145a5b521db7c6b4ab673146f3",
       "shortSha": "6938596",
@@ -344,177 +790,6 @@
       "files": [
         "market_prediction/latest_prediction.json",
         "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "069b7b1a1d615e8a64cec0bfca317cc21bcdeeec",
-      "shortSha": "069b7b1",
-      "date": "2026-10-12T23:01:08Z",
-      "message": "data: omnibus \u2014 tensor forecast 2026-10-12 23:01:08 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/data/tensor_forecast.json"
-      ]
-    },
-    {
-      "sha": "6bf6c3ff4e464794d21301345d50b08a2d7f72ad",
-      "shortSha": "6bf6c3f",
-      "date": "2026-10-12T23:01:07Z",
-      "message": "data: omnibus \u2014 yfinance snapshot 2026-10-12 23:01:07 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "data/crypto/snapshot.json",
-        "data/financials/snapshot.json",
-        "data/indices/snapshot.json",
-        "data/tech/snapshot.json"
-      ]
-    },
-    {
-      "sha": "23c610d5ee3cfadf9c2baf45ee7dce559122d1b8",
-      "shortSha": "23c610d",
-      "date": "2026-10-12T22:59:20Z",
-      "message": "projection: Update S&P 500 closing projection - 2026-10-12 22:59:20 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "sp_closing_projection/latest_projection.json",
-        "sp_closing_projection/sp_closing_projection_output.png"
-      ]
-    },
-    {
-      "sha": "55ce46caa0b6737b36374eca1dae6002c0244ea7",
-      "shortSha": "55ce46c",
-      "date": "2026-10-12T22:54:09Z",
-      "message": "Update scraped financial data",
-      "author": "github-actions[bot]",
-      "files": [
-        "scrape/finance.db.gz"
-      ]
-    },
-    {
-      "sha": "55d4e613957b0e8055c437a68a7743297978d447",
-      "shortSha": "55d4e61",
-      "date": "2026-10-12T22:45:01Z",
-      "message": "projection: S&P 500 pre-market projection - 2026-10-12 22:45:01 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "sp_closing_projection/latest_projection.json",
-        "sp_closing_projection/sp_closing_projection_output.png"
-      ]
-    },
-    {
-      "sha": "168b78e683806ff4a51d8b1ee7beee2626a421fb",
-      "shortSha": "168b78e",
-      "date": "2026-10-12T22:10:19Z",
-      "message": "docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy)",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/pine_script/README.md"
-      ]
-    },
-    {
-      "sha": "7200c10738f103fb7ad0bd6c7296d19dd0b8fbc6",
-      "shortSha": "7200c10",
-      "date": "2026-10-12T21:58:06Z",
-      "message": "docs: auto-update Pine POI README quotes [skip ci] (517 lines in strategy)",
-      "author": "github-actions[bot]",
-      "files": [
-        "tradingview_integration/pine_script/README.md"
-      ]
-    },
-    {
-      "sha": "fe0a340be128c5c32412051995800bbb59c6c4c1",
-      "shortSha": "fe0a340",
-      "date": "2026-10-12T21:33:09Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-12 21:33 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "8d6eebd89313aaf2d718353cfd576832ddb80bd0",
-      "shortSha": "8d6eebd",
-      "date": "2026-10-12T20:57:05Z",
-      "message": "data: Update commit_advisor insights \u2013 2026-10-12 20:57:05 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "commit_advisor/data/insights.json"
-      ]
-    },
-    {
-      "sha": "fe236802477a6335bed887656cd26261ca5b695a",
-      "shortSha": "fe23680",
-      "date": "2026-10-12T20:31:57Z",
-      "message": "docs: auto-update README stats [skip ci]",
-      "author": "github-actions[bot]",
-      "files": [
-        "README.md",
-        "latest_commit/README.md",
-        "latest_commit/data.json"
-      ]
-    },
-    {
-      "sha": "f33e37696618efbab06d8d56c384903819f7c5a9",
-      "shortSha": "f33e376",
-      "date": "2026-10-12T19:55:45Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-12 19:55 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_feedback.json",
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "5607bd9411b9afa7af7f2b0e18d69479b7c5c76e",
-      "shortSha": "5607bd9",
-      "date": "2026-10-12T19:51:01Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-12 19:51 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_feedback.json",
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "5226ea0e67e32d9cff4b8ff81691564d908d5db0",
-      "shortSha": "5226ea0",
-      "date": "2026-10-12T19:45:18Z",
-      "message": "dji-ohlc: TF OHLC update [scheduled] \u2014 2026-10-12 19:45 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "dji_ohlc_tensorflow/output/dji_ohlc_feedback.json",
-        "dji_ohlc_tensorflow/output/dji_ohlc_results.json"
-      ]
-    },
-    {
-      "sha": "61da92e132e55a81f94cc760d9d2f9056b60d5d6",
-      "shortSha": "61da92e",
-      "date": "2026-10-12T19:24:29Z",
-      "message": "AI Forecast & Ledger Sync [skip ci]",
-      "author": "AI-Forecaster-Bot",
-      "files": [
-        "fintst/Copy_Of_Ledger.yml"
-      ]
-    },
-    {
-      "sha": "028938701d425c8f81caa6b54d05def0fe91a19f",
-      "shortSha": "0289387",
-      "date": "2026-10-12T19:15:34Z",
-      "message": "prediction: Update SPY market prediction - 2026-10-12 19:15:33 UTC",
-      "author": "github-actions[bot]",
-      "files": [
-        "market_prediction/latest_prediction.json",
-        "market_prediction/market_prediction_output.png"
-      ]
-    },
-    {
-      "sha": "a727f44503ef44646f39c35a076ee006baf7d245",
-      "shortSha": "a727f44",
-      "date": "2026-10-12T17:22:41Z",
-      "message": "[AI Tensor Bot] Update Titan Matrix ML Forecasts",
-      "author": "github-actions[bot]",
-      "files": [
-        "SP500_ML_RESULTS.csv"
       ]
     }
   ]
