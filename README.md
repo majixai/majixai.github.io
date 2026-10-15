@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-10-15 01:26 UTC_
+_Last updated: 2026-10-15 13:21 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,22 +13,22 @@ _Last updated: 2026-10-15 01:26 UTC_
 |--------|-------|
 | 📁 Project Directories | 185 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 151258 |
+| 📝 Total Commits | 151290 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`53aa81cadb`](https://github.com/majixai/majixai.github.io/commit/53aa81cadbefb7f72f0f8996f7c97ce8e13dedeb) -- 2026-10-15 -- AI-Forecaster-Bot -- AI Forecast & Ledger Sync [skip ci] -- [Open page](https://majixai.github.io/fintst/)
-- [`c0bed4fd81`](https://github.com/majixai/majixai.github.io/commit/c0bed4fd81a55952e03a5546e721b0cfa0558730) -- 2026-10-15 -- github-actions[bot] -- Update scraped financial data -- [Open page](https://majixai.github.io/scrape/)
-- [`9a6c40d38e`](https://github.com/majixai/majixai.github.io/commit/9a6c40d38ef4fbefc356ebd2e1f18fad5400897f) -- 2026-10-15 -- financial-data[bot] -- data: update financial .dat files 2026-10-15T00:27:59Z [skip ci] -- [Open page](https://majixai.github.io/data/)
-- [`4c2fb45b13`](https://github.com/majixai/majixai.github.io/commit/4c2fb45b13b3e59b68b345e3495b9f385d0d26aa) -- 2026-10-14 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-10-14 23:34:28 UTC -- [Open page](https://majixai.github.io/data/)
-- [`ec50c5829d`](https://github.com/majixai/majixai.github.io/commit/ec50c5829d5b60ac3205d4d0dabf5416f9d5bb89) -- 2026-10-14 -- github-actions[bot] -- data: omnibus — market prediction 2026-10-14 23:34:00 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`c4bad4a19c`](https://github.com/majixai/majixai.github.io/commit/c4bad4a19c0953b33ed7fb3897be1118484853cf) -- 2026-10-15 -- github-actions[bot] -- data: omnibus — neural snapshot 2026-10-15 12:05:56 UTC -- [Open page](https://majixai.github.io/data/)
+- [`9bf47eba5c`](https://github.com/majixai/majixai.github.io/commit/9bf47eba5c4d22ada9163832738384e758918243) -- 2026-10-15 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-10-15 12:05:15 UTC -- [Open page](https://majixai.github.io/data/)
+- [`4bfdf235d7`](https://github.com/majixai/majixai.github.io/commit/4bfdf235d7efd6ed40ffd626c6bae410a05a34de) -- 2026-10-15 -- github-actions[bot] -- data: omnibus — market prediction 2026-10-15 12:05:13 UTC -- [Open page](https://majixai.github.io/market_prediction/)
+- [`2d764eb6be`](https://github.com/majixai/majixai.github.io/commit/2d764eb6be34f2bd48cd92404f17e73b74da3c8c) -- 2026-10-15 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-10-15 12:04:53 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`b64bc1e066`](https://github.com/majixai/majixai.github.io/commit/b64bc1e066a32bc449403a896869b96c8ee1cc11) -- 2026-10-15 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-10-15 12:04:19 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `9a6c40d` — 2026-10-15 — **financial-data[bot]** — data: update financial .dat files 2026-10-15T00:27:59Z [skip ci]  
-  _690 lines changed (345+ / 345-)_
+- **Biggest update today:** `fa182b1` — 2026-10-14 — **majixai** — Replace README with a more technical, materially longer version that adds detailed implementation notes and expanded engine explanations without filler-only padding.  
+  _1066 lines changed (718+ / 348-)_
 - **Biggest update this week:** `6dcb671` — 2026-10-14 — **github-actions[bot]** — data: Update index data - 2026-10-14 06:03:33 UTC  
   _50907 lines changed (49811+ / 1096-)_
 - **Biggest update this month:** `7cdab4c` — 2026-10-08 — **github-actions[bot]** — data: Update index data - 2026-10-08 07:24:51 UTC  

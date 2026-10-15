@@ -6,10 +6,10 @@ This directory hosts a reactive commit-history timeline viewer.
 
 | Field | Value |
 |-------|-------|
-| SHA | `53aa81cadb` |
-| Date | 2026-10-15T00:55:28Z |
-| Author | AI-Forecaster-Bot |
-| Message | AI Forecast & Ledger Sync [skip ci] |
-| Site | [https://majixai.github.io/fintst/](https://majixai.github.io/fintst/) |
+| SHA | `c4bad4a19c` |
+| Date | 2026-10-15T12:05:56Z |
+| Author | github-actions[bot] |
+| Message | data: omnibus — neural snapshot 2026-10-15 12:05:56 UTC |
+| Site | [https://majixai.github.io/data/](https://majixai.github.io/data/) |
 
-_Auto-generated on 2026-10-15T01:45:23.570505+00:00_
+_Auto-generated on 2026-10-15T13:42:01.697931+00:00_
