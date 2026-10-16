@@ -6,10 +6,10 @@ This directory hosts a reactive commit-history timeline viewer.
 
 | Field | Value |
 |-------|-------|
-| SHA | `c4bad4a19c` |
-| Date | 2026-10-15T12:05:56Z |
+| SHA | `22bf4d0c66` |
+| Date | 2026-10-16T22:32:54Z |
 | Author | github-actions[bot] |
-| Message | data: omnibus — neural snapshot 2026-10-15 12:05:56 UTC |
-| Site | [https://majixai.github.io/data/](https://majixai.github.io/data/) |
+| Message | data: Update commit_advisor insights – 2026-10-16 22:32:54 UTC |
+| Site | [https://majixai.github.io/commit_advisor/](https://majixai.github.io/commit_advisor/) |
 
-_Auto-generated on 2026-10-15T13:42:01.697931+00:00_
+_Auto-generated on 2026-10-16T23:06:24.456391+00:00_
