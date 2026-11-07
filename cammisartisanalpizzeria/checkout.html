@@ -1,369 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#76251e">
-  <title>Order Online | Cammis's Artisanal Pizzeria</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --red: #76251e;
-      --red-dark: #5d1b16;
-      --gold: #d7a85a;
-      --cream: #fbf8f2;
-      --ink: #29231f;
-      --muted: #716862;
-      --line: #e8dfd3;
-      --green: #2e6b45;
-      --shadow: 0 12px 32px rgba(48, 32, 23, .08);
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--cream); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    button, input, select, textarea { font: inherit; }
-    button { cursor: pointer; }
-    a { color: inherit; }
-    .topbar { background: var(--red); color: white; border-bottom: 4px solid var(--gold); }
-    .topbar-inner { max-width: 1200px; margin: auto; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 18px; }
-    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-    .brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.55); border-radius: 50%; font-size: 23px; }
-    .brand-name { font-family: Georgia, serif; font-size: 1.1rem; font-weight: 700; }
-    .brand-tag { color: #f3ddbd; font-size: .76rem; }
-    .top-link { color: #fff; text-decoration: none; font-size: .9rem; }
-    .hero { background: linear-gradient(90deg, rgba(43,24,17,.83), rgba(43,24,17,.38)), radial-gradient(ellipse at 75% 30%, #bd7541, #49231b 68%); color: white; }
-    .hero-inner { max-width: 1200px; min-height: 214px; margin: auto; padding: 38px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-    .eyebrow { color: #f0c77f; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; font-size: .76rem; }
-    h1 { font: 700 clamp(2rem, 4vw, 3.2rem)/1.08 Georgia, serif; margin: 8px 0 12px; }
-    .hero p { color: #f4e9dc; margin: 0; max-width: 560px; }
-    .hero-badge { border: 1px solid rgba(255,255,255,.48); border-radius: 999px; padding: 10px 16px; color: #fff3df; white-space: nowrap; }
-    main { max-width: 1200px; margin: auto; padding: 28px 24px 56px; }
-    .notice { margin-bottom: 22px; background: #fff4dc; border: 1px solid #edd7a9; border-radius: 10px; padding: 12px 15px; color: #674718; font-size: .9rem; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 355px; gap: 26px; align-items: start; }
-    .menu-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-    h2 { font: 700 1.6rem Georgia, serif; margin: 0; color: var(--red); }
-    .menu-count { color: var(--muted); font-size: .88rem; }
-    .filters { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; scrollbar-width: thin; }
-    .filter-btn { border: 1px solid var(--line); background: white; color: #514840; border-radius: 999px; padding: 8px 14px; white-space: nowrap; }
-    .filter-btn[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: white; }
-    .search-wrap { position: relative; margin-bottom: 16px; }
-    .search-wrap label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-    .search-wrap input { width: 100%; padding: 12px 14px 12px 42px; border: 1px solid var(--line); border-radius: 9px; background: white; }
-    .search-icon { position: absolute; left: 14px; top: 10px; color: var(--muted); }
-    .products { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    .product { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 17px; display: flex; flex-direction: column; min-height: 204px; box-shadow: 0 3px 12px rgba(48,32,23,.025); }
-    .product-category { color: #9a6a2b; font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-    .product h3 { font: 700 1.08rem/1.25 Georgia, serif; margin: 7px 0; }
-    .product p { color: var(--muted); font-size: .87rem; margin: 0 0 16px; flex: 1; }
-    .product-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .price { color: var(--green); font-weight: 750; }
-    .add-btn, .primary-btn { border: 0; border-radius: 7px; color: white; background: var(--red); font-weight: 700; padding: 9px 13px; }
-    .add-btn:hover, .primary-btn:hover { background: var(--red-dark); }
-    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #d6a64e; outline-offset: 2px; }
-    .cart { position: sticky; top: 16px; background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
-    .cart-head { padding: 18px 19px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
-    .cart-head h2 { font-size: 1.35rem; }
-    .cart-count { background: #f7eddf; color: var(--red); border-radius: 999px; min-width: 28px; text-align: center; padding: 2px 8px; font-size: .82rem; font-weight: 750; }
-    .cart-body { padding: 8px 19px 0; max-height: 350px; overflow: auto; }
-    .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
-    .cart-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px 12px; padding: 12px 0; border-bottom: 1px solid #f0ece6; }
-    .cart-item-name { font-weight: 650; font-size: .92rem; }
-    .cart-item-price { font-weight: 650; font-size: .9rem; white-space: nowrap; }
-    .qty { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-size: .88rem; }
-    .qty button { width: 27px; height: 27px; border: 1px solid var(--line); border-radius: 50%; background: white; color: var(--red); font-weight: 800; line-height: 1; }
-    .remove-btn { justify-self: end; border: 0; background: none; color: #8b514b; text-decoration: underline; font-size: .78rem; padding: 2px 0; }
-    .cart-summary { padding: 15px 19px 19px; }
-    .summary-row { display: flex; justify-content: space-between; margin: 7px 0; font-size: .91rem; }
-    .summary-row.total { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; font-size: 1.08rem; font-weight: 800; color: var(--red); }
-    .checkout-btn { width: 100%; margin-top: 10px; padding: 12px; }
-    .checkout-btn:disabled { background: #b7ada5; cursor: not-allowed; }
-    .cart-note { color: var(--muted); text-align: center; font-size: .75rem; margin: 10px 0 0; }
-    .no-results { grid-column: 1/-1; background: white; border: 1px dashed var(--line); border-radius: 10px; padding: 24px; text-align: center; color: var(--muted); }
-    dialog { border: 0; padding: 0; border-radius: 14px; width: min(540px, calc(100% - 28px)); max-height: min(90vh, 760px); box-shadow: 0 24px 80px rgba(0,0,0,.28); }
-    dialog::backdrop { background: rgba(31,23,20,.62); }
-    .dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: var(--red); color: white; }
-    .dialog-head h2 { color: white; font-size: 1.35rem; }
-    .close-btn { border: 1px solid rgba(255,255,255,.5); background: transparent; color: white; border-radius: 6px; padding: 4px 10px; }
-    .dialog-content { padding: 20px 22px 22px; max-height: calc(90vh - 70px); overflow: auto; }
-    .fulfillment { border: 0; padding: 0; margin: 0 0 18px; }
-    .fulfillment legend, .field label { display: block; font-weight: 700; font-size: .88rem; margin-bottom: 7px; }
-    .radio-row { display: flex; gap: 10px; }
-    .radio-choice { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: flex; gap: 8px; align-items: center; }
-    .field { margin: 12px 0; }
-    .field input, .field select, .field textarea { width: 100%; border: 1px solid #d9d0c6; border-radius: 7px; padding: 10px 11px; background: white; }
-    .field textarea { resize: vertical; min-height: 74px; }
-    .field-hint { color: var(--muted); font-size: .78rem; margin: 4px 0 0; }
-    .delivery-fields[hidden] { display: none; }
-    .form-total { display: flex; justify-content: space-between; font-weight: 800; color: var(--red); border-top: 1px solid var(--line); padding-top: 13px; margin: 16px 0; }
-    .submit-btn { width: 100%; padding: 12px; }
-    .success { text-align: center; }
-    .success-icon { font-size: 2.7rem; }
-    .success h3 { font: 700 1.55rem Georgia, serif; color: var(--red); margin: 7px 0; }
-    .success p { color: var(--muted); }
-    .receipt { text-align: left; background: #fbf8f2; border-radius: 8px; padding: 13px; margin: 16px 0; font-size: .9rem; }
-    footer { border-top: 1px solid var(--line); text-align: center; color: var(--muted); padding: 20px; font-size: .82rem; }
-    @media (max-width: 850px) { .layout { grid-template-columns: minmax(0,1fr) 310px; gap: 16px; } .products { grid-template-columns: 1fr; } }
-    @media (max-width: 680px) { .topbar-inner { padding: 12px 16px; } .top-link { display: none; } .hero-inner { min-height: 190px; padding: 30px 18px; } .hero-badge { display: none; } main { padding: 20px 15px 40px; } .layout { grid-template-columns: 1fr; } .cart { position: static; grid-row: 1; } .cart-body { max-height: 240px; } .products { grid-template-columns: repeat(2, minmax(0,1fr)); } .product { padding: 13px; min-height: 220px; } .product-footer { align-items: flex-start; flex-direction: column; } .add-btn { width: 100%; } }
-    @media (max-width: 390px) { .products { grid-template-columns: 1fr; } .product { min-height: auto; } .product-footer { flex-direction: row; align-items: center; } .add-btn { width: auto; } }
-  </style>
-</head>
-<body>
-  <header class="topbar">
-    <div class="topbar-inner">
-      <a class="brand" href="index.html" aria-label="Cammis's Pizzeria home">
-        <span class="brand-mark" aria-hidden="true">🍕</span>
-        <span><span class="brand-name">Cammis's Artisanal Pizzeria</span><br><span class="brand-tag">Stone-baked • Made with care</span></span>
-      </a>
-      <a class="top-link" href="menu.html">View full menu →</a>
-    </div>
-  </header>
-  <section class="hero">
-    <div class="hero-inner">
-      <div><div class="eyebrow">A little taste of Italy</div><h1>Order something<br>made with amore.</h1><p>Choose your favorites, build your order, and select pickup or delivery at checkout.</p></div>
-      <div class="hero-badge">Fresh ingredients · Every order</div>
-    </div>
-  </section>
-  <main>
-    <div class="notice"><strong>Ordering demo:</strong> This static site keeps your cart and order confirmation in this browser only. It does not send orders to the restaurant or process payments.</div>
-    <div class="layout">
-      <section aria-labelledby="menu-title">
-        <div class="menu-head"><h2 id="menu-title">Our menu</h2><span class="menu-count" id="menu-count"></span></div>
-        <div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><label for="search">Search menu</label><input id="search" type="search" placeholder="Search pizzas, sides, drinks…" autocomplete="off"></div>
-        <nav class="filters" id="filters" aria-label="Filter menu categories"></nav>
-        <div class="products" id="products" aria-live="polite"></div>
-      </section>
-      <aside class="cart" aria-labelledby="cart-title">
-        <div class="cart-head"><h2 id="cart-title">Your order</h2><span class="cart-count" id="cart-count" aria-label="0 items">0</span></div>
-        <div class="cart-body" id="cart-items" aria-live="polite"></div>
-        <div class="cart-summary">
-          <div class="summary-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
-          <div class="summary-row"><span>Estimated tax (8.5%)</span><span id="tax">$0.00</span></div>
-          <div class="summary-row"><span>Delivery</span><span id="delivery-fee">Calculated at checkout</span></div>
-          <div class="summary-row total"><span>Estimated total</span><span id="total">$0.00</span></div>
-          <button class="primary-btn checkout-btn" id="checkout-btn" type="button" disabled>Continue to checkout</button>
-          <p class="cart-note">No payment is collected on this demo.</p>
-        </div>
-      </aside>
-    </div>
-  </main>
-  <footer>© Cammis's Artisanal Pizzeria · Prices in USD · Tax and delivery shown as estimates</footer>
+    const ORDER_ENDPOINT = window.CAMMIS_ORDER_ENDPOINT || '';
+    async function submitOrderToBackend(order) {
+      if (!ORDER_ENDPOINT) {
+        return { ok: false, status: 'missing-endpoint', message: 'Set window.CAMMIS_ORDER_ENDPOINT to your Google Apps Script web app URL.' };
+      }
 
-  <dialog id="checkout-dialog" aria-labelledby="checkout-title">
-    <div class="dialog-head"><h2 id="checkout-title">Checkout</h2><button class="close-btn" id="close-dialog" type="button" aria-label="Close checkout">Close</button></div>
-    <div class="dialog-content" id="dialog-content">
-      <form id="checkout-form">
-        <fieldset class="fulfillment"><legend>How would you like your order?</legend><div class="radio-row">
-          <label class="radio-choice"><input type="radio" name="fulfillment" value="pickup" checked> Pickup</label>
-          <label class="radio-choice"><input type="radio" name="fulfillment" value="delivery"> Delivery (+$3.99)</label>
-        </div></fieldset>
-        <div class="field"><label for="customer-name">Your name</label><input id="customer-name" name="name" required maxlength="80" autocomplete="name" placeholder="Full name"></div>
-        <div class="field"><label for="customer-phone">Phone number</label><input id="customer-phone" name="phone" required type="tel" autocomplete="tel" maxlength="30" placeholder="(555) 555-0123"></div>
-        <div class="delivery-fields" id="delivery-fields" hidden>
-          <div class="field"><label for="address">Delivery address</label><input id="address" name="address" maxlength="160" autocomplete="street-address" placeholder="Street address"></div>
-          <div class="field"><label for="city">City and ZIP code</label><input id="city" name="city" maxlength="100" autocomplete="address-level2" placeholder="City, ZIP"></div>
-        </div>
-        <div class="field"><label for="payment">Payment preference</label><select id="payment" name="payment"><option value="Pay at pickup/delivery">Pay at pickup / delivery</option><option value="Contact me about payment">Contact me about payment</option></select><p class="field-hint">Payment details are not collected online.</p></div>
-        <div class="field"><label for="notes">Order notes <span style="font-weight:400;color:#716862">(optional)</span></label><textarea id="notes" name="notes" maxlength="300" placeholder="Allergies, delivery instructions, or special requests"></textarea></div>
-        <div class="form-total"><span>Estimated total</span><span id="checkout-total">$0.00</span></div>
-        <button class="primary-btn submit-btn" type="submit">Review order</button>
-      </form>
-    </div>
-  </dialog>
-
-  <script>
-    const products = [
-      {id:'PZ-01-SM',name:'The Classic Pepperoni · Small',category:'Pizza',description:'Double pepperoni, house marinara, whole-milk mozzarella.',price:12.99},
-      {id:'PZ-01-MD',name:'The Classic Pepperoni · Medium',category:'Pizza',description:'Double pepperoni, house marinara, whole-milk mozzarella.',price:17.99},
-      {id:'PZ-01-LG',name:'The Classic Pepperoni · Large',category:'Pizza',description:'Double pepperoni, house marinara, whole-milk mozzarella.',price:21.99},
-      {id:'PZ-02-SM',name:'Supreme Feast · Small',category:'Pizza',description:'Pepperoni, Italian sausage, peppers, red onions, mushrooms, olives.',price:14.99},
-      {id:'PZ-02-MD',name:'Supreme Feast · Medium',category:'Pizza',description:'Pepperoni, Italian sausage, peppers, red onions, mushrooms, olives.',price:20.99},
-      {id:'PZ-02-LG',name:'Supreme Feast · Large',category:'Pizza',description:'Pepperoni, Italian sausage, peppers, red onions, mushrooms, olives.',price:25.99},
-      {id:'PZ-03-MD',name:'BBQ Chicken Supreme · Medium',category:'Pizza',description:'Grilled chicken, smoky BBQ, red onion, bacon, cilantro, provolone.',price:20.99},
-      {id:'PZ-03-LG',name:'BBQ Chicken Supreme · Large',category:'Pizza',description:'Grilled chicken, smoky BBQ, red onion, bacon, cilantro, provolone.',price:25.99},
-      {id:'PZ-04-SM',name:'Margherita D.O.P. · Small',category:'Pizza',description:'Garlic olive oil, fresh mozzarella, Roma tomatoes, basil.',price:13.99},
-      {id:'PZ-04-MD',name:'Margherita D.O.P. · Medium',category:'Pizza',description:'Garlic olive oil, fresh mozzarella, Roma tomatoes, basil.',price:18.99},
-      {id:'PZ-04-LG',name:'Margherita D.O.P. · Large',category:'Pizza',description:'Garlic olive oil, fresh mozzarella, Roma tomatoes, basil.',price:22.99},
-      {id:'PZ-05-MD',name:'Meat Lover’s Trio · Medium',category:'Pizza',description:'Pepperoni, crispy bacon, Italian sausage, meatballs, extra cheese.',price:21.99},
-      {id:'PZ-06-MD',name:'Quattro Formaggi · Medium',category:'Pizza',description:'Mozzarella, ricotta, parmesan, gorgonzola, and garlic oil.',price:18.99},
-      {id:'PZ-07-MD',name:'Spicy Hawaiian Hot Honey · Medium',category:'Pizza',description:'Smoked ham, pineapple, jalapeños, bacon, hot honey.',price:20.99},
-      {id:'PZ-08-MD',name:'Garden Veggie Delight · Medium',category:'Pizza',description:'Spinach, peppers, red onion, olives, roasted red peppers, garlic.',price:18.99},
-      {id:'PZ-09-MD',name:'Buffalo Chicken Ranch · Medium',category:'Pizza',description:'Buffalo chicken, blue cheese, mozzarella, creamy ranch swirl.',price:20.99},
-      {id:'PZ-10-MD',name:'Truffle Mushroom Bianca · Medium',category:'Pizza',description:'Wild mushrooms, garlic cream, mozzarella, truffle oil.',price:21.99},
-      {id:'BYO-SM',name:'Build Your Own Pizza · Small',category:'Pizza',description:'Start with signature marinara and mozzarella; add your requests in order notes.',price:10.99},
-      {id:'BYO-MD',name:'Build Your Own Pizza · Medium',category:'Pizza',description:'Start with signature marinara and mozzarella; add your requests in order notes.',price:14.99},
-      {id:'BYO-LG',name:'Build Your Own Pizza · Large',category:'Pizza',description:'Start with signature marinara and mozzarella; add your requests in order notes.',price:17.99},
-      {id:'WG-01-6',name:'Jumbo Bone-In Wings · 6 pc',category:'Sides',description:'Choose Buffalo, BBQ, garlic parmesan, or mango habanero in notes.',price:9.99},
-      {id:'WG-01-12',name:'Jumbo Bone-In Wings · 12 pc',category:'Sides',description:'Choose Buffalo, BBQ, garlic parmesan, or mango habanero in notes.',price:17.99},
-      {id:'WG-02-8',name:'Boneless Chicken Bites · 8 pc',category:'Sides',description:'Tender all-white meat bites tossed in your choice of sauce.',price:8.99},
-      {id:'WG-02-16',name:'Boneless Chicken Bites · 16 pc',category:'Sides',description:'Tender all-white meat bites tossed in your choice of sauce.',price:15.99},
-      {id:'SD-01',name:'Garlic Cheese Breadsticks',category:'Sides',description:'Garlic butter, melted mozzarella, and warm marinara.',price:7.99},
-      {id:'SD-02',name:'Crispy Mozzarella Sticks · 6 pc',category:'Sides',description:'Golden Italian mozzarella with house marinara.',price:6.99},
-      {id:'SD-03',name:'Loaded Italian Garlic Fries',category:'Sides',description:'Crispy fries with Italian herbs, garlic, mozzarella, and bacon.',price:8.49},
-      {id:'SD-04',name:'Italian Meatballs · 4 pc',category:'Sides',description:'Beef and pork meatballs in marinara, topped with ricotta and basil.',price:9.49},
-      {id:'SD-05',name:'Truffle Parmesan Fries',category:'Sides',description:'Fries with white truffle oil, parmesan, and fresh parsley.',price:7.99},
-      {id:'SD-06',name:'Toasted Meat Ravioli · 8 pc',category:'Sides',description:'Crispy breaded beef ravioli with marinara.',price:8.99},
-      {id:'SL-01',name:'Classic Caesar Salad',category:'Salads',description:'Romaine, shaved parmesan, garlic croutons, Caesar dressing.',price:8.99},
-      {id:'SL-02',name:'House Garden Salad',category:'Salads',description:'Mixed greens, tomatoes, cucumbers, red onions, croutons.',price:7.99},
-      {id:'SL-03',name:'Mediterranean Greek Salad',category:'Salads',description:'Romaine, kalamata olives, feta, cucumber, red onion, oregano vinaigrette.',price:9.99},
-      {id:'SL-04',name:'Caprese Salad',category:'Salads',description:'Fresh mozzarella, vine tomatoes, basil, olive oil, balsamic glaze.',price:10.49},
-      {id:'SL-05',name:'Italian Antipasto Salad',category:'Salads',description:'Salami, pepperoni, provolone, olives, pepperoncini, crisp romaine.',price:11.99},
-      {id:'DS-01',name:'Cinnamon Sugar Dough Bites',category:'Desserts',description:'Warm dough bites with cinnamon sugar and vanilla icing dip.',price:6.99},
-      {id:'DS-02',name:'Classic Italian Cannoli · 2 pc',category:'Desserts',description:'Crispy pastry filled with sweet ricotta cream and chocolate chips.',price:5.99},
-      {id:'DS-03',name:'Authentic Tiramisu',category:'Desserts',description:'Espresso-soaked ladyfingers layered with mascarpone and cocoa.',price:6.99},
-      {id:'DS-04',name:'Chocolate Fudge Lava Cake',category:'Desserts',description:'Warm chocolate cake with a molten chocolate center.',price:7.49},
-      {id:'DS-05',name:'New York Style Cheesecake',category:'Desserts',description:'Rich cheesecake with strawberry drizzle on the side.',price:6.49},
-      {id:'BV-01',name:'2-Liter Soda',category:'Drinks',description:'Coca-Cola, Diet Coke, Sprite, Dr Pepper, Fanta, or Root Beer.',price:3.99},
-      {id:'BV-02',name:'Can Soda · 12 oz',category:'Drinks',description:'Coca-Cola, Diet Coke, Sprite, Dr Pepper, Ginger Ale, or lemonade.',price:1.99},
-      {id:'BV-03',name:'San Pellegrino Sparkling Water',category:'Drinks',description:'Italian sparkling mineral water · 500 ml.',price:2.99},
-      {id:'BV-04',name:'San Pellegrino Italian Soda',category:'Drinks',description:'Aranciata orange or Limonata lemon.',price:2.79},
-      {id:'BV-05',name:'House Iced Tea · 16 oz',category:'Drinks',description:'Fresh-brewed sweet tea or unsweetened black tea.',price:2.49},
-      {id:'BV-06',name:'Bottled Spring Water',category:'Drinks',description:'Purified spring water · 16.9 oz.',price:1.49}
-    ];
-
-    const TAX_RATE = 0.085;
-    const DELIVERY_FEE = 3.99;
-    const STORAGE_KEY = 'cammis-order-cart-v1';
-    const money = amount => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD'}).format(amount);
-    const $ = id => document.getElementById(id);
-    let cart = loadCart();
-    let activeCategory = 'All';
-
-    function loadCart() {
       try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        if (!Array.isArray(saved)) return [];
-        return saved.filter(row => products.some(product => product.id === row.id) && Number.isInteger(row.qty) && row.qty > 0 && row.qty <= 99);
-      } catch { return []; }
-    }
-    function saveCart() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cart.map(({id,qty}) => ({id,qty})))); } catch { /* Storage can be disabled; cart still works for this page view. */ }
-    }
-    function renderFilters() {
-      const categories = ['All', ...new Set(products.map(product => product.category))];
-      const filters = $('filters');
-      filters.replaceChildren();
-      categories.forEach(category => {
-        const button = document.createElement('button');
-        button.type = 'button'; button.className = 'filter-btn'; button.textContent = category;
-        button.setAttribute('aria-pressed', String(category === activeCategory));
-        button.addEventListener('click', () => { activeCategory = category; renderFilters(); renderProducts(); });
-        filters.append(button);
-      });
-    }
-    function renderProducts() {
-      const query = $('search').value.trim().toLowerCase();
-      const matches = products.filter(product => (activeCategory === 'All' || product.category === activeCategory) && `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(query));
-      $('menu-count').textContent = `${matches.length} ${matches.length === 1 ? 'item' : 'items'}`;
-      const grid = $('products'); grid.replaceChildren();
-      if (!matches.length) {
-        const empty = document.createElement('div'); empty.className = 'no-results'; empty.textContent = 'No menu items match that search. Try another name or category.'; grid.append(empty); return;
-      }
-      matches.forEach(product => {
-        const card = document.createElement('article'); card.className = 'product';
-        const category = document.createElement('div'); category.className = 'product-category'; category.textContent = product.category;
-        const title = document.createElement('h3'); title.textContent = product.name;
-        const description = document.createElement('p'); description.textContent = product.description;
-        const footer = document.createElement('div'); footer.className = 'product-footer';
-        const price = document.createElement('span'); price.className = 'price'; price.textContent = money(product.price);
-        const add = document.createElement('button'); add.type = 'button'; add.className = 'add-btn'; add.textContent = 'Add to order'; add.setAttribute('aria-label', `Add ${product.name} to order`); add.addEventListener('click', () => addToCart(product.id));
-        footer.append(price, add); card.append(category, title, description, footer); grid.append(card);
-      });
-    }
-    function addToCart(id) {
-      const item = cart.find(row => row.id === id);
-      if (item) { if (item.qty < 99) item.qty++; }
-      else cart.push({id,qty:1});
-      renderCart();
-    }
-    function changeQty(id, delta) {
-      const item = cart.find(row => row.id === id);
-      if (!item) return;
-      item.qty += delta;
-      if (item.qty <= 0) cart = cart.filter(row => row.id !== id);
-      renderCart();
-    }
-    function getSubtotal() {
-      return cart.reduce((sum, row) => sum + products.find(product => product.id === row.id).price * row.qty, 0);
-    }
-    function getTotal(delivery = false) {
-      const subtotal = getSubtotal();
-      return subtotal + subtotal * TAX_RATE + (delivery ? DELIVERY_FEE : 0);
-    }
-    function renderCart() {
-      const container = $('cart-items'); container.replaceChildren();
-      const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
-      $('cart-count').textContent = itemCount;
-      $('cart-count').setAttribute('aria-label', `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`);
-      $('checkout-btn').disabled = cart.length === 0;
-      if (!cart.length) {
-        const empty = document.createElement('div'); empty.className = 'empty'; empty.textContent = 'Your basket is waiting for something delicious.'; container.append(empty);
-      } else {
-        cart.forEach(row => {
-          const product = products.find(item => item.id === row.id);
-          const line = document.createElement('div'); line.className = 'cart-item';
-          const name = document.createElement('div'); name.className = 'cart-item-name'; name.textContent = product.name;
-          const amount = document.createElement('div'); amount.className = 'cart-item-price'; amount.textContent = money(product.price * row.qty);
-          const qty = document.createElement('div'); qty.className = 'qty';
-          const minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−'; minus.setAttribute('aria-label', `Remove one ${product.name}`); minus.addEventListener('click', () => changeQty(row.id, -1));
-          const count = document.createElement('span'); count.textContent = row.qty;
-          const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+'; plus.setAttribute('aria-label', `Add one ${product.name}`); plus.addEventListener('click', () => changeQty(row.id, 1));
-          qty.append(minus, count, plus);
-          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'remove-btn'; remove.textContent = 'Remove'; remove.addEventListener('click', () => { cart = cart.filter(item => item.id !== row.id); renderCart(); });
-          line.append(name, amount, qty, remove); container.append(line);
+        const response = await fetch(ORDER_ENDPOINT, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(order)
         });
+
+        const text = await response.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+        if (!response.ok) {
+          throw new Error(data && data.error ? data.error : 'Request failed');
+        }
+
+        return { ok: true, data };
+      } catch (error) {
+        return { ok: false, status: 'submit-error', message: error.message || 'Unable to send order.' };
       }
-      const subtotal = getSubtotal();
-      $('subtotal').textContent = money(subtotal);
-      $('tax').textContent = money(subtotal * TAX_RATE);
-      $('delivery-fee').textContent = 'Calculated at checkout';
-      $('total').textContent = money(subtotal + subtotal * TAX_RATE);
-      saveCart();
     }
-    function updateFulfillment() {
-      const delivery = document.querySelector('input[name="fulfillment"]:checked').value === 'delivery';
-      $('delivery-fields').hidden = !delivery;
-      $('address').required = delivery; $('city').required = delivery;
-      $('checkout-total').textContent = money(getTotal(delivery));
-    }
-    function showReceipt(order) {
+
+    function showReceipt(order, backendResult = null) {
       const content = $('dialog-content'); content.replaceChildren();
       const success = document.createElement('div'); success.className = 'success';
       const icon = document.createElement('div'); icon.className = 'success-icon'; icon.textContent = '🍕';
-      const title = document.createElement('h3'); title.textContent = 'Order review ready';
-      const message = document.createElement('p'); message.textContent = 'Your order has been saved in this browser as a demo. The restaurant has not received it.';
+      const title = document.createElement('h3'); title.textContent = backendResult && backendResult.ok ? 'Order received' : 'Order review ready';
+      const message = document.createElement('p');
+      message.textContent = backendResult && backendResult.ok
+        ? 'Your order was submitted successfully and saved to the connected backend.'
+        : 'Your order has been saved in this browser as a demo. Connect a real endpoint to submit it.';
+
       const receipt = document.createElement('div'); receipt.className = 'receipt';
       const lines = order.items.map(item => `${item.qty} × ${item.name} — ${money(item.price * item.qty)}`);
       lines.push('', `${order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'} · ${order.name}`, `Estimated total: ${money(order.total)}`, `Payment: ${order.payment}`);
       if (order.fulfillment === 'delivery') lines.push(`Address: ${order.address}, ${order.city}`);
       if (order.notes) lines.push(`Notes: ${order.notes}`);
+      if (backendResult && !backendResult.ok) {
+        lines.push('', `Status: ${backendResult.message || 'Not submitted'}`);
+      }
       receipt.textContent = lines.join('\n'); receipt.style.whiteSpace = 'pre-line';
-      const disclaimer = document.createElement('p'); disclaimer.textContent = 'To accept real orders, connect this page to a secure order-management or point-of-sale service.';
+
+      const disclaimer = document.createElement('p');
+      disclaimer.textContent = backendResult && backendResult.ok
+        ? 'This submission is live and the order has been recorded in the connected backend.'
+        : 'To accept live orders, set the order endpoint URL in your deployment and reload the page.';
+
       const done = document.createElement('button'); done.type = 'button'; done.className = 'primary-btn submit-btn'; done.textContent = 'Done';
       done.addEventListener('click', () => { $('checkout-dialog').close(); });
       success.append(icon, title, message, receipt, disclaimer, done); content.append(success);
     }
-    $('search').addEventListener('input', renderProducts);
-    $('checkout-btn').addEventListener('click', () => { updateFulfillment(); $('checkout-dialog').showModal(); $('customer-name').focus(); });
-    $('close-dialog').addEventListener('click', () => $('checkout-dialog').close());
-    $('checkout-dialog').addEventListener('click', event => { if (event.target === $('checkout-dialog')) $('checkout-dialog').close(); });
-    document.querySelectorAll('input[name="fulfillment"]').forEach(radio => radio.addEventListener('change', updateFulfillment));
-    $('checkout-form').addEventListener('submit', event => {
+
+    $('checkout-form').addEventListener('submit', async event => {
       event.preventDefault();
       if (!cart.length || !event.currentTarget.reportValidity()) return;
       const data = new FormData(event.currentTarget);
       const fulfillment = data.get('fulfillment');
       const order = {
         createdAt: new Date().toISOString(),
-        name: String(data.get('name')).trim(), phone: String(data.get('phone')).trim(), fulfillment,
-        address: String(data.get('address') || '').trim(), city: String(data.get('city') || '').trim(),
-        payment: data.get('payment'), notes: String(data.get('notes') || '').trim(),
-        items: cart.map(row => ({...products.find(product => product.id === row.id), qty:row.qty})),
-        subtotal: getSubtotal(), tax: getSubtotal() * TAX_RATE, deliveryFee: fulfillment === 'delivery' ? DELIVERY_FEE : 0,
+        name: String(data.get('name')).trim(),
+        phone: String(data.get('phone')).trim(),
+        fulfillment,
+        address: String(data.get('address') || '').trim(),
+        city: String(data.get('city') || '').trim(),
+        payment: data.get('payment'),
+        notes: String(data.get('notes') || '').trim(),
+        items: cart.map(row => ({ ...products.find(product => product.id === row.id), qty: row.qty })),
+        subtotal: getSubtotal(),
+        tax: getSubtotal() * TAX_RATE,
+        deliveryFee: fulfillment === 'delivery' ? DELIVERY_FEE : 0,
         total: getTotal(fulfillment === 'delivery')
       };
-      try { localStorage.setItem('cammis-last-demo-order-v1', JSON.stringify(order)); } catch { /* Order receipt still displays in this page view. */ }
-      showReceipt(order);
+
+      try { localStorage.setItem('cammis-last-demo-order-v1', JSON.stringify(order)); } catch { }
+
+      const backendResult = await submitOrderToBackend(order);
+      showReceipt(order, backendResult);
+      if (backendResult && backendResult.ok) {
+        cart = [];
+        renderCart();
+      }
     });
-    renderFilters(); renderProducts(); renderCart();
-  </script>
-</body>
-</html>
