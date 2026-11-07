@@ -1,175 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DUET Channel Clustering (TFJS/WebGL)</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-  <style>
-    body { background: #0b1220; color: #e7ecf3; }
-    .card { background: #121a2b; border-color: #1e2940; }
-    .heat-cell { width: 44px; text-align: center; font-size: 0.75rem; padding: 0.2rem; border: 1px solid #22304c; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MajixAI Showcase — interactive explorer for every project in this repository">
+    <title>MajixAI Showcase</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <main class="container py-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
-      <h1 class="h4 mb-2">DUET Channel Clustering (Client-side Demo)</h1>
-      <button id="runBtn" class="btn btn-primary btn-sm">Run Clustering</button>
+
+    <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+    <header class="parallax">
+        <h1><i class="fa fa-star" aria-hidden="true"></i> MajixAI Showcase</h1>
+        <p class="subtitle">
+            An interactive explorer for every module and project in this repository —
+            finance, ML, trading algorithms, GPU acceleration, mathematics, gaming, and more.
+        </p>
+        <div class="hero-links">
+            <a href="../router/" class="hero-btn primary"><i class="fa fa-route"></i> Router</a>
+            <a href="../latest_commit/" class="hero-btn"><i class="fa fa-code-commit"></i> Commit Timeline</a>
+            <a href="../wiki/" class="hero-btn"><i class="fa fa-book"></i> Wiki</a>
+            <a href="../best/" class="hero-btn"><i class="fa fa-trophy"></i> Best</a>
+        </div>
+    </header>
+
+    <!-- ── Stats Bar ─────────────────────────────────────────────────────── -->
+    <div class="stats-bar" id="stats-bar" role="region" aria-label="Repository statistics">
+        <div class="stat-item">
+            <span class="stat-num" id="stat-total">…</span>
+            <span class="stat-lbl">Total Projects</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-cats">…</span>
+            <span class="stat-lbl">Categories</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-finance">…</span>
+            <span class="stat-lbl">Finance</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-tools">…</span>
+            <span class="stat-lbl">Tools</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-math">…</span>
+            <span class="stat-lbl">Mathematics</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num" id="stat-ml">…</span>
+            <span class="stat-lbl">ML / AI / GPU</span>
+        </div>
     </div>
 
-    <div class="row g-3">
-      <div class="col-12 col-lg-4">
-        <div class="card">
-          <div class="card-body">
-            <h2 class="h6">Runtime</h2>
-            <ul class="list-unstyled small mb-0">
-              <li><strong>TensorFlow.js backend:</strong> <span id="backend" class="mono">detecting…</span></li>
-              <li><strong>WebGL acceleration:</strong> <span id="webgl" class="mono">checking…</span></li>
-              <li><strong>Channels × Samples:</strong> <span id="shape" class="mono">8 × 256</span></li>
-              <li><strong>Compression test:</strong> <span id="gzipCheck" class="mono">pending</span></li>
-            </ul>
-          </div>
+    <!-- ── Category Dashboard ────────────────────────────────────────────── -->
+    <section id="section-categories">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-layer-group"></i> Explore by Category</h2>
+            <p class="section-sub">Click a category to filter the project explorer below.</p>
+            <div class="cat-grid" id="cat-grid">
+                <!-- filled by JS -->
+            </div>
         </div>
-      </div>
+    </section>
 
-      <div class="col-12 col-lg-8">
-        <div class="card">
-          <div class="card-body">
-            <h2 class="h6">Clustering Matrix (0..1)</h2>
-            <p class="small text-secondary mb-2">
-              FFT amplitudes are compared pairwise; lower spectral distance yields stronger channel affinity.
-            </p>
-            <div id="matrixWrap" class="table-responsive"></div>
-          </div>
+    <!-- ── Module Spotlights ─────────────────────────────────────────────── -->
+    <section id="section-spotlights">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-rocket"></i> Module Spotlights</h2>
+            <p class="section-sub">Deep dives into the most feature-rich modules in the repository.</p>
+            <div class="spotlight-grid" id="spotlight-grid">
+                <!-- filled by JS -->
+            </div>
         </div>
-      </div>
-    </div>
+    </section>
 
-    <p id="status" class="small mt-3 mb-0 mono"></p>
-  </main>
+    <!-- ── Advanced Concepts (original section, now real content) ────────── -->
+    <section id="section-concepts">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-lightbulb"></i> Advanced Concepts Demonstrated</h2>
+            <p class="section-sub">Key engineering patterns and techniques present across this codebase.</p>
+            <div class="mb-3">
+                <button id="start-animation-btn" class="btn btn-sm btn-primary">
+                    <i class="fa fa-play"></i> Animate
+                </button>
+                <button id="stop-animation-btn" class="btn btn-sm btn-outline-secondary ms-2">
+                    <i class="fa fa-stop"></i> Stop
+                </button>
+            </div>
+            <div id="data-container">
+                <!-- filled by JS from assets/data.json -->
+            </div>
+        </div>
+    </section>
 
-  <script>
-    const CHANNELS = 8;
-    const SAMPLES = 256;
+    <!-- ── Project Explorer ──────────────────────────────────────────────── -->
+    <section id="section-explorer">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-compass"></i> Project Explorer</h2>
+            <p class="section-sub">Search and browse all <span id="explorer-total">…</span> projects loaded from <code>projects.json</code>.</p>
 
-    function xorshift32(seed) {
-      let x = seed >>> 0;
-      return () => {
-        x ^= x << 13;
-        x ^= x >>> 17;
-        x ^= x << 5;
-        return ((x >>> 0) % 10000) / 10000;
-      };
-    }
+            <div class="explorer-controls">
+                <div class="search-box">
+                    <i class="fa fa-magnifying-glass"></i>
+                    <input type="search" id="explorer-search" placeholder="Search by name, description, category…"
+                           aria-label="Search projects" autocomplete="off">
+                </div>
+                <span class="proj-count" id="explorer-count" aria-live="polite"></span>
+            </div>
 
-    function syntheticChannels(channels = CHANNELS, samples = SAMPLES) {
-      const rng = xorshift32(123456789);
-      return Array.from({ length: channels }, (_, c) => {
-        const baseFreq = 1 + c * 0.35;
-        const coupled = c % 2 === 0 ? 2.1 : 2.45;
-        const arr = [];
-        for (let i = 0; i < samples; i++) {
-          const t = i / samples;
-          const val =
-            Math.sin(2 * Math.PI * baseFreq * t) * 0.65 +
-            Math.cos(2 * Math.PI * coupled * t) * 0.25 +
-            (rng() - 0.5) * 0.08;
-          arr.push(val);
-        }
-        return arr;
-      });
-    }
+            <div class="project-grid" id="project-grid">
+                <!-- filled by JS -->
+                <div class="empty-state" id="proj-empty" style="display:none;">
+                    <i class="fa fa-circle-xmark"></i>
+                    <p>No projects match your search.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    function colorFor(v) {
-      const x = Math.max(0, Math.min(1, v));
-      const r = Math.floor(35 + (1 - x) * 170);
-      const g = Math.floor(50 + x * 155);
-      const b = Math.floor(90 + x * 120);
-      return `rgb(${r},${g},${b})`;
-    }
+    <!-- ── Recently Updated ──────────────────────────────────────────────── -->
+    <section id="section-recent">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-clock-rotate-left"></i> Recently Updated</h2>
+            <p class="section-sub">The 10 most recently modified projects.</p>
+            <div class="recent-grid" id="recent-grid">
+                <!-- filled by JS -->
+            </div>
+        </div>
+    </section>
 
-    function renderMatrix(matrix) {
-      const rows = matrix.length;
-      const cols = rows ? matrix[0].length : 0;
-      let html = '<table class="table table-dark table-sm align-middle mb-0"><thead><tr><th></th>';
-      for (let c = 0; c < cols; c++) html += `<th class="text-center mono">C${c}</th>`;
-      html += '</tr></thead><tbody>';
-      for (let r = 0; r < rows; r++) {
-        html += `<tr><th class="mono">C${r}</th>`;
-        for (let c = 0; c < cols; c++) {
-          const v = Number(matrix[r][c]);
-          html += `<td class="heat-cell mono" style="background:${colorFor(v)}">${v.toFixed(3)}</td>`;
-        }
-        html += '</tr>';
-      }
-      html += '</tbody></table>';
-      document.getElementById('matrixWrap').innerHTML = html;
-    }
+    <!-- ── Latest Commit Info ─────────────────────────────────────────────── -->
+    <section id="section-commit">
+        <div class="max-w">
+            <h2 class="section-title"><i class="fa fa-code-branch"></i> Latest Commit Information</h2>
+            <p class="section-sub">Most recent recorded commit metadata.</p>
+            <div id="commit-info-container" class="w3-card w3-padding" style="max-width:680px;">
+                <p class="text-muted">Loading commit info…</p>
+            </div>
+        </div>
+    </section>
 
-    async function computeClustering(channels) {
-      const matrix = await tf.tidy(async () => {
-        const x = tf.tensor2d(channels, [channels.length, channels[0].length], 'float32');
-        const spectrum = tf.spectral.rfft(x);
-        const magnitude = tf.abs(spectrum);
+    <!-- ── Footer ────────────────────────────────────────────────────────── -->
+    <footer>
+        <p style="margin:0 0 .25rem;">
+            <strong>MajixAI</strong> &mdash; 158+ projects across finance, ML, mathematics, gaming, and tools.
+        </p>
+        <nav class="footer-links" aria-label="Site navigation">
+            <a href="../"><i class="fa fa-house"></i> Home</a>
+            <a href="../router/"><i class="fa fa-route"></i> Router</a>
+            <a href="../latest_commit/"><i class="fa fa-code-commit"></i> Commit Timeline</a>
+            <a href="../wiki/"><i class="fa fa-book"></i> Wiki</a>
+            <a href="../best/"><i class="fa fa-trophy"></i> Best Performers</a>
+            <a href="../yfinance/"><i class="fa fa-chart-line"></i> yFinance</a>
+            <a href="../tradingview_integration/"><i class="fa fa-chart-bar"></i> TradingView</a>
+        </nav>
+    </footer>
 
-        const norm = magnitude.div(magnitude.norm('euclidean', 1, true).add(1e-7));
-        const diff = norm.expandDims(1).sub(norm.expandDims(0));
-        const dist = tf.norm(diff, 'euclidean', 2);
-
-        const maxDist = dist.max();
-        const affinity = tf.onesLike(dist).sub(dist.div(maxDist.add(1e-7)));
-
-        const eye = tf.eye(channels.length);
-        const withDiag = affinity.mul(tf.onesLike(eye).sub(eye)).add(eye);
-        return await withDiag.array();
-      });
-      return matrix;
-    }
-
-    function runCompressionSelfCheck(data) {
-      const payload = JSON.stringify(data.slice(0, 2));
-      const gz = pako.gzip(payload);
-      const out = pako.ungzip(gz, { to: 'string' });
-      return out === payload;
-    }
-
-    async function initBackend() {
-      let backend = 'cpu';
-      try {
-        await tf.setBackend('webgl');
-      } catch (_) {}
-      await tf.ready();
-      backend = tf.getBackend();
-      document.getElementById('backend').textContent = backend;
-      document.getElementById('webgl').textContent = backend === 'webgl' ? 'enabled' : 'fallback';
-      return backend;
-    }
-
-    async function run() {
-      const status = document.getElementById('status');
-      status.textContent = 'Running DUET channel clustering…';
-      const channels = syntheticChannels();
-      const ok = runCompressionSelfCheck(channels);
-      document.getElementById('gzipCheck').textContent = ok ? 'ok' : 'failed';
-
-      const t0 = performance.now();
-      const matrix = await computeClustering(channels);
-      renderMatrix(matrix);
-      const dt = (performance.now() - t0).toFixed(1);
-
-      status.textContent = `Computed ${CHANNELS}×${CHANNELS} clustering matrix in ${dt} ms (${tf.getBackend()}).`;
-    }
-
-    document.getElementById('runBtn').addEventListener('click', run);
-
-    (async () => {
-      await initBackend();
-      await run();
-    })();
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="js/main.js" type="module" defer></script>
 </body>
 </html>
