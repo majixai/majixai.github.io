@@ -43,9 +43,10 @@
       padding: 0 20px;
       gap: 30px;
     }
-    .menu-section { flex: 1 1 60%; }
+    .menu-section { flex: 1 1 60%; min-width: 280px; }
     .cart-section {
       flex: 1 1 30%;
+      min-width: 280px;
       background: var(--card-bg);
       padding: 20px;
       border-radius: 8px;
@@ -61,20 +62,25 @@
       padding-bottom: 10px;
       border-bottom: 2px solid var(--border);
     }
+    .category-title {
+      color: var(--primary);
+      margin: 24px 0 12px;
+      font-size: 1.25rem;
+    }
     .menu-item {
       background: var(--card-bg);
       padding: 15px 20px;
       border-radius: 8px;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       border: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: box-shadow 0.2s;
+      gap: 16px;
     }
-    .menu-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
-    .item-info h3 { margin-bottom: 5px; color: #1a1412; }
-    .item-info p { font-size: 0.9rem; color: var(--text-muted); max-width: 400px; }
+    .item-info { flex: 1; }
+    .item-info h3 { margin-bottom: 5px; color: #1a1412; font-size: 1rem; }
+    .item-info p { font-size: 0.9rem; color: var(--text-muted); }
     .item-price { font-weight: bold; color: #2e6b30; margin-top: 5px; display: block; }
     button {
       background-color: var(--primary);
@@ -91,54 +97,26 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
       padding: 10px 0;
       border-bottom: 1px solid #eee;
       font-size: 0.95rem;
     }
     .cart-item-title { flex: 1; }
-    .qty-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0 15px;
-    }
-    .qty-btn {
-      background: #eee;
-      color: #333;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
+    .qty-controls { display: flex; align-items: center; gap: 8px; margin: 0 8px; }
+    .qty-btn { background: #eee; color: #333; padding: 2px 8px; }
     .qty-btn:hover { background: #ddd; }
-    .cart-totals {
-      margin-top: 20px;
-      padding-top: 15px;
-      border-top: 2px solid var(--border);
-    }
-    .cart-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 0.95rem;
-    }
-    .cart-row.total {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: var(--primary);
-      margin-top: 10px;
-    }
-    .checkout-btn {
-      width: 100%;
-      padding: 12px;
-      font-size: 1.1rem;
-      margin-top: 15px;
-      background-color: #2e6b30;
-    }
+    .cart-totals { margin-top: 20px; padding-top: 15px; border-top: 2px solid var(--border); }
+    .cart-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+    .cart-row.total { font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-top: 10px; }
+    .checkout-btn { width: 100%; padding: 12px; font-size: 1.1rem; margin-top: 15px; background-color: #2e6b30; }
     .checkout-btn:hover { background-color: #245426; }
     .checkout-btn:disabled { background-color: #999; cursor: not-allowed; }
     .empty-cart { color: var(--text-muted); font-style: italic; text-align: center; padding: 20px 0; }
     @media (max-width: 768px) {
       .container { flex-direction: column; }
-      .cart-section { position: static; }
+      .cart-section { position: static; width: 100%; }
+      .menu-section { width: 100%; }
     }
   </style>
 </head>
@@ -149,69 +127,131 @@
   </header>
 
   <div class="container">
-    <div class="menu-section">
+    <main class="menu-section">
       <h2>Our Menu</h2>
       <div id="menu-container"></div>
-    </div>
+    </main>
 
-    <div class="cart-section">
+    <aside class="cart-section">
       <h2>Your Cart</h2>
-      <div id="cart-container">
-        <div class="empty-cart">Your cart is currently empty.</div>
-      </div>
-
+      <div id="cart-container"><div class="empty-cart">Your cart is currently empty.</div></div>
       <div class="cart-totals">
-        <div class="cart-row">
-          <span>Subtotal:</span>
-          <span id="subtotal">$0.00</span>
-        </div>
-        <div class="cart-row">
-          <span>Tax (8.5%):</span>
-          <span id="tax">$0.00</span>
-        </div>
-        <div class="cart-row total">
-          <span>Total:</span>
-          <span id="total">$0.00</span>
-        </div>
+        <div class="cart-row"><span>Subtotal:</span><span id="subtotal">$0.00</span></div>
+        <div class="cart-row"><span>Tax (8.5%):</span><span id="tax">$0.00</span></div>
+        <div class="cart-row total"><span>Total:</span><span id="total">$0.00</span></div>
         <button class="checkout-btn" id="checkout-btn" disabled onclick="checkout()">Proceed to Checkout</button>
       </div>
-    </div>
+    </aside>
   </div>
 
   <script>
-    const products = [
-      { id: 'PZ-01-SM', title: 'The Classic Pepperoni - Small', desc: 'Double pepperoni, house marinara, whole-milk mozzarella.', price: 12.99 },
-      { id: 'PZ-03-MD', title: 'BBQ Chicken Supreme - Medium', desc: 'Grilled chicken, BBQ base, red onions, bacon, cilantro.', price: 20.99 },
-      { id: 'PZ-04-LG', title: 'Margherita D.O.P. - Large', desc: 'Garlic olive oil base, fresh mozzarella ovalini, Roma tomatoes, fresh basil.', price: 22.99 },
-      { id: 'SD-01', title: 'Garlic Cheese Breadsticks', desc: 'Brushed with garlic butter & melted mozzarella.', price: 7.99 },
-      { id: 'SL-01', title: 'Classic Caesar Salad', desc: 'Crisp romaine, shaved parmesan, garlic croutons.', price: 8.99 },
-      { id: 'DS-03', title: 'Authentic Tiramisu', desc: 'Espresso-soaked ladyfingers layered with mascarpone cream.', price: 6.99 },
-      { id: 'BV-01', title: '2-Liter Soda', desc: 'Choice of Coca-Cola, Sprite, or Dr Pepper.', price: 3.99 }
+    const pizzaSizes = [
+      { code: 'SM', label: 'Small', increment: 0 },
+      { code: 'MD', label: 'Medium', increment: 5 },
+      { code: 'LG', label: 'Large', increment: 9 },
+      { code: 'XL', label: 'XL', increment: 13 }
     ];
 
+    const pizzaRecipes = [
+      { code: 'PZ-01', name: 'The Classic Pepperoni', desc: 'Double pepperoni, house marinara, and whole-milk mozzarella.', base: 12.99 },
+      { code: 'PZ-02', name: 'Supreme Feast', desc: 'Pepperoni, Italian sausage, green peppers, red onions, mushrooms, and black olives.', base: 14.99 },
+      { code: 'PZ-03', name: 'BBQ Chicken Supreme', desc: 'Grilled chicken, smoky BBQ sauce, red onions, bacon, cilantro, and smoked provolone.', base: 14.99 },
+      { code: 'PZ-04', name: 'Margherita D.O.P.', desc: 'Garlic olive oil, fresh mozzarella, Roma tomatoes, and fresh basil.', base: 13.99 },
+      { code: 'PZ-05', name: "Meat Lover's Trio", desc: 'Pepperoni, crispy bacon, Italian sausage, meatballs, and extra cheese.', base: 15.99 },
+      { code: 'PZ-06', name: 'Quattro Formaggi', desc: 'Mozzarella, ricotta, aged parmesan, gorgonzola, and garlic oil.', base: 13.99 },
+      { code: 'PZ-07', name: 'Spicy Hawaiian Hot Honey', desc: 'Smoked ham, pineapple, jalapeños, bacon, and hot honey drizzle.', base: 14.99 },
+      { code: 'PZ-08', name: 'Garden Veggie Delight', desc: 'Spinach, green peppers, red onions, black olives, roasted red peppers, and garlic.', base: 13.99 },
+      { code: 'PZ-09', name: 'Buffalo Chicken Ranch', desc: 'Buffalo chicken, mozzarella, blue cheese crumbles, and ranch swirl.', base: 14.99 },
+      { code: 'PZ-10', name: 'Truffle Mushroom Bianca', desc: 'Roasted mushrooms, garlic cream sauce, mozzarella, and truffle oil.', base: 15.99 },
+      { code: 'PZ-11', name: 'Italian Sausage & Peppers', desc: 'Italian sausage, roasted peppers, onions, mozzarella, and marinara.', base: 14.99 },
+      { code: 'PZ-12', name: 'Pesto Chicken Primavera', desc: 'Basil pesto, grilled chicken, tomatoes, spinach, and mozzarella.', base: 15.49 },
+      { code: 'PZ-13', name: 'White Spinach Ricotta', desc: 'Garlic cream, ricotta, baby spinach, mozzarella, and parmesan.', base: 14.49 },
+      { code: 'PZ-14', name: 'Mediterranean Olive', desc: 'Kalamata olives, feta, tomatoes, red onion, spinach, and oregano.', base: 14.49 },
+      { code: 'PZ-15', name: 'The Works', desc: 'Pepperoni, sausage, mushrooms, peppers, onions, and extra mozzarella.', base: 15.99 }
+    ];
+
+    const pizzas = pizzaRecipes.flatMap(recipe =>
+      pizzaSizes.map(size => ({
+        id: `${recipe.code}-${size.code}`,
+        title: `${recipe.name} - ${size.label}`,
+        desc: recipe.desc,
+        price: Number((recipe.base + size.increment).toFixed(2)),
+        category: 'Pizza'
+      }))
+    );
+
+    const otherProducts = [
+      { id: 'WG-01-6', title: 'Jumbo Bone-In Wings - 6 pc', desc: 'Choose Buffalo, BBQ, garlic parmesan, or mango habanero; served with ranch.', price: 9.99, category: 'Wings & Starters' },
+      { id: 'WG-01-12', title: 'Jumbo Bone-In Wings - 12 pc', desc: 'Choose Buffalo, BBQ, garlic parmesan, or mango habanero; served with ranch.', price: 17.99, category: 'Wings & Starters' },
+      { id: 'WG-02-8', title: 'Boneless Chicken Bites - 8 pc', desc: 'All-white-meat chicken bites tossed in your choice of sauce.', price: 8.99, category: 'Wings & Starters' },
+      { id: 'WG-02-16', title: 'Boneless Chicken Bites - 16 pc', desc: 'All-white-meat chicken bites tossed in your choice of sauce.', price: 15.99, category: 'Wings & Starters' },
+      { id: 'SD-01', title: 'Garlic Cheese Breadsticks', desc: 'Garlic butter, melted mozzarella, and warm marinara.', price: 7.99, category: 'Wings & Starters' },
+      { id: 'SD-02', title: 'Crispy Mozzarella Sticks - 6 pc', desc: 'Golden-fried mozzarella served with house marinara.', price: 6.99, category: 'Wings & Starters' },
+      { id: 'SD-03', title: 'Loaded Italian Garlic Fries', desc: 'Italian herbs, garlic, melted mozzarella, and bacon.', price: 8.49, category: 'Wings & Starters' },
+      { id: 'SD-04', title: 'Italian Meatballs - 4 pc', desc: 'Beef and pork meatballs in marinara with ricotta and basil.', price: 9.49, category: 'Wings & Starters' },
+      { id: 'SD-05', title: 'Truffle Parmesan Fries', desc: 'Fries with truffle oil, parmesan, and fresh parsley.', price: 7.99, category: 'Wings & Starters' },
+      { id: 'SD-06', title: 'Toasted Meat Ravioli - 8 pc', desc: 'Breaded beef ravioli served with marinara.', price: 8.99, category: 'Wings & Starters' },
+      { id: 'SL-01', title: 'Classic Caesar Salad', desc: 'Romaine, shaved parmesan, garlic croutons, and Caesar dressing.', price: 8.99, category: 'Salads' },
+      { id: 'SL-02', title: 'House Garden Salad', desc: 'Mixed greens, tomatoes, cucumber, red onion, croutons, and Italian dressing.', price: 7.99, category: 'Salads' },
+      { id: 'SL-03', title: 'Mediterranean Greek Salad', desc: 'Romaine, kalamata olives, feta, cucumber, red onion, and oregano vinaigrette.', price: 9.99, category: 'Salads' },
+      { id: 'SL-04', title: 'Caprese Salad', desc: 'Fresh mozzarella, vine tomatoes, basil, olive oil, and balsamic glaze.', price: 10.49, category: 'Salads' },
+      { id: 'SL-05', title: 'Italian Antipasto Salad', desc: 'Salami, pepperoni, provolone, olives, pepperoncini, and romaine.', price: 11.99, category: 'Salads' },
+      { id: 'DS-01', title: 'Cinnamon Sugar Dough Bites', desc: 'Warm dough bites with cinnamon sugar and vanilla icing dip.', price: 6.99, category: 'Desserts' },
+      { id: 'DS-02', title: 'Classic Italian Cannoli - 2 pc', desc: 'Crispy pastry shells with sweet ricotta cream and chocolate chips.', price: 5.99, category: 'Desserts' },
+      { id: 'DS-03', title: 'Authentic Tiramisu', desc: 'Espresso-soaked ladyfingers layered with mascarpone and cocoa.', price: 6.99, category: 'Desserts' },
+      { id: 'DS-04', title: 'Chocolate Fudge Lava Cake', desc: 'Warm chocolate cake with a molten center.', price: 7.49, category: 'Desserts' },
+      { id: 'DS-05', title: 'New York Style Cheesecake', desc: 'Rich cheesecake with strawberry drizzle on the side.', price: 6.49, category: 'Desserts' },
+      { id: 'BV-01', title: '2-Liter Bottled Soda', desc: 'Coca-Cola, Diet Coke, Sprite, Dr Pepper, Fanta, or root beer.', price: 3.99, category: 'Beverages' },
+      { id: 'BV-02', title: 'Can Soda - 12 oz', desc: 'Coca-Cola, Diet Coke, Sprite, Dr Pepper, ginger ale, or lemonade.', price: 1.99, category: 'Beverages' },
+      { id: 'BV-03', title: 'San Pellegrino Sparkling Water - 500 ml', desc: 'Italian sparkling mineral water.', price: 2.99, category: 'Beverages' },
+      { id: 'BV-04', title: 'San Pellegrino Italian Soda', desc: 'Choose Aranciata (orange) or Limonata (lemon).', price: 2.79, category: 'Beverages' },
+      { id: 'BV-05', title: 'House Iced Tea - 16 oz', desc: 'Fresh-brewed sweet tea or unsweetened black tea.', price: 2.49, category: 'Beverages' },
+      { id: 'BV-06', title: 'Bottled Spring Water - 16.9 oz', desc: 'Purified spring water.', price: 1.49, category: 'Beverages' }
+    ];
+
+    const products = [...pizzas, ...otherProducts];
+    const categories = ['Pizza', 'Wings & Starters', 'Salads', 'Desserts', 'Beverages'];
     let cart = [];
     const TAX_RATE = 0.085;
 
     function renderMenu() {
       const container = document.getElementById('menu-container');
       container.innerHTML = '';
-      products.forEach(product => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'menu-item';
-        itemDiv.innerHTML = `
-          <div class="item-info">
-            <h3>${product.title}</h3>
-            <p>${product.desc}</p>
-            <span class="item-price">$${product.price.toFixed(2)}</span>
-          </div>
-          <button onclick="addToCart('${product.id}')">Add to Cart</button>
-        `;
-        container.appendChild(itemDiv);
+
+      categories.forEach(category => {
+        const heading = document.createElement('h3');
+        heading.className = 'category-title';
+        heading.textContent = category;
+        container.appendChild(heading);
+
+        products.filter(product => product.category === category).forEach(product => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'menu-item';
+
+          const info = document.createElement('div');
+          info.className = 'item-info';
+          const title = document.createElement('h3');
+          title.textContent = product.title;
+          const description = document.createElement('p');
+          description.textContent = product.desc;
+          const price = document.createElement('span');
+          price.className = 'item-price';
+          price.textContent = `$${product.price.toFixed(2)}`;
+          info.append(title, description, price);
+
+          const addButton = document.createElement('button');
+          addButton.type = 'button';
+          addButton.textContent = 'Add to Cart';
+          addButton.addEventListener('click', () => addToCart(product.id));
+          itemDiv.append(info, addButton);
+          container.appendChild(itemDiv);
+        });
       });
     }
 
     function addToCart(productId) {
-      const product = products.find(p => p.id === productId);
+      const product = products.find(item => item.id === productId);
+      if (!product) return;
       const existingItem = cart.find(item => item.id === productId);
       if (existingItem) existingItem.qty += 1;
       else cart.push({ ...product, qty: 1 });
@@ -220,40 +260,56 @@
 
     function updateQty(productId, delta) {
       const itemIndex = cart.findIndex(item => item.id === productId);
-      if (itemIndex > -1) {
-        cart[itemIndex].qty += delta;
-        if (cart[itemIndex].qty <= 0) cart.splice(itemIndex, 1);
-        renderCart();
-      }
+      if (itemIndex < 0) return;
+      cart[itemIndex].qty += delta;
+      if (cart[itemIndex].qty <= 0) cart.splice(itemIndex, 1);
+      renderCart();
     }
 
     function renderCart() {
       const container = document.getElementById('cart-container');
       const checkoutBtn = document.getElementById('checkout-btn');
-      if (cart.length === 0) {
+      container.innerHTML = '';
+
+      if (!cart.length) {
         container.innerHTML = '<div class="empty-cart">Your cart is currently empty.</div>';
         checkoutBtn.disabled = true;
         updateTotals(0);
         return;
       }
 
-      container.innerHTML = '';
-      let subtotal = 0;
+      const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
       cart.forEach(item => {
-        const itemTotal = item.price * item.qty;
-        subtotal += itemTotal;
-
         const cartItem = document.createElement('div');
         cartItem.className = 'cart-item';
-        cartItem.innerHTML = `
-          <div class="cart-item-title">${item.title}</div>
-          <div class="qty-controls">
-            <button class="qty-btn" onclick="updateQty('${item.id}', -1)">-</button>
-            <span>${item.qty}</span>
-            <button class="qty-btn" onclick="updateQty('${item.id}', 1)">+</button>
-          </div>
-          <div class="cart-item-price">$${itemTotal.toFixed(2)}</div>
-        `;
+
+        const title = document.createElement('span');
+        title.className = 'cart-item-title';
+        title.textContent = item.title;
+        const controls = document.createElement('div');
+        controls.className = 'qty-controls';
+
+        const decrement = document.createElement('button');
+        decrement.type = 'button';
+        decrement.className = 'qty-btn';
+        decrement.textContent = '−';
+        decrement.setAttribute('aria-label', `Remove one ${item.title}`);
+        decrement.addEventListener('click', () => updateQty(item.id, -1));
+
+        const quantity = document.createElement('span');
+        quantity.textContent = String(item.qty);
+
+        const increment = document.createElement('button');
+        increment.type = 'button';
+        increment.className = 'qty-btn';
+        increment.textContent = '+';
+        increment.setAttribute('aria-label', `Add one ${item.title}`);
+        increment.addEventListener('click', () => updateQty(item.id, 1));
+
+        controls.append(decrement, quantity, increment);
+        const itemPrice = document.createElement('span');
+        itemPrice.textContent = `$${(item.price * item.qty).toFixed(2)}`;
+        cartItem.append(title, controls, itemPrice);
         container.appendChild(cartItem);
       });
 
@@ -263,10 +319,9 @@
 
     function updateTotals(subtotal) {
       const tax = subtotal * TAX_RATE;
-      const total = subtotal + tax;
       document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
       document.getElementById('tax').textContent = `$${tax.toFixed(2)}`;
-      document.getElementById('total').textContent = `$${total.toFixed(2)}`;
+      document.getElementById('total').textContent = `$${(subtotal + tax).toFixed(2)}`;
     }
 
     async function checkout() {
@@ -281,10 +336,10 @@
         city: '',
         payment: 'Pay at pickup',
         notes: '',
-        subtotal: subtotal,
-        tax: subtotal * TAX_RATE,
+        subtotal: Number(subtotal.toFixed(2)),
+        tax: Number((subtotal * TAX_RATE).toFixed(2)),
         deliveryFee: 0,
-        total: subtotal * (1 + TAX_RATE),
+        total: Number((subtotal * (1 + TAX_RATE)).toFixed(2)),
         items: cart.map(item => ({ name: item.title, qty: item.qty, price: item.price }))
       };
 
@@ -308,8 +363,8 @@
         cart = [];
         renderCart();
       } catch (error) {
-        alert(`Order submission failed: ${error.message}. Please verify the Apps Script deployment and spreadsheet configuration.`);
         console.error('Order submission failed:', error);
+        alert(`Order submission failed: ${error.message}. Please verify the Apps Script deployment and spreadsheet configuration.`);
       } finally {
         checkoutBtn.textContent = 'Proceed to Checkout';
         checkoutBtn.disabled = cart.length === 0;
