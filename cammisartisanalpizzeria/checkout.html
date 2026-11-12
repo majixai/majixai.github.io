@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Order Online - Cammis's Artisanal Pizzeria</title>
   <script>
-    window.CAMMIS_ORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw-LkleVjn3c9uIJphBU-xrJ10sJgGiGAu8W3s947B3TH8UzjBO5OkPlsXHBy1YnDx9/exec';
-    // window.CAMMIS_ORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxaYwWmH1p7yDb3_yzlQkT8C4QDBSgH7ZYjY0vAA6uI3ceKGmRHm4vDkGJmM8x6n-3h0/exec';
+    window.CAMMIS_ORDER_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw48E8-8Zdbw6mkU754rjBwJfTeiu0x8uy_AbvHN704V3DyENrqnusfRVa0K4-q1uOclg/exec';
   </script>
   <style>
     :root {
@@ -273,6 +272,7 @@
     async function checkout() {
       if (!cart.length) return;
 
+      const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
       const payload = {
         name: 'Walk-in Customer',
         phone: '(000) 000-0000',
@@ -281,29 +281,38 @@
         city: '',
         payment: 'Pay at pickup',
         notes: '',
-        subtotal: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
-        tax: cart.reduce((sum, item) => sum + item.price * item.qty, 0) * TAX_RATE,
+        subtotal: subtotal,
+        tax: subtotal * TAX_RATE,
         deliveryFee: 0,
-        total: cart.reduce((sum, item) => sum + item.price * item.qty, 0) * (1 + TAX_RATE),
+        total: subtotal * (1 + TAX_RATE),
         items: cart.map(item => ({ name: item.title, qty: item.qty, price: item.price }))
       };
+
+      const checkoutBtn = document.getElementById('checkout-btn');
+      checkoutBtn.disabled = true;
+      checkoutBtn.textContent = 'Submitting…';
 
       try {
         const response = await fetch(window.CAMMIS_ORDER_ENDPOINT, {
           method: 'POST',
           mode: 'cors',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
         const data = await response.json();
-        alert(data && data.ok ? 'Order submitted successfully.' : 'Order submission failed.');
-        if (data && data.ok) {
-          cart = [];
-          renderCart();
+        if (!response.ok || !data || !data.ok) {
+          throw new Error((data && data.error) || `Order submission failed (HTTP ${response.status}).`);
         }
+
+        alert('Order submitted successfully.');
+        cart = [];
+        renderCart();
       } catch (error) {
-        alert('Order submission failed. Please verify your Apps Script URL.');
-        console.error(error);
+        alert(`Order submission failed: ${error.message}. Please verify the Apps Script deployment and spreadsheet configuration.`);
+        console.error('Order submission failed:', error);
+      } finally {
+        checkoutBtn.textContent = 'Proceed to Checkout';
+        checkoutBtn.disabled = cart.length === 0;
       }
     }
 
