@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-11-15 23:59 UTC_
+_Last updated: 2026-11-16 05:14 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,24 +13,24 @@ _Last updated: 2026-11-15 23:59 UTC_
 |--------|-------|
 | 📁 Project Directories | 185 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 153187 |
+| 📝 Total Commits | 153197 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`862e7e27a9`](https://github.com/majixai/majixai.github.io/commit/862e7e27a9a23c775195f6db4797d1fac7e586ed) -- 2026-11-15 -- github-actions[bot] -- data: omnibus — market prediction 2026-11-15 23:37:08 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`024d93af5e`](https://github.com/majixai/majixai.github.io/commit/024d93af5e200f555c0247859c817690f329c323) -- 2026-11-15 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-11-15 23:37:05 UTC -- [Open page](https://majixai.github.io/data/)
-- [`60cc6c324d`](https://github.com/majixai/majixai.github.io/commit/60cc6c324d14ee932498527917b995f4e0e978cf) -- 2026-11-15 -- github-actions[bot] -- data: omnibus — sp projection 2026-11-15 23:36:48 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
-- [`afc477bb76`](https://github.com/majixai/majixai.github.io/commit/afc477bb76dd3d68f6063020c63e5b3f731420d1) -- 2026-11-15 -- jinxai-tensor[bot] -- [JINXAI Tensor] Update forecast 2026-11-15T22:42:14Z -- [Open page](https://majixai.github.io/tradingview_integration/)
-- [`dfe0d83f5f`](https://github.com/majixai/majixai.github.io/commit/dfe0d83f5fa87ed82db4b2cf18f9563bd51acac6) -- 2026-11-15 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-11-15 22:02:17 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
+- [`85940b4e47`](https://github.com/majixai/majixai.github.io/commit/85940b4e4719265ceb9aab1f8b90b36d5caf974a) -- 2026-11-16 -- github-actions[bot] -- data: Update projects.json - 2026-11-16 04:50:02 UTC -- [Open page](https://majixai.github.io/router/)
+- [`d0ee5f5577`](https://github.com/majixai/majixai.github.io/commit/d0ee5f55777701ffb298d75196682ae54c81d3a4) -- 2026-11-16 -- github-actions[bot] -- data: Update commit_advisor insights – 2026-11-16 04:26:55 UTC -- [Open page](https://majixai.github.io/commit_advisor/)
+- [`27b6257a96`](https://github.com/majixai/majixai.github.io/commit/27b6257a963b33bfacf200a9e1215fe865d09b6b) -- 2026-11-16 -- github-actions[bot] -- data: omnibus — yfinance snapshot 2026-11-16 03:07:32 UTC -- [Open page](https://majixai.github.io/data/)
+- [`db22c625bb`](https://github.com/majixai/majixai.github.io/commit/db22c625bb62350247bb96475a45790bc81c5bd6) -- 2026-11-16 -- github-actions[bot] -- data: omnibus — tensor forecast 2026-11-16 03:06:28 UTC -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`1807515c02`](https://github.com/majixai/majixai.github.io/commit/1807515c02cadc091c17b9173e07e0386199a66a) -- 2026-11-16 -- github-actions[bot] -- data: omnibus — sp projection 2026-11-16 03:06:24 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `8d91c56` — 2026-11-15 — **github-actions[bot]** — data: omnibus — sp projection 2026-11-15 00:09:15 UTC  
-  _782 lines changed (386+ / 396-)_
-- **Biggest update this week:** `d23b793` — 2026-11-12 — **majixai** — Merge branch 'main' into fix/cammis-orders-sheet-backend  
-  _73023 lines changed (61733+ / 11290-)_
+- **Biggest update today:** `d0ee5f5` — 2026-11-16 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-11-16 04:26:55 UTC  
+  _568 lines changed (210+ / 358-)_
+- **Biggest update this week:** `d0ee5f5` — 2026-11-16 — **github-actions[bot]** — data: Update commit_advisor insights – 2026-11-16 04:26:55 UTC  
+  _568 lines changed (210+ / 358-)_
 - **Biggest update this month:** `d23b793` — 2026-11-12 — **majixai** — Merge branch 'main' into fix/cammis-orders-sheet-backend  
   _73023 lines changed (61733+ / 11290-)_
 - **Biggest update this quarter:** `369374d` — 2026-10-16 — **github-actions[bot]** — data: Update index data - 2026-10-16 05:43:44 UTC  
