@@ -3,7 +3,7 @@
 > **A GitHub Pages site hosting a diverse collection of web applications, financial tools, AI integrations, data scrapers, and experimental projects.**
 
 <!-- START_LAST_UPDATED -->
-_Last updated: 2026-11-23 12:04 UTC_
+_Last updated: 2026-11-25 14:05 UTC_
 <!-- END_LAST_UPDATED -->
 
 ## Repository Stats
@@ -13,24 +13,24 @@ _Last updated: 2026-11-23 12:04 UTC_
 |--------|-------|
 | 📁 Project Directories | 185 |
 | ⚙️ GitHub Actions Workflows | 71 |
-| 📝 Total Commits | 153496 |
+| 📝 Total Commits | 153569 |
 <!-- END_REPO_STATS -->
 
 ## Recent Activity
 <!-- START_RECENT_ACTIVITY -->
-- [`573e0774b6`](https://github.com/majixai/majixai.github.io/commit/573e0774b674ae1ec920751ab21b8367f174707f) -- 2026-11-23 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-11-23 10:31 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
-- [`4ae8524b6e`](https://github.com/majixai/majixai.github.io/commit/4ae8524b6e693db46952170b3e7bf608f5142791) -- 2026-11-23 -- integrity-bot[bot] -- integrity: Update hashes.json - 2026-11-23T09:58:10Z -- [Open page](https://majixai.github.io/integrity/)
-- [`0793fb6ab1`](https://github.com/majixai/majixai.github.io/commit/0793fb6ab162114c5bbbebcd7db6b3b9097bf624) -- 2026-11-23 -- github-actions[bot] -- data: Update index data - 2026-11-23 08:50:50 UTC -- [Open page](https://majixai.github.io/index/)
-- [`51c0982fd9`](https://github.com/majixai/majixai.github.io/commit/51c0982fd961c1b82a8b8d8ac0c1312a8cd150e2) -- 2026-11-23 -- github-actions[bot] -- prediction: Update SPY market prediction - 2026-11-23 08:04:26 UTC -- [Open page](https://majixai.github.io/market_prediction/)
-- [`dc5c32cf80`](https://github.com/majixai/majixai.github.io/commit/dc5c32cf80d3767073471811745ab46ce196d57d) -- 2026-11-23 -- jinxai-tensor[bot] -- [JINXAI Tensor] Update forecast 2026-11-23T06:52:08Z -- [Open page](https://majixai.github.io/tradingview_integration/)
+- [`200b0fb571`](https://github.com/majixai/majixai.github.io/commit/200b0fb5713127ae23c8f6e569230f623f43570b) -- 2026-11-25 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-11-25 13:53 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
+- [`5ee4a9ec36`](https://github.com/majixai/majixai.github.io/commit/5ee4a9ec36bcfcfd770ba537f349dd2ac8df56de) -- 2026-11-25 -- github-actions[bot] -- projection: Update S&P 500 closing projection - 2026-11-25 13:42:02 UTC -- [Open page](https://majixai.github.io/sp_closing_projection/)
+- [`aa637c61bc`](https://github.com/majixai/majixai.github.io/commit/aa637c61bc93e57f598883e0a608a5f099d1f41d) -- 2026-11-25 -- github-actions[bot] -- dji-ohlc: TF OHLC update [scheduled] — 2026-11-25 10:59 UTC -- [Open page](https://majixai.github.io/dji_ohlc_tensorflow/)
+- [`6b3b2448a3`](https://github.com/majixai/majixai.github.io/commit/6b3b2448a3ada0ddbcb198731f4cd936f604ba55) -- 2026-11-25 -- gpu-pipeline[bot] -- [GPU Pipeline] Update run summary 2026-11-25T10:40:07Z -- [Open page](https://majixai.github.io/gpu/)
+- [`2c1cbd5438`](https://github.com/majixai/majixai.github.io/commit/2c1cbd54389c98c0922053c54197d7a6e195f244) -- 2026-11-25 -- github-actions[bot] -- data: Update index data - 2026-11-25 09:58:49 UTC -- [Open page](https://majixai.github.io/index/)
 <!-- END_RECENT_ACTIVITY -->
 
 ## Biggest Updates
 <!-- START_BIGGEST_UPDATES -->
-- **Biggest update today:** `0793fb6` — 2026-11-23 — **github-actions[bot]** — data: Update index data - 2026-11-23 08:50:50 UTC  
-  _7134 lines changed (6679+ / 455-)_
-- **Biggest update this week:** `0793fb6` — 2026-11-23 — **github-actions[bot]** — data: Update index data - 2026-11-23 08:50:50 UTC  
-  _7134 lines changed (6679+ / 455-)_
+- **Biggest update today:** `2c1cbd5` — 2026-11-25 — **github-actions[bot]** — data: Update index data - 2026-11-25 09:58:49 UTC  
+  _51610 lines changed (50521+ / 1089-)_
+- **Biggest update this week:** `864796b` — 2026-11-24 — **github-actions[bot]** — data: Update index data - 2026-11-24 10:56:00 UTC  
+  _54601 lines changed (53512+ / 1089-)_
 - **Biggest update this month:** `384c757` — 2026-11-20 — **github-actions[bot]** — data: Update index data - 2026-11-20 08:26:12 UTC  
   _104246 lines changed (103145+ / 1101-)_
 - **Biggest update this quarter:** `384c757` — 2026-11-20 — **github-actions[bot]** — data: Update index data - 2026-11-20 08:26:12 UTC  
